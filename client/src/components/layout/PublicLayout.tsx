@@ -44,7 +44,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
           <Link href="/"><img src="/images/logo.png" alt="Logo" className="h-16 w-auto" /></Link>
           <nav className="hidden lg:flex items-center gap-10">
             {navigation.map((item) => (
-              <Link key={item.name} href={item.href} className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${isActive(item.href) ? 'text-[#e91e63]' : 'text-gray-900 hover:text-[#e91e63]'}`}>{item.name}</Link>
+              <Link key={item.name} href={item.href} className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${isActive(item.href) ? 'text-[#00BFFF]' : 'text-gray-900 hover:text-[#00BFFF]'}`}>{item.name}</Link>
             ))}
             <Button asChild className="btn-primary"><Link href="/contact" className="flex items-center gap-2"><span>Contact Us</span><ArrowRight className="w-3 h-3" /></Link></Button>
           </nav>

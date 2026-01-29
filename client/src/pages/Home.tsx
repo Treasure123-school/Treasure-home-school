@@ -67,9 +67,9 @@ export default function Home() {
         <div className="container relative z-10 text-center text-white px-4">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="max-w-4xl mx-auto">
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-              We invest in <span className="text-[#e91e63]">Students.</span><br />
-              We shapes <span className="text-[#9c27b0]">Lives.</span><br />
-              We create the <span className="text-[#e91e63]">Future.</span>
+              We invest in <span className="text-[#00BFFF]">Students.</span><br />
+              We shapes <span className="text-[#0000FF]">Lives.</span><br />
+              We create the <span className="text-[#00BFFF]">Future.</span>
             </h1>
             <p className="text-base md:text-lg mb-10 text-gray-200 italic font-medium">
               Glory Schools is the school your ward needs

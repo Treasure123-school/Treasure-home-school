@@ -11,19 +11,19 @@
   --card-foreground: hsl(222.2, 84%, 4.9%);
   --popover: hsl(0, 0%, 100%);
   --popover-foreground: hsl(222.2, 84%, 4.9%);
-  --primary: hsl(320, 80%, 50%);
+  --primary: hsl(220, 90%, 50%);
   --primary-foreground: hsl(0, 0%, 100%);
   --secondary: hsl(45, 100%, 65%);
   --secondary-foreground: hsl(222.2, 84%, 4.9%);
   --muted: hsl(210, 40%, 96%);
   --muted-foreground: hsl(215.4, 16.3%, 46.9%);
-  --accent: hsl(320, 80%, 50%);
+  --accent: hsl(220, 90%, 50%);
   --accent-foreground: hsl(0, 0%, 100%);
   --destructive: hsl(0, 84.2%, 60.2%);
   --destructive-foreground: hsl(210, 40%, 98%);
   --border: hsl(214.3, 31.8%, 91.4%);
   --input: hsl(214.3, 31.8%, 91.4%);
-  --ring: hsl(320, 80%, 50%);
+  --ring: hsl(220, 90%, 50%);
   --radius: 0rem;
   --font-sans: 'Montserrat', 'Open Sans', 'Inter', sans-serif;
 }
@@ -38,7 +38,7 @@
 }
 
 .btn-primary {
-  @apply relative overflow-hidden bg-gradient-to-r from-[#9c27b0] to-[#e91e63] text-white border-none shadow-lg transition-all hover:opacity-90 active:scale-95 flex items-center justify-center gap-2 font-bold uppercase tracking-widest px-8 py-3 text-[10px] rounded-sm;
+  @apply relative overflow-hidden bg-gradient-to-r from-[#0000FF] to-[#00BFFF] text-white border-none shadow-lg transition-all hover:opacity-90 active:scale-95 flex items-center justify-center gap-2 font-bold uppercase tracking-widest px-8 py-3 text-[10px] rounded-sm;
 }
 
 .btn-white {
@@ -62,5 +62,5 @@
 }
 
 .typed-cursor {
-  @apply text-[#e91e63] font-bold;
+  @apply text-[#00BFFF] font-bold;
 }
