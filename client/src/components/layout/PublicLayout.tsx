@@ -62,7 +62,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               <p className="text-[13px] text-gray-400 leading-relaxed">Glory Schools, located in Egbedi-Ifo Local Government, Osun State, Nigeria, has a rich history of educational excellence.</p>
             </div>
             <div className="space-y-6">
-              <h4 className="text-white font-bold uppercase tracking-widest text-[10px] border-b border-gray-700 pb-2">Useful Links</h4>
+              <h4 className="text-white font-bold uppercase tracking-widest text-[10px] border-b border-gray-600 pb-2">Useful Links</h4>
               <ul className="space-y-3">
                 {navigation.map((item) => (
                   <li key={item.name}><Link href={item.href} className="text-[13px] text-gray-400 hover:text-white transition-colors">{item.name}</Link></li>
@@ -70,15 +70,15 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               </ul>
             </div>
             <div className="space-y-6">
-              <h4 className="text-white font-bold uppercase tracking-widest text-[10px] border-b border-gray-700 pb-2">Contact Info</h4>
+              <h4 className="text-white font-bold uppercase tracking-widest text-[10px] border-b border-gray-600 pb-2">Contact Info</h4>
               <ul className="space-y-4">
-                <li className="flex gap-4"><MapPin className="h-5 w-5 text-pink-500 shrink-0" /><span className="text-[13px] text-gray-400">{schoolAddress}</span></li>
-                <li className="flex gap-4"><Phone className="h-5 w-5 text-pink-500 shrink-0" /><span className="text-[13px] text-gray-400">{schoolPhone}</span></li>
-                <li className="flex gap-4"><Mail className="h-5 w-5 text-pink-500 shrink-0" /><span className="text-[13px] text-gray-400">{schoolEmail}</span></li>
+                <li className="flex gap-4"><MapPin className="h-5 w-5 text-[#00BFFF] shrink-0" /><span className="text-[13px] text-gray-400">{schoolAddress}</span></li>
+                <li className="flex gap-4"><Phone className="h-5 w-5 text-[#00BFFF] shrink-0" /><span className="text-[13px] text-gray-400">{schoolPhone}</span></li>
+                <li className="flex gap-4"><Mail className="h-5 w-5 text-[#00BFFF] shrink-0" /><span className="text-[13px] text-gray-400">{schoolEmail}</span></li>
               </ul>
             </div>
           </div>
-          <div className="pt-8 border-t border-gray-700 text-center text-[10px] text-gray-500 uppercase tracking-widest font-bold">© {new Date().getFullYear()} {schoolName}. All Rights Reserved.</div>
+          <div className="pt-8 border-t border-gray-600 text-center text-[10px] text-gray-500 uppercase tracking-widest font-bold">© {new Date().getFullYear()} {schoolName}. All Rights Reserved.</div>
         </div>
       </footer>
     </div>
