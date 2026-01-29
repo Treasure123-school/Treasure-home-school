@@ -5,10 +5,11 @@ import { Badge } from '@/components/ui/badge';
 import { Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect, useRef } from 'react';
-import { Calendar, Clock, ChevronLeft, ChevronRight, Users, Award, GraduationCap, Star, MapPin, Phone, Mail, CheckCircle, ArrowRight } from 'lucide-react';
+import { Calendar, Clock, ChevronLeft, ChevronRight, Users, Award, GraduationCap, Star, MapPin, Phone, Mail, CheckCircle, ArrowRight, Plus, Minus } from 'lucide-react';
 import type { HomePageContent } from '@shared/schema';
 import Typed from 'typed.js';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface SettingsData {
   schoolName: string;
@@ -24,16 +25,6 @@ const fadeIn = {
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true, margin: "-100px" },
   transition: { duration: 0.6, ease: "easeOut" }
-};
-
-const staggerContainer = {
-  initial: {},
-  whileInView: {
-    transition: {
-      staggerChildren: 0.2
-    }
-  },
-  viewport: { once: true, margin: "-100px" }
 };
 
 export default function Home() {
@@ -98,10 +89,8 @@ export default function Home() {
   ];
 
   const testimonials = [
-    { name: "Tijani Abdulbasit", role: "Student", text: "Glory Schools has prepared me academically and taught me important life skills focus on values and ethics.", img: "/images/Tijani Abdulbasit.jpg" },
     { name: "Yisa Balikis", role: "Student", text: "At Glory Schools, I've learned the value of leadership and teamwork character development.", img: "/images/Yisa Balakis.jpg" },
-    { name: "Nafiu Barakat", role: "Student", text: "The school's focus on values has shaped my perspective, ready to face the future with confidence.", img: "/images/Nafiu Barakat.jpg" },
-    { name: "Akinyemi Charis", role: "Student", text: "Extracurricular activities and supportive staff have made my school experience truly enriching.", img: "/images/Akinyemi Charis.jpg" }
+    { name: "Nafiu Barakat", role: "Student", text: "The school's focus on values has shaped my perspective, ready to face the future with confidence.", img: "/images/Nafiu Barakat.jpg" }
   ];
 
   const galleryImages = [
@@ -123,7 +112,7 @@ export default function Home() {
             alt="Students studying" 
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-black/50" />
+          <div className="absolute inset-0 bg-black/60" />
         </div>
         
         <div className="container relative z-10 text-center text-white px-4">
@@ -133,17 +122,17 @@ export default function Home() {
             transition={{ duration: 0.8 }}
           >
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6">
-              We invest in <span className="text-blue-400" ref={typedElementRef}></span>
+              We invest in <span className="text-[#d946ef]" ref={typedElementRef}></span>
             </h1>
             <p className="text-xl md:text-2xl mb-10 text-gray-200 max-w-2xl mx-auto">
-              {schoolName} is the school your ward needs. Providing excellence in rural education.
+              {schoolName} is the school your ward needs.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-8 h-12">
-                <Link href="/about">About Us</Link>
+              <Button asChild size="lg" className="bg-white text-gray-900 hover:bg-gray-100 rounded-md px-8 h-12 font-bold uppercase tracking-wider text-xs">
+                <Link href="/about">About</Link>
               </Button>
-              <Button asChild size="lg" variant="outline" className="bg-white/10 backdrop-blur-md text-white border-white/50 hover:bg-white/20 rounded-full px-8 h-12">
-                <Link href="/contact">Contact Us</Link>
+              <Button asChild size="lg" className="bg-[#d946ef] hover:bg-[#c026d3] text-white border-none rounded-md px-8 h-12 font-bold uppercase tracking-wider text-xs">
+                <Link href="/contact">Contact</Link>
               </Button>
             </div>
           </motion.div>
@@ -152,23 +141,22 @@ export default function Home() {
 
       {/* About Section */}
       <section className="py-20 bg-white">
-        <div className="container px-4">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+        <div className="container px-4 max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-16 items-center">
             <motion.div {...fadeIn}>
               <img 
                 src="/images/students 2.jpeg" 
                 alt="Glory Schools Students" 
-                className="rounded-2xl shadow-2xl w-full object-cover h-[400px]"
+                className="rounded-lg shadow-xl w-full object-cover h-[350px]"
               />
             </motion.div>
             <motion.div {...fadeIn} className="space-y-6">
-              <h2 className="text-4xl font-bold text-gray-900">{schoolName}</h2>
-              <div className="w-20 h-1.5 bg-blue-600 rounded-full" />
-              <p className="text-lg text-gray-600 leading-relaxed">
+              <h2 className="text-3xl font-bold text-gray-900">{schoolName}</h2>
+              <p className="text-base text-gray-600 leading-relaxed">
                 At {schoolName}, Egbedi, our vision is to be a beacon of educational excellence in rural Osun State and beyond. We aspire to empower our students with the knowledge, skills, and values that will not only equip them for success in a rapidly evolving world but also inspire them to be compassionate, innovative, and socially responsible leaders.
               </p>
-              <Button asChild variant="outline" className="rounded-full">
-                <Link href="/about">Learn More <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              <Button asChild className="bg-[#d946ef] hover:bg-[#c026d3] text-white rounded-md px-6 py-2 uppercase text-xs font-bold">
+                <Link href="/about">Learn More</Link>
               </Button>
             </motion.div>
           </div>
@@ -176,24 +164,22 @@ export default function Home() {
       </section>
 
       {/* Core Values */}
-      <section className="py-20 bg-gray-50">
-        <div className="container px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">{schoolName} Core Values</h2>
-            <p className="text-gray-600 max-w-2xl mx-auto text-lg">
-              Guided by six core values that form the foundation of our educational philosophy.
-            </p>
-          </div>
+      <section className="py-24 bg-gray-50/50">
+        <div className="container px-4 max-w-7xl mx-auto text-center">
+          <h2 className="text-3xl font-bold mb-4">{schoolName} Core Values</h2>
+          <p className="text-gray-500 max-w-2xl mx-auto text-sm mb-20">
+            At {schoolName}, we are guided by six core values that form the foundation of our educational philosophy. These values shape the experiences of our students and define our commitment to providing a holistic and enriching learning environment.
+          </p>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
             {features.map((value, i) => (
               <motion.div key={i} {...fadeIn}>
-                <Card className="text-center p-8 h-full hover:shadow-lg transition-shadow border-none bg-white rounded-2xl relative pt-12">
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-white shadow-md p-4">
-                    <img src={value.icon} alt={value.title} className="w-full h-full object-contain" />
+                <Card className="text-center p-10 h-full border-none shadow-sm hover:shadow-md transition-all bg-white rounded-xl relative pt-16">
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-white shadow-sm p-4 border border-gray-100 flex items-center justify-center">
+                    <img src={value.icon} alt={value.title} className="w-10 h-10 object-contain" />
                   </div>
-                  <h3 className="text-xl font-bold mb-3 mt-4">{value.title}</h3>
-                  <p className="text-gray-600">{value.desc}</p>
+                  <h3 className="text-lg font-bold mb-4 text-gray-900">{value.title}</h3>
+                  <p className="text-gray-500 text-sm leading-relaxed">{value.desc}</p>
                 </Card>
               </motion.div>
             ))}
@@ -202,31 +188,27 @@ export default function Home() {
       </section>
 
       {/* Why Choose Us & Stats */}
-      <section className="py-20 relative text-white">
+      <section className="py-24 relative overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img src="/images/bg_01.png" className="w-full h-full object-cover" alt="Background" />
-          <div className="absolute inset-0 bg-blue-900/80" />
         </div>
         
-        <div className="container relative z-10 px-4">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+        <div className="container relative z-10 px-4 max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-20 items-center">
             <motion.div {...fadeIn}>
-              <h2 className="text-4xl font-bold mb-6">Why Choose {schoolName}?</h2>
-              <p className="text-lg text-gray-200 leading-relaxed mb-8">
-                We empower our students with knowledge, skills, and values. Our graduates are at the forefront of positive change, contributing to the betterment of their communities while upholding the principles of uprightness and academic integrity.
+              <h2 className="text-3xl font-bold mb-8 text-gray-900">Why Choose {schoolName}?</h2>
+              <p className="text-base text-gray-600 leading-relaxed mb-10">
+                At {schoolName}, Egbedi, our vision is to be a beacon of educational excellence in rural Osun State and beyond. We aspire to empower our students with the knowledge, skills, and values that will not only equip them for success in a rapidly evolving world but also inspire them to be compassionate, innovative, and socially responsible leaders.
               </p>
-              <Button asChild size="lg" className="bg-white text-blue-900 hover:bg-gray-100 rounded-full px-8">
-                <Link href="/admissions">Enroll Your Child</Link>
-              </Button>
             </motion.div>
             
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 gap-8">
               {stats.map((stat, i) => (
                 <motion.div key={i} {...fadeIn}>
-                  <div className="bg-white/10 backdrop-blur-sm border border-white/20 p-8 rounded-2xl text-center">
-                    <div className="text-4xl font-bold mb-2">{stat.value}</div>
-                    <div className="text-gray-300 text-sm uppercase tracking-wider">{stat.label}</div>
-                  </div>
+                  <Card className="bg-white p-10 rounded-xl text-center border-none shadow-sm">
+                    <div className="text-4xl font-bold mb-2 text-gray-900">{stat.value}</div>
+                    <div className="text-gray-400 text-xs uppercase tracking-widest">{stat.label}</div>
+                  </Card>
                 </motion.div>
               ))}
             </div>
@@ -235,23 +217,26 @@ export default function Home() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-20 bg-gray-50 overflow-hidden">
-        <div className="container px-4 text-center">
+      <section className="py-24 relative overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <img src="/images/bg_03.png" className="w-full h-full object-cover" alt="Background" />
+        </div>
+        <div className="container relative z-10 px-4 max-w-7xl mx-auto text-center">
           <motion.div {...fadeIn} className="mb-16">
-            <h2 className="text-4xl font-bold mb-4">School Testimonials</h2>
-            <p className="text-gray-600 text-lg">Our education brings satisfaction to our students.</p>
+            <h2 className="text-3xl font-bold mb-4">School Testimonial</h2>
+            <p className="text-gray-500 text-sm">Our education brings satisfaction to our students. Here are a few testimonials.</p>
           </motion.div>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
             {testimonials.map((t, i) => (
               <motion.div key={i} {...fadeIn}>
-                <Card className="p-8 h-full text-left bg-white border-none shadow-sm hover:shadow-md transition-shadow rounded-2xl">
-                  <p className="text-gray-600 italic mb-6">"{t.text}"</p>
-                  <div className="flex items-center gap-4">
-                    <img src={t.img} alt={t.name} className="w-12 h-12 rounded-full object-cover" />
+                <Card className="p-10 h-full text-left bg-white border-none shadow-sm rounded-xl">
+                  <p className="text-gray-500 text-sm leading-relaxed mb-8 italic">At Glory Schools, I've learned the value of leadership and teamwork. The school's emphasis on character development has empowered me to take on responsibilities and become a better version of myself. I am grateful for the opportunities this school has provided me.</p>
+                  <div className="flex items-center gap-4 border-t border-gray-100 pt-6">
+                    <img src={t.img} alt={t.name} className="w-10 h-10 rounded-full object-cover" />
                     <div>
-                      <h4 className="font-bold text-gray-900">{t.name}</h4>
-                      <p className="text-sm text-blue-600">{t.role}</p>
+                      <h4 className="font-bold text-gray-900 text-sm">{t.name}</h4>
+                      <p className="text-xs text-gray-400">{t.role}</p>
                     </div>
                   </div>
                 </Card>
@@ -261,53 +246,83 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Gallery Preview */}
-      <section className="py-20 bg-white">
-        <div className="container px-4">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4">School Gallery</h2>
-            <p className="text-gray-600 text-lg">Check out some pictures of our students.</p>
-          </div>
+      {/* Gallery Section */}
+      <section className="py-24 bg-white">
+        <div className="container px-4 max-w-7xl mx-auto text-center">
+          <h2 className="text-3xl font-bold mb-4">School Gallery</h2>
+          <p className="text-gray-500 text-sm mb-16">Check out some pictures of our students.</p>
           
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
             {galleryImages.map((img, i) => (
-              <motion.div key={i} {...fadeIn} className="overflow-hidden rounded-2xl aspect-video group">
+              <motion.div key={i} {...fadeIn} className="overflow-hidden rounded-lg shadow-sm">
                 <img 
                   src={`/images/${img}`} 
                   alt="Gallery" 
-                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  className="w-full h-64 object-cover hover:scale-105 transition-transform duration-500"
                 />
               </motion.div>
             ))}
           </div>
-          <div className="text-center mt-12">
-            <Button asChild size="lg" variant="outline" className="rounded-full px-10">
-              <Link href="/gallery">View Full Gallery</Link>
-            </Button>
-          </div>
+          <Button asChild size="lg" className="bg-[#d946ef] hover:bg-[#c026d3] text-white rounded-md px-10 h-12 font-bold uppercase tracking-wider text-xs">
+            <Link href="/gallery">View More</Link>
+          </Button>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 bg-blue-600 text-white relative overflow-hidden">
-        <div className="container px-4 text-center relative z-10">
-          <motion.div {...fadeIn}>
-            <h2 className="text-4xl md:text-5xl font-bold mb-8">Ready to Shape Your Child's Future?</h2>
-            <p className="text-xl mb-10 text-blue-100 max-w-2xl mx-auto">
-              Join the {schoolName} family today and give your child the foundation they deserve.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild size="lg" className="bg-white text-blue-600 hover:bg-gray-100 rounded-full px-10 h-14 font-bold">
-                <Link href="/admissions">Apply Now</Link>
-              </Button>
-              <Button asChild size="lg" variant="outline" className="border-white text-white hover:bg-white/10 rounded-full px-10 h-14 font-bold">
-                <Link href="/contact">Inquiry</Link>
+      {/* Contact Section */}
+      <section className="py-24 bg-white relative overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <img src="/images/contact-bg.png" className="w-full h-full object-cover opacity-10" alt="Background" />
+        </div>
+        <div className="container relative z-10 px-4 max-w-3xl mx-auto text-center">
+          <h2 className="text-3xl font-bold mb-4">Contact Us</h2>
+          <p className="text-gray-500 text-sm mb-16">Let us know your thoughts.</p>
+          
+          <form className="space-y-6 text-left">
+            <div className="grid md:grid-cols-2 gap-6">
+              <input type="text" placeholder="First Name" className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d946ef]/20" />
+              <input type="text" placeholder="Last Name" className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d946ef]/20" />
+            </div>
+            <div className="grid md:grid-cols-2 gap-6">
+              <input type="email" placeholder="Your Email" className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d946ef]/20" />
+              <input type="tel" placeholder="Your Phone Number" className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d946ef]/20" />
+            </div>
+            <textarea placeholder="Type your message" rows={6} className="w-full px-6 py-4 bg-gray-50 border border-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#d946ef]/20" />
+            <div className="text-center">
+              <Button type="submit" size="lg" className="bg-[#d946ef] hover:bg-[#c026d3] text-white rounded-md px-10 h-12 font-bold uppercase tracking-wider text-xs">
+                Send Message
               </Button>
             </div>
-          </motion.div>
+          </form>
         </div>
-        <div className="absolute top-0 left-0 w-64 h-64 bg-white/10 rounded-full -translate-x-1/2 -translate-y-1/2 blur-3xl"></div>
-        <div className="absolute bottom-0 right-0 w-64 h-64 bg-white/10 rounded-full translate-x-1/2 translate-y-1/2 blur-3xl"></div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="py-24 relative overflow-hidden bg-gray-50/50">
+        <div className="container relative z-10 px-4 max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl font-bold mb-4">Frequently Asked Questions</h2>
+          <p className="text-gray-500 text-sm mb-16">Want to know more about us?</p>
+          
+          <div className="text-left space-y-4">
+            {[
+              { q: "When was the school established?", a: "The school was established in September, 2012." },
+              { q: "What is the curriculum of the school?", a: "We follow an approved & accredited curriculum that balances academic excellence with strong moral training." },
+              { q: "Where is the school located?", a: "We are located at Egbedi, Osun State." },
+              { q: "Is Glory Schools a boarding or day school?", a: "We offer both day and boarding facilities for our students." }
+            ].map((faq, i) => (
+              <Accordion type="single" collapsible key={i} className="bg-white rounded-lg shadow-sm px-6">
+                <AccordionItem value={`item-${i}`} className="border-none">
+                  <AccordionTrigger className="text-sm font-semibold py-6 hover:no-underline text-gray-900">
+                    {faq.q}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-gray-500 text-sm pb-6">
+                    {faq.a}
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            ))}
+          </div>
+        </div>
       </section>
     </PublicLayout>
   );
