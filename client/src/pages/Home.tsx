@@ -29,7 +29,7 @@ export default function Home() {
   });
 
   const schoolName = settings?.schoolName || "Treasure-Home School";
-  const schoolAddress = settings?.schoolAddress || "Egbedi, Osun State";
+  const schoolAddress = settings?.schoolAddress || "Seriki, Ogun State";
   const schoolLogo = settings?.schoolLogo || "/images/logo.png";
 
   const features = [
@@ -49,8 +49,8 @@ export default function Home() {
   ];
 
   const testimonials = [
-    { name: "Tijani Abdulbasit", role: "Student", text: `${schoolName} has not only prepared me academically but has also taught me important life skills. The school's focus on values and ethics has shaped my perspective on the world.`, img: "/images/Tijani Abdulbasit.jpg" },
-    { name: "Yisa Balikis", role: "Student", text: `At ${schoolName}, I've learned the value of leadership and teamwork. The school's emphasis on character development has empowered me to take on responsibilities.`, img: "/images/Yisa Balakis.jpg" }
+    { name: "Adebayo Daniel", role: "Student", text: `${schoolName} has not only prepared me academically but has also taught me important life skills. The school's focus on values and ethics has shaped my perspective on the world.`, img: "/images/Tijani Abdulbasit.jpg" },
+    { name: "Abubakar Korede", role: "Student", text: `At ${schoolName}, I've learned the value of leadership and teamwork. The school's emphasis on character development has empowered me to take on responsibilities.`, img: "/images/Yisa Balakis.jpg" }
   ];
 
   const galleryImages = [
@@ -70,7 +70,7 @@ export default function Home() {
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="max-w-4xl mx-auto">
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
               We Nurture <span className="text-[#00BFFF]">Young Minds.</span><br />
-              We Build <span className="text-[#0000FF]">Character.</span><br />
+              We Build <span className="text-[#00BFFF]">Character.</span><br />
               We Shape the <span className="text-[#00BFFF]">Future.</span>
             </h1>
             <p className="text-base md:text-lg mb-10 text-gray-200 italic font-medium">
@@ -117,7 +117,7 @@ export default function Home() {
       {/* Core Values */}
       <section className="py-24 bg-white">
         <div className="container px-4 max-w-6xl mx-auto text-center">
-          <h2 className="section-title">{schoolName} Egbedi Core Values</h2>
+          <h2 className="section-title">{schoolName} Core Values</h2>
           <p className="section-subtitle">At {schoolName}, we are guided by six core values that form the foundation of our educational philosophy.</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {features.map((f, i) => (
@@ -199,14 +199,14 @@ export default function Home() {
           <p className="section-subtitle">Let us know your thoughts.</p>
           <form className="space-y-6 text-left mb-24">
             <div className="grid md:grid-cols-2 gap-6">
-              <input type="text" placeholder="First Name" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-pink-500" />
-              <input type="text" placeholder="Last Name" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-pink-500" />
+              <input type="text" placeholder="First Name" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500" />
+              <input type="text" placeholder="Last Name" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500" />
             </div>
             <div className="grid md:grid-cols-2 gap-6">
-              <input type="email" placeholder="Email" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-pink-500" />
-              <input type="tel" placeholder="Phone" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-pink-500" />
+              <input type="email" placeholder="Email" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500" />
+              <input type="tel" placeholder="Phone" className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500" />
             </div>
-            <textarea placeholder="Message" rows={4} className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-pink-500" />
+            <textarea placeholder="Message" rows={4} className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500" />
             <Button type="submit" className="btn-primary mx-auto">Send Message</Button>
           </form>
           
