@@ -35,6 +35,9 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
+  p, span, div, li {
+    @apply font-semibold;
+  }
 }
 
 .btn-primary {
@@ -98,7 +101,7 @@
 }
 
 .section-subtitle {
-  @apply text-[13px] text-gray-500 mb-12 max-w-2xl mx-auto leading-relaxed;
+  @apply text-[13px] text-gray-500 mb-12 max-w-2xl mx-auto leading-relaxed font-bold;
 }
 
 .card-value {
@@ -106,7 +109,7 @@
 }
 
 .footer-dark {
-  @apply bg-gradient-to-r from-[#0000FF] to-[#00BFFF] text-white py-16;
+  @apply bg-gradient-to-r from-[#0000AA] to-[#0099DD] text-white py-16;
 }
 
 .typed-cursor {
