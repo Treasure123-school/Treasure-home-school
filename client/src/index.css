@@ -93,22 +93,40 @@
 }
 
 .btn-hero-about {
+  position: relative;
   background: white !important;
   background-color: white !important;
   color: #111827 !important;
   border: none !important;
   outline: none !important;
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
+  z-index: 1;
+  overflow: hidden !important;
   @apply transition-all font-bold uppercase tracking-widest rounded-sm !important;
 }
 
-.btn-hero-about:hover {
+.btn-hero-about::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
   background: linear-gradient(to right, #0000FF, #00BFFF) !important;
+  transition: all 0.4s ease-in-out;
+  z-index: -1;
+}
+
+.btn-hero-about:hover {
   color: white !important;
   border: none !important;
   outline: none !important;
   @apply ring-0 !important;
   box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1) !important;
+}
+
+.btn-hero-about:hover::before {
+  left: 0;
 }
 
 .btn-hero-contact {
