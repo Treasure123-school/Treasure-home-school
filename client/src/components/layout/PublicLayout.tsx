@@ -239,6 +239,10 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                   <Mail className="h-4 w-4 text-blue-600" />
                   <span>{schoolEmail}</span>
                 </div>
+                <div className="pt-2">
+                  <p className="text-xs font-semibold uppercase text-blue-600">Office Hours</p>
+                  <p className="text-xs">Mon – Fri: 8:00 AM – 4:00 PM</p>
+                </div>
                 <div className="flex items-center space-x-4 pt-4">
                   <a href="https://wa.me/2348037906249" target="_blank" rel="noopener noreferrer" className="bg-green-500 hover:bg-green-600 text-white p-2 rounded-full shadow-lg transition-transform hover:scale-110">
                     <svg className="h-5 w-5 fill-current" viewBox="0 0 24 24">

@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect, useRef } from 'react';
-import { Calendar, Clock, ChevronLeft, ChevronRight, Users, Award, GraduationCap, Star } from 'lucide-react';
+import { Calendar, Clock, ChevronLeft, ChevronRight, Users, Award, GraduationCap, Star, MapPin, Phone, Mail } from 'lucide-react';
 import type { HomePageContent } from '@shared/schema';
 import Typed from 'typed.js';
 import { HeroCarousel } from '@/components/hero/HeroCarousel';
@@ -454,32 +454,145 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="py-20 bg-blue-600 text-white overflow-hidden relative">
+      <section className="py-20 lg:py-28 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <motion.div 
+              initial={{ opacity: 0, x: -50 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="relative aspect-square rounded-3xl overflow-hidden shadow-2xl"
+            >
+              <img 
+                src="https://images.unsplash.com/photo-1544717297-fa95b3ee9643?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+                alt="Head of School" 
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-blue-900/60 to-transparent"></div>
+              <div className="absolute bottom-8 left-8 text-white">
+                <h4 className="text-2xl font-bold">From the Head of School</h4>
+                <p className="text-blue-100">Welcome to our school family</p>
+              </div>
+            </motion.div>
+            <motion.div {...fadeIn} className="space-y-8">
+              <h2 className="text-4xl lg:text-5xl font-bold text-gray-900">Nurturing Leaders of Tomorrow</h2>
+              <div className="w-20 h-1.5 bg-blue-600 rounded-full"></div>
+              <p className="text-gray-600 text-lg lg:text-xl leading-relaxed italic">
+                “At {schoolName}, we are committed to raising children who are academically sound, morally upright, and confident to face the future. We believe in providing an environment where every child feels valued and inspired to reach their full potential.”
+              </p>
+              <p className="text-gray-600 text-lg leading-relaxed">
+                We look forward to welcoming your child into our school family and partnering with you to build a solid foundation for their lifelong success.
+              </p>
+              <Button asChild size="lg" variant="outline" className="rounded-full border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white font-bold transition-all duration-300">
+                <Link href="/about">Read Our Full Story</Link>
+              </Button>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-20 bg-blue-600 text-white overflow-hidden relative" id="admissions">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute -top-24 -left-24 w-96 h-96 border-4 border-white rounded-full"></div>
           <div className="absolute -bottom-24 -right-24 w-96 h-96 border-4 border-white rounded-full"></div>
         </div>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
           <motion.div {...fadeIn} className="space-y-8">
-            <h2 className="text-4xl lg:text-6xl font-bold">Admission Now Open</h2>
+            <Badge className="bg-yellow-400 text-blue-900 border-0 py-1.5 px-4 text-sm font-bold rounded-full mb-4">ADMISSION NOW OPEN</Badge>
+            <h2 className="text-4xl lg:text-6xl font-bold">Give Your Child the Advantage</h2>
             <p className="text-xl text-blue-100 max-w-2xl mx-auto">
-              Give your child the advantage of a strong educational foundation. Join our community of excellence today.
+              Secure a space for your child in a community built on excellence and character. Admission is currently available for:
             </p>
             <div className="flex flex-wrap justify-center gap-4 text-lg font-medium">
-              <Badge variant="secondary" className="bg-white/20 text-white border-0 py-2 px-4 rounded-full">Creche</Badge>
-              <Badge variant="secondary" className="bg-white/20 text-white border-0 py-2 px-4 rounded-full">Nursery</Badge>
-              <Badge variant="secondary" className="bg-white/20 text-white border-0 py-2 px-4 rounded-full">Primary</Badge>
-              <Badge variant="secondary" className="bg-white/20 text-white border-0 py-2 px-4 rounded-full">Secondary</Badge>
+              {['Creche', 'Nursery', 'Primary', 'Secondary'].map((level) => (
+                <div key={level} className="bg-white/10 backdrop-blur-sm border border-white/20 px-6 py-2 rounded-2xl">
+                  {level}
+                </div>
+              ))}
             </div>
             <div className="flex flex-col sm:flex-row justify-center gap-6 pt-8">
-              <Button asChild size="lg" className="bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-bold h-16 px-12 text-xl rounded-full shadow-2xl">
-                <Link href="/admissions">Apply Now</Link>
+              <Button asChild size="lg" className="bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-bold h-16 px-12 text-xl rounded-full shadow-2xl transition-all duration-300 hover:scale-105">
+                <Link href="/admissions">Apply Online Now</Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="border-2 border-white bg-transparent hover:bg-white hover:text-blue-600 text-white font-bold h-16 px-12 text-xl rounded-full">
+              <Button asChild variant="outline" size="lg" className="border-2 border-white bg-transparent hover:bg-white hover:text-blue-600 text-white font-bold h-16 px-12 text-xl rounded-full transition-all duration-300 hover:scale-105">
                 <Link href="/contact">Speak to Admission Officer</Link>
               </Button>
             </div>
+            <div className="pt-6">
+              <a 
+                href="#" 
+                className="text-white hover:text-yellow-400 font-medium underline underline-offset-4 flex items-center justify-center gap-2 transition-colors"
+                onClick={(e) => {
+                  e.preventDefault();
+                  alert("Admission form download will be available soon. Please contact the admission officer for now.");
+                }}
+              >
+                <Clock className="h-5 w-5" />
+                Download Admission Form (PDF)
+              </a>
+            </div>
           </motion.div>
+        </div>
+      </section>
+
+      <section className="py-20 bg-gray-50" id="contact">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <motion.div {...fadeIn} className="text-center mb-16">
+            <h2 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">Visit or Contact Us Today</h2>
+            <p className="text-gray-600 text-lg">We'd love to show you around our beautiful campus</p>
+          </motion.div>
+          
+          <div className="grid lg:grid-cols-3 gap-8">
+            <Card className="border-0 shadow-lg card-hover">
+              <CardContent className="p-8 text-center space-y-4">
+                <div className="h-14 w-14 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto">
+                  <MapPin className="h-7 w-7" />
+                </div>
+                <h3 className="text-xl font-bold">Our Location</h3>
+                <p className="text-gray-600">{settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State"}</p>
+                <div className="pt-2">
+                  <span className="text-sm font-semibold text-blue-600">Office Hours:</span>
+                  <p className="text-sm text-gray-500">Monday – Friday: 8:00 AM – 4:00 PM</p>
+                </div>
+                <Button variant="link" className="text-blue-600 p-0 h-auto" asChild>
+                  <a href={`https://www.google.com/maps/search/${encodeURIComponent(settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State")}`} target="_blank" rel="noopener noreferrer">
+                    Get Directions →
+                  </a>
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-lg card-hover">
+              <CardContent className="p-8 text-center space-y-4">
+                <div className="h-14 w-14 bg-green-50 text-green-600 rounded-full flex items-center justify-center mx-auto">
+                  <Phone className="h-7 w-7" />
+                </div>
+                <h3 className="text-xl font-bold">Call or WhatsApp</h3>
+                <p className="text-gray-600">{settings?.schoolPhone || "08037906249, 08107921359"}</p>
+                <div className="flex justify-center gap-4">
+                  <Button variant="link" className="text-blue-600 p-0 h-auto" asChild>
+                    <a href={`tel:${(settings?.schoolPhone || "08037906249").split(',')[0]}`}>Call Now</a>
+                  </Button>
+                  <Button variant="link" className="text-green-600 p-0 h-auto" asChild>
+                    <a href="https://wa.me/2348037906249" target="_blank" rel="noopener noreferrer">Chat on WhatsApp</a>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-0 shadow-lg card-hover">
+              <CardContent className="p-8 text-center space-y-4">
+                <div className="h-14 w-14 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mx-auto">
+                  <Mail className="h-7 w-7" />
+                </div>
+                <h3 className="text-xl font-bold">Email Us</h3>
+                <p className="text-gray-600">{settings?.schoolEmail || "treasurehomeschool@gmail.com"}</p>
+                <Button variant="link" className="text-blue-600 p-0 h-auto" asChild>
+                  <a href={`mailto:${settings?.schoolEmail || "treasurehomeschool@gmail.com"}`}>Send an Email →</a>
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </section>
 
@@ -623,6 +736,11 @@ export default function Home() {
             <Button asChild data-testid="button-view-gallery">
               <Link href="/gallery">Explore Full Gallery</Link>
             </Button>
+          </div>
+          <div className="pt-8 border-t border-blue-500/30 text-center mt-12">
+            <p className="text-sm text-blue-100/80">
+              {schoolName} — Qualitative Education & Moral Excellence.
+            </p>
           </div>
         </div>
       </section>
