@@ -11,19 +11,19 @@
   --card-foreground: hsl(222.2, 84%, 4.9%);
   --popover: hsl(0, 0%, 100%);
   --popover-foreground: hsl(222.2, 84%, 4.9%);
-  --primary: hsl(282, 78%, 54%);
+  --primary: hsl(217, 91%, 60%);
   --primary-foreground: hsl(0, 0%, 100%);
   --secondary: hsl(45, 100%, 65%);
   --secondary-foreground: hsl(222.2, 84%, 4.9%);
   --muted: hsl(210, 40%, 96%);
   --muted-foreground: hsl(215.4, 16.3%, 46.9%);
-  --accent: hsl(282, 78%, 54%);
+  --accent: hsl(217, 91%, 60%);
   --accent-foreground: hsl(0, 0%, 100%);
   --destructive: hsl(0, 84.2%, 60.2%);
   --destructive-foreground: hsl(210, 40%, 98%);
   --border: hsl(214.3, 31.8%, 91.4%);
   --input: hsl(214.3, 31.8%, 91.4%);
-  --ring: hsl(282, 78%, 54%);
+  --ring: hsl(217, 91%, 60%);
   --radius: 0.75rem;
   --font-sans: 'Montserrat', 'Open Sans', 'Inter', sans-serif;
 }
@@ -37,6 +37,10 @@
   }
 }
 
+.btn-gradient-blue {
+  @apply bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 text-white border-none shadow-lg transition-all hover:scale-105 active:scale-95;
+}
+
 .typed-cursor {
-  @apply text-[#ac32e4] font-bold;
+  @apply text-blue-600 font-bold;
 }

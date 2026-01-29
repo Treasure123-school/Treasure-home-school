@@ -153,7 +153,7 @@ export default function Home() {
             transition={{ duration: 0.8 }}
           >
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6">
-              We invest in <span className="text-[#ac32e4]" ref={typedElementRef}></span>
+              We invest in <span className="text-blue-600" ref={typedElementRef}></span>
             </h1>
             <p className="text-xl md:text-2xl mb-10 text-gray-200 max-w-2xl mx-auto uppercase tracking-wide font-medium">
               Glory Schools is the school your ward needs
@@ -162,7 +162,7 @@ export default function Home() {
               <Button asChild size="lg" className="bg-white text-gray-900 hover:bg-gray-100 rounded-md px-10 h-14 font-bold uppercase tracking-widest text-sm border-none shadow-lg transition-all hover:scale-105 active:scale-95">
                 <Link href="/about">About</Link>
               </Button>
-              <Button asChild size="lg" className="bg-[#ac32e4] hover:bg-[#9327c2] text-white border-none rounded-md px-10 h-14 font-bold uppercase tracking-widest text-sm shadow-lg transition-all hover:scale-105 active:scale-95">
+              <Button asChild size="lg" className="btn-gradient-blue rounded-md px-10 h-14 font-bold uppercase tracking-widest text-sm">
                 <Link href="/contact">Contact</Link>
               </Button>
             </div>
@@ -186,7 +186,7 @@ export default function Home() {
               <p className="text-lg text-gray-600 leading-relaxed">
                 At Glory Schools, Egbedi, our vision is to be a beacon of educational excellence in rural Osunstate and beyond. We aspire to empower our students with the knowledge, skills, and values that will not only equip them for success in a rapidly evolving world but also inspire them to be compassionate, innovative, and socially responsible leaders. We envision a future where our graduates are at the forefront of positive change, contributing to the betterment of their communities and society at large, while upholding the principles of uprightness and academic integrity that define our institution.
               </p>
-              <Button asChild className="bg-[#ac32e4] hover:bg-[#9327c2] text-white rounded-md px-10 h-14 uppercase text-sm font-bold shadow-lg transition-all hover:scale-105 active:scale-95">
+              <Button asChild className="btn-gradient-blue rounded-md px-10 h-14 uppercase text-sm font-bold">
                 <Link href="/about">Learn More</Link>
               </Button>
             </motion.div>
@@ -295,7 +295,7 @@ export default function Home() {
               <button
                 key={i}
                 onClick={() => setTestimonialIndex(i)}
-                className={`w-3 h-3 rounded-full transition-all ${testimonialIndex === i ? 'bg-[#ac32e4] w-6' : 'bg-gray-300'}`}
+                className={`w-3 h-3 rounded-full transition-all ${testimonialIndex === i ? 'bg-blue-600 w-6' : 'bg-gray-300'}`}
               />
             ))}
           </div>
@@ -323,7 +323,7 @@ export default function Home() {
               </motion.div>
             ))}
           </div>
-          <Button asChild size="lg" className="bg-[#ac32e4] hover:bg-[#9327c2] text-white rounded-md px-12 h-14 font-bold uppercase tracking-wider text-sm shadow-lg">
+          <Button asChild size="lg" className="btn-gradient-blue rounded-md px-12 h-14 font-bold uppercase tracking-widest text-sm">
             <Link href="/gallery">View More</Link>
           </Button>
         </div>
@@ -340,16 +340,16 @@ export default function Home() {
           
           <form className="space-y-8 text-left bg-white p-12 rounded-3xl shadow-2xl border border-gray-50">
             <div className="grid md:grid-cols-2 gap-8">
-              <input type="text" placeholder="First Name" className="w-full px-8 py-5 bg-gray-50 border border-gray-100 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#ac32e4]/20 transition-all" />
-              <input type="text" placeholder="Last Name" className="w-full px-8 py-5 bg-gray-50 border border-gray-100 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#ac32e4]/20 transition-all" />
+              <input type="text" placeholder="First Name" className="w-full px-8 py-5 bg-gray-50 border border-gray-100 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition-all" />
+              <input type="text" placeholder="Last Name" className="w-full px-8 py-5 bg-gray-50 border border-gray-100 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition-all" />
             </div>
             <div className="grid md:grid-cols-2 gap-8">
-              <input type="email" placeholder="Your Email" className="w-full px-8 py-5 bg-gray-50 border border-gray-100 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#ac32e4]/20 transition-all" />
-              <input type="tel" placeholder="Your Phone Number" className="w-full px-8 py-5 bg-gray-50 border border-gray-100 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#ac32e4]/20 transition-all" />
+              <input type="email" placeholder="Your Email" className="w-full px-8 py-5 bg-gray-50 border border-gray-100 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition-all" />
+              <input type="tel" placeholder="Your Phone Number" className="w-full px-8 py-5 bg-gray-50 border border-gray-100 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition-all" />
             </div>
-            <textarea placeholder="Type your message" rows={6} className="w-full px-8 py-5 bg-gray-50 border border-gray-100 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-[#ac32e4]/20 transition-all resize-none" />
+            <textarea placeholder="Type your message" rows={6} className="w-full px-8 py-5 bg-gray-50 border border-gray-100 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition-all resize-none" />
             <div className="text-center">
-              <Button type="submit" size="lg" className="bg-[#ac32e4] hover:bg-[#9327c2] text-white rounded-md px-14 h-16 font-bold uppercase tracking-wider text-sm shadow-xl transition-all hover:scale-105">
+              <Button type="submit" size="lg" className="btn-gradient-blue rounded-md px-14 h-16 font-bold uppercase tracking-widest text-sm">
                 Send Message
               </Button>
             </div>
@@ -372,7 +372,7 @@ export default function Home() {
             ].map((faq, i) => (
               <Accordion type="single" collapsible key={i} className="bg-white rounded-2xl shadow-md px-10 border border-gray-100">
                 <AccordionItem value={`item-${i}`} className="border-none">
-                  <AccordionTrigger className="text-lg font-bold py-8 hover:no-underline text-gray-900 data-[state=open]:text-[#ac32e4] transition-colors">
+                  <AccordionTrigger className="text-lg font-bold py-8 hover:no-underline text-gray-900 data-[state=open]:text-blue-600 transition-colors">
                     {faq.q}
                   </AccordionTrigger>
                   <AccordionContent className="text-gray-600 text-lg pb-8 leading-relaxed">

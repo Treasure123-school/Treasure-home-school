@@ -64,13 +64,13 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                 key={item.name}
                 href={item.href}
                 className={`text-xs font-bold uppercase tracking-widest transition-colors ${
-                  isActive(item.href) ? 'text-[#ac32e4]' : 'text-gray-900 hover:text-[#ac32e4]'
+                  isActive(item.href) ? 'text-blue-600' : 'text-gray-900 hover:text-blue-600'
                 }`}
               >
                 {item.name}
               </Link>
             ))}
-            <Button asChild className="bg-[#ac32e4] hover:bg-[#9327c2] text-white rounded-md px-10 h-14 uppercase text-sm font-bold tracking-widest shadow-lg">
+            <Button asChild className="btn-gradient-blue rounded-md px-10 h-14 uppercase text-sm font-bold tracking-widest shadow-lg">
               <Link href="/contact">Contact Us</Link>
             </Button>
           </nav>
@@ -139,15 +139,15 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
 
             <div className="space-y-6">
               <div className="flex items-start gap-4">
-                <MapPin className="h-6 w-6 text-[#ac32e4] flex-shrink-0" />
+                <MapPin className="h-6 w-6 text-blue-600 flex-shrink-0" />
                 <p className="text-base text-gray-400">{schoolAddress}</p>
               </div>
               <div className="flex items-center gap-4">
-                <Phone className="h-6 w-6 text-[#ac32e4]" />
+                <Phone className="h-6 w-6 text-blue-600" />
                 <p className="text-base text-gray-400">{schoolPhone}</p>
               </div>
               <div className="flex items-center gap-4">
-                <Mail className="h-6 w-6 text-[#ac32e4]" />
+                <Mail className="h-6 w-6 text-blue-600" />
                 <p className="text-base text-gray-400">{schoolEmail}</p>
               </div>
             </div>
