@@ -32,7 +32,7 @@ export default function About() {
 
   const schoolName = settings?.schoolName || "Treasure-Home School";
   const schoolMotto = settings?.schoolMotto || "Honesty and Success";
-  const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka Ifo, Ogun State, Nigeria";
+  const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State, Nigeria";
 
   const values = [
     {

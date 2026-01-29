@@ -76,6 +76,7 @@ export default function SuperAdminSettings() {
     onSuccess: () => {
       toast({ title: "Configuration Saved", description: "General configuration has been successfully updated." });
       queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/public/settings"] });
       setIsEditing(false);
     },
     onError: (error: any) => {

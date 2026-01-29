@@ -13,6 +13,7 @@ interface SettingsData {
   schoolEmail: string;
   schoolPhone: string;
   schoolAddress: string;
+  schoolLogo?: string;
 }
 
 export default function PublicLayout({ children }: PublicLayoutProps) {
@@ -23,10 +24,10 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
     queryKey: ["/api/public/settings"],
   });
 
-  const schoolName = settings?.schoolName || "Glory Schools";
-  const schoolAddress = settings?.schoolAddress || "Egbedi, Osun State";
-  const schoolPhone = settings?.schoolPhone || "080-1234-5678";
-  const schoolEmail = settings?.schoolEmail || "info@gloryschools.com";
+  const schoolName = settings?.schoolName || "Treasure-Home School";
+  const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State, Nigeria";
+  const schoolPhone = settings?.schoolPhone || "080-1734-5676";
+  const schoolEmail = settings?.schoolEmail || "info@treasurehomeschool.com";
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -41,7 +42,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
     <div className="min-h-screen bg-white">
       <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm h-24 flex items-center">
         <div className="container max-w-7xl mx-auto px-4 flex items-center justify-between">
-          <Link href="/"><img src="/images/logo.png" alt="Logo" className="h-16 w-auto" /></Link>
+          <Link href="/"><img src={settings?.schoolLogo || "/images/logo.png"} alt="Logo" className="h-16 w-auto" /></Link>
           <nav className="hidden lg:flex items-center gap-10">
             {navigation.map((item) => (
               <Link key={item.name} href={item.href} className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${isActive(item.href) ? 'text-[#00BFFF]' : 'text-gray-900 hover:text-[#00BFFF]'}`}>{item.name}</Link>
@@ -58,8 +59,8 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
         <div className="container max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-16 mb-12">
             <div className="space-y-6">
-              <img src="/images/logo.png" alt="Logo" className="h-20 w-auto brightness-0 invert" />
-              <p className="text-[13px] text-white font-bold leading-relaxed">Glory Schools, located in Egbedi-Ifo Local Government, Osun State, Nigeria, has a rich history of educational excellence.</p>
+              <img src={settings?.schoolLogo || "/images/logo.png"} alt="Logo" className="h-20 w-auto brightness-0 invert" />
+              <p className="text-[13px] text-white font-bold leading-relaxed">{settings?.schoolName || "Glory Schools"}, located in Egbedi-Ifo Local Government, Osun State, Nigeria, has a rich history of educational excellence.</p>
             </div>
             <div className="space-y-6">
               <h4 className="text-white font-black uppercase tracking-widest text-[11px] border-b border-white/40 pb-2">Useful Links</h4>

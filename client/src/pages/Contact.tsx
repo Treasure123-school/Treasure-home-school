@@ -39,9 +39,9 @@ export default function Contact() {
   });
 
   const schoolName = settings?.schoolName || "Treasure-Home School";
-  const schoolEmail = settings?.schoolEmail || "treasurehomeschool@gmail.com";
-  const schoolPhone = settings?.schoolPhone || "08037906249, 08107921359";
-  const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka Ifo, Ogun State, Nigeria";
+  const schoolEmail = settings?.schoolEmail || "info@treasurehomeschool.com";
+  const schoolPhone = settings?.schoolPhone || "080-1734-5676";
+  const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State, Nigeria";
   const websiteTitle = settings?.websiteTitle || `${schoolName} - Contact Us`;
 
   useEffect(() => {

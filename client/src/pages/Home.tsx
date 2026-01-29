@@ -13,6 +13,7 @@ interface SettingsData {
   schoolEmail: string;
   schoolPhone: string;
   schoolAddress: string;
+  schoolLogo?: string;
 }
 
 const fadeIn = {
@@ -27,8 +28,9 @@ export default function Home() {
     queryKey: ["/api/public/settings"],
   });
 
-  const schoolName = settings?.schoolName || "Glory Schools";
+  const schoolName = settings?.schoolName || "Treasure-Home School";
   const schoolAddress = settings?.schoolAddress || "Egbedi, Osun State";
+  const schoolLogo = settings?.schoolLogo || "/images/logo.png";
 
   const features = [
     { title: "Uprightness", desc: "Promoting honesty, integrity, and moral values in all aspects of school life.", icon: "/images/01.png" },
@@ -47,8 +49,8 @@ export default function Home() {
   ];
 
   const testimonials = [
-    { name: "Tijani Abdulbasit", role: "Student", text: "Glory Schools has not only prepared me academically but has also taught me important life skills. The school's focus on values and ethics has shaped my perspective on the world.", img: "/images/Tijani Abdulbasit.jpg" },
-    { name: "Yisa Balikis", role: "Student", text: "At Glory Schools, I've learned the value of leadership and teamwork. The school's emphasis on character development has empowered me to take on responsibilities.", img: "/images/Yisa Balakis.jpg" }
+    { name: "Tijani Abdulbasit", role: "Student", text: `${schoolName} has not only prepared me academically but has also taught me important life skills. The school's focus on values and ethics has shaped my perspective on the world.`, img: "/images/Tijani Abdulbasit.jpg" },
+    { name: "Yisa Balikis", role: "Student", text: `At ${schoolName}, I've learned the value of leadership and teamwork. The school's emphasis on character development has empowered me to take on responsibilities.`, img: "/images/Yisa Balakis.jpg" }
   ];
 
   const galleryImages = [
@@ -72,7 +74,7 @@ export default function Home() {
               We create the <span className="text-[#00BFFF]">Future.</span>
             </h1>
             <p className="text-base md:text-lg mb-10 text-gray-200 italic font-medium">
-              Glory Schools is the school your ward needs
+              {schoolName} is the school your ward needs
             </p>
             <div className="flex flex-row gap-4 justify-center items-center">
               <Button asChild className="btn-hero-about h-11 px-8"><Link href="/about">→ ABOUT</Link></Button>
@@ -86,10 +88,10 @@ export default function Home() {
       <section className="py-24 bg-white">
         <div className="container px-4 max-w-6xl mx-auto text-center">
           <motion.div {...fadeIn} className="max-w-3xl mx-auto mb-12">
-            <h2 className="text-3xl md:text-5xl font-bold mb-4">Glory Schools</h2>
+            <h2 className="text-3xl md:text-5xl font-bold mb-4">{schoolName}</h2>
             <div className="w-12 h-[2px] bg-gradient-to-r from-[#0000FF] to-[#00BFFF] mx-auto mb-8" />
             <p className="text-[14px] md:text-[15px] text-gray-600 leading-relaxed mb-8">
-              At Glory Schools, Egbedi, our vision is to be a beacon of educational excellence in rural Osunstate and beyond. We aspire to empower our students with the knowledge, skills, and values that will not only equip them for success in a rapidly evolving world but also inspire them to be compassionate, innovative, and socially responsible leaders. We envision a future where our graduates are at the forefront of positive change, contributing to the betterment of their communities and society at large, while upholding the principles of uprightness and academic integrity that define our institution.
+              At {schoolName}, Egbedi, our vision is to be a beacon of educational excellence in rural Osunstate and beyond. We aspire to empower our students with the knowledge, skills, and values that will not only equip them for success in a rapidly evolving world but also inspire them to be compassionate, innovative, and socially responsible leaders. We envision a future where our graduates are at the forefront of positive change, contributing to the betterment of their communities and society at large, while upholding the principles of uprightness and academic integrity that define our institution.
             </p>
             <Button asChild className="btn-primary">
               <Link href="/about" className="flex items-center gap-2">
@@ -112,8 +114,8 @@ export default function Home() {
       {/* Core Values */}
       <section className="py-24 bg-white">
         <div className="container px-4 max-w-6xl mx-auto text-center">
-          <h2 className="section-title">Glory Schools Egbedi Core Values</h2>
-          <p className="section-subtitle">At Glory Schools, we are guided by six core values that form the foundation of our educational philosophy.</p>
+          <h2 className="section-title">{schoolName} Egbedi Core Values</h2>
+          <p className="section-subtitle">At {schoolName}, we are guided by six core values that form the foundation of our educational philosophy.</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {features.map((f, i) => (
               <motion.div key={i} {...fadeIn}>
@@ -136,8 +138,8 @@ export default function Home() {
         <div className="container px-4 max-w-6xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-6">
-              <h2 className="text-3xl font-bold">Why Choose Glory Schools?</h2>
-              <p className="text-[13px] text-gray-600 leading-relaxed">At Glory Schools, Egbedi, our vision is to be a beacon of educational excellence in rural Osunstate and beyond.</p>
+              <h2 className="text-3xl font-bold">Why Choose {schoolName}?</h2>
+              <p className="text-[13px] text-gray-600 leading-relaxed">At {schoolName}, Egbedi, our vision is to be a beacon of educational excellence in rural Osunstate and beyond.</p>
             </div>
             <div className="grid grid-cols-2 gap-6">
               {stats.map((s, i) => (

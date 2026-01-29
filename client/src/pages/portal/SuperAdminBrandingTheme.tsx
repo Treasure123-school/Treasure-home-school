@@ -59,6 +59,7 @@ export default function SuperAdminBrandingTheme() {
     onSuccess: () => {
       toast({ title: "Branding Updated", description: "Your branding and theme settings have been saved." });
       queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/public/settings"] });
       setIsEditing(false);
     },
     onError: (error: any) => {
