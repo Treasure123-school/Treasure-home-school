@@ -82,29 +82,29 @@ export default function Home() {
   const features = [
     {
       icon: GraduationCap,
-      title: 'Qualified Teachers',
-      description: 'Our experienced and certified teachers provide personalized attention to every student\'s learning journey.',
+      title: 'Experienced & Qualified Teachers',
+      description: 'Our dedicated educators provide personalized attention, nurturing every child’s unique potential through proven teaching methods.',
       color: 'primary'
     },
     {
       icon: Award,
-      title: 'Modern Facilities',
-      description: 'State-of-the-art classrooms, computer labs, and interactive learning tools for enhanced education.',
+      title: 'Approved & Accredited Curriculum',
+      description: 'We follow a robust, modern curriculum that balances academic excellence with strong moral and character training.',
       color: 'secondary'
     },
     {
       icon: Star,
-      title: 'Excellence Track Record',
-      description: 'Consistent outstanding performance in WAEC, NECO, and other standardized examinations.',
+      title: 'Safe & Secure Learning Environment',
+      description: 'A child-friendly campus designed for comfort, focus, and safety, ensuring your child learns in a protected space.',
       color: 'green'
     }
   ];
 
   const stats = [
     { value: '15+', label: 'Years of Excellence' },
-    { value: '500+', label: 'Students Enrolled' },
-    { value: '50+', label: 'Qualified Teachers' },
-    { value: '95%', label: 'Success Rate' }
+    { value: '500+', label: 'Successful Graduates' },
+    { value: '50+', label: 'Dedicated Staff' },
+    { value: '100%', label: 'Safety Commitment' }
   ];
 
   const dynamicGalleryImages = galleryPreviewImages
@@ -274,10 +274,10 @@ export default function Home() {
             className="text-center mb-16 lg:mb-20"
           >
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6 lg:mb-8" data-testid="text-features-title">
-              Why Choose {schoolName}?
+              Why Parents Trust {schoolName}
             </h2>
             <p className="text-muted-foreground max-w-3xl mx-auto text-lg sm:text-xl leading-relaxed" data-testid="text-features-description">
-              We provide comprehensive education with modern facilities and experienced teachers, preparing students for academic excellence and moral development.
+              "Your child’s future deserves the best foundation." We provide a nurturing environment where academic excellence meets strong moral values.
             </p>
           </motion.div>
 
@@ -339,11 +339,17 @@ export default function Home() {
       <section className="section-gradient-accent py-20 lg:py-28 relative overflow-hidden">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <motion.div {...fadeIn} className="text-center mb-12">
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold gradient-text mb-6">Our Mission & Vision</h2>
-            <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-teal-500 mx-auto rounded-full"></div>
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold gradient-text mb-6">Who We Are</h2>
+            <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-teal-500 mx-auto rounded-full mb-8"></div>
+            <p className="text-gray-600 text-lg lg:text-xl max-w-4xl mx-auto leading-relaxed mb-10">
+              {schoolName} is a leading educational institution committed to nurturing well-rounded pupils through quality teaching, discipline, creativity, and character development. We believe that every child can excel when given the right guidance, encouragement, and learning environment.
+            </p>
+            <Button asChild size="lg" className="rounded-full px-8">
+              <Link href="/about">Learn More About Our Vision</Link>
+            </Button>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 gap-12 lg:gap-16">
+          <div className="grid md:grid-cols-2 gap-12 lg:gap-16 mt-20">
             <motion.div 
               initial={{ opacity: 0, x: -50 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -352,10 +358,24 @@ export default function Home() {
               className="text-center md:text-left"
             >
               <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 lg:p-10 shadow-xl card-hover h-full">
-                <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-6 border-b border-blue-100 pb-2">Our Mission</h3>
-                <p className="text-gray-600 text-lg leading-relaxed">
-                  To provide quality, comprehensive education from playgroup to senior secondary level, fostering academic excellence and moral development. We are committed to nurturing students with our core values of <strong className="text-blue-600">honesty and success</strong> through innovative teaching methods and modern facilities.
+                <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-6 border-b border-blue-100 pb-2 flex items-center gap-3">
+                  <GraduationCap className="h-8 w-8 text-blue-600" />
+                  Academic Excellence
+                </h3>
+                <p className="text-gray-600 text-lg leading-relaxed mb-6">
+                  Our academic program is designed to help students think critically, communicate confidently, and excel in examinations while developing lifelong learning skills.
                 </p>
+                <ul className="space-y-3 mb-8">
+                  {['Small class sizes', 'Continuous assessment', 'Individual student attention', 'Strong exam preparation'].map((item, i) => (
+                    <li key={i} className="flex items-center gap-2 text-gray-700">
+                      <div className="h-1.5 w-1.5 rounded-full bg-blue-600" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <Button variant="outline" asChild className="rounded-full w-full sm:w-auto">
+                  <Link href="/admissions">Explore Our Academic Programs</Link>
+                </Button>
               </div>
             </motion.div>
 
@@ -367,13 +387,116 @@ export default function Home() {
               className="text-center md:text-left"
             >
               <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 lg:p-10 shadow-xl card-hover h-full">
-                <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-6 border-b border-green-100 pb-2">Our Vision</h3>
-                <p className="text-gray-600 text-lg leading-relaxed">
-                  To be a leading educational institution that shapes future leaders with strong moral character, academic excellence, and practical skills. We envision a generation of students who embody <strong className="text-green-600">integrity, knowledge, and success</strong> in all their endeavors.
+                <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-6 border-b border-green-100 pb-2 flex items-center gap-3">
+                  <Star className="h-8 w-8 text-green-600" />
+                  School Life & Activities
+                </h3>
+                <p className="text-gray-600 text-lg leading-relaxed mb-6">
+                  Learning goes beyond textbooks at {schoolName}. We help children discover their talents, confidence, and creativity through diverse extracurricular activities.
                 </p>
+                <ul className="space-y-3 mb-8">
+                  {['Sports & physical education', 'Excursions & educational trips', 'Cultural & social events', 'ICT & practical learning'].map((item, i) => (
+                    <li key={i} className="flex items-center gap-2 text-gray-700">
+                      <div className="h-1.5 w-1.5 rounded-full bg-green-600" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+                <Button variant="outline" asChild className="rounded-full w-full sm:w-auto">
+                  <Link href="/gallery">See School Life in Action</Link>
+                </Button>
               </div>
             </motion.div>
           </div>
+        </div>
+      </section>
+
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <motion.div {...fadeIn} className="space-y-8">
+              <h2 className="text-4xl lg:text-5xl font-bold text-gray-900">A Safe, Modern & Child-Friendly Campus</h2>
+              <p className="text-gray-600 text-lg leading-relaxed">
+                Your child learns in a space designed for comfort, focus, and safety. Our modern facilities support every aspect of your child's educational journey.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {[
+                  { title: 'Ventilated Classrooms', desc: 'Space designed for focus' },
+                  { title: 'ICT-Enabled Learning', desc: 'Modern technology integration' },
+                  { title: 'Science Labs', desc: 'Practical hands-on learning' },
+                  { title: 'Reading Spaces', desc: 'Comfortable library environment' }
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-4">
+                    <div className="h-10 w-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+                      <Award className="h-6 w-6 text-blue-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-gray-900">{item.title}</h4>
+                      <p className="text-sm text-gray-500">{item.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              className="relative aspect-square sm:aspect-video lg:aspect-square rounded-3xl overflow-hidden shadow-2xl"
+            >
+              <img 
+                src="https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+                alt="Modern School Campus" 
+                className="w-full h-full object-cover"
+              />
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-20 bg-blue-600 text-white overflow-hidden relative">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute -top-24 -left-24 w-96 h-96 border-4 border-white rounded-full"></div>
+          <div className="absolute -bottom-24 -right-24 w-96 h-96 border-4 border-white rounded-full"></div>
+        </div>
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+          <motion.div {...fadeIn} className="space-y-8">
+            <h2 className="text-4xl lg:text-6xl font-bold">Admission Now Open</h2>
+            <p className="text-xl text-blue-100 max-w-2xl mx-auto">
+              Give your child the advantage of a strong educational foundation. Join our community of excellence today.
+            </p>
+            <div className="flex flex-wrap justify-center gap-4 text-lg font-medium">
+              <Badge variant="secondary" className="bg-white/20 text-white border-0 py-2 px-4 rounded-full">Creche</Badge>
+              <Badge variant="secondary" className="bg-white/20 text-white border-0 py-2 px-4 rounded-full">Nursery</Badge>
+              <Badge variant="secondary" className="bg-white/20 text-white border-0 py-2 px-4 rounded-full">Primary</Badge>
+              <Badge variant="secondary" className="bg-white/20 text-white border-0 py-2 px-4 rounded-full">Secondary</Badge>
+            </div>
+            <div className="flex flex-col sm:flex-row justify-center gap-6 pt-8">
+              <Button asChild size="lg" className="bg-yellow-400 hover:bg-yellow-500 text-blue-900 font-bold h-16 px-12 text-xl rounded-full shadow-2xl">
+                <Link href="/admissions">Apply Now</Link>
+              </Button>
+              <Button asChild variant="outline" size="lg" className="border-2 border-white bg-transparent hover:bg-white hover:text-blue-600 text-white font-bold h-16 px-12 text-xl rounded-full">
+                <Link href="/contact">Speak to Admission Officer</Link>
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <motion.div {...fadeIn} className="space-y-8">
+            <div className="inline-block p-4 bg-white rounded-full shadow-lg mb-4">
+              <Users className="h-12 w-12 text-blue-600" />
+            </div>
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 italic">"What Parents Say About Us"</h2>
+            <div className="space-y-6">
+              <p className="text-xl text-gray-600 leading-relaxed max-w-2xl mx-auto">
+                “My child’s academic performance and confidence improved greatly after enrolling at {schoolName}. The teachers are caring and dedicated.”
+              </p>
+              <div className="font-bold text-lg text-blue-600">— A Happy Parent</div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
@@ -432,8 +555,8 @@ export default function Home() {
           )}
 
           <div className="text-center mt-8">
-            <Button asChild data-testid="button-view-announcements">
-              <Link href="/portal/login">View All Announcements</Link>
+            <Button asChild data-testid="button-view-announcements" className="rounded-full">
+              <Link href="/login">View School News & Events</Link>
             </Button>
           </div>
         </div>
