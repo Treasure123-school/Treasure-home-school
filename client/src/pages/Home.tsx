@@ -139,7 +139,7 @@ export default function Home() {
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div className="space-y-6">
               <h2 className="text-3xl font-bold">Why Choose {schoolName}?</h2>
-              <p className="text-[13px] text-gray-600 leading-relaxed">At {schoolName}, Egbedi, our vision is to be a beacon of educational excellence in rural Osunstate and beyond.</p>
+              <p className="text-[13px] text-gray-600 leading-relaxed">At {schoolName}, Seriki, our vision is to be a beacon of educational excellence in rural Ogun state and beyond.</p>
             </div>
             <div className="grid grid-cols-2 gap-6">
               {stats.map((s, i) => (
