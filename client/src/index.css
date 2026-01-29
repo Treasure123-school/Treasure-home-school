@@ -92,8 +92,21 @@
   transition: all 0.6s ease;
 }
 
-.btn-white:hover::before {
-  left: 100%;
+.btn-hero-about {
+  @apply bg-white text-gray-900 border-none shadow-md transition-all font-bold uppercase tracking-widest rounded-sm;
+}
+
+.btn-hero-about:hover {
+  @apply bg-white text-gray-900 border-none outline-none ring-0;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+.btn-hero-contact {
+  @apply bg-gradient-to-r from-[#9c27b0] to-[#e91e63] text-white border-none shadow-lg transition-all font-bold uppercase tracking-widest rounded-sm;
+}
+
+.btn-hero-contact:hover {
+  @apply opacity-90;
 }
 
 .section-title {

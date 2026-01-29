@@ -74,9 +74,9 @@ export default function Home() {
             <p className="text-base md:text-lg mb-10 text-gray-200 italic font-medium">
               Glory Schools is the school your ward needs
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild className="btn-white"><Link href="/about">About</Link></Button>
-              <Button asChild className="btn-primary"><Link href="/contact">Contact</Link></Button>
+            <div className="flex flex-row gap-4 justify-center items-center">
+              <Button asChild className="btn-hero-about h-11 px-8"><Link href="/about">ABOUT</Link></Button>
+              <Button asChild className="btn-hero-contact h-11 px-8"><Link href="/contact">CONTACT →</Link></Button>
             </div>
           </motion.div>
         </div>
