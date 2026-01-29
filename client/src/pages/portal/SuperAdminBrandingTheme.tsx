@@ -37,6 +37,80 @@ export default function SuperAdminBrandingTheme() {
     dashboardWelcomeMessage: ""
   });
 
+  const uploadLogoMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("uploadType", "logo");
+      const res = await fetch("/api/superadmin/branding/upload", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: formData,
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setFormData(prev => ({ ...prev, schoolLogo: data.url }));
+      queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/public/settings"] });
+      toast({ title: "Logo Uploaded", description: "The school logo has been updated successfully." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const uploadFaviconMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("uploadType", "favicon");
+      const res = await fetch("/api/superadmin/branding/upload", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: formData,
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setFormData(prev => ({ ...prev, favicon: data.url }));
+      queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/public/settings"] });
+      
+      // Update favicon in DOM immediately
+      const favicon = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
+      if (favicon) {
+        favicon.href = data.url;
+      } else {
+        const link = document.createElement('link');
+        link.rel = 'icon';
+        link.href = data.url;
+        document.head.appendChild(link);
+      }
+      
+      toast({ title: "Favicon Uploaded", description: "The school favicon has been updated successfully." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+    }
+  });
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) uploadLogoMutation.mutate(file);
+  };
+
+  const handleFaviconUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) uploadFaviconMutation.mutate(file);
+  };
+
   useEffect(() => {
     if (settings) {
       setFormData({
@@ -113,10 +187,28 @@ export default function SuperAdminBrandingTheme() {
                       <ImageIcon className="h-8 w-8 text-muted-foreground" />
                     </div>
                   )}
-                  <Button variant="outline" size="sm" disabled={!isEditing} className="w-full">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload Logo
-                  </Button>
+                  <div className="relative w-full">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleLogoUpload}
+                      disabled={!isEditing || uploadLogoMutation.isPending}
+                      className="hidden"
+                      id="logo-upload"
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      disabled={!isEditing || uploadLogoMutation.isPending} 
+                      className="w-full"
+                      asChild
+                    >
+                      <label htmlFor="logo-upload" className="cursor-pointer">
+                        <Upload className="h-4 w-4 mr-2" />
+                        {uploadLogoMutation.isPending ? "Uploading..." : "Upload Logo"}
+                      </label>
+                    </Button>
+                  </div>
                 </div>
               </div>
               <div className="space-y-4">
@@ -129,10 +221,28 @@ export default function SuperAdminBrandingTheme() {
                       <ImageIcon className="h-6 w-6 text-muted-foreground" />
                     </div>
                   )}
-                  <Button variant="outline" size="sm" disabled={!isEditing} className="w-full">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Upload Favicon
-                  </Button>
+                  <div className="relative w-full">
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFaviconUpload}
+                      disabled={!isEditing || uploadFaviconMutation.isPending}
+                      className="hidden"
+                      id="favicon-upload"
+                    />
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      disabled={!isEditing || uploadFaviconMutation.isPending} 
+                      className="w-full"
+                      asChild
+                    >
+                      <label htmlFor="favicon-upload" className="cursor-pointer">
+                        <Upload className="h-4 w-4 mr-2" />
+                        {uploadFaviconMutation.isPending ? "Uploading..." : "Upload Favicon"}
+                      </label>
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>

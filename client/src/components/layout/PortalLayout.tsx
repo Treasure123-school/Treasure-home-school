@@ -313,6 +313,20 @@ export default function PortalLayout({ children, userRole, userName, userInitial
   const schoolMotto = settings?.schoolMotto || "Qualitative Education & Moral Excellence";
   const displayLogo = settings?.schoolLogo || schoolLogo;
 
+  useEffect(() => {
+    if (settings?.favicon) {
+      const favicon = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
+      if (favicon) {
+        favicon.href = settings.favicon;
+      } else {
+        const link = document.createElement('link');
+        link.rel = 'icon';
+        link.href = settings.favicon;
+        document.head.appendChild(link);
+      }
+    }
+  }, [settings?.favicon]);
+
   // Reusable Sidebar Content Component with Modern Design
   const SidebarContent = ({ onNavigate, collapsed = false }: { onNavigate?: () => void; collapsed?: boolean }) => {
   const [, navigate] = useLocation();

@@ -9059,7 +9059,49 @@ Treasure-Home School Administration
     });
 
     // Update system settings (Super Admin only)
-    app.put('/api/superadmin/settings', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  // Logo and Favicon upload for Super Admin
+  app.post("/api/superadmin/branding/upload", authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const uploadType = req.body.uploadType; // 'logo' or 'favicon'
+      if (!['logo', 'favicon'].includes(uploadType)) {
+        return res.status(400).json({ message: "Invalid upload type" });
+      }
+
+      const filePath = `/server/uploads/homepage/${req.file.filename}`;
+      
+      const settings = await storage.getSystemSettings();
+      if (!settings) {
+        return res.status(404).json({ message: "System settings not found" });
+      }
+
+      const updateData: any = { updatedAt: new Date() };
+      if (uploadType === 'logo') {
+        updateData.schoolLogo = filePath;
+      } else {
+        updateData.favicon = filePath;
+      }
+
+      await storage.updateSystemSettings(settings.id, updateData);
+      
+      // Clear settings cache to ensure immediate update across the site
+      enhancedCache.invalidate(/^public:settings/);
+      enhancedCache.invalidate(/^superadmin:settings/);
+
+      res.json({ 
+        message: `${uploadType === 'logo' ? 'Logo' : 'Favicon'} uploaded successfully`,
+        url: filePath 
+      });
+    } catch (error: any) {
+      console.error("Branding upload error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.put('/api/superadmin/settings', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
       try {
         const settingsData = { ...req.body };
         
