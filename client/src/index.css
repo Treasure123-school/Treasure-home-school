@@ -94,13 +94,14 @@
 
 .btn-hero-about {
   @apply bg-white text-gray-900 border-none shadow-md transition-all font-bold uppercase tracking-widest rounded-sm !important;
+  background-color: white !important;
   color: #111827 !important;
 }
 
 .btn-hero-about:hover {
-  @apply bg-white text-gray-900 border-none outline-none ring-0 !important;
-  background-color: white !important;
-  color: #111827 !important;
+  @apply border-none outline-none ring-0 !important;
+  background: linear-gradient(to right, #0000FF, #00BFFF) !important;
+  color: white !important;
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
 }
 
