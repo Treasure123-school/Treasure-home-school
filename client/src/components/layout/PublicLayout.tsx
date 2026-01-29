@@ -70,8 +70,11 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                 {item.name}
               </Link>
             ))}
-            <Button asChild className="btn-gradient-blue rounded-md px-10 h-14 uppercase text-sm font-bold tracking-widest shadow-lg">
-              <Link href="/contact">Contact Us</Link>
+            <Button asChild className="btn-gradient-blue rounded-none px-10 h-14 text-sm group">
+              <Link href="/contact" className="flex items-center gap-2">
+                <span>Contact Us</span>
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+              </Link>
             </Button>
           </nav>
           

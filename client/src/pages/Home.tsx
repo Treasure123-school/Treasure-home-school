@@ -159,11 +159,14 @@ export default function Home() {
               Glory Schools is the school your ward needs
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild size="lg" className="bg-white text-gray-900 hover:bg-gray-100 rounded-md px-10 h-14 font-bold uppercase tracking-widest text-sm border-none shadow-lg transition-all hover:scale-105 active:scale-95">
+              <Button asChild size="lg" className="bg-white text-gray-900 hover:bg-gray-100 rounded-none px-10 h-14 font-bold uppercase tracking-widest text-sm border-none shadow-lg transition-all hover:scale-105 active:scale-95">
                 <Link href="/about">About</Link>
               </Button>
-              <Button asChild size="lg" className="btn-gradient-blue rounded-md px-10 h-14 font-bold uppercase tracking-widest text-sm">
-                <Link href="/contact">Contact</Link>
+              <Button asChild size="lg" className="btn-gradient-blue rounded-none px-10 h-14 text-sm group">
+                <Link href="/contact" className="flex items-center gap-2">
+                  <span>Contact</span>
+                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                </Link>
               </Button>
             </div>
           </motion.div>
@@ -186,8 +189,11 @@ export default function Home() {
               <p className="text-lg text-gray-600 leading-relaxed">
                 At Glory Schools, Egbedi, our vision is to be a beacon of educational excellence in rural Osunstate and beyond. We aspire to empower our students with the knowledge, skills, and values that will not only equip them for success in a rapidly evolving world but also inspire them to be compassionate, innovative, and socially responsible leaders. We envision a future where our graduates are at the forefront of positive change, contributing to the betterment of their communities and society at large, while upholding the principles of uprightness and academic integrity that define our institution.
               </p>
-              <Button asChild className="btn-gradient-blue rounded-md px-10 h-14 uppercase text-sm font-bold">
-                <Link href="/about">Learn More</Link>
+              <Button asChild className="btn-gradient-blue rounded-none px-10 h-14 text-sm group">
+                <Link href="/about" className="flex items-center gap-2">
+                  <span>Learn More</span>
+                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                </Link>
               </Button>
             </motion.div>
           </div>
@@ -323,8 +329,11 @@ export default function Home() {
               </motion.div>
             ))}
           </div>
-          <Button asChild size="lg" className="btn-gradient-blue rounded-md px-12 h-14 font-bold uppercase tracking-widest text-sm">
-            <Link href="/gallery">View More</Link>
+          <Button asChild size="lg" className="btn-gradient-blue rounded-none px-12 h-14 text-sm group">
+            <Link href="/gallery" className="flex items-center gap-2">
+              <span>View More</span>
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+            </Link>
           </Button>
         </div>
       </section>
@@ -349,8 +358,11 @@ export default function Home() {
             </div>
             <textarea placeholder="Type your message" rows={6} className="w-full px-8 py-5 bg-gray-50 border border-gray-100 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-blue-600/20 transition-all resize-none" />
             <div className="text-center">
-              <Button type="submit" size="lg" className="btn-gradient-blue rounded-md px-14 h-16 font-bold uppercase tracking-widest text-sm">
-                Send Message
+              <Button type="submit" size="lg" className="btn-gradient-blue rounded-none px-14 h-16 text-sm group">
+                <span className="flex items-center gap-2">
+                  <span>Send Message</span>
+                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                </span>
               </Button>
             </div>
           </form>
