@@ -101,10 +101,10 @@ export default function Home() {
   ];
 
   const stats = [
-    { value: '100%', label: 'Satisfied Parents' },
-    { value: '50+', label: 'Experienced Teachers' },
-    { value: '500+', label: 'Enrolled Students' },
-    { value: '100%', label: 'Pass Rate' }
+    { value: '15+', label: 'Years of Excellence' },
+    { value: '500+', label: 'Successful Graduates' },
+    { value: '50+', label: 'Dedicated Staff' },
+    { value: '100%', label: 'Safety Commitment' }
   ];
 
   const dynamicGalleryImages = galleryPreviewImages
@@ -274,10 +274,10 @@ export default function Home() {
             className="text-center mb-16 lg:mb-20"
           >
             <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6 lg:mb-8" data-testid="text-features-title">
-              Glory Schools Core Values
+              Why Parents Trust {schoolName}
             </h2>
             <p className="text-muted-foreground max-w-3xl mx-auto text-lg sm:text-xl leading-relaxed" data-testid="text-features-description">
-              At Glory Schools, we are guided by core values that form the foundation of our educational philosophy. These values shape the experiences of our students and define our commitment to providing a holistic and enriching learning environment.
+              "Your child’s future deserves the best foundation." We provide a nurturing environment where academic excellence meets strong moral values.
             </p>
           </motion.div>
 
@@ -286,31 +286,24 @@ export default function Home() {
             initial="initial"
             whileInView="whileInView"
             viewport={{ once: true, margin: "-100px" }}
-            className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-8 lg:gap-10"
+            className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-10"
           >
-            {[
-              { icon: Award, title: 'Uprightness', desc: 'Promoting honesty, integrity, and moral values in all aspects of school life.', color: 'primary' },
-              { icon: GraduationCap, title: 'Academic Excellence', desc: 'Striving for high academic standards and continuous improvement in teaching and learning.', color: 'secondary' },
-              { icon: Star, title: 'Innovation', desc: 'Encouraging creativity, critical thinking, and problem-solving skills among students.', color: 'green' },
-              { icon: Users, title: 'Inclusivity', desc: 'Embracing diversity and ensuring that all students have equal access to quality education.', color: 'primary' },
-              { icon: Award, title: 'Community Engagement', desc: 'Fostering a sense of social responsibility and active involvement in the local community.', color: 'secondary' },
-              { icon: Star, title: 'Lifelong Learning', desc: 'Instilling a passion for learning that extends beyond the classroom, encouraging students to be lifelong learners.', color: 'green' }
-            ].map((value, index) => (
+            {features.map((feature, index) => (
               <motion.div key={index} variants={fadeIn}>
-                <Card className="card-hover bg-white/80 backdrop-blur-sm border-0 shadow-xl h-full" data-testid={`card-value-${index}`}>
+                <Card className="card-hover bg-white/80 backdrop-blur-sm border-0 shadow-xl h-full" data-testid={`card-feature-${index}`}>
                   <CardContent className="p-8 lg:p-10 text-center">
                     <div className={`w-16 h-16 lg:w-20 lg:h-20 rounded-2xl flex items-center justify-center mb-6 mx-auto transform transition-all duration-300 ${
-                      value.color === 'primary' ? 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/25' :
-                      value.color === 'secondary' ? 'bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg shadow-yellow-500/25' :
+                      feature.color === 'primary' ? 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/25' :
+                      feature.color === 'secondary' ? 'bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg shadow-yellow-500/25' :
                       'bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/25'
                     }`}>
-                      <value.icon className="text-white h-8 w-8 lg:h-10 lg:w-10" />
+                      <feature.icon className="text-white h-8 w-8 lg:h-10 lg:w-10" />
                     </div>
-                    <h3 className="text-xl lg:text-2xl font-bold mb-4 text-gray-900">
-                      {value.title}
+                    <h3 className="text-xl lg:text-2xl font-bold mb-4 text-gray-900" data-testid={`text-feature-title-${index}`}>
+                      {feature.title}
                     </h3>
-                    <p className="text-gray-600 text-base lg:text-lg leading-relaxed">
-                      {value.desc}
+                    <p className="text-gray-600 text-base lg:text-lg leading-relaxed" data-testid={`text-feature-description-${index}`}>
+                      {feature.description}
                     </p>
                   </CardContent>
                 </Card>
