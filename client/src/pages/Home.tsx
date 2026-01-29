@@ -87,7 +87,7 @@ export default function Home() {
         <div className="container px-4 max-w-6xl mx-auto text-center">
           <motion.div {...fadeIn} className="max-w-3xl mx-auto mb-12">
             <h2 className="text-3xl md:text-5xl font-bold mb-4">Glory Schools</h2>
-            <div className="w-12 h-[2px] bg-[#9c27b0] mx-auto mb-8" />
+            <div className="w-12 h-[2px] bg-gradient-to-r from-[#0000FF] to-[#00BFFF] mx-auto mb-8" />
             <p className="text-[14px] md:text-[15px] text-gray-600 leading-relaxed mb-8">
               At Glory Schools, Egbedi, our vision is to be a beacon of educational excellence in rural Osunstate and beyond. We aspire to empower our students with the knowledge, skills, and values that will not only equip them for success in a rapidly evolving world but also inspire them to be compassionate, innovative, and socially responsible leaders. We envision a future where our graduates are at the forefront of positive change, contributing to the betterment of their communities and society at large, while upholding the principles of uprightness and academic integrity that define our institution.
             </p>
