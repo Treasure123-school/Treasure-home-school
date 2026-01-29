@@ -3,9 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { useState, useEffect, useRef } from 'react';
 import { ArrowRight, MapPin, Phone, Mail } from 'lucide-react';
-import type { HomePageContent } from '@shared/schema';
 import { motion } from 'framer-motion';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
@@ -84,26 +82,30 @@ export default function Home() {
         </div>
       </section>
 
-      {/* About Section */}
+      {/* About Section - TEXT FIRST THEN IMAGE (As per user feedback) */}
       <section className="py-24 bg-white">
-        <div className="container px-4 max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <motion.div {...fadeIn}>
-              <img src="/images/students 2.jpeg" alt="About" className="rounded-lg shadow-lg w-full h-[400px] object-cover" />
-            </motion.div>
-            <motion.div {...fadeIn} className="space-y-6">
-              <h2 className="text-3xl font-bold">Glory Schools</h2>
-              <p className="text-[13px] text-gray-600 leading-relaxed">
-                At Glory Schools, Egbedi, our vision is to be a beacon of educational excellence in rural Osunstate and beyond. We aspire to empower our students with the knowledge, skills, and values that will not only equip them for success in a rapidly evolving world but also inspire them to be compassionate, innovative, and socially responsible leaders.
-              </p>
-              <Button asChild className="btn-primary">
-                <Link href="/about" className="flex items-center gap-2">
-                  <span>Learn More</span>
-                  <ArrowRight className="w-3 h-3" />
-                </Link>
-              </Button>
-            </motion.div>
-          </div>
+        <div className="container px-4 max-w-6xl mx-auto text-center">
+          <motion.div {...fadeIn} className="max-w-3xl mx-auto mb-12">
+            <h2 className="text-3xl md:text-5xl font-bold mb-4">Glory Schools</h2>
+            <div className="w-12 h-[2px] bg-[#9c27b0] mx-auto mb-8" />
+            <p className="text-[14px] md:text-[15px] text-gray-600 leading-relaxed mb-8">
+              At Glory Schools, Egbedi, our vision is to be a beacon of educational excellence in rural Osunstate and beyond. We aspire to empower our students with the knowledge, skills, and values that will not only equip them for success in a rapidly evolving world but also inspire them to be compassionate, innovative, and socially responsible leaders. We envision a future where our graduates are at the forefront of positive change, contributing to the betterment of their communities and society at large, while upholding the principles of uprightness and academic integrity that define our institution.
+            </p>
+            <Button asChild className="btn-primary">
+              <Link href="/about" className="flex items-center gap-2">
+                <span>Learn More</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </Button>
+          </motion.div>
+          
+          <motion.div {...fadeIn}>
+            <img 
+              src="/images/group of students.jpg" 
+              alt="Glory Schools Students" 
+              className="rounded-lg shadow-lg w-full max-w-4xl mx-auto h-[400px] object-cover"
+            />
+          </motion.div>
         </div>
       </section>
 
