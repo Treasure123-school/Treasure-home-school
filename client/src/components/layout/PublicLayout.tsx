@@ -83,8 +83,8 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               <Link href="/" className="flex items-center space-x-4">
                 <div className="rounded-full">
                   <img 
-                    src={displayLogo} 
-                    alt="Treasure-Home School Logo" 
+                    src="/images/logo.png" 
+                    alt="Glory Schools Logo" 
                     className="h-20 w-20 sm:h-24 sm:w-24 object-contain"
                   />
                 </div>
@@ -204,8 +204,8 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               <div className="flex items-center space-x-4 mb-6">
                 <div className="rounded-full">
                   <img 
-                    src={displayLogo} 
-                    alt="Treasure-Home School Logo" 
+                    src="/images/logo.png" 
+                    alt="Glory Schools Logo" 
                     className="h-16 w-16 object-contain"
                   />
                 </div>
