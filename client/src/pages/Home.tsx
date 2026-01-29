@@ -75,7 +75,7 @@ export default function Home() {
               Glory Schools is the school your ward needs
             </p>
             <div className="flex flex-row gap-4 justify-center items-center">
-              <Button asChild className="btn-hero-about h-11 px-8"><Link href="/about">ABOUT</Link></Button>
+              <Button asChild className="btn-hero-about h-11 px-8"><Link href="/about">→ ABOUT</Link></Button>
               <Button asChild className="btn-hero-contact h-11 px-8"><Link href="/contact">CONTACT →</Link></Button>
             </div>
           </motion.div>
