@@ -102,7 +102,17 @@
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
   z-index: 1;
   overflow: hidden !important;
+  transform: none !important;
   @apply transition-all font-bold uppercase tracking-widest rounded-sm !important;
+}
+
+.btn-hero-about:hover {
+  color: white !important;
+  border: none !important;
+  outline: none !important;
+  transform: none !important;
+  @apply ring-0 !important;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
 }
 
 .btn-hero-about::before {
@@ -117,24 +127,19 @@
   z-index: -1;
 }
 
-.btn-hero-about:hover {
-  color: white !important;
-  border: none !important;
-  outline: none !important;
-  @apply ring-0 !important;
-  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1) !important;
-}
-
 .btn-hero-about:hover::before {
   left: 0;
 }
 
 .btn-hero-contact {
   @apply relative overflow-hidden bg-gradient-to-r from-[#0000FF] to-[#00BFFF] text-white border-none shadow-lg transition-all font-bold uppercase tracking-widest rounded-sm !important;
+  transform: none !important;
 }
 
 .btn-hero-contact:hover {
   @apply opacity-100 !important;
+  transform: none !important;
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1) !important;
 }
 
 .btn-hero-contact::after {
