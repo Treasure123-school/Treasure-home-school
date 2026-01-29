@@ -69,16 +69,17 @@ export default function Home() {
         <div className="container relative z-10 text-center text-white px-4">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="max-w-4xl mx-auto">
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-              We invest in <span className="text-[#00BFFF]">Students.</span><br />
-              We shapes <span className="text-[#0000FF]">Lives.</span><br />
-              We create the <span className="text-[#00BFFF]">Future.</span>
+              Treasure Home School
             </h1>
-            <p className="text-base md:text-lg mb-10 text-gray-200 italic font-medium">
-              {schoolName} is the school your ward needs
+            <p className="text-base md:text-lg mb-4 text-gray-200 italic font-bold">
+              We Nurture Young Minds. We Build Character. We Shape the Future.
+            </p>
+            <p className="text-base md:text-lg mb-10 text-gray-200">
+              Treasure Home School is a school where qualitative education and moral excellence shape confident learners.
             </p>
             <div className="flex flex-row gap-4 justify-center items-center">
-              <Button asChild className="btn-hero-about h-11 px-8"><Link href="/about">→ ABOUT</Link></Button>
-              <Button asChild className="btn-hero-contact h-11 px-8"><Link href="/contact">CONTACT →</Link></Button>
+              <Button asChild className="btn-hero-about h-11 px-8"><Link href="/portal/login">ENROLL</Link></Button>
+              <Button asChild className="btn-hero-contact h-11 px-8"><Link href="/contact">CONTACT</Link></Button>
             </div>
           </motion.div>
         </div>
@@ -90,8 +91,11 @@ export default function Home() {
           <motion.div {...fadeIn} className="max-w-3xl mx-auto mb-12">
             <h2 className="text-3xl md:text-5xl font-bold mb-4">{schoolName}</h2>
             <div className="w-12 h-[2px] bg-gradient-to-r from-[#0000FF] to-[#00BFFF] mx-auto mb-8" />
+            <p className="text-[14px] md:text-[15px] text-gray-600 leading-relaxed mb-6">
+              Treasure Home School is a private educational institution committed to providing quality education and strong moral upbringing. We believe every child is unique and deserves careful guidance to discover their full potential.
+            </p>
             <p className="text-[14px] md:text-[15px] text-gray-600 leading-relaxed mb-8">
-              At {schoolName}, Egbedi, our vision is to be a beacon of educational excellence in rural Osunstate and beyond. We aspire to empower our students with the knowledge, skills, and values that will not only equip them for success in a rapidly evolving world but also inspire them to be compassionate, innovative, and socially responsible leaders. We envision a future where our graduates are at the forefront of positive change, contributing to the betterment of their communities and society at large, while upholding the principles of uprightness and academic integrity that define our institution.
+              Our teaching approach combines sound academics, discipline, creativity, and life skills to prepare pupils for future challenges.
             </p>
             <Button asChild className="btn-primary">
               <Link href="/about" className="flex items-center gap-2">
