@@ -38,19 +38,51 @@
 }
 
 .btn-primary {
-  @apply relative overflow-hidden bg-gradient-to-r from-[#0000FF] to-[#00BFFF] text-white border-none shadow-lg transition-all duration-300 hover:shadow-[#00BFFF]/40 hover:-translate-y-0.5 active:scale-95 flex items-center justify-center gap-2 font-bold uppercase tracking-widest px-8 py-3 text-[10px] rounded-sm;
+  @apply relative overflow-hidden bg-gradient-to-r from-[#0000FF] to-[#00BFFF] text-white border-none shadow-lg transition-all flex items-center justify-center gap-2 font-bold uppercase tracking-widest px-8 py-3 text-[10px] rounded-sm;
 }
 
-.btn-primary::after {
-  @apply content-[''] absolute inset-0 bg-white/10 opacity-0 transition-opacity duration-300;
+.btn-primary::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transition: all 0.6s ease;
 }
 
-.btn-primary:hover::after {
-  @apply opacity-100;
+.btn-primary:hover::before {
+  left: 100%;
 }
 
 .btn-white {
-  @apply bg-white text-gray-900 border-none shadow-md transition-all duration-300 hover:bg-gray-50 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 px-8 py-3 text-[10px] font-bold uppercase tracking-widest rounded-sm;
+  @apply bg-white text-gray-900 border-none shadow-md transition-all px-8 py-3 text-[10px] font-bold uppercase tracking-widest rounded-sm overflow-hidden relative;
+}
+
+.btn-white::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    120deg,
+    transparent,
+    rgba(0, 0, 0, 0.05),
+    transparent
+  );
+  transition: all 0.6s ease;
+}
+
+.btn-white:hover::before {
+  left: 100%;
 }
 
 .section-title {
