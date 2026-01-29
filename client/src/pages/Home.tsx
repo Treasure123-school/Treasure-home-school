@@ -69,12 +69,11 @@ export default function Home() {
         <div className="container relative z-10 text-center text-white px-4">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="max-w-4xl mx-auto">
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-              Treasure Home School
+              We Nurture <span className="text-[#00BFFF]">Young Minds.</span><br />
+              We Build <span className="text-[#0000FF]">Character.</span><br />
+              We Shape the <span className="text-[#00BFFF]">Future.</span>
             </h1>
-            <p className="text-base md:text-lg mb-4 text-gray-200 italic font-bold">
-              We Nurture Young Minds. We Build Character. We Shape the Future.
-            </p>
-            <p className="text-base md:text-lg mb-10 text-gray-200">
+            <p className="text-base md:text-lg mb-10 text-gray-200 italic font-medium">
               Treasure Home School is a school where qualitative education and moral excellence shape confident learners.
             </p>
             <div className="flex flex-row gap-4 justify-center items-center">
