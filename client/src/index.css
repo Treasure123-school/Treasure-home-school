@@ -130,7 +130,7 @@
 }
 
 .btn-hero-contact {
-  @apply relative overflow-hidden bg-gradient-to-r from-[#9c27b0] to-[#e91e63] text-white border-none shadow-lg transition-all font-bold uppercase tracking-widest rounded-sm !important;
+  @apply relative overflow-hidden bg-gradient-to-r from-[#0000FF] to-[#00BFFF] text-white border-none shadow-lg transition-all font-bold uppercase tracking-widest rounded-sm !important;
 }
 
 .btn-hero-contact:hover {
