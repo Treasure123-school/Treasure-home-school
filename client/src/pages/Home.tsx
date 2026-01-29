@@ -118,7 +118,10 @@ export default function Home() {
             {features.map((f, i) => (
               <motion.div key={i} {...fadeIn}>
                 <div className="card-value h-full">
-                  <img src={f.icon} alt={f.title} className="w-12 h-12 mb-6" />
+                  <div 
+                    className="icon-gradient mb-6" 
+                    style={{ WebkitMaskImage: `url(${f.icon})`, maskImage: `url(${f.icon})` }}
+                  />
                   <h3 className="text-base font-bold mb-3">{f.title}</h3>
                   <p className="text-[11px] text-gray-500 leading-relaxed">{f.desc}</p>
                 </div>

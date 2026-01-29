@@ -175,6 +175,19 @@
   @apply bg-white p-8 rounded-xl shadow-sm border border-gray-50 flex flex-col items-center text-center transition-all hover:shadow-md;
 }
 
+.icon-gradient {
+  display: inline-block;
+  width: 3rem;
+  height: 3rem;
+  background: linear-gradient(to bottom right, #0000FF, #00BFFF);
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
 .footer-dark {
   @apply bg-gradient-to-r from-[#0000AA] to-[#0099DD] text-white py-16;
 }
