@@ -106,7 +106,7 @@
 }
 
 .footer-dark {
-  @apply bg-[#2c333d] text-white py-16;
+  @apply bg-gradient-to-r from-[#0000FF] to-[#00BFFF] text-white py-16;
 }
 
 .typed-cursor {
