@@ -89,7 +89,12 @@ export default function Home() {
         <div className="container px-4 max-w-6xl mx-auto text-center">
           <motion.div {...fadeIn} className="max-w-3xl mx-auto mb-12">
                 <div className="flex flex-col items-center gap-4">
-                  <h2 className="text-3xl md:text-5xl font-bold mb-4">{schoolName}</h2>
+                  <h2 className="text-3xl md:text-5xl font-bold mb-2">{schoolName}</h2>
+                  {settings?.schoolMotto && (
+                    <p className="text-lg md:text-xl text-[#00BFFF] font-semibold italic tracking-wide mb-2">
+                      "{settings.schoolMotto}"
+                    </p>
+                  )}
                   {settings?.schoolLogo && (
                     <img 
                       src={settings.schoolLogo} 
