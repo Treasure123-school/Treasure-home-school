@@ -40,8 +40,8 @@ export default function SuperAdminBrandingTheme() {
   const uploadLogoMutation = useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData();
-      formData.append("file", file);
       formData.append("uploadType", "logo");
+      formData.append("file", file);
       const res = await fetch("/api/superadmin/branding/upload", {
         method: "POST",
         headers: {
@@ -66,8 +66,8 @@ export default function SuperAdminBrandingTheme() {
   const uploadFaviconMutation = useMutation({
     mutationFn: async (file: File) => {
       const formData = new FormData();
-      formData.append("file", file);
       formData.append("uploadType", "favicon");
+      formData.append("file", file);
       const res = await fetch("/api/superadmin/branding/upload", {
         method: "POST",
         headers: {

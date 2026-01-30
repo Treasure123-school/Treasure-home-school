@@ -302,24 +302,31 @@ fs.mkdir(homepageDir, { recursive: true }).catch(() => {});
 // Use disk storage for all uploads (local server/uploads directory)
 const storage_multer = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadType = req.body.uploadType || 'general';
-    let dir = uploadDir;
+    // For branding uploads, check the route path if uploadType isn't in body yet
+    const isBranding = (req.originalUrl && req.originalUrl.includes('branding')) || 
+                      (req.body && (req.body.uploadType === 'logo' || req.body.uploadType === 'favicon'));
+    const uploadType = (req.body && req.body.uploadType) || 'general';
+    
+    let dir = 'server/uploads/general';
 
     if (uploadType === 'gallery') {
-      dir = galleryDir;
+      dir = 'server/uploads/gallery';
     } else if (uploadType === 'profile') {
-      dir = profileDir;
+      dir = 'server/uploads/profiles';
     } else if (uploadType === 'study-resource') {
-      dir = studyResourcesDir;
-    } else if (uploadType === 'homepage' || uploadType === 'system_settings' || uploadType === 'system-settings') {
-      dir = homepageDir;
+      dir = 'server/uploads/study-resources';
+    } else if (isBranding || uploadType === 'homepage' || uploadType === 'system_settings' || uploadType === 'system-settings') {
+      dir = 'server/uploads/homepage';
     }
+    
+    // Ensure directory exists synchronously or before returning
+    // (multer destination should exist)
     cb(null, dir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
-    const name = path.basename(file.originalname, ext);
+    const name = path.basename(file.originalname, ext).replace(/[^a-z0-9]/gi, '_').toLowerCase();
     cb(null, `${name}-${uniqueSuffix}${ext}`);
   }
 });
@@ -9066,12 +9073,11 @@ Treasure-Home School Administration
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      const uploadType = req.body.uploadType; // 'logo' or 'favicon'
-      if (!['logo', 'favicon'].includes(uploadType)) {
-        return res.status(400).json({ message: "Invalid upload type" });
-      }
-
-      const filePath = `/uploads/homepage/${req.file.filename}`;
+      const uploadType = req.body.uploadType || 'logo';
+      const fileName = req.file.filename;
+      const filePath = `/uploads/homepage/${fileName}`;
+      
+      console.log(`[BRANDING] File uploaded to: ${req.file.path}`);
       
       const settings = await storage.getSystemSettings();
       if (!settings) {
@@ -9079,22 +9085,23 @@ Treasure-Home School Administration
       }
 
       const updateData: any = { updatedAt: new Date() };
-      if (uploadType === 'logo') {
-        updateData.schoolLogo = filePath;
-      } else {
+      if (uploadType === 'favicon' || fileName.toLowerCase().includes('favicon')) {
         updateData.favicon = filePath;
+      } else {
+        updateData.schoolLogo = filePath;
       }
 
-      await storage.updateSystemSettings(settings.id, updateData);
+      // Explicitly update only branding fields to avoid overwriting other settings
+      await (storage as any).updateSystemSettings(updateData);
       
       // Clear settings cache to ensure immediate update across the site
-      if (typeof (enhancedCache as any).invalidate === 'function') {
+      if (enhancedCache && typeof (enhancedCache as any).invalidate === 'function') {
         (enhancedCache as any).invalidate(/^public:settings/);
         (enhancedCache as any).invalidate(/^superadmin:settings/);
       }
 
       res.json({ 
-        message: `${uploadType === 'logo' ? 'Logo' : 'Favicon'} uploaded successfully`,
+        message: `${uploadType.charAt(0).toUpperCase() + uploadType.slice(1)} uploaded successfully`,
         url: filePath 
       });
     } catch (error: any) {
