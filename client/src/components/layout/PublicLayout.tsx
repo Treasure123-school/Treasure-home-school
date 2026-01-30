@@ -55,7 +55,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                   {schoolName}
                 </span>
                 {settings?.schoolMotto && (
-                  <span className="text-[#00BFFF] text-xs md:text-sm font-medium italic">
+                  <span className="text-[#0000FF] text-xs md:text-sm font-medium italic">
                     {settings.schoolMotto}
                   </span>
                 )}
