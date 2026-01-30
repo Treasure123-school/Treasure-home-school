@@ -42,7 +42,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
     <div className="min-h-screen bg-white">
       <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm h-24 flex items-center">
         <div className="container max-w-7xl mx-auto px-4 flex items-center justify-between">
-          <Link href="/"><img src={settings?.schoolLogo || "/images/logo.png"} alt="Logo" className="h-16 w-auto" /></Link>
+          <Link href="/"><img src={settings?.schoolLogo || "/images/logo.png"} alt="Logo" className="h-16 w-auto object-contain filter drop-shadow-[0_0_8px_rgba(255,255,255,0.9)] contrast-[1.1] saturate-[1.1]" /></Link>
           <nav className="hidden lg:flex items-center gap-10">
             {navigation.map((item) => (
               <Link key={item.name} href={item.href} className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${isActive(item.href) ? 'text-[#00BFFF]' : 'text-gray-900 hover:text-[#00BFFF]'}`}>{item.name}</Link>
