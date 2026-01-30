@@ -41,8 +41,26 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
   return (
     <div className="min-h-screen bg-white">
       <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm h-24 flex items-center">
-        <div className="container max-w-7xl mx-auto px-4 flex items-center justify-between">
-          <Link href="/"><img src={settings?.schoolLogo || "/images/logo.png"} alt="Logo" className="h-20 w-auto object-contain filter drop-shadow-[0_0_8px_rgba(255,255,255,0.9)] contrast-[1.1] saturate-[1.1]" /></Link>
+        <div className="container max-w-7xl mx-auto px-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Link href="/" className="flex items-center gap-4">
+              <img 
+                src={settings?.schoolLogo || "/images/logo.png"} 
+                alt="Logo" 
+                className="h-16 w-auto object-contain filter drop-shadow-[0_0_8px_rgba(255,255,255,0.9)] contrast-[1.1] saturate-[1.1]" 
+              />
+              <div className="flex flex-col">
+                <span className="text-gray-900 font-bold text-lg md:text-xl leading-tight">
+                  {schoolName}
+                </span>
+                {settings?.schoolMotto && (
+                  <span className="text-[#00BFFF] text-xs md:text-sm font-medium italic">
+                    {settings.schoolMotto}
+                  </span>
+                )}
+              </div>
+            </Link>
+          </div>
           <nav className="hidden lg:flex items-center gap-10">
             {navigation.map((item) => (
               <Link key={item.name} href={item.href} className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${isActive(item.href) ? 'text-[#00BFFF]' : 'text-gray-900 hover:text-[#00BFFF]'}`}>{item.name}</Link>

@@ -88,22 +88,10 @@ export default function Home() {
       <section className="py-24 bg-white">
         <div className="container px-4 max-w-6xl mx-auto text-center">
           <motion.div {...fadeIn} className="max-w-3xl mx-auto mb-12">
-                <div className="flex flex-col items-center gap-4">
-                  <h2 className="text-3xl md:text-5xl font-bold mb-2">{schoolName}</h2>
-                  {settings?.schoolMotto && (
-                    <p className="text-lg md:text-xl text-[#00BFFF] font-semibold italic tracking-wide mb-2">
-                      "{settings.schoolMotto}"
-                    </p>
-                  )}
-                  {settings?.schoolLogo && (
-                    <img 
-                      src={settings.schoolLogo} 
-                      alt={`${schoolName} Logo`} 
-                      className="h-40 w-auto object-contain mb-4 filter drop-shadow-[0_0_12px_rgba(255,255,255,0.5)] contrast-[1.1] saturate-[1.1]"
-                    />
-                  )}
-                </div>
-            <div className="w-12 h-[2px] bg-gradient-to-r from-[#0000FF] to-[#00BFFF] mx-auto mb-8" />
+            <div className="flex flex-col items-center gap-4 mb-8">
+              <h2 className="text-3xl md:text-5xl font-bold mb-2">{schoolName}</h2>
+              <div className="w-12 h-[2px] bg-gradient-to-r from-[#0000FF] to-[#00BFFF]" />
+            </div>
             <p className="text-[14px] md:text-[15px] text-gray-600 leading-relaxed mb-6">
               Treasure Home School is a private educational institution committed to providing quality education and strong moral upbringing. We believe every child is unique and deserves careful guidance to discover their full potential.
             </p>
