@@ -9088,8 +9088,10 @@ Treasure-Home School Administration
       await storage.updateSystemSettings(settings.id, updateData);
       
       // Clear settings cache to ensure immediate update across the site
-      enhancedCache.invalidate(/^public:settings/);
-      enhancedCache.invalidate(/^superadmin:settings/);
+      if (typeof (enhancedCache as any).invalidate === 'function') {
+        (enhancedCache as any).invalidate(/^public:settings/);
+        (enhancedCache as any).invalidate(/^superadmin:settings/);
+      }
 
       res.json({ 
         message: `${uploadType === 'logo' ? 'Logo' : 'Favicon'} uploaded successfully`,
@@ -9113,9 +9115,11 @@ Treasure-Home School Administration
         const settings = await storage.updateSystemSettings(settingsData);
 
         // Invalidate all related caches to ensure immediate updates across the site
-        enhancedCache.invalidate(/^superadmin:settings/);
-        enhancedCache.invalidate(/^public:settings/);
-        enhancedCache.invalidate(/\/api\/superadmin\/settings/);
+        if (typeof (enhancedCache as any).invalidate === 'function') {
+          (enhancedCache as any).invalidate(/^superadmin:settings/);
+          (enhancedCache as any).invalidate(/^public:settings/);
+          (enhancedCache as any).invalidate(/\/api\/superadmin\/settings/);
+        }
         
         // Broadcast the update via Socket.IO for real-time frontend updates
         try {

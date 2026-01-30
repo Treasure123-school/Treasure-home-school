@@ -33,6 +33,7 @@ interface SettingsData {
   schoolName: string;
   schoolMotto: string;
   schoolLogo?: string;
+  favicon?: string;
 }
 
 interface NavItem {
