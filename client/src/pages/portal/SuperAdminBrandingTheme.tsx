@@ -128,7 +128,13 @@ export default function SuperAdminBrandingTheme() {
 
   const saveMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      return apiRequest("PUT", "/api/superadmin/settings", data);
+      // Create a copy to avoid mutating state
+      const settingsToSave = { ...data };
+      
+      // Ensure we don't send local default paths if they were just placeholders
+      // (though here they are legitimate URLs or empty strings)
+      
+      return apiRequest("PUT", "/api/superadmin/settings", settingsToSave);
     },
     onSuccess: () => {
       toast({ title: "Branding Updated", description: "Your branding and theme settings have been saved." });

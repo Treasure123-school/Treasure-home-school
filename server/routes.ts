@@ -9071,7 +9071,7 @@ Treasure-Home School Administration
         return res.status(400).json({ message: "Invalid upload type" });
       }
 
-      const filePath = `/server/uploads/homepage/${req.file.filename}`;
+      const filePath = `/uploads/homepage/${req.file.filename}`;
       
       const settings = await storage.getSystemSettings();
       if (!settings) {

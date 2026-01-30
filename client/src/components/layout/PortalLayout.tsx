@@ -304,9 +304,9 @@ export default function PortalLayout({ children, userRole, userName, userInitial
 
   const { data: settings } = useQuery<SettingsData>({
     queryKey: ["/api/public/settings"],
-    staleTime: 0,
-    gcTime: 0,
-    refetchInterval: 5000,
+    staleTime: 1000,
+    gcTime: 5000,
+    refetchInterval: 10000,
   });
 
   const schoolName = settings?.schoolName || "Treasure-Home School";
@@ -315,13 +315,16 @@ export default function PortalLayout({ children, userRole, userName, userInitial
 
   useEffect(() => {
     if (settings?.favicon) {
-      const favicon = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
-      if (favicon) {
-        favicon.href = settings.favicon;
-      } else {
+      const faviconUrl = settings.favicon;
+      const links = document.querySelectorAll("link[rel*='icon']");
+      links.forEach(link => {
+        (link as HTMLLinkElement).href = faviconUrl;
+      });
+      
+      if (links.length === 0) {
         const link = document.createElement('link');
         link.rel = 'icon';
-        link.href = settings.favicon;
+        link.href = faviconUrl;
         document.head.appendChild(link);
       }
     }
