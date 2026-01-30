@@ -10,6 +10,7 @@ interface PublicLayoutProps {
 
 interface SettingsData {
   schoolName: string;
+  schoolMotto?: string;
   schoolEmail: string;
   schoolPhone: string;
   schoolAddress: string;
