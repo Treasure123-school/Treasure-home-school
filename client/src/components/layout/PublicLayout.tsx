@@ -41,14 +41,14 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
 
   return (
     <div className="min-h-screen bg-white">
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm h-24 flex items-center">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm h-28 flex items-center">
         <div className="container max-w-7xl mx-auto px-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-4">
               <img 
                 src={settings?.schoolLogo || "/images/logo.png"} 
                 alt="Logo" 
-                className="h-16 w-auto object-contain filter drop-shadow-[0_0_8px_rgba(255,255,255,0.9)] contrast-[1.1] saturate-[1.1]" 
+                className="h-20 w-auto object-contain filter drop-shadow-[0_0_8px_rgba(255,255,255,0.9)] contrast-[1.1] saturate-[1.1]" 
               />
               <div className="flex flex-col">
                 <span className="text-gray-900 font-bold text-lg md:text-xl leading-tight">
@@ -72,7 +72,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
         </div>
       </header>
 
-      <main className="pt-24">{children}</main>
+      <main className="pt-28">{children}</main>
 
       <footer className="footer-dark mt-auto">
         <div className="container max-w-7xl mx-auto px-4">
