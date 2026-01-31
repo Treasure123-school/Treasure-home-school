@@ -138,3 +138,18 @@ These utilities can be imported to replace repetitive patterns across routes:
 - 153 occurrences of `res.status(400).json` can use `sendBadRequest()`
 - 119 occurrences of `res.status(404).json` can use `sendNotFound()`
 - Duplicate suspension messages can use `getSuspensionMessage(roleName)`
+
+### Code Consolidation (January 31, 2026)
+Applied DRY principles to reduce code duplication:
+
+**Centralized Role Constants:**
+- Added `ROLE_CODES` and `ROLE_CODE_NAMES` to `shared/role-constants.ts`
+- Updated `server/auth-utils.ts` to import from centralized constants (removed duplicate ROLE_CODES)
+- Updated `server/username-generator.ts` to import ROLE_IDS from centralized constants (removed duplicate definitions)
+
+**Removed Unused Code:**
+- Removed unused `apiRateLimiter`, `loginRateLimiter`, and `heavyOperationLimiter` exports from `server/query-optimizer.ts` (dead code)
+
+**Files Kept for Future Use:**
+- `server/scalability-config.ts` - Redis/horizontal scaling configuration (not yet integrated but valuable for future)
+- `server/load-test-harness.ts` - Standalone load testing tool
