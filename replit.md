@@ -171,3 +171,70 @@ Applied DRY principles to reduce code duplication:
 **Files Kept for Future Use:**
 - `server/scalability-config.ts` - Redis/horizontal scaling configuration (not yet integrated but valuable for future)
 - `server/load-test-harness.ts` - Standalone load testing tool
+
+## Code Architecture & Refactoring Roadmap
+
+### Current State (January 2026)
+The backend has two large files that need incremental refactoring:
+
+**routes.ts (13,416 lines) - 237 route handlers:**
+| Domain | Endpoints | Priority |
+|--------|-----------|----------|
+| Admin | ~35 | High |
+| Reports/Report Cards | ~30 | High |
+| Users | ~16 | Medium |
+| Exams | ~50 | High |
+| Teachers | ~12 | Medium |
+| Students | ~15 | Medium |
+| Super Admin | ~7 | Low |
+
+**storage.ts (8,275 lines) - Database operations:**
+Should be split into domain-specific storage modules matching route modules.
+
+### Existing Modular Routes (server/routes/)
+- `auth.routes.ts` - Authentication (174 lines)
+- `terms.routes.ts` - Academic terms (230 lines)
+- `classes.routes.ts` - Classes (96 lines)
+- `subjects.routes.ts` - Subjects (106 lines)
+- `notifications.routes.ts` - Notifications (71 lines)
+- `health.routes.ts` - Health checks (36 lines)
+- `middleware.ts` - Shared middleware (108 lines)
+
+### Utility Modules Available (server/utils/)
+- `response-helpers.ts` - HTTP responses + asyncHandler (93 lines)
+- `rate-limiter.ts` - Rate limiting
+- `auth-messages.ts` - Auth error messages
+- `comment-generators.ts` - Report card comments
+- `cache-helpers.ts` - Cache invalidation
+- `exam-scoring.ts` - Exam scoring logic
+
+### Refactoring Guidelines
+When splitting routes.ts:
+1. Create domain-specific route files (e.g., `exams.routes.ts`, `reports.routes.ts`)
+2. Use `asyncHandler()` from utils to reduce try/catch boilerplate
+3. Use response helpers (`sendSuccess`, `sendNotFound`, `sendServerError`)
+4. Import shared middleware from `routes/middleware.ts`
+5. Follow existing patterns in `auth.routes.ts` as reference
+
+### File Structure Target
+```
+server/
+├── routes/
+│   ├── index.ts           # Module exports
+│   ├── middleware.ts      # Shared auth middleware
+│   ├── auth.routes.ts     # Done
+│   ├── terms.routes.ts    # Done
+│   ├── classes.routes.ts  # Done
+│   ├── subjects.routes.ts # Done
+│   ├── exams.routes.ts    # TODO: Extract from routes.ts
+│   ├── reports.routes.ts  # TODO: Extract from routes.ts
+│   ├── admin.routes.ts    # TODO: Extract from routes.ts
+│   ├── students.routes.ts # TODO: Extract from routes.ts
+│   └── teachers.routes.ts # TODO: Extract from routes.ts
+├── storage/
+│   ├── index.ts           # Main storage interface
+│   ├── exams.storage.ts   # TODO: Extract from storage.ts
+│   ├── reports.storage.ts # TODO: Extract from storage.ts
+│   └── users.storage.ts   # TODO: Extract from storage.ts
+└── utils/                 # Already modular
+```
