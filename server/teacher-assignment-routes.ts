@@ -554,8 +554,8 @@ router.get('/api/continuous-assessment', requireAuth, async (req: Request, res: 
       if (assignments.length === 0) {
         return res.json([]);
       }
-      const classIds = [...new Set(assignments.map(a => a.classId))];
-      const subjectIds = [...new Set(assignments.map(a => a.subjectId))];
+      const classIds = [...new Set(assignments.map((a: any) => a.classId))];
+      const subjectIds = [...new Set(assignments.map((a: any) => a.subjectId))];
       conditions.push(inArray(continuousAssessment.classId, classIds));
       conditions.push(inArray(continuousAssessment.subjectId, subjectIds));
     }
@@ -924,8 +924,8 @@ router.get('/api/teacher/my-dashboard-stats', requireAuth, async (req: Request, 
       ));
 
     // Get unique class and subject counts
-    const uniqueClassIds = [...new Set(assignments.map(a => a.classId))];
-    const uniqueSubjectIds = [...new Set(assignments.map(a => a.subjectId))];
+    const uniqueClassIds = [...new Set(assignments.map((a: any) => a.classId))];
+    const uniqueSubjectIds = [...new Set(assignments.map((a: any) => a.subjectId))];
 
     // Get student count for assigned classes
     let studentCount = 0;
@@ -933,7 +933,7 @@ router.get('/api/teacher/my-dashboard-stats', requireAuth, async (req: Request, 
       const studentData = await db
         .select({ count: sql<number>`count(*)` })
         .from(students)
-        .where(inArray(students.classId, uniqueClassIds));
+        .where(inArray(students.classId as any, uniqueClassIds as any));
       studentCount = Number(studentData[0]?.count || 0);
     }
 
@@ -973,7 +973,7 @@ router.get('/api/teacher/my-all-students', requireAuth, async (req: Request, res
         )
       ));
 
-    const classIds = [...new Set(assignments.map(a => a.classId))];
+    const classIds = [...new Set(assignments.map((a: any) => a.classId))];
     
     if (classIds.length === 0) {
       return res.json([]);
@@ -994,7 +994,7 @@ router.get('/api/teacher/my-all-students', requireAuth, async (req: Request, res
       .from(students)
       .innerJoin(users, eq(students.id, users.id))
       .innerJoin(classes, eq(students.classId, classes.id))
-      .where(inArray(students.classId, classIds))
+      .where(inArray(students.classId as any, classIds as any))
       .orderBy(classes.name, users.firstName, users.lastName);
 
     res.json(studentList);

@@ -47,7 +47,7 @@ export class ReliableSyncService {
 
     try {
       // Check for existing successful sync with same stable key (any time)
-      const existingSuccessSync = await db.select()
+      const existingSuccessSync = await (db as any).select()
         .from(schema.syncAuditLogs)
         .where(and(
           eq(schema.syncAuditLogs.studentId, studentId),
@@ -71,7 +71,7 @@ export class ReliableSyncService {
         }
       }
 
-      const exam = await db.select()
+      const exam = await (db as any).select()
         .from(schema.exams)
         .where(eq(schema.exams.id, examId))
         .limit(1);
@@ -87,7 +87,7 @@ export class ReliableSyncService {
         return this.createFailedResult('Exam missing required fields', 'MISSING_EXAM_FIELDS');
       }
 
-      const student = await db.select()
+      const student = await (db as any).select()
         .from(schema.students)
         .where(eq(schema.students.id, studentId))
         .limit(1);
@@ -120,7 +120,7 @@ export class ReliableSyncService {
               maxScore,
               updatedAt: new Date()
             })
-            .where(eq(schema.syncAuditLogs.id, auditLogId));
+            .where(eq(schema.syncAuditLogs.id, auditLogId as any));
           console.log(`[RELIABLE-SYNC] Reusing audit log ${auditLogId} for retry`);
         } else {
           // Create new audit log entry
@@ -172,7 +172,7 @@ export class ReliableSyncService {
             errorCode: result.errorCode ?? null,
             updatedAt: new Date()
           })
-          .where(eq(schema.syncAuditLogs.id, auditLogId));
+          .where(eq(schema.syncAuditLogs.id, auditLogId as any));
       }
 
       if (result.success && result.reportCardId) {
@@ -202,7 +202,7 @@ export class ReliableSyncService {
               errorCode: 'UNHANDLED_ERROR',
               updatedAt: new Date()
             })
-            .where(eq(schema.syncAuditLogs.id, auditLogId));
+            .where(eq(schema.syncAuditLogs.id, auditLogId as any));
         } catch (updateError) {
           console.error('[RELIABLE-SYNC] Failed to update audit log after error:', updateError);
         }
@@ -593,7 +593,7 @@ export class ReliableSyncService {
     let relevantSubjects: any[] = [];
 
     if (studentSubjectAssignments.length > 0) {
-      const studentSubjectIds = studentSubjectAssignments.map((a) => a.subjectId);
+      const studentSubjectIds = studentSubjectAssignments.map((a: any) => a.subjectId);
       relevantSubjects = await db.select()
         .from(schema.subjects)
         .where(and(
@@ -628,7 +628,7 @@ export class ReliableSyncService {
       .from(schema.reportCardItems)
       .where(eq(schema.reportCardItems.reportCardId, reportCardId));
 
-    const existingSubjectIds = new Set(existingItems.map((item) => item.subjectId));
+    const existingSubjectIds = new Set(existingItems.map((item: any) => item.subjectId));
 
     const rawDepartment = (studentData.department || '').trim().toLowerCase();
     const studentDepartment = rawDepartment.length > 0 ? rawDepartment : undefined;
@@ -644,7 +644,7 @@ export class ReliableSyncService {
     let assignedSubjectIds: number[] = [];
 
     if (studentSubjectAssignments.length > 0) {
-      assignedSubjectIds = studentSubjectAssignments.map((a) => a.subjectId);
+      assignedSubjectIds = studentSubjectAssignments.map((a: any) => a.subjectId);
     } else {
       const relevantSubjects = await this.getSubjectsByClassAndDepartment(classId, studentDepartment);
       assignedSubjectIds = relevantSubjects.map(s => s.id);
@@ -679,7 +679,7 @@ export class ReliableSyncService {
       return [];
     }
 
-    const subjectIds = mappings.map(m => m.subjectId);
+    const subjectIds = mappings.map((m: any) => m.subjectId);
     const subjects = await db.select()
       .from(schema.subjects)
       .where(and(
@@ -697,14 +697,14 @@ export class ReliableSyncService {
 
     if (items.length === 0) return;
 
-    const itemsWithScores = items.filter(item => 
+    const itemsWithScores = items.filter((item: any) => 
       (item.testScore !== null && item.testScore > 0) || 
       (item.examScore !== null && item.examScore > 0)
     );
 
     if (itemsWithScores.length === 0) return;
 
-    const totalObtained = itemsWithScores.reduce((sum, item) => sum + (item.obtainedMarks || 0), 0);
+    const totalObtained = itemsWithScores.reduce((sum: number, item: any) => sum + (item.obtainedMarks || 0), 0);
     const totalMarks = itemsWithScores.length * 100;
     const averagePercentage = totalMarks > 0 ? Math.round((totalObtained / totalMarks) * 100) : 0;
 
@@ -891,7 +891,7 @@ export class ReliableSyncService {
   async manualResyncById(auditLogId: number, triggeredBy: string): Promise<SyncResult> {
     const log = await db.select()
       .from(schema.syncAuditLogs)
-      .where(eq(schema.syncAuditLogs.id, auditLogId))
+      .where(eq(schema.syncAuditLogs.id, auditLogId as any))
       .limit(1);
 
     if (log.length === 0) {

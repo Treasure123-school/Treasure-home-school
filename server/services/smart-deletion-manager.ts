@@ -56,7 +56,7 @@ export class SmartDeletionManager {
 
   async validateDeletion(userId: string): Promise<DeletionValidation> {
     try {
-      const user = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
+      const user = await (db as any).select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
       
       if (!user[0]) {
         return { canDelete: false, reason: 'User not found' };
@@ -252,7 +252,7 @@ export class SmartDeletionManager {
     this.filesToDelete = [];
 
     try {
-      const user = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
+      const user = await (db as any).select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
       
       if (!user[0]) {
         return {
@@ -370,7 +370,7 @@ export class SmartDeletionManager {
         .from(schema.examSessions)
         .where(eq(schema.examSessions.studentId, userId));
       
-      const sessionIds = examSessions.map(s => s.id);
+      const sessionIds = examSessions.map((s: any) => s.id);
       
       if (sessionIds.length > 0) {
         try {
@@ -454,7 +454,7 @@ export class SmartDeletionManager {
         .from(schema.reportCards)
         .where(eq(schema.reportCards.studentId, userId));
       
-      const reportCardIds = reportCards.map(r => r.id);
+      const reportCardIds = reportCards.map((r: any) => r.id);
       
       if (reportCardIds.length > 0) {
         try {
@@ -805,7 +805,7 @@ export class SmartDeletionManager {
     }
 
     try {
-      const announcementsResult = await db.delete(schema.announcements)
+      const announcementsResult = await (db as any).delete(schema.announcements)
         .where(eq(schema.announcements.authorId, userId))
         .returning();
       this.deletionService.recordDeletion('announcements', announcementsResult.length);
@@ -814,7 +814,7 @@ export class SmartDeletionManager {
     }
 
     try {
-      const perfEventsResult = await db.delete(schema.performanceEvents)
+      const perfEventsResult = await (db as any).delete(schema.performanceEvents)
         .where(eq(schema.performanceEvents.userId, userId))
         .returning();
       this.deletionService.recordDeletion('performance_events', perfEventsResult.length);
@@ -823,7 +823,7 @@ export class SmartDeletionManager {
     }
 
     try {
-      const auditResult = await db.delete(schema.auditLogs)
+      const auditResult = await (db as any).delete(schema.auditLogs)
         .where(eq(schema.auditLogs.userId, userId))
         .returning();
       this.deletionService.recordDeletion('audit_logs', auditResult.length);
@@ -832,7 +832,7 @@ export class SmartDeletionManager {
     }
 
     try {
-      const accessLogsResult = await db.delete(schema.unauthorizedAccessLogs)
+      const accessLogsResult = await (db as any).delete(schema.unauthorizedAccessLogs)
         .where(eq(schema.unauthorizedAccessLogs.userId, userId))
         .returning();
       this.deletionService.recordDeletion('unauthorized_access_logs', accessLogsResult.length);
@@ -841,49 +841,49 @@ export class SmartDeletionManager {
     }
 
     try {
-      await db.update(schema.contactMessages)
+      await (db as any).update(schema.contactMessages)
         .set({ respondedBy: null })
         .where(eq(schema.contactMessages.respondedBy, userId));
     } catch (e) {}
 
     try {
-      await db.update(schema.systemSettings)
+      await (db as any).update(schema.systemSettings)
         .set({ updatedBy: null })
         .where(eq(schema.systemSettings.updatedBy, userId));
     } catch (e) {}
 
     try {
-      await db.update(schema.settings)
+      await (db as any).update(schema.settings)
         .set({ updatedBy: null })
         .where(eq(schema.settings.updatedBy, userId));
     } catch (e) {}
 
     try {
-      await db.update(schema.attendance)
+      await (db as any).update(schema.attendance)
         .set({ recordedBy: null })
         .where(eq(schema.attendance.recordedBy, userId));
     } catch (e) {}
 
     try {
-      await db.update(schema.questionBanks)
+      await (db as any).update(schema.questionBanks)
         .set({ createdBy: null })
         .where(eq(schema.questionBanks.createdBy, userId));
     } catch (e) {}
 
     try {
-      await db.update(schema.gradingBoundaries)
+      await (db as any).update(schema.gradingBoundaries)
         .set({ createdBy: null })
         .where(eq(schema.gradingBoundaries.createdBy, userId));
     } catch (e) {}
 
     try {
-      await db.update(schema.teacherClassAssignments)
+      await (db as any).update(schema.teacherClassAssignments)
         .set({ assignedBy: null })
         .where(eq(schema.teacherClassAssignments.assignedBy, userId));
     } catch (e) {}
 
     try {
-      await db.update(schema.teacherAssignmentHistory)
+      await (db as any).update(schema.teacherAssignmentHistory)
         .set({ performedBy: null })
         .where(eq(schema.teacherAssignmentHistory.performedBy, userId));
     } catch (e) {}
@@ -919,7 +919,7 @@ export class SmartDeletionManager {
         .from(schema.examQuestions)
         .where(eq(schema.examQuestions.examId, examId));
       
-      const questionIds = questions.map(q => q.id);
+      const questionIds = questions.map((q: any) => q.id);
       
       for (const question of questions) {
         this.addFileToDelete(question.imageUrl);
@@ -930,7 +930,7 @@ export class SmartDeletionManager {
           .from(schema.examSessions)
           .where(eq(schema.examSessions.examId, examId));
         
-        const sessionIds = sessions.map(s => s.id);
+        const sessionIds = sessions.map((s: any) => s.id);
         
         if (sessionIds.length > 0) {
           try {
@@ -1016,7 +1016,7 @@ export class SmartDeletionManager {
         .from(schema.questionBankItems)
         .where(eq(schema.questionBankItems.bankId, bankId));
       
-      const itemIds = items.map(i => i.id);
+      const itemIds = items.map((i: any) => i.id);
       
       for (const item of items) {
         this.addFileToDelete(item.imageUrl);

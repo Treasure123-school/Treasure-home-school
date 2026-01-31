@@ -46,18 +46,18 @@ export default function SuperAdminAuthenticationSettings() {
   useEffect(() => {
     if (settings) {
       setFormData({
-        loginIdentifier: settings.loginIdentifier || 'username',
-        enableRememberMe: settings.enableRememberMe ?? true,
-        enableStudentPortal: settings.enableStudentPortal ?? true,
-        enableAdminPortal: settings.enableAdminPortal ?? true,
-        allowRegistration: settings.allowRegistration ?? false,
-        defaultRegistrationRoleId: settings.defaultRegistrationRoleId ?? 4,
-        sessionTimeout: settings.sessionTimeout ?? 30,
-        allowMultipleLogins: settings.allowMultipleLogins ?? false,
-        autoDisableInactiveDays: settings.autoDisableInactiveDays ?? 90,
-        requireAdminApproval: settings.requireAdminApproval ?? true,
-        redirectAfterLogin: settings.redirectAfterLogin || 'dashboard',
-        loginErrorDisplay: settings.loginErrorDisplay || 'generic'
+        loginIdentifier: (settings as any).loginIdentifier || 'username',
+        enableRememberMe: (settings as any).enableRememberMe ?? true,
+        enableStudentPortal: (settings as any).enableStudentPortal ?? true,
+        enableAdminPortal: (settings as any).enableAdminPortal ?? true,
+        allowRegistration: (settings as any).allowRegistration ?? false,
+        defaultRegistrationRoleId: (settings as any).defaultRegistrationRoleId ?? 4,
+        sessionTimeout: (settings as any).sessionTimeout ?? 30,
+        allowMultipleLogins: (settings as any).allowMultipleLogins ?? false,
+        autoDisableInactiveDays: (settings as any).autoDisableInactiveDays ?? 90,
+        requireAdminApproval: (settings as any).requireAdminApproval ?? true,
+        redirectAfterLogin: (settings as any).redirectAfterLogin || 'dashboard',
+        loginErrorDisplay: (settings as any).loginErrorDisplay || 'generic'
       });
     }
   }, [settings]);

@@ -1,6 +1,6 @@
 import { seedAcademicTerms } from "./seed-terms";
 import fs from "fs/promises";
-import { isPostgres, dbInfo } from "./db";
+import { isPostgres } from "./db";
 
 export async function initializeSystem() {
   if (isPostgres) {

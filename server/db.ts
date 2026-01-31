@@ -1,21 +1,3 @@
-/**
- * Database Factory
- * 
- * This module provides a unified database interface using PostgreSQL/Neon or SQLite.
- * 
- * Environment Detection:
- * - DATABASE_URL present → PostgreSQL (Neon) - REQUIRED for production
- * - No DATABASE_URL → Use SQLite in development
- * 
- * IMPORTANT: Uses neon-serverless driver with Pool for TRANSACTION SUPPORT.
- * The neon-http driver does NOT support transactions.
- * 
- * Exports:
- * - db: Drizzle ORM instance (for ORM queries with transaction support)
- * - getPgClient(): Returns neon() client for raw SQL tagged template queries
- * - getPgPool(): Returns Pool for lower-level operations
- */
-
 import { drizzle as drizzlePg } from "drizzle-orm/neon-serverless";
 import { drizzle as drizzleSqlite } from "drizzle-orm/better-sqlite3";
 import { Pool, neonConfig, neon } from "@neondatabase/serverless";
@@ -24,122 +6,33 @@ import * as pgSchema from "@shared/schema.pg";
 import * as sqliteSchema from "@shared/schema";
 import ws from "ws";
 
-// Enable WebSocket support for Neon serverless driver (required for transactions)
 neonConfig.webSocketConstructor = ws;
 
-// Database instance types
-type PgDb = ReturnType<typeof drizzlePg>;
-type SqliteDb = ReturnType<typeof drizzleSqlite>;
-type DatabaseInstance = PgDb | SqliteDb;
-type NeonClient = ReturnType<typeof neon>;
-
-// Configuration
-const isProduction = process.env.NODE_ENV === 'production';
 const databaseUrl = process.env.DATABASE_URL;
-
-// Type detection
 export const isPostgres = !!databaseUrl;
 export const isSqlite = !databaseUrl;
 
-// Database instances
-let db: DatabaseInstance | null = null;
+let dbInstance: any = null;
 let pool: Pool | null = null;
-let neonClient: NeonClient | null = null;
-let sqliteDb: any = null;
+let neonClient: any = null;
 
-/**
- * Get the appropriate schema
- */
-export function getSchema() {
-  return isPostgres ? pgSchema : sqliteSchema;
-}
-
-/**
- * Initialize and return the database instance
- */
-export function initializeDatabase(): DatabaseInstance {
-  if (db) {
-    return db;
-  }
-
-  if (isProduction && !databaseUrl) {
-    console.error('❌ DATABASE_URL is required for PostgreSQL connection in production');
-    throw new Error('DATABASE_URL environment variable is required in production.');
-  }
+export function initializeDatabase() {
+  if (dbInstance) return dbInstance;
 
   if (databaseUrl) {
-    // PostgreSQL (Neon) for all environments with Pool for transaction support
-    console.log('🐘 Initializing PostgreSQL database (Neon with WebSocket)...');
-    try {
-      pool = new Pool({ connectionString: databaseUrl });
-      db = drizzlePg(pool, { schema: pgSchema });
-      neonClient = neon(databaseUrl);
-      console.log('✅ PostgreSQL database initialized');
-    } catch (error) {
-      console.error('❌ Failed to initialize PostgreSQL database:', error);
-      throw error;
-    }
+    pool = new Pool({ connectionString: databaseUrl });
+    dbInstance = drizzlePg(pool, { schema: pgSchema });
+    neonClient = neon(databaseUrl);
   } else {
-    // SQLite for local development
-    console.log('📦 Initializing SQLite database (development)...');
-    try {
-      sqliteDb = new Database("sqlite.db");
-      db = drizzleSqlite(sqliteDb, { schema: sqliteSchema });
-      console.log('✅ SQLite database initialized');
-    } catch (error) {
-      console.error('❌ Failed to initialize SQLite database:', error);
-      throw error;
-    }
+    const sqliteDb = new Database("sqlite.db");
+    dbInstance = drizzleSqlite(sqliteDb, { schema: sqliteSchema });
   }
-
-  return db;
+  return dbInstance;
 }
 
-/**
- * Get the database instance (initializes if needed)
- */
-export function getDatabase(): DatabaseInstance {
-  if (!db) {
-    return initializeDatabase();
-  }
-  return db;
-}
-
-
-/**
- * Get the neon client for raw SQL queries (tagged template literals)
- * Use this for: pgClient`SELECT * FROM users WHERE id = ${id}`
- */
-export function getPgClient(): NeonClient | null {
-  return neonClient;
-}
-
-/**
- * Get the raw PostgreSQL pool for lower-level operations
- */
-export function getPgPool(): Pool | null {
-  return pool;
-}
-
-/**
- * Close database connections
- */
-export async function closeDatabase(): Promise<void> {
-  if (pool) {
-    await pool.end();
-  }
-  pool = null;
-  neonClient = null;
-  db = null;
-}
-
-// Export database type info for conditional logic
-export const dbInfo = {
-  type: 'postgresql',
-  isProduction,
-  connectionString: 'Neon PostgreSQL (WebSocket)'
-};
-
-// Initialize on import
-const database = initializeDatabase();
-export { database as db };
+export const db = initializeDatabase();
+export function getDatabase() { return db; }
+export function getSchema() { return isPostgres ? pgSchema : sqliteSchema; }
+export function getPgClient() { return neonClient; }
+export function getPgPool() { return pool; }
+export { pgSchema as schema };
