@@ -118,3 +118,10 @@ Removed unused/duplicate backend files following DRY principles:
 - `server/seed-classes.ts` - Unused seeding file
 - `server/seed-production.ts` - Unused production seeding file
 - `server/backup-database.ts` - Unused backup utility
+
+### Routes Modularization (In Progress)
+Started modularizing the large routes.ts file (~13,500 lines):
+- Created `server/routes/middleware.ts` - Shared authentication & authorization middleware
+- Created `server/routes/index.ts` - Module documentation and exports
+- Updated routes.ts to import from shared middleware (removed ~100 lines of duplicate code)
+- Future work: Continue extracting route handlers into domain-specific modules

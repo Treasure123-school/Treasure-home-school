@@ -1,11 +1,8 @@
-// This commit addresses an issue where exam submission was failing due to server-side errors returning HTML instead of JSON.
-// The exam submission endpoint has been refactored to handle errors gracefully and ensure valid JSON responses,
-// improving the reliability of the exam submission and auto-scoring process.
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage, db } from "./storage";
 import * as schema from "@shared/schema.pg";
-import { ROLE_IDS as ROLES } from "@shared/role-constants";
+import { authenticateUser, authorizeRoles, normalizeUuid, SECRET_KEY, JWT_EXPIRES_IN, ROLES, AuthenticatedUser } from "./routes/middleware";
 import { insertUserSchema, insertStudentSchema, insertAttendanceSchema, insertAnnouncementSchema, insertMessageSchema, insertExamSchema, insertExamResultSchema, insertExamQuestionSchema, insertQuestionOptionSchema, createQuestionOptionSchema, insertHomePageContentSchema, insertContactMessageSchema, insertExamSessionSchema, updateExamSessionSchema, insertStudentAnswerSchema, createStudentSchema, InsertUser, InsertStudentAnswer } from "@shared/schema";
 import { users, students } from "@shared/schema.pg";
 import { z, ZodError } from "zod";
@@ -113,23 +110,6 @@ async function invalidateSubjectMappingsAndSync(
   return { studentsSynced: totalSynced, reportCardItemsRemoved, reportCardItemsAdded, examScoresSynced, cacheKeysInvalidated, syncErrors };
 }
 
-// Type for authenticated user
-interface AuthenticatedUser {
-  id: string;
-  email: string;
-  roleId: number;
-  firstName: string;
-  lastName: string;
-}
-// Extend Express Request interface to include user property added by authentication middleware
-declare global {
-  namespace Express {
-    interface Request {
-      user?: AuthenticatedUser;
-    }
-    interface User extends AuthenticatedUser {}
-  }
-}
 
 
 const loginSchema = z.object({
@@ -148,50 +128,6 @@ const contactSchema = z.object({
   message: z.string().min(1)
 });
 
-// JWT secret - use environment variable for production, fallback for development
-const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development' ? 'dev-secret-key-change-in-production' : undefined);
-if (!JWT_SECRET) {
-  process.exit(1);
-}
-if (process.env.NODE_ENV === 'development' && JWT_SECRET === 'dev-secret-key-change-in-production') {
-}
-const SECRET_KEY = JWT_SECRET as string;
-const JWT_EXPIRES_IN = '24h';
-
-// Helper to normalize UUIDs from various formats
-function normalizeUuid(raw: any): string | undefined {
-  if (!raw) return undefined;
-
-  // If already a valid UUID string, return as-is
-  if (typeof raw === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
-    return raw;
-  }
-  let bytes: number[] | undefined;
-
-  // Handle comma-separated string of numbers
-  if (typeof raw === 'string' && raw.includes(',')) {
-    const parts = raw.split(',').map(s => parseInt(s.trim()));
-    if (parts.length === 16 && parts.every(n => n >= 0 && n <= 255)) {
-      bytes = parts;
-    }
-  }
-
-  // Handle number array or Uint8Array
-  if (Array.isArray(raw) && raw.length === 16) {
-    bytes = raw;
-  } else if (raw instanceof Uint8Array && raw.length === 16) {
-    bytes = Array.from(raw);
-  }
-  // Convert bytes to UUID format
-  if (bytes) {
-    const hex = bytes.map(b => b.toString(16).padStart(2, '0')).join('');
-    return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`;
-  }
-  return undefined;
-}
-// ROLES constant is now imported from @shared/role-constants
-// This ensures a single source of truth for role IDs across the entire application
-// Role IDs: 1=Super Admin, 2=Admin, 3=Teacher, 4=Student, 5=Parent
 
 // Rate limiting for login attempts (simple in-memory store)
 const loginAttempts = new Map();
@@ -226,64 +162,6 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000); // Run cleanup every 5 minutes
 
-// Secure JWT authentication middleware
-const authenticateUser = async (req: any, res: any, next: any) => {
-  try {
-    // Robust Authorization header parsing (case-insensitive, handles whitespace)
-    const authHeader = (req.headers.authorization || '').trim();
-    const [scheme, token] = authHeader.split(/\s+/);
-
-    if (!/^bearer$/i.test(scheme) || !token) {
-      return res.status(401).json({ message: "Authentication required" });
-    }
-    // Verify JWT token
-    let decoded: any;
-    try {
-      decoded = jwt.verify(token, SECRET_KEY);
-    } catch (jwtError) {
-      return res.status(401).json({ message: "Invalid or expired token" });
-    }
-    // Normalize decoded userId before database lookup
-    const normalizedUserId = normalizeUuid(decoded.userId);
-    if (!normalizedUserId) {
-      return res.status(401).json({ message: "Invalid token format" });
-    }
-    // Validate user still exists in database
-    const user = await storage.getUser(normalizedUserId);
-    if (!user) {
-      return res.status(401).json({ message: "User no longer exists" });
-    }
-    // Block inactive users (blocked/deactivated accounts)
-    if (user.isActive === false) {
-      return res.status(401).json({ message: "Account has been deactivated. Please contact administrator." });
-    }
-    // Ensure role hasn't changed since token was issued
-    if (user.roleId !== decoded.roleId) {
-      return res.status(401).json({ message: "User role has changed, please log in again" });
-    }
-    req.user = user;
-    next();
-  } catch (error) {
-    res.status(401).json({ message: "Authentication failed" });
-  }
-};
-
-// Role-based authorization middleware
-const authorizeRoles = (...allowedRoles: number[]) => {
-  return async (req: any, res: any, next: any) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-      if (!allowedRoles.includes(req.user.roleId)) {
-        return res.status(403).json({ message: "Insufficient permissions" });
-      }
-      next();
-    } catch (error) {
-      res.status(403).json({ message: "Authorization failed" });
-    }
-  };
-};
 
 // Configure multer for file uploads - ALL files stored locally in server/uploads
 const uploadDir = 'server/uploads';
