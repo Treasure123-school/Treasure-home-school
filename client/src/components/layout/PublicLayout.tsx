@@ -45,11 +45,13 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
         <div className="container max-w-7xl mx-auto px-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-4">
-              <img 
-                src={settings?.schoolLogo || "/images/logo.png"} 
-                alt="Logo" 
-                className="h-20 w-auto object-contain filter drop-shadow-[0_0_8px_rgba(255,255,255,0.9)] contrast-[1.1] saturate-[1.1]" 
-              />
+              {settings?.schoolLogo ? (
+                <img 
+                  src={settings.schoolLogo} 
+                  alt="Logo" 
+                  className="h-20 w-auto object-contain filter drop-shadow-[0_0_8px_rgba(255,255,255,0.9)] contrast-[1.1] saturate-[1.1]" 
+                />
+              ) : null}
               <div className="flex flex-col">
                 <span className="text-gray-900 font-bold text-lg md:text-xl leading-tight">
                   {schoolName}
@@ -78,8 +80,10 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
         <div className="container max-w-7xl mx-auto px-4">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-16 mb-12">
             <div className="space-y-6">
-              <img src={settings?.schoolLogo || "/images/logo.png"} alt="Logo" className="h-20 w-auto brightness-0 invert" />
-              <p className="text-[13px] text-white font-bold leading-relaxed">{settings?.schoolName || "Glory Schools"}, located in Egbedi-Ifo Local Government, Osun State, Nigeria, has a rich history of educational excellence.</p>
+              {settings?.schoolLogo ? (
+                <img src={settings.schoolLogo} alt="Logo" className="h-20 w-auto brightness-0 invert" />
+              ) : null}
+              <p className="text-[13px] text-white font-bold leading-relaxed">{settings?.schoolName || "Treasure-Home School"}, located in Egbedi-Ifo Local Government, Osun State, Nigeria, has a rich history of educational excellence.</p>
             </div>
             <div className="space-y-6">
               <h4 className="text-white font-black uppercase tracking-widest text-[11px] border-b border-white/40 pb-2">Useful Links</h4>

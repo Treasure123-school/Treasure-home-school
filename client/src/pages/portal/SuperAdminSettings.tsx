@@ -19,7 +19,9 @@ import {
   MapPin,
   Clock,
   Languages,
-  CalendarDays
+  CalendarDays,
+  Upload,
+  X
 } from "lucide-react";
 import type { SystemSettings } from "@shared/schema";
 
@@ -45,7 +47,9 @@ export default function SuperAdminSettings() {
     timeFormat: "HH:mm",
     maintenanceMode: false,
     maintenanceModeMessage: "",
-    footerText: ""
+    footerText: "",
+    schoolLogo: "",
+    favicon: ""
   });
 
   useEffect(() => {
@@ -64,7 +68,9 @@ export default function SuperAdminSettings() {
         timeFormat: settings.timeFormat || "HH:mm",
         maintenanceMode: settings.maintenanceMode || false,
         maintenanceModeMessage: settings.maintenanceModeMessage || "",
-        footerText: settings.footerText || ""
+        footerText: settings.footerText || "",
+        schoolLogo: settings.schoolLogo || "",
+        favicon: settings.favicon || ""
       });
     }
   }, [settings]);
@@ -77,6 +83,20 @@ export default function SuperAdminSettings() {
       toast({ title: "Configuration Saved", description: "General configuration has been successfully updated." });
       queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/public/settings"] });
+      
+      // Update favicon in the browser immediately if it changed
+      if (formData.favicon) {
+        const link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+        if (link) {
+          link.href = formData.favicon;
+        } else {
+          const newLink = document.createElement('link');
+          newLink.rel = 'icon';
+          newLink.href = formData.favicon;
+          document.head.appendChild(newLink);
+        }
+      }
+      
       setIsEditing(false);
     },
     onError: (error: any) => {
@@ -119,22 +139,163 @@ export default function SuperAdminSettings() {
             <CardDescription>Fundamental details about the educational institution.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">Full Name</Label>
-                <Input 
-                  disabled={!isEditing}
-                  value={formData.schoolName}
-                  onChange={(e) => setFormData({...formData, schoolName: e.target.value})}
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Full Name</Label>
+                    <Input 
+                      disabled={!isEditing}
+                      value={formData.schoolName}
+                      onChange={(e) => setFormData({...formData, schoolName: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Short Name / Acronym</Label>
+                    <Input 
+                      disabled={!isEditing}
+                      value={formData.schoolShortName}
+                      onChange={(e) => setFormData({...formData, schoolShortName: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">School Motto</Label>
+                  <Input 
+                    disabled={!isEditing}
+                    value={formData.schoolMotto}
+                    onChange={(e) => setFormData({...formData, schoolMotto: e.target.value})}
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold">Short Name / Acronym</Label>
-                <Input 
-                  disabled={!isEditing}
-                  value={formData.schoolShortName}
-                  onChange={(e) => setFormData({...formData, schoolShortName: e.target.value})}
-                />
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">School Logo</Label>
+                    <div className="flex flex-col items-center gap-2 p-4 border-2 border-dashed rounded-lg bg-slate-50 dark:bg-slate-900/50 relative group">
+                      {formData.schoolLogo ? (
+                        <>
+                          <img src={formData.schoolLogo} alt="School Logo" className="h-20 w-auto object-contain" />
+                          {isEditing && (
+                            <Button 
+                              variant="destructive" 
+                              size="icon" 
+                              className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-lg"
+                              onClick={() => setFormData({...formData, schoolLogo: ""})}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center gap-2 py-4">
+                          <Building2 className="h-8 w-8 text-muted-foreground opacity-20" />
+                          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">No Logo</p>
+                        </div>
+                      )}
+                      {isEditing && (
+                        <div className="w-full mt-2">
+                          <Input 
+                            type="file" 
+                            accept="image/*"
+                            className="hidden" 
+                            id="logo-upload"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const formDataUpload = new FormData();
+                                formDataUpload.append("file", file);
+                                formDataUpload.append("uploadType", "logo");
+                                try {
+                                  const res = await fetch("/api/superadmin/branding/upload", {
+                                    method: "POST",
+                                    body: formDataUpload
+                                  });
+                                  const data = await res.json();
+                                  if (data.url) setFormData(prev => ({...prev, schoolLogo: data.url}));
+                                } catch (err) {
+                                  toast({ title: "Upload Failed", variant: "destructive" });
+                                }
+                              }
+                            }}
+                          />
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full h-8 text-[11px] font-bold"
+                            onClick={() => document.getElementById('logo-upload')?.click()}
+                          >
+                            <Upload className="h-3 w-3 mr-2" />
+                            Upload Logo
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Favicon</Label>
+                    <div className="flex flex-col items-center gap-2 p-4 border-2 border-dashed rounded-lg bg-slate-50 dark:bg-slate-900/50 relative group">
+                      {formData.favicon ? (
+                        <>
+                          <img src={formData.favicon} alt="Favicon" className="h-10 w-10 object-contain" />
+                          {isEditing && (
+                            <Button 
+                              variant="destructive" 
+                              size="icon" 
+                              className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-lg"
+                              onClick={() => setFormData({...formData, favicon: ""})}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center gap-2 py-4">
+                          <Globe className="h-8 w-8 text-muted-foreground opacity-20" />
+                          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">No Favicon</p>
+                        </div>
+                      )}
+                      {isEditing && (
+                        <div className="w-full mt-2">
+                          <Input 
+                            type="file" 
+                            accept="image/*"
+                            className="hidden" 
+                            id="favicon-upload"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const formDataUpload = new FormData();
+                                formDataUpload.append("file", file);
+                                formDataUpload.append("uploadType", "favicon");
+                                try {
+                                  const res = await fetch("/api/superadmin/branding/upload", {
+                                    method: "POST",
+                                    body: formDataUpload
+                                  });
+                                  const data = await res.json();
+                                  if (data.url) setFormData(prev => ({...prev, favicon: data.url}));
+                                } catch (err) {
+                                  toast({ title: "Upload Failed", variant: "destructive" });
+                                }
+                              }
+                            }}
+                          />
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full h-8 text-[11px] font-bold"
+                            onClick={() => document.getElementById('favicon-upload')?.click()}
+                          >
+                            <Upload className="h-3 w-3 mr-2" />
+                            Upload Fav
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
             
