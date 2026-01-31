@@ -313,8 +313,6 @@ export const systemSettings = sqliteTable("system_settings", {
   dateFormat: text("date_format").notNull().default('DD/MM/YYYY'),
   timeFormat: text("time_format").notNull().default('HH:mm'),
   // Integrations
-  enableSmsNotifications: integer("enable_sms_notifications", { mode: "boolean" }).notNull().default(false),
-  enableEmailNotifications: integer("enable_email_notifications", { mode: "boolean" }).notNull().default(true),
   enableOnlinePayments: integer("enable_online_payments", { mode: "boolean" }).notNull().default(false),
   // Backup & Restore
   autoBackup: integer("auto_backup", { mode: "boolean" }).notNull().default(false),

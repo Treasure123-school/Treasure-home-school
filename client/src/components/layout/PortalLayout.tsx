@@ -333,147 +333,139 @@ export default function PortalLayout({ children, userRole, userName, userInitial
 
   // Reusable Sidebar Content Component with Modern Design
   const SidebarContent = ({ onNavigate, collapsed = false }: { onNavigate?: () => void; collapsed?: boolean }) => {
-  const [, navigate] = useLocation();
-  const [isPending, startTransition] = useTransition();
+    const [, navigate] = useLocation();
+    const [isPending, startTransition] = useTransition();
 
-  return (
-    <div className="flex flex-col h-full">
-      <div className="flex-shrink-0 h-[100px] flex items-center border-b border-gray-200 dark:border-gray-700 px-4 bg-gradient-to-br from-blue-50 to-white dark:from-gray-800 dark:to-gray-900">
-        <div className={`flex items-center w-full transition-all duration-300 ease-in-out ${collapsed ? 'justify-center' : 'space-x-3'}`}>
-          <img 
-            src={displayLogo} 
-            alt={`${schoolName} Logo`} 
-            className={`${collapsed ? 'h-10 w-10' : 'h-16 w-16'} object-contain transition-all duration-300 ease-in-out drop-shadow-md`}
-          />
-          {!collapsed && (
-            <div className="transition-all duration-300 ease-in-out opacity-100 min-w-0 flex-1">
-              <h1 className="font-bold text-base lg:text-lg bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-400 dark:to-blue-500 bg-clip-text text-transparent truncate leading-tight">{schoolName}</h1>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-normal truncate">{schoolMotto}</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400 font-semibold mt-0.5">{getRoleTitle()}</p>
-            </div>
-          )}
+    const handleNavigation = (href: string, label: string) => {
+      onNavigate?.();
+      startTransition(() => navigate(href));
+    };
+
+    return (
+      <div className="flex flex-col h-full">
+        <div className="flex-shrink-0 h-[100px] flex items-center border-b border-gray-200 dark:border-gray-700 px-4 bg-gradient-to-br from-blue-50 to-white dark:from-gray-800 dark:to-gray-900">
+          <div className={`flex items-center w-full transition-all duration-300 ease-in-out ${collapsed ? 'justify-center' : 'space-x-3'}`}>
+            <img 
+              src={displayLogo} 
+              alt={`${schoolName} Logo`} 
+              className={`${collapsed ? 'h-10 w-10' : 'h-16 w-16'} object-contain transition-all duration-300 ease-in-out drop-shadow-md`}
+            />
+            {!collapsed && (
+              <div className="transition-all duration-300 ease-in-out opacity-100 min-w-0 flex-1">
+                <h1 className="font-bold text-base lg:text-lg bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-400 dark:to-blue-500 bg-clip-text text-transparent truncate leading-tight">{schoolName}</h1>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-normal truncate">{schoolMotto}</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 font-semibold mt-0.5">{getRoleTitle()}</p>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
-      <nav className={`flex-1 min-h-0 p-3 space-y-1.5 transition-all duration-300 ease-in-out ${collapsed ? 'px-2' : ''} overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent hover:scrollbar-thumb-gray-400 dark:hover:scrollbar-thumb-gray-500`}>
-        {navigation.map((item) => {
-          const Icon = item.icon;
-          if ('type' in item && item.type === 'group') {
+        <nav className={`flex-1 min-h-0 p-3 space-y-1.5 transition-all duration-300 ease-in-out ${collapsed ? 'px-2' : ''} overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent hover:scrollbar-thumb-gray-400 dark:hover:scrollbar-thumb-gray-500`}>
+          {navigation.map((item) => {
+            const Icon = item.icon;
+            if ('type' in item && item.type === 'group') {
+              return (
+                <Collapsible 
+                  key={item.label} 
+                  open={item.isOpen} 
+                  onOpenChange={(open) => item.setIsOpen(open)}
+                >
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className={`w-full text-sm font-semibold rounded-xl ${
+                        collapsed ? 'justify-center px-2' : 'justify-start px-3'
+                      } text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 dark:hover:from-blue-900/20 dark:hover:to-blue-800/20 hover:text-blue-700 dark:hover:text-blue-300 transition-all duration-300 ease-in-out`}
+                      title={collapsed ? item.label : undefined}
+                    >
+                      <Icon className={`h-4 w-4 transition-all duration-300 ease-in-out ${collapsed ? '' : 'mr-3'}`} />
+                      {!collapsed && (
+                        <>
+                          <span className="flex-1 text-left opacity-100 transition-opacity duration-300 ease-in-out">{item.label}</span>
+                          {item.isOpen ? (
+                            <ChevronDown className="h-4 w-4 transition-transform" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 transition-transform" />
+                          )}
+                        </>
+                      )}
+                    </Button>
+                  </CollapsibleTrigger>
+                  {!collapsed && (
+                    <CollapsibleContent className="space-y-1 ml-2 border-l-2 border-gray-200 dark:border-gray-700 pl-2">
+                      {item.items.map((subItem) => {
+                        const SubIcon = subItem.icon;
+                        const subItemActive = isActive(subItem.href);
+                        return (
+                          <button
+                            key={subItem.href}
+                            type="button"
+                            onClick={() => handleNavigation(subItem.href, subItem.label)}
+                            className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 w-full text-left ${
+                              subItemActive 
+                                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/50 dark:shadow-blue-500/30' 
+                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
+                            }`}
+                            data-testid={`nav-${subItem.label.toLowerCase().replace(/\s+/g, '-')}`}
+                            title={subItem.label}
+                          >
+                            <SubIcon className="h-4 w-4 mr-3" />
+                            {subItem.label}
+                          </button>
+                        );
+                      })}
+                    </CollapsibleContent>
+                  )}
+                </Collapsible>
+              );
+            }
+            const navItem = item as NavItem;
+            const navItemActive = isActive(navItem.href);
+            const isLogout = navItem.href === '#logout';
+            if (isLogout) return null;
+
             return (
-              <Collapsible 
-                key={item.label} 
-                open={item.isOpen} 
-                onOpenChange={(open) => {
-                  if (open) {
-                    // Set this one as open and close others via openMenuKey
-                    item.setIsOpen(true);
-                  } else {
-                    item.setIsOpen(false);
-                  }
-                }}
+              <button
+                key={navItem.name}
+                type="button"
+                onClick={() => handleNavigation(navItem.href, navItem.name)}
+                className={`flex items-center ${collapsed ? 'justify-center px-2' : 'space-x-3 px-3'} py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ease-in-out w-full ${
+                  navItemActive 
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/50 dark:shadow-blue-500/30 scale-105' 
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 dark:hover:from-blue-900/20 dark:hover:to-blue-800/20 hover:text-blue-700 dark:hover:text-blue-300 hover:scale-102'
+                }`}
+                data-testid={`nav-${navItem.name.toLowerCase().replace(/\s+/g, '-')}`}
+                title={collapsed ? navItem.name : undefined}
               >
-                <CollapsibleTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className={`w-full text-sm font-semibold rounded-xl ${
-                      collapsed ? 'justify-center px-2' : 'justify-start px-3'
-                    } text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 dark:hover:from-blue-900/20 dark:hover:to-blue-800/20 hover:text-blue-700 dark:hover:text-blue-300 transition-all duration-300 ease-in-out`}
-                    title={collapsed ? item.label : undefined}
-                  >
-                    <Icon className={`h-4 w-4 transition-all duration-300 ease-in-out ${collapsed ? '' : 'mr-3'}`} />
-                    {!collapsed && (
-                      <>
-                        <span className="flex-1 text-left opacity-100 transition-opacity duration-300 ease-in-out">{item.label}</span>
-                        {item.isOpen ? (
-                          <ChevronDown className="h-4 w-4 transition-transform" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4 transition-transform" />
-                        )}
-                      </>
-                    )}
-                  </Button>
-                </CollapsibleTrigger>
-                {!collapsed && (
-                  <CollapsibleContent className="space-y-1 ml-2 border-l-2 border-gray-200 dark:border-gray-700 pl-2">
-                    {item.items.map((subItem) => {
-                      const SubIcon = subItem.icon;
-                      const subItemActive = isActive(subItem.href);
-                      return (
-                        <button
-                          key={subItem.href}
-                          type="button"
-                          onClick={() => {
-                            onNavigate?.();
-                            startTransition(() => navigate(subItem.href));
-                          }}
-                          className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 w-full text-left ${
-                            subItemActive 
-                              ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/50 dark:shadow-blue-500/30' 
-                              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-                          }`}
-                          data-testid={`nav-${subItem.label.toLowerCase().replace(/\s+/g, '-')}`}
-                          title={subItem.label}
-                        >
-                          <SubIcon className="h-4 w-4 mr-3" />
-                          {subItem.label}
-                        </button>
-                      );
-                    })}
-                  </CollapsibleContent>
-                )}
-              </Collapsible>
+                <Icon className={`h-4 w-4 transition-all duration-300 ease-in-out`} />
+                {!collapsed && <span className="transition-opacity duration-300 ease-in-out">{navItem.name}</span>}
+              </button>
             );
-          }
-          const navItem = item as NavItem;
-          const navItemActive = isActive(navItem.href);
-          const isLogout = navItem.href === '#logout';
-          if (isLogout) return null;
+          })}
+        </nav>
+        
+        {/* Logout button at the bottom */}
+        <div className={`mt-auto p-3 border-t border-gray-200 dark:border-gray-700 ${collapsed ? 'px-2' : ''}`}>
+          <button
+            key="logout"
+            type="button"
+            onClick={() => {
+              onNavigate?.();
+              handleLogout();
+            }}
+            className={`flex items-center ${collapsed ? 'justify-center px-2' : 'space-x-3 px-3'} py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ease-in-out w-full text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300`}
+            data-testid="nav-logout"
+            title={collapsed ? "Logout" : undefined}
+          >
+            <LogOut className={`h-4 w-4 transition-all duration-300 ease-in-out text-red-600 dark:text-red-400`} />
+            {!collapsed && <span className="transition-opacity duration-300 ease-in-out">Logout</span>}
+          </button>
+        </div>
 
-          return (
-            <button
-              key={navItem.name}
-              type="button"
-              onClick={() => {
-                onNavigate?.();
-                startTransition(() => navigate(navItem.href));
-              }}
-              className={`flex items-center ${collapsed ? 'justify-center px-2' : 'space-x-3 px-3'} py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ease-in-out w-full ${
-                navItemActive 
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/50 dark:shadow-blue-500/30 scale-105' 
-                  : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 dark:hover:from-blue-900/20 dark:hover:to-blue-800/20 hover:text-blue-700 dark:hover:text-blue-300 hover:scale-102'
-              }`}
-              data-testid={`nav-${navItem.name.toLowerCase().replace(/\s+/g, '-')}`}
-              title={collapsed ? navItem.name : undefined}
-            >
-              <Icon className={`h-4 w-4 transition-all duration-300 ease-in-out`} />
-              {!collapsed && <span className="transition-opacity duration-300 ease-in-out">{navItem.name}</span>}
-            </button>
-          );
-        })}
-      </nav>
-      
-      {/* Logout button at the bottom */}
-      <div className={`mt-auto p-3 border-t border-gray-200 dark:border-gray-700 ${collapsed ? 'px-2' : ''}`}>
-        <button
-          key="logout"
-          type="button"
-          onClick={() => {
-            onNavigate?.();
-            handleLogout();
-          }}
-          className={`flex items-center ${collapsed ? 'justify-center px-2' : 'space-x-3 px-3'} py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ease-in-out w-full text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300`}
-          data-testid="nav-logout"
-          title={collapsed ? "Logout" : undefined}
-        >
-          <LogOut className={`h-4 w-4 transition-all duration-300 ease-in-out text-red-600 dark:text-red-400`} />
-          {!collapsed && <span className="transition-opacity duration-300 ease-in-out">Logout</span>}
-        </button>
+        {!isMobile && <div className="flex-shrink-0 h-20" />}
       </div>
-
-      {!isMobile && <div className="flex-shrink-0 h-20" />}
-    </div>
-  );
-};
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex">
