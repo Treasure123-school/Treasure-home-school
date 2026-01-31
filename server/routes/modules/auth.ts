@@ -15,7 +15,7 @@ const loginSchema = z.object({
 router.post("/login", async (req, res) => {
   try {
     const { identifier, password } = loginSchema.parse(req.body);
-    const user = await storage.getUserByUsernameOrEmail(identifier);
+    const user = await storage.getUserByUsername(identifier);
     
     if (!user || !user.isActive) {
       return res.status(401).json({ message: "Invalid credentials" });
