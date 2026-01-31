@@ -7312,8 +7312,8 @@ Treasure-Home School Administration
         deletedRecords: deletionResult.deletedRecords,
         deletedFiles: {
           total: deletionResult.deletedFiles.length,
-          successful: deletionResult.deletedFiles.filter(f => f.success).length,
-          failed: deletionResult.deletedFiles.filter(f => !f.success).length
+          successful: deletionResult.deletedFiles.filter((f: { success: boolean }) => f.success).length,
+          failed: deletionResult.deletedFiles.filter((f: { success: boolean }) => !f.success).length
         },
         errors: deletionResult.errors,
         duration: deletionResult.duration,
@@ -13359,59 +13359,6 @@ Treasure-Home School Administration
 
     // ==================== END MODULE 1 ROUTES ====================
 
-    // Catch-all for non-API routes - redirect to frontend (PRODUCTION ONLY)
-    // In development, Vite dev server handles this
-    // In production with FRONTEND_URL set, redirect to separate frontend
-    if (process.env.NODE_ENV === 'production' && process.env.FRONTEND_URL) {
-      app.get('*', (req: Request, res: Response) => {
-        // Only handle non-API routes
-        if (!req.path.startsWith('/api/') && !req.path.startsWith('/uploads/')) {
-          const frontendUrl = process.env.FRONTEND_URL;
-          res.status(200).send(`
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <title>Treasure Home School - Backend API</title>
-                <meta http-equiv="refresh" content="3;url=${frontendUrl}">
-                <style>
-                  body {
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    min-height: 100vh;
-                    margin: 0;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                  }
-                  .container {
-                    text-align: center;
-                    padding: 2rem;
-                    background: rgba(255, 255, 255, 0.1);
-                    border-radius: 12px;
-                    backdrop-filter: blur(10px);
-                  }
-                  h1 { margin: 0 0 1rem 0; }
-                  a {
-                    color: #ffd700;
-                    text-decoration: none;
-                    font-weight: bold;
-                  }
-                </style>
-              </head>
-              <body>
-                <div class="container">
-                  <h1>🎓 Treasure Home School</h1>
-                  <p>This is the backend API server.</p>
-                  <p>Redirecting you to the main website...</p>
-                  <p><a href="${frontendUrl}">Click here if not redirected automatically</a></p>
-                </div>
-              </body>
-            </html>
-          `);
-        }
-      });
-    }
     const httpServer = createServer(app);
     return httpServer;
   }
