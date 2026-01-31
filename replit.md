@@ -57,6 +57,13 @@ The backend is an Express.js application built with Node.js and TypeScript, leve
   - Centralized `PortalShell` component in `client/src/components/layout/PortalShells.tsx` to handle role-based routing using a common shell component, reducing code duplication by ~60% across student, teacher, admin, and parent portals.
   - Optimized `PortalLayout` navigation with a unified `handleNavigation` helper.
   - Cleaned up `shared/schema.ts` by removing duplicate `enableSmsNotifications` and `enableEmailNotifications` property definitions in `systemSettings`.
+  - **Backend Route Modularization** (In Progress):
+    - Created `server/routes/` folder with modular route files organized by domain
+    - `auth.routes.ts`: Login, logout, password change, auth/me endpoints
+    - `health.routes.ts`: Health check and performance monitoring
+    - `middleware.ts`: Shared auth & authorization middleware
+    - Added `asyncHandler` utility in `server/utils/response-helpers.ts` to reduce try/catch boilerplate
+    - Legacy `routes.ts` (13,400+ lines) to be progressively decomposed into domain modules
 - **File Management**: Unified upload interface with Cloudinary CDN.
 - **Enhanced Announcement System**: Professional announcement creation with comprehensive features:
   - Title and rich content body (supports paragraphs and bullet points)

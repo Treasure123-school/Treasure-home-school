@@ -1,43 +1,24 @@
 /**
  * Routes Module Structure
  * 
- * This folder contains shared middleware and will contain modular route files
- * as the codebase is progressively refactored.
+ * This folder contains modular route files organized by domain.
  * 
  * Current Structure:
  * - middleware.ts: Shared authentication & authorization middleware
- *   - authenticateUser: JWT authentication middleware
- *   - authorizeRoles: Role-based authorization middleware
- *   - normalizeUuid: UUID normalization helper
- *   - SECRET_KEY, JWT_EXPIRES_IN: JWT configuration
- *   - ROLES: Role ID constants
- *   - AuthenticatedUser: User type interface
+ * - auth.routes.ts: Login, logout, password management
+ * - health.routes.ts: Health checks and performance monitoring
  * 
- * Future Route Modules (to be extracted from routes.ts):
- * - auth.routes.ts: Login, logout, password reset, change password
- * - users.routes.ts: User CRUD operations
- * - students.routes.ts: Student-specific operations
- * - exams.routes.ts: Exams, questions, sessions, results
- * - reports.routes.ts: Report cards
- * - admin.routes.ts: Admin operations
- * - academic.routes.ts: Terms, classes, subjects
- * - content.routes.ts: Announcements, homepage, notifications
- * - attendance.routes.ts: Attendance tracking
- * - public.routes.ts: Public API endpoints
- * 
- * Route Categories in routes.ts (by count):
- * - admin: 32 routes
- * - reports: 21 routes
- * - users: 13 routes
- * - teacher: 11 routes
- * - students: 8 routes
- * - terms: 6 routes
- * - exam-sessions: 6 routes
- * - exams: 6 routes
- * - auth: 5 routes
- * - notifications: 4 routes
- * - classes: 4 routes
- * - attendance: 4 routes
+ * Domain categories in legacy routes.ts (to be progressively extracted):
+ * - admin: 26 routes -> admin.routes.ts
+ * - reports: 23 routes -> reports.routes.ts
+ * - teacher: 12 routes -> teacher.routes.ts
+ * - students: 12 routes -> students.routes.ts
+ * - exams: 9 routes -> exams.routes.ts
+ * - terms: 8 routes -> terms.routes.ts
+ * - classes: 6 routes -> classes.routes.ts
+ * - notifications: 4 routes -> notifications.routes.ts
  */
 
 export * from './middleware';
+export { default as authRoutes } from './auth.routes';
+export { default as healthRoutes } from './health.routes';

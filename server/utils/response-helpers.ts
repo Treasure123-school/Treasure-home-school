@@ -72,3 +72,21 @@ export function parseBoolParam(value: string | undefined): boolean | undefined {
   if (value === undefined) return undefined;
   return value === "true" || value === "1";
 }
+
+import { Request, NextFunction } from "express";
+
+type AsyncRequestHandler = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => Promise<any>;
+
+export function asyncHandler(context: string, handler: AsyncRequestHandler) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      await handler(req, res, next);
+    } catch (error) {
+      handleRouteError(res, error, context);
+    }
+  };
+}
