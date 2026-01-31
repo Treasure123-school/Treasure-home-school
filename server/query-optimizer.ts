@@ -275,12 +275,3 @@ export class RateLimiter {
     this.requests.clear();
   }
 }
-
-// Singleton rate limiter for API endpoints
-export const apiRateLimiter = new RateLimiter(100, 60000);
-
-// Rate limiter for login attempts (stricter)
-export const loginRateLimiter = new RateLimiter(5, 900000); // 5 attempts per 15 minutes
-
-// Rate limiter for expensive operations like report generation
-export const heavyOperationLimiter = new RateLimiter(10, 60000);

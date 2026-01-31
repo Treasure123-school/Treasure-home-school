@@ -18,6 +18,22 @@ export const ROLE_IDS = {
   PARENT: 5
 } as const;
 
+export const ROLE_CODES = {
+  [ROLE_IDS.SUPER_ADMIN]: 'SUP',
+  [ROLE_IDS.ADMIN]: 'ADM',
+  [ROLE_IDS.TEACHER]: 'TCH',
+  [ROLE_IDS.STUDENT]: 'STU',
+  [ROLE_IDS.PARENT]: 'PAR'
+} as const;
+
+export const ROLE_CODE_NAMES = {
+  SUP: 'SUPER_ADMIN',
+  ADM: 'ADMIN',
+  TCH: 'TEACHER',
+  STU: 'STUDENT',
+  PAR: 'PARENT'
+} as const;
+
 export const ROLE_NAMES = {
   [ROLE_IDS.SUPER_ADMIN]: 'Super Admin',
   [ROLE_IDS.ADMIN]: 'Admin',
