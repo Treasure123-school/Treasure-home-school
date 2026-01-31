@@ -111,3 +111,10 @@ The backend is an Express.js application built with Node.js and TypeScript, leve
 - **Deployment**: Render (Backend), Vercel (Frontend)
 - **Real-time Communication**: Socket.IO with optimization layer
 - **Caching**: In-memory (L1) + Redis-ready (L2)
+
+## Recent Code Cleanup (January 2026)
+Removed unused/duplicate backend files following DRY principles:
+- `server/validate-env.ts` - Duplicate of env-validation.ts (unused)
+- `server/seed-classes.ts` - Unused seeding file
+- `server/seed-production.ts` - Unused production seeding file
+- `server/backup-database.ts` - Unused backup utility
