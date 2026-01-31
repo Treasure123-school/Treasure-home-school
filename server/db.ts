@@ -105,12 +105,6 @@ export function getDatabase(): DatabaseInstance {
   return db;
 }
 
-/**
- * Get the raw SQLite connection (deprecated - always returns null)
- */
-export function getSqliteConnection(): null {
-  return null;
-}
 
 /**
  * Get the neon client for raw SQL queries (tagged template literals)

@@ -59,10 +59,21 @@ The backend is an Express.js application built with Node.js and TypeScript, leve
   - Cleaned up `shared/schema.ts` by removing duplicate `enableSmsNotifications` and `enableEmailNotifications` property definitions in `systemSettings`.
   - **Backend Route Modularization** (In Progress):
     - Created `server/routes/` folder with modular route files organized by domain
-    - `auth.routes.ts`: Login, logout, password change, auth/me endpoints
-    - `health.routes.ts`: Health check and performance monitoring
-    - `middleware.ts`: Shared auth & authorization middleware
-    - Added `asyncHandler` utility in `server/utils/response-helpers.ts` to reduce try/catch boilerplate
+    - Route modules created:
+      - `auth.routes.ts`: Login, logout, password change, auth/me (4 endpoints)
+      - `health.routes.ts`: Health check and performance monitoring (3 endpoints)
+      - `terms.routes.ts`: Academic terms CRUD (8 endpoints)
+      - `classes.routes.ts`: School classes CRUD (4 endpoints)
+      - `subjects.routes.ts`: School subjects CRUD (5 endpoints)
+      - `notifications.routes.ts`: User notifications (4 endpoints)
+      - `middleware.ts`: Shared auth & authorization middleware
+    - Utility modules created:
+      - `server/utils/comment-generators.ts`: Report card comment generation
+      - `server/utils/cache-helpers.ts`: Centralized cache invalidation
+      - `server/utils/exam-scoring.ts`: Theory answer scoring algorithm
+      - `server/utils/response-helpers.ts`: HTTP response helpers with asyncHandler
+    - Added `asyncHandler` utility to reduce try/catch boilerplate
+    - Removed deprecated `getSqliteConnection()` function
     - Legacy `routes.ts` (13,400+ lines) to be progressively decomposed into domain modules
 - **File Management**: Unified upload interface with Cloudinary CDN.
 - **Enhanced Announcement System**: Professional announcement creation with comprehensive features:
