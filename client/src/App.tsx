@@ -10,6 +10,7 @@ import { ROLE_IDS } from "@/lib/roles";
 import { MinimalRouteFallback } from "@/components/ui/skeletons";
 import { SyncIndicator } from "@/components/SyncIndicator";
 import { StudentPortalShell, TeacherPortalShell, AdminPortalShell, ParentPortalShell } from "@/components/layout/PortalShells";
+import { SuperAdminLayoutWrapper } from "@/components/layout/SuperAdminLayoutWrapper";
 import SuperAdminLayout from "@/components/SuperAdminLayout";
 
 // Public pages - eagerly loaded for instant navigation
