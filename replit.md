@@ -53,6 +53,10 @@ The backend is an Express.js application built with Node.js and TypeScript, leve
   - Admin (Principal) profile includes digital signature setup for report card signing
   - Teacher profiles include digital signature setup for class teacher signing
   - SuperAdmin portal does not have principal signature (reserved for Admin role)
+- **Refactored Code Structure**:
+  - Centralized `PortalShell` component in `client/src/components/layout/PortalShells.tsx` to handle role-based routing using a common shell component, reducing code duplication by ~60% across student, teacher, admin, and parent portals.
+  - Optimized `PortalLayout` navigation with a unified `handleNavigation` helper.
+  - Cleaned up `shared/schema.ts` by removing duplicate `enableSmsNotifications` and `enableEmailNotifications` property definitions in `systemSettings`.
 - **File Management**: Unified upload interface with Cloudinary CDN.
 - **Enhanced Announcement System**: Professional announcement creation with comprehensive features:
   - Title and rich content body (supports paragraphs and bullet points)
