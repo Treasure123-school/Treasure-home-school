@@ -8576,7 +8576,7 @@ var init_schema = __esm({
       schoolAddress: text2("school_address"),
       maintenanceMode: integer2("maintenance_mode", { mode: "boolean" }).notNull().default(false),
       maintenanceModeMessage: text2("maintenance_mode_message"),
-      enableSmsNotifications: integer2("enable_sms_notifications", { mode: "boolean" }).notNull().default(false),
+      enableSmsNotifications: integer2("enable_sms_notifications", { mode: "boolean" }).notNull().default(false)
       enableEmailNotifications: integer2("enable_email_notifications", { mode: "boolean" }).notNull().default(true),
       enableExamsModule: integer2("enable_exams_module", { mode: "boolean" }).notNull().default(true),
       enableAttendanceModule: integer2("enable_attendance_module", { mode: "boolean" }).notNull().default(true),
