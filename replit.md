@@ -125,3 +125,16 @@ Started modularizing the large routes.ts file (~13,500 lines):
 - Created `server/routes/index.ts` - Module documentation and exports
 - Updated routes.ts to import from shared middleware (removed ~100 lines of duplicate code)
 - Future work: Continue extracting route handlers into domain-specific modules
+
+### Utility Modules (January 2026)
+Created reusable utility modules following DRY principles:
+- `server/utils/response-helpers.ts` - Standardized HTTP response functions (sendSuccess, sendBadRequest, sendNotFound, sendServerError, handleRouteError)
+- `server/utils/auth-messages.ts` - Centralized authentication messages (suspension messages by role, rate limit messages, credential error messages)
+- `server/utils/rate-limiter.ts` - Rate limiting class for login attempts with violation tracking and automatic cleanup
+- `server/utils/index.ts` - Barrel export for all utilities
+
+These utilities can be imported to replace repetitive patterns across routes:
+- 256 occurrences of `res.status(500).json` can use `sendServerError()`
+- 153 occurrences of `res.status(400).json` can use `sendBadRequest()`
+- 119 occurrences of `res.status(404).json` can use `sendNotFound()`
+- Duplicate suspension messages can use `getSuspensionMessage(roleName)`
