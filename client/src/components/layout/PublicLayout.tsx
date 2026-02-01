@@ -124,7 +124,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
           isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
       >
-        <div className="flex flex-col h-full pt-32 px-10">
+        <div className="flex flex-col h-full pt-44 px-10">
           <nav className="flex flex-col gap-8">
             {navigation.map((item) => (
               <Link 
