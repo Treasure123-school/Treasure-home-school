@@ -68,15 +68,20 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
 
   return (
     <div className="min-h-screen bg-white">
-      <header className={`fixed top-0 left-0 right-0 z-50 bg-white shadow-sm h-28 flex items-center transition-all duration-300 ${showHeader ? 'translate-y-0' : '-translate-y-full'}`}>
+      {/* Main Header */}
+      <header 
+        className={`fixed top-0 left-0 right-0 z-[100] bg-white shadow-sm h-28 flex items-center transition-transform duration-300 ${
+          showHeader || isMobileMenuOpen ? 'translate-y-0' : '-translate-y-full'
+        }`}
+      >
         <div className="container max-w-7xl mx-auto px-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-4">
+            <Link href="/" className="flex items-center gap-4" onClick={() => setIsMobileMenuOpen(false)}>
               {settings?.schoolLogo ? (
                 <img 
                   src={settings.schoolLogo} 
                   alt="Logo" 
-                  className="h-20 w-auto object-contain filter drop-shadow-[0_0_8px_rgba(255,255,255,0.9)] contrast-[1.1] saturate-[1.1]" 
+                  className="h-20 w-auto object-contain" 
                 />
               ) : null}
               <div className="flex flex-col">
@@ -95,7 +100,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-10">
             {navigation.map((item) => (
-              <Link key={item.name} href={item.href} className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${isActive(item.href) ? 'text-[#00BFFF]' : 'text-gray-900 hover:text-[#00BFFF]'}`}>{item.name}</Link>
+              <Link key={item.name} href={item.href} className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${isActive(item.href) ? 'text-blue-600' : 'text-gray-900 hover:text-blue-600'}`}>{item.name}</Link>
             ))}
             <Button asChild className="btn-primary"><Link href="/contact" className="flex items-center gap-2"><span>Contact Us</span><ArrowRight className="w-3 h-3" /></Link></Button>
           </nav>
@@ -104,44 +109,44 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="lg:hidden relative z-[60]" 
+            className="lg:hidden" 
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label="Toggle Menu"
           >
             {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </Button>
         </div>
-
-        {/* Mobile Navigation Overlay */}
-        <div 
-          className={`fixed inset-0 bg-white z-[55] lg:hidden transition-all duration-300 ease-in-out ${
-            isMobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
-          }`}
-        >
-          <div className="flex flex-col h-full pt-32 px-10">
-            <nav className="flex flex-col gap-10">
-              {navigation.map((item) => (
-                <Link 
-                  key={item.name} 
-                  href={item.href} 
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`text-2xl font-black uppercase tracking-[0.2em] transition-colors ${
-                    isActive(item.href) ? 'text-blue-600' : 'text-gray-900'
-                  }`}
-                >
-                  {item.name}
-                </Link>
-              ))}
-              <Button asChild className="btn-primary w-full mt-10 h-14 text-sm font-black uppercase tracking-widest">
-                <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-3">
-                  <span>Contact Us</span>
-                  <ArrowRight className="w-5 h-5" />
-                </Link>
-              </Button>
-            </nav>
-          </div>
-        </div>
       </header>
+
+      {/* Mobile Navigation Overlay */}
+      <div 
+        className={`fixed inset-0 bg-white z-[90] lg:hidden transition-all duration-300 ease-in-out ${
+          isMobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+      >
+        <div className="flex flex-col h-full pt-32 px-10">
+          <nav className="flex flex-col gap-8">
+            {navigation.map((item) => (
+              <Link 
+                key={item.name} 
+                href={item.href} 
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`text-2xl font-black uppercase tracking-[0.2em] transition-colors ${
+                  isActive(item.href) ? 'text-blue-600' : 'text-gray-900'
+                }`}
+              >
+                {item.name}
+              </Link>
+            ))}
+            <Button asChild className="btn-primary w-full mt-6 h-14 text-sm font-black uppercase tracking-widest">
+              <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-3">
+                <span>Contact Us</span>
+                <ArrowRight className="w-5 h-5" />
+              </Link>
+            </Button>
+          </nav>
+        </div>
+      </div>
 
       <main className="pt-28">{children}</main>
 
