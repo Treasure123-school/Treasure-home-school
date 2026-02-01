@@ -9,12 +9,19 @@ import academicRoutes from "./modules/academic";
 import teacherAssignmentsRouter from "../teacher-assignment-routes";
 
 export function registerRoutes(app: Express) {
+  // Authentication Routes
   app.use("/api/auth", authRoutes);
+  
+  // Admin & Management Routes
   app.use("/api/admin", adminRoutes);
-  app.use("/api/reports", reportsRoutes);
-  app.use("/api/exams", examsRoutes);
+  app.use("/api/academic", academicRoutes);
   app.use("/api/students", studentsRoutes);
   app.use("/api/teachers", teachersRoutes);
-  app.use("/api/academic", academicRoutes);
+  
+  // Academic & Result Routes
+  app.use("/api/exams", examsRoutes);
+  app.use("/api/reports", reportsRoutes);
+  
+  // Legacy/Teacher Assignment Routes
   app.use("/", teacherAssignmentsRouter);
 }

@@ -10180,7 +10180,7 @@ __export(seed_test_users_exports, {
   seedTestUsers: () => seedTestUsers
 });
 import bcrypt2 from "bcrypt";
-import { eq as eq3 } from "drizzle-orm";
+import { eq as eq5 } from "drizzle-orm";
 import { randomUUID as randomUUID2 } from "crypto";
 async function seedTestUsers() {
   try {
@@ -10245,7 +10245,7 @@ async function seedTestUsers() {
     const defaultStudentClass = classes3.find((c) => c.name === "JSS 1") || classes3[0];
     console.log("\u{1F4CB} Creating test user accounts for all 5 roles...");
     for (const userData of testUsers) {
-      const existingUser = await db2.select().from(users2).where(eq3(users2.username, userData.username)).limit(1);
+      const existingUser = await db2.select().from(users2).where(eq5(users2.username, userData.username)).limit(1);
       let userId = userData.id;
       if (existingUser.length === 0) {
         const roleId = roleMap[userData.roleName];
@@ -10275,7 +10275,7 @@ async function seedTestUsers() {
         console.log(`\u2139\uFE0F  ${userData.roleName} account already exists: ${userData.username}`);
       }
       if (userData.roleName === "Student" && defaultStudentClass) {
-        const existingStudent = await db2.select().from(students2).where(eq3(students2.id, userId)).limit(1);
+        const existingStudent = await db2.select().from(students2).where(eq5(students2.id, userId)).limit(1);
         if (existingStudent.length === 0) {
           const admissionNumber = `THS-STU-${userData.username.toUpperCase()}`;
           await db2.insert(students2).values({
@@ -10590,11 +10590,944 @@ router3.get("/grading/tasks", authenticateUser, authorizeRoles(ROLE_IDS.TEACHER,
 });
 var reports_default = router3;
 
+// server/routes/modules/exams.ts
+init_storage();
+import { Router as Router4 } from "express";
+var router4 = Router4();
+router4.get("/", authenticateUser, async (req, res) => {
+  try {
+    const exams3 = await storage.getAllExams();
+    res.json(exams3);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch exams" });
+  }
+});
+router4.get("/:id", authenticateUser, async (req, res) => {
+  try {
+    const exam = await storage.getExamById(parseInt(req.params.id));
+    if (!exam) return res.status(404).json({ message: "Exam not found" });
+    res.json(exam);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch exam" });
+  }
+});
+var exams_default = router4;
+
+// server/routes/modules/students.ts
+init_storage();
+import { Router as Router5 } from "express";
+var router5 = Router5();
+router5.get("/", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+  try {
+    const students3 = await storage.getAllStudents();
+    res.json(students3);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch students" });
+  }
+});
+router5.get("/:id", authenticateUser, async (req, res) => {
+  try {
+    const student = await storage.getUser(req.params.id);
+    if (!student) return res.status(404).json({ message: "Student not found" });
+    res.json(student);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch student" });
+  }
+});
+var students_default = router5;
+
+// server/routes/modules/teachers.ts
+init_storage();
+import { Router as Router6 } from "express";
+var router6 = Router6();
+router6.get("/", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+  try {
+    const allUsers = await storage.getAllUsers();
+    const teachers = allUsers.filter((u) => u.roleId === ROLE_IDS.TEACHER);
+    res.json(teachers);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch teachers" });
+  }
+});
+var teachers_default = router6;
+
+// server/routes/modules/academic.ts
+init_storage();
+import { Router as Router7 } from "express";
+var router7 = Router7();
+router7.get("/classes", authenticateUser, async (req, res) => {
+  try {
+    const classes3 = await storage.getClasses();
+    res.json(classes3);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch classes" });
+  }
+});
+router7.get("/subjects", authenticateUser, async (req, res) => {
+  try {
+    const subjects3 = await storage.getSubjects();
+    res.json(subjects3);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch subjects" });
+  }
+});
+router7.get("/terms", authenticateUser, async (req, res) => {
+  try {
+    const terms = await storage.getAcademicTerms();
+    res.json(terms);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch academic terms" });
+  }
+});
+var academic_default = router7;
+
+// server/teacher-assignment-routes.ts
+init_db();
+init_storage();
+init_schema_pg();
+import { Router as Router8 } from "express";
+import jwt4 from "jsonwebtoken";
+import { eq as eq4, and as and4, desc as desc2, sql as sql4, isNull as isNull3, or as or4, gte as gte3, inArray as inArray3 } from "drizzle-orm";
+import { z as z3 } from "zod";
+
+// server/teacher-auth-middleware.ts
+init_db();
+init_schema_pg();
+import { eq as eq3, and as and3, isNull as isNull2, or as or3, gte as gte2 } from "drizzle-orm";
+function sanitizeIp(ip) {
+  if (!ip) return null;
+  const sanitized = ip.replace(/[^a-fA-F0-9.:,\s]/g, "").substring(0, 45);
+  return sanitized || null;
+}
+async function checkTeacherAssignment(teacherId, classId, subjectId, termId) {
+  try {
+    const now = /* @__PURE__ */ new Date();
+    const conditions = [
+      eq3(teacherClassAssignments.teacherId, teacherId),
+      eq3(teacherClassAssignments.isActive, true),
+      or3(
+        isNull2(teacherClassAssignments.validUntil),
+        gte2(teacherClassAssignments.validUntil, now)
+      )
+    ];
+    if (classId) {
+      conditions.push(eq3(teacherClassAssignments.classId, classId));
+    }
+    if (subjectId) {
+      conditions.push(eq3(teacherClassAssignments.subjectId, subjectId));
+    }
+    if (termId) {
+      conditions.push(eq3(teacherClassAssignments.termId, termId));
+    }
+    const assignments = await db.select().from(teacherClassAssignments).where(and3(...conditions)).limit(1);
+    return assignments.length > 0;
+  } catch (error) {
+    console.error("Error checking teacher assignment:", error);
+    return false;
+  }
+}
+async function getTeacherAssignments(teacherId, termId) {
+  try {
+    const now = /* @__PURE__ */ new Date();
+    const conditions = [
+      eq3(teacherClassAssignments.teacherId, teacherId),
+      eq3(teacherClassAssignments.isActive, true),
+      or3(
+        isNull2(teacherClassAssignments.validUntil),
+        gte2(teacherClassAssignments.validUntil, now)
+      )
+    ];
+    if (termId) {
+      conditions.push(eq3(teacherClassAssignments.termId, termId));
+    }
+    return await db.select().from(teacherClassAssignments).where(and3(...conditions));
+  } catch (error) {
+    console.error("Error getting teacher assignments:", error);
+    return [];
+  }
+}
+async function logUnauthorizedAccess(userId, attemptedAction, attemptedResource, classId, subjectId, reason, req) {
+  try {
+    await db.insert(unauthorizedAccessLogs).values({
+      userId: userId || null,
+      attemptedAction,
+      attemptedResource,
+      classId: classId || null,
+      subjectId: subjectId || null,
+      ipAddress: sanitizeIp(req?.headers?.["x-forwarded-for"]) || sanitizeIp(req?.ip),
+      userAgent: req?.headers?.["user-agent"]?.substring(0, 500) || null,
+      reason: reason || "Unauthorized access attempt"
+    });
+  } catch (error) {
+    console.error("Error logging unauthorized access:", error);
+  }
+}
+
+// server/teacher-assignment-routes.ts
+var JWT_SECRET3 = process.env.JWT_SECRET || (process.env.NODE_ENV === "development" ? "dev-secret-key-change-in-production" : void 0);
+function normalizeUuid3(raw) {
+  if (!raw) return void 0;
+  if (typeof raw === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
+    return raw;
+  }
+  let bytes;
+  if (typeof raw === "string" && raw.includes(",")) {
+    const parts = raw.split(",").map((s) => parseInt(s.trim()));
+    if (parts.length === 16 && parts.every((n) => n >= 0 && n <= 255)) {
+      bytes = parts;
+    }
+  }
+  if (Array.isArray(raw) && raw.length === 16) {
+    bytes = raw;
+  } else if (raw instanceof Uint8Array && raw.length === 16) {
+    bytes = Array.from(raw);
+  }
+  if (bytes) {
+    const hex = bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+  }
+  return void 0;
+}
+var router8 = Router8();
+var createAssignmentSchema = z3.object({
+  teacherId: z3.string().min(1),
+  classId: z3.number().int().positive(),
+  subjectId: z3.number().int().positive(),
+  termId: z3.number().int().positive().optional(),
+  session: z3.string().optional(),
+  department: z3.string().optional(),
+  validUntil: z3.string().optional()
+});
+var updateAssignmentSchema = z3.object({
+  isActive: z3.boolean().optional(),
+  termId: z3.number().int().positive().optional().nullable(),
+  session: z3.string().optional(),
+  department: z3.string().optional(),
+  validUntil: z3.string().optional().nullable()
+});
+var gradingBoundarySchema = z3.object({
+  name: z3.string().min(1),
+  grade: z3.string().min(1),
+  minScore: z3.number().int().min(0).max(100),
+  maxScore: z3.number().int().min(0).max(100),
+  remark: z3.string().optional(),
+  gradePoint: z3.number().int().optional(),
+  isDefault: z3.boolean().optional(),
+  termId: z3.number().int().positive().optional().nullable(),
+  classId: z3.number().int().positive().optional().nullable(),
+  subjectId: z3.number().int().positive().optional().nullable()
+});
+var continuousAssessmentSchema = z3.object({
+  studentId: z3.string().min(1),
+  classId: z3.number().int().positive(),
+  subjectId: z3.number().int().positive(),
+  termId: z3.number().int().positive(),
+  testScore: z3.number().int().min(0).max(40).optional(),
+  examScore: z3.number().int().min(0).max(60).optional()
+});
+var requireAuth = async (req, res, next) => {
+  try {
+    if (req.user) {
+      return next();
+    }
+    const authHeader = (req.headers.authorization || "").trim();
+    const [scheme, token] = authHeader.split(/\s+/);
+    if (!/^bearer$/i.test(scheme) || !token) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+    let decoded;
+    try {
+      decoded = jwt4.verify(token, JWT_SECRET3);
+    } catch (jwtError) {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+    const normalizedUserId = normalizeUuid3(decoded.userId);
+    if (!normalizedUserId) {
+      return res.status(401).json({ message: "Invalid token format" });
+    }
+    const user = await storage.getUser(normalizedUserId);
+    if (!user) {
+      return res.status(401).json({ message: "User no longer exists" });
+    }
+    if (user.isActive === false) {
+      return res.status(401).json({ message: "Account has been deactivated" });
+    }
+    if (user.roleId !== decoded.roleId) {
+      return res.status(401).json({ message: "User role has changed, please log in again" });
+    }
+    req.user = user;
+    next();
+  } catch (error) {
+    console.error("Authentication error:", error);
+    res.status(401).json({ message: "Authentication failed" });
+  }
+};
+var requireAdmin = async (req, res, next) => {
+  await requireAuth(req, res, () => {
+    if (!req.user) {
+      return;
+    }
+    const user = req.user;
+    if (user.roleId !== ROLE_IDS.SUPER_ADMIN && user.roleId !== ROLE_IDS.ADMIN) {
+      return res.status(403).json({ message: "Admin access required" });
+    }
+    next();
+  });
+};
+function sanitizeIp2(ip) {
+  if (!ip) return null;
+  const sanitized = ip.replace(/[^a-fA-F0-9.:,\s]/g, "").substring(0, 45);
+  return sanitized || null;
+}
+router8.get("/api/teacher-assignments", requireAuth, async (req, res) => {
+  try {
+    const user = req.user;
+    const { teacherId, classId, subjectId, termId, active, includeInactive } = req.query;
+    const now = /* @__PURE__ */ new Date();
+    let conditions = [];
+    if (user.roleId === ROLE_IDS.TEACHER) {
+      conditions.push(eq4(teacherClassAssignments.teacherId, user.id));
+      conditions.push(eq4(teacherClassAssignments.isActive, true));
+      conditions.push(or4(
+        isNull3(teacherClassAssignments.validUntil),
+        gte3(teacherClassAssignments.validUntil, now)
+      ));
+    } else {
+      if (teacherId && typeof teacherId === "string") {
+        conditions.push(eq4(teacherClassAssignments.teacherId, teacherId));
+      }
+      if (active === "true" || includeInactive !== "true") {
+        conditions.push(eq4(teacherClassAssignments.isActive, true));
+      }
+    }
+    if (classId) {
+      conditions.push(eq4(teacherClassAssignments.classId, parseInt(classId)));
+    }
+    if (subjectId) {
+      conditions.push(eq4(teacherClassAssignments.subjectId, parseInt(subjectId)));
+    }
+    if (termId) {
+      conditions.push(eq4(teacherClassAssignments.termId, parseInt(termId)));
+    }
+    const assignments = await db.select({
+      id: teacherClassAssignments.id,
+      teacherId: teacherClassAssignments.teacherId,
+      classId: teacherClassAssignments.classId,
+      subjectId: teacherClassAssignments.subjectId,
+      department: teacherClassAssignments.department,
+      termId: teacherClassAssignments.termId,
+      session: teacherClassAssignments.session,
+      isActive: teacherClassAssignments.isActive,
+      validUntil: teacherClassAssignments.validUntil,
+      createdAt: teacherClassAssignments.createdAt,
+      teacherFirstName: users.firstName,
+      teacherLastName: users.lastName,
+      className: classes.name,
+      classLevel: classes.level,
+      subjectName: subjects.name,
+      subjectCode: subjects.code
+    }).from(teacherClassAssignments).leftJoin(users, eq4(teacherClassAssignments.teacherId, users.id)).leftJoin(classes, eq4(teacherClassAssignments.classId, classes.id)).leftJoin(subjects, eq4(teacherClassAssignments.subjectId, subjects.id)).where(conditions.length > 0 ? and4(...conditions) : void 0).orderBy(desc2(teacherClassAssignments.createdAt));
+    res.json(assignments);
+  } catch (error) {
+    console.error("Error fetching teacher assignments:", error);
+    res.status(500).json({ message: "Failed to fetch assignments" });
+  }
+});
+router8.post("/api/teacher-assignments", requireAdmin, async (req, res) => {
+  try {
+    const user = req.user;
+    const data = createAssignmentSchema.parse(req.body);
+    const existingAssignment = await db.select().from(teacherClassAssignments).where(and4(
+      eq4(teacherClassAssignments.teacherId, data.teacherId),
+      eq4(teacherClassAssignments.classId, data.classId),
+      eq4(teacherClassAssignments.subjectId, data.subjectId),
+      eq4(teacherClassAssignments.isActive, true),
+      data.termId ? eq4(teacherClassAssignments.termId, data.termId) : isNull3(teacherClassAssignments.termId)
+    )).limit(1);
+    if (existingAssignment.length > 0) {
+      const existing = existingAssignment[0];
+      return res.status(409).json({
+        message: "This teacher is already assigned to this class/subject combination",
+        existingAssignment: {
+          id: existing.id,
+          termId: existing.termId,
+          session: existing.session,
+          validUntil: existing.validUntil
+        },
+        hint: "You can update the existing assignment or deactivate it before creating a new one."
+      });
+    }
+    let newAssignment;
+    try {
+      [newAssignment] = await db.insert(teacherClassAssignments).values({
+        teacherId: data.teacherId,
+        classId: data.classId,
+        subjectId: data.subjectId,
+        termId: data.termId || null,
+        session: data.session || null,
+        department: data.department || null,
+        assignedBy: user.id,
+        validUntil: data.validUntil ? new Date(data.validUntil) : null,
+        isActive: true
+      }).returning();
+    } catch (dbError) {
+      if (dbError.code === "23505") {
+        return res.status(409).json({
+          message: "A duplicate assignment already exists for this teacher-class-subject combination.",
+          hint: "Please check existing assignments or update the current one."
+        });
+      }
+      throw dbError;
+    }
+    await db.insert(teacherAssignmentHistory).values({
+      assignmentId: newAssignment.id,
+      teacherId: data.teacherId,
+      classId: data.classId,
+      subjectId: data.subjectId,
+      action: "created",
+      newValues: JSON.stringify(newAssignment),
+      performedBy: user.id,
+      ipAddress: sanitizeIp2(req.headers["x-forwarded-for"]) || sanitizeIp2(req.ip)
+    });
+    res.status(201).json(newAssignment);
+  } catch (error) {
+    if (error instanceof z3.ZodError) {
+      return res.status(400).json({ message: "Validation error", errors: error.errors });
+    }
+    console.error("Error creating teacher assignment:", error);
+    res.status(500).json({ message: "Failed to create assignment" });
+  }
+});
+router8.put("/api/teacher-assignments/:id", requireAdmin, async (req, res) => {
+  try {
+    const user = req.user;
+    const assignmentId = parseInt(req.params.id);
+    const data = updateAssignmentSchema.parse(req.body);
+    const [existing] = await db.select().from(teacherClassAssignments).where(eq4(teacherClassAssignments.id, assignmentId));
+    if (!existing) {
+      return res.status(404).json({ message: "Assignment not found" });
+    }
+    const updateData = { updatedAt: /* @__PURE__ */ new Date() };
+    if (data.isActive !== void 0) updateData.isActive = data.isActive;
+    if (data.termId !== void 0) updateData.termId = data.termId;
+    if (data.session !== void 0) updateData.session = data.session;
+    if (data.department !== void 0) updateData.department = data.department;
+    if (data.validUntil !== void 0) {
+      updateData.validUntil = data.validUntil ? new Date(data.validUntil) : null;
+    }
+    const [updated] = await db.update(teacherClassAssignments).set(updateData).where(eq4(teacherClassAssignments.id, assignmentId)).returning();
+    await db.insert(teacherAssignmentHistory).values({
+      assignmentId,
+      teacherId: existing.teacherId,
+      classId: existing.classId,
+      subjectId: existing.subjectId,
+      action: "updated",
+      previousValues: JSON.stringify(existing),
+      newValues: JSON.stringify(updated),
+      performedBy: user.id,
+      ipAddress: sanitizeIp2(req.headers["x-forwarded-for"]) || sanitizeIp2(req.ip)
+    });
+    res.json(updated);
+  } catch (error) {
+    if (error instanceof z3.ZodError) {
+      return res.status(400).json({ message: "Validation error", errors: error.errors });
+    }
+    console.error("Error updating teacher assignment:", error);
+    res.status(500).json({ message: "Failed to update assignment" });
+  }
+});
+router8.delete("/api/teacher-assignments/:id", requireAdmin, async (req, res) => {
+  try {
+    const user = req.user;
+    const assignmentId = parseInt(req.params.id);
+    const [existing] = await db.select().from(teacherClassAssignments).where(eq4(teacherClassAssignments.id, assignmentId));
+    if (!existing) {
+      return res.status(404).json({ message: "Assignment not found" });
+    }
+    await db.insert(teacherAssignmentHistory).values({
+      assignmentId,
+      teacherId: existing.teacherId,
+      classId: existing.classId,
+      subjectId: existing.subjectId,
+      action: "deleted",
+      previousValues: JSON.stringify(existing),
+      performedBy: user.id,
+      reason: req.body.reason || null,
+      ipAddress: sanitizeIp2(req.headers["x-forwarded-for"]) || sanitizeIp2(req.ip)
+    });
+    await db.delete(teacherClassAssignments).where(eq4(teacherClassAssignments.id, assignmentId));
+    res.json({ message: "Assignment deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting teacher assignment:", error);
+    res.status(500).json({ message: "Failed to delete assignment" });
+  }
+});
+router8.get("/api/grading-boundaries", requireAuth, async (req, res) => {
+  try {
+    const { termId, classId, subjectId, defaultOnly } = req.query;
+    let conditions = [];
+    if (termId) conditions.push(eq4(gradingBoundaries.termId, parseInt(termId)));
+    if (classId) conditions.push(eq4(gradingBoundaries.classId, parseInt(classId)));
+    if (subjectId) conditions.push(eq4(gradingBoundaries.subjectId, parseInt(subjectId)));
+    if (defaultOnly === "true") conditions.push(eq4(gradingBoundaries.isDefault, true));
+    const boundaries = await db.select().from(gradingBoundaries).where(conditions.length > 0 ? and4(...conditions) : void 0).orderBy(desc2(gradingBoundaries.minScore));
+    res.json(boundaries);
+  } catch (error) {
+    console.error("Error fetching grading boundaries:", error);
+    res.status(500).json({ message: "Failed to fetch grading boundaries" });
+  }
+});
+router8.post("/api/grading-boundaries", requireAdmin, async (req, res) => {
+  try {
+    const user = req.user;
+    const data = gradingBoundarySchema.parse(req.body);
+    if (data.minScore > data.maxScore) {
+      return res.status(400).json({ message: "Minimum score cannot be greater than maximum score" });
+    }
+    const [newBoundary] = await db.insert(gradingBoundaries).values({
+      name: data.name,
+      grade: data.grade,
+      minScore: data.minScore,
+      maxScore: data.maxScore,
+      remark: data.remark || null,
+      gradePoint: data.gradePoint || null,
+      isDefault: data.isDefault || false,
+      termId: data.termId || null,
+      classId: data.classId || null,
+      subjectId: data.subjectId || null,
+      createdBy: user.id
+    }).returning();
+    res.status(201).json(newBoundary);
+  } catch (error) {
+    if (error instanceof z3.ZodError) {
+      return res.status(400).json({ message: "Validation error", errors: error.errors });
+    }
+    console.error("Error creating grading boundary:", error);
+    res.status(500).json({ message: "Failed to create grading boundary" });
+  }
+});
+router8.post("/api/grading-boundaries/bulk", requireAdmin, async (req, res) => {
+  try {
+    const user = req.user;
+    const { boundaries, name, isDefault, termId, classId, subjectId } = req.body;
+    if (!Array.isArray(boundaries) || boundaries.length === 0) {
+      return res.status(400).json({ message: "Boundaries array is required" });
+    }
+    const boundariesToInsert = boundaries.map((b) => ({
+      name: name || "Standard",
+      grade: b.grade,
+      minScore: b.minScore,
+      maxScore: b.maxScore,
+      remark: b.remark || null,
+      gradePoint: b.gradePoint || null,
+      isDefault: isDefault || false,
+      termId: termId || null,
+      classId: classId || null,
+      subjectId: subjectId || null,
+      createdBy: user.id
+    }));
+    const created = await db.insert(gradingBoundaries).values(boundariesToInsert).returning();
+    res.status(201).json(created);
+  } catch (error) {
+    console.error("Error creating bulk grading boundaries:", error);
+    res.status(500).json({ message: "Failed to create grading boundaries" });
+  }
+});
+router8.patch("/api/grading-boundaries/:id", requireAdmin, async (req, res) => {
+  try {
+    const boundaryId = parseInt(req.params.id);
+    if (isNaN(boundaryId) || boundaryId <= 0) {
+      return res.status(400).json({ message: "Invalid boundary ID" });
+    }
+    const { name, grade, minScore, maxScore, remark, gradePoint, isDefault, termId, classId, subjectId } = req.body;
+    if (minScore !== void 0 && maxScore !== void 0 && minScore > maxScore) {
+      return res.status(400).json({ message: "Minimum score cannot be greater than maximum score" });
+    }
+    const updateData = {};
+    if (name !== void 0) updateData.name = name;
+    if (grade !== void 0) updateData.grade = grade;
+    if (minScore !== void 0) updateData.minScore = minScore;
+    if (maxScore !== void 0) updateData.maxScore = maxScore;
+    if (remark !== void 0) updateData.remark = remark;
+    if (gradePoint !== void 0) updateData.gradePoint = gradePoint;
+    if (isDefault !== void 0) updateData.isDefault = isDefault;
+    if (termId !== void 0) updateData.termId = termId;
+    if (classId !== void 0) updateData.classId = classId;
+    if (subjectId !== void 0) updateData.subjectId = subjectId;
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: "No update data provided" });
+    }
+    const [updated] = await db.update(gradingBoundaries).set(updateData).where(eq4(gradingBoundaries.id, boundaryId)).returning();
+    if (!updated) {
+      return res.status(404).json({ message: "Grading boundary not found" });
+    }
+    res.json(updated);
+  } catch (error) {
+    console.error("Error updating grading boundary:", error);
+    res.status(500).json({ message: "Failed to update grading boundary" });
+  }
+});
+router8.delete("/api/grading-boundaries/:id", requireAdmin, async (req, res) => {
+  try {
+    const boundaryId = parseInt(req.params.id);
+    await db.delete(gradingBoundaries).where(eq4(gradingBoundaries.id, boundaryId));
+    res.json({ message: "Grading boundary deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting grading boundary:", error);
+    res.status(500).json({ message: "Failed to delete grading boundary" });
+  }
+});
+router8.get("/api/continuous-assessment", requireAuth, async (req, res) => {
+  try {
+    const user = req.user;
+    const { classId, subjectId, termId, studentId } = req.query;
+    let conditions = [];
+    if (user.roleId === ROLE_IDS.TEACHER) {
+      const assignments = await getTeacherAssignments(user.id, termId ? parseInt(termId) : void 0);
+      if (assignments.length === 0) {
+        return res.json([]);
+      }
+      const classIds = [...new Set(assignments.map((a) => a.classId))];
+      const subjectIds = [...new Set(assignments.map((a) => a.subjectId))];
+      conditions.push(inArray3(continuousAssessment.classId, classIds));
+      conditions.push(inArray3(continuousAssessment.subjectId, subjectIds));
+    }
+    if (classId) conditions.push(eq4(continuousAssessment.classId, parseInt(classId)));
+    if (subjectId) conditions.push(eq4(continuousAssessment.subjectId, parseInt(subjectId)));
+    if (termId) conditions.push(eq4(continuousAssessment.termId, parseInt(termId)));
+    if (studentId) conditions.push(eq4(continuousAssessment.studentId, studentId));
+    const assessments = await db.select({
+      id: continuousAssessment.id,
+      studentId: continuousAssessment.studentId,
+      classId: continuousAssessment.classId,
+      subjectId: continuousAssessment.subjectId,
+      termId: continuousAssessment.termId,
+      testScore: continuousAssessment.testScore,
+      examScore: continuousAssessment.examScore,
+      totalScore: continuousAssessment.totalScore,
+      grade: continuousAssessment.grade,
+      remark: continuousAssessment.remark,
+      isLocked: continuousAssessment.isLocked,
+      createdAt: continuousAssessment.createdAt,
+      studentFirstName: users.firstName,
+      studentLastName: users.lastName
+    }).from(continuousAssessment).leftJoin(students, eq4(continuousAssessment.studentId, students.id)).leftJoin(users, eq4(students.id, users.id)).where(conditions.length > 0 ? and4(...conditions) : void 0).orderBy(desc2(continuousAssessment.createdAt));
+    res.json(assessments);
+  } catch (error) {
+    console.error("Error fetching continuous assessments:", error);
+    res.status(500).json({ message: "Failed to fetch assessments" });
+  }
+});
+router8.post("/api/continuous-assessment", requireAuth, async (req, res) => {
+  try {
+    const user = req.user;
+    const data = continuousAssessmentSchema.parse(req.body);
+    if (user.roleId === ROLE_IDS.TEACHER) {
+      const hasAssignment = await checkTeacherAssignment(user.id, data.classId, data.subjectId);
+      if (!hasAssignment) {
+        await logUnauthorizedAccess(
+          user.id,
+          "enter_ca_score",
+          "/api/continuous-assessment",
+          data.classId,
+          data.subjectId,
+          "Teacher not assigned to this class/subject",
+          req
+        );
+        return res.status(403).json({ message: "You are not authorized to enter scores for this class/subject" });
+      }
+    }
+    const totalScore = (data.testScore || 0) + (data.examScore || 0);
+    const defaultBoundaries = await db.select().from(gradingBoundaries).where(eq4(gradingBoundaries.isDefault, true)).orderBy(desc2(gradingBoundaries.minScore));
+    let grade = "F";
+    let remark = "Fail";
+    for (const boundary of defaultBoundaries) {
+      if (totalScore >= boundary.minScore && totalScore <= boundary.maxScore) {
+        grade = boundary.grade;
+        remark = boundary.remark || "";
+        break;
+      }
+    }
+    const [existing] = await db.select().from(continuousAssessment).where(and4(
+      eq4(continuousAssessment.studentId, data.studentId),
+      eq4(continuousAssessment.classId, data.classId),
+      eq4(continuousAssessment.subjectId, data.subjectId),
+      eq4(continuousAssessment.termId, data.termId)
+    ));
+    if (existing) {
+      if (existing.isLocked) {
+        return res.status(403).json({ message: "This assessment record is locked and cannot be modified" });
+      }
+      const [updated] = await db.update(continuousAssessment).set({
+        testScore: data.testScore ?? existing.testScore,
+        examScore: data.examScore ?? existing.examScore,
+        totalScore,
+        grade,
+        remark,
+        enteredBy: user.id,
+        updatedAt: /* @__PURE__ */ new Date()
+      }).where(eq4(continuousAssessment.id, existing.id)).returning();
+      return res.json(updated);
+    }
+    const [newAssessment] = await db.insert(continuousAssessment).values({
+      studentId: data.studentId,
+      classId: data.classId,
+      subjectId: data.subjectId,
+      termId: data.termId,
+      testScore: data.testScore || null,
+      examScore: data.examScore || null,
+      totalScore,
+      grade,
+      remark,
+      teacherId: user.roleId === ROLE_IDS.TEACHER ? user.id : null,
+      enteredBy: user.id
+    }).returning();
+    res.status(201).json(newAssessment);
+  } catch (error) {
+    if (error instanceof z3.ZodError) {
+      return res.status(400).json({ message: "Validation error", errors: error.errors });
+    }
+    console.error("Error saving continuous assessment:", error);
+    res.status(500).json({ message: "Failed to save assessment" });
+  }
+});
+router8.post("/api/continuous-assessment/:id/lock", requireAdmin, async (req, res) => {
+  try {
+    const user = req.user;
+    const assessmentId = parseInt(req.params.id);
+    const [updated] = await db.update(continuousAssessment).set({
+      isLocked: true,
+      lockedBy: user.id,
+      lockedAt: /* @__PURE__ */ new Date(),
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(eq4(continuousAssessment.id, assessmentId)).returning();
+    res.json(updated);
+  } catch (error) {
+    console.error("Error locking assessment:", error);
+    res.status(500).json({ message: "Failed to lock assessment" });
+  }
+});
+router8.post("/api/continuous-assessment/:id/unlock", requireAdmin, async (req, res) => {
+  try {
+    const assessmentId = parseInt(req.params.id);
+    const [updated] = await db.update(continuousAssessment).set({
+      isLocked: false,
+      lockedBy: null,
+      lockedAt: null,
+      updatedAt: /* @__PURE__ */ new Date()
+    }).where(eq4(continuousAssessment.id, assessmentId)).returning();
+    res.json(updated);
+  } catch (error) {
+    console.error("Error unlocking assessment:", error);
+    res.status(500).json({ message: "Failed to unlock assessment" });
+  }
+});
+router8.get("/api/teacher-assignments/history", requireAdmin, async (req, res) => {
+  try {
+    const { teacherId, limit = "50" } = req.query;
+    let conditions = [];
+    if (teacherId) {
+      conditions.push(eq4(teacherAssignmentHistory.teacherId, teacherId));
+    }
+    const history = await db.select({
+      id: teacherAssignmentHistory.id,
+      assignmentId: teacherAssignmentHistory.assignmentId,
+      teacherId: teacherAssignmentHistory.teacherId,
+      classId: teacherAssignmentHistory.classId,
+      subjectId: teacherAssignmentHistory.subjectId,
+      action: teacherAssignmentHistory.action,
+      previousValues: teacherAssignmentHistory.previousValues,
+      newValues: teacherAssignmentHistory.newValues,
+      reason: teacherAssignmentHistory.reason,
+      createdAt: teacherAssignmentHistory.createdAt,
+      performedByFirstName: users.firstName,
+      performedByLastName: users.lastName
+    }).from(teacherAssignmentHistory).leftJoin(users, eq4(teacherAssignmentHistory.performedBy, users.id)).where(conditions.length > 0 ? and4(...conditions) : void 0).orderBy(desc2(teacherAssignmentHistory.createdAt)).limit(parseInt(limit));
+    res.json(history);
+  } catch (error) {
+    console.error("Error fetching assignment history:", error);
+    res.status(500).json({ message: "Failed to fetch history" });
+  }
+});
+router8.get("/api/teacher/my-classes", requireAuth, async (req, res) => {
+  try {
+    const user = req.user;
+    if (user.roleId !== ROLE_IDS.TEACHER) {
+      return res.status(403).json({ message: "Only teachers can access this endpoint" });
+    }
+    const now = /* @__PURE__ */ new Date();
+    const assignments = await db.select({
+      assignmentId: teacherClassAssignments.id,
+      classId: teacherClassAssignments.classId,
+      subjectId: teacherClassAssignments.subjectId,
+      termId: teacherClassAssignments.termId,
+      session: teacherClassAssignments.session,
+      className: classes.name,
+      classLevel: classes.level,
+      subjectName: subjects.name,
+      subjectCode: subjects.code,
+      termName: academicTerms.name,
+      termYear: academicTerms.year
+    }).from(teacherClassAssignments).innerJoin(classes, eq4(teacherClassAssignments.classId, classes.id)).innerJoin(subjects, eq4(teacherClassAssignments.subjectId, subjects.id)).leftJoin(academicTerms, eq4(teacherClassAssignments.termId, academicTerms.id)).where(and4(
+      eq4(teacherClassAssignments.teacherId, user.id),
+      eq4(teacherClassAssignments.isActive, true),
+      or4(
+        isNull3(teacherClassAssignments.validUntil),
+        gte3(teacherClassAssignments.validUntil, now)
+      )
+    ));
+    res.json(assignments);
+  } catch (error) {
+    console.error("Error fetching teacher classes:", error);
+    res.status(500).json({ message: "Failed to fetch assigned classes" });
+  }
+});
+router8.get("/api/teacher/my-students/:classId/:subjectId", requireAuth, async (req, res) => {
+  try {
+    const user = req.user;
+    const classId = parseInt(req.params.classId);
+    const subjectId = parseInt(req.params.subjectId);
+    if (user.roleId !== ROLE_IDS.TEACHER) {
+      return res.status(403).json({ message: "Only teachers can access this endpoint" });
+    }
+    const hasAssignment = await checkTeacherAssignment(user.id, classId, subjectId);
+    if (!hasAssignment) {
+      await logUnauthorizedAccess(
+        user.id,
+        "view_students",
+        req.originalUrl,
+        classId,
+        subjectId,
+        "Teacher not assigned to this class/subject",
+        req
+      );
+      return res.status(403).json({ message: "You are not authorized to view students for this class/subject" });
+    }
+    const studentList = await db.select({
+      id: students.id,
+      admissionNumber: students.admissionNumber,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      email: users.email,
+      department: students.department
+    }).from(students).innerJoin(users, eq4(students.id, users.id)).where(eq4(students.classId, classId)).orderBy(users.firstName, users.lastName);
+    res.json(studentList);
+  } catch (error) {
+    console.error("Error fetching students:", error);
+    res.status(500).json({ message: "Failed to fetch students" });
+  }
+});
+router8.get("/api/teacher/my-subjects", requireAuth, async (req, res) => {
+  try {
+    const user = req.user;
+    if (user.roleId !== ROLE_IDS.TEACHER) {
+      return res.status(403).json({ message: "Only teachers can access this endpoint" });
+    }
+    const now = /* @__PURE__ */ new Date();
+    const assignedSubjects = await db.selectDistinct({
+      id: subjects.id,
+      name: subjects.name,
+      code: subjects.code,
+      description: subjects.description,
+      category: subjects.category
+    }).from(teacherClassAssignments).innerJoin(subjects, eq4(teacherClassAssignments.subjectId, subjects.id)).where(and4(
+      eq4(teacherClassAssignments.teacherId, user.id),
+      eq4(teacherClassAssignments.isActive, true),
+      or4(
+        isNull3(teacherClassAssignments.validUntil),
+        gte3(teacherClassAssignments.validUntil, now)
+      )
+    ));
+    res.json(assignedSubjects);
+  } catch (error) {
+    console.error("Error fetching teacher subjects:", error);
+    res.status(500).json({ message: "Failed to fetch assigned subjects" });
+  }
+});
+router8.get("/api/teacher/my-dashboard-stats", requireAuth, async (req, res) => {
+  try {
+    const user = req.user;
+    if (user.roleId !== ROLE_IDS.TEACHER) {
+      return res.status(403).json({ message: "Only teachers can access this endpoint" });
+    }
+    const now = /* @__PURE__ */ new Date();
+    const assignments = await db.select({
+      classId: teacherClassAssignments.classId,
+      subjectId: teacherClassAssignments.subjectId
+    }).from(teacherClassAssignments).where(and4(
+      eq4(teacherClassAssignments.teacherId, user.id),
+      eq4(teacherClassAssignments.isActive, true),
+      or4(
+        isNull3(teacherClassAssignments.validUntil),
+        gte3(teacherClassAssignments.validUntil, now)
+      )
+    ));
+    const uniqueClassIds = [...new Set(assignments.map((a) => a.classId))];
+    const uniqueSubjectIds = [...new Set(assignments.map((a) => a.subjectId))];
+    let studentCount = 0;
+    if (uniqueClassIds.length > 0) {
+      const studentData = await db.select({ count: sql4`count(*)` }).from(students).where(inArray3(students.classId, uniqueClassIds));
+      studentCount = Number(studentData[0]?.count || 0);
+    }
+    res.json({
+      totalClasses: uniqueClassIds.length,
+      totalSubjects: uniqueSubjectIds.length,
+      totalStudents: studentCount,
+      assignmentCount: assignments.length
+    });
+  } catch (error) {
+    console.error("Error fetching dashboard stats:", error);
+    res.status(500).json({ message: "Failed to fetch dashboard stats" });
+  }
+});
+router8.get("/api/teacher/my-all-students", requireAuth, async (req, res) => {
+  try {
+    const user = req.user;
+    if (user.roleId !== ROLE_IDS.TEACHER) {
+      return res.status(403).json({ message: "Only teachers can access this endpoint" });
+    }
+    const now = /* @__PURE__ */ new Date();
+    const assignments = await db.select({ classId: teacherClassAssignments.classId }).from(teacherClassAssignments).where(and4(
+      eq4(teacherClassAssignments.teacherId, user.id),
+      eq4(teacherClassAssignments.isActive, true),
+      or4(
+        isNull3(teacherClassAssignments.validUntil),
+        gte3(teacherClassAssignments.validUntil, now)
+      )
+    ));
+    const classIds = [...new Set(assignments.map((a) => a.classId))];
+    if (classIds.length === 0) {
+      return res.json([]);
+    }
+    const studentList = await db.select({
+      id: students.id,
+      admissionNumber: students.admissionNumber,
+      classId: students.classId,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      email: users.email,
+      department: students.department,
+      className: classes.name,
+      classLevel: classes.level
+    }).from(students).innerJoin(users, eq4(students.id, users.id)).innerJoin(classes, eq4(students.classId, classes.id)).where(inArray3(students.classId, classIds)).orderBy(classes.name, users.firstName, users.lastName);
+    res.json(studentList);
+  } catch (error) {
+    console.error("Error fetching teacher students:", error);
+    res.status(500).json({ message: "Failed to fetch students" });
+  }
+});
+var teacher_assignment_routes_default = router8;
+
 // server/routes/index.ts
 function registerRoutes(app2) {
   app2.use("/api/auth", auth_default);
   app2.use("/api/admin", admin_default);
   app2.use("/api/reports", reports_default);
+  app2.use("/api/exams", exams_default);
+  app2.use("/api/students", students_default);
+  app2.use("/api/teachers", teachers_default);
+  app2.use("/api/academic", academic_default);
+  app2.use("/", teacher_assignment_routes_default);
 }
 
 // server/routes.ts
