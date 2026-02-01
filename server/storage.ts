@@ -19,7 +19,6 @@ import type {
   Notification, InsertNotification, TeacherProfile,
   QuestionBank, InsertQuestionBank, QuestionBankItem, InsertQuestionBankItem, QuestionBankOption, InsertQuestionBankOption,
   Invite, InsertInvite, InsertAuditLog as InsertAuditLogType, InsertNotification as InsertNotificationType,
-  UserRecoveryRecord, InsertUserRecoveryRecord,
   AdminProfile, InsertAdminProfile, ParentProfile, InsertParentProfile, InsertTeacherProfile,
   SuperAdminProfile, InsertSuperAdminProfile, SystemSettings, InsertSystemSettings, Vacancy, InsertVacancy,
   TeacherApplication, InsertTeacherApplication, ApprovedTeacher,
@@ -35,6 +34,8 @@ import { createReportStorage } from "./storage/modules/report-storage";
 import { createStudentStorage } from "./storage/modules/student-storage";
 import { createTeacherStorage } from "./storage/modules/teacher-storage";
 import { createAttendanceStorage } from "./storage/modules/attendance-storage";
+import { createCommStorage } from "./storage/modules/comm-storage";
+import { createAdminStorage } from "./storage/modules/admin-storage";
 
 const db: any = getDatabase();
 const schema: any = getSchema();
@@ -70,6 +71,14 @@ export interface IStorage {
   createTeacherProfile(profile: InsertTeacherProfile): Promise<TeacherProfile>;
   getAttendance(classId: number, date: Date): Promise<Attendance[]>;
   createAttendance(attendance: InsertAttendance): Promise<Attendance>;
+  getAnnouncements(): Promise<Announcement[]>;
+  createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement>;
+  getMessages(userId: string): Promise<Message[]>;
+  createMessage(message: InsertMessage): Promise<Message>;
+  getSystemSettings(): Promise<SystemSettings | undefined>;
+  updateSystemSettings(settings: InsertSystemSettings): Promise<SystemSettings>;
+  getAuditLogs(): Promise<AuditLog[]>;
+  createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -82,6 +91,8 @@ export class DatabaseStorage implements IStorage {
   private studentStorage: ReturnType<typeof createStudentStorage>;
   private teacherStorage: ReturnType<typeof createTeacherStorage>;
   private attendanceStorage: ReturnType<typeof createAttendanceStorage>;
+  private commStorage: ReturnType<typeof createCommStorage>;
+  private adminStorage: ReturnType<typeof createAdminStorage>;
 
   constructor() {
     this.db = db;
@@ -93,6 +104,8 @@ export class DatabaseStorage implements IStorage {
     this.studentStorage = createStudentStorage(this.db, this.schema);
     this.teacherStorage = createTeacherStorage(this.db, this.schema);
     this.attendanceStorage = createAttendanceStorage(this.db, this.schema);
+    this.commStorage = createCommStorage(this.db, this.schema);
+    this.adminStorage = createAdminStorage(this.db, this.schema);
   }
 
   async getUser(id: string) { return this.userStorage.getUser(id); }
@@ -129,6 +142,16 @@ export class DatabaseStorage implements IStorage {
 
   async getAttendance(classId: number, date: Date) { return this.attendanceStorage.getAttendance(classId, date); }
   async createAttendance(attendance: any) { return this.attendanceStorage.createAttendance(attendance); }
+
+  async getAnnouncements() { return this.commStorage.getAnnouncements(); }
+  async createAnnouncement(announcement: any) { return this.commStorage.createAnnouncement(announcement); }
+  async getMessages(userId: string) { return this.commStorage.getMessages(userId); }
+  async createMessage(message: any) { return this.commStorage.createMessage(message); }
+
+  async getSystemSettings() { return this.adminStorage.getSystemSettings(); }
+  async updateSystemSettings(settings: any) { return this.adminStorage.updateSystemSettings(settings); }
+  async getAuditLogs() { return this.adminStorage.getAuditLogs(); }
+  async createAuditLog(log: any) { return this.adminStorage.createAuditLog(log); }
 }
 
 export const storage = new DatabaseStorage();
