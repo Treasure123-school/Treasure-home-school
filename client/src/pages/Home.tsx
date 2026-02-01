@@ -45,7 +45,7 @@ export default function Home() {
   });
 
   const { scrollY } = useScroll();
-  const y = useTransform(scrollY, [0, 500], [0, -150]);
+  const y = useTransform(scrollY, [0, 500], [0, -80]);
   const [isAtTop, setIsAtTop] = useState(true);
 
   useEffect(() => {
