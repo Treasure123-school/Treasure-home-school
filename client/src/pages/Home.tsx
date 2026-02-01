@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, User } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import girlsImage from "@/assets/girls-image.png";
 import gallery1 from "@/assets/gallery-1.png";
 import gallery2 from "@/assets/gallery-2.png";
@@ -43,6 +43,9 @@ export default function Home() {
   const { data: settings } = useQuery<SettingsData>({
     queryKey: ["/api/public/settings"],
   });
+
+  const { scrollY } = useScroll();
+  const y = useTransform(scrollY, [0, 500], [0, 150]);
 
   const schoolName = settings?.schoolName || "Treasure-Home School";
   const schoolAddress = settings?.schoolAddress || "Seriki, Ogun State";
@@ -129,6 +132,7 @@ export default function Home() {
           initial={{ opacity: 0, scale: 1.1 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.5, ease: "easeOut" }}
+          style={{ y }}
           className="absolute inset-0 z-0"
         >
           <img
