@@ -174,7 +174,7 @@ export default function Home() {
                 </p>
               </div>
 
-              <div className="pt-8 border-t border-gray-100 flex flex-col items-center">
+              <div className="pt-8 flex flex-col items-center">
                 <Button 
                   asChild 
                   variant="outline" 
@@ -185,11 +185,10 @@ export default function Home() {
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </Link>
                 </Button>
-                <div className="mt-4 w-12 h-1 bg-[#0000FF]/20 rounded-full" />
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-12 lg:pt-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-16 lg:pt-0">
               {stats.map((s, i) => (
                 <motion.div 
                   key={i} 
