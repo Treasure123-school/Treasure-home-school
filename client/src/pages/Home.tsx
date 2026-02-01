@@ -6,6 +6,7 @@ import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import girlsImage from "@/assets/girls-image.png";
 import {
   Accordion,
   AccordionContent,
@@ -211,8 +212,8 @@ export default function Home() {
 
             <motion.div {...fadeIn} className="flex-1 w-full lg:w-1/2">
               <img
-                src="/images/group of students.jpg"
-                alt="Glory Schools Students"
+                src={girlsImage}
+                alt="Treasure Home School Students"
                 className="rounded-lg shadow-lg w-full h-[300px] md:h-[400px] lg:h-[450px] object-cover"
               />
             </motion.div>
