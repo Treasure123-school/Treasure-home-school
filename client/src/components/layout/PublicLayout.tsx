@@ -110,7 +110,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               {settings?.schoolLogo ? (
                 <img src={settings.schoolLogo} alt="Logo" className="h-20 w-auto brightness-0 invert" />
               ) : null}
-              <p className="text-[13px] text-white font-bold leading-relaxed">{settings?.schoolName || "Treasure-Home School"}, located in Egbedi-Ifo Local Government, Osun State, Nigeria, has a rich history of educational excellence.</p>
+              <p className="text-[13px] text-white font-bold leading-relaxed">{settings?.schoolName || "Treasure-Home School"}, located at Seriki-Soyinka, Ifo Local Government, Ogun State, Nigeria, has a rich history of educational excellence.</p>
             </div>
             <div className="space-y-6">
               <h4 className="text-white font-black uppercase tracking-widest text-[11px] border-b border-white/40 pb-2">Useful Links</h4>
