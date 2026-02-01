@@ -152,10 +152,12 @@ export default function Home() {
 
       {/* Stats Section */}
       <section className="py-24 bg-white relative overflow-hidden">
+        {/* Subtle Gradient background */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,191,255,0.05),transparent_70%),radial-gradient(circle_at_bottom_left,rgba(0,0,255,0.03),transparent_70%)] pointer-events-none" />
+        
         <div className="container px-4 max-w-6xl mx-auto relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
-            <div className="space-y-8 lg:sticky lg:top-32">
+            <div className="space-y-8 lg:sticky lg:top-32 text-left">
               <div className="space-y-4">
                 <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-[#1a1a1a]">
                   Why Choose<br />
@@ -174,13 +176,13 @@ export default function Home() {
                 </p>
               </div>
 
-              <div className="pt-4 flex flex-col items-center lg:items-start">
+              <div className="pt-4 flex justify-start">
                 <Button 
                   asChild 
                   className="btn-primary h-12 md:h-14 px-8 md:px-10 transition-all duration-300 rounded-lg flex items-center gap-3 w-full sm:w-auto"
                 >
                   <Link href="/login" className="flex items-center gap-3">
-                    <span className="font-bold tracking-wide uppercase text-xs md:text-sm text-center">Enroll Your Child</span>
+                    <span className="font-bold tracking-wide uppercase text-xs md:text-sm">Enroll Your Child</span>
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </Link>
                 </Button>
