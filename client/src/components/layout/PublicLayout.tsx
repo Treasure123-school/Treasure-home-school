@@ -118,24 +118,24 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
             isMobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
           }`}
         >
-          <div className="flex flex-col h-full pt-28 px-6">
-            <nav className="flex flex-col gap-6">
+          <div className="flex flex-col h-full pt-32 px-10">
+            <nav className="flex flex-col gap-10">
               {navigation.map((item) => (
                 <Link 
                   key={item.name} 
                   href={item.href} 
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className={`text-lg font-bold uppercase tracking-widest transition-colors ${
+                  className={`text-2xl font-black uppercase tracking-[0.2em] transition-colors ${
                     isActive(item.href) ? 'text-blue-600' : 'text-gray-900'
                   }`}
                 >
                   {item.name}
                 </Link>
               ))}
-              <Button asChild className="btn-primary w-full mt-4 h-12">
-                <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2">
+              <Button asChild className="btn-primary w-full mt-10 h-14 text-sm font-black uppercase tracking-widest">
+                <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-3">
                   <span>Contact Us</span>
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-5 h-5" />
                 </Link>
               </Button>
             </nav>
