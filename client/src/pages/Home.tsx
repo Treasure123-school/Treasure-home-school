@@ -328,7 +328,7 @@ export default function Home() {
                   className="group relative p-8 md:p-10 bg-white border border-gray-100 rounded-xl shadow-[0_10px_30px_-15px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_50px_-15px_rgba(0,0,0,0.1)] transition-all duration-500 hover:-translate-y-1 text-center"
                 >
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-1 bg-[#0000FF]/10 group-hover:bg-[#0000FF] transition-colors duration-500 rounded-b-full" />
-                  <div className="text-4xl md:text-5xl font-black mb-3 text-gray-900 group-hover:text-[#0000FF] transition-colors duration-500">
+                  <div className="text-4xl md:text-5xl font-black mb-3 text-gray-900 group-hover:bg-gradient-to-r group-hover:from-[#0000FF] group-hover:to-[#00BFFF] group-hover:bg-clip-text group-hover:text-transparent transition-all duration-500">
                     {s.value}
                   </div>
                   <div className="w-8 h-[2px] bg-gray-100 mx-auto mb-4 group-hover:bg-[#0000FF]/30 transition-colors" />
