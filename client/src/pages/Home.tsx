@@ -67,19 +67,19 @@ export default function Home() {
           <div className="absolute inset-0 bg-black/50" />
         </div>
         <div className="container relative z-10 text-center text-white px-4">
-          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="max-w-4xl mx-auto">
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.8 }} className="max-w-4xl mx-auto">
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
-              We Nurture <span className="text-[#00BFFF]">Young Minds.</span><br />
-              We Build <span className="text-[#00BFFF]">Character.</span><br />
-              We Shape the <span className="text-[#00BFFF]">Future.</span>
+              We Nurture <motion.span initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} transition={{ delay: 0.3, duration: 0.5 }} className="text-[#00BFFF] inline-block">Young Minds.</motion.span><br />
+              We Build <motion.span initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} transition={{ delay: 0.5, duration: 0.5 }} className="text-[#00BFFF] inline-block">Character.</motion.span><br />
+              We Shape the <motion.span initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} transition={{ delay: 0.7, duration: 0.5 }} className="text-[#00BFFF] inline-block">Future.</motion.span>
             </h1>
-            <p className="text-base md:text-lg mb-10 text-gray-200 italic font-medium">
+            <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ delay: 0.9, duration: 0.6 }} className="text-base md:text-lg mb-10 text-gray-200 italic font-medium">
               Treasure Home School is a school where qualitative education and moral excellence shape confident learners.
-            </p>
-            <div className="flex flex-row gap-4 justify-center items-center">
-              <Button asChild className="btn-hero-about h-11 px-8"><Link href="/portal/login">ENROLL</Link></Button>
-              <Button asChild className="btn-hero-contact h-11 px-8"><Link href="/contact">CONTACT</Link></Button>
-            </div>
+            </motion.p>
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 1.1, duration: 0.5 }} className="flex flex-row gap-4 justify-center items-center">
+              <Button asChild className="btn-hero-about h-11 px-8 hover-elevate active-elevate-2"><Link href="/portal/login">ENROLL</Link></Button>
+              <Button asChild className="btn-hero-contact h-11 px-8 hover-elevate active-elevate-2"><Link href="/contact">CONTACT</Link></Button>
+            </motion.div>
           </motion.div>
         </div>
       </section>
@@ -148,10 +148,17 @@ export default function Home() {
             </div>
             <div className="grid grid-cols-2 gap-6">
               {stats.map((s, i) => (
-                <div key={i} className="p-8 border border-gray-100 rounded-xl shadow-sm text-center">
-                  <div className="text-3xl font-bold mb-1">{s.value}</div>
+                <motion.div 
+                  key={i} 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1, duration: 0.5 }}
+                  className="p-8 border border-gray-100 rounded-xl shadow-sm text-center hover-elevate transition-all duration-300"
+                >
+                  <div className="text-3xl font-bold mb-1 text-blue-600">{s.value}</div>
                   <div className="text-[9px] text-gray-400 uppercase tracking-widest font-bold">{s.label}</div>
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
@@ -165,16 +172,24 @@ export default function Home() {
           <p className="section-subtitle">Our education brings satisfaction to our students.</p>
           <div className="grid md:grid-cols-2 gap-8">
             {testimonials.map((t, i) => (
-              <Card key={i} className="p-8 text-left bg-white border-none shadow-sm rounded-xl">
-                <p className="text-[13px] text-gray-500 italic mb-8">"{t.text}"</p>
-                <div className="flex items-center gap-4">
-                  <img src={t.img} alt={t.name} className="w-10 h-10 rounded-full object-cover" />
-                  <div>
-                    <h4 className="font-bold text-xs">{t.name}</h4>
-                    <p className="text-[9px] text-gray-400 uppercase tracking-widest">{t.role}</p>
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: i % 2 === 0 ? -30 : 30 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.7, ease: "easeOut" }}
+              >
+                <Card className="p-8 text-left bg-white border-none shadow-sm rounded-xl hover-elevate transition-all duration-300">
+                  <p className="text-[13px] text-gray-500 italic mb-8">"{t.text}"</p>
+                  <div className="flex items-center gap-4">
+                    <img src={t.img} alt={t.name} className="w-10 h-10 rounded-full object-cover shadow-sm" />
+                    <div>
+                      <h4 className="font-bold text-xs">{t.name}</h4>
+                      <p className="text-[9px] text-gray-400 uppercase tracking-widest">{t.role}</p>
+                    </div>
                   </div>
-                </div>
-              </Card>
+                </Card>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -187,7 +202,16 @@ export default function Home() {
           <p className="section-subtitle">Check out some pictures of our students.</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
             {galleryImages.map((img, i) => (
-              <div key={i} className="aspect-[4/3] rounded-lg overflow-hidden"><img src={`/images/${img}`} alt="Gallery" className="w-full h-full object-cover" /></div>
+              <motion.div 
+                key={i} 
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1, duration: 0.5 }}
+                className="aspect-[4/3] rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-500"
+              >
+                <img src={`/images/${img}`} alt="Gallery" className="w-full h-full object-cover hover:scale-110 transition-transform duration-700" />
+              </motion.div>
             ))}
           </div>
           <Button asChild className="btn-primary mx-auto"><Link href="/gallery" className="flex items-center gap-2"><span>View More</span><ArrowRight className="w-3 h-3" /></Link></Button>
