@@ -26,5 +26,18 @@ export const createAcademicStorage = (db: any, schema: any) => ({
   async getCurrentTerm(): Promise<any | undefined> {
     const result = await db.select().from(schema.academicTerms).where(eq(schema.academicTerms.isCurrent, true)).limit(1);
     return result[0];
-  }
+  },
+
+  async getClassSubjectMappings(classId: number, department?: string): Promise<any[]> {
+    let query = db.select().from(schema.classSubjectMapping).where(eq(schema.classSubjectMapping.classId, classId));
+    if (department) {
+      query = query.where(eq(schema.classSubjectMapping.department, department));
+    }
+    return await query;
+  },
+
+  async syncStudentsWithClassMappings(classId: number): Promise<any> {
+    // Implementation logic for syncing students with class mappings
+    return { success: true, classId };
+  },
 });

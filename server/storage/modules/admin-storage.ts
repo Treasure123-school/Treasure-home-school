@@ -18,5 +18,13 @@ export const createAdminStorage = (db: any, schema: any) => ({
   async createAuditLog(log: any): Promise<any> {
     const result = await db.insert(schema.auditLogs).values(log).returning();
     return result[0];
-  }
+  },
+
+  async getHomePageContent(): Promise<any[]> {
+    return await db.select().from(schema.homePageContent);
+  },
+
+  async getNotificationsByUserId(userId: string): Promise<any[]> {
+    return await db.select().from(schema.notifications).where(eq(schema.notifications.userId, userId));
+  },
 });

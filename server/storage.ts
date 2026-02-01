@@ -130,9 +130,15 @@ export class DatabaseStorage implements IStorage {
   async getReportCard(id: number) { return this.reportStorage.getReportCard(id); }
   async getReportCardsByStudentId(studentId: string) { return this.reportStorage.getReportCardsByStudentId(studentId); }
   async getReportCardItems(reportCardId: number) { return this.reportStorage.getReportCardItems(reportCardId); }
+  async getExamResultsByStudent(studentId: string) { return this.reportStorage.getExamResultsByStudent(studentId); }
+  async getGradingTasksByTeacher(teacherId: string) { return this.reportStorage.getGradingTasksByTeacher(teacherId); }
+  async cleanupReportCardsForClasses(classIds: number[]) { return this.reportStorage.cleanupReportCardsForClasses(classIds); }
+  async addMissingSubjectsToReportCards(classIds: number[]) { return this.reportStorage.addMissingSubjectsToReportCards(classIds); }
 
   async getStudent(id: string) { return this.studentStorage.getStudent(id); }
+  async getAllStudents() { return this.studentStorage.getAllStudents(); }
   async getStudentsByClass(classId: number) { return this.studentStorage.getStudentsByClass(classId); }
+  async getStudentsByParentId(parentId: string) { return this.studentStorage.getStudentsByParentId(parentId); }
   async createStudent(student: any) { return this.studentStorage.createStudent(student); }
   async updateStudent(id: string, update: any) { return this.studentStorage.updateStudent(id, update); }
 
@@ -152,6 +158,11 @@ export class DatabaseStorage implements IStorage {
   async updateSystemSettings(settings: any) { return this.adminStorage.updateSystemSettings(settings); }
   async getAuditLogs() { return this.adminStorage.getAuditLogs(); }
   async createAuditLog(log: any) { return this.adminStorage.createAuditLog(log); }
+  async getHomePageContent() { return this.adminStorage.getHomePageContent(); }
+  async getNotificationsByUserId(userId: string) { return this.adminStorage.getNotificationsByUserId(userId); }
+
+  async getClassSubjectMappings(classId: number, department?: string) { return this.academicStorage.getClassSubjectMappings(classId, department); }
+  async syncStudentsWithClassMappings(classId: number) { return this.academicStorage.syncStudentsWithClassMappings(classId); }
 }
 
 export const storage = new DatabaseStorage();

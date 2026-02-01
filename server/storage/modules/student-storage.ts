@@ -31,5 +31,27 @@ export const createStudentStorage = (db: any, schema: any) => ({
   async updateStudent(id: string, update: any): Promise<any> {
     const result = await db.update(schema.students).set(update).where(eq(schema.students.id, id)).returning();
     return result[0];
-  }
+  },
+
+  async getAllStudents(): Promise<any[]> {
+    const result = await db.select().from(schema.students);
+    return result.map((student: any) => {
+      if (student && student.id) {
+        const normalizedId = normalizeUuid(student.id);
+        if (normalizedId) student.id = normalizedId;
+      }
+      return student;
+    });
+  },
+
+  async getStudentsByParentId(parentId: string): Promise<any[]> {
+    const result = await db.select().from(schema.students).where(eq(schema.students.parentId, parentId));
+    return result.map((student: any) => {
+      if (student && student.id) {
+        const normalizedId = normalizeUuid(student.id);
+        if (normalizedId) student.id = normalizedId;
+      }
+      return student;
+    });
+  },
 });
