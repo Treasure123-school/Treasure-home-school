@@ -179,7 +179,7 @@ export default function Home() {
               <div className="pt-4 flex justify-start">
                 <Button 
                   asChild 
-                  className="btn-primary h-12 md:h-14 px-8 md:px-10 transition-all duration-300 rounded-lg flex items-center gap-3 w-full sm:w-auto"
+                  className="bg-[#0000FF] hover:bg-gradient-to-r hover:from-[#0000FF] hover:to-[#00BFFF] text-white h-12 md:h-14 px-8 md:px-10 transition-all duration-300 rounded-lg flex items-center gap-3 w-full sm:w-auto shadow-lg hover:shadow-blue-500/25 border-none"
                 >
                   <Link href="/login" className="flex items-center gap-3">
                     <span className="font-bold tracking-wide uppercase text-xs md:text-sm">Enroll Your Child</span>
