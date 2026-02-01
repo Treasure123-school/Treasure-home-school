@@ -14,6 +14,7 @@ import gallery4 from "@/assets/gallery-4.png";
 import gallery5 from "@/assets/gallery-5.png";
 import gallery6 from "@/assets/gallery-6.png";
 import heroImage from "@/assets/hero-image.png";
+import schoolBuilding from "@/assets/school-building.png";
 import {
   Accordion,
   AccordionContent,
@@ -219,8 +220,8 @@ export default function Home() {
 
             <motion.div {...fadeIn} className="flex-1 w-full lg:w-1/2">
               <img
-                src={girlsImage}
-                alt="Treasure Home School Students"
+                src={schoolBuilding}
+                alt="Treasure Home School Building"
                 className="rounded-lg shadow-lg w-full h-[300px] md:h-[400px] lg:h-[450px] object-cover"
               />
             </motion.div>
