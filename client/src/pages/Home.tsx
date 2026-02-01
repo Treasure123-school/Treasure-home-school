@@ -129,7 +129,7 @@ export default function Home() {
           <img
             src={heroStudents}
             alt="Hero"
-            className="w-full h-full object-contain bg-[#f0f0f0]"
+            className="w-full h-full object-cover object-[center_20%]"
           />
           <div className="absolute inset-0 bg-black/50" />
         </div>
