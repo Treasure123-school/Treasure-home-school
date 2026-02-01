@@ -149,8 +149,22 @@ export default function Home() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-24 bg-white overflow-hidden">
-        <div className="container px-4 max-w-6xl mx-auto">
+      <section className="py-24 bg-white overflow-hidden relative">
+        {/* Wave Background Pattern */}
+        <div className="absolute inset-0 pointer-events-none opacity-40 z-0">
+          <img 
+            src="/images/backgrounds/bg_01.png" 
+            alt="" 
+            className="absolute top-0 right-0 w-2/3 h-auto translate-x-1/4 -translate-y-1/4"
+          />
+          <img 
+            src="/images/backgrounds/bg_02.png" 
+            alt="" 
+            className="absolute bottom-0 left-0 w-2/3 h-auto -translate-x-1/4 translate-y-1/4"
+          />
+        </div>
+
+        <div className="container px-4 max-w-6xl mx-auto relative z-10">
           <div className="grid lg:grid-cols-2 gap-16 items-start">
             <div className="space-y-8 sticky top-32">
               <div className="space-y-4">
@@ -211,8 +225,17 @@ export default function Home() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-24 bg-gray-50 overflow-hidden">
-        <div className="container px-4 max-w-4xl mx-auto text-center">
+      <section className="py-24 bg-gray-50 overflow-hidden relative">
+        {/* Wave Background Pattern */}
+        <div className="absolute inset-0 pointer-events-none opacity-30 z-0">
+          <img 
+            src="/images/backgrounds/bg_03.png" 
+            alt="" 
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-auto"
+          />
+        </div>
+        
+        <div className="container px-4 max-w-4xl mx-auto text-center relative z-10">
           <h2 className="section-title">School Testimonial</h2>
           <div className="w-12 h-[2px] bg-[#0000FF] mx-auto mb-6" />
           <p className="section-subtitle mb-12">Our education brings satisfaction to our students. Here are a few testimonials.</p>
