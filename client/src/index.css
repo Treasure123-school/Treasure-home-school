@@ -193,16 +193,45 @@
 
 .enroll-button-custom {
   background-color: white !important;
-  color: #0000FF !important;
   background-image: none !important;
-  border: 1px solid #0000FF !important;
+  border: 2px solid transparent !important;
+  background-image: linear-gradient(white, white), linear-gradient(to right, #0000FF, #00BFFF) !important;
+  background-origin: border-box !important;
+  background-clip: padding-box, border-box !important;
+  position: relative;
+  z-index: 1;
+}
+
+.enroll-button-custom span {
+  background: linear-gradient(to right, #0000FF, #00BFFF);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.enroll-button-custom svg {
+  color: #00BFFF;
 }
 
 .enroll-button-custom:hover {
   background-image: linear-gradient(to right, #0000FF, #00BFFF) !important;
-  color: white !important;
-  background-color: transparent !important;
+  background-origin: border-box !important;
+  background-clip: border-box !important;
   border-color: transparent !important;
+}
+
+.enroll-button-custom:hover span {
+  -webkit-text-fill-color: white;
+  background: none;
+  color: white;
+}
+
+.enroll-button-custom:hover svg {
+  color: white;
 }
 
 .footer-dark {
