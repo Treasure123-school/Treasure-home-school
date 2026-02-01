@@ -159,7 +159,7 @@ export default function Home() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
             <div className="space-y-8 lg:sticky lg:top-32 text-left">
               <div className="space-y-4">
-                <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-[#1a1a1a]">
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight text-[#1a1a1a]">
                   Why Choose<br />
                   <span className="bg-gradient-to-r from-[#0000FF] to-[#00BFFF] bg-clip-text text-transparent">Treasure-Home</span><br />
                   School?
@@ -169,10 +169,10 @@ export default function Home() {
               
               <div className="space-y-6">
                 <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed">
-                  At Treasure-Home School, we don't just teach—we inspire excellence. Our vision is to be a sanctuary of academic brilliance and moral development in Ogun State.
+                  At Treasure-Home School, Seriki-Soyinka, we don't just teach—we inspire academic excellence and deep-rooted moral values. Our vision is to be a sanctuary of brilliance and character development in Ogun State and beyond.
                 </p>
                 <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed">
-                  We equip students with critical thinking and integrity. By choosing us, you place your child in an environment that fosters leadership and global success.
+                  We are dedicated to equipping our students with the critical thinking skills, technological savvy, and unwavering integrity needed to thrive. By choosing us, you place your child in an environment that fosters leadership, ensuring they emerge as confident trailblazers of tomorrow.
                 </p>
               </div>
 
