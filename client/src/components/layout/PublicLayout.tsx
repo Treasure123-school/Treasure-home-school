@@ -114,27 +114,27 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
 
         {/* Mobile Navigation Overlay */}
         <div 
-          className={`fixed inset-0 bg-white z-[100] lg:hidden transition-all duration-300 ease-in-out ${
-            isMobileMenuOpen ? 'opacity-100 visible translate-x-0' : 'opacity-0 invisible translate-x-full'
+          className={`fixed inset-0 bg-white z-[55] lg:hidden transition-all duration-300 ease-in-out ${
+            isMobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
           }`}
         >
-          <div className="flex flex-col h-full bg-white">
-            {/* Mobile Menu Header - Matching Original Header Style */}
-            <div className="flex items-center justify-between px-4 h-28 border-b border-gray-100">
-              <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-4">
+          <div className="flex flex-col h-full">
+            {/* Mobile Menu Header */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3">
                 {settings?.schoolLogo && (
                   <img 
                     src={settings.schoolLogo} 
                     alt="Logo" 
-                    className="h-20 w-auto object-contain" 
+                    className="h-12 w-auto object-contain" 
                   />
                 )}
                 <div className="flex flex-col">
-                  <span className="text-gray-900 font-bold text-xl tracking-tight leading-tight">
+                  <span className="text-gray-900 font-bold text-base leading-tight">
                     {schoolName}
                   </span>
                   {settings?.schoolMotto && (
-                    <span className="text-blue-600 text-[10px] font-semibold tracking-wider uppercase">
+                    <span className="text-blue-600 text-[8px] font-semibold tracking-wider uppercase">
                       {settings.schoolMotto}
                     </span>
                   )}
@@ -144,35 +144,32 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                 variant="ghost" 
                 size="icon" 
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="hover:bg-gray-100 rounded-full"
               >
-                <X className="h-8 w-8 text-gray-900" />
+                <X className="h-6 w-6" />
               </Button>
             </div>
 
             {/* Mobile Menu Links */}
-            <div className="flex flex-col py-10 px-8 bg-white h-full overflow-y-auto">
-              <nav className="flex flex-col gap-8">
+            <div className="flex flex-col pt-8 px-6">
+              <nav className="flex flex-col gap-6">
                 {navigation.map((item) => (
                   <Link 
                     key={item.name} 
                     href={item.href} 
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className={`text-xl font-bold uppercase tracking-[0.2em] transition-colors ${
-                      isActive(item.href) ? 'text-blue-600' : 'text-gray-900 hover:text-blue-600'
+                    className={`text-lg font-bold uppercase tracking-widest transition-colors ${
+                      isActive(item.href) ? 'text-blue-600' : 'text-gray-900'
                     }`}
                   >
                     {item.name}
                   </Link>
                 ))}
-                <div className="pt-6 mt-6 border-t border-gray-100">
-                  <Button asChild className="btn-primary w-full h-14 text-sm font-black uppercase tracking-widest">
-                    <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-3">
-                      <span>Contact Us</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </Link>
-                  </Button>
-                </div>
+                <Button asChild className="btn-primary w-full mt-4 h-12">
+                  <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2">
+                    <span>Contact Us</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </Button>
               </nav>
             </div>
           </div>
