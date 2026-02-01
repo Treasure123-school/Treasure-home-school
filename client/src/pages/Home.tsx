@@ -168,11 +168,11 @@ export default function Home() {
               </div>
               
               <div className="space-y-6">
-                <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed font-medium">
+                <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed">
                   At Treasure-Home School, Seriki-Soyinka, we don't just teach—we inspire. Our vision is to be a sanctuary of academic brilliance and a cornerstone of moral development in Ogun State and beyond.
                 </p>
-                <p className="text-[14px] md:text-[15px] text-gray-500 leading-relaxed">
-                  We are dedicated to equipping our students with the critical thinking skills, technological savvy, and unwavering integrity needed to thrive in a globalized world. By choosing us, you are placing your child in an environment that fosters compassion, innovation, and leadership, ensuring they emerge as confident trailblazers of tomorrow.
+                <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed">
+                  We are dedicated to equipping our students with the critical thinking skills, technological savvy, and unwavering integrity needed to thrive in a globalized world. By choosing us, you are placing your child in an environment that fosters leadership, ensuring they emerge as confident trailblazers.
                 </p>
               </div>
 
