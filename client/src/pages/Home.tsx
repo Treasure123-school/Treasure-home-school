@@ -141,7 +141,7 @@ export default function Home() {
             transition={{ duration: 0.8 }}
             className="max-w-4xl mx-auto"
           >
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold mb-6 leading-tight">
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 leading-tight">
               We Nurture{" "}
               <motion.span
                 initial={{ opacity: 0, scale: 0.9 }}
@@ -176,14 +176,14 @@ export default function Home() {
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
               transition={{ delay: 0.9, duration: 0.6 }}
-              className="text-base md:text-lg mb-10 text-gray-200 italic font-medium"
+              className="text-sm md:text-base mb-8 text-gray-200 italic font-medium max-w-2xl mx-auto"
             >
               Treasure Home School is a school where qualitative education and
               moral excellence shape confident learners.
             </motion.p>
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 1.1, duration: 0.5 }} className="flex flex-row gap-4 justify-center items-center">
-              <Button asChild className="btn-hero-about h-11 px-8 hover-elevate active-elevate-2"><Link href="/admission">ENROLL</Link></Button>
-              <Button asChild className="btn-hero-contact h-11 px-8 hover-elevate active-elevate-2"><Link href="/contact">CONTACT US</Link></Button>
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 1.1, duration: 0.5 }} className="flex flex-row gap-3 justify-center items-center">
+              <Button asChild className="btn-hero-about h-10 px-6 text-sm hover-elevate active-elevate-2"><Link href="/admission">ENROLL</Link></Button>
+              <Button asChild className="btn-hero-contact h-10 px-6 text-sm hover-elevate active-elevate-2"><Link href="/contact">CONTACT US</Link></Button>
             </motion.div>
           </motion.div>
         </div>
