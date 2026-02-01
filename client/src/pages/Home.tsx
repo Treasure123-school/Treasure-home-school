@@ -124,7 +124,7 @@ export default function Home() {
   return (
     <PublicLayout>
       {/* Hero Section */}
-      <section className="relative h-screen flex items-center justify-center overflow-hidden">
+      <section className="relative h-[70vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img
             src={heroStudents}
