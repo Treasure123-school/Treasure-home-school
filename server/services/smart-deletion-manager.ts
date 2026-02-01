@@ -1,41 +1,6 @@
-import { eq, inArray, or, and, sql as dsql } from "drizzle-orm";
-import * as schema from "@shared/schema.pg";
-import { db } from "../db";
-import { DeletionService, formatDeletionLog, DeletionResult } from "./deletion-service";
-import { deleteFile, useCloudinary } from "../cloudinary-service";
-import { v2 as cloudinary } from 'cloudinary';
-
-export interface DeletionValidation {
-  canDelete: boolean;
-  reason?: string;
-  blockedBy?: {
-    type: string;
-    description: string;
-    count?: number;
-  }[];
-  affectedRecords?: {
-    tableName: string;
-    count: number;
-  }[];
-  filesToDelete?: string[];
-}
-
-export interface SmartDeletionResult extends DeletionResult {
-  userId: string;
-  userRole: string;
-  userEmail?: string;
-  username?: string;
-}
-
-type UserRole = 'Super Admin' | 'Admin' | 'Teacher' | 'Student' | 'Parent' | 'Unknown';
-
-export class SmartDeletionManager {
-  private deletionService: DeletionService;
-  private filesToDelete: string[] = [];
-
-  constructor() {
-    this.deletionService = new DeletionService();
-  }
+// Logic moved to server/services/deletion-utils.ts for better organization
+export { SmartDeletionManager } from "./smart-deletion-manager-core";
+export { bulkDeleteUsers, cleanupOrphanRecords } from "./deletion-utils";
 
   private getRoleFromId(roleId: number): UserRole {
     switch (roleId) {
