@@ -57,7 +57,7 @@ export async function checkTeacherAssignment(
       conditions.push(eq(teacherClassAssignments.termId, termId));
     }
 
-    const assignments = await (db as any)
+    const assignments = await db
       .select()
       .from(teacherClassAssignments)
       .where(and(...conditions))
@@ -90,7 +90,7 @@ export async function getTeacherAssignments(
       conditions.push(eq(teacherClassAssignments.termId, termId));
     }
 
-    return await (db as any)
+    return await db
       .select()
       .from(teacherClassAssignments)
       .where(and(...conditions));
@@ -110,7 +110,7 @@ export async function logUnauthorizedAccess(
   req?: TeacherAuthRequest
 ): Promise<void> {
   try {
-    await (db as any).insert(unauthorizedAccessLogs).values({
+    await db.insert(unauthorizedAccessLogs).values({
       userId: userId || null,
       attemptedAction,
       attemptedResource,
@@ -404,7 +404,7 @@ export const validateExamTimeWindow = async (req: any, res: any, next: any) => {
     // Get exam details
     const [exam] = await db
       .select()
-      .from(exams as any)
+      .from(exams)
       .where(eq(exams.id, examId))
       .limit(1);
 
@@ -466,7 +466,7 @@ export const validateExamTimeWindow = async (req: any, res: any, next: any) => {
     // Verify student is in the correct class
     const [student] = await db
       .select()
-      .from(students as any)
+      .from(students)
       .where(eq(students.id, userId))
       .limit(1);
 

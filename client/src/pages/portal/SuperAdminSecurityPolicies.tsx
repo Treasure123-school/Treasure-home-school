@@ -45,18 +45,18 @@ export default function SuperAdminSecurityPolicies() {
   useEffect(() => {
     if (settings) {
       setFormData({
-        minPasswordLength: (settings as any).minPasswordLength ?? 8,
-        requirePasswordNumbers: (settings as any).requirePasswordNumbers ?? true,
-        requirePasswordLetters: (settings as any).requirePasswordLetters ?? true,
-        requirePasswordSpecial: (settings as any).requirePasswordSpecial ?? true,
-        maxFailedLoginAttempts: (settings as any).maxFailedLoginAttempts ?? 5,
-        enableLockAccount: (settings as any).enableLockAccount ?? true,
-        lockoutDuration: (settings as any).lockoutDuration ?? 15,
-        passwordResetExpiry: (settings as any).passwordResetExpiry ?? 30,
-        invalidateOldPasswordOnReset: (settings as any).invalidateOldPasswordOnReset ?? true,
-        enableTwoFactor: (settings as any).enableTwoFactor ?? false,
-        twoFactorTarget: (settings as any).twoFactorTarget ?? 'admins',
-        logoutOnPasswordChange: (settings as any).logoutOnPasswordChange ?? true
+        minPasswordLength: settings.minPasswordLength ?? 8,
+        requirePasswordNumbers: settings.requirePasswordNumbers ?? true,
+        requirePasswordLetters: settings.requirePasswordLetters ?? true,
+        requirePasswordSpecial: settings.requirePasswordSpecial ?? true,
+        maxFailedLoginAttempts: settings.maxFailedLoginAttempts ?? 5,
+        enableLockAccount: settings.enableLockAccount ?? true,
+        lockoutDuration: settings.lockoutDuration ?? 15,
+        passwordResetExpiry: settings.passwordResetExpiry ?? 30,
+        invalidateOldPasswordOnReset: settings.invalidateOldPasswordOnReset ?? true,
+        enableTwoFactor: settings.enableTwoFactor ?? false,
+        twoFactorTarget: settings.twoFactorTarget ?? 'admins',
+        logoutOnPasswordChange: settings.logoutOnPasswordChange ?? true
       });
     }
   }, [settings]);
