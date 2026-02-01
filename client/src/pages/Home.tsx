@@ -125,14 +125,19 @@ export default function Home() {
     <PublicLayout>
       {/* Hero Section */}
       <section className="relative h-[70vh] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 z-0">
+        <motion.div 
+          initial={{ opacity: 0, scale: 1.1 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1.5, ease: "easeOut" }}
+          className="absolute inset-0 z-0"
+        >
           <img
             src={heroStudents}
             alt="Hero"
             className="w-full h-full object-cover object-[center_20%]"
           />
           <div className="absolute inset-0 bg-black/50" />
-        </div>
+        </motion.div>
         <div className="container relative z-10 text-center text-white px-4">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
