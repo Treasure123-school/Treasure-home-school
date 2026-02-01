@@ -102,10 +102,10 @@ export default function Home() {
               <h2 className="text-3xl md:text-5xl font-bold mb-2">{schoolName}</h2>
               <div className="w-12 h-[2px] bg-gradient-to-r from-[#0000FF] to-[#00BFFF]" />
             </div>
-            <p className="text-[14px] md:text-[15px] text-gray-600 leading-relaxed mb-6">
+            <p className="text-[16px] md:text-[18px] text-gray-600 leading-relaxed mb-6">
               Treasure Home School is a private educational institution committed to providing quality education and strong moral upbringing. We believe every child is unique and deserves careful guidance to discover their full potential.
             </p>
-            <p className="text-[14px] md:text-[15px] text-gray-600 leading-relaxed mb-8">
+            <p className="text-[16px] md:text-[18px] text-gray-600 leading-relaxed mb-8">
               Our teaching approach combines sound academics, discipline, creativity, and life skills to prepare pupils for future challenges.
             </p>
             <Button asChild className="btn-primary">
@@ -139,8 +139,8 @@ export default function Home() {
                     className="icon-gradient mb-6" 
                     style={{ WebkitMaskImage: `url(${f.icon})`, maskImage: `url(${f.icon})` }}
                   />
-                  <h3 className="text-base font-bold mb-3">{f.title}</h3>
-                  <p className="text-[11px] text-gray-500 leading-relaxed">{f.desc}</p>
+                  <h3 className="text-lg font-bold mb-3">{f.title}</h3>
+                  <p className="text-[14px] text-gray-500 leading-relaxed">{f.desc}</p>
                 </div>
               </motion.div>
             ))}
@@ -202,7 +202,7 @@ export default function Home() {
                   <div className="text-4xl md:text-5xl font-black mb-3 text-gray-900 group-hover:text-[#0000FF] transition-colors duration-500">{s.value}</div>
                   <div className="w-8 h-[2px] bg-gray-100 mx-auto mb-4 group-hover:bg-[#0000FF]/30 transition-colors" />
                   <div className="text-[11px] text-gray-400 uppercase tracking-[0.2em] font-extrabold">{s.label}</div>
-                  {s.label === "Pass Rate" && <div className="text-[10px] text-gray-300 mt-1 italic">to Universities</div>}
+                  {s.label === "Pass Rate" && <div className="text-[12px] text-gray-300 mt-1 italic">to Universities</div>}
                 </motion.div>
               ))}
             </div>
@@ -234,7 +234,7 @@ export default function Home() {
                       <path d="M5.017 21L5.017 18C5.017 16.8954 5.91243 16 7.017 16H10.017C11.1216 16 12.017 16.8954 12.017 18V21M5.017 21H12.017M5.017 21C3.91243 21 3.017 20.1046 3.017 19V15C3.017 13.8954 3.91243 13 5.017 13H6.017C6.017 10.2386 3.77843 8 1.017 8V5C5.43528 5 9.017 8.58172 9.017 13V13.017" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
                     </svg>
                   </div>
-                  <p className="text-[15px] md:text-[17px] text-gray-600 leading-relaxed mb-8">
+                  <p className="text-[16px] md:text-[18px] text-gray-600 leading-relaxed mb-8">
                     {testimonials[currentTestimonial].text}
                   </p>
                   <div className="flex items-center gap-4">
@@ -242,7 +242,7 @@ export default function Home() {
                     <div>
                       <div className="w-8 h-[2px] bg-[#0000FF] mb-2" />
                       <h4 className="font-bold text-base text-gray-900">{testimonials[currentTestimonial].name}</h4>
-                      <p className="text-[11px] text-gray-400 uppercase tracking-widest">{testimonials[currentTestimonial].role}</p>
+                      <p className="text-[12px] text-gray-400 uppercase tracking-widest">{testimonials[currentTestimonial].role}</p>
                     </div>
                   </div>
                 </Card>
