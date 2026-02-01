@@ -59,7 +59,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
 
   const navigation = [
     { name: 'Home', href: '/' },
-    { name: 'About School', href: '/about' },
+    { name: 'About', href: '/about' },
     { name: 'Gallery', href: '/gallery' },
     { name: 'Portal', href: '/login' },
   ];
