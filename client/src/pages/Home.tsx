@@ -149,25 +149,61 @@ export default function Home() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-24 bg-white">
+      <section className="py-24 bg-white overflow-hidden">
         <div className="container px-4 max-w-6xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div className="space-y-6">
-              <h2 className="text-3xl font-bold">Why Choose {schoolName}?</h2>
-              <p className="text-[13px] text-gray-600 leading-relaxed">At {schoolName}, Seriki, our vision is to be a beacon of educational excellence in rural Ogun state and beyond.</p>
+          <div className="grid lg:grid-cols-2 gap-16 items-start">
+            <div className="space-y-8 sticky top-32">
+              <div className="space-y-4">
+                <h2 className="text-5xl md:text-6xl font-bold leading-tight text-[#1a1a1a]">
+                  Why Choose<br />
+                  <span className="text-[#0000FF]">Treasure-Home</span><br />
+                  School?
+                </h2>
+                <div className="w-16 h-1 bg-[#0000FF] rounded-full" />
+              </div>
+              
+              <div className="space-y-6">
+                <p className="text-[15px] text-gray-600 leading-relaxed font-medium">
+                  At Treasure-Home School, Seriki-Soyinka, we don't just teach—we inspire. Our vision is to be a sanctuary of academic brilliance and a cornerstone of moral development in Ogun State and beyond.
+                </p>
+                <p className="text-[14px] text-gray-500 leading-relaxed">
+                  We are dedicated to equipping our students with the critical thinking skills, technological savvy, and unwavering integrity needed to thrive in a globalized world. By choosing us, you are placing your child in an environment that fosters compassion, innovation, and leadership, ensuring they emerge as confident trailblazers of tomorrow.
+                </p>
+                <p className="text-[14px] text-gray-500 leading-relaxed">
+                  Join our community of excellence where we uphold the highest standards of academic integrity and character building, shaping a future where our graduates lead with purpose and excellence.
+                </p>
+              </div>
+
+              <div className="pt-8 border-t border-gray-100 flex flex-col items-center">
+                <Button 
+                  asChild 
+                  variant="outline" 
+                  className="group relative h-14 px-10 border-2 border-[#0000FF] text-[#0000FF] hover:bg-[#0000FF] hover:text-white transition-all duration-300 rounded-lg overflow-hidden flex items-center gap-3 bg-white"
+                >
+                  <Link href="/portal/login" className="flex items-center gap-3">
+                    <span className="font-bold tracking-wide uppercase text-sm">Enroll Your Child</span>
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                </Button>
+                <div className="mt-4 w-12 h-1 bg-[#0000FF]/20 rounded-full" />
+              </div>
             </div>
-            <div className="grid grid-cols-2 gap-6">
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 lg:pt-0">
               {stats.map((s, i) => (
                 <motion.div 
                   key={i} 
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1, duration: 0.5 }}
-                  className="p-8 border border-gray-100 rounded-xl shadow-sm text-center hover-elevate transition-all duration-300"
+                  className="group relative p-10 bg-white border border-gray-50 rounded-2xl shadow-[0_10px_40px_-15px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.12)] transition-all duration-500 hover:-translate-y-2 text-center"
                 >
-                  <div className="text-3xl font-bold mb-1 text-blue-600">{s.value}</div>
-                  <div className="text-[9px] text-gray-400 uppercase tracking-widest font-bold">{s.label}</div>
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-1 bg-[#0000FF]/10 group-hover:bg-[#0000FF] transition-colors duration-500 rounded-b-full" />
+                  <div className="text-4xl md:text-5xl font-black mb-3 text-gray-900 group-hover:text-[#0000FF] transition-colors duration-500">{s.value}</div>
+                  <div className="w-8 h-[2px] bg-gray-100 mx-auto mb-4 group-hover:bg-[#0000FF]/30 transition-colors" />
+                  <div className="text-[11px] text-gray-400 uppercase tracking-[0.2em] font-extrabold">{s.label}</div>
+                  {s.label === "Pass Rate" && <div className="text-[10px] text-gray-300 mt-1 italic">to Universities</div>}
                 </motion.div>
               ))}
             </div>
