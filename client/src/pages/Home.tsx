@@ -1,10 +1,11 @@
+import { useState, useEffect } from 'react';
 import PublicLayout from '@/components/layout/PublicLayout';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, MapPin, Phone, Mail } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 interface SettingsData {
@@ -57,6 +58,15 @@ export default function Home() {
     "banner 1.jpeg", "group of students.jpg", "students 2.jpeg", 
     "students 1.jpeg", "student studying.jpeg", "students in class.jpg"
   ];
+
+  const [currentTestimonial, setCurrentTestimonial] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [testimonials.length]);
 
   return (
     <PublicLayout>
@@ -166,30 +176,55 @@ export default function Home() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-24 bg-gray-50">
-        <div className="container px-4 max-w-6xl mx-auto text-center">
+      <section className="py-24 bg-gray-50 overflow-hidden">
+        <div className="container px-4 max-w-4xl mx-auto text-center">
           <h2 className="section-title">School Testimonial</h2>
-          <p className="section-subtitle">Our education brings satisfaction to our students.</p>
-          <div className="grid md:grid-cols-2 gap-8">
-            {testimonials.map((t, i) => (
+          <div className="w-12 h-[2px] bg-[#0000FF] mx-auto mb-6" />
+          <p className="section-subtitle mb-12">Our education brings satisfaction to our students. Here are a few testimonials.</p>
+          
+          <div className="relative h-[400px] md:h-[300px]">
+            <AnimatePresence mode="wait">
               <motion.div
-                key={i}
-                initial={{ opacity: 0, x: i % 2 === 0 ? -30 : 30 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.7, ease: "easeOut" }}
+                key={currentTestimonial}
+                initial={{ opacity: 0, x: 100 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -100 }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+                className="absolute inset-0"
               >
-                <Card className="p-8 text-left bg-white border-none shadow-sm rounded-xl hover-elevate transition-all duration-300">
-                  <p className="text-[13px] text-gray-500 italic mb-8">"{t.text}"</p>
+                <Card className="p-10 text-left bg-white border-none shadow-xl rounded-2xl h-full flex flex-col justify-center">
+                  <div className="text-[#0000FF] mb-6">
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M14.017 21L14.017 18C14.017 16.8954 14.9124 16 16.017 16H19.017C20.1216 16 21.017 16.8954 21.017 18V21M14.017 21H21.017M14.017 21C12.9124 21 12.017 20.1046 12.017 19V15C12.017 13.8954 12.9124 13 14.017 13H15.017C15.017 10.2386 12.7784 8 10.017 8V5C14.4353 5 18.017 8.58172 18.017 13V13.017" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                      <path d="M5.017 21L5.017 18C5.017 16.8954 5.91243 16 7.017 16H10.017C11.1216 16 12.017 16.8954 12.017 18V21M5.017 21H12.017M5.017 21C3.91243 21 3.017 20.1046 3.017 19V15C3.017 13.8954 3.91243 13 5.017 13H6.017C6.017 10.2386 3.77843 8 1.017 8V5C5.43528 5 9.017 8.58172 9.017 13V13.017" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+                    </svg>
+                  </div>
+                  <p className="text-[15px] md:text-[17px] text-gray-600 leading-relaxed mb-8">
+                    {testimonials[currentTestimonial].text}
+                  </p>
                   <div className="flex items-center gap-4">
-                    <img src={t.img} alt={t.name} className="w-10 h-10 rounded-full object-cover shadow-sm" />
+                    <img src={testimonials[currentTestimonial].img} alt={testimonials[currentTestimonial].name} className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-md" />
                     <div>
-                      <h4 className="font-bold text-xs">{t.name}</h4>
-                      <p className="text-[9px] text-gray-400 uppercase tracking-widest">{t.role}</p>
+                      <div className="w-8 h-[2px] bg-[#0000FF] mb-2" />
+                      <h4 className="font-bold text-base text-gray-900">{testimonials[currentTestimonial].name}</h4>
+                      <p className="text-[11px] text-gray-400 uppercase tracking-widest">{testimonials[currentTestimonial].role}</p>
                     </div>
                   </div>
                 </Card>
               </motion.div>
+            </AnimatePresence>
+          </div>
+
+          <div className="flex justify-center gap-2 mt-8">
+            {testimonials.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentTestimonial(i)}
+                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                  currentTestimonial === i ? 'bg-[#0000FF] w-6' : 'bg-gray-300'
+                }`}
+                aria-label={`Go to testimonial ${i + 1}`}
+              />
             ))}
           </div>
         </div>
