@@ -155,20 +155,20 @@ export default function Home() {
           <img 
             src="/images/backgrounds/bg_01.png" 
             alt="" 
-            className="w-full h-auto opacity-70 translate-y-[-10%]"
+            className="w-full h-auto opacity-70 translate-y-[-10%] scale-150 lg:scale-125"
           />
           <img 
             src="/images/backgrounds/bg_02.png" 
             alt="" 
-            className="w-full h-auto opacity-70 translate-y-[10%]"
+            className="w-full h-auto opacity-70 translate-y-[10%] scale-150 lg:scale-125"
           />
         </div>
 
         <div className="container px-4 max-w-6xl mx-auto relative z-10">
-          <div className="grid lg:grid-cols-2 gap-16 items-start">
-            <div className="space-y-8 sticky top-32">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
+            <div className="space-y-8 lg:sticky lg:top-32">
               <div className="space-y-4">
-                <h2 className="text-5xl md:text-6xl font-bold leading-tight text-[#1a1a1a]">
+                <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-[#1a1a1a]">
                   Why Choose<br />
                   <span className="text-[#0000FF]">Treasure-Home</span><br />
                   School?
@@ -177,32 +177,29 @@ export default function Home() {
               </div>
               
               <div className="space-y-6">
-                <p className="text-[15px] text-gray-600 leading-relaxed font-medium">
+                <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed font-medium">
                   At Treasure-Home School, Seriki-Soyinka, we don't just teach—we inspire. Our vision is to be a sanctuary of academic brilliance and a cornerstone of moral development in Ogun State and beyond.
                 </p>
-                <p className="text-[14px] text-gray-500 leading-relaxed">
+                <p className="text-[14px] md:text-[15px] text-gray-500 leading-relaxed">
                   We are dedicated to equipping our students with the critical thinking skills, technological savvy, and unwavering integrity needed to thrive in a globalized world. By choosing us, you are placing your child in an environment that fosters compassion, innovation, and leadership, ensuring they emerge as confident trailblazers of tomorrow.
-                </p>
-                <p className="text-[14px] text-gray-500 leading-relaxed">
-                  Join our community of excellence where we uphold the highest standards of academic integrity and character building, shaping a future where our graduates lead with purpose and excellence.
                 </p>
               </div>
 
-              <div className="pt-8 flex flex-col items-center">
+              <div className="pt-4 flex flex-col items-center lg:items-start">
                 <Button 
                   asChild 
                   variant="outline" 
-                  className="group relative h-14 px-10 border-2 border-[#0000FF] text-[#0000FF] hover:bg-[#0000FF] hover:text-white transition-all duration-300 rounded-lg overflow-hidden flex items-center gap-3 bg-white"
+                  className="group relative h-12 md:h-14 px-8 md:px-10 border-2 border-[#0000FF] text-[#0000FF] hover:bg-[#0000FF] hover:text-white transition-all duration-300 rounded-lg overflow-hidden flex items-center gap-3 bg-white w-full sm:w-auto"
                 >
-                  <Link href="/portal/login" className="flex items-center gap-3">
-                    <span className="font-bold tracking-wide uppercase text-sm">Enroll Your Child</span>
+                  <Link href="/login" className="flex items-center gap-3">
+                    <span className="font-bold tracking-wide uppercase text-xs md:text-sm text-center">Enroll Your Child</span>
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </Link>
                 </Button>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-24 lg:pt-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 pt-12 lg:pt-0">
               {stats.map((s, i) => (
                 <motion.div 
                   key={i} 
@@ -210,7 +207,7 @@ export default function Home() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1, duration: 0.5 }}
-                  className="group relative p-10 bg-white border border-gray-50 rounded-2xl shadow-[0_10px_40px_-15px_rgba(0,0,0,0.08)] hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.12)] transition-all duration-500 hover:-translate-y-2 text-center"
+                  className="group relative p-8 md:p-10 bg-white border border-gray-100 rounded-xl shadow-[0_10px_30px_-15px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_50px_-15px_rgba(0,0,0,0.1)] transition-all duration-500 hover:-translate-y-1 text-center"
                 >
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-1 bg-[#0000FF]/10 group-hover:bg-[#0000FF] transition-colors duration-500 rounded-b-full" />
                   <div className="text-4xl md:text-5xl font-black mb-3 text-gray-900 group-hover:text-[#0000FF] transition-colors duration-500">{s.value}</div>
