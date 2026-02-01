@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, User } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import girlsImage from "@/assets/girls-image.png";
 import gallery1 from "@/assets/gallery-1.png";
@@ -43,7 +43,7 @@ export default function Home() {
 
   const schoolName = settings?.schoolName || "Treasure-Home School";
   const schoolAddress = settings?.schoolAddress || "Seriki, Ogun State";
-  const schoolLogo = settings?.schoolLogo || "/images/logo.png";
+  const schoolLogo = settings?.schoolLogo || "";
 
   const features = [
     {
@@ -90,13 +90,13 @@ export default function Home() {
       name: "Adebayo Daniel",
       role: "Student",
       text: `${schoolName} has not only prepared me academically but has also taught me important life skills. The school's focus on values and ethics has shaped my perspective on the world.`,
-      img: "/images/Tijani Abdulbasit.jpg",
+      img: "",
     },
     {
       name: "Abubakar Korede",
       role: "Student",
       text: `At ${schoolName}, I've learned the value of leadership and teamwork. The school's emphasis on character development has empowered me to take on responsibilities.`,
-      img: "/images/Yisa Balakis.jpg",
+      img: "",
     },
   ];
 
@@ -126,7 +126,7 @@ export default function Home() {
           <img
             src="/images/hero-students.png"
             alt="Hero"
-            className="w-full h-full object-cover"
+            className="hidden w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-black/50" />
         </div>
@@ -391,11 +391,17 @@ export default function Home() {
                     {testimonials[currentTestimonial].text}
                   </p>
                   <div className="flex items-center gap-4">
-                    <img
-                      src={testimonials[currentTestimonial].img}
-                      alt={testimonials[currentTestimonial].name}
-                      className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-md"
-                    />
+                    {testimonials[currentTestimonial].img ? (
+                      <img
+                        src={testimonials[currentTestimonial].img}
+                        alt={testimonials[currentTestimonial].name}
+                        className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-md"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center border-2 border-white shadow-md">
+                        <User className="w-8 h-8 text-blue-600" />
+                      </div>
+                    )}
                     <div>
                       <div className="w-8 h-[2px] bg-[#0000FF] mb-2" />
                       <h4 className="font-bold text-base text-gray-900">

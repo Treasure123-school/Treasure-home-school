@@ -82,7 +82,7 @@ export default function Login() {
 
   const schoolName = settings?.schoolName || "Treasure-Home School";
   const schoolMotto = settings?.schoolMotto || "Honesty and Success";
-  const displayLogo = settings?.schoolLogo || schoolLogo;
+  const displayLogo = settings?.schoolLogo || "";
 
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   const [tempUserData, setTempUserData] = useState<any>(null);
