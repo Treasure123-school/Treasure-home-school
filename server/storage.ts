@@ -32,6 +32,9 @@ import { createUserStorage } from "./storage/modules/user-storage";
 import { createAcademicStorage } from "./storage/modules/academic-storage";
 import { createExamStorage } from "./storage/modules/exam-storage";
 import { createReportStorage } from "./storage/modules/report-storage";
+import { createStudentStorage } from "./storage/modules/student-storage";
+import { createTeacherStorage } from "./storage/modules/teacher-storage";
+import { createAttendanceStorage } from "./storage/modules/attendance-storage";
 
 const db: any = getDatabase();
 const schema: any = getSchema();
@@ -58,7 +61,15 @@ export interface IStorage {
   getReportCard(id: number): Promise<ReportCard | undefined>;
   getReportCardsByStudentId(studentId: string): Promise<ReportCard[]>;
   getReportCardItems(reportCardId: number): Promise<ReportCardItem[]>;
-  // ... rest of the interface will be added as we migrate
+  getStudent(id: string): Promise<Student | undefined>;
+  getStudentsByClass(classId: number): Promise<Student[]>;
+  createStudent(student: InsertStudent): Promise<Student>;
+  updateStudent(id: string, update: Partial<InsertStudent>): Promise<Student>;
+  getTeacherProfile(userId: string): Promise<TeacherProfile | undefined>;
+  getAllTeachers(): Promise<TeacherProfile[]>;
+  createTeacherProfile(profile: InsertTeacherProfile): Promise<TeacherProfile>;
+  getAttendance(classId: number, date: Date): Promise<Attendance[]>;
+  createAttendance(attendance: InsertAttendance): Promise<Attendance>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -68,6 +79,9 @@ export class DatabaseStorage implements IStorage {
   private academicStorage: ReturnType<typeof createAcademicStorage>;
   private examStorage: ReturnType<typeof createExamStorage>;
   private reportStorage: ReturnType<typeof createReportStorage>;
+  private studentStorage: ReturnType<typeof createStudentStorage>;
+  private teacherStorage: ReturnType<typeof createTeacherStorage>;
+  private attendanceStorage: ReturnType<typeof createAttendanceStorage>;
 
   constructor() {
     this.db = db;
@@ -76,6 +90,9 @@ export class DatabaseStorage implements IStorage {
     this.academicStorage = createAcademicStorage(this.db, this.schema);
     this.examStorage = createExamStorage(this.db, this.schema);
     this.reportStorage = createReportStorage(this.db, this.schema);
+    this.studentStorage = createStudentStorage(this.db, this.schema);
+    this.teacherStorage = createTeacherStorage(this.db, this.schema);
+    this.attendanceStorage = createAttendanceStorage(this.db, this.schema);
   }
 
   async getUser(id: string) { return this.userStorage.getUser(id); }
@@ -100,6 +117,18 @@ export class DatabaseStorage implements IStorage {
   async getReportCard(id: number) { return this.reportStorage.getReportCard(id); }
   async getReportCardsByStudentId(studentId: string) { return this.reportStorage.getReportCardsByStudentId(studentId); }
   async getReportCardItems(reportCardId: number) { return this.reportStorage.getReportCardItems(reportCardId); }
+
+  async getStudent(id: string) { return this.studentStorage.getStudent(id); }
+  async getStudentsByClass(classId: number) { return this.studentStorage.getStudentsByClass(classId); }
+  async createStudent(student: any) { return this.studentStorage.createStudent(student); }
+  async updateStudent(id: string, update: any) { return this.studentStorage.updateStudent(id, update); }
+
+  async getTeacherProfile(userId: string) { return this.teacherStorage.getTeacherProfile(userId); }
+  async getAllTeachers() { return this.teacherStorage.getAllTeachers(); }
+  async createTeacherProfile(profile: any) { return this.teacherStorage.createTeacherProfile(profile); }
+
+  async getAttendance(classId: number, date: Date) { return this.attendanceStorage.getAttendance(classId, date); }
+  async createAttendance(attendance: any) { return this.attendanceStorage.createAttendance(attendance); }
 }
 
 export const storage = new DatabaseStorage();
