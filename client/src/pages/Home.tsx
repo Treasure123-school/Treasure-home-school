@@ -305,20 +305,7 @@ export default function Home() {
               <div className="pt-4 flex justify-start">
                 <Button 
                   asChild 
-                  className="!bg-white hover:!bg-gradient-to-r hover:!from-[#0000FF] hover:!to-[#00BFFF] !text-black hover:!text-white h-12 md:h-14 px-8 md:px-10 transition-all duration-300 rounded-lg flex items-center gap-3 w-full sm:w-auto shadow-lg hover:shadow-blue-500/25 border border-gray-200 hover:border-transparent !important"
-                  style={{ backgroundColor: 'white', color: 'black' }}
-                  onMouseEnter={(e) => {
-                    const target = e.currentTarget as HTMLElement;
-                    target.style.backgroundColor = '';
-                    target.style.backgroundImage = 'linear-gradient(to right, #0000FF, #00BFFF)';
-                    target.style.color = 'white';
-                  }}
-                  onMouseLeave={(e) => {
-                    const target = e.currentTarget as HTMLElement;
-                    target.style.backgroundColor = 'white';
-                    target.style.backgroundImage = '';
-                    target.style.color = 'black';
-                  }}
+                  className="enroll-button-custom h-12 md:h-14 px-8 md:px-10 transition-all duration-300 rounded-lg flex items-center gap-3 w-full sm:w-auto shadow-lg hover:shadow-blue-500/25 border border-gray-200"
                 >
                   <Link href="/login" className="flex items-center gap-3">
                     <span className="font-bold tracking-wide uppercase text-xs md:text-sm">Enroll Your Child</span>

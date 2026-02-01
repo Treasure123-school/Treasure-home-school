@@ -191,6 +191,19 @@
   mask-position: center;
 }
 
+.enroll-button-custom {
+  background-color: white !important;
+  color: black !important;
+  background-image: none !important;
+}
+
+.enroll-button-custom:hover {
+  background-image: linear-gradient(to right, #0000FF, #00BFFF) !important;
+  color: white !important;
+  background-color: transparent !important;
+  border-color: transparent !important;
+}
+
 .footer-dark {
   @apply bg-gradient-to-r from-[#0000AA] to-[#0099DD] text-white py-16;
 }
