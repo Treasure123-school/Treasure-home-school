@@ -169,10 +169,10 @@ export default function Home() {
               
               <div className="space-y-6">
                 <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed">
-                  At Treasure-Home School, Seriki-Soyinka, we don't just teach—we inspire. Our vision is to be a sanctuary of academic brilliance and a cornerstone of moral development in Ogun State and beyond.
+                  At Treasure-Home School, we don't just teach—we inspire excellence. Our vision is to be a sanctuary of academic brilliance and moral development in Ogun State.
                 </p>
                 <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed">
-                  We are dedicated to equipping our students with the critical thinking skills, technological savvy, and unwavering integrity needed to thrive in a globalized world. By choosing us, you are placing your child in an environment that fosters leadership, ensuring they emerge as confident trailblazers.
+                  We equip students with critical thinking and integrity. By choosing us, you place your child in an environment that fosters leadership and global success.
                 </p>
               </div>
 
