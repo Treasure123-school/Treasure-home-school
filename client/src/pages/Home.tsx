@@ -46,6 +46,17 @@ export default function Home() {
 
   const { scrollY } = useScroll();
   const y = useTransform(scrollY, [0, 500], [0, -150]);
+  const [isAtTop, setIsAtTop] = useState(true);
+
+  useEffect(() => {
+    return scrollY.onChange((latest) => {
+      if (latest <= 5) {
+        setIsAtTop(true);
+      } else {
+        setIsAtTop(false);
+      }
+    });
+  }, [scrollY]);
 
   const schoolName = settings?.schoolName || "Treasure-Home School";
   const schoolAddress = settings?.schoolAddress || "Seriki, Ogun State";
@@ -128,20 +139,40 @@ export default function Home() {
     <PublicLayout>
       {/* Hero Section */}
       <section className="relative h-[70vh] flex items-center justify-center overflow-hidden">
-        <motion.div 
-          initial={{ opacity: 0, scale: 1.1 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1.5, ease: "easeOut" }}
-          style={{ y }}
-          className="absolute inset-0 z-0"
-        >
-          <img
-            src={heroStudents}
-            alt="Hero"
-            className="w-full h-full object-cover object-[center_20%]"
-          />
-          <div className="absolute inset-0 bg-black/50" />
-        </motion.div>
+        <AnimatePresence>
+          {isAtTop && (
+            <motion.div 
+              key="hero-bg"
+              initial={{ opacity: 0, scale: 1.1 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 1 }}
+              transition={{ duration: 1.5, ease: "easeOut" }}
+              style={{ y }}
+              className="absolute inset-0 z-0"
+            >
+              <img
+                src={heroStudents}
+                alt="Hero"
+                className="w-full h-full object-cover object-[center_20%]"
+              />
+              <div className="absolute inset-0 bg-black/50" />
+            </motion.div>
+          )}
+          {!isAtTop && (
+            <motion.div 
+              key="hero-bg-scrolled"
+              style={{ y }}
+              className="absolute inset-0 z-0"
+            >
+              <img
+                src={heroStudents}
+                alt="Hero"
+                className="w-full h-full object-cover object-[center_20%]"
+              />
+              <div className="absolute inset-0 bg-black/50" />
+            </motion.div>
+          )}
+        </AnimatePresence>
         <div className="container relative z-10 text-center text-white px-4">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
