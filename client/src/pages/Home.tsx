@@ -96,9 +96,9 @@ export default function Home() {
 
       {/* About Section - TEXT FIRST THEN IMAGE (As per user feedback) */}
       <section className="py-24 bg-white">
-        <div className="container px-4 max-w-6xl mx-auto text-center">
-          <motion.div {...fadeIn} className="max-w-3xl mx-auto mb-12">
-            <div className="flex flex-col items-center gap-4 mb-8">
+        <div className="container px-4 max-w-6xl mx-auto">
+          <motion.div {...fadeIn} className="max-w-3xl mx-auto mb-12 text-left">
+            <div className="flex flex-col items-start gap-4 mb-8">
               <h2 className="text-3xl md:text-5xl font-bold mb-2">{schoolName}</h2>
               <div className="w-12 h-[2px] bg-gradient-to-r from-[#0000FF] to-[#00BFFF]" />
             </div>
