@@ -87,8 +87,8 @@ export default function Home() {
               Treasure Home School is a school where qualitative education and moral excellence shape confident learners.
             </motion.p>
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 1.1, duration: 0.5 }} className="flex flex-row gap-4 justify-center items-center">
-              <Button asChild className="btn-hero-about h-11 px-8 hover-elevate active-elevate-2"><Link href="/portal/login">ENROLL</Link></Button>
-              <Button asChild className="btn-hero-contact h-11 px-8 hover-elevate active-elevate-2"><Link href="/contact">CONTACT</Link></Button>
+              <Button asChild className="btn-hero-about h-11 px-8 hover-elevate active-elevate-2"><Link href="/login">ENROLL</Link></Button>
+              <Button asChild className="btn-hero-contact h-11 px-8 hover-elevate active-elevate-2"><Link href="/login">PORTAL</Link></Button>
             </motion.div>
           </motion.div>
         </div>
