@@ -118,27 +118,60 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
             isMobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
           }`}
         >
-          <div className="flex flex-col h-full pt-32 px-6">
-            <nav className="flex flex-col gap-6">
-              {navigation.map((item) => (
-                <Link 
-                  key={item.name} 
-                  href={item.href} 
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`text-lg font-bold uppercase tracking-widest transition-colors ${
-                    isActive(item.href) ? 'text-[#00BFFF]' : 'text-gray-900'
-                  }`}
-                >
-                  {item.name}
-                </Link>
-              ))}
-              <Button asChild className="btn-primary w-full mt-4 h-12">
-                <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2">
-                  <span>Contact Us</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
+          <div className="flex flex-col h-full">
+            {/* Mobile Menu Header */}
+            <div className="flex items-center justify-between p-4 border-b">
+              <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center gap-3">
+                {settings?.schoolLogo && (
+                  <img 
+                    src={settings.schoolLogo} 
+                    alt="Logo" 
+                    className="h-12 w-auto object-contain" 
+                  />
+                )}
+                <div className="flex flex-col">
+                  <span className="text-gray-900 font-bold text-base leading-tight">
+                    {schoolName}
+                  </span>
+                  {settings?.schoolMotto && (
+                    <span className="text-blue-600 text-[8px] font-semibold tracking-wider uppercase">
+                      {settings.schoolMotto}
+                    </span>
+                  )}
+                </div>
+              </Link>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <X className="h-6 w-6" />
               </Button>
-            </nav>
+            </div>
+
+            {/* Mobile Menu Links */}
+            <div className="flex flex-col pt-8 px-6">
+              <nav className="flex flex-col gap-6">
+                {navigation.map((item) => (
+                  <Link 
+                    key={item.name} 
+                    href={item.href} 
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`text-lg font-bold uppercase tracking-widest transition-colors ${
+                      isActive(item.href) ? 'text-blue-600' : 'text-gray-900'
+                    }`}
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+                <Button asChild className="btn-primary w-full mt-4 h-12">
+                  <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2">
+                    <span>Contact Us</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </Button>
+              </nav>
+            </div>
           </div>
         </div>
       </header>
