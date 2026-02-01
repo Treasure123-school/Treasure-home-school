@@ -102,7 +102,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
             {navigation.map((item) => (
               <Link key={item.name} href={item.href} className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${isActive(item.href) ? 'text-blue-600' : 'text-gray-900 hover:text-blue-600'}`}>{item.name}</Link>
             ))}
-            <Button asChild className="btn-primary"><Link href="/login" className="flex items-center gap-2"><span>Portal</span><ArrowRight className="w-3 h-3" /></Link></Button>
+            <Button asChild className="btn-primary"><Link href="/contact" className="flex items-center gap-2"><span>Contact Us</span><ArrowRight className="w-3 h-3" /></Link></Button>
           </nav>
 
           {/* Mobile Menu Toggle */}
@@ -139,8 +139,8 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               </Link>
             ))}
             <Button asChild className="btn-primary w-full mt-6 h-14 text-sm font-black uppercase tracking-widest">
-              <Link href="/login" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-3">
-                <span>Portal</span>
+              <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-3">
+                <span>Contact Us</span>
                 <ArrowRight className="w-5 h-5" />
               </Link>
             </Button>
