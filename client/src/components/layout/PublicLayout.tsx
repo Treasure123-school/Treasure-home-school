@@ -155,7 +155,11 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-16 mb-12">
             <div className="space-y-6">
               {settings?.schoolLogo ? (
-                <img src={settings.schoolLogo} alt="Logo" className="h-20 w-auto brightness-0 invert" />
+                <img 
+                  src={settings.schoolLogo} 
+                  alt="Logo" 
+                  className="h-20 w-auto brightness-0 invert" 
+                />
               ) : null}
               <p className="text-[13px] text-white font-bold leading-relaxed">{settings?.schoolName || "Treasure-Home School"}, located at Seriki-Soyinka, Ifo Local Government, Ogun State, Nigeria, has a rich history of educational excellence.</p>
             </div>
