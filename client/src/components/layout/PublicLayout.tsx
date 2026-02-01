@@ -68,7 +68,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
 
   return (
     <div className="min-h-screen bg-white">
-      <header className={`fixed top-0 left-0 right-0 z-50 bg-white shadow-sm h-28 flex items-center transition-transform duration-300 ${showHeader ? 'translate-y-0' : '-translate-y-full'}`}>
+      <header className={`fixed top-0 left-0 right-0 z-50 bg-white shadow-sm h-28 flex items-center transition-all duration-300 ${showHeader ? 'translate-y-0' : '-translate-y-full'}`}>
         <div className="container max-w-7xl mx-auto px-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-4">
@@ -91,13 +91,55 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               </div>
             </Link>
           </div>
+
+          {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-10">
             {navigation.map((item) => (
               <Link key={item.name} href={item.href} className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${isActive(item.href) ? 'text-[#00BFFF]' : 'text-gray-900 hover:text-[#00BFFF]'}`}>{item.name}</Link>
             ))}
             <Button asChild className="btn-primary"><Link href="/contact" className="flex items-center gap-2"><span>Contact Us</span><ArrowRight className="w-3 h-3" /></Link></Button>
           </nav>
-          <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>{isMobileMenuOpen ? <X /> : <Menu />}</Button>
+
+          {/* Mobile Menu Toggle */}
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="lg:hidden relative z-[60]" 
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            aria-label="Toggle Menu"
+          >
+            {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </Button>
+        </div>
+
+        {/* Mobile Navigation Overlay */}
+        <div 
+          className={`fixed inset-0 bg-white z-[55] lg:hidden transition-all duration-300 ease-in-out ${
+            isMobileMenuOpen ? 'opacity-100 visible' : 'opacity-0 invisible pointer-events-none'
+          }`}
+        >
+          <div className="flex flex-col h-full pt-32 px-6">
+            <nav className="flex flex-col gap-6">
+              {navigation.map((item) => (
+                <Link 
+                  key={item.name} 
+                  href={item.href} 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`text-lg font-bold uppercase tracking-widest transition-colors ${
+                    isActive(item.href) ? 'text-[#00BFFF]' : 'text-gray-900'
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              ))}
+              <Button asChild className="btn-primary w-full mt-4 h-12">
+                <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-2">
+                  <span>Contact Us</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </Button>
+            </nav>
+          </div>
         </div>
       </header>
 
