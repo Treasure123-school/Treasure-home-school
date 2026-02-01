@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowRight, MapPin, Phone, Mail } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
@@ -94,7 +94,7 @@ export default function Home() {
         </div>
       </section>
 
-      {/* About Section - TEXT FIRST THEN IMAGE (As per user feedback) */}
+      {/* About Section */}
       <section className="py-24 bg-white">
         <div className="container px-4 max-w-6xl mx-auto">
           <div className="flex flex-col lg:flex-row gap-12 items-center lg:items-start">
@@ -151,21 +151,8 @@ export default function Home() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-24 bg-white relative">
-        {/* Wave Background Pattern - Y Look Configuration */}
-        <div className="absolute inset-0 pointer-events-none z-0">
-          <img 
-            src="/images/backgrounds/bg_01.png" 
-            alt="" 
-            className="absolute top-[40%] left-0 w-full h-auto opacity-70 scale-150 lg:scale-125 translate-y-[-50%]"
-          />
-          <img 
-            src="/images/backgrounds/bg_02.png" 
-            alt="" 
-            className="absolute top-[60%] right-0 w-full h-auto opacity-70 scale-150 lg:scale-125 translate-y-[-50%] rotate-180"
-          />
-        </div>
-
+      <section className="py-24 bg-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,191,255,0.05),transparent_70%),radial-gradient(circle_at_bottom_left,rgba(0,0,255,0.03),transparent_70%)] pointer-events-none" />
         <div className="container px-4 max-w-6xl mx-auto relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
             <div className="space-y-8 lg:sticky lg:top-32">
@@ -223,16 +210,8 @@ export default function Home() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-24 bg-gray-50 relative">
-        {/* Wave Background Pattern - Y Look Configuration */}
-        <div className="absolute inset-0 pointer-events-none z-0">
-          <img 
-            src="/images/backgrounds/bg_03.png" 
-            alt="" 
-            className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-auto opacity-60 scale-150 lg:scale-125 translate-y-[-30%]"
-          />
-        </div>
-        
+      <section className="py-24 bg-gray-50 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(at_0%_0%,rgba(0,0,255,0.02)_0px,transparent_50%),radial-gradient(at_100%_100%,rgba(0,191,255,0.02)_0px,transparent_50%)] pointer-events-none" />
         <div className="container px-4 max-w-4xl mx-auto text-center relative z-10">
           <h2 className="section-title">School Testimonial</h2>
           <div className="w-12 h-[2px] bg-[#0000FF] mx-auto mb-6" />
