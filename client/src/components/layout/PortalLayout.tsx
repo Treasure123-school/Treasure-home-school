@@ -352,8 +352,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             />
             {!collapsed && (
               <div className="transition-all duration-300 ease-in-out opacity-100 min-w-0 flex-1">
-                <h1 className="font-bold text-base lg:text-lg bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-400 dark:to-blue-500 bg-clip-text text-transparent truncate leading-tight">{schoolName}</h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400 font-normal truncate">{schoolMotto}</p>
+                <h1 className="font-bold text-lg lg:text-xl text-blue-700 dark:text-blue-400 truncate leading-tight">{schoolName}</h1>
+                <p className="text-[10px] text-blue-600 dark:text-blue-300 font-semibold tracking-wide uppercase truncate">{schoolMotto}</p>
                 <p className="text-xs text-gray-600 dark:text-gray-400 font-semibold mt-0.5">{getRoleTitle()}</p>
               </div>
             )}

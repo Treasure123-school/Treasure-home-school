@@ -344,10 +344,10 @@ export default function Login() {
                   data-testid="img-school-logo"
                 />
               </Link>
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white" data-testid="text-school-name">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-school-name">
                 {schoolName}
               </h1>
-              <p className="text-blue-600 dark:text-blue-400 text-xs mt-1 font-semibold tracking-wide uppercase">{schoolMotto}</p>
+              <p className="text-blue-600 dark:text-blue-400 text-[10px] mt-1.5 font-bold tracking-widest uppercase">{schoolMotto}</p>
             </div>
 
             <CardContent className="p-6 pt-2">
