@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'wouter';
 import { Menu, X, Phone, Mail, MapPin, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 interface PublicLayoutProps {
@@ -20,10 +20,37 @@ interface SettingsData {
 export default function PublicLayout({ children }: PublicLayoutProps) {
   const [location] = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showHeader, setShowHeader] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
   
   const { data: settings } = useQuery<SettingsData>({
     queryKey: ["/api/public/settings"],
   });
+
+  useEffect(() => {
+    const controlNavbar = () => {
+      if (typeof window !== 'undefined') {
+        const currentScrollY = window.scrollY;
+        
+        if (currentScrollY <= 100) {
+          setShowHeader(true);
+        } else if (currentScrollY > lastScrollY) {
+          // Scrolling down
+          setShowHeader(false);
+        } else {
+          // Scrolling up
+          setShowHeader(true);
+        }
+        
+        setLastScrollY(currentScrollY);
+      }
+    };
+
+    window.addEventListener('scroll', controlNavbar);
+    return () => {
+      window.removeEventListener('scroll', controlNavbar);
+    };
+  }, [lastScrollY]);
 
   const schoolName = settings?.schoolName || "Treasure-Home School";
   const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State, Nigeria";
@@ -41,7 +68,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
 
   return (
     <div className="min-h-screen bg-white">
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white shadow-sm h-28 flex items-center">
+      <header className={`fixed top-0 left-0 right-0 z-50 bg-white shadow-sm h-28 flex items-center transition-transform duration-300 ${showHeader ? 'translate-y-0' : '-translate-y-full'}`}>
         <div className="container max-w-7xl mx-auto px-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-4">
