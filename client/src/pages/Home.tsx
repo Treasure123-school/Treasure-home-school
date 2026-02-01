@@ -170,7 +170,7 @@ export default function Home() {
               <div className="space-y-4">
                 <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-[#1a1a1a]">
                   Why Choose<br />
-                  <span className="text-[#0000FF]">Treasure-Home</span><br />
+                  <span className="bg-gradient-to-r from-[#0000FF] to-[#00BFFF] bg-clip-text text-transparent">Treasure-Home</span><br />
                   School?
                 </h2>
                 <div className="w-16 h-1 bg-[#0000FF] rounded-full" />
@@ -188,8 +188,7 @@ export default function Home() {
               <div className="pt-4 flex flex-col items-center lg:items-start">
                 <Button 
                   asChild 
-                  variant="outline" 
-                  className="group relative h-12 md:h-14 px-8 md:px-10 border-2 border-[#0000FF] text-[#0000FF] hover:bg-[#0000FF] hover:text-white transition-all duration-300 rounded-lg overflow-hidden flex items-center gap-3 bg-white w-full sm:w-auto"
+                  className="btn-primary h-12 md:h-14 px-8 md:px-10 transition-all duration-300 rounded-lg flex items-center gap-3 w-full sm:w-auto"
                 >
                   <Link href="/login" className="flex items-center gap-3">
                     <span className="font-bold tracking-wide uppercase text-xs md:text-sm text-center">Enroll Your Child</span>
