@@ -151,16 +151,16 @@ export default function Home() {
       {/* Stats Section */}
       <section className="py-24 bg-white overflow-hidden relative">
         {/* Wave Background Pattern */}
-        <div className="absolute inset-0 pointer-events-none z-0">
+        <div className="absolute inset-0 pointer-events-none z-0 flex flex-col justify-between">
           <img 
             src="/images/backgrounds/bg_01.png" 
             alt="" 
-            className="absolute top-0 right-0 w-full h-auto translate-x-[20%] -translate-y-[20%] opacity-60"
+            className="w-full h-auto opacity-70 translate-y-[-10%]"
           />
           <img 
             src="/images/backgrounds/bg_02.png" 
             alt="" 
-            className="absolute bottom-0 left-0 w-full h-auto -translate-x-[20%] translate-y-[20%] opacity-60"
+            className="w-full h-auto opacity-70 translate-y-[10%]"
           />
         </div>
 
@@ -231,7 +231,7 @@ export default function Home() {
           <img 
             src="/images/backgrounds/bg_03.png" 
             alt="" 
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-auto scale-125 opacity-50"
+            className="w-full h-auto opacity-60 translate-y-[-20%] scale-150"
           />
         </div>
         
