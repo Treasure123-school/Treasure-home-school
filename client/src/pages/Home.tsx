@@ -7,6 +7,10 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import girlsImage from "@/assets/girls-image.png";
+import gallery1 from "@/assets/gallery-1.png";
+import gallery2 from "@/assets/gallery-2.png";
+import gallery3 from "@/assets/gallery-3.png";
+import gallery4 from "@/assets/gallery-4.png";
 import {
   Accordion,
   AccordionContent,
@@ -95,10 +99,10 @@ export default function Home() {
   ];
 
   const galleryImages = [
-    "banner 1.jpeg",
-    "group of students.jpg",
-    "students 2.jpeg",
-    "students 1.jpeg",
+    gallery1,
+    gallery2,
+    gallery3,
+    gallery4,
     "student studying.jpeg",
     "students in class.jpg",
   ];
@@ -438,7 +442,7 @@ export default function Home() {
                 className="aspect-[4/3] rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-500"
               >
                 <img
-                  src={`/images/${img}`}
+                  src={typeof img === 'string' && !img.startsWith('data:') && !img.startsWith('/') ? `/images/${img}` : img}
                   alt="Gallery"
                   className="w-full h-full object-cover hover:scale-110 transition-transform duration-700"
                 />
