@@ -15,6 +15,7 @@ import gallery5 from "@/assets/gallery-5.png";
 import gallery6 from "@/assets/gallery-6.png";
 import heroImage from "@/assets/hero-image.png";
 import schoolBuilding from "@/assets/school-building.png";
+import heroStudents from "@/assets/hero-students.png";
 import {
   Accordion,
   AccordionContent,
@@ -126,7 +127,7 @@ export default function Home() {
       <section className="relative h-screen flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img
-            src={heroImage}
+            src={heroStudents}
             alt="Hero"
             className="w-full h-full object-cover object-center"
           />
