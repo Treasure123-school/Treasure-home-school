@@ -189,7 +189,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4 lg:pt-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-12 lg:pt-0">
               {stats.map((s, i) => (
                 <motion.div 
                   key={i} 
