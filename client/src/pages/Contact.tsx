@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { MapPin, Phone, Mail, Clock, Car, Calendar } from 'lucide-react';
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import heroStudents from "@/assets/hero-students.png";
+import heroImage from "@/assets/hero-image.png";
 
 interface SettingsData {
   schoolName: string;
@@ -115,7 +115,7 @@ export default function Contact() {
       <section className="relative h-[40vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <img
-            src={heroStudents}
+            src={heroImage}
             alt="School Banner"
             className="w-full h-full object-cover object-center"
           />
