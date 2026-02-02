@@ -6442,7 +6442,6 @@ Treasure-Home School Administration
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         environment: process.env.NODE_ENV,
-        storage: useCloudinary ? "cloudinary" : "local",
         vercel: !!process.env.VERCEL,
         render: !!process.env.RENDER
       });
