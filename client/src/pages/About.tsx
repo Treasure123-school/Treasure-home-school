@@ -3,7 +3,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
 import { 
   Heart, 
   Trophy, 
@@ -18,7 +17,6 @@ import {
   Building2,
   GraduationCap
 } from 'lucide-react';
-import schoolBuilding from "@/assets/school-building.png";
 
 interface SettingsData {
   schoolName: string;
@@ -29,6 +27,7 @@ interface SettingsData {
 export default function About() {
   const { data: settings } = useQuery<SettingsData>({
     queryKey: ["/api/public/settings"],
+    refetchInterval: 5000,
   });
 
   const schoolName = settings?.schoolName || "Treasure-Home School";
@@ -75,34 +74,15 @@ export default function About() {
 
   return (
     <PublicLayout>
-      {/* Hero Section with School Background */}
-      <section className="relative h-[40vh] flex items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 z-0">
-          <img
-            src={schoolBuilding}
-            alt="School Banner"
-            className="w-full h-full object-cover object-center"
-          />
-          <div className="absolute inset-0 bg-black/60" />
-        </div>
-        <div className="container relative z-10 text-center text-white px-4">
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-4xl md:text-6xl font-bold mb-4"
-            data-testid="text-about-title"
-          >
+      {/* Hero Section */}
+      <section className="hero-gradient py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h1 className="text-4xl lg:text-5xl font-bold text-primary-foreground mb-6" data-testid="text-about-title">
             About {schoolName}
-          </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-lg md:text-xl text-gray-200"
-            data-testid="text-about-subtitle"
-          >
+          </h1>
+          <p className="text-xl text-primary-foreground/90 max-w-3xl mx-auto" data-testid="text-about-subtitle">
             {schoolMotto}
-          </motion.p>
+          </p>
         </div>
       </section>
 
@@ -155,7 +135,7 @@ export default function About() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {values.map((value, index) => (
-              <Card key={index} className="hover-elevate shadow-sm border border-border" data-testid={`card-value-${index}`}>
+              <Card key={index} className="card-hover shadow-sm border border-border" data-testid={`card-value-${index}`}>
                 <CardContent className="p-6 text-center">
                   <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${
                     value.color === 'red' ? 'bg-red-100' :
@@ -187,11 +167,7 @@ export default function About() {
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-            >
+            <div>
               <h2 className="text-3xl font-bold text-foreground mb-6" data-testid="text-history-title">
                 Our Journey
               </h2>
@@ -211,19 +187,15 @@ export default function About() {
                   dedication of our outstanding teaching staff.
                 </p>
               </div>
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-            >
+            </div>
+            <div>
               <img 
-                src={schoolBuilding}
+                src="https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400" 
                 alt="Treasure-Home School building and campus" 
-                className="rounded-xl shadow-lg w-full object-cover h-[400px]"
+                className="rounded-xl shadow-lg w-full"
                 data-testid="img-school-building"
               />
-            </motion.div>
+            </div>
           </div>
         </div>
       </section>
@@ -246,7 +218,7 @@ export default function About() {
                 {facilities.map((facility, index) => (
                   <div key={index} className="flex items-center space-x-3" data-testid={`facility-${index}`}>
                     <div className="bg-primary/10 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0">
-                      <Check className="text-primary h-4 w-4" />
+                      <i className="fas fa-check text-primary text-sm"></i>
                     </div>
                     <span className="text-foreground">{facility}</span>
                   </div>
@@ -268,12 +240,12 @@ export default function About() {
             Discover why parents trust us with their children's future.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button asChild size="lg" className="rounded-lg font-semibold">
-              <Link href="/contact">Schedule a Visit</Link>
-            </Button>
-            <Button variant="outline" size="lg" className="rounded-lg font-semibold">
+            <button className="bg-primary text-primary-foreground px-8 py-3 rounded-lg font-semibold hover:bg-primary/90 transition-colors" data-testid="button-schedule-visit">
+              Schedule a Visit
+            </button>
+            <button className="border border-border text-foreground px-8 py-3 rounded-lg font-semibold hover:bg-muted transition-colors" data-testid="button-download-brochure">
               Download Brochure
-            </Button>
+            </button>
           </div>
         </div>
       </section>
