@@ -49,7 +49,17 @@ export default function SuperAdminBrandingTheme() {
         },
         body: formData,
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const errorText = await res.text();
+        let message = "Upload failed";
+        try {
+          const errorJson = JSON.parse(errorText);
+          message = errorJson.message || message;
+        } catch (e) {
+          message = errorText || message;
+        }
+        throw new Error(message);
+      }
       return res.json();
     },
     onSuccess: (data) => {
@@ -59,7 +69,12 @@ export default function SuperAdminBrandingTheme() {
       toast({ title: "Logo Uploaded", description: "The school logo has been updated successfully." });
     },
     onError: (error: any) => {
-      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+      console.error('Logo upload error:', error);
+      toast({ 
+        title: "Upload Failed", 
+        description: error.message || "There was an error uploading your logo. Please try a smaller image or check your internet connection.", 
+        variant: "destructive" 
+      });
     }
   });
 
@@ -75,7 +90,17 @@ export default function SuperAdminBrandingTheme() {
         },
         body: formData,
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const errorText = await res.text();
+        let message = "Upload failed";
+        try {
+          const errorJson = JSON.parse(errorText);
+          message = errorJson.message || message;
+        } catch (e) {
+          message = errorText || message;
+        }
+        throw new Error(message);
+      }
       return res.json();
     },
     onSuccess: (data) => {
@@ -97,7 +122,12 @@ export default function SuperAdminBrandingTheme() {
       toast({ title: "Favicon Uploaded", description: "The school favicon has been updated successfully." });
     },
     onError: (error: any) => {
-      toast({ title: "Upload Failed", description: error.message, variant: "destructive" });
+      console.error('Favicon upload error:', error);
+      toast({ 
+        title: "Upload Failed", 
+        description: error.message || "There was an error uploading your favicon. Please ensure it's a valid image file.", 
+        variant: "destructive" 
+      });
     }
   });
 

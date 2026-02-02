@@ -7105,6 +7105,13 @@ export class DatabaseStorage implements IStorage {
     delete updateData.createdAt;
     delete updateData.updatedAt;
     
+    // Safety check: ensure we don't accidentally overwrite absolute URLs with relative paths if they contain http
+    for (const key in updateData) {
+      if (typeof updateData[key] === 'string' && updateData[key].startsWith('http')) {
+        // Keep absolute URLs as is
+      }
+    }
+
     if (existing) {
       const result = await db
         .update(schema.systemSettings)

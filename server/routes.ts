@@ -6440,7 +6440,11 @@ Treasure-Home School Administration
         status: 'healthy',
         database: 'connected',
         timestamp: new Date().toISOString(),
-        uptime: process.uptime()
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV,
+        storage: useCloudinary ? "cloudinary" : "local",
+        vercel: !!process.env.VERCEL,
+        render: !!process.env.RENDER
       });
     } catch (error) {
       res.status(503).json({
@@ -8905,6 +8909,16 @@ Treasure-Home School Administration
   // Logo and Favicon upload for Super Admin
   app.post("/api/superadmin/branding/upload", authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), upload.single("file"), async (req: any, res) => {
     try {
+      console.log("[BRANDING] Received upload request", {
+        uploadType: req.body.uploadType,
+        file: req.file ? {
+          originalname: req.file.originalname,
+          mimetype: req.file.mimetype,
+          size: req.file.size,
+          hasBuffer: !!req.file.buffer
+        } : "null"
+      });
+
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
@@ -8917,6 +8931,7 @@ Treasure-Home School Administration
       try {
         const imageBuffer = req.file.buffer;
         if (imageBuffer) {
+          console.log("[BRANDING] Processing image with sharp...");
           let sharpInstance = sharp(imageBuffer);
           
           if (isFavicon) {
@@ -8937,9 +8952,14 @@ Treasure-Home School Administration
             mimetype: 'image/webp',
             size: compressedBuffer.length
           };
+          console.log("[BRANDING] Image processed successfully", { newSize: compressedBuffer.length });
+        } else {
+          console.warn("[BRANDING] No buffer available in req.file");
         }
       } catch (err) {
-        console.error("Branding image compression failed:", err);
+        console.error("[BRANDING] Image compression failed:", err);
+        // Fallback to original file if sharp fails
+        fileToUpload = req.file;
       }
 
       const options = {
@@ -8947,21 +8967,29 @@ Treasure-Home School Administration
         userId: req.user.id
       };
 
+      console.log("[BRANDING] Sending to storage service...");
       const result = await uploadFileToStorage(fileToUpload, options);
+      console.log("[BRANDING] Storage result:", JSON.stringify(result));
 
       if (result.success && result.url) {
         const settings = await storage.getSystemSettings();
         if (!settings) {
+          console.error("[BRANDING] System settings not found in database");
           return res.status(404).json({ message: "System settings not found" });
         }
 
-        const updateData: any = { updatedAt: new Date() };
+        const updateData: any = { 
+          updatedAt: new Date(),
+          updatedBy: req.user.id
+        };
+        
         if (isFavicon) {
           updateData.favicon = result.url;
         } else {
           updateData.schoolLogo = result.url;
         }
 
+        console.log("[BRANDING] Updating system settings in database", updateData);
         await (storage as any).updateSystemSettings(updateData);
         
         if (enhancedCache && typeof (enhancedCache as any).invalidate === 'function') {
@@ -8970,15 +8998,17 @@ Treasure-Home School Administration
         }
 
         res.json({ 
+          success: true,
           message: `${uploadType.charAt(0).toUpperCase() + uploadType.slice(1)} uploaded successfully`,
           url: result.url 
         });
       } else {
-        res.status(500).json({ message: result.error || "Upload failed" });
+        console.error("[BRANDING] Upload failed at storage level:", result.error);
+        res.status(500).json({ success: false, message: result.error || "Upload failed" });
       }
     } catch (error: any) {
-      console.error("Branding upload error:", error);
-      res.status(500).json({ message: error.message });
+      console.error("[BRANDING] Critical upload error:", error);
+      res.status(500).json({ success: false, message: error.message || "Internal server error during upload" });
     }
   });
 
