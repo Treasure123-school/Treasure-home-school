@@ -35,7 +35,6 @@ export default function Contact() {
   
   const { data: settings } = useQuery<SettingsData>({
     queryKey: ["/api/public/settings"],
-    refetchInterval: 5000,
   });
 
   const schoolName = settings?.schoolName || "Treasure-Home School";
@@ -108,53 +107,42 @@ export default function Contact() {
     }
   ];
 
-  const departments = [
-    {
-      name: 'Admissions Office',
-      phone: settings?.schoolPhone?.split(',')[0].trim() || '08037906249',
-      email: `admissions@${schoolEmail.split('@')[1] || 'treasurehomeschool.com'}`,
-      description: 'For all admission inquiries and application processes'
-    },
-    {
-      name: 'Academic Office',
-      phone: settings?.schoolPhone?.split(',')[1]?.trim() || settings?.schoolPhone?.split(',')[0].trim() || '08107921359',
-      email: `academics@${schoolEmail.split('@')[1] || 'treasurehomeschool.com'}`,
-      description: 'For academic matters, curriculum, and student progress'
-    },
-    {
-      name: 'General Inquiries',
-      phone: schoolPhone.split(',')[0].trim(),
-      email: `info@${schoolEmail.split('@')[1] || 'treasurehomeschool.com'}`,
-      description: 'For general questions and information about the school'
-    }
-  ];
-
   return (
     <PublicLayout>
-      {/* Hero Section */}
-      <section className="bg-primary py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-4xl lg:text-5xl font-bold text-primary-foreground mb-6" data-testid="text-contact-title">
+      {/* Hero Section with School Background */}
+      <section className="relative h-[40vh] flex items-center justify-center overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <img
+            src={heroStudents}
+            alt="School Banner"
+            className="w-full h-full object-cover object-center"
+          />
+          <div className="absolute inset-0 bg-black/60" />
+        </div>
+        <div className="container relative z-10 text-center text-white px-4">
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-4xl md:text-6xl font-bold mb-4"
+            data-testid="text-contact-title"
+          >
             Get in Touch
-          </h1>
-          <p className="text-xl text-primary-foreground/90 max-w-3xl mx-auto" data-testid="text-contact-subtitle">
+          </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-lg md:text-xl text-gray-200"
+            data-testid="text-contact-subtitle"
+          >
             We're here to answer your questions and help you discover the Treasure-Home difference
-          </p>
+          </motion.p>
         </div>
       </section>
 
       {/* Contact Information */}
       <section className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-4" data-testid="text-contact-info-title">
-              Contact Information
-            </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto" data-testid="text-contact-info-description">
-              Reach out to us through any of these channels. We're always happy to help.
-            </p>
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
             {contactInfo.map((info, index) => (
               <Card key={index} className="hover-elevate shadow-sm border border-border" data-testid={`card-contact-info-${index}`}>
@@ -305,49 +293,6 @@ export default function Contact() {
                 </Button>
               </CardContent>
             </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Department Contacts */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-4" data-testid="text-departments-title">
-              Department Contacts
-            </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto" data-testid="text-departments-description">
-              Connect directly with specific departments for specialized assistance
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {departments.map((dept, index) => (
-              <Card key={index} className="hover-elevate shadow-sm border border-border" data-testid={`card-department-${index}`}>
-                <CardContent className="p-6">
-                  <h3 className="text-lg font-semibold mb-3" data-testid={`text-department-name-${index}`}>
-                    {dept.name}
-                  </h3>
-                  <p className="text-muted-foreground text-sm mb-4" data-testid={`text-department-description-${index}`}>
-                    {dept.description}
-                  </p>
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <Phone className="text-primary w-4 h-4" />
-                      <span className="text-sm" data-testid={`text-department-phone-${index}`}>
-                        {dept.phone}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Mail className="text-primary w-4 h-4" />
-                      <span className="text-sm" data-testid={`text-department-email-${index}`}>
-                        {dept.email}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
           </div>
         </div>
       </section>
