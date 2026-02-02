@@ -417,9 +417,9 @@ function sanitizeLogData(data: any): any {
   if (app.get("env") === "development" || isReplit) {
     // Serve Vite dev server on Replit or when NODE_ENV=development
     await setupVite(app, server);
-  } else if (!process.env.FRONTEND_URL) {
-    // Only serve static frontend if FRONTEND_URL is not set (self-hosted mode)
-    // When using Vercel for frontend, FRONTEND_URL should be set and frontend won't be served from backend
+  } else {
+    // Serve static frontend in production
+    // This is critical for Render when FRONTEND_URL is not set or for single-server deployments
     serveStatic(app);
   }
   // ALWAYS serve the app on the port specified in the environment variable PORT
