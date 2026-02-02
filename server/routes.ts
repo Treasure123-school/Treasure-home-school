@@ -1,11 +1,8 @@
-// This commit addresses an issue where exam submission was failing due to server-side errors returning HTML instead of JSON.
-// The exam submission endpoint has been refactored to handle errors gracefully and ensure valid JSON responses,
-// improving the reliability of the exam submission and auto-scoring process.
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage, db } from "./storage";
 import * as schema from "@shared/schema.pg";
-import { ROLE_IDS as ROLES } from "@shared/role-constants";
+import { authenticateUser, authorizeRoles, normalizeUuid, SECRET_KEY, JWT_EXPIRES_IN, ROLES, AuthenticatedUser } from "./routes/middleware";
 import { insertUserSchema, insertStudentSchema, insertAttendanceSchema, insertAnnouncementSchema, insertMessageSchema, insertExamSchema, insertExamResultSchema, insertExamQuestionSchema, insertQuestionOptionSchema, createQuestionOptionSchema, insertHomePageContentSchema, insertContactMessageSchema, insertExamSessionSchema, updateExamSessionSchema, insertStudentAnswerSchema, createStudentSchema, InsertUser, InsertStudentAnswer } from "@shared/schema";
 import { users, students } from "@shared/schema.pg";
 import { z, ZodError } from "zod";
@@ -113,23 +110,6 @@ async function invalidateSubjectMappingsAndSync(
   return { studentsSynced: totalSynced, reportCardItemsRemoved, reportCardItemsAdded, examScoresSynced, cacheKeysInvalidated, syncErrors };
 }
 
-// Type for authenticated user
-interface AuthenticatedUser {
-  id: string;
-  email: string;
-  roleId: number;
-  firstName: string;
-  lastName: string;
-}
-// Extend Express Request interface to include user property added by authentication middleware
-declare global {
-  namespace Express {
-    interface Request {
-      user?: AuthenticatedUser;
-    }
-    interface User extends AuthenticatedUser {}
-  }
-}
 
 
 const loginSchema = z.object({
@@ -148,50 +128,6 @@ const contactSchema = z.object({
   message: z.string().min(1)
 });
 
-// JWT secret - use environment variable for production, fallback for development
-const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development' ? 'dev-secret-key-change-in-production' : undefined);
-if (!JWT_SECRET) {
-  process.exit(1);
-}
-if (process.env.NODE_ENV === 'development' && JWT_SECRET === 'dev-secret-key-change-in-production') {
-}
-const SECRET_KEY = JWT_SECRET as string;
-const JWT_EXPIRES_IN = '24h';
-
-// Helper to normalize UUIDs from various formats
-function normalizeUuid(raw: any): string | undefined {
-  if (!raw) return undefined;
-
-  // If already a valid UUID string, return as-is
-  if (typeof raw === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
-    return raw;
-  }
-  let bytes: number[] | undefined;
-
-  // Handle comma-separated string of numbers
-  if (typeof raw === 'string' && raw.includes(',')) {
-    const parts = raw.split(',').map(s => parseInt(s.trim()));
-    if (parts.length === 16 && parts.every(n => n >= 0 && n <= 255)) {
-      bytes = parts;
-    }
-  }
-
-  // Handle number array or Uint8Array
-  if (Array.isArray(raw) && raw.length === 16) {
-    bytes = raw;
-  } else if (raw instanceof Uint8Array && raw.length === 16) {
-    bytes = Array.from(raw);
-  }
-  // Convert bytes to UUID format
-  if (bytes) {
-    const hex = bytes.map(b => b.toString(16).padStart(2, '0')).join('');
-    return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`;
-  }
-  return undefined;
-}
-// ROLES constant is now imported from @shared/role-constants
-// This ensures a single source of truth for role IDs across the entire application
-// Role IDs: 1=Super Admin, 2=Admin, 3=Teacher, 4=Student, 5=Parent
 
 // Rate limiting for login attempts (simple in-memory store)
 const loginAttempts = new Map();
@@ -226,64 +162,6 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000); // Run cleanup every 5 minutes
 
-// Secure JWT authentication middleware
-const authenticateUser = async (req: any, res: any, next: any) => {
-  try {
-    // Robust Authorization header parsing (case-insensitive, handles whitespace)
-    const authHeader = (req.headers.authorization || '').trim();
-    const [scheme, token] = authHeader.split(/\s+/);
-
-    if (!/^bearer$/i.test(scheme) || !token) {
-      return res.status(401).json({ message: "Authentication required" });
-    }
-    // Verify JWT token
-    let decoded: any;
-    try {
-      decoded = jwt.verify(token, SECRET_KEY);
-    } catch (jwtError) {
-      return res.status(401).json({ message: "Invalid or expired token" });
-    }
-    // Normalize decoded userId before database lookup
-    const normalizedUserId = normalizeUuid(decoded.userId);
-    if (!normalizedUserId) {
-      return res.status(401).json({ message: "Invalid token format" });
-    }
-    // Validate user still exists in database
-    const user = await storage.getUser(normalizedUserId);
-    if (!user) {
-      return res.status(401).json({ message: "User no longer exists" });
-    }
-    // Block inactive users (blocked/deactivated accounts)
-    if (user.isActive === false) {
-      return res.status(401).json({ message: "Account has been deactivated. Please contact administrator." });
-    }
-    // Ensure role hasn't changed since token was issued
-    if (user.roleId !== decoded.roleId) {
-      return res.status(401).json({ message: "User role has changed, please log in again" });
-    }
-    req.user = user;
-    next();
-  } catch (error) {
-    res.status(401).json({ message: "Authentication failed" });
-  }
-};
-
-// Role-based authorization middleware
-const authorizeRoles = (...allowedRoles: number[]) => {
-  return async (req: any, res: any, next: any) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-      if (!allowedRoles.includes(req.user.roleId)) {
-        return res.status(403).json({ message: "Insufficient permissions" });
-      }
-      next();
-    } catch (error) {
-      res.status(403).json({ message: "Authorization failed" });
-    }
-  };
-};
 
 // Configure multer for file uploads - ALL files stored locally in server/uploads
 const uploadDir = 'server/uploads';
@@ -302,24 +180,31 @@ fs.mkdir(homepageDir, { recursive: true }).catch(() => {});
 // Use disk storage for all uploads (local server/uploads directory)
 const storage_multer = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadType = req.body.uploadType || 'general';
-    let dir = uploadDir;
+    // For branding uploads, check the route path if uploadType isn't in body yet
+    const isBranding = (req.originalUrl && req.originalUrl.includes('branding')) || 
+                      (req.body && (req.body.uploadType === 'logo' || req.body.uploadType === 'favicon'));
+    const uploadType = (req.body && req.body.uploadType) || 'general';
+    
+    let dir = 'server/uploads/general';
 
     if (uploadType === 'gallery') {
-      dir = galleryDir;
+      dir = 'server/uploads/gallery';
     } else if (uploadType === 'profile') {
-      dir = profileDir;
+      dir = 'server/uploads/profiles';
     } else if (uploadType === 'study-resource') {
-      dir = studyResourcesDir;
-    } else if (uploadType === 'homepage' || uploadType === 'system_settings' || uploadType === 'system-settings') {
-      dir = homepageDir;
+      dir = 'server/uploads/study-resources';
+    } else if (isBranding || uploadType === 'homepage' || uploadType === 'system_settings' || uploadType === 'system-settings') {
+      dir = 'server/uploads/homepage';
     }
+    
+    // Ensure directory exists synchronously or before returning
+    // (multer destination should exist)
     cb(null, dir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
-    const name = path.basename(file.originalname, ext);
+    const name = path.basename(file.originalname, ext).replace(/[^a-z0-9]/gi, '_').toLowerCase();
     cb(null, `${name}-${uniqueSuffix}${ext}`);
   }
 });
@@ -5197,29 +5082,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Public endpoint to get announcements (no auth required for public website)
+  // Public endpoint to get announcements (only published)
   app.get('/api/announcements', async (req, res) => {
     try {
       const { targetRole } = req.query;
-      // Use cache for announcements (semi-static, high read frequency)
-      const cacheKey = targetRole 
-        ? PerformanceCache.keys.announcementsByRole(targetRole as string)
-        : PerformanceCache.keys.announcements();
-      const announcements = await performanceCache.getOrSet(
-        cacheKey,
-        () => storage.getAnnouncements(targetRole as string),
-        PerformanceCache.TTL.SHORT // 30 second cache for more dynamic content
-      );
+      // Public view never includes drafts
+      const announcements = await storage.getAnnouncements(targetRole as string, false);
       res.json(announcements);
     } catch (error) {
       res.status(500).json({ message: 'Failed to get announcements' });
     }
   });
 
-  // Create a new announcement - Admin only
-  app.post('/api/announcements', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
+  // Consolidated endpoint for fetching announcements
+  app.get('/api/admin/announcements', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.TEACHER), async (req, res) => {
     try {
-      const { title, content, targetRole, priority, expiresAt } = req.body;
+      const { targetRole, includeDrafts } = req.query;
+      const announcements = await storage.getAnnouncements(targetRole as string, includeDrafts === 'true');
+      res.json(announcements);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch announcements' });
+    }
+  });
+
+  // Create a new announcement
+  app.post('/api/announcements', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.TEACHER), async (req, res) => {
+    try {
+      const { title, content, targetRoles, targetClasses, priority, announcementType, publishOption, scheduledAt, expiryDate, attachments, coverImageUrl, notificationSettings, allowComments, allowEdit, status, isPublished, publishedAt } = req.body;
       
       if (!title || !content) {
         return res.status(400).json({ message: 'Title and content are required' });
@@ -5228,16 +5117,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const announcementData = {
         title,
         content,
-        targetRole: targetRole || null,
+        authorId: req.user!.id,
+        targetRoles: Array.isArray(targetRoles) ? JSON.stringify(targetRoles) : targetRoles || JSON.stringify(['All']),
+        targetClasses: Array.isArray(targetClasses) ? JSON.stringify(targetClasses) : targetClasses || JSON.stringify([]),
         priority: priority || 'normal',
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        announcementType: announcementType || 'general',
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+        expiryDate: expiryDate ? new Date(expiryDate) : null,
+        attachments: Array.isArray(attachments) ? JSON.stringify(attachments) : attachments || JSON.stringify([]),
+        coverImageUrl: coverImageUrl || null,
+        notificationSettings: typeof notificationSettings === 'object' ? JSON.stringify(notificationSettings) : notificationSettings || JSON.stringify({ inApp: true, email: false, sms: false }),
+        allowComments: allowComments ?? false,
+        allowEdit: allowEdit ?? true,
+        status: status || 'published',
+        isPublished: isPublished ?? true,
+        publishedAt: publishedAt ? new Date(publishedAt) : new Date(),
         createdBy: req.user!.id,
         isActive: true
       };
       
       const newAnnouncement = await storage.createAnnouncement(announcementData);
       
-      // Emit realtime event for announcement creation
+      // Explicitly broadcast using the dedicated announcement event emitter
       realtimeService.emitAnnouncementEvent('created', newAnnouncement, req.user!.id);
       
       res.status(201).json(newAnnouncement);
@@ -5260,13 +5161,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Announcement not found' });
       }
       
-      const { title, content, targetRoles, targetClasses, isPublished, publishedAt } = req.body;
+      const { 
+        title, content, targetRoles, targetClasses, priority, 
+        announcementType, scheduledAt, expiryDate, attachments, 
+        coverImageUrl, notificationSettings, allowComments, allowEdit, 
+        status, isPublished, publishedAt 
+      } = req.body;
       
       const updatedAnnouncement = await storage.updateAnnouncement(announcementId, {
         title,
         content,
-        targetRoles,
-        targetClasses,
+        targetRoles: Array.isArray(targetRoles) ? JSON.stringify(targetRoles) : targetRoles,
+        targetClasses: Array.isArray(targetClasses) ? JSON.stringify(targetClasses) : targetClasses,
+        priority,
+        announcementType,
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
+        expiryDate: expiryDate ? new Date(expiryDate) : undefined,
+        attachments: Array.isArray(attachments) ? JSON.stringify(attachments) : attachments,
+        coverImageUrl,
+        notificationSettings: typeof notificationSettings === 'object' ? JSON.stringify(notificationSettings) : notificationSettings,
+        allowComments,
+        allowEdit,
+        status,
         isPublished,
         publishedAt: publishedAt ? new Date(publishedAt) : undefined
       });
@@ -5301,11 +5217,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Emit realtime event for announcement deletion
-      realtimeService.emitAnnouncementEvent('deleted', { ...existingAnnouncement, id: announcementId }, req.user!.id);
+      if (existingAnnouncement) {
+        realtimeService.emitAnnouncementEvent('deleted', { ...existingAnnouncement, id: announcementId }, req.user!.id);
+      }
       
       res.json({ message: 'Announcement deleted successfully' });
-    } catch (error) {
-      res.status(500).json({ message: 'Failed to delete announcement' });
+    } catch (error: any) {
+      console.error('[ANNOUNCEMENT-DELETE] Error:', error);
+      res.status(500).json({ message: error.message || 'Failed to delete announcement' });
     }
   });
 
@@ -5444,6 +5363,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Setup/Demo data route (for development) - Admin only for security
   app.post("/api/setup-demo", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
     try {
+      // Seed roles if none exist
+      const existingRoles = await storage.getRoles();
+      if (existingRoles.length === 0) {
+        console.log('📦 Seeding roles for development...');
+        const roleNames = ['Super Admin', 'Admin', 'Teacher', 'Student', 'Parent'];
+        for (const name of roleNames) {
+          await db.insert(schema.roles).values({ name, permissions: '[]' });
+        }
+      }
 
       // First check if roles exist, if not this will tell us about database structure
       try {
@@ -7384,8 +7312,8 @@ Treasure-Home School Administration
         deletedRecords: deletionResult.deletedRecords,
         deletedFiles: {
           total: deletionResult.deletedFiles.length,
-          successful: deletionResult.deletedFiles.filter(f => f.success).length,
-          failed: deletionResult.deletedFiles.filter(f => !f.success).length
+          successful: deletionResult.deletedFiles.filter((f: { success: boolean }) => f.success).length,
+          failed: deletionResult.deletedFiles.filter((f: { success: boolean }) => !f.success).length
         },
         errors: deletionResult.errors,
         duration: deletionResult.duration,
@@ -9016,7 +8944,51 @@ Treasure-Home School Administration
     });
 
     // Update system settings (Super Admin only)
-    app.put('/api/superadmin/settings', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  // Logo and Favicon upload for Super Admin
+  app.post("/api/superadmin/branding/upload", authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const uploadType = req.body.uploadType || 'logo';
+      const fileName = req.file.filename;
+      const filePath = `/uploads/homepage/${fileName}`;
+      
+      console.log(`[BRANDING] File uploaded to: ${req.file.path}`);
+      
+      const settings = await storage.getSystemSettings();
+      if (!settings) {
+        return res.status(404).json({ message: "System settings not found" });
+      }
+
+      const updateData: any = { updatedAt: new Date() };
+      if (uploadType === 'favicon' || fileName.toLowerCase().includes('favicon')) {
+        updateData.favicon = filePath;
+      } else {
+        updateData.schoolLogo = filePath;
+      }
+
+      // Explicitly update only branding fields to avoid overwriting other settings
+      await (storage as any).updateSystemSettings(updateData);
+      
+      // Clear settings cache to ensure immediate update across the site
+      if (enhancedCache && typeof (enhancedCache as any).invalidate === 'function') {
+        (enhancedCache as any).invalidate(/^public:settings/);
+        (enhancedCache as any).invalidate(/^superadmin:settings/);
+      }
+
+      res.json({ 
+        message: `${uploadType.charAt(0).toUpperCase() + uploadType.slice(1)} uploaded successfully`,
+        url: filePath 
+      });
+    } catch (error: any) {
+      console.error("Branding upload error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.put('/api/superadmin/settings', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
       try {
         const settingsData = { ...req.body };
         
@@ -9028,9 +9000,11 @@ Treasure-Home School Administration
         const settings = await storage.updateSystemSettings(settingsData);
 
         // Invalidate all related caches to ensure immediate updates across the site
-        enhancedCache.invalidate(/^superadmin:settings/);
-        enhancedCache.invalidate(/^public:settings/);
-        enhancedCache.invalidate(/\/api\/superadmin\/settings/);
+        if (typeof (enhancedCache as any).invalidate === 'function') {
+          (enhancedCache as any).invalidate(/^superadmin:settings/);
+          (enhancedCache as any).invalidate(/^public:settings/);
+          (enhancedCache as any).invalidate(/\/api\/superadmin\/settings/);
+        }
         
         // Broadcast the update via Socket.IO for real-time frontend updates
         try {
@@ -13385,59 +13359,6 @@ Treasure-Home School Administration
 
     // ==================== END MODULE 1 ROUTES ====================
 
-    // Catch-all for non-API routes - redirect to frontend (PRODUCTION ONLY)
-    // In development, Vite dev server handles this
-    // In production with FRONTEND_URL set, redirect to separate frontend
-    if (process.env.NODE_ENV === 'production' && process.env.FRONTEND_URL) {
-      app.get('*', (req: Request, res: Response) => {
-        // Only handle non-API routes
-        if (!req.path.startsWith('/api/') && !req.path.startsWith('/uploads/')) {
-          const frontendUrl = process.env.FRONTEND_URL;
-          res.status(200).send(`
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <title>Treasure Home School - Backend API</title>
-                <meta http-equiv="refresh" content="3;url=${frontendUrl}">
-                <style>
-                  body {
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    min-height: 100vh;
-                    margin: 0;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                  }
-                  .container {
-                    text-align: center;
-                    padding: 2rem;
-                    background: rgba(255, 255, 255, 0.1);
-                    border-radius: 12px;
-                    backdrop-filter: blur(10px);
-                  }
-                  h1 { margin: 0 0 1rem 0; }
-                  a {
-                    color: #ffd700;
-                    text-decoration: none;
-                    font-weight: bold;
-                  }
-                </style>
-              </head>
-              <body>
-                <div class="container">
-                  <h1>🎓 Treasure Home School</h1>
-                  <p>This is the backend API server.</p>
-                  <p>Redirecting you to the main website...</p>
-                  <p><a href="${frontendUrl}">Click here if not redirected automatically</a></p>
-                </div>
-              </body>
-            </html>
-          `);
-        }
-      });
-    }
     const httpServer = createServer(app);
     return httpServer;
   }

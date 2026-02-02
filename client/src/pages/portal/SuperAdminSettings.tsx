@@ -1,724 +1,459 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import SuperAdminLayout from "@/components/SuperAdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import SuperAdminLayout from "@/components/SuperAdminLayout";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Save, AlertTriangle, GraduationCap, BarChart3, Settings2, FileText, Eye, Trash2 } from "lucide-react";
-import { GRADING_SCALES, getGradeColor, getGradeBgColor, type GradingConfig } from "@shared/grading-utils";
-
-interface SettingsData {
-  schoolName: string;
-  schoolMotto: string;
-  schoolEmail: string;
-  schoolPhone: string;
-  schoolAddress: string;
-  schoolLogo?: string;
-  maintenanceMode: boolean;
-  maintenanceModeMessage: string;
-  enableSmsNotifications: boolean;
-  enableEmailNotifications: boolean;
-  enableExamsModule: boolean;
-  enableAttendanceModule: boolean;
-  enableResultsModule: boolean;
-  themeColor: string;
-  hideAdminAccountsFromAdmins: boolean;
-  testWeight: number;
-  examWeight: number;
-  defaultGradingScale: string;
-  autoCreateReportCard: boolean;
-  scoreAggregationMode: string;
-  showGradeBreakdown: boolean;
-  allowTeacherOverrides: boolean;
-  deletedUserRetentionDays: number;
-}
+import { 
+  Building2, 
+  Settings as SettingsIcon, 
+  AlertTriangle, 
+  Copyright,
+  Save,
+  Globe,
+  MapPin,
+  Clock,
+  Languages,
+  CalendarDays,
+  Upload,
+  X
+} from "lucide-react";
+import type { SystemSettings } from "@shared/schema";
 
 export default function SuperAdminSettings() {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
 
-  const { data: settings, refetch } = useQuery<SettingsData>({
+  const { data: settings, isLoading } = useQuery<SystemSettings>({
     queryKey: ["/api/superadmin/settings"],
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: "always",
-    refetchInterval: 5000, // Added polling for real-time updates
   });
 
-  const [formData, setFormData] = useState<SettingsData & { schoolLogo?: string }>({
+  const [formData, setFormData] = useState({
     schoolName: "",
+    schoolShortName: "",
     schoolMotto: "",
-    schoolEmail: "",
-    schoolPhone: "",
     schoolAddress: "",
-    schoolLogo: "",
+    schoolPhones: "[]",
+    schoolEmails: "[]",
+    portalName: "Treasure Home School Portal",
+    timezone: "Africa/Lagos",
+    language: "en",
+    dateFormat: "DD/MM/YYYY",
+    timeFormat: "HH:mm",
     maintenanceMode: false,
     maintenanceModeMessage: "",
-    enableSmsNotifications: false,
-    enableEmailNotifications: true,
-    enableExamsModule: true,
-    enableAttendanceModule: true,
-    enableResultsModule: true,
-    themeColor: "blue",
-    hideAdminAccountsFromAdmins: true,
-    testWeight: 40,
-    examWeight: 60,
-    defaultGradingScale: "standard",
-    autoCreateReportCard: true,
-    scoreAggregationMode: "last",
-    showGradeBreakdown: true,
-    allowTeacherOverrides: true,
-    deletedUserRetentionDays: 30,
+    footerText: "",
+    schoolLogo: "",
+    favicon: ""
   });
-
-  const [uploadingLogo, setUploadingLogo] = useState(false);
-
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploadingLogo(true);
-    const uploadFormData = new FormData();
-    uploadFormData.append("file", file);
-    uploadFormData.append("uploadType", "system_settings");
-
-    try {
-      const response = await fetch("/api/upload", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
-        },
-        body: uploadFormData,
-      });
-
-      if (!response.ok) throw new Error("Upload failed");
-
-      const data = await response.json();
-      setFormData(prev => ({ ...prev, schoolLogo: data.url }));
-      toast({ title: "Logo uploaded", description: "Save changes to apply the new logo." });
-    } catch (error: any) {
-      toast({
-        title: "Upload failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setUploadingLogo(false);
-    }
-  };
 
   useEffect(() => {
     if (settings) {
-      setFormData(prev => ({
-        ...prev,
-        ...settings,
+      setFormData({
+        schoolName: settings.schoolName || "",
+        schoolShortName: settings.schoolShortName || "",
+        schoolMotto: settings.schoolMotto || "",
+        schoolAddress: settings.schoolAddress || "",
+        schoolPhones: settings.schoolPhones || "[]",
+        schoolEmails: settings.schoolEmails || "[]",
+        portalName: settings.portalName || "Treasure Home School Portal",
+        timezone: settings.timezone || "Africa/Lagos",
+        language: settings.language || "en",
+        dateFormat: settings.dateFormat || "DD/MM/YYYY",
+        timeFormat: settings.timeFormat || "HH:mm",
+        maintenanceMode: settings.maintenanceMode || false,
+        maintenanceModeMessage: settings.maintenanceModeMessage || "",
+        footerText: settings.footerText || "",
         schoolLogo: settings.schoolLogo || "",
-        testWeight: settings.testWeight ?? 40,
-        examWeight: settings.examWeight ?? 60,
-        defaultGradingScale: settings.defaultGradingScale ?? "standard",
-        autoCreateReportCard: settings.autoCreateReportCard ?? true,
-        scoreAggregationMode: settings.scoreAggregationMode ?? "last",
-        showGradeBreakdown: settings.showGradeBreakdown ?? true,
-        allowTeacherOverrides: settings.allowTeacherOverrides ?? true,
-        deletedUserRetentionDays: settings.deletedUserRetentionDays ?? 30,
-      }));
+        favicon: settings.favicon || ""
+      });
     }
   }, [settings]);
 
-  const saveSettingsMutation = useMutation({
-    mutationFn: async (data: SettingsData) => {
+  const saveMutation = useMutation({
+    mutationFn: async (data: typeof formData) => {
       return apiRequest("PUT", "/api/superadmin/settings", data);
     },
-    onSuccess: (updatedSettings: any) => {
-      toast({ title: "Success", description: "Settings saved successfully" });
-      
-      // Update the cache immediately with the returned data
-      queryClient.setQueryData(["/api/superadmin/settings"], updatedSettings);
-      queryClient.setQueryData(["/api/public/settings"], updatedSettings);
-      
-      // Invalidate all related queries to ensure consistency
+    onSuccess: () => {
+      toast({ title: "Configuration Saved", description: "General configuration has been successfully updated." });
       queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/grading-config"] });
       queryClient.invalidateQueries({ queryKey: ["/api/public/settings"] });
-      queryClient.invalidateQueries({ queryKey: ["/api", "public", "homepage-content"] });
       
-      // Force a refetch to be absolutely sure
-      queryClient.refetchQueries({ queryKey: ["/api/superadmin/settings"] });
+      // Update favicon in the browser immediately if it changed
+      if (formData.favicon) {
+        const link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+        if (link) {
+          link.href = formData.favicon;
+        } else {
+          const newLink = document.createElement('link');
+          newLink.rel = 'icon';
+          newLink.href = formData.favicon;
+          document.head.appendChild(newLink);
+        }
+      }
+      
+      setIsEditing(false);
     },
     onError: (error: any) => {
-      toast({ 
-        title: "Error", 
-        description: error.message || "Failed to save settings",
-        variant: "destructive"
-      });
-    },
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
   });
 
-  const handleSave = () => {
-    if (formData.testWeight + formData.examWeight !== 100) {
-      toast({
-        title: "Validation Error",
-        description: "Test Weight and Exam Weight must add up to 100%",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    // Create a clean object to send, ensuring no extra fields that might cause issues
-    const dataToSave = {
-      schoolName: formData.schoolName,
-      schoolMotto: formData.schoolMotto,
-      schoolEmail: formData.schoolEmail,
-      schoolPhone: formData.schoolPhone,
-      schoolAddress: formData.schoolAddress,
-      schoolLogo: formData.schoolLogo,
-      maintenanceMode: formData.maintenanceMode,
-      maintenanceModeMessage: formData.maintenanceModeMessage,
-      enableSmsNotifications: formData.enableSmsNotifications,
-      enableEmailNotifications: formData.enableEmailNotifications,
-      enableExamsModule: formData.enableExamsModule,
-      enableAttendanceModule: formData.enableAttendanceModule,
-      enableResultsModule: formData.enableResultsModule,
-      themeColor: formData.themeColor,
-      hideAdminAccountsFromAdmins: formData.hideAdminAccountsFromAdmins,
-      testWeight: formData.testWeight,
-      examWeight: formData.examWeight,
-      defaultGradingScale: formData.defaultGradingScale,
-      autoCreateReportCard: formData.autoCreateReportCard,
-      scoreAggregationMode: formData.scoreAggregationMode,
-      showGradeBreakdown: formData.showGradeBreakdown,
-      allowTeacherOverrides: formData.allowTeacherOverrides,
-      deletedUserRetentionDays: formData.deletedUserRetentionDays,
-    };
-
-    saveSettingsMutation.mutate(dataToSave, {
-      onSuccess: () => {
-        setIsEditing(false);
-      }
-    });
-  };
-
-  const handleTestWeightChange = (value: string) => {
-    const testWeight = Math.min(100, Math.max(0, parseInt(value) || 0));
-    const examWeight = 100 - testWeight;
-    setFormData({ ...formData, testWeight, examWeight });
-  };
-
-  const handleExamWeightChange = (value: string) => {
-    const examWeight = Math.min(100, Math.max(0, parseInt(value) || 0));
-    const testWeight = 100 - examWeight;
-    setFormData({ ...formData, testWeight, examWeight });
-  };
-
-  const weightsValid = formData.testWeight + formData.examWeight === 100;
+  if (isLoading) return <SuperAdminLayout><div className="p-8">Loading configuration...</div></SuperAdminLayout>;
 
   return (
     <SuperAdminLayout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="max-w-4xl mx-auto space-y-8 pb-12">
+        <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold dark:text-white" data-testid="text-page-title">
-              System Settings
-            </h1>
-            <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mt-1">
-              Configure global system settings
-            </p>
+            <h1 className="text-3xl font-bold tracking-tight">General Configuration</h1>
+            <p className="text-muted-foreground mt-1">Manage global system identity and core behavior.</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex gap-3">
             {isEditing ? (
               <>
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setIsEditing(false);
-                    if (settings) setFormData({ ...formData, ...settings });
-                  }}
-                  data-testid="button-cancel-settings"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handleSave} 
-                  disabled={saveSettingsMutation.isPending || !weightsValid}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                  data-testid="button-save-settings"
-                >
+                <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
+                <Button onClick={() => saveMutation.mutate(formData)} disabled={saveMutation.isPending}>
                   <Save className="h-4 w-4 mr-2" />
-                  {saveSettingsMutation.isPending ? "Saving..." : "Save Changes"}
+                  Save Changes
                 </Button>
               </>
             ) : (
-              <Button 
-                onClick={() => setIsEditing(true)}
-                className="bg-primary hover:bg-primary/90"
-                data-testid="button-edit-settings"
-              >
-                <Settings2 className="h-4 w-4 mr-2" />
-                Edit Settings
-              </Button>
+              <Button onClick={() => setIsEditing(true)}>Edit Configuration</Button>
             )}
           </div>
         </div>
 
-        <div className={`grid gap-6 ${!isEditing ? "opacity-90 pointer-events-none select-none" : ""}`}>
-          {/* School Information */}
-          <Card className="dark:bg-slate-800 dark:border-slate-700 shadow-sm">
-            <CardHeader>
-              <CardTitle className="dark:text-white">School Information</CardTitle>
-              <CardDescription className="dark:text-slate-400">
-                Basic information about your school
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col items-center sm:flex-row sm:items-start gap-6 mb-6">
-                <div className="relative group">
-                  <div className="w-32 h-32 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center overflow-hidden bg-slate-50 dark:bg-slate-900/50">
-                    {formData.schoolLogo ? (
-                      <img 
-                        src={formData.schoolLogo} 
-                        alt="School Logo" 
-                        className="w-full h-full object-contain"
-                      />
-                    ) : (
-                      <div className="text-center p-2">
-                        <FileText className="h-8 w-8 mx-auto text-slate-400" />
-                        <span className="text-xs text-slate-500 mt-1">No logo</span>
-                      </div>
-                    )}
-                  </div>
-                  {isEditing && (
-                    <div className="mt-2">
-                      <Label htmlFor="logo-upload" className="cursor-pointer">
-                        <div className="text-xs text-blue-600 hover:text-blue-700 font-medium text-center">
-                          {uploadingLogo ? "Uploading..." : "Click to upload logo"}
-                        </div>
-                        <Input 
-                          id="logo-upload"
-                          type="file"
-                          className="hidden"
-                          accept="image/*"
-                          onChange={handleLogoUpload}
-                          disabled={uploadingLogo}
-                        />
-                      </Label>
-                    </div>
-                  )}
-                </div>
-                <div className="flex-1 w-full space-y-4">
-                  <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="schoolName" className="dark:text-slate-200">School Name</Label>
-                      <Input
-                        id="schoolName"
-                        data-testid="input-school-name"
-                        value={formData.schoolName}
-                        readOnly={!isEditing}
-                        onChange={(e) => setFormData({ ...formData, schoolName: e.target.value })}
-                        className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="schoolMotto" className="dark:text-slate-200">School Motto</Label>
-                      <Input
-                        id="schoolMotto"
-                        data-testid="input-school-motto"
-                        value={formData.schoolMotto}
-                        readOnly={!isEditing}
-                        onChange={(e) => setFormData({ ...formData, schoolMotto: e.target.value })}
-                        className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="schoolEmail" className="dark:text-slate-200">School Email</Label>
-                  <Input
-                    id="schoolEmail"
-                    type="email"
-                    data-testid="input-school-email"
-                    value={formData.schoolEmail}
-                    readOnly={!isEditing}
-                    onChange={(e) => setFormData({ ...formData, schoolEmail: e.target.value })}
-                    className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="schoolPhone" className="dark:text-slate-200">School Phone</Label>
-                  <Input
-                    id="schoolPhone"
-                    data-testid="input-school-phone"
-                    value={formData.schoolPhone}
-                    readOnly={!isEditing}
-                    onChange={(e) => setFormData({ ...formData, schoolPhone: e.target.value })}
-                    className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="schoolAddress" className="dark:text-slate-200">School Address</Label>
-                <Textarea
-                  id="schoolAddress"
-                  data-testid="input-school-address"
-                  value={formData.schoolAddress}
-                  readOnly={!isEditing}
-                  onChange={(e) => setFormData({ ...formData, schoolAddress: e.target.value })}
-                  className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Grading Configuration */}
-          <Card className="dark:bg-slate-800 dark:border-slate-700 border-green-200 dark:border-green-900">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-green-600 dark:text-green-400">
-                <GraduationCap className="h-5 w-5" />
-                Grading Configuration
-              </CardTitle>
-              <CardDescription className="dark:text-slate-400">
-                Configure how grades and report cards are calculated
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Score Weights */}
+        {/* 1. SCHOOL INFORMATION */}
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-blue-600" />
+              School Information
+            </CardTitle>
+            <CardDescription>Fundamental details about the educational institution.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4 text-muted-foreground" />
-                  <Label className="text-sm font-medium dark:text-slate-200">Score Weights</Label>
-                </div>
-                
-                <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="testWeight" className="text-sm dark:text-slate-300">
-                      Test Weight (%)
-                    </Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        id="testWeight"
-                        type="number"
-                        min="0"
-                        max="100"
-                        data-testid="input-test-weight"
-                        value={formData.testWeight}
-                        readOnly={!isEditing}
-                        onChange={(e) => handleTestWeightChange(e.target.value)}
-                        className="w-24 dark:bg-slate-900 dark:border-slate-700 dark:text-white"
-                      />
-                      <div className="flex-1">
-                        <Progress value={formData.testWeight} className="h-2" />
-                      </div>
-                    </div>
+                    <Label className="text-sm font-semibold">Full Name</Label>
+                    <Input 
+                      disabled={!isEditing}
+                      value={formData.schoolName}
+                      onChange={(e) => setFormData({...formData, schoolName: e.target.value})}
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="examWeight" className="text-sm dark:text-slate-300">
-                      Exam Weight (%)
-                    </Label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        id="examWeight"
-                        type="number"
-                        min="0"
-                        max="100"
-                        data-testid="input-exam-weight"
-                        value={formData.examWeight}
-                        readOnly={!isEditing}
-                        onChange={(e) => handleExamWeightChange(e.target.value)}
-                        className="w-24 dark:bg-slate-900 dark:border-slate-700 dark:text-white"
-                      />
-                      <div className="flex-1">
-                        <Progress value={formData.examWeight} className="h-2" />
-                      </div>
-                    </div>
+                    <Label className="text-sm font-semibold">Short Name / Acronym</Label>
+                    <Input 
+                      disabled={!isEditing}
+                      value={formData.schoolShortName}
+                      onChange={(e) => setFormData({...formData, schoolShortName: e.target.value})}
+                    />
                   </div>
                 </div>
-
-                {/* Validation indicator */}
-                <div className={`flex items-center gap-2 text-sm ${weightsValid ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                  {weightsValid ? (
-                    <span>Test ({formData.testWeight}%) + Exam ({formData.examWeight}%) = 100%</span>
-                  ) : (
-                    <span>Weights must add up to 100% (currently {formData.testWeight + formData.examWeight}%)</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Grading Scale */}
-              <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="gradingScale" className="text-sm dark:text-slate-300">
-                    Default Grading Scale
-                  </Label>
-                  <Select 
+                  <Label className="text-sm font-semibold">School Motto</Label>
+                  <Input 
                     disabled={!isEditing}
-                    value={formData.defaultGradingScale} 
-                    onValueChange={(value) => setFormData({ ...formData, defaultGradingScale: value })}
-                  >
-                    <SelectTrigger className="w-full md:w-64 dark:bg-slate-900 dark:border-slate-700" data-testid="select-grading-scale">
-                      <SelectValue placeholder="Select grading scale" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="standard">Standard (A-F)</SelectItem>
-                      <SelectItem value="waec">WAEC (A1-F9)</SelectItem>
-                      <SelectItem value="percentage">Percentage Based</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <p className="text-xs text-muted-foreground">
-                    This determines how percentage scores are converted to letter grades
-                  </p>
-                </div>
-
-                {/* Grading Scale Preview */}
-                <div className="bg-muted/50 rounded-lg p-4 space-y-3">
-                  <div className="flex items-center gap-2 text-sm font-medium dark:text-slate-200">
-                    <Eye className="h-4 w-4 text-muted-foreground" />
-                    Grade Scale Preview
-                  </div>
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="text-xs">Score Range</TableHead>
-                          <TableHead className="text-xs">Grade</TableHead>
-                          <TableHead className="text-xs">Points</TableHead>
-                          <TableHead className="text-xs">Remarks</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {(GRADING_SCALES[formData.defaultGradingScale] || GRADING_SCALES.standard).ranges.map((range, idx) => (
-                          <TableRow key={idx}>
-                            <TableCell className="text-xs font-medium">
-                              {range.min} - {range.max}%
-                            </TableCell>
-                            <TableCell>
-                              <Badge 
-                                variant="outline" 
-                                className={`${getGradeColor(range.grade)} ${getGradeBgColor(range.grade)} border-0`}
-                              >
-                                {range.grade}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-xs">{range.points.toFixed(1)}</TableCell>
-                            <TableCell className="text-xs text-muted-foreground">{range.remarks}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                    value={formData.schoolMotto}
+                    onChange={(e) => setFormData({...formData, schoolMotto: e.target.value})}
+                  />
                 </div>
               </div>
 
-              {/* Score Aggregation Mode */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">School Logo</Label>
+                    <div className="flex flex-col items-center gap-2 p-4 border-2 border-dashed rounded-lg bg-slate-50 dark:bg-slate-900/50 relative group">
+                      {formData.schoolLogo ? (
+                        <>
+                          <img src={formData.schoolLogo} alt="School Logo" className="h-20 w-auto object-contain" />
+                          {isEditing && (
+                            <Button 
+                              variant="destructive" 
+                              size="icon" 
+                              className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-lg"
+                              onClick={() => setFormData({...formData, schoolLogo: ""})}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center gap-2 py-4">
+                          <Building2 className="h-8 w-8 text-muted-foreground opacity-20" />
+                          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">No Logo</p>
+                        </div>
+                      )}
+                      {isEditing && (
+                        <div className="w-full mt-2">
+                          <Input 
+                            type="file" 
+                            accept="image/*"
+                            className="hidden" 
+                            id="logo-upload"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const formDataUpload = new FormData();
+                                formDataUpload.append("file", file);
+                                formDataUpload.append("uploadType", "logo");
+                                try {
+                                  const res = await fetch("/api/superadmin/branding/upload", {
+                                    method: "POST",
+                                    body: formDataUpload
+                                  });
+                                  const data = await res.json();
+                                  if (data.url) setFormData(prev => ({...prev, schoolLogo: data.url}));
+                                } catch (err) {
+                                  toast({ title: "Upload Failed", variant: "destructive" });
+                                }
+                              }
+                            }}
+                          />
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full h-8 text-[11px] font-bold"
+                            onClick={() => document.getElementById('logo-upload')?.click()}
+                          >
+                            <Upload className="h-3 w-3 mr-2" />
+                            Upload Logo
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Favicon</Label>
+                    <div className="flex flex-col items-center gap-2 p-4 border-2 border-dashed rounded-lg bg-slate-50 dark:bg-slate-900/50 relative group">
+                      {formData.favicon ? (
+                        <>
+                          <img src={formData.favicon} alt="Favicon" className="h-10 w-10 object-contain" />
+                          {isEditing && (
+                            <Button 
+                              variant="destructive" 
+                              size="icon" 
+                              className="absolute -top-2 -right-2 h-6 w-6 rounded-full shadow-lg"
+                              onClick={() => setFormData({...formData, favicon: ""})}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center gap-2 py-4">
+                          <Globe className="h-8 w-8 text-muted-foreground opacity-20" />
+                          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">No Favicon</p>
+                        </div>
+                      )}
+                      {isEditing && (
+                        <div className="w-full mt-2">
+                          <Input 
+                            type="file" 
+                            accept="image/*"
+                            className="hidden" 
+                            id="favicon-upload"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                const formDataUpload = new FormData();
+                                formDataUpload.append("file", file);
+                                formDataUpload.append("uploadType", "favicon");
+                                try {
+                                  const res = await fetch("/api/superadmin/branding/upload", {
+                                    method: "POST",
+                                    body: formDataUpload
+                                  });
+                                  const data = await res.json();
+                                  if (data.url) setFormData(prev => ({...prev, favicon: data.url}));
+                                } catch (err) {
+                                  toast({ title: "Upload Failed", variant: "destructive" });
+                                }
+                              }
+                            }}
+                          />
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full h-8 text-[11px] font-bold"
+                            onClick={() => document.getElementById('favicon-upload')?.click()}
+                          >
+                            <Upload className="h-3 w-3 mr-2" />
+                            Upload Fav
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">School Motto</Label>
+              <Input 
+                disabled={!isEditing}
+                value={formData.schoolMotto}
+                onChange={(e) => setFormData({...formData, schoolMotto: e.target.value})}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+                Address
+              </Label>
+              <Textarea 
+                disabled={!isEditing}
+                value={formData.schoolAddress}
+                onChange={(e) => setFormData({...formData, schoolAddress: e.target.value})}
+                className="min-h-[80px]"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 2. SYSTEM BASICS */}
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <SettingsIcon className="h-5 w-5 text-slate-600" />
+              System Basics
+            </CardTitle>
+            <CardDescription>Regional and localization settings for the portal.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold flex items-center gap-2">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                Portal Name
+              </Label>
+              <Input 
+                disabled={!isEditing}
+                value={formData.portalName}
+                onChange={(e) => setFormData({...formData, portalName: e.target.value})}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="scoreAggregationMode" className="text-sm dark:text-slate-300">
-                  Score Aggregation Mode
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  Timezone
                 </Label>
-                <Select 
+                <Input 
                   disabled={!isEditing}
-                  value={formData.scoreAggregationMode} 
-                  onValueChange={(value) => setFormData({ ...formData, scoreAggregationMode: value })}
-                >
-                  <SelectTrigger className="w-full md:w-64 dark:bg-slate-900 dark:border-slate-700" data-testid="select-aggregation-mode">
-                    <SelectValue placeholder="Select aggregation mode" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="last">Use Last Score</SelectItem>
-                    <SelectItem value="best">Use Best Score</SelectItem>
-                    <SelectItem value="average">Use Average Score</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  When a student has multiple test/exam scores, this determines which one is used
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Report Card Behavior */}
-          <Card className="dark:bg-slate-800 dark:border-slate-700 border-purple-200 dark:border-purple-900">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-purple-600 dark:text-purple-400">
-                <FileText className="h-5 w-5" />
-                Report Card Behavior
-              </CardTitle>
-              <CardDescription className="dark:text-slate-400">
-                Configure how report cards are generated and displayed
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="space-y-0.5">
-                  <Label className="text-sm sm:text-base dark:text-slate-200">Auto-Create Report Cards</Label>
-                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
-                    Automatically create a report card when a student takes their first exam in a term
-                  </p>
-                </div>
-                <Switch
-                  disabled={!isEditing}
-                  checked={formData.autoCreateReportCard}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, autoCreateReportCard: checked })
-                  }
-                  data-testid="switch-auto-create-report"
+                  value={formData.timezone}
+                  readOnly
+                  className="bg-slate-50 dark:bg-slate-900/50"
                 />
               </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="space-y-0.5">
-                  <Label className="text-sm sm:text-base dark:text-slate-200">Show Grade Breakdown</Label>
-                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
-                    Display test and exam scores separately on report cards
-                  </p>
-                </div>
-                <Switch
-                  disabled={!isEditing}
-                  checked={formData.showGradeBreakdown}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, showGradeBreakdown: checked })
-                  }
-                  data-testid="switch-show-breakdown"
-                />
-              </div>
-
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="space-y-0.5">
-                  <Label className="text-sm sm:text-base dark:text-slate-200">Allow Teacher Score Overrides</Label>
-                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
-                    Allow teachers to manually override auto-calculated scores
-                  </p>
-                </div>
-                <Switch
-                  disabled={!isEditing}
-                  checked={formData.allowTeacherOverrides}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, allowTeacherOverrides: checked })
-                  }
-                  data-testid="switch-allow-overrides"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Module Management */}
-          <Card className="dark:bg-slate-800 dark:border-slate-700">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 dark:text-white">
-                <Settings2 className="h-5 w-5" />
-                Module Management
-              </CardTitle>
-              <CardDescription className="dark:text-slate-400">
-                Enable or disable system modules
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="space-y-0.5">
-                  <Label className="text-sm sm:text-base dark:text-slate-200">Exams Module</Label>
-                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
-                    Enable exam creation and management
-                  </p>
-                </div>
-                <Switch
-                  disabled={!isEditing}
-                  checked={formData.enableExamsModule}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, enableExamsModule: checked })
-                  }
-                  data-testid="switch-exams-module"
-                />
-              </div>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="space-y-0.5">
-                  <Label className="text-sm sm:text-base dark:text-slate-200">Attendance Module</Label>
-                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
-                    Enable attendance tracking
-                  </p>
-                </div>
-                <Switch
-                  disabled={!isEditing}
-                  checked={formData.enableAttendanceModule}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, enableAttendanceModule: checked })
-                  }
-                  data-testid="switch-attendance-module"
-                />
-              </div>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="space-y-0.5">
-                  <Label className="text-sm sm:text-base dark:text-slate-200">Results Module</Label>
-                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
-                    Enable results and report cards
-                  </p>
-                </div>
-                <Switch
-                  disabled={!isEditing}
-                  checked={formData.enableResultsModule}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, enableResultsModule: checked })
-                  }
-                  data-testid="switch-results-module"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* User Management Settings */}
-          <Card className="dark:bg-slate-800 dark:border-slate-700 border-blue-200 dark:border-blue-900">
-            <CardHeader>
-              <CardTitle className="dark:text-white">User Management Settings</CardTitle>
-              <CardDescription className="dark:text-slate-400">
-                Control user visibility, access permissions, and data retention
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div className="space-y-0.5">
-                  <Label className="text-sm sm:text-base dark:text-slate-200">Hide Admin Accounts from Admins</Label>
-                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">
-                    When enabled, regular Admins cannot see or manage Super Admin and Admin accounts. Only Super Admins have full access.
-                  </p>
-                </div>
-                <Switch
-                  disabled={!isEditing}
-                  checked={formData.hideAdminAccountsFromAdmins}
-                  onCheckedChange={(checked) =>
-                    setFormData({ ...formData, hideAdminAccountsFromAdmins: checked })
-                  }
-                  data-testid="switch-hide-admins"
-                />
-              </div>
-
               <div className="space-y-2">
-                <Label htmlFor="retentionDays" className="text-sm dark:text-slate-300">Deleted User Retention (Days)</Label>
-                <Input
-                  id="retentionDays"
-                  type="number"
-                  min="1"
-                  max="365"
-                  data-testid="input-retention-days"
-                  value={formData.deletedUserRetentionDays}
-                  readOnly={!isEditing}
-                  onChange={(e) => setFormData({ ...formData, deletedUserRetentionDays: parseInt(e.target.value) || 30 })}
-                  className="w-full md:w-32 dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  <Languages className="h-4 w-4 text-muted-foreground" />
+                  Language
+                </Label>
+                <Input 
+                  disabled={!isEditing}
+                  value={formData.language}
+                  readOnly
+                  className="bg-slate-50 dark:bg-slate-900/50"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Number of days to keep deleted user data before permanent removal
-                </p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                  Date Format
+                </Label>
+                <Input 
+                  disabled={!isEditing}
+                  value={formData.dateFormat}
+                  onChange={(e) => setFormData({...formData, dateFormat: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  Time Format
+                </Label>
+                <Input 
+                  disabled={!isEditing}
+                  value={formData.timeFormat}
+                  onChange={(e) => setFormData({...formData, timeFormat: e.target.value})}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 3. SYSTEM CONTROL */}
+        <Card className="shadow-sm border-l-4 border-l-amber-500">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              System Control
+            </CardTitle>
+            <CardDescription>Manage system availability and maintenance status.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex items-center justify-between p-4 border rounded-lg bg-amber-50/20 dark:bg-amber-950/10">
+              <div className="space-y-0.5">
+                <Label className="font-semibold">Maintenance Mode</Label>
+                <p className="text-xs text-muted-foreground">Disables public access to the portal</p>
+              </div>
+              <Switch 
+                disabled={!isEditing}
+                checked={formData.maintenanceMode}
+                onCheckedChange={(val) => setFormData({...formData, maintenanceMode: val})}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Maintenance Message</Label>
+              <Textarea 
+                disabled={!isEditing || !formData.maintenanceMode}
+                value={formData.maintenanceModeMessage}
+                onChange={(e) => setFormData({...formData, maintenanceModeMessage: e.target.value})}
+                placeholder="Message users see during maintenance..."
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 4. FOOTER */}
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Copyright className="h-5 w-5 text-slate-500" />
+              Footer
+            </CardTitle>
+            <CardDescription>Text displayed at the bottom of the portal pages.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Copyright Text</Label>
+              <Input 
+                disabled={!isEditing}
+                value={formData.footerText}
+                onChange={(e) => setFormData({...formData, footerText: e.target.value})}
+                placeholder="e.g. © 2026 Treasure Home School. All Rights Reserved."
+              />
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </SuperAdminLayout>
   );

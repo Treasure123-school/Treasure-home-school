@@ -263,7 +263,7 @@ export interface IStorage {
 
   // Announcements
   createAnnouncement(announcement: InsertAnnouncement): Promise<Announcement>;
-  getAnnouncements(targetRole?: string): Promise<Announcement[]>;
+  getAnnouncements(targetRole?: string, includeDrafts?: boolean): Promise<Announcement[]>;
   getAnnouncementById(id: number): Promise<Announcement | undefined>;
   updateAnnouncement(id: number, announcement: Partial<InsertAnnouncement>): Promise<Announcement | undefined>;
   deleteAnnouncement(id: number): Promise<boolean>;
@@ -3696,16 +3696,25 @@ export class DatabaseStorage implements IStorage {
     const result = await db.insert(schema.announcements).values(announcement).returning();
     return result[0];
   }
-  async getAnnouncements(targetRole?: string): Promise<Announcement[]> {
-    const query = db.select().from(schema.announcements)
-      .where(eq(schema.announcements.isPublished, true))
-      .orderBy(desc(schema.announcements.publishedAt));
-
-    if (targetRole) {
-      // Note: This would need proper array contains logic for PostgreSQL
-      // For now, return all published announcements ordered by date
+  async getAnnouncements(targetRole?: string, includeDrafts: boolean = false): Promise<Announcement[]> {
+    let query = db.select().from(schema.announcements);
+    
+    // Filter by published status unless includeDrafts is true
+    if (!includeDrafts) {
+      query = query.where(eq(schema.announcements.isPublished, true));
     }
-    return await query;
+
+    if (targetRole && targetRole !== 'all') {
+      // Improved filtering logic for JSON strings in both SQLite and PostgreSQL
+      query = query.where(or(
+        like(schema.announcements.targetRoles, `%\"All\"%`),
+        like(schema.announcements.targetRoles, `%\"${targetRole}\"%`),
+        eq(schema.announcements.targetRoles, '["All"]'),
+        eq(schema.announcements.targetRoles, `["${targetRole}"]`)
+      ));
+    }
+    
+    return await query.orderBy(desc(schema.announcements.publishedAt), desc(schema.announcements.createdAt));
   }
   async getAnnouncementById(id: number): Promise<Announcement | undefined> {
     const result = await db.select().from(schema.announcements).where(eq(schema.announcements.id, id)).limit(1);
@@ -3716,8 +3725,15 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
   async deleteAnnouncement(id: number): Promise<boolean> {
-    const result = await db.delete(schema.announcements).where(eq(schema.announcements.id, id));
-    return result.length > 0;
+    const [announcement] = await db.select().from(schema.announcements).where(eq(schema.announcements.id, id));
+    if (!announcement) return false;
+
+    await db.delete(schema.announcements).where(eq(schema.announcements.id, id));
+    
+    // Broadcast deletion using standardized emitter
+    realtimeService.emitAnnouncementEvent('deleted', { id });
+
+    return true;
   }
   // Messages
   async sendMessage(message: InsertMessage): Promise<Message> {

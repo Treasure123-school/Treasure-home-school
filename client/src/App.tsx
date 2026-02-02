@@ -31,6 +31,8 @@ const SuperAdminSettings = lazy(() => import("@/pages/portal/SuperAdminSettings"
 const SuperAdminProfile = lazy(() => import("@/pages/portal/SuperAdminProfile"));
 const SuperAdminLogs = lazy(() => import("@/pages/portal/SuperAdminLogs"));
 const SuperAdminAllUsers = lazy(() => import("@/pages/portal/SuperAdminAllUsers"));
+const SuperAdminRolesPermissions = lazy(() => import("@/pages/portal/SuperAdminRolesPermissions"));
+const SuperAdminUserAccessControl = lazy(() => import("@/pages/portal/SuperAdminUserAccessControl"));
 const SuperAdminAuthenticationSettings = lazy(() => import("@/pages/portal/SuperAdminAuthenticationSettings"));
 const SuperAdminPlaceholder = lazy(() => import("@/pages/portal/SuperAdminPlaceholder"));
 const AdminRecoveryTools = lazy(() => import("@/pages/portal/AdminRecoveryTools"));
@@ -47,6 +49,12 @@ const ProfileOnboarding = lazy(() => import("@/pages/ProfileOnboarding"));
 function RealtimeProvider({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
+const SuperAdminSecurityPolicies = lazy(() => import("@/pages/portal/SuperAdminSecurityPolicies"));
+const SuperAdminBrandingTheme = lazy(() => import("@/pages/portal/SuperAdminBrandingTheme"));
+const SuperAdminIntegrations = lazy(() => import("@/pages/portal/SuperAdminIntegrations"));
+const SuperAdminBackupRestore = lazy(() => import("@/pages/portal/SuperAdminBackupRestore"));
+const SuperAdminApiAccess = lazy(() => import("@/pages/portal/SuperAdminApiAccess"));
+
 function Router() {
   return (
     <Suspense fallback={<MinimalRouteFallback />}>
@@ -100,6 +108,31 @@ function Router() {
             <SuperAdminAllUsers />
           </ProtectedRoute>
         </Route>
+        <Route path="/portal/superadmin/settings/security">
+          <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
+            <SuperAdminSecurityPolicies />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/portal/superadmin/settings/branding">
+          <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
+            <SuperAdminBrandingTheme />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/portal/superadmin/settings/integrations">
+          <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
+            <SuperAdminIntegrations />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/portal/superadmin/settings/backup">
+          <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
+            <SuperAdminBackupRestore />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/portal/superadmin/settings/api">
+          <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
+            <SuperAdminApiAccess />
+          </ProtectedRoute>
+        </Route>
         <Route path="/portal/superadmin/settings/authentication">
           <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
             <SuperAdminAuthenticationSettings />
@@ -124,12 +157,12 @@ function Router() {
       </Route>
       <Route path="/portal/superadmin/users/roles">
         <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
-          <SuperAdminPlaceholder title="Roles & Permissions" category="Users" description="Configure user roles and permission levels" />
+          <SuperAdminRolesPermissions />
         </ProtectedRoute>
       </Route>
       <Route path="/portal/superadmin/users/access-control">
         <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
-          <SuperAdminPlaceholder title="Login Access Control" category="Users" description="Manage login restrictions and access policies" />
+          <SuperAdminUserAccessControl />
         </ProtectedRoute>
       </Route>
 

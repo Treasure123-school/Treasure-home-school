@@ -1,7 +1,16 @@
 import PublicLayout from '@/components/layout/PublicLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
-import type { HomePageContent } from '@shared/schema';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/button';
+import { Link } from 'wouter';
+import heroStudents from "@/assets/hero-students.png";
+import gallery1 from "@/assets/gallery-1.png";
+import gallery2 from "@/assets/gallery-2.png";
+import gallery3 from "@/assets/gallery-3.png";
+import gallery4 from "@/assets/gallery-4.png";
+import gallery5 from "@/assets/gallery-5.png";
+import gallery6 from "@/assets/gallery-6.png";
 
 interface SettingsData {
   schoolName: string;
@@ -9,109 +18,113 @@ interface SettingsData {
 
 export default function Gallery() {
   const { data: settings } = useQuery<SettingsData>({
-    queryKey: ["/api/superadmin/settings"],
-    staleTime: 5 * 60 * 1000,
+    queryKey: ["/api/public/settings"],
   });
 
   const schoolName = settings?.schoolName || "Treasure-Home School";
 
-  // Fetch gallery images from database
-  const { data: allContent = [], isLoading } = useQuery<HomePageContent[]>({
-    queryKey: ['/api', 'public', 'homepage-content'],
-    staleTime: 5 * 60 * 1000,
-  });
-
-  // Filter and sort gallery preview images
-  const galleryImages = allContent
-    .filter(item => 
-      item.contentType.startsWith('gallery_preview_') && 
-      item.isActive && 
-      item.imageUrl
-    )
-    .sort((a, b) => a.displayOrder - b.displayOrder)
-    .map(item => ({
-      id: item.id,
-      src: item.imageUrl!,
-      alt: item.altText || item.caption || 'School gallery image',
-      caption: item.caption
-    }));
-
-  // Fallback images if none uploaded
-  const fallbackImages = [
-    {
-      id: 1,
-      src: 'https://images.unsplash.com/photo-1497486751825-1233686d5d80?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400',
-      alt: 'Students engaged in classroom learning',
-      caption: 'Classroom Learning'
-    },
-    {
-      id: 2,
-      src: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400',
-      alt: 'Students participating in sports activities',
-      caption: 'Sports & Recreation'
-    },
-    {
-      id: 3,
-      src: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=400',
-      alt: 'Students conducting science experiments',
-      caption: 'Science Lab'
-    },
-    {
-      id: 4,
-      src: 'https://pixabay.com/get/g4b5de1b17360e7341ea05b3642f661cdaf69148acab371a0683000806209ef4e0fe83b5de589985b71b982913fd361ff36cf54100f89a9b6599375dc964cbe4e_1280.jpg',
-      alt: 'Graduation ceremony with students and families',
-      caption: 'Graduation Ceremony'
-    }
+  const images = [
+    { id: 1, src: gallery1, alt: 'School Activity 1' },
+    { id: 2, src: gallery2, alt: 'School Activity 2' },
+    { id: 3, src: gallery3, alt: 'School Activity 3' },
+    { id: 4, src: gallery4, alt: 'School Activity 4' },
+    { id: 5, src: gallery5, alt: 'School Activity 5' },
+    { id: 6, src: gallery6, alt: 'School Activity 6' },
   ];
-
-  const images = galleryImages.length > 0 ? galleryImages : fallbackImages;
 
   return (
     <PublicLayout>
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 py-16 md:py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Page Header */}
-          <div className="text-center mb-16">
-            <h1 className="text-5xl md:text-6xl font-bold text-foreground mb-4" data-testid="text-gallery-title">
-              School Life Gallery
-            </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto" data-testid="text-gallery-description">
-              Capturing moments of learning, growth, and achievement at {schoolName}
-            </p>
-          </div>
+      {/* Page Header with School Background */}
+      <section className="relative h-[40vh] flex items-center justify-center overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <img
+            src={heroStudents}
+            alt="School Banner"
+            className="w-full h-full object-cover object-center"
+          />
+          <div className="absolute inset-0 bg-black/60" />
+        </div>
+        <div className="container relative z-10 text-center text-white px-4">
+          <motion.h1 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-4xl md:text-6xl font-bold mb-4"
+            data-testid="text-gallery-title"
+          >
+            School Gallery
+          </motion.h1>
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-lg md:text-xl text-gray-200"
+            data-testid="text-gallery-description"
+          >
+            Here are some of the pictures of our students.
+          </motion.p>
+        </div>
+      </section>
 
-          {/* Gallery Grid */}
-          {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <p className="text-muted-foreground">Loading gallery...</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {images.map((image) => (
-                <Card
-                  key={image.id}
-                  className="overflow-hidden cursor-pointer transition-all duration-300 hover:shadow-lg"
-                  data-testid={`gallery-image-${image.id}`}
-                >
+      <div className="bg-white py-16 md:py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Gallery Grid - Responsive grid layout matching sample */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+            {images.map((image, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: (index % 4) * 0.1 }}
+                data-testid={`gallery-image-${image.id}`}
+              >
+                <Card className="overflow-hidden border-none shadow-sm hover:shadow-xl transition-all duration-500 rounded-none">
                   <CardContent className="p-0">
-                    <div className="aspect-square overflow-hidden bg-muted">
+                    <div className="aspect-[4/3] overflow-hidden bg-muted">
                       <img
                         src={image.src}
                         alt={image.alt}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover hover:scale-110 transition-transform duration-700"
                         loading="lazy"
                       />
                     </div>
-                    {image.caption && (
-                      <div className="p-4 bg-background">
-                        <p className="text-sm font-medium text-foreground truncate">{image.caption}</p>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
-              ))}
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Bottom Call to Action Section */}
+          <section className="mt-24 py-16 border-t border-gray-100">
+            <div className="flex flex-col lg:flex-row items-center gap-12">
+              <div className="flex-1 w-full lg:w-1/2 rounded-lg overflow-hidden shadow-md h-[400px]">
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15848.48911295384!2d3.220197479532822!3d6.75510688632612!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x103b987621c166d1%3A0xcb1b5e5899c7c25c!2sSeriki%20Sotinka%2C%20Ogun%20State%2C%20Nigeria!5e0!3m2!1sen!2sng!4v1706886326120!5m2!1sen!2sng"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen={true}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Treasure-Home School Location"
+                ></iframe>
+              </div>
+              
+              <div className="flex-1 text-left space-y-6">
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
+                  Need more information<br />about our school?
+                </h2>
+                <p className="text-gray-600">
+                  Do you want to know more about us, get across to us via the contact page.
+                </p>
+                <Button asChild className="btn-primary rounded-none px-8 py-6 h-auto text-sm font-bold bg-[#D946EF] hover:bg-[#C026D3] uppercase tracking-wider">
+                  <Link href="/contact">
+                    Contact Us &rarr;
+                  </Link>
+                </Button>
+              </div>
             </div>
-          )}
+          </section>
         </div>
       </div>
     </PublicLayout>

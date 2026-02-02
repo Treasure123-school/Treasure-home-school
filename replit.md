@@ -10,80 +10,20 @@ Treasure-Home is a comprehensive school management system designed to streamline
 ## System Architecture
 
 ### UI/UX Decisions
-The frontend is built with React 18, Vite, shadcn/ui (Radix UI + Tailwind CSS) for a modern design. Wouter is used for routing, TanStack Query for data fetching, and React Hook Form with Zod for form management and validation.
+The frontend is built with React 18, Vite, shadcn/ui (Radix UI + Tailwind CSS) for a modern design. Wouter is used for routing, TanStack Query for data fetching, and React Hook Form with Zod for form management and validation. The system incorporates a "Bailey's Style Traditional Report Card Export" for print-ready formats while maintaining a modern UI for screen viewing, optimized for A4 paper with Treasure-Home School branding and dynamic school header information. Report card comments are role-based and editable, with auto-generated options and admin-managed templates.
 
 ### Technical Implementations
-The backend is an Express.js application built with Node.js and TypeScript, leveraging Drizzle ORM for database interactions. A dual-database strategy uses PostgreSQL (via Neon) for all environments. Cloudinary is integrated for cloud-based file storage in production, with a local filesystem fallback for development. JWT authentication is used, and real-time functionalities are powered by Socket.IO with comprehensive event coverage. The architecture supports five role-based access levels with granular permissions.
-
-### Feature Specifications
+The backend is an Express.js application built with Node.js and TypeScript, leveraging Drizzle ORM for database interactions. A dual-database strategy uses PostgreSQL (via Neon) for all environments. Cloudinary is integrated for cloud-based file storage in production, with a local filesystem fallback for development. JWT authentication is used, and real-time functionalities are powered by Socket.IO with comprehensive event coverage. The architecture supports five role-based access levels with granular permissions. The system includes:
 - **Authentication**: JWT tokens, bcrypt hashing, CORS, rate limiting, account lockout, 2FA support, and RBAC.
 - **Role-Based Access Control**: Five distinct roles (Super Admin, Admin, Teacher, Student, Parent) with hierarchical user creation rules.
 - **Database Schema**: Over 40 tables covering academic and administrative functions.
-- **Exam System**: Features reliable submission, instant auto-scoring for MCQs, anti-cheat measures, auto-submission, and real-time progress saving. Exam creation is teacher-centric with strong validation.
-- **Report Card System**: Comprehensive auto-generation and score management with weighted scoring (40% test, 60% exam), teacher-specific editing permissions, auto-recalculation, max score handling, and status workflow (Draft → Finalized → Published). Includes a Role-Based Approval Workflow where teachers finalize and admins publish. Features a professional, print-ready component with detailed student info, subject performance, traits, attendance, class statistics, and editable remarks.
-- **Bailey's Style Traditional Report Card Export**:
-  - Traditional academic report card format specifically for PDF/print/image exports
-  - Maintains modern UI for on-screen viewing while providing classic print format
-  - A4 paper-optimized layout with Treasure-Home School branding
-  - Features: school logo header, student photo section, bordered data tables, affective traits ratings, psychomotor skills assessment, attendance summary, and signature areas
-  - Export options available on StudentReportCard, TeacherReportCards, and AdminResultPublishing pages
-  - Uses html2canvas and jsPDF for high-quality rendering
-  - Hidden template approach ensures exports use traditional format without affecting screen display
-- **Visible School Header on Report Cards**:
-  - Screen display now shows Nigeria-style school header with complete school details
-  - School Name: TREASURE HOME SCHOOL
-  - Address: Seriki-Soyinka, Ifo, Ogun State, Nigeria
-  - Contact: Tel: 080-1734-5676 | Email: info@treasurehomeschool.com
-  - Motto: "Honesty and Success"
-  - Dynamic term name and academic session display
-  - Consistent header across student, teacher, and admin report card views
-- **Report Card Comments Access Control**: Role-based permission system for comments:
-  - Class Teacher's Comment: Only the assigned class teacher (or admins) can edit
-  - Principal's Comment: Only admins can edit
-  - Auto-generated encouraging comments based on student performance (Excellent/Very Good/Good/Fair/Needs Improvement)
-  - Comments use lastName instead of firstName as per school convention
-- **Admin Comment Template Management**: 
-  - Admin-only page at `/portal/admin/comment-templates` for managing default comment templates
-  - Separate templates for teacher and principal comments
-  - Templates organized by performance level (Excellent, Very Good, Good, Fair, Needs Improvement) with percentage ranges
-  - Uses `{lastName}` placeholder for dynamic student name insertion
-  - Active/inactive status toggle for templates
-  - **Backfill Comments Feature**: Admin UI to apply default comments to existing report cards based on student performance, with options to preserve or overwrite existing comments
-- **Signature Management**: 
-  - Admin (Principal) profile includes digital signature setup for report card signing
-  - Teacher profiles include digital signature setup for class teacher signing
-  - SuperAdmin portal does not have principal signature (reserved for Admin role)
-- **File Management**: Unified upload interface with Cloudinary CDN.
-- **Enhanced Announcement System**: Professional announcement creation with comprehensive features:
-  - Title and rich content body (supports paragraphs and bullet points)
-  - Target audience selection: All users, Students, Teachers, Parents, Admin, or specific classes
-  - Priority levels: Normal, Important (amber tag), Urgent (red tag - shows at top)
-  - Announcement types: General, Academic, Examination, Event, Emergency
-  - Publishing options: Publish immediately or schedule for later (date & time picker)
-  - Expiry date for automatic visibility removal
-  - Attachments support (PDF, Word, Excel, Images) and optional cover image
-  - Notification settings: In-app notifications, Email, SMS (toggleable)
-  - Advanced options: Allow comments, Allow edit after publishing
-  - Preview mode before publishing
-  - Action buttons: Cancel, Save as Draft, Publish/Schedule Announcement
-  - View count tracking and analytics
-  - Tabbed interface (Content, Audience, Schedule, Settings) for organized form filling
-- **Unified Subject Assignment System**: Centralized subject visibility and assignment configuration, serving as the single source of truth for all subject-related operations. Supports JSS classes and SSS departments with bulk assignment capabilities.
-- **Automatic Student Subject Sync**: Modifying subject assignments automatically synchronizes `student_subject_assignments` for affected students.
-- **Quick Student Creation**: Optimized modal with essential fields.
-- **Teacher-Class-Subject Assignment Module**: Manages teacher assignments with validation.
-- **Exam Visibility System**: Centralized logic using `class_subject_mappings` as the single source of truth; students and parents only see exams for assigned subjects.
-- **Exam Results Persistence**: Results persist once submitted and are only removed if the exam is deleted.
-- **Strict Exam Result Matching**: Ensures accurate retrieval of specific exam results.
-- **Exam Retake System**: Allows flagging students for retakes, archiving previous submissions.
-- **Report Card Unpublish Feature**: Admins can unpublish single or bulk published report cards, reverting status to 'finalized'.
-- **User Recovery System (Recycle Bin)**: Soft-delete users instead of permanent deletion, with configurable retention period (7-90 days). Features include:
-  - Admins can view/restore/delete Teachers, Students, and Parents
-  - Super Admins can view/restore/delete all users including Admins
-  - Configurable retention period in Super Admin Settings
-  - Automatic daily cleanup at 2:00 AM removes expired deleted users
-  - Full audit logging of recovery actions
-  - Role-based permission enforcement to prevent privilege escalation
+- **Exam System**: Reliable submission, instant auto-scoring for MCQs, anti-cheat measures, auto-submission, real-time progress saving, teacher-centric exam creation, and exam retake functionality.
+- **Report Card System**: Comprehensive auto-generation and score management with weighted scoring, role-based approval workflow, and professional, print-ready components. Includes features for admin comment template management and signature management for principals and teachers.
+- **Unified Subject Assignment System**: Centralized subject visibility and assignment configuration for JSS classes and SSS departments with bulk assignment and automatic student subject synchronization.
+- **Enhanced Announcement System**: Professional announcement creation with rich content, target audience selection, priority levels, publishing options, expiry dates, attachments, and notification settings.
+- **User Recovery System (Recycle Bin)**: Soft-deletes users with a configurable retention period, audit logging, and role-based permission enforcement.
+- **School Information Management**: Comprehensive school settings in Super Admin portal for managing school name, address, motto, contact details, logos, and website customization.
+- **Modular Backend Routes**: Ongoing refactoring into domain-specific route files and utility modules to improve maintainability and reduce boilerplate.
 
 ### System Design Choices
 - **Stateless Backend**: Achieved by offloading database to Neon PostgreSQL and file storage to Cloudinary.
@@ -93,8 +33,7 @@ The backend is an Express.js application built with Node.js and TypeScript, leve
 - **Monorepo Structure**: Organized into `server/`, `client/`, and `shared/` directories.
 
 ## External Dependencies
-- **Database**: Neon (PostgreSQL) with connection pooling
+- **Database**: Neon (PostgreSQL)
 - **Cloud Storage**: Cloudinary CDN
 - **Deployment**: Render (Backend), Vercel (Frontend)
-- **Real-time Communication**: Socket.IO with optimization layer
-- **Caching**: In-memory (L1) + Redis-ready (L2)
+- **Real-time Communication**: Socket.IO

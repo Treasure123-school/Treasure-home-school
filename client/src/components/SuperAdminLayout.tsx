@@ -107,8 +107,8 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
       children: [
         { label: "All Users", path: "/portal/superadmin/all-users" },
         { label: "Admins", path: "/portal/superadmin/admins" },
-        { label: "Roles & Permissions", path: "/portal/superadmin/placeholder?page=roles" },
-        { label: "Login Access Control", path: "/portal/superadmin/placeholder?page=access-control" },
+        { label: "Roles & Permissions", path: "/portal/superadmin/users/roles" },
+        { label: "User Access Control", path: "/portal/superadmin/users/access-control" },
       ],
     },
     {
@@ -145,13 +145,13 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
       label: "System Settings",
       icon: Settings,
       children: [
-        { label: "Portal Configuration", path: "/portal/superadmin/settings" },
+        { label: "General Configuration", path: "/portal/superadmin/settings" },
         { label: "Authentication", path: "/portal/superadmin/settings/authentication" },
-        { label: "Security Policies", path: "/portal/superadmin/placeholder?page=security" },
-        { label: "Branding & Theme", path: "/portal/superadmin/placeholder?page=branding" },
-        { label: "API Keys", path: "/portal/superadmin/placeholder?page=api-keys" },
-        { label: "Backup & Restore", path: "/portal/superadmin/placeholder?page=backup" },
-        { label: "Integrations", path: "/portal/superadmin/placeholder?page=integrations" },
+        { label: "Security Policies", path: "/portal/superadmin/settings/security" },
+        { label: "Branding & Theme", path: "/portal/superadmin/settings/branding" },
+        { label: "Integrations", path: "/portal/superadmin/settings/integrations" },
+        { label: "Backup & Restore", path: "/portal/superadmin/settings/backup" },
+        { label: "API & Access Tokens (Advanced)", path: "/portal/superadmin/settings/api" },
       ],
     },
     {

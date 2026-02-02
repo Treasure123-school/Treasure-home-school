@@ -982,16 +982,6 @@ class RealtimeService {
     }
   }
 
-  emitGalleryEvent(eventType: 'created' | 'deleted', data: any, userId?: string) {
-    const fullEventType = `gallery.${eventType}`;
-    const operation = eventType === 'created' ? 'INSERT' : 'DELETE';
-    
-    this.emitTableChange('gallery', operation, data, undefined, userId);
-    this.emitToRole('admin', fullEventType, data);
-    // Emit publicly for gallery page updates
-    this.emitEvent(fullEventType, { id: data.id });
-  }
-
   emitExamSessionEvent(examId: string | number, sessionId: string | number, eventType: 'started' | 'progress' | 'completed' | 'auto_submitted', data: any, userId?: string) {
     const fullEventType = `examSession.${eventType}`;
     

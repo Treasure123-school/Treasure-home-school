@@ -104,16 +104,20 @@ export default function AnnouncementsManagement() {
   }, [isDialogOpen, currentUser, editingAnnouncement, setValue]);
 
   const { data: announcements = [], isLoading: loadingAnnouncements } = useQuery({
-    queryKey: ['/api/announcements'],
+    queryKey: ['/api/announcements'] as any,
     queryFn: async () => {
-      const response = await apiRequest('GET', '/api/announcements');
+      const response = await apiRequest('GET', '/api/admin/announcements');
       return await response.json();
     },
   });
 
   useSocketIORealtime({ 
     table: 'announcements', 
-    queryKey: ['/api/announcements']
+    queryKey: ['/api/announcements'] as any,
+    onEvent: (event) => {
+      // Force an immediate refetch on any announcement event
+      queryClient.invalidateQueries({ queryKey: ['/api/announcements'] });
+    }
   });
 
   const { data: classes = [] } = useQuery({
@@ -130,34 +134,23 @@ export default function AnnouncementsManagement() {
       if (!response.ok) throw new Error('Failed to create announcement');
       return response.json();
     },
-    onMutate: async (newAnnouncement) => {
-      await queryClient.cancelQueries({ queryKey: ['/api/announcements'] });
-      const previousAnnouncements = queryClient.getQueryData(['/api/announcements']);
-      queryClient.setQueryData(['/api/announcements'], (old: any) => {
-        if (!old) return [{ ...newAnnouncement, id: 'temp-' + Date.now(), createdAt: new Date() }];
-        return [{ ...newAnnouncement, id: 'temp-' + Date.now(), createdAt: new Date() }, ...old];
-      });
-      return { previousAnnouncements };
-    },
-    onSuccess: (_, variables) => {
-      const action = variables.status === 'draft' ? 'saved as draft' : 'published';
-      toast({
-        title: "Success",
-        description: `Announcement ${action} successfully`,
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/announcements'] });
+    onSuccess: (newAnnouncement) => {
+      // Update UI cache immediately for instant visibility
+      queryClient.setQueryData(['/api/announcements'] as any, (old: any) => [newAnnouncement, ...(old || [])]);
+      
+      toast({ title: "Success", description: "Announcement published successfully" });
       setIsDialogOpen(false);
       reset();
     },
-    onError: (error: any, newAnnouncement, context: any) => {
-      if (context?.previousAnnouncements) {
-        queryClient.setQueryData(['/api/announcements'], context.previousAnnouncements);
-      }
+    onError: (error: any) => {
       toast({
         title: "Error", 
         description: error.message || "Failed to create announcement",
         variant: "destructive",
       });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/announcements'] });
     },
   });
 
@@ -168,9 +161,9 @@ export default function AnnouncementsManagement() {
       return response.json();
     },
     onMutate: async ({ id, data }) => {
-      await queryClient.cancelQueries({ queryKey: ['/api/announcements'] });
-      const previousAnnouncements = queryClient.getQueryData(['/api/announcements']);
-      queryClient.setQueryData(['/api/announcements'], (old: any) => {
+      await queryClient.cancelQueries({ queryKey: ['/api/announcements'] as any });
+      const previousAnnouncements = queryClient.getQueryData(['/api/announcements'] as any);
+      queryClient.setQueryData(['/api/announcements'] as any, (old: any) => {
         if (!old) return old;
         return old.map((announcement: any) => 
           announcement.id === id ? { ...announcement, ...data } : announcement
@@ -190,7 +183,7 @@ export default function AnnouncementsManagement() {
     },
     onError: (error: any, variables, context: any) => {
       if (context?.previousAnnouncements) {
-        queryClient.setQueryData(['/api/announcements'], context.previousAnnouncements);
+        queryClient.setQueryData(['/api/announcements'] as any, context.previousAnnouncements);
       }
       toast({
         title: "Error",
@@ -201,18 +194,24 @@ export default function AnnouncementsManagement() {
   });
 
   const deleteAnnouncementMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async (id: number) => {
       const response = await apiRequest('DELETE', `/api/announcements/${id}`);
       if (!response.ok) throw new Error('Failed to delete announcement');
       return response.status === 204 ? null : response.json();
     },
-    onMutate: async (id: string) => {
-      await queryClient.cancelQueries({ queryKey: ['/api/announcements'] });
-      const previousAnnouncements = queryClient.getQueryData(['/api/announcements']);
-      queryClient.setQueryData(['/api/announcements'], (old: any) => {
-        if (!old) return old;
+    onMutate: async (id: number) => {
+      // 1. Close the dialog IMMEDIATELY
+      setAnnouncementToDelete(null);
+      
+      // 2. Optimistic update: Remove from UI immediately
+      await queryClient.cancelQueries({ queryKey: ['/api/announcements'] as any });
+      const previousAnnouncements = queryClient.getQueryData(['/api/announcements'] as any);
+      
+      queryClient.setQueryData(['/api/announcements'] as any, (old: any) => {
+        if (!old) return [];
         return old.filter((announcement: any) => announcement.id !== id);
       });
+      
       return { previousAnnouncements };
     },
     onSuccess: () => {
@@ -220,12 +219,13 @@ export default function AnnouncementsManagement() {
         title: "Success",
         description: "Announcement deleted successfully",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/announcements'] });
-      setAnnouncementToDelete(null);
+      // Invalidate silently in the background
+      queryClient.invalidateQueries({ queryKey: ['/api/announcements'], exact: false });
     },
-    onError: (error: any, id: string, context: any) => {
+    onError: (error: any, id: number, context: any) => {
+      // Rollback only if the server operation actually failed
       if (context?.previousAnnouncements) {
-        queryClient.setQueryData(['/api/announcements'], context.previousAnnouncements);
+        queryClient.setQueryData(['/api/announcements'] as any, context.previousAnnouncements);
       }
       toast({
         title: "Error",
@@ -404,24 +404,23 @@ export default function AnnouncementsManagement() {
               Add Announcement
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[95vh] p-0">
-            <DialogHeader className="p-6 pb-0">
-              <div className="flex items-center justify-between">
+          <DialogContent className="max-w-4xl max-h-[95vh] p-0 overflow-hidden">
+            <DialogHeader className="p-6 pb-4 border-b">
+              <div className="flex items-center justify-between pr-8">
                 <DialogTitle className="text-xl font-semibold">
                   {editingAnnouncement ? 'Edit Announcement' : 'Create New Announcement'}
                 </DialogTitle>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant={previewMode ? 'default' : 'outline'}
-                    size="sm"
-                    onClick={() => setPreviewMode(!previewMode)}
-                    data-testid="button-toggle-preview"
-                  >
-                    <Eye className="w-4 h-4 mr-1" />
-                    {previewMode ? 'Edit' : 'Preview'}
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  variant={previewMode ? 'default' : 'outline'}
+                  size="icon"
+                  onClick={() => setPreviewMode(!previewMode)}
+                  data-testid="button-toggle-preview"
+                  className="h-8 w-8"
+                  title={previewMode ? 'Edit Content' : 'Preview Announcement'}
+                >
+                  {previewMode ? <Edit className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </Button>
               </div>
             </DialogHeader>
 
@@ -981,31 +980,39 @@ export default function AnnouncementsManagement() {
                   </ScrollArea>
                 </Tabs>
 
-                <DialogFooter className="p-6 pt-4 border-t gap-2">
-                  <Button type="button" variant="outline" onClick={handleCloseDialog} data-testid="button-cancel">
-                    Cancel
+                <div className="flex items-center gap-2 p-6 pt-2 border-t mt-4">
+                  <Button 
+                    type="submit" 
+                    className="flex-1"
+                    disabled={createAnnouncementMutation.isPending || updateAnnouncementMutation.isPending}
+                    data-testid="button-publish-announcement"
+                  >
+                    {(createAnnouncementMutation.isPending || updateAnnouncementMutation.isPending) ? (
+                      <Clock className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 mr-2" />
+                        {watchedValues.publishOption === 'schedule' ? 'Schedule' : 'Publish'}
+                      </>
+                    )}
                   </Button>
+                  
                   <Button 
                     type="button" 
-                    variant="secondary"
-                    onClick={() => handleSubmit((data) => onSubmit(data, true))()}
+                    variant="outline" 
+                    size="icon"
+                    className="h-10 w-10 shrink-0"
+                    onClick={() => {
+                      const data = getValues();
+                      onSubmit(data, true);
+                    }}
                     disabled={createAnnouncementMutation.isPending || updateAnnouncementMutation.isPending}
                     data-testid="button-save-draft"
+                    title="Save as Draft"
                   >
-                    <Save className="w-4 h-4 mr-2" />
-                    Save as Draft
+                    <Save className="w-4 h-4" />
                   </Button>
-                  <Button 
-                    type="submit"
-                    disabled={createAnnouncementMutation.isPending || updateAnnouncementMutation.isPending}
-                    data-testid="button-publish"
-                  >
-                    <Send className="w-4 h-4 mr-2" />
-                    {createAnnouncementMutation.isPending || updateAnnouncementMutation.isPending ? 'Saving...' : 
-                     editingAnnouncement ? 'Update Announcement' : 
-                     publishOption === 'schedule' ? 'Schedule Announcement' : 'Publish Announcement'}
-                  </Button>
-                </DialogFooter>
+                </div>
               </form>
             )}
           </DialogContent>

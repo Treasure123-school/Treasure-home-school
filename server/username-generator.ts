@@ -1,33 +1,14 @@
 import { db } from './storage';
 import { counters } from '../shared/schema.pg';
 import { sql } from 'drizzle-orm';
+import { ROLE_IDS } from '@shared/role-constants';
 
-/**
- * Role code constants for username generation
- * IMPORTANT: These match the format THS-{ROLE}-### for credential generation
- */
-const ROLE_CODES = {
+const ROLE_CODE_STRINGS = {
   SUPER_ADMIN: 'SUP',
   ADMIN: 'ADM',
   TEACHER: 'TCH',
   STUDENT: 'STU',
   PARENT: 'PAR',
-} as const;
-
-/**
- * Role IDs from database - MUST match shared/role-constants.ts
- * - 1: Super Admin
- * - 2: Admin
- * - 3: Teacher
- * - 4: Student
- * - 5: Parent
- */
-const ROLE_IDS = {
-  SUPER_ADMIN: 1,
-  ADMIN: 2,
-  TEACHER: 3,
-  STUDENT: 4,
-  PARENT: 5,
 } as const;
 
 /**
@@ -62,8 +43,8 @@ async function getNextSequenceForRole(roleCode: string): Promise<number> {
  * Example: THS-STU-021
  */
 export async function generateStudentUsername(): Promise<string> {
-  const sequence = await getNextSequenceForRole(ROLE_CODES.STUDENT);
-  return `THS-${ROLE_CODES.STUDENT}-${String(sequence).padStart(3, '0')}`;
+  const sequence = await getNextSequenceForRole(ROLE_CODE_STRINGS.STUDENT);
+  return `THS-${ROLE_CODE_STRINGS.STUDENT}-${String(sequence).padStart(3, '0')}`;
 }
 /**
  * Generates parent username
@@ -71,8 +52,8 @@ export async function generateStudentUsername(): Promise<string> {
  * Example: THS-PAR-012
  */
 export async function generateParentUsername(): Promise<string> {
-  const sequence = await getNextSequenceForRole(ROLE_CODES.PARENT);
-  return `THS-${ROLE_CODES.PARENT}-${String(sequence).padStart(3, '0')}`;
+  const sequence = await getNextSequenceForRole(ROLE_CODE_STRINGS.PARENT);
+  return `THS-${ROLE_CODE_STRINGS.PARENT}-${String(sequence).padStart(3, '0')}`;
 }
 /**
  * Generates teacher username
@@ -80,8 +61,8 @@ export async function generateParentUsername(): Promise<string> {
  * Example: THS-TCH-005
  */
 export async function generateTeacherUsername(): Promise<string> {
-  const sequence = await getNextSequenceForRole(ROLE_CODES.TEACHER);
-  return `THS-${ROLE_CODES.TEACHER}-${String(sequence).padStart(3, '0')}`;
+  const sequence = await getNextSequenceForRole(ROLE_CODE_STRINGS.TEACHER);
+  return `THS-${ROLE_CODE_STRINGS.TEACHER}-${String(sequence).padStart(3, '0')}`;
 }
 /**
  * Generates admin username
@@ -89,8 +70,8 @@ export async function generateTeacherUsername(): Promise<string> {
  * Example: THS-ADM-001
  */
 export async function generateAdminUsername(): Promise<string> {
-  const sequence = await getNextSequenceForRole(ROLE_CODES.ADMIN);
-  return `THS-${ROLE_CODES.ADMIN}-${String(sequence).padStart(3, '0')}`;
+  const sequence = await getNextSequenceForRole(ROLE_CODE_STRINGS.ADMIN);
+  return `THS-${ROLE_CODE_STRINGS.ADMIN}-${String(sequence).padStart(3, '0')}`;
 }
 /**
  * Generates Super Admin username
@@ -98,8 +79,8 @@ export async function generateAdminUsername(): Promise<string> {
  * Example: THS-SUP-001
  */
 export async function generateSuperAdminUsername(): Promise<string> {
-  const sequence = await getNextSequenceForRole(ROLE_CODES.SUPER_ADMIN);
-  return `THS-${ROLE_CODES.SUPER_ADMIN}-${String(sequence).padStart(3, '0')}`;
+  const sequence = await getNextSequenceForRole(ROLE_CODE_STRINGS.SUPER_ADMIN);
+  return `THS-${ROLE_CODE_STRINGS.SUPER_ADMIN}-${String(sequence).padStart(3, '0')}`;
 }
 
 /**

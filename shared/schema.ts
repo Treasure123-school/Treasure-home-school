@@ -260,11 +260,15 @@ export const superAdminProfiles = sqliteTable("super_admin_profiles", {
 export const systemSettings = sqliteTable("system_settings", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   schoolName: text("school_name"),
+  schoolShortName: text("school_short_name"),
   schoolMotto: text("school_motto"),
   schoolLogo: text("school_logo"),
-  schoolEmail: text("school_email"),
-  schoolPhone: text("school_phone"),
+  favicon: text("favicon"),
   schoolAddress: text("school_address"),
+  schoolPhones: text("school_phones").notNull().default('[]'), // JSON array of {countryCode, number}
+  schoolEmails: text("school_emails").notNull().default('[]'), // JSON array of strings
+  websiteTitle: text("website_title"),
+  footerText: text("footer_text"),
   maintenanceMode: integer("maintenance_mode", { mode: "boolean" }).notNull().default(false),
   maintenanceModeMessage: text("maintenance_mode_message"),
   enableSmsNotifications: integer("enable_sms_notifications", { mode: "boolean" }).notNull().default(false),
@@ -272,12 +276,6 @@ export const systemSettings = sqliteTable("system_settings", {
   enableExamsModule: integer("enable_exams_module", { mode: "boolean" }).notNull().default(true),
   enableAttendanceModule: integer("enable_attendance_module", { mode: "boolean" }).notNull().default(true),
   enableResultsModule: integer("enable_results_module", { mode: "boolean" }).notNull().default(true),
-  themeColor: text("theme_color").notNull().default('blue'),
-  favicon: text("favicon"),
-  usernameStudentPrefix: text("username_student_prefix").notNull().default('THS-STU'),
-  usernameParentPrefix: text("username_parent_prefix").notNull().default('THS-PAR'),
-  usernameTeacherPrefix: text("username_teacher_prefix").notNull().default('THS-TCH'),
-  usernameAdminPrefix: text("username_admin_prefix").notNull().default('THS-ADM'),
   tempPasswordFormat: text("temp_password_format").notNull().default('THS@{year}#{random4}'),
   hideAdminAccountsFromAdmins: integer("hide_admin_accounts_from_admins", { mode: "boolean" }).notNull().default(true),
   testWeight: integer("test_weight").notNull().default(40),
@@ -289,6 +287,53 @@ export const systemSettings = sqliteTable("system_settings", {
   allowTeacherOverrides: integer("allow_teacher_overrides", { mode: "boolean" }).notNull().default(true),
   positioningMethod: text("positioning_method").notNull().default('average'),
   deletedUserRetentionDays: integer("deleted_user_retention_days").notNull().default(30),
+  // Authentication Settings
+  loginIdentifier: text("login_identifier").notNull().default('username'), // 'email', 'username', 'both'
+  enableRememberMe: integer("enable_remember_me", { mode: "boolean" }).notNull().default(true),
+  enableStudentPortal: integer("enable_student_portal", { mode: "boolean" }).notNull().default(true),
+  enableAdminPortal: integer("enable_admin_portal", { mode: "boolean" }).notNull().default(true),
+  allowRegistration: integer("allow_registration", { mode: "boolean" }).notNull().default(false),
+  defaultRegistrationRoleId: integer("default_registration_role_id").notNull().default(4),
+  sessionTimeout: integer("session_timeout").notNull().default(30), // minutes
+  allowMultipleLogins: integer("allow_multiple_logins", { mode: "boolean" }).notNull().default(false),
+  autoDisableInactiveDays: integer("auto_disable_inactive_days").notNull().default(90),
+  requireAdminApproval: integer("require_admin_approval", { mode: "boolean" }).notNull().default(true),
+  redirectAfterLogin: text("redirect_after_login").notNull().default('dashboard'), // 'dashboard', 'last_page'
+  loginErrorDisplay: text("login_error_display").notNull().default('generic'), // 'generic', 'detailed'
+  // Branding & Theme
+  primaryColor: text("primary_color").notNull().default('#3b82f6'),
+  secondaryColor: text("secondary_color").notNull().default('#1e293b'),
+  defaultTheme: text("default_theme").notNull().default('light'), // 'light', 'dark'
+  loginPageText: text("login_page_text").notNull().default('Welcome to Treasure Home School Portal'),
+  dashboardWelcomeMessage: text("dashboard_welcome_message").notNull().default('Welcome back to your dashboard'),
+  // General Configuration
+  portalName: text("portal_name").notNull().default('Treasure Home School Portal'),
+  timezone: text("timezone").notNull().default('Africa/Lagos'),
+  language: text("language").notNull().default('en'),
+  dateFormat: text("date_format").notNull().default('DD/MM/YYYY'),
+  timeFormat: text("time_format").notNull().default('HH:mm'),
+  // Integrations
+  enableOnlinePayments: integer("enable_online_payments", { mode: "boolean" }).notNull().default(false),
+  // Backup & Restore
+  autoBackup: integer("auto_backup", { mode: "boolean" }).notNull().default(false),
+  backupFrequency: text("backup_frequency").notNull().default('daily'), // 'daily', 'weekly'
+  lastBackupDate: integer("last_backup_date", { mode: "timestamp" }),
+  // API & Access Tokens
+  enableApiAccess: integer("enable_api_access", { mode: "boolean" }).notNull().default(false),
+  apiAccessKey: text("api_access_key"),
+  // Security Policies
+  minPasswordLength: integer("min_password_length").notNull().default(8),
+  requirePasswordNumbers: integer("require_password_numbers", { mode: "boolean" }).notNull().default(true),
+  requirePasswordLetters: integer("require_password_letters", { mode: "boolean" }).notNull().default(true),
+  requirePasswordSpecial: integer("require_password_special", { mode: "boolean" }).notNull().default(true),
+  maxFailedLoginAttempts: integer("max_failed_login_attempts").notNull().default(5),
+  enableLockAccount: integer("enable_lock_account", { mode: "boolean" }).notNull().default(true),
+  lockoutDuration: integer("lockout_duration").notNull().default(15), // minutes
+  passwordResetExpiry: integer("password_reset_expiry").notNull().default(30), // minutes
+  invalidateOldPasswordOnReset: integer("invalidate_old_password_on_reset", { mode: "boolean" }).notNull().default(true),
+  enableTwoFactor: integer("enable_two_factor", { mode: "boolean" }).notNull().default(false),
+  twoFactorTarget: text("two_factor_target").notNull().default('admins'), // 'admins', 'all'
+  logoutOnPasswordChange: integer("logout_on_password_change", { mode: "boolean" }).notNull().default(true),
   updatedBy: text("updated_by").references(() => users.id, { onDelete: 'set null' }),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),

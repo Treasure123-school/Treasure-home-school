@@ -63,142 +63,114 @@ const ParentDashboard = lazy(() => import('@/pages/portal/ParentDashboard'));
 const ParentReportCards = lazy(() => import('@/pages/portal/ParentReportCards'));
 
 export function StudentPortalShell() {
-  const { user, isLoading } = useAuth();
-  
-  if (isLoading || !user) return <PortalLayoutSkeleton />;
-  
-  // Use lastName for display as per school convention
-  const userName = user.lastName;
-  const userInitials = `${user.firstName[0]}${user.lastName[0]}`;
-  
-  return (
-    <PortalLayout userRole="student" userName={userName} userInitials={userInitials}>
-      <Suspense fallback={<MinimalLoadingFallback />}>
-        <Switch>
-          <Route path="/portal/student" component={StudentDashboard} />
-          <Route path="/portal/student/exams" component={StudentExams} />
-          <Route path="/portal/student/exam-results" component={StudentExamResults} />
-          <Route path="/portal/student/grades" component={StudentGrades} />
-          <Route path="/portal/student/announcements" component={StudentAnnouncements} />
-          <Route path="/portal/student/attendance" component={StudentAttendance} />
-          <Route path="/portal/student/messages" component={StudentMessages} />
-          <Route path="/portal/student/report-card" component={StudentReportCard} />
-          <Route path="/portal/student/profile" component={StudentProfile} />
-          <Route path="/portal/student/gallery" component={PortalGallery} />
-          <Route path="/portal/student/study-resources" component={StudentStudyResources} />
-          <Route path="/portal/student/subjects" component={StudentSubjects} />
-          <Route path="/portal/student/*" component={PortalComingSoon} />
-        </Switch>
-      </Suspense>
-    </PortalLayout>
-  );
+  return <PortalShell role="student" />;
 }
 
 export function TeacherPortalShell() {
-  const { user, isLoading } = useAuth();
-  
-  if (isLoading || !user) return <PortalLayoutSkeleton />;
-  
-  // Use lastName for display as per school convention
-  const userName = user.lastName;
-  const userInitials = `${user.firstName[0]}${user.lastName[0]}`;
-  
-  return (
-    <PortalLayout userRole="teacher" userName={userName} userInitials={userInitials}>
-      <Suspense fallback={<MinimalLoadingFallback />}>
-        <Switch>
-          <Route path="/portal/teacher" component={TeacherDashboard} />
-          <Route path="/portal/teacher/profile" component={TeacherProfile} />
-          <Route path="/portal/teacher/profile-assignments" component={TeacherProfileAssignmentDashboard} />
-          <Route path="/portal/teacher/coming-soon" component={PortalComingSoon} />
-          <Route path="/portal/teacher/grading-queue" component={TeacherGradingQueue} />
-          <Route path="/portal/teacher/results/class/:classId" component={TeacherClassResults} />
-          <Route path="/portal/teacher/results/exam/:examId" component={TeacherExamResults} />
-          <Route path="/portal/teacher/exams/create" component={CreateExam} />
-          <Route path="/portal/teacher/exams/manage" component={ExamManagement} />
-          <Route path="/portal/teacher/exams" component={ExamManagement} />
-          <Route path="/portal/teacher/exam-analytics" component={TeacherExamAnalytics} />
-          <Route path="/portal/teacher/report-cards" component={TeacherReportCards} />
-          <Route path="/portal/teacher/recent-exam-results" component={TeacherRecentExamResults} />
-          <Route path="/portal/teacher/*" component={PortalComingSoon} />
-        </Switch>
-      </Suspense>
-    </PortalLayout>
-  );
+  return <PortalShell role="teacher" />;
 }
 
 export function AdminPortalShell() {
-  const { user, isLoading } = useAuth();
-  
-  if (isLoading || !user) return <PortalLayoutSkeleton />;
-  
-  // Use lastName for display as per school convention
-  const userName = user.lastName;
-  const userInitials = `${user.firstName[0]}${user.lastName[0]}`;
-  
-  return (
-    <PortalLayout userRole="admin" userName={userName} userInitials={userInitials}>
-      <Suspense fallback={<MinimalLoadingFallback />}>
-        <Switch>
-          <Route path="/portal/admin" component={AdminDashboard} />
-          <Route path="/portal/admin/job-vacancies" component={VacancyManagement} />
-          <Route path="/portal/admin/users" component={UserManagement} />
-          <Route path="/portal/admin/audit-logs" component={AuditLogs} />
-          <Route path="/portal/admin/profile-completion" component={ProfileCompletionMonitoring} />
-          <Route path="/portal/admin/students" component={StudentManagement} />
-          <Route path="/portal/admin/teachers" component={TeachersManagement} />
-          <Route path="/portal/admin/teacher-verification" component={TeacherProfileVerification} />
-          <Route path="/portal/admin/classes" component={ClassesManagement} />
-          <Route path="/portal/admin/subjects" component={SubjectsManagement} />
-          <Route path="/portal/admin/student-subjects" component={StudentSubjectAssignment} />
-          <Route path="/portal/admin/teacher-assignments" component={TeacherAssignmentManagement} />
-          <Route path="/portal/admin/announcements" component={AnnouncementsManagement} />
-          <Route path="/portal/admin/reports" component={ReportsManagement} />
-          <Route path="/portal/admin/performance" component={PerformanceMonitoring} />
-          <Route path="/portal/admin/homepage-management" component={HomepageManagement} />
-          <Route path="/portal/admin/gallery" component={PortalGallery} />
-          <Route path="/portal/admin/academic-terms" component={AcademicTermsManagement} />
-          <Route path="/portal/admin/settings" component={SettingsManagement} />
-          <Route path="/portal/admin/recovery-tools" component={AdminRecoveryTools} />
-          <Route path="/portal/admin/exams" component={AdminExamOverview} />
-          <Route path="/portal/exam-sessions" component={ExamSessions} />
-          <Route path="/portal/exam-reports" component={ExamReports} />
-          <Route path="/portal/admin/subject-manager/subjects" component={SubjectsManagement} />
-          <Route path="/portal/admin/subject-manager/unified-assignment" component={UnifiedSubjectAssignment} />
-          <Route path="/portal/admin/subject-manager/assign-teachers" component={AssignSubjectTeachers} />
-          <Route path="/portal/admin/results/exams" component={PortalComingSoon} />
-          <Route path="/portal/admin/results/ca" component={PortalComingSoon} />
-          <Route path="/portal/admin/results/grades" component={PortalComingSoon} />
-          <Route path="/portal/admin/results/processing" component={PortalComingSoon} />
-          <Route path="/portal/admin/results/publishing" component={AdminResultPublishing} />
-          <Route path="/portal/admin/academics/timetable" component={PortalComingSoon} />
-          <Route path="/portal/admin/academics/curriculum" component={PortalComingSoon} />
-          <Route path="/portal/admin/profile" component={AdminProfile} />
-          <Route path="/portal/admin/comment-templates" component={ReportCommentTemplates} />
-          <Route path="/portal/admin/*" component={PortalComingSoon} />
-        </Switch>
-      </Suspense>
-    </PortalLayout>
-  );
+  return <PortalShell role="admin" />;
 }
 
 export function ParentPortalShell() {
+  return <PortalShell role="parent" />;
+}
+
+function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent' }) {
   const { user, isLoading } = useAuth();
   
   if (isLoading || !user) return <PortalLayoutSkeleton />;
   
-  // Use lastName for display as per school convention
   const userName = user.lastName;
   const userInitials = `${user.firstName[0]}${user.lastName[0]}`;
   
   return (
-    <PortalLayout userRole="parent" userName={userName} userInitials={userInitials}>
+    <PortalLayout userRole={role} userName={userName} userInitials={userInitials}>
       <Suspense fallback={<MinimalLoadingFallback />}>
-        <Switch>
-          <Route path="/portal/parent" component={ParentDashboard} />
-          <Route path="/portal/parent/reports" component={ParentReportCards} />
-          <Route path="/portal/parent/*" component={PortalComingSoon} />
-        </Switch>
+        {role === 'student' && (
+          <Switch>
+            <Route path="/portal/student" component={StudentDashboard} />
+            <Route path="/portal/student/exams" component={StudentExams} />
+            <Route path="/portal/student/exam-results" component={StudentExamResults} />
+            <Route path="/portal/student/grades" component={StudentGrades} />
+            <Route path="/portal/student/announcements" component={StudentAnnouncements} />
+            <Route path="/portal/student/attendance" component={StudentAttendance} />
+            <Route path="/portal/student/messages" component={StudentMessages} />
+            <Route path="/portal/student/report-card" component={StudentReportCard} />
+            <Route path="/portal/student/profile" component={StudentProfile} />
+            <Route path="/portal/student/gallery" component={PortalGallery} />
+            <Route path="/portal/student/study-resources" component={StudentStudyResources} />
+            <Route path="/portal/student/subjects" component={StudentSubjects} />
+            <Route path="/portal/student/*" component={PortalComingSoon} />
+          </Switch>
+        )}
+        {role === 'teacher' && (
+          <Switch>
+            <Route path="/portal/teacher" component={TeacherDashboard} />
+            <Route path="/portal/teacher/profile" component={TeacherProfile} />
+            <Route path="/portal/teacher/profile-assignments" component={TeacherProfileAssignmentDashboard} />
+            <Route path="/portal/teacher/coming-soon" component={PortalComingSoon} />
+            <Route path="/portal/teacher/grading-queue" component={TeacherGradingQueue} />
+            <Route path="/portal/teacher/results/class/:classId" component={TeacherClassResults} />
+            <Route path="/portal/teacher/results/exam/:examId" component={TeacherExamResults} />
+            <Route path="/portal/teacher/exams/create" component={CreateExam} />
+            <Route path="/portal/teacher/exams/manage" component={ExamManagement} />
+            <Route path="/portal/teacher/exams" component={ExamManagement} />
+            <Route path="/portal/teacher/exam-analytics" component={TeacherExamAnalytics} />
+            <Route path="/portal/teacher/report-cards" component={TeacherReportCards} />
+            <Route path="/portal/teacher/recent-exam-results" component={TeacherRecentExamResults} />
+            <Route path="/portal/teacher/*" component={PortalComingSoon} />
+          </Switch>
+        )}
+        {role === 'admin' && (
+          <Switch>
+            <Route path="/portal/admin" component={AdminDashboard} />
+            <Route path="/portal/admin/job-vacancies" component={VacancyManagement} />
+            <Route path="/portal/admin/users" component={UserManagement} />
+            <Route path="/portal/admin/audit-logs" component={AuditLogs} />
+            <Route path="/portal/admin/profile-completion" component={ProfileCompletionMonitoring} />
+            <Route path="/portal/admin/students" component={StudentManagement} />
+            <Route path="/portal/admin/teachers" component={TeachersManagement} />
+            <Route path="/portal/admin/teacher-verification" component={TeacherProfileVerification} />
+            <Route path="/portal/admin/classes" component={ClassesManagement} />
+            <Route path="/portal/admin/subjects" component={SubjectsManagement} />
+            <Route path="/portal/admin/student-subjects" component={StudentSubjectAssignment} />
+            <Route path="/portal/admin/teacher-assignments" component={TeacherAssignmentManagement} />
+            <Route path="/portal/admin/announcements" component={AnnouncementsManagement} />
+            <Route path="/portal/admin/reports" component={ReportsManagement} />
+            <Route path="/portal/admin/performance" component={PerformanceMonitoring} />
+            <Route path="/portal/admin/homepage-management" component={HomepageManagement} />
+            <Route path="/portal/admin/gallery" component={PortalGallery} />
+            <Route path="/portal/admin/academic-terms" component={AcademicTermsManagement} />
+            <Route path="/portal/admin/settings" component={SettingsManagement} />
+            <Route path="/portal/admin/recovery-tools" component={AdminRecoveryTools} />
+            <Route path="/portal/admin/exams" component={AdminExamOverview} />
+            <Route path="/portal/exam-sessions" component={ExamSessions} />
+            <Route path="/portal/exam-reports" component={ExamReports} />
+            <Route path="/portal/admin/subject-manager/subjects" component={SubjectsManagement} />
+            <Route path="/portal/admin/subject-manager/unified-assignment" component={UnifiedSubjectAssignment} />
+            <Route path="/portal/admin/subject-manager/assign-teachers" component={AssignSubjectTeachers} />
+            <Route path="/portal/admin/results/exams" component={PortalComingSoon} />
+            <Route path="/portal/admin/results/ca" component={PortalComingSoon} />
+            <Route path="/portal/admin/results/grades" component={PortalComingSoon} />
+            <Route path="/portal/admin/results/processing" component={PortalComingSoon} />
+            <Route path="/portal/admin/results/publishing" component={AdminResultPublishing} />
+            <Route path="/portal/admin/academics/timetable" component={PortalComingSoon} />
+            <Route path="/portal/admin/academics/curriculum" component={PortalComingSoon} />
+            <Route path="/portal/admin/profile" component={AdminProfile} />
+            <Route path="/portal/admin/comment-templates" component={ReportCommentTemplates} />
+            <Route path="/portal/admin/*" component={PortalComingSoon} />
+          </Switch>
+        )}
+        {role === 'parent' && (
+          <Switch>
+            <Route path="/portal/parent" component={ParentDashboard} />
+            <Route path="/portal/parent/reports" component={ParentReportCards} />
+            <Route path="/portal/parent/*" component={PortalComingSoon} />
+          </Switch>
+        )}
       </Suspense>
     </PortalLayout>
   );

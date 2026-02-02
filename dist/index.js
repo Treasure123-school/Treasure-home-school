@@ -50,7 +50,9 @@ __export(schema_pg_exports, {
   questionBanks: () => questionBanks,
   questionOptions: () => questionOptions,
   reportCardItems: () => reportCardItems,
+  reportCardSkills: () => reportCardSkills,
   reportCards: () => reportCards,
+  reportCommentTemplates: () => reportCommentTemplates,
   roles: () => roles,
   settings: () => settings,
   studentAnswers: () => studentAnswers,
@@ -59,6 +61,7 @@ __export(schema_pg_exports, {
   studyResources: () => studyResources,
   subjects: () => subjects,
   superAdminProfiles: () => superAdminProfiles,
+  syncAuditLogs: () => syncAuditLogs,
   systemSettings: () => systemSettings,
   teacherApplications: () => teacherApplications,
   teacherAssignmentHistory: () => teacherAssignmentHistory,
@@ -70,7 +73,7 @@ __export(schema_pg_exports, {
   vacancies: () => vacancies
 });
 import { pgTable, text, integer, boolean, timestamp, index, uniqueIndex, serial, varchar } from "drizzle-orm/pg-core";
-var roles, users, passwordResetTokens, passwordResetAttempts, invites, notifications, academicTerms, classes, subjects, students, teacherProfiles, adminProfiles, parentProfiles, superAdminProfiles, systemSettings, attendance, exams, examQuestions, questionOptions, examSessions, studentAnswers, examResults, examSubmissionsArchive, questionBanks, questionBankItems, questionBankOptions, announcements, messages, galleryCategories, gallery, homePageContent, contactMessages, reportCards, reportCardItems, studyResources, teacherClassAssignments, teacherAssignmentHistory, gradingBoundaries, continuousAssessment, unauthorizedAccessLogs, studentSubjectAssignments, classSubjectMappings, timetable, gradingTasks, auditLogs, performanceEvents, settings, counters, vacancies, teacherApplications, approvedTeachers;
+var roles, users, passwordResetTokens, passwordResetAttempts, invites, notifications, academicTerms, classes, subjects, students, teacherProfiles, adminProfiles, parentProfiles, superAdminProfiles, systemSettings, attendance, exams, examQuestions, questionOptions, examSessions, studentAnswers, examResults, examSubmissionsArchive, questionBanks, questionBankItems, questionBankOptions, announcements, messages, galleryCategories, gallery, homePageContent, contactMessages, reportCommentTemplates, reportCards, reportCardItems, reportCardSkills, studyResources, teacherClassAssignments, teacherAssignmentHistory, gradingBoundaries, continuousAssessment, unauthorizedAccessLogs, studentSubjectAssignments, classSubjectMappings, timetable, gradingTasks, auditLogs, performanceEvents, settings, counters, vacancies, teacherApplications, approvedTeachers, syncAuditLogs;
 var init_schema_pg = __esm({
   "shared/schema.pg.ts"() {
     "use strict";
@@ -118,6 +121,8 @@ var init_schema_pg = __esm({
       securityAnswerHash: text("security_answer_hash"),
       dataPolicyAgreed: boolean("data_policy_agreed").notNull().default(false),
       dataPolicyAgreedAt: timestamp("data_policy_agreed_at"),
+      deletedAt: timestamp("deleted_at"),
+      deletedBy: varchar("deleted_by", { length: 36 }),
       createdAt: timestamp("created_at").notNull().defaultNow(),
       updatedAt: timestamp("updated_at").notNull().defaultNow()
     }, (table) => ({
@@ -125,7 +130,8 @@ var init_schema_pg = __esm({
       usersStatusIdx: index("users_status_idx").on(table.status),
       usersGoogleIdIdx: index("users_google_id_idx").on(table.googleId),
       usersRoleIdIdx: index("users_role_id_idx").on(table.roleId),
-      usersUsernameIdx: index("users_username_idx").on(table.username)
+      usersUsernameIdx: index("users_username_idx").on(table.username),
+      usersDeletedAtIdx: index("users_deleted_at_idx").on(table.deletedAt)
     }));
     passwordResetTokens = pgTable("password_reset_tokens", {
       id: serial("id").primaryKey(),
@@ -186,8 +192,15 @@ var init_schema_pg = __esm({
       startDate: varchar("start_date", { length: 10 }).notNull(),
       endDate: varchar("end_date", { length: 10 }).notNull(),
       isCurrent: boolean("is_current").notNull().default(false),
+      status: varchar("status", { length: 20 }).notNull().default("upcoming"),
+      isLocked: boolean("is_locked").notNull().default(false),
+      description: text("description"),
       createdAt: timestamp("created_at").notNull().defaultNow()
-    });
+    }, (table) => ({
+      academicTermsYearIdx: index("academic_terms_year_idx").on(table.year),
+      academicTermsStatusIdx: index("academic_terms_status_idx").on(table.status),
+      academicTermsCurrentIdx: index("academic_terms_current_idx").on(table.isCurrent)
+    }));
     classes = pgTable("classes", {
       id: serial("id").primaryKey(),
       name: varchar("name", { length: 255 }).notNull().unique(),
@@ -255,6 +268,7 @@ var init_schema_pg = __esm({
       department: varchar("department", { length: 255 }),
       roleDescription: text("role_description"),
       accessLevel: varchar("access_level", { length: 50 }),
+      signatureUrl: text("signature_url"),
       createdAt: timestamp("created_at").notNull().defaultNow(),
       updatedAt: timestamp("updated_at").notNull().defaultNow()
     });
@@ -275,17 +289,22 @@ var init_schema_pg = __esm({
       twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
       twoFactorSecret: text("two_factor_secret"),
       lastPasswordChange: timestamp("last_password_change"),
+      signatureUrl: text("signature_url"),
       createdAt: timestamp("created_at").notNull().defaultNow(),
       updatedAt: timestamp("updated_at").notNull().defaultNow()
     });
     systemSettings = pgTable("system_settings", {
       id: serial("id").primaryKey(),
       schoolName: varchar("school_name", { length: 255 }),
+      schoolShortName: varchar("school_short_name", { length: 50 }),
       schoolMotto: text("school_motto"),
       schoolLogo: text("school_logo"),
-      schoolEmail: varchar("school_email", { length: 255 }),
-      schoolPhone: varchar("school_phone", { length: 50 }),
+      favicon: text("favicon"),
       schoolAddress: text("school_address"),
+      schoolPhones: text("school_phones").default("[]"),
+      schoolEmails: text("school_emails").default("[]"),
+      websiteTitle: varchar("website_title", { length: 255 }),
+      footerText: text("footer_text"),
       maintenanceMode: boolean("maintenance_mode").notNull().default(false),
       maintenanceModeMessage: text("maintenance_mode_message"),
       enableSmsNotifications: boolean("enable_sms_notifications").notNull().default(false),
@@ -294,7 +313,6 @@ var init_schema_pg = __esm({
       enableAttendanceModule: boolean("enable_attendance_module").notNull().default(true),
       enableResultsModule: boolean("enable_results_module").notNull().default(true),
       themeColor: varchar("theme_color", { length: 50 }).notNull().default("blue"),
-      favicon: text("favicon"),
       usernameStudentPrefix: varchar("username_student_prefix", { length: 50 }).notNull().default("THS-STU"),
       usernameParentPrefix: varchar("username_parent_prefix", { length: 50 }).notNull().default("THS-PAR"),
       usernameTeacherPrefix: varchar("username_teacher_prefix", { length: 50 }).notNull().default("THS-TCH"),
@@ -308,6 +326,8 @@ var init_schema_pg = __esm({
       autoCreateReportCard: boolean("auto_create_report_card").notNull().default(true),
       showGradeBreakdown: boolean("show_grade_breakdown").notNull().default(true),
       allowTeacherOverrides: boolean("allow_teacher_overrides").notNull().default(true),
+      positioningMethod: varchar("positioning_method", { length: 20 }).notNull().default("average"),
+      deletedUserRetentionDays: integer("deleted_user_retention_days").notNull().default(30),
       updatedBy: varchar("updated_by", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
       createdAt: timestamp("created_at").notNull().defaultNow(),
       updatedAt: timestamp("updated_at").notNull().defaultNow()
@@ -517,7 +537,27 @@ var init_schema_pg = __esm({
       targetClasses: text("target_classes").notNull().default("[]"),
       isPublished: boolean("is_published").notNull().default(false),
       publishedAt: timestamp("published_at"),
-      createdAt: timestamp("created_at").notNull().defaultNow()
+      createdAt: timestamp("created_at").notNull().defaultNow(),
+      // Priority & Type
+      priority: varchar("priority", { length: 20 }).notNull().default("normal"),
+      // 'normal', 'important', 'urgent'
+      announcementType: varchar("announcement_type", { length: 50 }).notNull().default("general"),
+      // 'general', 'academic', 'examination', 'event', 'emergency'
+      // Scheduling & Expiry
+      scheduledAt: timestamp("scheduled_at"),
+      expiryDate: timestamp("expiry_date"),
+      // Attachments (JSON array of file URLs)
+      attachments: text("attachments").notNull().default("[]"),
+      coverImageUrl: text("cover_image_url"),
+      // Notification Settings (JSON object)
+      notificationSettings: text("notification_settings").notNull().default('{"inApp": true, "email": false, "sms": false}'),
+      // Status & Analytics
+      status: varchar("status", { length: 20 }).notNull().default("draft"),
+      // 'draft', 'scheduled', 'published', 'expired', 'archived'
+      viewCount: integer("view_count").notNull().default(0),
+      allowComments: boolean("allow_comments").notNull().default(false),
+      allowEdit: boolean("allow_edit").notNull().default(true),
+      updatedAt: timestamp("updated_at").notNull().defaultNow()
     });
     messages = pgTable("messages", {
       id: serial("id").primaryKey(),
@@ -566,6 +606,22 @@ var init_schema_pg = __esm({
       response: text("response"),
       createdAt: timestamp("created_at").notNull().defaultNow()
     });
+    reportCommentTemplates = pgTable("report_comment_templates", {
+      id: serial("id").primaryKey(),
+      role: varchar("role", { length: 20 }).notNull(),
+      // 'teacher' or 'principal'
+      performanceLevel: varchar("performance_level", { length: 30 }).notNull(),
+      // 'excellent', 'very_good', 'good', 'fair', 'needs_improvement'
+      minPercentage: integer("min_percentage").notNull(),
+      maxPercentage: integer("max_percentage").notNull(),
+      commentTemplate: text("comment_template").notNull(),
+      // Use {lastName} as placeholder
+      isActive: boolean("is_active").notNull().default(true),
+      createdBy: varchar("created_by", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+      updatedBy: varchar("updated_by", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+      createdAt: timestamp("created_at").notNull().defaultNow(),
+      updatedAt: timestamp("updated_at").notNull().defaultNow()
+    });
     reportCards = pgTable("report_cards", {
       id: serial("id").primaryKey(),
       studentId: varchar("student_id", { length: 36 }).notNull().references(() => students.id, { onDelete: "cascade" }),
@@ -586,6 +642,12 @@ var init_schema_pg = __esm({
       generatedBy: varchar("generated_by", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
       signedBy: varchar("signed_by", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
       signedAt: timestamp("signed_at"),
+      teacherSignedBy: varchar("teacher_signed_by", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+      teacherSignedAt: timestamp("teacher_signed_at"),
+      teacherSignatureUrl: text("teacher_signature_url"),
+      principalSignedBy: varchar("principal_signed_by", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+      principalSignedAt: timestamp("principal_signed_at"),
+      principalSignatureUrl: text("principal_signature_url"),
       generatedAt: timestamp("generated_at"),
       finalizedAt: timestamp("finalized_at"),
       publishedAt: timestamp("published_at"),
@@ -630,6 +692,29 @@ var init_schema_pg = __esm({
       reportCardItemsTeacherIdx: index("report_card_items_teacher_idx").on(table.teacherId),
       reportCardItemsTestCreatedByIdx: index("report_card_items_test_created_by_idx").on(table.testExamCreatedBy),
       reportCardItemsExamCreatedByIdx: index("report_card_items_exam_created_by_idx").on(table.examExamCreatedBy)
+    }));
+    reportCardSkills = pgTable("report_card_skills", {
+      id: serial("id").primaryKey(),
+      reportCardId: integer("report_card_id").notNull().references(() => reportCards.id, { onDelete: "cascade" }),
+      // Affective traits (1-5 scale)
+      punctuality: integer("punctuality"),
+      neatness: integer("neatness"),
+      attentiveness: integer("attentiveness"),
+      teamwork: integer("teamwork"),
+      leadership: integer("leadership"),
+      assignments: integer("assignments"),
+      classParticipation: integer("class_participation"),
+      // Psychomotor skills (1-5 scale)
+      sports: integer("sports"),
+      handwriting: integer("handwriting"),
+      musicalSkills: integer("musical_skills"),
+      creativity: integer("creativity"),
+      // Metadata
+      recordedBy: varchar("recorded_by", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+      createdAt: timestamp("created_at").notNull().defaultNow(),
+      updatedAt: timestamp("updated_at").notNull().defaultNow()
+    }, (table) => ({
+      reportCardSkillsReportCardIdx: index("report_card_skills_report_card_idx").on(table.reportCardId)
     }));
     studyResources = pgTable("study_resources", {
       id: serial("id").primaryKey(),
@@ -934,43 +1019,1447 @@ var init_schema_pg = __esm({
     }, (table) => ({
       approvedTeachersEmailIdx: index("approved_teachers_email_idx").on(table.googleEmail)
     }));
+    syncAuditLogs = pgTable("sync_audit_logs", {
+      id: serial("id").primaryKey(),
+      syncType: varchar("sync_type", { length: 50 }).notNull(),
+      // 'exam_submit', 'manual_sync', 'bulk_sync', 'retry'
+      studentId: varchar("student_id", { length: 36 }).notNull().references(() => students.id, { onDelete: "cascade" }),
+      examId: integer("exam_id").references(() => exams.id, { onDelete: "set null" }),
+      examResultId: integer("exam_result_id").references(() => examResults.id, { onDelete: "set null" }),
+      reportCardId: integer("report_card_id").references(() => reportCards.id, { onDelete: "set null" }),
+      reportCardItemId: integer("report_card_item_id").references(() => reportCardItems.id, { onDelete: "set null" }),
+      subjectId: integer("subject_id").references(() => subjects.id, { onDelete: "set null" }),
+      termId: integer("term_id").references(() => academicTerms.id, { onDelete: "set null" }),
+      score: integer("score"),
+      maxScore: integer("max_score"),
+      status: varchar("status", { length: 20 }).notNull().default("pending"),
+      // 'pending', 'success', 'failed', 'retrying'
+      errorMessage: text("error_message"),
+      errorCode: varchar("error_code", { length: 50 }),
+      retryCount: integer("retry_count").notNull().default(0),
+      maxRetries: integer("max_retries").notNull().default(3),
+      lastRetryAt: timestamp("last_retry_at"),
+      nextRetryAt: timestamp("next_retry_at"),
+      triggeredBy: varchar("triggered_by", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+      syncedAt: timestamp("synced_at"),
+      metadata: text("metadata"),
+      // JSON string for additional context
+      idempotencyKey: varchar("idempotency_key", { length: 100 }),
+      // Prevents duplicate syncs
+      createdAt: timestamp("created_at").notNull().defaultNow(),
+      updatedAt: timestamp("updated_at").notNull().defaultNow()
+    }, (table) => ({
+      syncAuditLogsStudentIdx: index("sync_audit_logs_student_idx").on(table.studentId),
+      syncAuditLogsExamIdx: index("sync_audit_logs_exam_idx").on(table.examId),
+      syncAuditLogsStatusIdx: index("sync_audit_logs_status_idx").on(table.status),
+      syncAuditLogsTypeIdx: index("sync_audit_logs_type_idx").on(table.syncType),
+      syncAuditLogsIdempotencyIdx: uniqueIndex("sync_audit_logs_idempotency_idx").on(table.idempotencyKey),
+      syncAuditLogsCreatedAtIdx: index("sync_audit_logs_created_at_idx").on(table.createdAt),
+      syncAuditLogsRetryIdx: index("sync_audit_logs_retry_idx").on(table.status, table.nextRetryAt)
+    }));
+  }
+});
+
+// shared/schema.ts
+var schema_exports = {};
+__export(schema_exports, {
+  academicTerms: () => academicTerms2,
+  adminProfiles: () => adminProfiles2,
+  announcements: () => announcements2,
+  approvedTeachers: () => approvedTeachers2,
+  attendance: () => attendance2,
+  auditLogs: () => auditLogs2,
+  classSubjectMappings: () => classSubjectMappings2,
+  classes: () => classes2,
+  contactMessages: () => contactMessages2,
+  continuousAssessment: () => continuousAssessment2,
+  counters: () => counters2,
+  createQuestionOptionSchema: () => createQuestionOptionSchema,
+  createStudentSchema: () => createStudentSchema,
+  createStudentWithAutoCredsSchema: () => createStudentWithAutoCredsSchema,
+  csvStudentSchema: () => csvStudentSchema,
+  examQuestions: () => examQuestions2,
+  examResults: () => examResults2,
+  examSessions: () => examSessions2,
+  examSubmissionsArchive: () => examSubmissionsArchive2,
+  exams: () => exams2,
+  gallery: () => gallery2,
+  galleryCategories: () => galleryCategories2,
+  gradingBoundaries: () => gradingBoundaries2,
+  gradingTasks: () => gradingTasks2,
+  homePageContent: () => homePageContent2,
+  insertAcademicTermSchema: () => insertAcademicTermSchema,
+  insertAdminProfileSchema: () => insertAdminProfileSchema,
+  insertAnnouncementSchema: () => insertAnnouncementSchema,
+  insertApprovedTeacherSchema: () => insertApprovedTeacherSchema,
+  insertAttendanceSchema: () => insertAttendanceSchema,
+  insertAuditLogSchema: () => insertAuditLogSchema,
+  insertClassSchema: () => insertClassSchema,
+  insertClassSubjectMappingSchema: () => insertClassSubjectMappingSchema,
+  insertContactMessageSchema: () => insertContactMessageSchema,
+  insertContinuousAssessmentSchema: () => insertContinuousAssessmentSchema,
+  insertCounterSchema: () => insertCounterSchema,
+  insertExamQuestionSchema: () => insertExamQuestionSchema,
+  insertExamResultSchema: () => insertExamResultSchema,
+  insertExamSchema: () => insertExamSchema,
+  insertExamSessionSchema: () => insertExamSessionSchema,
+  insertExamSubmissionsArchiveSchema: () => insertExamSubmissionsArchiveSchema,
+  insertGalleryCategorySchema: () => insertGalleryCategorySchema,
+  insertGallerySchema: () => insertGallerySchema,
+  insertGradingBoundarySchema: () => insertGradingBoundarySchema,
+  insertGradingTaskSchema: () => insertGradingTaskSchema,
+  insertHomePageContentSchema: () => insertHomePageContentSchema,
+  insertInviteSchema: () => insertInviteSchema,
+  insertMessageSchema: () => insertMessageSchema,
+  insertNotificationSchema: () => insertNotificationSchema,
+  insertParentProfileSchema: () => insertParentProfileSchema,
+  insertPasswordResetAttemptSchema: () => insertPasswordResetAttemptSchema,
+  insertPasswordResetTokenSchema: () => insertPasswordResetTokenSchema,
+  insertPerformanceEventSchema: () => insertPerformanceEventSchema,
+  insertQuestionBankItemSchema: () => insertQuestionBankItemSchema,
+  insertQuestionBankOptionSchema: () => insertQuestionBankOptionSchema,
+  insertQuestionBankSchema: () => insertQuestionBankSchema,
+  insertQuestionOptionSchema: () => insertQuestionOptionSchema,
+  insertReportCardItemSchema: () => insertReportCardItemSchema,
+  insertReportCardSchema: () => insertReportCardSchema,
+  insertReportCardSkillsSchema: () => insertReportCardSkillsSchema,
+  insertReportCommentTemplateSchema: () => insertReportCommentTemplateSchema,
+  insertRoleSchema: () => insertRoleSchema,
+  insertSettingSchema: () => insertSettingSchema,
+  insertStudentAnswerSchema: () => insertStudentAnswerSchema,
+  insertStudentSchema: () => insertStudentSchema,
+  insertStudentSubjectAssignmentSchema: () => insertStudentSubjectAssignmentSchema,
+  insertStudyResourceSchema: () => insertStudyResourceSchema,
+  insertSubjectSchema: () => insertSubjectSchema,
+  insertSuperAdminProfileSchema: () => insertSuperAdminProfileSchema,
+  insertSystemSettingsSchema: () => insertSystemSettingsSchema,
+  insertTeacherApplicationSchema: () => insertTeacherApplicationSchema,
+  insertTeacherAssignmentHistorySchema: () => insertTeacherAssignmentHistorySchema,
+  insertTeacherClassAssignmentSchema: () => insertTeacherClassAssignmentSchema,
+  insertTeacherProfileSchema: () => insertTeacherProfileSchema,
+  insertTimetableSchema: () => insertTimetableSchema,
+  insertUnauthorizedAccessLogSchema: () => insertUnauthorizedAccessLogSchema,
+  insertUserSchema: () => insertUserSchema,
+  insertVacancySchema: () => insertVacancySchema,
+  invites: () => invites2,
+  messages: () => messages2,
+  notifications: () => notifications2,
+  parentProfiles: () => parentProfiles2,
+  passwordResetAttempts: () => passwordResetAttempts2,
+  passwordResetTokens: () => passwordResetTokens2,
+  performanceEvents: () => performanceEvents2,
+  questionBankItems: () => questionBankItems2,
+  questionBankOptions: () => questionBankOptions2,
+  questionBanks: () => questionBanks2,
+  questionOptions: () => questionOptions2,
+  quickCreateStudentSchema: () => quickCreateStudentSchema,
+  reportCardItems: () => reportCardItems2,
+  reportCardSkills: () => reportCardSkills2,
+  reportCards: () => reportCards2,
+  reportCommentTemplates: () => reportCommentTemplates2,
+  roles: () => roles2,
+  settings: () => settings2,
+  studentAnswers: () => studentAnswers2,
+  studentSubjectAssignments: () => studentSubjectAssignments2,
+  students: () => students2,
+  studyResources: () => studyResources2,
+  subjects: () => subjects2,
+  superAdminProfiles: () => superAdminProfiles2,
+  systemSettings: () => systemSettings2,
+  teacherApplications: () => teacherApplications2,
+  teacherAssignmentHistory: () => teacherAssignmentHistory2,
+  teacherClassAssignments: () => teacherClassAssignments2,
+  teacherProfiles: () => teacherProfiles2,
+  timetable: () => timetable2,
+  unauthorizedAccessLogs: () => unauthorizedAccessLogs2,
+  updateExamSessionSchema: () => updateExamSessionSchema,
+  users: () => users2,
+  vacancies: () => vacancies2
+});
+import { sql } from "drizzle-orm";
+import { sqliteTable, text as text2, integer as integer2, index as index2, uniqueIndex as uniqueIndex2 } from "drizzle-orm/sqlite-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+var roles2, users2, passwordResetTokens2, passwordResetAttempts2, invites2, notifications2, academicTerms2, classes2, subjects2, students2, teacherProfiles2, adminProfiles2, parentProfiles2, superAdminProfiles2, systemSettings2, attendance2, exams2, examQuestions2, questionOptions2, examSessions2, studentAnswers2, examResults2, examSubmissionsArchive2, questionBanks2, questionBankItems2, questionBankOptions2, announcements2, messages2, galleryCategories2, gallery2, homePageContent2, contactMessages2, reportCommentTemplates2, reportCards2, reportCardItems2, reportCardSkills2, studyResources2, performanceEvents2, teacherClassAssignments2, teacherAssignmentHistory2, gradingBoundaries2, continuousAssessment2, unauthorizedAccessLogs2, studentSubjectAssignments2, classSubjectMappings2, timetable2, gradingTasks2, auditLogs2, settings2, counters2, vacancies2, teacherApplications2, approvedTeachers2, insertRoleSchema, insertUserSchema, insertPasswordResetTokenSchema, insertPasswordResetAttemptSchema, insertInviteSchema, insertStudentSchema, insertClassSchema, insertSubjectSchema, insertAcademicTermSchema, insertAttendanceSchema, insertExamSchema, insertExamResultSchema, insertExamSubmissionsArchiveSchema, insertAnnouncementSchema, insertMessageSchema, insertGalleryCategorySchema, insertGallerySchema, insertHomePageContentSchema, insertContactMessageSchema, insertReportCommentTemplateSchema, insertReportCardSchema, insertReportCardSkillsSchema, insertReportCardItemSchema, insertStudyResourceSchema, insertPerformanceEventSchema, insertTeacherClassAssignmentSchema, insertTeacherAssignmentHistorySchema, insertGradingBoundarySchema, insertContinuousAssessmentSchema, insertUnauthorizedAccessLogSchema, insertTimetableSchema, insertGradingTaskSchema, insertAuditLogSchema, insertSettingSchema, insertCounterSchema, createStudentWithAutoCredsSchema, createStudentSchema, quickCreateStudentSchema, csvStudentSchema, insertExamQuestionSchema, insertQuestionOptionSchema, createQuestionOptionSchema, insertExamSessionSchema, updateExamSessionSchema, insertStudentAnswerSchema, insertNotificationSchema, insertTeacherProfileSchema, insertAdminProfileSchema, insertParentProfileSchema, insertStudentSubjectAssignmentSchema, insertClassSubjectMappingSchema, insertVacancySchema, insertTeacherApplicationSchema, insertApprovedTeacherSchema, insertSuperAdminProfileSchema, insertSystemSettingsSchema, insertQuestionBankSchema, insertQuestionBankItemSchema, insertQuestionBankOptionSchema;
+var init_schema = __esm({
+  "shared/schema.ts"() {
+    "use strict";
+    roles2 = sqliteTable("roles", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      name: text2("name").notNull().unique(),
+      permissions: text2("permissions").notNull().default("[]"),
+      // JSON array as text
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    });
+    users2 = sqliteTable("users", {
+      id: text2("id").primaryKey(),
+      username: text2("username").unique(),
+      email: text2("email").notNull(),
+      recoveryEmail: text2("recovery_email"),
+      passwordHash: text2("password_hash"),
+      mustChangePassword: integer2("must_change_password", { mode: "boolean" }).notNull().default(true),
+      roleId: integer2("role_id").notNull().references(() => roles2.id),
+      firstName: text2("first_name").notNull(),
+      lastName: text2("last_name").notNull(),
+      phone: text2("phone"),
+      address: text2("address"),
+      dateOfBirth: text2("date_of_birth"),
+      // YYYY-MM-DD format
+      gender: text2("gender"),
+      // 'Male', 'Female', 'Other'
+      nationalId: text2("national_id"),
+      profileImageUrl: text2("profile_image_url"),
+      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
+      authProvider: text2("auth_provider").notNull().default("local"),
+      googleId: text2("google_id").unique(),
+      // Security & audit fields
+      status: text2("status").notNull().default("active"),
+      // 'pending', 'active', 'suspended', 'disabled'
+      createdVia: text2("created_via").notNull().default("admin"),
+      // 'bulk', 'invite', 'self', 'google', 'admin'
+      createdBy: text2("created_by"),
+      approvedBy: text2("approved_by"),
+      approvedAt: integer2("approved_at", { mode: "timestamp" }),
+      lastLoginAt: integer2("last_login_at", { mode: "timestamp" }),
+      lastLoginIp: text2("last_login_ip"),
+      mfaEnabled: integer2("mfa_enabled", { mode: "boolean" }).notNull().default(false),
+      mfaSecret: text2("mfa_secret"),
+      accountLockedUntil: integer2("account_locked_until", { mode: "timestamp" }),
+      // Profile completion fields
+      profileCompleted: integer2("profile_completed", { mode: "boolean" }).notNull().default(false),
+      profileSkipped: integer2("profile_skipped", { mode: "boolean" }).notNull().default(false),
+      profileCompletionPercentage: integer2("profile_completion_percentage").notNull().default(0),
+      state: text2("state"),
+      country: text2("country"),
+      securityQuestion: text2("security_question"),
+      securityAnswerHash: text2("security_answer_hash"),
+      dataPolicyAgreed: integer2("data_policy_agreed", { mode: "boolean" }).notNull().default(false),
+      dataPolicyAgreedAt: integer2("data_policy_agreed_at", { mode: "timestamp" }),
+      deletedAt: integer2("deleted_at", { mode: "timestamp" }),
+      deletedBy: text2("deleted_by"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      usersEmailIdx: index2("users_email_idx").on(table.email),
+      usersStatusIdx: index2("users_status_idx").on(table.status),
+      usersGoogleIdIdx: index2("users_google_id_idx").on(table.googleId),
+      usersRoleIdIdx: index2("users_role_id_idx").on(table.roleId),
+      usersUsernameIdx: index2("users_username_idx").on(table.username),
+      usersDeletedAtIdx: index2("users_deleted_at_idx").on(table.deletedAt)
+    }));
+    passwordResetTokens2 = sqliteTable("password_reset_tokens", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      userId: text2("user_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
+      token: text2("token").notNull().unique(),
+      expiresAt: integer2("expires_at", { mode: "timestamp" }).notNull(),
+      usedAt: integer2("used_at", { mode: "timestamp" }),
+      ipAddress: text2("ip_address"),
+      resetBy: text2("reset_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      passwordResetTokensUserIdIdx: index2("password_reset_tokens_user_id_idx").on(table.userId),
+      passwordResetTokensTokenIdx: index2("password_reset_tokens_token_idx").on(table.token)
+    }));
+    passwordResetAttempts2 = sqliteTable("password_reset_attempts", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      identifier: text2("identifier").notNull(),
+      ipAddress: text2("ip_address").notNull(),
+      attemptedAt: integer2("attempted_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      success: integer2("success", { mode: "boolean" }).notNull().default(false)
+    }, (table) => ({
+      passwordResetAttemptsIdentifierIdx: index2("password_reset_attempts_identifier_idx").on(table.identifier),
+      passwordResetAttemptsIpIdx: index2("password_reset_attempts_ip_idx").on(table.ipAddress),
+      passwordResetAttemptsTimeIdx: index2("password_reset_attempts_time_idx").on(table.attemptedAt)
+    }));
+    invites2 = sqliteTable("invites", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      token: text2("token").notNull().unique(),
+      email: text2("email").notNull(),
+      roleId: integer2("role_id").notNull().references(() => roles2.id),
+      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
+      expiresAt: integer2("expires_at", { mode: "timestamp" }).notNull(),
+      acceptedAt: integer2("accepted_at", { mode: "timestamp" }),
+      acceptedBy: text2("accepted_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      invitesTokenIdx: index2("invites_token_idx").on(table.token),
+      invitesEmailIdx: index2("invites_email_idx").on(table.email)
+    }));
+    notifications2 = sqliteTable("notifications", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      userId: text2("user_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
+      type: text2("type").notNull(),
+      title: text2("title").notNull(),
+      message: text2("message").notNull(),
+      relatedEntityType: text2("related_entity_type"),
+      relatedEntityId: text2("related_entity_id"),
+      isRead: integer2("is_read", { mode: "boolean" }).notNull().default(false),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      notificationsUserIdIdx: index2("notifications_user_id_idx").on(table.userId),
+      notificationsIsReadIdx: index2("notifications_is_read_idx").on(table.isRead)
+    }));
+    academicTerms2 = sqliteTable("academic_terms", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      name: text2("name").notNull(),
+      year: text2("year").notNull(),
+      startDate: text2("start_date").notNull(),
+      // YYYY-MM-DD format
+      endDate: text2("end_date").notNull(),
+      isCurrent: integer2("is_current", { mode: "boolean" }).notNull().default(false),
+      status: text2("status").notNull().default("upcoming"),
+      // upcoming, active, completed, archived
+      isLocked: integer2("is_locked", { mode: "boolean" }).notNull().default(false),
+      description: text2("description"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      academicTermsYearIdx: index2("academic_terms_year_idx").on(table.year),
+      academicTermsStatusIdx: index2("academic_terms_status_idx").on(table.status),
+      academicTermsCurrentIdx: index2("academic_terms_current_idx").on(table.isCurrent)
+    }));
+    classes2 = sqliteTable("classes", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      name: text2("name").notNull().unique(),
+      level: text2("level").notNull(),
+      capacity: integer2("capacity").notNull().default(30),
+      classTeacherId: text2("class_teacher_id").references(() => users2.id, { onDelete: "set null" }),
+      currentTermId: integer2("current_term_id").references(() => academicTerms2.id),
+      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    });
+    subjects2 = sqliteTable("subjects", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      name: text2("name").notNull(),
+      code: text2("code").notNull().unique(),
+      description: text2("description"),
+      category: text2("category").notNull().default("general"),
+      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    });
+    students2 = sqliteTable("students", {
+      id: text2("id").primaryKey().references(() => users2.id, { onDelete: "cascade" }),
+      admissionNumber: text2("admission_number").notNull().unique(),
+      classId: integer2("class_id").references(() => classes2.id),
+      parentId: text2("parent_id").references(() => users2.id, { onDelete: "set null" }),
+      department: text2("department"),
+      admissionDate: text2("admission_date").notNull(),
+      // YYYY-MM-DD format
+      emergencyContact: text2("emergency_contact"),
+      emergencyPhone: text2("emergency_phone"),
+      medicalInfo: text2("medical_info"),
+      guardianName: text2("guardian_name"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    });
+    teacherProfiles2 = sqliteTable("teacher_profiles", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      userId: text2("user_id").notNull().unique().references(() => users2.id, { onDelete: "cascade" }),
+      staffId: text2("staff_id").unique(),
+      subjects: text2("subjects").notNull().default("[]"),
+      // JSON array of integers
+      assignedClasses: text2("assigned_classes").notNull().default("[]"),
+      // JSON array of integers
+      qualification: text2("qualification"),
+      yearsOfExperience: integer2("years_of_experience").notNull().default(0),
+      specialization: text2("specialization"),
+      department: text2("department"),
+      signatureUrl: text2("signature_url"),
+      gradingMode: text2("grading_mode").notNull().default("manual"),
+      autoGradeTheoryQuestions: integer2("auto_grade_theory_questions", { mode: "boolean" }).notNull().default(false),
+      theoryGradingInstructions: text2("theory_grading_instructions"),
+      notificationPreference: text2("notification_preference").notNull().default("all"),
+      availability: text2("availability"),
+      firstLogin: integer2("first_login", { mode: "boolean" }).notNull().default(true),
+      verified: integer2("verified", { mode: "boolean" }).notNull().default(false),
+      verifiedBy: text2("verified_by").references(() => users2.id, { onDelete: "set null" }),
+      verifiedAt: integer2("verified_at", { mode: "timestamp" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    });
+    adminProfiles2 = sqliteTable("admin_profiles", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      userId: text2("user_id").notNull().unique().references(() => users2.id, { onDelete: "cascade" }),
+      department: text2("department"),
+      roleDescription: text2("role_description"),
+      accessLevel: text2("access_level"),
+      signatureUrl: text2("signature_url"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    });
+    parentProfiles2 = sqliteTable("parent_profiles", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      userId: text2("user_id").notNull().unique().references(() => users2.id, { onDelete: "cascade" }),
+      occupation: text2("occupation"),
+      contactPreference: text2("contact_preference"),
+      linkedStudents: text2("linked_students").notNull().default("[]"),
+      // JSON array of UUIDs
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    });
+    superAdminProfiles2 = sqliteTable("super_admin_profiles", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      userId: text2("user_id").notNull().unique().references(() => users2.id, { onDelete: "cascade" }),
+      department: text2("department"),
+      accessLevel: text2("access_level").notNull().default("full"),
+      twoFactorEnabled: integer2("two_factor_enabled", { mode: "boolean" }).notNull().default(false),
+      twoFactorSecret: text2("two_factor_secret"),
+      lastPasswordChange: integer2("last_password_change", { mode: "timestamp" }),
+      signatureUrl: text2("signature_url"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    });
+    systemSettings2 = sqliteTable("system_settings", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      schoolName: text2("school_name"),
+      schoolShortName: text2("school_short_name"),
+      schoolMotto: text2("school_motto"),
+      schoolLogo: text2("school_logo"),
+      favicon: text2("favicon"),
+      schoolAddress: text2("school_address"),
+      schoolPhones: text2("school_phones").notNull().default("[]"),
+      // JSON array of {countryCode, number}
+      schoolEmails: text2("school_emails").notNull().default("[]"),
+      // JSON array of strings
+      websiteTitle: text2("website_title"),
+      footerText: text2("footer_text"),
+      maintenanceMode: integer2("maintenance_mode", { mode: "boolean" }).notNull().default(false),
+      maintenanceModeMessage: text2("maintenance_mode_message"),
+      enableSmsNotifications: integer2("enable_sms_notifications", { mode: "boolean" }).notNull().default(false),
+      enableEmailNotifications: integer2("enable_email_notifications", { mode: "boolean" }).notNull().default(true),
+      enableExamsModule: integer2("enable_exams_module", { mode: "boolean" }).notNull().default(true),
+      enableAttendanceModule: integer2("enable_attendance_module", { mode: "boolean" }).notNull().default(true),
+      enableResultsModule: integer2("enable_results_module", { mode: "boolean" }).notNull().default(true),
+      tempPasswordFormat: text2("temp_password_format").notNull().default("THS@{year}#{random4}"),
+      hideAdminAccountsFromAdmins: integer2("hide_admin_accounts_from_admins", { mode: "boolean" }).notNull().default(true),
+      testWeight: integer2("test_weight").notNull().default(40),
+      examWeight: integer2("exam_weight").notNull().default(60),
+      defaultGradingScale: text2("default_grading_scale").notNull().default("standard"),
+      scoreAggregationMode: text2("score_aggregation_mode").notNull().default("last"),
+      autoCreateReportCard: integer2("auto_create_report_card", { mode: "boolean" }).notNull().default(true),
+      showGradeBreakdown: integer2("show_grade_breakdown", { mode: "boolean" }).notNull().default(true),
+      allowTeacherOverrides: integer2("allow_teacher_overrides", { mode: "boolean" }).notNull().default(true),
+      positioningMethod: text2("positioning_method").notNull().default("average"),
+      deletedUserRetentionDays: integer2("deleted_user_retention_days").notNull().default(30),
+      // Authentication Settings
+      loginIdentifier: text2("login_identifier").notNull().default("username"),
+      // 'email', 'username', 'both'
+      enableRememberMe: integer2("enable_remember_me", { mode: "boolean" }).notNull().default(true),
+      enableStudentPortal: integer2("enable_student_portal", { mode: "boolean" }).notNull().default(true),
+      enableAdminPortal: integer2("enable_admin_portal", { mode: "boolean" }).notNull().default(true),
+      allowRegistration: integer2("allow_registration", { mode: "boolean" }).notNull().default(false),
+      defaultRegistrationRoleId: integer2("default_registration_role_id").notNull().default(4),
+      sessionTimeout: integer2("session_timeout").notNull().default(30),
+      // minutes
+      allowMultipleLogins: integer2("allow_multiple_logins", { mode: "boolean" }).notNull().default(false),
+      autoDisableInactiveDays: integer2("auto_disable_inactive_days").notNull().default(90),
+      requireAdminApproval: integer2("require_admin_approval", { mode: "boolean" }).notNull().default(true),
+      redirectAfterLogin: text2("redirect_after_login").notNull().default("dashboard"),
+      // 'dashboard', 'last_page'
+      loginErrorDisplay: text2("login_error_display").notNull().default("generic"),
+      // 'generic', 'detailed'
+      // Branding & Theme
+      primaryColor: text2("primary_color").notNull().default("#3b82f6"),
+      secondaryColor: text2("secondary_color").notNull().default("#1e293b"),
+      defaultTheme: text2("default_theme").notNull().default("light"),
+      // 'light', 'dark'
+      loginPageText: text2("login_page_text").notNull().default("Welcome to Treasure Home School Portal"),
+      dashboardWelcomeMessage: text2("dashboard_welcome_message").notNull().default("Welcome back to your dashboard"),
+      // General Configuration
+      portalName: text2("portal_name").notNull().default("Treasure Home School Portal"),
+      timezone: text2("timezone").notNull().default("Africa/Lagos"),
+      language: text2("language").notNull().default("en"),
+      dateFormat: text2("date_format").notNull().default("DD/MM/YYYY"),
+      timeFormat: text2("time_format").notNull().default("HH:mm"),
+      // Integrations
+      enableOnlinePayments: integer2("enable_online_payments", { mode: "boolean" }).notNull().default(false),
+      // Backup & Restore
+      autoBackup: integer2("auto_backup", { mode: "boolean" }).notNull().default(false),
+      backupFrequency: text2("backup_frequency").notNull().default("daily"),
+      // 'daily', 'weekly'
+      lastBackupDate: integer2("last_backup_date", { mode: "timestamp" }),
+      // API & Access Tokens
+      enableApiAccess: integer2("enable_api_access", { mode: "boolean" }).notNull().default(false),
+      apiAccessKey: text2("api_access_key"),
+      // Security Policies
+      minPasswordLength: integer2("min_password_length").notNull().default(8),
+      requirePasswordNumbers: integer2("require_password_numbers", { mode: "boolean" }).notNull().default(true),
+      requirePasswordLetters: integer2("require_password_letters", { mode: "boolean" }).notNull().default(true),
+      requirePasswordSpecial: integer2("require_password_special", { mode: "boolean" }).notNull().default(true),
+      maxFailedLoginAttempts: integer2("max_failed_login_attempts").notNull().default(5),
+      enableLockAccount: integer2("enable_lock_account", { mode: "boolean" }).notNull().default(true),
+      lockoutDuration: integer2("lockout_duration").notNull().default(15),
+      // minutes
+      passwordResetExpiry: integer2("password_reset_expiry").notNull().default(30),
+      // minutes
+      invalidateOldPasswordOnReset: integer2("invalidate_old_password_on_reset", { mode: "boolean" }).notNull().default(true),
+      enableTwoFactor: integer2("enable_two_factor", { mode: "boolean" }).notNull().default(false),
+      twoFactorTarget: text2("two_factor_target").notNull().default("admins"),
+      // 'admins', 'all'
+      logoutOnPasswordChange: integer2("logout_on_password_change", { mode: "boolean" }).notNull().default(true),
+      updatedBy: text2("updated_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    });
+    attendance2 = sqliteTable("attendance", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
+      classId: integer2("class_id").notNull().references(() => classes2.id),
+      date: text2("date").notNull(),
+      // YYYY-MM-DD format
+      status: text2("status").notNull(),
+      // 'Present', 'Absent', 'Late', 'Excused'
+      recordedBy: text2("recorded_by").references(() => users2.id, { onDelete: "set null" }),
+      notes: text2("notes"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    });
+    exams2 = sqliteTable("exams", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      name: text2("name").notNull(),
+      classId: integer2("class_id").notNull().references(() => classes2.id),
+      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
+      totalMarks: integer2("total_marks").notNull(),
+      date: text2("date").notNull(),
+      // YYYY-MM-DD format
+      termId: integer2("term_id").notNull().references(() => academicTerms2.id),
+      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
+      teacherInChargeId: text2("teacher_in_charge_id").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      examType: text2("exam_type").notNull().default("exam"),
+      // 'test', 'exam'
+      timerMode: text2("timer_mode").notNull().default("individual"),
+      // 'global', 'individual'
+      timeLimit: integer2("time_limit"),
+      // in minutes
+      startTime: integer2("start_time", { mode: "timestamp" }),
+      endTime: integer2("end_time", { mode: "timestamp" }),
+      instructions: text2("instructions"),
+      isPublished: integer2("is_published", { mode: "boolean" }).notNull().default(false),
+      allowRetakes: integer2("allow_retakes", { mode: "boolean" }).notNull().default(false),
+      shuffleQuestions: integer2("shuffle_questions", { mode: "boolean" }).notNull().default(false),
+      autoGradingEnabled: integer2("auto_grading_enabled", { mode: "boolean" }).notNull().default(true),
+      instantFeedback: integer2("instant_feedback", { mode: "boolean" }).notNull().default(false),
+      showCorrectAnswers: integer2("show_correct_answers", { mode: "boolean" }).notNull().default(false),
+      passingScore: integer2("passing_score"),
+      gradingScale: text2("grading_scale").notNull().default("standard"),
+      enableProctoring: integer2("enable_proctoring", { mode: "boolean" }).notNull().default(false),
+      lockdownMode: integer2("lockdown_mode", { mode: "boolean" }).notNull().default(false),
+      requireWebcam: integer2("require_webcam", { mode: "boolean" }).notNull().default(false),
+      requireFullscreen: integer2("require_fullscreen", { mode: "boolean" }).notNull().default(false),
+      maxTabSwitches: integer2("max_tab_switches").notNull().default(3),
+      shuffleOptions: integer2("shuffle_options", { mode: "boolean" }).notNull().default(false)
+    });
+    examQuestions2 = sqliteTable("exam_questions", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      examId: integer2("exam_id").notNull().references(() => exams2.id),
+      questionText: text2("question_text").notNull(),
+      questionType: text2("question_type").notNull(),
+      // 'multiple_choice', 'text', 'essay', 'true_false', 'fill_blank'
+      points: integer2("points").notNull().default(1),
+      orderNumber: integer2("order_number").notNull(),
+      imageUrl: text2("image_url"),
+      autoGradable: integer2("auto_gradable", { mode: "boolean" }).notNull().default(true),
+      expectedAnswers: text2("expected_answers").notNull().default("[]"),
+      // JSON array
+      caseSensitive: integer2("case_sensitive", { mode: "boolean" }).notNull().default(false),
+      allowPartialCredit: integer2("allow_partial_credit", { mode: "boolean" }).notNull().default(false),
+      partialCreditRules: text2("partial_credit_rules"),
+      explanationText: text2("explanation_text"),
+      hintText: text2("hint_text"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      examQuestionsExamIdIdx: index2("exam_questions_exam_id_idx").on(table.examId),
+      examQuestionsOrderIdx: index2("exam_questions_order_idx").on(table.examId, table.orderNumber)
+    }));
+    questionOptions2 = sqliteTable("question_options", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      questionId: integer2("question_id").notNull().references(() => examQuestions2.id),
+      optionText: text2("option_text").notNull(),
+      isCorrect: integer2("is_correct", { mode: "boolean" }).notNull().default(false),
+      orderNumber: integer2("order_number").notNull(),
+      partialCreditValue: integer2("partial_credit_value").notNull().default(0),
+      explanationText: text2("explanation_text"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      questionOptionsQuestionIdIdx: index2("question_options_question_id_idx").on(table.questionId),
+      questionOptionsCorrectIdx: index2("question_options_correct_idx").on(table.questionId, table.isCorrect)
+    }));
+    examSessions2 = sqliteTable("exam_sessions", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      examId: integer2("exam_id").notNull().references(() => exams2.id),
+      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
+      startedAt: integer2("started_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      submittedAt: integer2("submitted_at", { mode: "timestamp" }),
+      timeRemaining: integer2("time_remaining"),
+      isCompleted: integer2("is_completed", { mode: "boolean" }).notNull().default(false),
+      score: integer2("score"),
+      maxScore: integer2("max_score"),
+      status: text2("status").notNull().default("in_progress"),
+      // 'in_progress', 'submitted', 'graded'
+      metadata: text2("metadata"),
+      // JSON string
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      examSessionsExamStudentIdx: index2("exam_sessions_exam_student_idx").on(table.examId, table.studentId),
+      examSessionsStudentCompletedIdx: index2("exam_sessions_student_completed_idx").on(table.studentId, table.isCompleted),
+      examSessionsActiveSessionsIdx: index2("exam_sessions_active_idx").on(table.examId, table.studentId, table.isCompleted)
+    }));
+    studentAnswers2 = sqliteTable("student_answers", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      sessionId: integer2("session_id").notNull().references(() => examSessions2.id),
+      questionId: integer2("question_id").notNull().references(() => examQuestions2.id),
+      selectedOptionId: integer2("selected_option_id").references(() => questionOptions2.id),
+      textAnswer: text2("text_answer"),
+      isCorrect: integer2("is_correct", { mode: "boolean" }),
+      pointsEarned: integer2("points_earned").notNull().default(0),
+      answeredAt: integer2("answered_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      autoScored: integer2("auto_scored", { mode: "boolean" }).notNull().default(false),
+      manualOverride: integer2("manual_override", { mode: "boolean" }).notNull().default(false),
+      feedbackText: text2("feedback_text"),
+      partialCreditReason: text2("partial_credit_reason")
+    }, (table) => ({
+      studentAnswersSessionIdIdx: index2("student_answers_session_id_idx").on(table.sessionId),
+      studentAnswersSessionQuestionIdx: index2("student_answers_session_question_idx").on(table.sessionId, table.questionId),
+      studentAnswersQuestionIdx: index2("student_answers_question_id_idx").on(table.questionId)
+    }));
+    examResults2 = sqliteTable("exam_results", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      examId: integer2("exam_id").notNull().references(() => exams2.id),
+      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
+      score: integer2("score"),
+      maxScore: integer2("max_score"),
+      marksObtained: integer2("marks_obtained"),
+      grade: text2("grade"),
+      remarks: text2("remarks"),
+      autoScored: integer2("auto_scored", { mode: "boolean" }).notNull().default(false),
+      recordedBy: text2("recorded_by").notNull().references(() => users2.id),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      examResultsExamIdIdx: index2("exam_results_exam_id_idx").on(table.examId),
+      examResultsStudentIdIdx: index2("exam_results_student_id_idx").on(table.studentId),
+      examResultsExamStudentIdx: index2("exam_results_exam_student_idx").on(table.examId, table.studentId),
+      examResultsAutoScoredIdx: index2("exam_results_auto_scored_idx").on(table.autoScored, table.examId)
+    }));
+    examSubmissionsArchive2 = sqliteTable("exam_submissions_archive", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      examId: integer2("exam_id").notNull().references(() => exams2.id),
+      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
+      originalSessionId: integer2("original_session_id"),
+      originalResultId: integer2("original_result_id"),
+      oldScore: integer2("old_score"),
+      oldMaxScore: integer2("old_max_score"),
+      oldAnswers: text2("old_answers"),
+      // JSON string of archived answers
+      archivedBy: text2("archived_by").notNull().references(() => users2.id),
+      archiveReason: text2("archive_reason").notNull().default("retake_allowed"),
+      archivedAt: integer2("archived_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      examSubmissionsArchiveExamIdx: index2("exam_submissions_archive_exam_idx").on(table.examId),
+      examSubmissionsArchiveStudentIdx: index2("exam_submissions_archive_student_idx").on(table.studentId),
+      examSubmissionsArchiveExamStudentIdx: index2("exam_submissions_archive_exam_student_idx").on(table.examId, table.studentId)
+    }));
+    questionBanks2 = sqliteTable("question_banks", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      name: text2("name").notNull(),
+      description: text2("description"),
+      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
+      classLevel: text2("class_level"),
+      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
+      isPublic: integer2("is_public", { mode: "boolean" }).notNull().default(false),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      questionBanksSubjectIdx: index2("question_banks_subject_idx").on(table.subjectId),
+      questionBanksCreatedByIdx: index2("question_banks_created_by_idx").on(table.createdBy)
+    }));
+    questionBankItems2 = sqliteTable("question_bank_items", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      bankId: integer2("bank_id").notNull().references(() => questionBanks2.id, { onDelete: "cascade" }),
+      questionText: text2("question_text").notNull(),
+      questionType: text2("question_type").notNull(),
+      points: integer2("points").notNull().default(1),
+      difficulty: text2("difficulty").notNull().default("medium"),
+      tags: text2("tags").notNull().default("[]"),
+      // JSON array
+      imageUrl: text2("image_url"),
+      autoGradable: integer2("auto_gradable", { mode: "boolean" }).notNull().default(true),
+      expectedAnswers: text2("expected_answers").notNull().default("[]"),
+      // JSON array
+      caseSensitive: integer2("case_sensitive", { mode: "boolean" }).notNull().default(false),
+      explanationText: text2("explanation_text"),
+      hintText: text2("hint_text"),
+      practicalInstructions: text2("practical_instructions"),
+      practicalFileUrl: text2("practical_file_url"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      questionBankItemsBankIdIdx: index2("question_bank_items_bank_id_idx").on(table.bankId),
+      questionBankItemsTypeIdx: index2("question_bank_items_type_idx").on(table.questionType),
+      questionBankItemsDifficultyIdx: index2("question_bank_items_difficulty_idx").on(table.difficulty)
+    }));
+    questionBankOptions2 = sqliteTable("question_bank_options", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      questionItemId: integer2("question_item_id").notNull().references(() => questionBankItems2.id, { onDelete: "cascade" }),
+      optionText: text2("option_text").notNull(),
+      isCorrect: integer2("is_correct", { mode: "boolean" }).notNull().default(false),
+      orderNumber: integer2("order_number").notNull(),
+      explanationText: text2("explanation_text"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      questionBankOptionsItemIdIdx: index2("question_bank_options_item_id_idx").on(table.questionItemId)
+    }));
+    announcements2 = sqliteTable("announcements", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      title: text2("title").notNull(),
+      content: text2("content").notNull(),
+      authorId: text2("author_id").references(() => users2.id, { onDelete: "set null" }),
+      targetRoles: text2("target_roles").notNull().default('["All"]'),
+      // JSON array
+      targetClasses: text2("target_classes").notNull().default("[]"),
+      // JSON array
+      isPublished: integer2("is_published", { mode: "boolean" }).notNull().default(false),
+      publishedAt: integer2("published_at", { mode: "timestamp" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      // Priority & Type
+      priority: text2("priority").notNull().default("normal"),
+      // 'normal', 'important', 'urgent'
+      announcementType: text2("announcement_type").notNull().default("general"),
+      // 'general', 'academic', 'examination', 'event', 'emergency'
+      // Scheduling & Expiry
+      scheduledAt: integer2("scheduled_at", { mode: "timestamp" }),
+      expiryDate: integer2("expiry_date", { mode: "timestamp" }),
+      // Attachments (JSON array of file URLs)
+      attachments: text2("attachments").notNull().default("[]"),
+      coverImageUrl: text2("cover_image_url"),
+      // Notification Settings (JSON object)
+      notificationSettings: text2("notification_settings").notNull().default('{"inApp": true, "email": false, "sms": false}'),
+      // Status & Analytics
+      status: text2("status").notNull().default("draft"),
+      // 'draft', 'scheduled', 'published', 'expired', 'archived'
+      viewCount: integer2("view_count").notNull().default(0),
+      allowComments: integer2("allow_comments", { mode: "boolean" }).notNull().default(false),
+      allowEdit: integer2("allow_edit", { mode: "boolean" }).notNull().default(true),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    });
+    messages2 = sqliteTable("messages", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      senderId: text2("sender_id").references(() => users2.id, { onDelete: "set null" }),
+      recipientId: text2("recipient_id").references(() => users2.id, { onDelete: "set null" }),
+      subject: text2("subject").notNull(),
+      content: text2("content").notNull(),
+      isRead: integer2("is_read", { mode: "boolean" }).notNull().default(false),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    });
+    galleryCategories2 = sqliteTable("gallery_categories", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      name: text2("name").notNull(),
+      description: text2("description"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    });
+    gallery2 = sqliteTable("gallery", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      imageUrl: text2("image_url").notNull(),
+      caption: text2("caption"),
+      categoryId: integer2("category_id").references(() => galleryCategories2.id),
+      uploadedBy: text2("uploaded_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    });
+    homePageContent2 = sqliteTable("home_page_content", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      contentType: text2("content_type").notNull(),
+      imageUrl: text2("image_url"),
+      altText: text2("alt_text"),
+      caption: text2("caption"),
+      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
+      displayOrder: integer2("display_order").notNull().default(0),
+      uploadedBy: text2("uploaded_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    });
+    contactMessages2 = sqliteTable("contact_messages", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      name: text2("name").notNull(),
+      email: text2("email").notNull(),
+      subject: text2("subject"),
+      message: text2("message").notNull(),
+      isRead: integer2("is_read", { mode: "boolean" }).notNull().default(false),
+      respondedAt: integer2("responded_at", { mode: "timestamp" }),
+      respondedBy: text2("responded_by").references(() => users2.id, { onDelete: "set null" }),
+      response: text2("response"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    });
+    reportCommentTemplates2 = sqliteTable("report_comment_templates", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      role: text2("role").notNull(),
+      // 'teacher' or 'principal'
+      performanceLevel: text2("performance_level").notNull(),
+      // 'excellent', 'very_good', 'good', 'fair', 'needs_improvement'
+      minPercentage: integer2("min_percentage").notNull(),
+      maxPercentage: integer2("max_percentage").notNull(),
+      commentTemplate: text2("comment_template").notNull(),
+      // Use {lastName} as placeholder
+      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
+      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
+      updatedBy: text2("updated_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    });
+    reportCards2 = sqliteTable("report_cards", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
+      classId: integer2("class_id").notNull().references(() => classes2.id),
+      termId: integer2("term_id").notNull().references(() => academicTerms2.id),
+      averagePercentage: integer2("average_percentage"),
+      overallGrade: text2("overall_grade"),
+      teacherRemarks: text2("teacher_remarks"),
+      principalRemarks: text2("principal_remarks"),
+      status: text2("status").notNull().default("draft"),
+      // 'draft', 'teacher_signed', 'awaiting_approval', 'approved', 'published'
+      locked: integer2("locked", { mode: "boolean" }).notNull().default(false),
+      teacherSignedBy: text2("teacher_signed_by").references(() => users2.id, { onDelete: "set null" }),
+      teacherSignedAt: integer2("teacher_signed_at", { mode: "timestamp" }),
+      teacherSignatureUrl: text2("teacher_signature_url"),
+      principalSignedBy: text2("principal_signed_by").references(() => users2.id, { onDelete: "set null" }),
+      principalSignedAt: integer2("principal_signed_at", { mode: "timestamp" }),
+      principalSignatureUrl: text2("principal_signature_url"),
+      generatedAt: integer2("generated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      finalizedAt: integer2("finalized_at", { mode: "timestamp" }),
+      publishedAt: integer2("published_at", { mode: "timestamp" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    });
+    reportCardItems2 = sqliteTable("report_card_items", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      reportCardId: integer2("report_card_id").notNull().references(() => reportCards2.id),
+      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
+      teacherId: text2("teacher_id").references(() => users2.id, { onDelete: "set null" }),
+      testExamId: integer2("test_exam_id").references(() => exams2.id),
+      testExamCreatedBy: text2("test_exam_created_by").references(() => users2.id, { onDelete: "set null" }),
+      testScore: integer2("test_score"),
+      testMaxScore: integer2("test_max_score"),
+      testWeightedScore: integer2("test_weighted_score"),
+      examExamId: integer2("exam_exam_id").references(() => exams2.id),
+      examExamCreatedBy: text2("exam_exam_created_by").references(() => users2.id, { onDelete: "set null" }),
+      examScore: integer2("exam_score"),
+      examMaxScore: integer2("exam_max_score"),
+      examWeightedScore: integer2("exam_weighted_score"),
+      totalMarks: integer2("total_marks").notNull().default(100),
+      obtainedMarks: integer2("obtained_marks").notNull(),
+      percentage: integer2("percentage").notNull(),
+      grade: text2("grade"),
+      teacherRemarks: text2("teacher_remarks"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    });
+    reportCardSkills2 = sqliteTable("report_card_skills", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      reportCardId: integer2("report_card_id").notNull().references(() => reportCards2.id, { onDelete: "cascade" }),
+      // Affective traits (1-5 scale)
+      punctuality: integer2("punctuality"),
+      neatness: integer2("neatness"),
+      attentiveness: integer2("attentiveness"),
+      teamwork: integer2("teamwork"),
+      leadership: integer2("leadership"),
+      assignments: integer2("assignments"),
+      classParticipation: integer2("class_participation"),
+      // Psychomotor skills (1-5 scale)
+      sports: integer2("sports"),
+      handwriting: integer2("handwriting"),
+      musicalSkills: integer2("musical_skills"),
+      creativity: integer2("creativity"),
+      // Metadata
+      recordedBy: text2("recorded_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      reportCardSkillsReportCardIdx: index2("report_card_skills_report_card_idx").on(table.reportCardId)
+    }));
+    studyResources2 = sqliteTable("study_resources", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      title: text2("title").notNull(),
+      description: text2("description"),
+      fileUrl: text2("file_url").notNull(),
+      fileName: text2("file_name").notNull(),
+      fileSize: integer2("file_size"),
+      resourceType: text2("resource_type").notNull(),
+      subjectId: integer2("subject_id").references(() => subjects2.id),
+      classId: integer2("class_id").references(() => classes2.id),
+      termId: integer2("term_id").references(() => academicTerms2.id),
+      uploadedBy: text2("uploaded_by").references(() => users2.id, { onDelete: "set null" }),
+      isPublished: integer2("is_published", { mode: "boolean" }).notNull().default(true),
+      downloads: integer2("downloads").notNull().default(0),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    });
+    performanceEvents2 = sqliteTable("performance_events", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      sessionId: integer2("session_id").references(() => examSessions2.id),
+      eventType: text2("event_type").notNull(),
+      duration: integer2("duration").notNull(),
+      goalAchieved: integer2("goal_achieved", { mode: "boolean" }).notNull(),
+      metadata: text2("metadata"),
+      clientSide: integer2("client_side", { mode: "boolean" }).notNull().default(false),
+      userId: text2("user_id").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      performanceEventsTypeIdx: index2("performance_events_type_idx").on(table.eventType),
+      performanceEventsDateIdx: index2("performance_events_date_idx").on(table.createdAt),
+      performanceEventsGoalIdx: index2("performance_events_goal_idx").on(table.goalAchieved, table.eventType)
+    }));
+    teacherClassAssignments2 = sqliteTable("teacher_class_assignments", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      teacherId: text2("teacher_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
+      classId: integer2("class_id").notNull().references(() => classes2.id),
+      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
+      department: text2("department"),
+      termId: integer2("term_id").references(() => academicTerms2.id),
+      session: text2("session"),
+      // Academic session e.g., "2024/2025"
+      assignedBy: text2("assigned_by").references(() => users2.id, { onDelete: "set null" }),
+      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
+      validUntil: integer2("valid_until", { mode: "timestamp" }),
+      // Optional expiration date
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      teacherAssignmentsTeacherIdx: index2("teacher_assignments_teacher_idx").on(table.teacherId, table.isActive),
+      teacherAssignmentsClassSubjectIdx: index2("teacher_assignments_class_subject_idx").on(table.classId, table.subjectId),
+      teacherAssignmentsDeptIdx: index2("teacher_assignments_dept_idx").on(table.department),
+      teacherAssignmentsSessionIdx: index2("teacher_assignments_session_idx").on(table.session),
+      teacherAssignmentsUniqueIdx: uniqueIndex2("teacher_assignments_unique_idx").on(table.teacherId, table.classId, table.subjectId, table.termId)
+    }));
+    teacherAssignmentHistory2 = sqliteTable("teacher_assignment_history", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      assignmentId: integer2("assignment_id").references(() => teacherClassAssignments2.id, { onDelete: "set null" }),
+      teacherId: text2("teacher_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
+      classId: integer2("class_id").notNull().references(() => classes2.id),
+      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
+      action: text2("action").notNull(),
+      // 'created', 'updated', 'disabled', 'deleted'
+      previousValues: text2("previous_values"),
+      // JSON of old values
+      newValues: text2("new_values"),
+      // JSON of new values
+      performedBy: text2("performed_by").references(() => users2.id, { onDelete: "set null" }),
+      reason: text2("reason"),
+      ipAddress: text2("ip_address"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      assignmentHistoryTeacherIdx: index2("assignment_history_teacher_idx").on(table.teacherId),
+      assignmentHistoryActionIdx: index2("assignment_history_action_idx").on(table.action),
+      assignmentHistoryDateIdx: index2("assignment_history_date_idx").on(table.createdAt)
+    }));
+    gradingBoundaries2 = sqliteTable("grading_boundaries", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      name: text2("name").notNull(),
+      // e.g., "Standard", "Custom Science"
+      grade: text2("grade").notNull(),
+      // e.g., "A", "B", "C", "D", "E", "F"
+      minScore: integer2("min_score").notNull(),
+      // Minimum score for this grade
+      maxScore: integer2("max_score").notNull(),
+      // Maximum score for this grade
+      remark: text2("remark"),
+      // e.g., "Excellent", "Very Good", "Good", "Pass", "Fail"
+      gradePoint: integer2("grade_point"),
+      // Optional: for GPA calculation
+      isDefault: integer2("is_default", { mode: "boolean" }).notNull().default(false),
+      termId: integer2("term_id").references(() => academicTerms2.id),
+      classId: integer2("class_id").references(() => classes2.id),
+      // Optional: class-specific grading
+      subjectId: integer2("subject_id").references(() => subjects2.id),
+      // Optional: subject-specific grading
+      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      gradingBoundariesNameIdx: index2("grading_boundaries_name_idx").on(table.name),
+      gradingBoundariesGradeIdx: index2("grading_boundaries_grade_idx").on(table.grade),
+      gradingBoundariesDefaultIdx: index2("grading_boundaries_default_idx").on(table.isDefault)
+    }));
+    continuousAssessment2 = sqliteTable("continuous_assessment", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
+      classId: integer2("class_id").notNull().references(() => classes2.id),
+      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
+      termId: integer2("term_id").notNull().references(() => academicTerms2.id),
+      testScore: integer2("test_score"),
+      // CA score (max typically 40)
+      examScore: integer2("exam_score"),
+      // Exam score (max typically 60)
+      totalScore: integer2("total_score"),
+      // Calculated: testScore + examScore
+      grade: text2("grade"),
+      // Auto-calculated based on grading boundaries
+      remark: text2("remark"),
+      teacherId: text2("teacher_id").references(() => users2.id, { onDelete: "set null" }),
+      enteredBy: text2("entered_by").references(() => users2.id, { onDelete: "set null" }),
+      verifiedBy: text2("verified_by").references(() => users2.id, { onDelete: "set null" }),
+      verifiedAt: integer2("verified_at", { mode: "timestamp" }),
+      isLocked: integer2("is_locked", { mode: "boolean" }).notNull().default(false),
+      lockedBy: text2("locked_by").references(() => users2.id, { onDelete: "set null" }),
+      lockedAt: integer2("locked_at", { mode: "timestamp" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      caStudentIdx: index2("ca_student_idx").on(table.studentId),
+      caClassSubjectIdx: index2("ca_class_subject_idx").on(table.classId, table.subjectId),
+      caTermIdx: index2("ca_term_idx").on(table.termId),
+      caTeacherIdx: index2("ca_teacher_idx").on(table.teacherId),
+      caUniqueIdx: uniqueIndex2("ca_unique_idx").on(table.studentId, table.subjectId, table.classId, table.termId)
+    }));
+    unauthorizedAccessLogs2 = sqliteTable("unauthorized_access_logs", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      userId: text2("user_id").references(() => users2.id, { onDelete: "set null" }),
+      attemptedAction: text2("attempted_action").notNull(),
+      attemptedResource: text2("attempted_resource").notNull(),
+      classId: integer2("class_id").references(() => classes2.id),
+      subjectId: integer2("subject_id").references(() => subjects2.id),
+      ipAddress: text2("ip_address"),
+      userAgent: text2("user_agent"),
+      reason: text2("reason"),
+      // Why access was denied
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      unauthorizedUserIdx: index2("unauthorized_user_idx").on(table.userId),
+      unauthorizedActionIdx: index2("unauthorized_action_idx").on(table.attemptedAction),
+      unauthorizedDateIdx: index2("unauthorized_date_idx").on(table.createdAt)
+    }));
+    studentSubjectAssignments2 = sqliteTable("student_subject_assignments", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
+      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
+      classId: integer2("class_id").notNull().references(() => classes2.id),
+      termId: integer2("term_id").references(() => academicTerms2.id),
+      assignedBy: text2("assigned_by").references(() => users2.id, { onDelete: "set null" }),
+      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      studentSubjectAssignmentsStudentIdx: index2("student_subject_assignments_student_idx").on(table.studentId),
+      studentSubjectAssignmentsSubjectIdx: index2("student_subject_assignments_subject_idx").on(table.subjectId),
+      studentSubjectAssignmentsClassIdx: index2("student_subject_assignments_class_idx").on(table.classId),
+      studentSubjectAssignmentsUniqueIdx: uniqueIndex2("student_subject_assignments_unique_idx").on(table.studentId, table.subjectId, table.classId)
+    }));
+    classSubjectMappings2 = sqliteTable("class_subject_mappings", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      classId: integer2("class_id").notNull().references(() => classes2.id),
+      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
+      department: text2("department"),
+      isCompulsory: integer2("is_compulsory", { mode: "boolean" }).notNull().default(false),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      classSubjectMappingsClassIdx: index2("class_subject_mappings_class_idx").on(table.classId),
+      classSubjectMappingsSubjectIdx: index2("class_subject_mappings_subject_idx").on(table.subjectId),
+      classSubjectMappingsDeptIdx: index2("class_subject_mappings_dept_idx").on(table.department),
+      classSubjectMappingsUniqueIdx: uniqueIndex2("class_subject_mappings_unique_idx").on(table.classId, table.subjectId, table.department)
+    }));
+    timetable2 = sqliteTable("timetable", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      teacherId: text2("teacher_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
+      classId: integer2("class_id").notNull().references(() => classes2.id),
+      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
+      dayOfWeek: text2("day_of_week").notNull(),
+      startTime: text2("start_time").notNull(),
+      endTime: text2("end_time").notNull(),
+      location: text2("location"),
+      termId: integer2("term_id").references(() => academicTerms2.id),
+      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      timetableTeacherIdx: index2("timetable_teacher_idx").on(table.teacherId, table.isActive),
+      timetableDayIdx: index2("timetable_day_idx").on(table.dayOfWeek, table.teacherId)
+    }));
+    gradingTasks2 = sqliteTable("grading_tasks", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      sessionId: integer2("session_id").notNull().references(() => examSessions2.id, { onDelete: "cascade" }),
+      answerId: integer2("answer_id").notNull().references(() => studentAnswers2.id, { onDelete: "cascade" }),
+      assignedTeacherId: text2("assigned_teacher_id").references(() => users2.id, { onDelete: "set null" }),
+      status: text2("status").notNull().default("pending"),
+      priority: integer2("priority").notNull().default(0),
+      assignedAt: integer2("assigned_at", { mode: "timestamp" }),
+      startedAt: integer2("started_at", { mode: "timestamp" }),
+      completedAt: integer2("completed_at", { mode: "timestamp" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      gradingTasksAssignedIdx: index2("grading_tasks_assigned_idx").on(table.assignedTeacherId, table.status),
+      gradingTasksStatusIdx: index2("grading_tasks_status_idx").on(table.status, table.priority),
+      gradingTasksSessionIdx: index2("grading_tasks_session_idx").on(table.sessionId),
+      gradingTasksAnswerUniqueIdx: uniqueIndex2("grading_tasks_answer_unique_idx").on(table.answerId)
+    }));
+    auditLogs2 = sqliteTable("audit_logs", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      userId: text2("user_id").references(() => users2.id, { onDelete: "set null" }),
+      action: text2("action").notNull(),
+      entityType: text2("entity_type").notNull(),
+      entityId: text2("entity_id").notNull(),
+      oldValue: text2("old_value"),
+      newValue: text2("new_value"),
+      reason: text2("reason"),
+      ipAddress: text2("ip_address"),
+      userAgent: text2("user_agent"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      auditLogsUserIdx: index2("audit_logs_user_idx").on(table.userId),
+      auditLogsEntityIdx: index2("audit_logs_entity_idx").on(table.entityType, table.entityId),
+      auditLogsDateIdx: index2("audit_logs_date_idx").on(table.createdAt),
+      auditLogsActionIdx: index2("audit_logs_action_idx").on(table.action)
+    }));
+    settings2 = sqliteTable("settings", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      key: text2("key").notNull().unique(),
+      value: text2("value").notNull(),
+      description: text2("description"),
+      dataType: text2("data_type").notNull().default("string"),
+      updatedBy: text2("updated_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      settingsKeyIdx: index2("settings_key_idx").on(table.key)
+    }));
+    counters2 = sqliteTable("counters", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      roleCode: text2("role_code"),
+      classCode: text2("class_code"),
+      year: text2("year"),
+      sequence: integer2("sequence").notNull().default(0),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      countersRoleCodeIdx: uniqueIndex2("counters_role_code_idx").on(table.roleCode)
+    }));
+    vacancies2 = sqliteTable("vacancies", {
+      id: text2("id").primaryKey(),
+      title: text2("title").notNull(),
+      description: text2("description").notNull(),
+      requirements: text2("requirements"),
+      deadline: integer2("deadline", { mode: "timestamp" }).notNull(),
+      status: text2("status").notNull().default("open"),
+      // 'open', 'closed', 'filled'
+      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      vacanciesStatusIdx: index2("vacancies_status_idx").on(table.status),
+      vacanciesDeadlineIdx: index2("vacancies_deadline_idx").on(table.deadline)
+    }));
+    teacherApplications2 = sqliteTable("teacher_applications", {
+      id: text2("id").primaryKey(),
+      vacancyId: text2("vacancy_id").references(() => vacancies2.id, { onDelete: "set null" }),
+      fullName: text2("full_name").notNull(),
+      googleEmail: text2("google_email").notNull(),
+      phone: text2("phone").notNull(),
+      subjectSpecialty: text2("subject_specialty").notNull(),
+      qualification: text2("qualification").notNull(),
+      experienceYears: integer2("experience_years").notNull(),
+      bio: text2("bio").notNull(),
+      resumeUrl: text2("resume_url"),
+      status: text2("status").notNull().default("pending"),
+      // 'pending', 'approved', 'rejected'
+      reviewedBy: text2("reviewed_by").references(() => users2.id, { onDelete: "set null" }),
+      reviewedAt: integer2("reviewed_at", { mode: "timestamp" }),
+      rejectionReason: text2("rejection_reason"),
+      dateApplied: integer2("date_applied", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      teacherApplicationsStatusIdx: index2("teacher_applications_status_idx").on(table.status),
+      teacherApplicationsEmailIdx: index2("teacher_applications_email_idx").on(table.googleEmail),
+      teacherApplicationsVacancyIdx: index2("teacher_applications_vacancy_idx").on(table.vacancyId)
+    }));
+    approvedTeachers2 = sqliteTable("approved_teachers", {
+      id: text2("id").primaryKey(),
+      applicationId: text2("application_id").references(() => teacherApplications2.id, { onDelete: "set null" }),
+      googleEmail: text2("google_email").notNull().unique(),
+      fullName: text2("full_name").notNull(),
+      subjectSpecialty: text2("subject_specialty"),
+      approvedBy: text2("approved_by").references(() => users2.id, { onDelete: "set null" }),
+      dateApproved: integer2("date_approved", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
+    }, (table) => ({
+      approvedTeachersEmailIdx: index2("approved_teachers_email_idx").on(table.googleEmail)
+    }));
+    insertRoleSchema = createInsertSchema(roles2).omit({ id: true, createdAt: true });
+    insertUserSchema = createInsertSchema(users2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens2).omit({ id: true, createdAt: true });
+    insertPasswordResetAttemptSchema = createInsertSchema(passwordResetAttempts2).omit({ id: true, attemptedAt: true });
+    insertInviteSchema = createInsertSchema(invites2).omit({ id: true, createdAt: true });
+    insertStudentSchema = createInsertSchema(students2).omit({ createdAt: true });
+    insertClassSchema = createInsertSchema(classes2).omit({ id: true, createdAt: true });
+    insertSubjectSchema = createInsertSchema(subjects2).omit({ id: true, createdAt: true });
+    insertAcademicTermSchema = createInsertSchema(academicTerms2).omit({ id: true, createdAt: true });
+    insertAttendanceSchema = createInsertSchema(attendance2).omit({ id: true, createdAt: true });
+    insertExamSchema = createInsertSchema(exams2).omit({ id: true, createdAt: true }).extend({
+      classId: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
+        z.number().positive("Please select a valid class")
+      ),
+      subjectId: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
+        z.number().positive("Please select a valid subject")
+      ),
+      termId: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
+        z.number().positive("Please select a valid term")
+      ),
+      totalMarks: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
+        z.number().positive("Total marks must be a positive number")
+      ),
+      name: z.string().min(1, "Exam name is required"),
+      date: z.string().min(1, "Exam date is required").regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").refine((dateStr) => {
+        const date = new Date(dateStr);
+        return !isNaN(date.getTime()) && date.toISOString().startsWith(dateStr);
+      }, "Please enter a valid date"),
+      examType: z.enum(["test", "exam"]).default("exam"),
+      timerMode: z.string().default("individual"),
+      timeLimit: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
+        z.number().int().min(1, "Time limit must be at least 1 minute").optional()
+      ),
+      passingScore: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
+        z.number().int().min(0).max(100, "Passing score must be between 0 and 100").optional()
+      ),
+      startTime: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? void 0 : new Date(val),
+        z.date().optional()
+      ),
+      endTime: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? void 0 : new Date(val),
+        z.date().optional()
+      ),
+      instructions: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? void 0 : val,
+        z.string().optional()
+      ),
+      gradingScale: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? "standard" : val,
+        z.string().default("standard")
+      ),
+      teacherInChargeId: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? void 0 : val,
+        z.string().optional()
+      ),
+      isPublished: z.boolean().default(false),
+      allowRetakes: z.boolean().default(false),
+      shuffleQuestions: z.boolean().default(false),
+      autoGradingEnabled: z.boolean().default(true),
+      instantFeedback: z.boolean().default(false),
+      showCorrectAnswers: z.boolean().default(false)
+    });
+    insertExamResultSchema = createInsertSchema(examResults2).omit({ id: true, createdAt: true });
+    insertExamSubmissionsArchiveSchema = createInsertSchema(examSubmissionsArchive2).omit({ id: true, archivedAt: true });
+    insertAnnouncementSchema = createInsertSchema(announcements2).omit({ id: true, createdAt: true });
+    insertMessageSchema = createInsertSchema(messages2).omit({ id: true, createdAt: true });
+    insertGalleryCategorySchema = createInsertSchema(galleryCategories2).omit({ id: true, createdAt: true });
+    insertGallerySchema = createInsertSchema(gallery2).omit({ id: true, createdAt: true });
+    insertHomePageContentSchema = createInsertSchema(homePageContent2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertContactMessageSchema = createInsertSchema(contactMessages2).omit({ id: true, createdAt: true });
+    insertReportCommentTemplateSchema = createInsertSchema(reportCommentTemplates2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertReportCardSchema = createInsertSchema(reportCards2).omit({ id: true, createdAt: true });
+    insertReportCardSkillsSchema = createInsertSchema(reportCardSkills2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertReportCardItemSchema = createInsertSchema(reportCardItems2).omit({ id: true, createdAt: true });
+    insertStudyResourceSchema = createInsertSchema(studyResources2).omit({ id: true, createdAt: true, downloads: true });
+    insertPerformanceEventSchema = createInsertSchema(performanceEvents2).omit({ id: true, createdAt: true });
+    insertTeacherClassAssignmentSchema = createInsertSchema(teacherClassAssignments2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertTeacherAssignmentHistorySchema = createInsertSchema(teacherAssignmentHistory2).omit({ id: true, createdAt: true });
+    insertGradingBoundarySchema = createInsertSchema(gradingBoundaries2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertContinuousAssessmentSchema = createInsertSchema(continuousAssessment2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertUnauthorizedAccessLogSchema = createInsertSchema(unauthorizedAccessLogs2).omit({ id: true, createdAt: true });
+    insertTimetableSchema = createInsertSchema(timetable2).omit({ id: true, createdAt: true });
+    insertGradingTaskSchema = createInsertSchema(gradingTasks2).omit({ id: true, createdAt: true });
+    insertAuditLogSchema = createInsertSchema(auditLogs2).omit({ id: true, createdAt: true });
+    insertSettingSchema = createInsertSchema(settings2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertCounterSchema = createInsertSchema(counters2).omit({ id: true, createdAt: true, updatedAt: true });
+    createStudentWithAutoCredsSchema = z.object({
+      firstName: z.string().min(1, "First name is required"),
+      lastName: z.string().min(1, "Last name is required"),
+      phone: z.string().optional(),
+      address: z.string().optional(),
+      dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
+      gender: z.enum(["Male", "Female", "Other"], { required_error: "Gender is required" }),
+      profileImageUrl: z.string().optional(),
+      admissionNumber: z.string().min(1, "Admission number is required"),
+      classId: z.coerce.number().positive("Please select a valid class"),
+      parentId: z.string().optional().nullable(),
+      admissionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Admission date must be in YYYY-MM-DD format"),
+      emergencyContact: z.string().min(1, "Emergency contact is required"),
+      medicalInfo: z.string().optional(),
+      parentEmail: z.string().email("Invalid parent email").optional(),
+      parentPhone: z.string().optional()
+    });
+    createStudentSchema = z.object({
+      firstName: z.string().min(1, "First name is required"),
+      lastName: z.string().min(1, "Last name is required"),
+      phone: z.string().optional(),
+      address: z.string().optional(),
+      dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
+      gender: z.enum(["Male", "Female", "Other"], { required_error: "Gender is required" }),
+      profileImageUrl: z.string().optional(),
+      classId: z.coerce.number().positive("Please select a valid class"),
+      parentId: z.string().optional().nullable(),
+      parentPhone: z.string().optional(),
+      admissionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Admission date must be in YYYY-MM-DD format"),
+      emergencyContact: z.string().optional(),
+      medicalInfo: z.string().optional(),
+      guardianName: z.string().optional(),
+      department: z.enum(["science", "art", "commercial"]).optional().nullable()
+    });
+    quickCreateStudentSchema = z.object({
+      fullName: z.string().min(2, "Full name is required").refine(
+        (name) => name.trim().split(/\s+/).length >= 2,
+        "Please enter both first and last name (e.g., 'John Adebayo')"
+      ),
+      gender: z.enum(["Male", "Female", "Other"], { required_error: "Gender is required" }),
+      dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
+      classId: z.coerce.number().positive("Please select a valid class"),
+      department: z.enum(["science", "art", "commercial"]).optional().nullable()
+    });
+    csvStudentSchema = z.object({
+      fullName: z.string().min(1, "Full name is required"),
+      class: z.string().min(1, "Class is required"),
+      gender: z.enum(["Male", "Female", "Other"], { required_error: "Gender is required" }),
+      dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
+      parentEmail: z.string().email("Invalid parent email").optional(),
+      parentPhone: z.string().optional(),
+      emergencyContact: z.string().min(1, "Emergency contact is required"),
+      admissionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Admission date must be in YYYY-MM-DD format").optional(),
+      medicalInfo: z.string().optional(),
+      guardianName: z.string().optional()
+    });
+    insertExamQuestionSchema = createInsertSchema(examQuestions2).omit({ id: true, createdAt: true }).extend({
+      examId: z.coerce.number().positive("Please select a valid exam"),
+      questionText: z.string().min(1, "Question text is required"),
+      questionType: z.enum(["multiple_choice", "text", "essay", "true_false", "fill_blank"], { required_error: "Question type is required" }),
+      points: z.preprocess((val) => val === "" ? 1 : val, z.coerce.number().int().min(0, "Points must be a non-negative number").default(1)),
+      orderNumber: z.coerce.number().int().min(1, "Order number must be a positive number"),
+      imageUrl: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional()),
+      expectedAnswers: z.preprocess((val) => {
+        if (val === "" || val === null || val === void 0) return void 0;
+        if (Array.isArray(val)) return val;
+        if (typeof val === "string") return val.split(",").map((s) => s.trim()).filter((s) => s !== "");
+        return void 0;
+      }, z.array(z.string()).optional()),
+      explanationText: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional()),
+      hintText: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional()),
+      partialCreditRules: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional())
+    });
+    insertQuestionOptionSchema = createInsertSchema(questionOptions2).omit({ id: true, createdAt: true }).extend({
+      questionId: z.coerce.number().positive("Please select a valid question"),
+      orderNumber: z.coerce.number().int().min(1, "Order number must be a positive number"),
+      partialCreditValue: z.preprocess((val) => val === "" ? 0 : val, z.coerce.number().int().min(0, "Partial credit must be non-negative").default(0)),
+      explanationText: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional())
+    });
+    createQuestionOptionSchema = insertQuestionOptionSchema.omit({ questionId: true, orderNumber: true }).extend({
+      partialCreditValue: z.preprocess((val) => val === "" ? 0 : val, z.coerce.number().int().min(0, "Partial credit must be non-negative").default(0)).optional(),
+      explanationText: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional())
+    });
+    insertExamSessionSchema = createInsertSchema(examSessions2).omit({
+      id: true,
+      createdAt: true,
+      startedAt: true,
+      studentId: true
+    }).partial().required({
+      examId: true
+    }).extend({
+      submittedAt: z.union([z.date(), z.string()]).optional().transform((val) => {
+        if (typeof val === "string") {
+          return new Date(val);
+        }
+        return val;
+      })
+    });
+    updateExamSessionSchema = z.object({
+      isCompleted: z.boolean().optional(),
+      submittedAt: z.coerce.date().refine((d) => !isNaN(d.getTime()), "Invalid date").optional(),
+      timeRemaining: z.number().int().min(0).optional(),
+      status: z.enum(["in_progress", "submitted"]).optional(),
+      submissionMethod: z.string().optional(),
+      autoSubmitted: z.boolean().optional()
+    }).strict();
+    insertStudentAnswerSchema = createInsertSchema(studentAnswers2).omit({ id: true });
+    insertNotificationSchema = createInsertSchema(notifications2).omit({ id: true, createdAt: true });
+    insertTeacherProfileSchema = createInsertSchema(teacherProfiles2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertAdminProfileSchema = createInsertSchema(adminProfiles2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertParentProfileSchema = createInsertSchema(parentProfiles2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertStudentSubjectAssignmentSchema = createInsertSchema(studentSubjectAssignments2).omit({ id: true, createdAt: true });
+    insertClassSubjectMappingSchema = createInsertSchema(classSubjectMappings2).omit({ id: true, createdAt: true });
+    insertVacancySchema = createInsertSchema(vacancies2).omit({
+      id: true,
+      createdAt: true,
+      updatedAt: true
+    });
+    insertTeacherApplicationSchema = createInsertSchema(teacherApplications2).omit({
+      id: true,
+      createdAt: true,
+      updatedAt: true,
+      dateApplied: true,
+      reviewedAt: true,
+      reviewedBy: true,
+      status: true
+    });
+    insertApprovedTeacherSchema = createInsertSchema(approvedTeachers2).omit({
+      id: true,
+      createdAt: true,
+      dateApproved: true
+    });
+    insertSuperAdminProfileSchema = createInsertSchema(superAdminProfiles2).omit({
+      id: true,
+      createdAt: true,
+      updatedAt: true
+    });
+    insertSystemSettingsSchema = createInsertSchema(systemSettings2).omit({
+      id: true,
+      createdAt: true,
+      updatedAt: true
+    });
+    insertQuestionBankSchema = createInsertSchema(questionBanks2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertQuestionBankItemSchema = createInsertSchema(questionBankItems2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertQuestionBankOptionSchema = createInsertSchema(questionBankOptions2).omit({ id: true, createdAt: true });
   }
 });
 
 // server/db.ts
 import { drizzle as drizzlePg } from "drizzle-orm/neon-serverless";
+import { drizzle as drizzleSqlite } from "drizzle-orm/better-sqlite3";
 import { Pool, neonConfig, neon } from "@neondatabase/serverless";
+import Database from "better-sqlite3";
 import ws from "ws";
 function getSchema() {
-  return schema_pg_exports;
+  return isPostgres ? schema_pg_exports : schema_exports;
 }
 function initializeDatabase() {
-  if (db) {
-    return db;
+  if (dbInternal) {
+    return dbInternal;
   }
-  if (!databaseUrl) {
-    console.error("\u274C DATABASE_URL is required for PostgreSQL connection");
-    console.error("   Please set DATABASE_URL environment variable with your Neon PostgreSQL connection string");
-    throw new Error("DATABASE_URL environment variable is required. SQLite is not supported on cloud platforms.");
+  if (isProduction && !databaseUrl) {
+    console.error("\u274C DATABASE_URL is required for PostgreSQL connection in production");
+    throw new Error("DATABASE_URL environment variable is required in production.");
   }
-  console.log("\u{1F418} Initializing PostgreSQL database (Neon with WebSocket)...");
-  console.log(`   Environment: ${process.env.NODE_ENV || "development"}`);
-  try {
-    pool = new Pool({ connectionString: databaseUrl });
-    db = drizzlePg(pool, { schema: schema_pg_exports });
-    neonClient = neon(databaseUrl);
-    console.log("\u2705 PostgreSQL database initialized (Neon with transaction support)");
-  } catch (error) {
-    console.error("\u274C Failed to initialize PostgreSQL database:", error);
-    throw new Error(`PostgreSQL initialization failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+  if (databaseUrl) {
+    console.log("\u{1F418} Initializing PostgreSQL database (Neon with WebSocket)...");
+    try {
+      pool = new Pool({ connectionString: databaseUrl });
+      dbInternal = drizzlePg(pool, { schema: schema_pg_exports });
+      neonClient = neon(databaseUrl);
+      console.log("\u2705 PostgreSQL database initialized");
+    } catch (error) {
+      console.error("\u274C Failed to initialize PostgreSQL database:", error);
+      throw error;
+    }
+  } else {
+    console.log("\u{1F4E6} Initializing SQLite database (development)...");
+    try {
+      sqliteDb = new Database("sqlite.db");
+      dbInternal = drizzleSqlite(sqliteDb, { schema: schema_exports });
+      console.log("\u2705 SQLite database initialized");
+    } catch (error) {
+      console.error("\u274C Failed to initialize SQLite database:", error);
+      throw error;
+    }
   }
-  return db;
+  return dbInternal;
 }
 function getDatabase() {
-  if (!db) {
+  if (!dbInternal) {
     return initializeDatabase();
   }
-  return db;
+  return dbInternal;
 }
 function getPgClient() {
   return neonClient;
@@ -978,25 +2467,28 @@ function getPgClient() {
 function getPgPool() {
   return pool;
 }
-var isProduction, databaseUrl, isPostgres, isSqlite, db, pool, neonClient, dbInfo, database;
+var isProduction, databaseUrl, isPostgres, isSqlite, dbInternal, pool, neonClient, sqliteDb, dbInfo, database, db;
 var init_db = __esm({
   "server/db.ts"() {
     "use strict";
     init_schema_pg();
+    init_schema();
     neonConfig.webSocketConstructor = ws;
     isProduction = process.env.NODE_ENV === "production";
     databaseUrl = process.env.DATABASE_URL;
-    isPostgres = true;
-    isSqlite = false;
-    db = null;
+    isPostgres = !!databaseUrl;
+    isSqlite = !databaseUrl;
+    dbInternal = null;
     pool = null;
     neonClient = null;
+    sqliteDb = null;
     dbInfo = {
       type: "postgresql",
       isProduction,
       connectionString: "Neon PostgreSQL (WebSocket)"
     };
     database = initializeDatabase();
+    db = database;
   }
 });
 
@@ -1347,7 +2839,8 @@ async function uploadToLocal(file, options) {
     } else {
       return { success: false, error: "No file data available for upload" };
     }
-    const localUrl = `/${filePath.replace(/\\/g, "/")}`;
+    const relativeToUploads = filePath.replace(/\\/g, "/").replace(/^server\/uploads\//, "");
+    const localUrl = `/uploads/${relativeToUploads}`;
     return {
       success: true,
       url: localUrl,
@@ -1375,7 +2868,7 @@ async function uploadFile(file, options) {
 async function deleteFile(publicIdOrUrl) {
   if (!useCloudinary) {
     try {
-      const localPath = publicIdOrUrl.startsWith("/") ? publicIdOrUrl.substring(1) : publicIdOrUrl;
+      const localPath = publicIdOrUrl.startsWith("/uploads/") ? `server${publicIdOrUrl}` : publicIdOrUrl.startsWith("/") ? `server${publicIdOrUrl}` : publicIdOrUrl;
       await fs.unlink(localPath);
       return true;
     } catch (error) {
@@ -1641,7 +3134,7 @@ async function cleanupOrphanRecords() {
   const results = [];
   console.log("[OrphanCleanup] Starting database orphan cleanup...");
   try {
-    const orphanSessions = await database.delete(examSessions).where(dsql`${examSessions.studentId} NOT IN (SELECT id FROM students)`).returning();
+    const orphanSessions = await db.delete(examSessions).where(dsql`${examSessions.studentId} NOT IN (SELECT id FROM students)`).returning();
     if (orphanSessions.length > 0) {
       results.push({ tableName: "exam_sessions", deletedCount: orphanSessions.length });
     }
@@ -1649,7 +3142,7 @@ async function cleanupOrphanRecords() {
     console.log("[OrphanCleanup] exam_sessions:", e.message);
   }
   try {
-    const orphanResults = await database.delete(examResults).where(dsql`${examResults.studentId} NOT IN (SELECT id FROM students)`).returning();
+    const orphanResults = await db.delete(examResults).where(dsql`${examResults.studentId} NOT IN (SELECT id FROM students)`).returning();
     if (orphanResults.length > 0) {
       results.push({ tableName: "exam_results", deletedCount: orphanResults.length });
     }
@@ -1657,7 +3150,7 @@ async function cleanupOrphanRecords() {
     console.log("[OrphanCleanup] exam_results:", e.message);
   }
   try {
-    const orphanAttendance = await database.delete(attendance).where(dsql`${attendance.studentId} NOT IN (SELECT id FROM students)`).returning();
+    const orphanAttendance = await db.delete(attendance).where(dsql`${attendance.studentId} NOT IN (SELECT id FROM students)`).returning();
     if (orphanAttendance.length > 0) {
       results.push({ tableName: "attendance", deletedCount: orphanAttendance.length });
     }
@@ -1665,7 +3158,7 @@ async function cleanupOrphanRecords() {
     console.log("[OrphanCleanup] attendance:", e.message);
   }
   try {
-    const orphanCA = await database.delete(continuousAssessment).where(dsql`${continuousAssessment.studentId} NOT IN (SELECT id FROM students)`).returning();
+    const orphanCA = await db.delete(continuousAssessment).where(dsql`${continuousAssessment.studentId} NOT IN (SELECT id FROM students)`).returning();
     if (orphanCA.length > 0) {
       results.push({ tableName: "continuous_assessment", deletedCount: orphanCA.length });
     }
@@ -1673,7 +3166,7 @@ async function cleanupOrphanRecords() {
     console.log("[OrphanCleanup] continuous_assessment:", e.message);
   }
   try {
-    const orphanReportCards = await database.delete(reportCards).where(dsql`${reportCards.studentId} NOT IN (SELECT id FROM students)`).returning();
+    const orphanReportCards = await db.delete(reportCards).where(dsql`${reportCards.studentId} NOT IN (SELECT id FROM students)`).returning();
     if (orphanReportCards.length > 0) {
       results.push({ tableName: "report_cards", deletedCount: orphanReportCards.length });
     }
@@ -1681,7 +3174,7 @@ async function cleanupOrphanRecords() {
     console.log("[OrphanCleanup] report_cards:", e.message);
   }
   try {
-    const orphanSubjectAssignments = await database.delete(studentSubjectAssignments).where(dsql`${studentSubjectAssignments.studentId} NOT IN (SELECT id FROM students)`).returning();
+    const orphanSubjectAssignments = await db.delete(studentSubjectAssignments).where(dsql`${studentSubjectAssignments.studentId} NOT IN (SELECT id FROM students)`).returning();
     if (orphanSubjectAssignments.length > 0) {
       results.push({ tableName: "student_subject_assignments", deletedCount: orphanSubjectAssignments.length });
     }
@@ -1689,7 +3182,7 @@ async function cleanupOrphanRecords() {
     console.log("[OrphanCleanup] student_subject_assignments:", e.message);
   }
   try {
-    const expiredTokens = await database.delete(passwordResetTokens).where(dsql`${passwordResetTokens.expiresAt} < NOW()`).returning();
+    const expiredTokens = await db.delete(passwordResetTokens).where(dsql`${passwordResetTokens.expiresAt} < NOW()`).returning();
     if (expiredTokens.length > 0) {
       results.push({ tableName: "password_reset_tokens", deletedCount: expiredTokens.length });
     }
@@ -1697,7 +3190,7 @@ async function cleanupOrphanRecords() {
     console.log("[OrphanCleanup] password_reset_tokens:", e.message);
   }
   try {
-    const expiredInvites = await database.delete(invites).where(and(
+    const expiredInvites = await db.delete(invites).where(and(
       dsql`${invites.expiresAt} < NOW()`,
       dsql`${invites.acceptedAt} IS NULL`
     )).returning();
@@ -1764,7 +3257,7 @@ var init_smart_deletion_manager = __esm({
       }
       async validateDeletion(userId) {
         try {
-          const user = await database.select().from(users).where(eq(users.id, userId)).limit(1);
+          const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
           if (!user[0]) {
             return { canDelete: false, reason: "User not found" };
           }
@@ -1777,7 +3270,7 @@ var init_smart_deletion_manager = __esm({
           const roleId = user[0].roleId;
           const role = this.getRoleFromId(roleId);
           if (role === "Student") {
-            const activeExamSessions = await database.select({ id: examSessions.id }).from(examSessions).innerJoin(exams, eq(examSessions.examId, exams.id)).where(and(
+            const activeExamSessions = await db.select({ id: examSessions.id }).from(examSessions).innerJoin(exams, eq(examSessions.examId, exams.id)).where(and(
               eq(examSessions.studentId, userId),
               eq(examSessions.status, "in_progress")
             ));
@@ -1788,40 +3281,40 @@ var init_smart_deletion_manager = __esm({
                 count: activeExamSessions.length
               });
             }
-            const draftReportCards = await database.select({ id: reportCards.id }).from(reportCards).where(and(
+            const draftReportCards = await db.select({ id: reportCards.id }).from(reportCards).where(and(
               eq(reportCards.studentId, userId),
               eq(reportCards.status, "draft")
             ));
             if (draftReportCards.length > 0) {
               affectedRecords.push({ tableName: "draft_report_cards", count: draftReportCards.length });
             }
-            const examSessions3 = await database.select({ id: examSessions.id }).from(examSessions).where(eq(examSessions.studentId, userId));
+            const examSessions3 = await db.select({ id: examSessions.id }).from(examSessions).where(eq(examSessions.studentId, userId));
             if (examSessions3.length > 0) {
               affectedRecords.push({ tableName: "exam_sessions", count: examSessions3.length });
             }
-            const examResults3 = await database.select({ id: examResults.id }).from(examResults).where(eq(examResults.studentId, userId));
+            const examResults3 = await db.select({ id: examResults.id }).from(examResults).where(eq(examResults.studentId, userId));
             if (examResults3.length > 0) {
               affectedRecords.push({ tableName: "exam_results", count: examResults3.length });
             }
-            const attendance3 = await database.select({ id: attendance.id }).from(attendance).where(eq(attendance.studentId, userId));
+            const attendance3 = await db.select({ id: attendance.id }).from(attendance).where(eq(attendance.studentId, userId));
             if (attendance3.length > 0) {
               affectedRecords.push({ tableName: "attendance", count: attendance3.length });
             }
-            const reportCards3 = await database.select({ id: reportCards.id }).from(reportCards).where(eq(reportCards.studentId, userId));
+            const reportCards3 = await db.select({ id: reportCards.id }).from(reportCards).where(eq(reportCards.studentId, userId));
             if (reportCards3.length > 0) {
               affectedRecords.push({ tableName: "report_cards", count: reportCards3.length });
             }
-            const continuousAssessment3 = await database.select({ id: continuousAssessment.id }).from(continuousAssessment).where(eq(continuousAssessment.studentId, userId));
+            const continuousAssessment3 = await db.select({ id: continuousAssessment.id }).from(continuousAssessment).where(eq(continuousAssessment.studentId, userId));
             if (continuousAssessment3.length > 0) {
               affectedRecords.push({ tableName: "continuous_assessment", count: continuousAssessment3.length });
             }
-            const studentSubjectAssignments3 = await database.select({ id: studentSubjectAssignments.id }).from(studentSubjectAssignments).where(eq(studentSubjectAssignments.studentId, userId));
+            const studentSubjectAssignments3 = await db.select({ id: studentSubjectAssignments.id }).from(studentSubjectAssignments).where(eq(studentSubjectAssignments.studentId, userId));
             if (studentSubjectAssignments3.length > 0) {
               affectedRecords.push({ tableName: "student_subject_assignments", count: studentSubjectAssignments3.length });
             }
           }
           if (role === "Teacher") {
-            const activeExams = await database.select({ id: exams.id }).from(exams).where(and(
+            const activeExams = await db.select({ id: exams.id }).from(exams).where(and(
               eq(exams.createdBy, userId),
               eq(exams.isPublished, true)
             ));
@@ -1832,45 +3325,45 @@ var init_smart_deletion_manager = __esm({
                 count: activeExams.length
               });
             }
-            const teacherProfile = await database.select({ signatureUrl: teacherProfiles.signatureUrl }).from(teacherProfiles).where(eq(teacherProfiles.userId, userId)).limit(1);
+            const teacherProfile = await db.select({ signatureUrl: teacherProfiles.signatureUrl }).from(teacherProfiles).where(eq(teacherProfiles.userId, userId)).limit(1);
             if (teacherProfile[0]?.signatureUrl) {
               filesToDelete.push(teacherProfile[0].signatureUrl);
             }
-            const exams3 = await database.select({ id: exams.id }).from(exams).where(eq(exams.createdBy, userId));
+            const exams3 = await db.select({ id: exams.id }).from(exams).where(eq(exams.createdBy, userId));
             if (exams3.length > 0) {
               affectedRecords.push({ tableName: "exams", count: exams3.length });
             }
-            const questionBanks3 = await database.select({ id: questionBanks.id }).from(questionBanks).where(eq(questionBanks.createdBy, userId));
+            const questionBanks3 = await db.select({ id: questionBanks.id }).from(questionBanks).where(eq(questionBanks.createdBy, userId));
             if (questionBanks3.length > 0) {
               affectedRecords.push({ tableName: "question_banks", count: questionBanks3.length });
             }
-            const teacherClassAssignments3 = await database.select({ id: teacherClassAssignments.id }).from(teacherClassAssignments).where(eq(teacherClassAssignments.teacherId, userId));
+            const teacherClassAssignments3 = await db.select({ id: teacherClassAssignments.id }).from(teacherClassAssignments).where(eq(teacherClassAssignments.teacherId, userId));
             if (teacherClassAssignments3.length > 0) {
               affectedRecords.push({ tableName: "teacher_class_assignments", count: teacherClassAssignments3.length });
             }
-            const timetable3 = await database.select({ id: timetable.id }).from(timetable).where(eq(timetable.teacherId, userId));
+            const timetable3 = await db.select({ id: timetable.id }).from(timetable).where(eq(timetable.teacherId, userId));
             if (timetable3.length > 0) {
               affectedRecords.push({ tableName: "timetable", count: timetable3.length });
             }
           }
           if (role === "Parent") {
-            const linkedStudents = await database.select({ id: students.id }).from(students).where(eq(students.parentId, userId));
+            const linkedStudents = await db.select({ id: students.id }).from(students).where(eq(students.parentId, userId));
             if (linkedStudents.length > 0) {
               affectedRecords.push({ tableName: "linked_students", count: linkedStudents.length });
             }
           }
-          const messages3 = await database.select({ id: messages.id }).from(messages).where(or(
+          const messages3 = await db.select({ id: messages.id }).from(messages).where(or(
             eq(messages.senderId, userId),
             eq(messages.recipientId, userId)
           ));
           if (messages3.length > 0) {
             affectedRecords.push({ tableName: "messages", count: messages3.length });
           }
-          const notifications3 = await database.select({ id: notifications.id }).from(notifications).where(eq(notifications.userId, userId));
+          const notifications3 = await db.select({ id: notifications.id }).from(notifications).where(eq(notifications.userId, userId));
           if (notifications3.length > 0) {
             affectedRecords.push({ tableName: "notifications", count: notifications3.length });
           }
-          const announcements3 = await database.select({ id: announcements.id }).from(announcements).where(eq(announcements.authorId, userId));
+          const announcements3 = await db.select({ id: announcements.id }).from(announcements).where(eq(announcements.authorId, userId));
           if (announcements3.length > 0) {
             affectedRecords.push({ tableName: "announcements", count: announcements3.length });
           }
@@ -1892,7 +3385,7 @@ var init_smart_deletion_manager = __esm({
         this.deletionService.reset();
         this.filesToDelete = [];
         try {
-          const user = await database.select().from(users).where(eq(users.id, userId)).limit(1);
+          const user = await db.select().from(users).where(eq(users.id, userId)).limit(1);
           if (!user[0]) {
             return {
               success: false,
@@ -1938,13 +3431,13 @@ var init_smart_deletion_manager = __esm({
             console.log(`[SmartDeletion] Deleting ${this.filesToDelete.length} files from storage...`);
             await this.deleteFilesInBatch(this.filesToDelete);
           }
-          const result = await database.delete(users).where(eq(users.id, userId)).returning();
+          const result = await db.delete(users).where(eq(users.id, userId)).returning();
           this.deletionService.recordDeletion("users", result.length);
           const deletionResult = this.deletionService.getResult();
           const logOutput = formatDeletionLog(deletionResult, userId, userRole);
           console.log(logOutput);
           try {
-            await database.insert(auditLogs).values({
+            await db.insert(auditLogs).values({
               userId: performedBy || userId,
               action: "user_permanently_deleted",
               entityType: "user",
@@ -1991,29 +3484,29 @@ var init_smart_deletion_manager = __esm({
       async deleteStudentData(userId) {
         console.log("[SmartDeletion] Deleting student-specific data...");
         try {
-          const examSessions3 = await database.select({ id: examSessions.id }).from(examSessions).where(eq(examSessions.studentId, userId));
+          const examSessions3 = await db.select({ id: examSessions.id }).from(examSessions).where(eq(examSessions.studentId, userId));
           const sessionIds = examSessions3.map((s) => s.id);
           if (sessionIds.length > 0) {
             try {
-              const gradingResult = await database.delete(gradingTasks).where(inArray(gradingTasks.sessionId, sessionIds)).returning();
+              const gradingResult = await db.delete(gradingTasks).where(inArray(gradingTasks.sessionId, sessionIds)).returning();
               this.deletionService.recordDeletion("grading_tasks", gradingResult.length);
             } catch (e) {
               this.deletionService.recordError(`Error deleting grading tasks: ${e.message}`);
             }
             try {
-              const perfResult = await database.delete(performanceEvents).where(inArray(performanceEvents.sessionId, sessionIds)).returning();
+              const perfResult = await db.delete(performanceEvents).where(inArray(performanceEvents.sessionId, sessionIds)).returning();
               this.deletionService.recordDeletion("performance_events", perfResult.length);
             } catch (e) {
               this.deletionService.recordError(`Error deleting performance events: ${e.message}`);
             }
             try {
-              const answersResult = await database.delete(studentAnswers).where(inArray(studentAnswers.sessionId, sessionIds)).returning();
+              const answersResult = await db.delete(studentAnswers).where(inArray(studentAnswers.sessionId, sessionIds)).returning();
               this.deletionService.recordDeletion("student_answers", answersResult.length);
             } catch (e) {
               this.deletionService.recordError(`Error deleting student answers: ${e.message}`);
             }
             try {
-              const sessionsResult = await database.delete(examSessions).where(inArray(examSessions.id, sessionIds)).returning();
+              const sessionsResult = await db.delete(examSessions).where(inArray(examSessions.id, sessionIds)).returning();
               this.deletionService.recordDeletion("exam_sessions", sessionsResult.length);
             } catch (e) {
               this.deletionService.recordError(`Error deleting exam sessions: ${e.message}`);
@@ -2023,41 +3516,41 @@ var init_smart_deletion_manager = __esm({
           this.deletionService.recordError(`Error deleting exam sessions: ${e.message}`);
         }
         try {
-          const examResultsResult = await database.delete(examResults).where(eq(examResults.studentId, userId)).returning();
+          const examResultsResult = await db.delete(examResults).where(eq(examResults.studentId, userId)).returning();
           this.deletionService.recordDeletion("exam_results", examResultsResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting exam results: ${e.message}`);
         }
         try {
-          const attendanceResult = await database.delete(attendance).where(eq(attendance.studentId, userId)).returning();
+          const attendanceResult = await db.delete(attendance).where(eq(attendance.studentId, userId)).returning();
           this.deletionService.recordDeletion("attendance", attendanceResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting attendance: ${e.message}`);
         }
         try {
-          const caResult = await database.delete(continuousAssessment).where(eq(continuousAssessment.studentId, userId)).returning();
+          const caResult = await db.delete(continuousAssessment).where(eq(continuousAssessment.studentId, userId)).returning();
           this.deletionService.recordDeletion("continuous_assessment", caResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting continuous assessment: ${e.message}`);
         }
         try {
-          const subjectAssignResult = await database.delete(studentSubjectAssignments).where(eq(studentSubjectAssignments.studentId, userId)).returning();
+          const subjectAssignResult = await db.delete(studentSubjectAssignments).where(eq(studentSubjectAssignments.studentId, userId)).returning();
           this.deletionService.recordDeletion("student_subject_assignments", subjectAssignResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting student subject assignments: ${e.message}`);
         }
         try {
-          const reportCards3 = await database.select({ id: reportCards.id }).from(reportCards).where(eq(reportCards.studentId, userId));
+          const reportCards3 = await db.select({ id: reportCards.id }).from(reportCards).where(eq(reportCards.studentId, userId));
           const reportCardIds = reportCards3.map((r) => r.id);
           if (reportCardIds.length > 0) {
             try {
-              const rcItemsResult = await database.delete(reportCardItems).where(inArray(reportCardItems.reportCardId, reportCardIds)).returning();
+              const rcItemsResult = await db.delete(reportCardItems).where(inArray(reportCardItems.reportCardId, reportCardIds)).returning();
               this.deletionService.recordDeletion("report_card_items", rcItemsResult.length);
             } catch (e) {
               this.deletionService.recordError(`Error deleting report card items: ${e.message}`);
             }
             try {
-              const reportCardsResult = await database.delete(reportCards).where(eq(reportCards.studentId, userId)).returning();
+              const reportCardsResult = await db.delete(reportCards).where(eq(reportCards.studentId, userId)).returning();
               this.deletionService.recordDeletion("report_cards", reportCardsResult.length);
             } catch (e) {
               this.deletionService.recordError(`Error deleting report cards: ${e.message}`);
@@ -2067,7 +3560,7 @@ var init_smart_deletion_manager = __esm({
           this.deletionService.recordError(`Error deleting report cards: ${e.message}`);
         }
         try {
-          const studentResult = await database.delete(students).where(eq(students.id, userId)).returning();
+          const studentResult = await db.delete(students).where(eq(students.id, userId)).returning();
           this.deletionService.recordDeletion("students", studentResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting student record: ${e.message}`);
@@ -2076,7 +3569,7 @@ var init_smart_deletion_manager = __esm({
       async deleteTeacherData(userId) {
         console.log("[SmartDeletion] Deleting teacher-specific data...");
         try {
-          const teacherProfile = await database.select({ signatureUrl: teacherProfiles.signatureUrl }).from(teacherProfiles).where(eq(teacherProfiles.userId, userId)).limit(1);
+          const teacherProfile = await db.select({ signatureUrl: teacherProfiles.signatureUrl }).from(teacherProfiles).where(eq(teacherProfiles.userId, userId)).limit(1);
           if (teacherProfile[0]?.signatureUrl) {
             this.addFileToDelete(teacherProfile[0].signatureUrl);
           }
@@ -2084,7 +3577,7 @@ var init_smart_deletion_manager = __esm({
           this.deletionService.recordError(`Error getting teacher signature: ${e.message}`);
         }
         try {
-          const exams3 = await database.select({ id: exams.id }).from(exams).where(eq(exams.createdBy, userId));
+          const exams3 = await db.select({ id: exams.id }).from(exams).where(eq(exams.createdBy, userId));
           for (const exam of exams3) {
             await this.deleteExamCompletely(exam.id);
           }
@@ -2092,7 +3585,7 @@ var init_smart_deletion_manager = __esm({
           this.deletionService.recordError(`Error deleting teacher exams: ${e.message}`);
         }
         try {
-          const questionBanks3 = await database.select({ id: questionBanks.id }).from(questionBanks).where(eq(questionBanks.createdBy, userId));
+          const questionBanks3 = await db.select({ id: questionBanks.id }).from(questionBanks).where(eq(questionBanks.createdBy, userId));
           for (const qb of questionBanks3) {
             await this.deleteQuestionBankCompletely(qb.id);
           }
@@ -2100,75 +3593,75 @@ var init_smart_deletion_manager = __esm({
           this.deletionService.recordError(`Error deleting question banks: ${e.message}`);
         }
         try {
-          const teacherAssignmentsResult = await database.delete(teacherClassAssignments).where(eq(teacherClassAssignments.teacherId, userId)).returning();
+          const teacherAssignmentsResult = await db.delete(teacherClassAssignments).where(eq(teacherClassAssignments.teacherId, userId)).returning();
           this.deletionService.recordDeletion("teacher_class_assignments", teacherAssignmentsResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting teacher assignments: ${e.message}`);
         }
         try {
-          const historyResult = await database.delete(teacherAssignmentHistory).where(eq(teacherAssignmentHistory.teacherId, userId)).returning();
+          const historyResult = await db.delete(teacherAssignmentHistory).where(eq(teacherAssignmentHistory.teacherId, userId)).returning();
           this.deletionService.recordDeletion("teacher_assignment_history", historyResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting assignment history: ${e.message}`);
         }
         try {
-          const timetableResult = await database.delete(timetable).where(eq(timetable.teacherId, userId)).returning();
+          const timetableResult = await db.delete(timetable).where(eq(timetable.teacherId, userId)).returning();
           this.deletionService.recordDeletion("timetable", timetableResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting timetable: ${e.message}`);
         }
         try {
-          const gradingResult = await database.delete(gradingTasks).where(eq(gradingTasks.teacherId, userId)).returning();
+          const gradingResult = await db.delete(gradingTasks).where(eq(gradingTasks.teacherId, userId)).returning();
           this.deletionService.recordDeletion("grading_tasks", gradingResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting grading tasks: ${e.message}`);
         }
         try {
-          await database.update(continuousAssessment).set({ teacherId: null }).where(eq(continuousAssessment.teacherId, userId));
+          await db.update(continuousAssessment).set({ teacherId: null }).where(eq(continuousAssessment.teacherId, userId));
         } catch (e) {
         }
         try {
-          await database.update(continuousAssessment).set({ enteredBy: null }).where(eq(continuousAssessment.enteredBy, userId));
+          await db.update(continuousAssessment).set({ enteredBy: null }).where(eq(continuousAssessment.enteredBy, userId));
         } catch (e) {
         }
         try {
-          await database.update(continuousAssessment).set({ verifiedBy: null }).where(eq(continuousAssessment.verifiedBy, userId));
+          await db.update(continuousAssessment).set({ verifiedBy: null }).where(eq(continuousAssessment.verifiedBy, userId));
         } catch (e) {
         }
         try {
-          await database.update(continuousAssessment).set({ lockedBy: null }).where(eq(continuousAssessment.lockedBy, userId));
+          await db.update(continuousAssessment).set({ lockedBy: null }).where(eq(continuousAssessment.lockedBy, userId));
         } catch (e) {
         }
         try {
-          await database.update(reportCardItems).set({ teacherId: null }).where(eq(reportCardItems.teacherId, userId));
+          await db.update(reportCardItems).set({ teacherId: null }).where(eq(reportCardItems.teacherId, userId));
         } catch (e) {
         }
         try {
-          await database.update(reportCardItems).set({ testExamCreatedBy: null }).where(eq(reportCardItems.testExamCreatedBy, userId));
+          await db.update(reportCardItems).set({ testExamCreatedBy: null }).where(eq(reportCardItems.testExamCreatedBy, userId));
         } catch (e) {
         }
         try {
-          await database.update(reportCardItems).set({ examExamCreatedBy: null }).where(eq(reportCardItems.examExamCreatedBy, userId));
+          await db.update(reportCardItems).set({ examExamCreatedBy: null }).where(eq(reportCardItems.examExamCreatedBy, userId));
         } catch (e) {
         }
         try {
-          await database.update(reportCardItems).set({ overriddenBy: null }).where(eq(reportCardItems.overriddenBy, userId));
+          await db.update(reportCardItems).set({ overriddenBy: null }).where(eq(reportCardItems.overriddenBy, userId));
         } catch (e) {
         }
         try {
-          await database.update(exams).set({ createdBy: null }).where(eq(exams.createdBy, userId));
+          await db.update(exams).set({ createdBy: null }).where(eq(exams.createdBy, userId));
         } catch (e) {
         }
         try {
-          await database.update(exams).set({ teacherInChargeId: null }).where(eq(exams.teacherInChargeId, userId));
+          await db.update(exams).set({ teacherInChargeId: null }).where(eq(exams.teacherInChargeId, userId));
         } catch (e) {
         }
         try {
-          await database.update(classes).set({ classTeacherId: null }).where(eq(classes.classTeacherId, userId));
+          await db.update(classes).set({ classTeacherId: null }).where(eq(classes.classTeacherId, userId));
         } catch (e) {
         }
         try {
-          const teacherProfileResult = await database.delete(teacherProfiles).where(eq(teacherProfiles.userId, userId)).returning();
+          const teacherProfileResult = await db.delete(teacherProfiles).where(eq(teacherProfiles.userId, userId)).returning();
           this.deletionService.recordDeletion("teacher_profiles", teacherProfileResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting teacher profile: ${e.message}`);
@@ -2177,12 +3670,12 @@ var init_smart_deletion_manager = __esm({
       async deleteParentData(userId) {
         console.log("[SmartDeletion] Deleting parent-specific data...");
         try {
-          await database.update(students).set({ parentId: null }).where(eq(students.parentId, userId));
+          await db.update(students).set({ parentId: null }).where(eq(students.parentId, userId));
         } catch (e) {
           this.deletionService.recordError(`Error unlinking parent from students: ${e.message}`);
         }
         try {
-          const parentResult = await database.delete(parentProfiles).where(eq(parentProfiles.userId, userId)).returning();
+          const parentResult = await db.delete(parentProfiles).where(eq(parentProfiles.userId, userId)).returning();
           this.deletionService.recordDeletion("parent_profiles", parentResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting parent profile: ${e.message}`);
@@ -2191,21 +3684,21 @@ var init_smart_deletion_manager = __esm({
       async deleteAdminData(userId) {
         console.log("[SmartDeletion] Deleting admin-specific data...");
         try {
-          const vacanciesResult = await database.delete(vacancies).where(eq(vacancies.createdBy, userId)).returning();
+          const vacanciesResult = await db.delete(vacancies).where(eq(vacancies.createdBy, userId)).returning();
           this.deletionService.recordDeletion("vacancies", vacanciesResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting vacancies: ${e.message}`);
         }
         try {
-          await database.update(teacherApplications).set({ reviewedBy: null }).where(eq(teacherApplications.reviewedBy, userId));
+          await db.update(teacherApplications).set({ reviewedBy: null }).where(eq(teacherApplications.reviewedBy, userId));
         } catch (e) {
         }
         try {
-          await database.update(approvedTeachers).set({ approvedBy: null }).where(eq(approvedTeachers.approvedBy, userId));
+          await db.update(approvedTeachers).set({ approvedBy: null }).where(eq(approvedTeachers.approvedBy, userId));
         } catch (e) {
         }
         try {
-          const adminResult = await database.delete(adminProfiles).where(eq(adminProfiles.userId, userId)).returning();
+          const adminResult = await db.delete(adminProfiles).where(eq(adminProfiles.userId, userId)).returning();
           this.deletionService.recordDeletion("admin_profiles", adminResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting admin profile: ${e.message}`);
@@ -2215,7 +3708,7 @@ var init_smart_deletion_manager = __esm({
         console.log("[SmartDeletion] Deleting super admin-specific data...");
         await this.deleteAdminData(userId);
         try {
-          const superAdminResult = await database.delete(superAdminProfiles).where(eq(superAdminProfiles.userId, userId)).returning();
+          const superAdminResult = await db.delete(superAdminProfiles).where(eq(superAdminProfiles.userId, userId)).returning();
           this.deletionService.recordDeletion("super_admin_profiles", superAdminResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting super admin profile: ${e.message}`);
@@ -2224,53 +3717,53 @@ var init_smart_deletion_manager = __esm({
       async deleteCommonUserData(userId) {
         console.log("[SmartDeletion] Deleting common user data...");
         try {
-          const homePageContent3 = await database.select({ imageUrl: homePageContent.imageUrl }).from(homePageContent).where(eq(homePageContent.uploadedBy, userId));
+          const homePageContent3 = await db.select({ imageUrl: homePageContent.imageUrl }).from(homePageContent).where(eq(homePageContent.uploadedBy, userId));
           for (const content of homePageContent3) {
             this.addFileToDelete(content.imageUrl);
           }
-          await database.update(homePageContent).set({ uploadedBy: null }).where(eq(homePageContent.uploadedBy, userId));
+          await db.update(homePageContent).set({ uploadedBy: null }).where(eq(homePageContent.uploadedBy, userId));
         } catch (e) {
           this.deletionService.recordError(`Error handling homepage content: ${e.message}`);
         }
         try {
-          const galleryItems = await database.select({ imageUrl: gallery.imageUrl }).from(gallery).where(eq(gallery.uploadedBy, userId));
+          const galleryItems = await db.select({ imageUrl: gallery.imageUrl }).from(gallery).where(eq(gallery.uploadedBy, userId));
           for (const item of galleryItems) {
             this.addFileToDelete(item.imageUrl);
           }
-          await database.update(gallery).set({ uploadedBy: null }).where(eq(gallery.uploadedBy, userId));
+          await db.update(gallery).set({ uploadedBy: null }).where(eq(gallery.uploadedBy, userId));
         } catch (e) {
           this.deletionService.recordError(`Error handling gallery: ${e.message}`);
         }
         try {
-          const studyResources3 = await database.select({ fileUrl: studyResources.fileUrl }).from(studyResources).where(eq(studyResources.uploadedBy, userId));
+          const studyResources3 = await db.select({ fileUrl: studyResources.fileUrl }).from(studyResources).where(eq(studyResources.uploadedBy, userId));
           for (const resource of studyResources3) {
             this.addFileToDelete(resource.fileUrl);
           }
-          await database.update(studyResources).set({ uploadedBy: null }).where(eq(studyResources.uploadedBy, userId));
+          await db.update(studyResources).set({ uploadedBy: null }).where(eq(studyResources.uploadedBy, userId));
         } catch (e) {
           this.deletionService.recordError(`Error handling study resources: ${e.message}`);
         }
         try {
-          const tokensResult = await database.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId)).returning();
+          const tokensResult = await db.delete(passwordResetTokens).where(eq(passwordResetTokens.userId, userId)).returning();
           this.deletionService.recordDeletion("password_reset_tokens", tokensResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting password tokens: ${e.message}`);
         }
         try {
-          const invitesAcceptedResult = await database.delete(invites).where(eq(invites.acceptedBy, userId)).returning();
-          const invitesCreatedResult = await database.delete(invites).where(eq(invites.createdBy, userId)).returning();
+          const invitesAcceptedResult = await db.delete(invites).where(eq(invites.acceptedBy, userId)).returning();
+          const invitesCreatedResult = await db.delete(invites).where(eq(invites.createdBy, userId)).returning();
           this.deletionService.recordDeletion("invites", invitesAcceptedResult.length + invitesCreatedResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting invites: ${e.message}`);
         }
         try {
-          const notificationsResult = await database.delete(notifications).where(eq(notifications.userId, userId)).returning();
+          const notificationsResult = await db.delete(notifications).where(eq(notifications.userId, userId)).returning();
           this.deletionService.recordDeletion("notifications", notificationsResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting notifications: ${e.message}`);
         }
         try {
-          const messagesResult = await database.delete(messages).where(or(
+          const messagesResult = await db.delete(messages).where(or(
             eq(messages.senderId, userId),
             eq(messages.recipientId, userId)
           )).returning();
@@ -2279,135 +3772,135 @@ var init_smart_deletion_manager = __esm({
           this.deletionService.recordError(`Error deleting messages: ${e.message}`);
         }
         try {
-          const announcementsResult = await database.delete(announcements).where(eq(announcements.authorId, userId)).returning();
+          const announcementsResult = await db.delete(announcements).where(eq(announcements.authorId, userId)).returning();
           this.deletionService.recordDeletion("announcements", announcementsResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting announcements: ${e.message}`);
         }
         try {
-          const perfEventsResult = await database.delete(performanceEvents).where(eq(performanceEvents.userId, userId)).returning();
+          const perfEventsResult = await db.delete(performanceEvents).where(eq(performanceEvents.userId, userId)).returning();
           this.deletionService.recordDeletion("performance_events", perfEventsResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting performance events: ${e.message}`);
         }
         try {
-          const auditResult = await database.delete(auditLogs).where(eq(auditLogs.userId, userId)).returning();
+          const auditResult = await db.delete(auditLogs).where(eq(auditLogs.userId, userId)).returning();
           this.deletionService.recordDeletion("audit_logs", auditResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting audit logs: ${e.message}`);
         }
         try {
-          const accessLogsResult = await database.delete(unauthorizedAccessLogs).where(eq(unauthorizedAccessLogs.userId, userId)).returning();
+          const accessLogsResult = await db.delete(unauthorizedAccessLogs).where(eq(unauthorizedAccessLogs.userId, userId)).returning();
           this.deletionService.recordDeletion("unauthorized_access_logs", accessLogsResult.length);
         } catch (e) {
           this.deletionService.recordError(`Error deleting access logs: ${e.message}`);
         }
         try {
-          await database.update(contactMessages).set({ respondedBy: null }).where(eq(contactMessages.respondedBy, userId));
+          await db.update(contactMessages).set({ respondedBy: null }).where(eq(contactMessages.respondedBy, userId));
         } catch (e) {
         }
         try {
-          await database.update(systemSettings).set({ updatedBy: null }).where(eq(systemSettings.updatedBy, userId));
+          await db.update(systemSettings).set({ updatedBy: null }).where(eq(systemSettings.updatedBy, userId));
         } catch (e) {
         }
         try {
-          await database.update(settings).set({ updatedBy: null }).where(eq(settings.updatedBy, userId));
+          await db.update(settings).set({ updatedBy: null }).where(eq(settings.updatedBy, userId));
         } catch (e) {
         }
         try {
-          await database.update(attendance).set({ recordedBy: null }).where(eq(attendance.recordedBy, userId));
+          await db.update(attendance).set({ recordedBy: null }).where(eq(attendance.recordedBy, userId));
         } catch (e) {
         }
         try {
-          await database.update(questionBanks).set({ createdBy: null }).where(eq(questionBanks.createdBy, userId));
+          await db.update(questionBanks).set({ createdBy: null }).where(eq(questionBanks.createdBy, userId));
         } catch (e) {
         }
         try {
-          await database.update(gradingBoundaries).set({ createdBy: null }).where(eq(gradingBoundaries.createdBy, userId));
+          await db.update(gradingBoundaries).set({ createdBy: null }).where(eq(gradingBoundaries.createdBy, userId));
         } catch (e) {
         }
         try {
-          await database.update(teacherClassAssignments).set({ assignedBy: null }).where(eq(teacherClassAssignments.assignedBy, userId));
+          await db.update(teacherClassAssignments).set({ assignedBy: null }).where(eq(teacherClassAssignments.assignedBy, userId));
         } catch (e) {
         }
         try {
-          await database.update(teacherAssignmentHistory).set({ performedBy: null }).where(eq(teacherAssignmentHistory.performedBy, userId));
+          await db.update(teacherAssignmentHistory).set({ performedBy: null }).where(eq(teacherAssignmentHistory.performedBy, userId));
         } catch (e) {
         }
         try {
-          await database.update(studentSubjectAssignments).set({ assignedBy: null }).where(eq(studentSubjectAssignments.assignedBy, userId));
+          await db.update(studentSubjectAssignments).set({ assignedBy: null }).where(eq(studentSubjectAssignments.assignedBy, userId));
         } catch (e) {
         }
         try {
-          await database.update(reportCards).set({ generatedBy: null }).where(eq(reportCards.generatedBy, userId));
+          await db.update(reportCards).set({ generatedBy: null }).where(eq(reportCards.generatedBy, userId));
         } catch (e) {
         }
         try {
-          await database.update(reportCards).set({ signedBy: null }).where(eq(reportCards.signedBy, userId));
+          await db.update(reportCards).set({ signedBy: null }).where(eq(reportCards.signedBy, userId));
         } catch (e) {
         }
         try {
-          await database.update(teacherProfiles).set({ verifiedBy: null }).where(eq(teacherProfiles.verifiedBy, userId));
+          await db.update(teacherProfiles).set({ verifiedBy: null }).where(eq(teacherProfiles.verifiedBy, userId));
         } catch (e) {
         }
       }
       async deleteExamCompletely(examId) {
         try {
-          const questions = await database.select({ id: examQuestions.id, imageUrl: examQuestions.imageUrl }).from(examQuestions).where(eq(examQuestions.examId, examId));
+          const questions = await db.select({ id: examQuestions.id, imageUrl: examQuestions.imageUrl }).from(examQuestions).where(eq(examQuestions.examId, examId));
           const questionIds = questions.map((q) => q.id);
           for (const question of questions) {
             this.addFileToDelete(question.imageUrl);
           }
           if (questionIds.length > 0) {
-            const sessions = await database.select({ id: examSessions.id }).from(examSessions).where(eq(examSessions.examId, examId));
+            const sessions = await db.select({ id: examSessions.id }).from(examSessions).where(eq(examSessions.examId, examId));
             const sessionIds = sessions.map((s) => s.id);
             if (sessionIds.length > 0) {
               try {
-                const gtResult = await database.delete(gradingTasks).where(inArray(gradingTasks.sessionId, sessionIds)).returning();
+                const gtResult = await db.delete(gradingTasks).where(inArray(gradingTasks.sessionId, sessionIds)).returning();
                 this.deletionService.recordDeletion("grading_tasks", gtResult.length);
               } catch (e) {
               }
               try {
-                const peResult = await database.delete(performanceEvents).where(inArray(performanceEvents.sessionId, sessionIds)).returning();
+                const peResult = await db.delete(performanceEvents).where(inArray(performanceEvents.sessionId, sessionIds)).returning();
                 this.deletionService.recordDeletion("performance_events", peResult.length);
               } catch (e) {
               }
               try {
-                const saResult = await database.delete(studentAnswers).where(inArray(studentAnswers.sessionId, sessionIds)).returning();
+                const saResult = await db.delete(studentAnswers).where(inArray(studentAnswers.sessionId, sessionIds)).returning();
                 this.deletionService.recordDeletion("student_answers", saResult.length);
               } catch (e) {
               }
               try {
-                const esResult = await database.delete(examSessions).where(inArray(examSessions.id, sessionIds)).returning();
+                const esResult = await db.delete(examSessions).where(inArray(examSessions.id, sessionIds)).returning();
                 this.deletionService.recordDeletion("exam_sessions", esResult.length);
               } catch (e) {
               }
             }
             try {
-              const qoResult = await database.delete(questionOptions).where(inArray(questionOptions.questionId, questionIds)).returning();
+              const qoResult = await db.delete(questionOptions).where(inArray(questionOptions.questionId, questionIds)).returning();
               this.deletionService.recordDeletion("question_options", qoResult.length);
             } catch (e) {
             }
             try {
-              const eqResult = await database.delete(examQuestions).where(eq(examQuestions.examId, examId)).returning();
+              const eqResult = await db.delete(examQuestions).where(eq(examQuestions.examId, examId)).returning();
               this.deletionService.recordDeletion("exam_questions", eqResult.length);
             } catch (e) {
             }
           }
           try {
-            const erResult = await database.delete(examResults).where(eq(examResults.examId, examId)).returning();
+            const erResult = await db.delete(examResults).where(eq(examResults.examId, examId)).returning();
             this.deletionService.recordDeletion("exam_results", erResult.length);
           } catch (e) {
           }
           try {
-            await database.update(reportCardItems).set({ testExamId: null }).where(eq(reportCardItems.testExamId, examId));
+            await db.update(reportCardItems).set({ testExamId: null }).where(eq(reportCardItems.testExamId, examId));
           } catch (e) {
           }
           try {
-            await database.update(reportCardItems).set({ examExamId: null }).where(eq(reportCardItems.examExamId, examId));
+            await db.update(reportCardItems).set({ examExamId: null }).where(eq(reportCardItems.examExamId, examId));
           } catch (e) {
           }
-          const result = await database.delete(exams).where(eq(exams.id, examId)).returning();
+          const result = await db.delete(exams).where(eq(exams.id, examId)).returning();
           this.deletionService.recordDeletion("exams", result.length);
         } catch (error) {
           this.deletionService.recordError(`Failed to delete exam ${examId}: ${error.message}`);
@@ -2415,7 +3908,7 @@ var init_smart_deletion_manager = __esm({
       }
       async deleteQuestionBankCompletely(bankId) {
         try {
-          const items = await database.select({
+          const items = await db.select({
             id: questionBankItems.id,
             imageUrl: questionBankItems.imageUrl,
             practicalFileUrl: questionBankItems.practicalFileUrl
@@ -2427,17 +3920,17 @@ var init_smart_deletion_manager = __esm({
           }
           if (itemIds.length > 0) {
             try {
-              const qboResult = await database.delete(questionBankOptions).where(inArray(questionBankOptions.questionItemId, itemIds)).returning();
+              const qboResult = await db.delete(questionBankOptions).where(inArray(questionBankOptions.questionItemId, itemIds)).returning();
               this.deletionService.recordDeletion("question_bank_options", qboResult.length);
             } catch (e) {
             }
             try {
-              const qbiResult = await database.delete(questionBankItems).where(eq(questionBankItems.bankId, bankId)).returning();
+              const qbiResult = await db.delete(questionBankItems).where(eq(questionBankItems.bankId, bankId)).returning();
               this.deletionService.recordDeletion("question_bank_items", qbiResult.length);
             } catch (e) {
             }
           }
-          const result = await database.delete(questionBanks).where(eq(questionBanks.id, bankId)).returning();
+          const result = await db.delete(questionBanks).where(eq(questionBanks.id, bankId)).returning();
           this.deletionService.recordDeletion("question_banks", result.length);
         } catch (error) {
           this.deletionService.recordError(`Failed to delete question bank ${bankId}: ${error.message}`);
@@ -3232,13 +4725,6 @@ var init_realtime_service = __esm({
           this.emitToClass(classId, fullEventType, data);
         }
       }
-      emitGalleryEvent(eventType, data, userId) {
-        const fullEventType = `gallery.${eventType}`;
-        const operation = eventType === "created" ? "INSERT" : "DELETE";
-        this.emitTableChange("gallery", operation, data, void 0, userId);
-        this.emitToRole("admin", fullEventType, data);
-        this.emitEvent(fullEventType, { id: data.id });
-      }
       emitExamSessionEvent(examId, sessionId, eventType, data, userId) {
         const fullEventType = `examSession.${eventType}`;
         this.emitTableChange("exam_sessions", eventType === "started" ? "INSERT" : "UPDATE", data, void 0, userId);
@@ -3341,6 +4827,9 @@ var init_realtime_service = __esm({
           activeRooms: this.io ? Array.from(this.io.sockets.adapter.rooms.keys()).filter((r) => !this.io.sockets.sockets.has(r)) : []
         };
       }
+      broadcastSystemSettingsUpdate(settings3) {
+        this.io?.emit("system_settings_update", settings3);
+      }
       shutdown() {
         if (this.eventIdCleanupInterval) {
           clearInterval(this.eventIdCleanupInterval);
@@ -3369,7 +4858,7 @@ __export(storage_exports, {
   isSqlite: () => isSqlite,
   storage: () => storage
 });
-import { eq as eq2, and as and2, desc, asc, sql, sql as dsql2, inArray as inArray2, isNull, gte, or as or2 } from "drizzle-orm";
+import { eq as eq2, and as and2, desc, asc, sql as sql2, sql as dsql2, inArray as inArray2, isNull, isNotNull, ne, gte, lte, or as or2, like } from "drizzle-orm";
 import { randomUUID } from "crypto";
 function normalizeUuid(raw) {
   if (!raw) return void 0;
@@ -3906,7 +5395,7 @@ var init_storage = __esm({
         });
       }
       async getUsersByStatus(status) {
-        const result = await this.db.select().from(schema.users).where(sql`${schema.users.status} = ${status}`);
+        const result = await this.db.select().from(schema.users).where(sql2`${schema.users.status} = ${status}`);
         return result.map((user) => {
           if (user && user.id) {
             const normalizedId = normalizeUuid(user.id);
@@ -4221,7 +5710,7 @@ var init_storage = __esm({
         });
       }
       async getAllUsernames() {
-        const result = await this.db.select({ username: schema.users.username }).from(schema.users).where(sql`${schema.users.username} IS NOT NULL`);
+        const result = await this.db.select({ username: schema.users.username }).from(schema.users).where(sql2`${schema.users.username} IS NOT NULL`);
         return result.map((r) => r.username).filter((u) => u !== null);
       }
       async createStudent(student) {
@@ -4258,8 +5747,12 @@ var init_storage = __esm({
         const result = await this.db.update(schema.users).set({ isActive }).where(eq2(schema.users.id, id)).returning();
         return result[0];
       }
-      async deleteStudent(id) {
-        const result = await this.db.update(schema.users).set({ isActive: false }).where(eq2(schema.users.id, id)).returning();
+      async deleteStudent(id, deletedBy) {
+        const result = await this.db.update(schema.users).set({
+          isActive: false,
+          deletedAt: /* @__PURE__ */ new Date(),
+          deletedBy: deletedBy || null
+        }).where(eq2(schema.users.id, id)).returning();
         return result.length > 0;
       }
       async hardDeleteStudent(id) {
@@ -4714,7 +6207,7 @@ var init_storage = __esm({
       }
       async getExamResultByExamAndStudent(examId, studentId) {
         const result = await db2.select().from(schema.examResults).where(
-          sql`${schema.examResults.examId} = ${examId} AND ${schema.examResults.studentId} = ${studentId}`
+          sql2`${schema.examResults.examId} = ${examId} AND ${schema.examResults.studentId} = ${studentId}`
         ).limit(1);
         return result[0];
       }
@@ -4737,7 +6230,7 @@ var init_storage = __esm({
             examDate: schema.exams.date,
             totalMarks: schema.exams.totalMarks,
             admissionNumber: schema.students.admissionNumber,
-            studentName: sql`${schema.users.firstName} || ' ' || ${schema.users.lastName}`.as("studentName"),
+            studentName: sql2`${schema.users.firstName} || ' ' || ${schema.users.lastName}`.as("studentName"),
             className: schema.classes.name,
             subjectName: schema.subjects.name
           }).from(schema.examResults).innerJoin(schema.exams, eq2(schema.examResults.examId, schema.exams.id)).innerJoin(schema.students, eq2(schema.examResults.studentId, schema.students.id)).innerJoin(schema.users, eq2(schema.students.id, schema.users.id)).leftJoin(schema.classes, eq2(schema.exams.classId, schema.classes.id)).leftJoin(schema.subjects, eq2(schema.exams.subjectId, schema.subjects.id)).where(eq2(schema.exams.classId, classId)).orderBy(desc(schema.examResults.createdAt));
@@ -5145,13 +6638,13 @@ var init_storage = __esm({
             examName: schema.exams.name
           }).from(schema.studentAnswers).innerJoin(schema.examQuestions, eq2(schema.studentAnswers.questionId, schema.examQuestions.id)).innerJoin(schema.examSessions, eq2(schema.studentAnswers.sessionId, schema.examSessions.id)).innerJoin(schema.exams, eq2(schema.examSessions.examId, schema.exams.id)).where(and2(
             inArray2(schema.studentAnswers.sessionId, sessionIds),
-            sql`(${schema.examQuestions.questionType} = 'text' OR ${schema.examQuestions.questionType} = 'essay')`,
-            sql`${schema.studentAnswers.textAnswer} IS NOT NULL`
+            sql2`(${schema.examQuestions.questionType} = 'text' OR ${schema.examQuestions.questionType} = 'essay')`,
+            sql2`${schema.studentAnswers.textAnswer} IS NOT NULL`
           ));
           if (status === "pending") {
-            query = query.where(sql`${schema.studentAnswers.autoScored} = false AND ${schema.studentAnswers.manualOverride} = false`);
+            query = query.where(sql2`${schema.studentAnswers.autoScored} = false AND ${schema.studentAnswers.manualOverride} = false`);
           } else if (status === "reviewed") {
-            query = query.where(sql`(${schema.studentAnswers.autoScored} = true OR ${schema.studentAnswers.manualOverride} = true)`);
+            query = query.where(sql2`(${schema.studentAnswers.autoScored} = true OR ${schema.studentAnswers.manualOverride} = true)`);
           }
           const results = await query;
           const studentIds = Array.from(new Set(results.map((r) => r.studentId)));
@@ -5664,11 +7157,20 @@ var init_storage = __esm({
         const result = await db2.insert(schema.announcements).values(announcement).returning();
         return result[0];
       }
-      async getAnnouncements(targetRole) {
-        const query = db2.select().from(schema.announcements).where(eq2(schema.announcements.isPublished, true)).orderBy(desc(schema.announcements.publishedAt));
-        if (targetRole) {
+      async getAnnouncements(targetRole, includeDrafts = false) {
+        let query = db2.select().from(schema.announcements);
+        if (!includeDrafts) {
+          query = query.where(eq2(schema.announcements.isPublished, true));
         }
-        return await query;
+        if (targetRole && targetRole !== "all") {
+          query = query.where(or2(
+            like(schema.announcements.targetRoles, `%"All"%`),
+            like(schema.announcements.targetRoles, `%"${targetRole}"%`),
+            eq2(schema.announcements.targetRoles, '["All"]'),
+            eq2(schema.announcements.targetRoles, `["${targetRole}"]`)
+          ));
+        }
+        return await query.orderBy(desc(schema.announcements.publishedAt), desc(schema.announcements.createdAt));
       }
       async getAnnouncementById(id) {
         const result = await db2.select().from(schema.announcements).where(eq2(schema.announcements.id, id)).limit(1);
@@ -5679,8 +7181,11 @@ var init_storage = __esm({
         return result[0];
       }
       async deleteAnnouncement(id) {
-        const result = await db2.delete(schema.announcements).where(eq2(schema.announcements.id, id));
-        return result.length > 0;
+        const [announcement] = await db2.select().from(schema.announcements).where(eq2(schema.announcements.id, id));
+        if (!announcement) return false;
+        await db2.delete(schema.announcements).where(eq2(schema.announcements.id, id));
+        realtimeService.emitAnnouncementEvent("deleted", { id });
+        return true;
       }
       // Messages
       async sendMessage(message) {
@@ -6106,7 +7611,7 @@ var init_storage = __esm({
         try {
           let query = db2.select({
             studentId: schema.reportCards.studentId,
-            studentName: sql`CONCAT(${schema.users.firstName}, ' ', ${schema.users.lastName})`.as("studentName"),
+            studentName: sql2`CONCAT(${schema.users.firstName}, ' ', ${schema.users.lastName})`.as("studentName"),
             admissionNumber: schema.students.admissionNumber,
             subjectName: schema.subjects.name,
             testScore: schema.reportCardItems.testScore,
@@ -6145,7 +7650,59 @@ var init_storage = __esm({
       async getReportCard(id) {
         try {
           const result = await db2.select().from(schema.reportCards).where(eq2(schema.reportCards.id, id)).limit(1);
-          return result[0];
+          if (!result[0]) return void 0;
+          const reportCard = result[0];
+          let teacherSignatureUrl = reportCard.teacherSignatureUrl;
+          let teacherSignedBy = reportCard.teacherSignedBy;
+          let principalSignatureUrl = reportCard.principalSignatureUrl;
+          let principalSignedBy = reportCard.principalSignedBy;
+          const classInfo = await this.getClass(reportCard.classId);
+          if (!teacherSignatureUrl && classInfo?.classTeacherId) {
+            const teacherProfile = await this.getTeacherProfile(classInfo.classTeacherId);
+            if (teacherProfile?.signatureUrl) {
+              teacherSignatureUrl = teacherProfile.signatureUrl;
+              const teacherUser = await this.getUser(classInfo.classTeacherId);
+              teacherSignedBy = teacherUser ? `${teacherUser.firstName} ${teacherUser.lastName}` : null;
+            }
+          }
+          if (!principalSignatureUrl) {
+            const superAdminsWithSignature = await db2.select({
+              signatureUrl: schema.superAdminProfiles.signatureUrl,
+              userId: schema.superAdminProfiles.userId,
+              firstName: schema.users.firstName,
+              lastName: schema.users.lastName,
+              roleId: schema.users.roleId
+            }).from(schema.superAdminProfiles).innerJoin(schema.users, eq2(schema.superAdminProfiles.userId, schema.users.id)).where(and2(
+              isNotNull(schema.superAdminProfiles.signatureUrl),
+              ne(schema.superAdminProfiles.signatureUrl, "")
+            )).limit(1);
+            if (superAdminsWithSignature.length > 0) {
+              principalSignatureUrl = superAdminsWithSignature[0].signatureUrl;
+              principalSignedBy = `${superAdminsWithSignature[0].firstName} ${superAdminsWithSignature[0].lastName}`;
+            } else {
+              const adminsWithSignature = await db2.select({
+                signatureUrl: schema.adminProfiles.signatureUrl,
+                userId: schema.adminProfiles.userId,
+                firstName: schema.users.firstName,
+                lastName: schema.users.lastName,
+                roleId: schema.users.roleId
+              }).from(schema.adminProfiles).innerJoin(schema.users, eq2(schema.adminProfiles.userId, schema.users.id)).where(and2(
+                isNotNull(schema.adminProfiles.signatureUrl),
+                ne(schema.adminProfiles.signatureUrl, "")
+              )).limit(1);
+              if (adminsWithSignature.length > 0) {
+                principalSignatureUrl = adminsWithSignature[0].signatureUrl;
+                principalSignedBy = `${adminsWithSignature[0].firstName} ${adminsWithSignature[0].lastName}`;
+              }
+            }
+          }
+          return {
+            ...reportCard,
+            teacherSignatureUrl,
+            teacherSignedBy,
+            principalSignatureUrl,
+            principalSignedBy
+          };
         } catch (error) {
           return void 0;
         }
@@ -6201,15 +7758,25 @@ var init_storage = __esm({
             generatedAt: schema.reportCards.generatedAt,
             finalizedAt: schema.reportCards.finalizedAt,
             publishedAt: schema.reportCards.publishedAt,
-            studentName: sql`CONCAT(${schema.users.firstName}, ' ', ${schema.users.lastName})`.as("studentName"),
+            studentName: sql2`CONCAT(${schema.users.firstName}, ' ', ${schema.users.lastName})`.as("studentName"),
             studentUsername: schema.users.username,
             studentPhoto: schema.users.profileImageUrl,
-            admissionNumber: schema.students.admissionNumber
-          }).from(schema.reportCards).innerJoin(schema.students, eq2(schema.reportCards.studentId, schema.students.id)).innerJoin(schema.users, eq2(schema.students.id, schema.users.id)).where(and2(
+            admissionNumber: schema.students.admissionNumber,
+            department: schema.students.department,
+            className: schema.classes.name,
+            classLevel: schema.classes.level
+          }).from(schema.reportCards).innerJoin(schema.students, eq2(schema.reportCards.studentId, schema.students.id)).innerJoin(schema.users, eq2(schema.students.id, schema.users.id)).innerJoin(schema.classes, eq2(schema.reportCards.classId, schema.classes.id)).where(and2(
             eq2(schema.reportCards.classId, classId),
             eq2(schema.reportCards.termId, termId)
           )).orderBy(schema.reportCards.position);
-          return results;
+          return results.map((r) => {
+            const isSSS = r.className?.startsWith("SS") || r.classLevel?.includes("Senior Secondary");
+            return {
+              ...r,
+              isSSS,
+              department: isSSS ? r.department : null
+            };
+          });
         } catch (error) {
           console.error("Error getting report cards by class and term:", error);
           return [];
@@ -6233,14 +7800,25 @@ var init_storage = __esm({
             status: schema.reportCards.status,
             gradingScale: schema.reportCards.gradingScale,
             generatedAt: schema.reportCards.generatedAt,
-            studentName: sql`CONCAT(${schema.users.firstName}, ' ', ${schema.users.lastName})`.as("studentName"),
+            teacherSignatureUrl: schema.reportCards.teacherSignatureUrl,
+            teacherSignedBy: schema.reportCards.teacherSignedBy,
+            teacherSignedAt: schema.reportCards.teacherSignedAt,
+            principalSignatureUrl: schema.reportCards.principalSignatureUrl,
+            principalSignedBy: schema.reportCards.principalSignedBy,
+            principalSignedAt: schema.reportCards.principalSignedAt,
+            studentName: sql2`CONCAT(${schema.users.firstName}, ' ', ${schema.users.lastName})`.as("studentName"),
             studentUsername: schema.users.username,
             studentPhoto: schema.users.profileImageUrl,
             admissionNumber: schema.students.admissionNumber,
+            department: schema.students.department,
             className: schema.classes.name,
-            termName: schema.academicTerms.name
+            classLevel: schema.classes.level,
+            termName: schema.academicTerms.name,
+            termYear: schema.academicTerms.year
           }).from(schema.reportCards).innerJoin(schema.students, eq2(schema.reportCards.studentId, schema.students.id)).innerJoin(schema.users, eq2(schema.students.id, schema.users.id)).innerJoin(schema.classes, eq2(schema.reportCards.classId, schema.classes.id)).innerJoin(schema.academicTerms, eq2(schema.reportCards.termId, schema.academicTerms.id)).where(eq2(schema.reportCards.id, reportCardId)).limit(1);
           if (reportCard.length === 0) return null;
+          const isSSS = reportCard[0].className?.startsWith("SS") || reportCard[0].classLevel?.includes("Senior Secondary");
+          const academicSession = reportCard[0].termYear || "2024/2025";
           const items = await db2.select({
             id: schema.reportCardItems.id,
             subjectId: schema.reportCardItems.subjectId,
@@ -6266,7 +7844,92 @@ var init_storage = __esm({
             overriddenAt: schema.reportCardItems.overriddenAt,
             overriddenBy: schema.reportCardItems.overriddenBy
           }).from(schema.reportCardItems).innerJoin(schema.subjects, eq2(schema.reportCardItems.subjectId, schema.subjects.id)).where(eq2(schema.reportCardItems.reportCardId, reportCardId)).orderBy(schema.subjects.name);
-          return { ...reportCard[0], items };
+          let teacherSignatureUrl = reportCard[0].teacherSignatureUrl;
+          let teacherSignedBy = reportCard[0].teacherSignedBy;
+          let principalSignatureUrl = reportCard[0].principalSignatureUrl;
+          let principalSignedBy = reportCard[0].principalSignedBy;
+          console.log("[SIGNATURE-DEBUG] Initial state:", {
+            hasStoredTeacherSig: !!teacherSignatureUrl,
+            hasStoredPrincipalSig: !!principalSignatureUrl,
+            classId: reportCard[0].classId
+          });
+          const classInfo = await this.getClass(reportCard[0].classId);
+          console.log("[SIGNATURE-DEBUG] Class info:", { classTeacherId: classInfo?.classTeacherId });
+          if (!teacherSignatureUrl && classInfo?.classTeacherId) {
+            const teacherProfile = await this.getTeacherProfile(classInfo.classTeacherId);
+            console.log("[SIGNATURE-DEBUG] Teacher profile:", {
+              hasProfile: !!teacherProfile,
+              hasSignature: !!teacherProfile?.signatureUrl,
+              signatureLength: teacherProfile?.signatureUrl?.length || 0
+            });
+            if (teacherProfile?.signatureUrl) {
+              teacherSignatureUrl = teacherProfile.signatureUrl;
+              const teacherUser = await this.getUser(classInfo.classTeacherId);
+              teacherSignedBy = teacherUser ? `${teacherUser.firstName} ${teacherUser.lastName}` : null;
+            }
+          }
+          if (!principalSignatureUrl) {
+            const superAdminsWithSignature = await db2.select({
+              signatureUrl: schema.superAdminProfiles.signatureUrl,
+              userId: schema.superAdminProfiles.userId,
+              firstName: schema.users.firstName,
+              lastName: schema.users.lastName,
+              roleId: schema.users.roleId
+            }).from(schema.superAdminProfiles).innerJoin(schema.users, eq2(schema.superAdminProfiles.userId, schema.users.id)).where(and2(
+              isNotNull(schema.superAdminProfiles.signatureUrl),
+              ne(schema.superAdminProfiles.signatureUrl, "")
+            )).limit(1);
+            console.log("[SIGNATURE-DEBUG] Super admins with signature found:", superAdminsWithSignature.length);
+            if (superAdminsWithSignature.length > 0) {
+              console.log("[SIGNATURE-DEBUG] Using super admin signature from:", superAdminsWithSignature[0].firstName, superAdminsWithSignature[0].lastName);
+              principalSignatureUrl = superAdminsWithSignature[0].signatureUrl;
+              principalSignedBy = `${superAdminsWithSignature[0].firstName} ${superAdminsWithSignature[0].lastName}`;
+            } else {
+              const adminsWithSignature = await db2.select({
+                signatureUrl: schema.adminProfiles.signatureUrl,
+                userId: schema.adminProfiles.userId,
+                firstName: schema.users.firstName,
+                lastName: schema.users.lastName,
+                roleId: schema.users.roleId
+              }).from(schema.adminProfiles).innerJoin(schema.users, eq2(schema.adminProfiles.userId, schema.users.id)).where(and2(
+                isNotNull(schema.adminProfiles.signatureUrl),
+                ne(schema.adminProfiles.signatureUrl, "")
+              )).limit(1);
+              console.log("[SIGNATURE-DEBUG] Admins with signature found:", adminsWithSignature.length);
+              if (adminsWithSignature.length > 0) {
+                console.log("[SIGNATURE-DEBUG] Using admin signature from:", adminsWithSignature[0].firstName, adminsWithSignature[0].lastName);
+                principalSignatureUrl = adminsWithSignature[0].signatureUrl;
+                principalSignedBy = `${adminsWithSignature[0].firstName} ${adminsWithSignature[0].lastName}`;
+              }
+            }
+          }
+          const skills = await this.getReportCardSkills(reportCardId);
+          return {
+            ...reportCard[0],
+            isSSS,
+            academicSession,
+            department: isSSS ? reportCard[0].department : null,
+            teacherSignatureUrl,
+            teacherSignedBy,
+            principalSignatureUrl,
+            principalSignedBy,
+            items,
+            affectiveTraits: {
+              punctuality: skills?.punctuality || 0,
+              neatness: skills?.neatness || 0,
+              attentiveness: skills?.attentiveness || 0,
+              teamwork: skills?.teamwork || 0,
+              leadership: skills?.leadership || 0,
+              assignments: skills?.assignments || 0,
+              classParticipation: skills?.classParticipation || 0
+            },
+            psychomotorSkills: {
+              sports: skills?.sports || 0,
+              handwriting: skills?.handwriting || 0,
+              musicalSkills: skills?.musicalSkills || 0,
+              creativity: skills?.creativity || 0
+            }
+          };
         } catch (error) {
           console.error("Error getting report card with items:", error);
           return null;
@@ -6282,6 +7945,11 @@ var init_storage = __esm({
           const isSeniorSecondary = classInfo && ["SS1", "SS2", "SS3", "Senior Secondary"].some(
             (level) => classInfo.level?.toLowerCase().includes(level.toLowerCase())
           );
+          let classTeacherSignatureUrl = null;
+          if (classInfo?.classTeacherId) {
+            const teacherProfile = await this.getTeacherProfile(classInfo.classTeacherId);
+            classTeacherSignatureUrl = teacherProfile?.signatureUrl || null;
+          }
           for (const student of students3) {
             try {
               const existingReportCard = await db2.select().from(schema.reportCards).where(and2(
@@ -6290,6 +7958,8 @@ var init_storage = __esm({
               )).limit(1);
               let reportCardId;
               if (existingReportCard.length === 0) {
+                const studentUser = await this.getUser(student.userId);
+                const studentFirstName = studentUser?.firstName || "Student";
                 const newReportCard = await db2.insert(schema.reportCards).values({
                   studentId: student.id,
                   classId,
@@ -6298,7 +7968,12 @@ var init_storage = __esm({
                   gradingScale,
                   scoreAggregationMode: "last",
                   generatedBy,
-                  generatedAt: /* @__PURE__ */ new Date()
+                  generatedAt: /* @__PURE__ */ new Date(),
+                  // Pre-populate class teacher's signature if available
+                  teacherSignatureUrl: classTeacherSignatureUrl,
+                  teacherSignedBy: classTeacherSignatureUrl ? classInfo?.classTeacherId : null,
+                  teacherSignedAt: classTeacherSignatureUrl ? /* @__PURE__ */ new Date() : null
+                  // Default comments will be generated after scores are populated
                 }).returning();
                 reportCardId = newReportCard[0].id;
                 created++;
@@ -6578,7 +8253,17 @@ var init_storage = __esm({
             updateData.locked = true;
           }
           const result = await db2.update(schema.reportCards).set(updateData).where(eq2(schema.reportCards.id, reportCardId)).returning();
-          return { reportCard: result[0], previousStatus: currentStatus };
+          const updatedReportCard = result[0];
+          if (status === "finalized" && updatedReportCard) {
+            console.log(`[REPORT-CARD-STATUS] Recalculating totals for finalized report card ${reportCardId}`);
+            await this.recalculateReportCard(reportCardId, updatedReportCard.gradingScale || "standard");
+            if (updatedReportCard.classId && updatedReportCard.termId) {
+              await this.recalculateClassPositions(updatedReportCard.classId, updatedReportCard.termId);
+            }
+            const finalResult = await db2.select().from(schema.reportCards).where(eq2(schema.reportCards.id, reportCardId)).limit(1);
+            return { reportCard: finalResult[0], previousStatus: currentStatus };
+          }
+          return { reportCard: updatedReportCard, previousStatus: currentStatus };
         } catch (error) {
           console.error("Error updating report card status (optimized):", error);
           throw error;
@@ -6593,6 +8278,70 @@ var init_storage = __esm({
           return result[0];
         } catch (error) {
           console.error("Error updating report card remarks:", error);
+          return void 0;
+        }
+      }
+      // Report comment template methods
+      async getReportCommentTemplates(role) {
+        try {
+          if (role) {
+            return await db2.select().from(schema.reportCommentTemplates).where(eq2(schema.reportCommentTemplates.role, role)).orderBy(desc(schema.reportCommentTemplates.minPercentage));
+          }
+          return await db2.select().from(schema.reportCommentTemplates).orderBy(schema.reportCommentTemplates.role, desc(schema.reportCommentTemplates.minPercentage));
+        } catch (error) {
+          console.error("Error getting report comment templates:", error);
+          return [];
+        }
+      }
+      async getReportCommentTemplate(id) {
+        try {
+          const result = await db2.select().from(schema.reportCommentTemplates).where(eq2(schema.reportCommentTemplates.id, id)).limit(1);
+          return result[0];
+        } catch (error) {
+          console.error("Error getting report comment template:", error);
+          return void 0;
+        }
+      }
+      async createReportCommentTemplate(template) {
+        try {
+          const result = await db2.insert(schema.reportCommentTemplates).values(template).returning();
+          return result[0];
+        } catch (error) {
+          console.error("Error creating report comment template:", error);
+          throw error;
+        }
+      }
+      async updateReportCommentTemplate(id, template) {
+        try {
+          const result = await db2.update(schema.reportCommentTemplates).set({ ...template, updatedAt: /* @__PURE__ */ new Date() }).where(eq2(schema.reportCommentTemplates.id, id)).returning();
+          return result[0];
+        } catch (error) {
+          console.error("Error updating report comment template:", error);
+          return void 0;
+        }
+      }
+      async deleteReportCommentTemplate(id) {
+        try {
+          await db2.delete(schema.reportCommentTemplates).where(eq2(schema.reportCommentTemplates.id, id));
+          return true;
+        } catch (error) {
+          console.error("Error deleting report comment template:", error);
+          return false;
+        }
+      }
+      async getCommentTemplateByPerformance(role, percentage) {
+        try {
+          const result = await db2.select().from(schema.reportCommentTemplates).where(
+            and2(
+              eq2(schema.reportCommentTemplates.role, role),
+              eq2(schema.reportCommentTemplates.isActive, true),
+              lte(schema.reportCommentTemplates.minPercentage, percentage),
+              gte(schema.reportCommentTemplates.maxPercentage, percentage)
+            )
+          ).limit(1);
+          return result[0];
+        } catch (error) {
+          console.error("Error getting comment template by performance:", error);
           return void 0;
         }
       }
@@ -6651,6 +8400,9 @@ var init_storage = __esm({
       async recalculateClassPositions(classId, termId) {
         try {
           console.log(`[REPORT-CARD] Calculating class positions for class ${classId}, term ${termId}`);
+          const settings3 = await db2.select().from(schema.systemSettings).limit(1);
+          const positioningMethod = settings3[0]?.positioningMethod || "average";
+          console.log(`[REPORT-CARD] Using positioning method: ${positioningMethod}`);
           const reportCards3 = await db2.select({
             id: schema.reportCards.id,
             studentId: schema.reportCards.studentId,
@@ -6666,8 +8418,15 @@ var init_storage = __esm({
           }
           const totalStudentsInClass = reportCards3.length;
           const sortedCards = [...reportCards3].sort((a, b) => {
-            const scoreA = a.totalScore ?? a.averageScore ?? 0;
-            const scoreB = b.totalScore ?? b.averageScore ?? 0;
+            let scoreA;
+            let scoreB;
+            if (positioningMethod === "average") {
+              scoreA = a.averageScore ?? 0;
+              scoreB = b.averageScore ?? 0;
+            } else {
+              scoreA = a.totalScore ?? a.averageScore ?? 0;
+              scoreB = b.totalScore ?? b.averageScore ?? 0;
+            }
             return scoreB - scoreA;
           });
           const positionMap = /* @__PURE__ */ new Map();
@@ -6675,7 +8434,7 @@ var init_storage = __esm({
           let previousScore = null;
           for (let i = 0; i < sortedCards.length; i++) {
             const card = sortedCards[i];
-            const score = card.totalScore ?? card.averageScore ?? 0;
+            const score = positioningMethod === "average" ? card.averageScore ?? 0 : card.totalScore ?? card.averageScore ?? 0;
             if (i === 0) {
               lastAssignedPosition = 1;
             } else if (score !== previousScore) {
@@ -6938,12 +8697,12 @@ var init_storage = __esm({
             classId: schema.reportCards.classId,
             termId: schema.reportCards.termId,
             status: schema.reportCards.status,
-            studentName: sql`CONCAT(${schema.users.firstName}, ' ', ${schema.users.lastName})`.as("studentName"),
+            studentName: sql2`CONCAT(${schema.users.firstName}, ' ', ${schema.users.lastName})`.as("studentName"),
             admissionNumber: schema.students.admissionNumber,
             className: schema.classes.name,
             termName: schema.academicTerms.name,
-            canEditTest: sql`CASE WHEN ${schema.reportCardItems.testExamCreatedBy} = ${teacherId} THEN true ELSE false END`.as("canEditTest"),
-            canEditExam: sql`CASE WHEN ${schema.reportCardItems.examExamCreatedBy} = ${teacherId} THEN true ELSE false END`.as("canEditExam")
+            canEditTest: sql2`CASE WHEN ${schema.reportCardItems.testExamCreatedBy} = ${teacherId} THEN true ELSE false END`.as("canEditTest"),
+            canEditExam: sql2`CASE WHEN ${schema.reportCardItems.examExamCreatedBy} = ${teacherId} THEN true ELSE false END`.as("canEditExam")
           }).from(schema.reportCardItems).innerJoin(schema.reportCards, eq2(schema.reportCardItems.reportCardId, schema.reportCards.id)).innerJoin(schema.subjects, eq2(schema.reportCardItems.subjectId, schema.subjects.id)).innerJoin(schema.students, eq2(schema.reportCards.studentId, schema.students.id)).innerJoin(schema.users, eq2(schema.students.id, schema.users.id)).innerJoin(schema.classes, eq2(schema.reportCards.classId, schema.classes.id)).innerJoin(schema.academicTerms, eq2(schema.reportCards.termId, schema.academicTerms.id)).where(and2(...conditions)).orderBy(desc(schema.reportCards.id), schema.subjects.name);
           const reportCardMap = /* @__PURE__ */ new Map();
           for (const item of items) {
@@ -7303,7 +9062,7 @@ var init_storage = __esm({
         try {
           const since = new Date(Date.now() - hours * 60 * 60 * 1e3);
           const sinceISO = since.toISOString();
-          const events = await this.db.select().from(schema.performanceEvents).where(sql`${schema.performanceEvents.createdAt} >= ${sinceISO}`);
+          const events = await this.db.select().from(schema.performanceEvents).where(sql2`${schema.performanceEvents.createdAt} >= ${sinceISO}`);
           const totalEvents = events.length;
           const goalAchievedCount = events.filter((e) => e.goalAchieved).length;
           const goalAchievementRate = totalEvents > 0 ? goalAchievedCount / totalEvents * 100 : 0;
@@ -7335,7 +9094,7 @@ var init_storage = __esm({
           const since = new Date(Date.now() - hours * 60 * 60 * 1e3);
           const sinceISO = since.toISOString();
           const alerts = await this.db.select().from(schema.performanceEvents).where(and2(
-            sql`${schema.performanceEvents.createdAt} >= ${sinceISO}`,
+            sql2`${schema.performanceEvents.createdAt} >= ${sinceISO}`,
             eq2(schema.performanceEvents.goalAchieved, false)
           )).orderBy(desc(schema.performanceEvents.createdAt)).limit(50);
           return alerts;
@@ -7863,13 +9622,91 @@ var init_storage = __esm({
       }
       async updateSystemSettings(settings3) {
         const existing = await this.getSystemSettings();
+        const updateData = { ...settings3 };
+        delete updateData.id;
+        delete updateData.createdAt;
+        delete updateData.updatedAt;
         if (existing) {
-          const result = await this.db.update(schema.systemSettings).set({ ...settings3, updatedAt: /* @__PURE__ */ new Date() }).where(eq2(schema.systemSettings.id, existing.id)).returning();
-          return result[0];
+          const result = await db2.update(schema.systemSettings).set({ ...updateData, updatedAt: /* @__PURE__ */ new Date() }).where(eq2(schema.systemSettings.id, existing.id)).returning();
+          const rows = result;
+          if (!rows || !rows.length) throw new Error("Update failed");
+          return rows[0];
         } else {
-          const result = await this.db.insert(schema.systemSettings).values(settings3).returning();
-          return result[0];
+          const result = await db2.insert(schema.systemSettings).values({ ...updateData, createdAt: /* @__PURE__ */ new Date(), updatedAt: /* @__PURE__ */ new Date() }).returning();
+          const rows = result;
+          if (!rows || !rows.length) throw new Error("Insert failed");
+          return rows[0];
         }
+      }
+      // User recovery management implementations
+      async getDeletedUsers(roleFilter) {
+        if (roleFilter && roleFilter.length > 0) {
+          return await this.db.select().from(schema.users).where(and2(
+            sql2`${schema.users.deletedAt} IS NOT NULL`,
+            inArray2(schema.users.roleId, roleFilter)
+          )).orderBy(desc(schema.users.deletedAt));
+        }
+        return await this.db.select().from(schema.users).where(sql2`${schema.users.deletedAt} IS NOT NULL`).orderBy(desc(schema.users.deletedAt));
+      }
+      async restoreUser(userId, restoredBy) {
+        const result = await this.db.update(schema.users).set({
+          isActive: true,
+          deletedAt: null,
+          deletedBy: null,
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(eq2(schema.users.id, userId)).returning();
+        return result[0];
+      }
+      async softDeleteUser(userId, deletedBy) {
+        const result = await this.db.update(schema.users).set({
+          isActive: false,
+          deletedAt: /* @__PURE__ */ new Date(),
+          deletedBy
+        }).where(eq2(schema.users.id, userId)).returning();
+        return result.length > 0;
+      }
+      async permanentlyDeleteUser(userId) {
+        try {
+          const user = await this.getUser(userId);
+          if (!user) return false;
+          const roleId = user.roleId;
+          if (roleId === 4) {
+            return await this.hardDeleteStudent(userId);
+          }
+          const deletionManager = new SmartDeletionManager();
+          const result = await deletionManager.deleteUser(userId);
+          return result.success;
+        } catch (error) {
+          console.error("Error permanently deleting user:", error);
+          return false;
+        }
+      }
+      async getExpiredDeletedUsers(retentionDays) {
+        const cutoffDate = /* @__PURE__ */ new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
+        return await this.db.select().from(schema.users).where(and2(
+          sql2`${schema.users.deletedAt} IS NOT NULL`,
+          lte(schema.users.deletedAt, cutoffDate)
+        )).orderBy(asc(schema.users.deletedAt));
+      }
+      async permanentlyDeleteExpiredUsers(retentionDays) {
+        const expiredUsers = await this.getExpiredDeletedUsers(retentionDays);
+        let deleted = 0;
+        const errors = [];
+        for (const user of expiredUsers) {
+          try {
+            const success = await this.permanentlyDeleteUser(user.id);
+            if (success) {
+              deleted++;
+              console.log(`Permanently deleted expired user: ${user.username || user.email} (ID: ${user.id})`);
+            } else {
+              errors.push(`Failed to delete user ${user.id}`);
+            }
+          } catch (error) {
+            errors.push(`Error deleting user ${user.id}: ${error.message}`);
+          }
+        }
+        return { deleted, errors };
       }
       // Student subject assignment implementations
       async createStudentSubjectAssignment(assignment) {
@@ -7978,7 +9815,7 @@ var init_storage = __esm({
                 and2(
                   eq2(schema.classSubjectMappings.classId, classId),
                   eq2(schema.classSubjectMappings.subjectId, subjectId),
-                  sql`${schema.classSubjectMappings.department} IS NULL`
+                  sql2`${schema.classSubjectMappings.department} IS NULL`
                 )
               ).returning();
               removedCount += result.length;
@@ -8342,1108 +10179,280 @@ var init_storage = __esm({
           return { updated: 0, errors: [error.message] };
         }
       }
+      /**
+       * COMPREHENSIVE FIX: Sync all missing exam scores to existing report card items
+       * This finds all exam_results that have scores but aren't reflected in report_card_items
+       * and syncs them properly
+       */
+      async syncAllMissingExamScores(termId) {
+        let synced = 0;
+        let failed = 0;
+        const errors = [];
+        try {
+          console.log(`[SYNC-ALL-MISSING] Starting comprehensive sync of missing exam scores...`);
+          let targetTermId = termId;
+          if (!targetTermId) {
+            const currentTerm = await this.getCurrentTerm();
+            if (currentTerm) {
+              targetTermId = currentTerm.id;
+            }
+          }
+          const missingExamScores = await db2.select({
+            examResultId: schema.examResults.id,
+            studentId: schema.examResults.studentId,
+            examId: schema.examResults.examId,
+            score: schema.examResults.score,
+            maxScore: schema.examResults.maxScore,
+            examType: schema.exams.examType,
+            subjectId: schema.exams.subjectId,
+            classId: schema.exams.classId,
+            examTermId: schema.exams.termId,
+            gradingScale: schema.exams.gradingScale,
+            createdBy: schema.exams.createdBy,
+            reportCardId: schema.reportCards.id,
+            reportCardItemId: schema.reportCardItems.id,
+            currentExamScore: schema.reportCardItems.examScore,
+            currentTestScore: schema.reportCardItems.testScore
+          }).from(schema.examResults).innerJoin(schema.exams, eq2(schema.examResults.examId, schema.exams.id)).innerJoin(schema.reportCards, and2(
+            eq2(schema.reportCards.studentId, schema.examResults.studentId),
+            eq2(schema.reportCards.termId, schema.exams.termId)
+          )).leftJoin(schema.reportCardItems, and2(
+            eq2(schema.reportCardItems.reportCardId, schema.reportCards.id),
+            eq2(schema.reportCardItems.subjectId, schema.exams.subjectId)
+          )).where(and2(
+            sql2`${schema.examResults.score} IS NOT NULL`,
+            targetTermId ? eq2(schema.exams.termId, targetTermId) : sql2`1=1`,
+            or2(
+              // Exam type results missing in report card
+              and2(
+                inArray2(schema.exams.examType, ["exam", "final", "midterm"]),
+                or2(
+                  sql2`${schema.reportCardItems.id} IS NULL`,
+                  sql2`${schema.reportCardItems.exam_score} IS NULL`
+                )
+              ),
+              // Test type results missing in report card
+              and2(
+                inArray2(schema.exams.examType, ["test", "quiz", "assignment"]),
+                or2(
+                  sql2`${schema.reportCardItems.id} IS NULL`,
+                  sql2`${schema.reportCardItems.test_score} IS NULL`
+                )
+              )
+            )
+          ));
+          console.log(`[SYNC-ALL-MISSING] Found ${missingExamScores.length} exam results to sync`);
+          const reportCardIdsToRecalculate = /* @__PURE__ */ new Set();
+          for (const record of missingExamScores) {
+            try {
+              const isTest = ["test", "quiz", "assignment"].includes(record.examType);
+              const isMainExam = ["exam", "final", "midterm"].includes(record.examType);
+              if (isMainExam && record.currentExamScore !== null) continue;
+              if (isTest && record.currentTestScore !== null) continue;
+              const safeScore = typeof record.score === "number" ? record.score : parseInt(String(record.score), 10) || 0;
+              const safeMaxScore = typeof record.maxScore === "number" ? record.maxScore : parseInt(String(record.maxScore), 10) || 0;
+              if (record.reportCardItemId) {
+                const updateData = { updatedAt: /* @__PURE__ */ new Date() };
+                if (isTest) {
+                  updateData.testExamId = record.examId;
+                  updateData.testExamCreatedBy = record.createdBy;
+                  updateData.testScore = safeScore;
+                  updateData.testMaxScore = safeMaxScore;
+                } else if (isMainExam) {
+                  updateData.examExamId = record.examId;
+                  updateData.examExamCreatedBy = record.createdBy;
+                  updateData.examScore = safeScore;
+                  updateData.examMaxScore = safeMaxScore;
+                }
+                await db2.update(schema.reportCardItems).set(updateData).where(eq2(schema.reportCardItems.id, record.reportCardItemId));
+                reportCardIdsToRecalculate.add(record.reportCardId);
+                synced++;
+                console.log(`[SYNC-ALL-MISSING] Updated item ${record.reportCardItemId}: ${isTest ? "test" : "exam"} score ${safeScore}/${safeMaxScore}`);
+              } else if (record.reportCardId && record.subjectId) {
+                const newItem = await db2.insert(schema.reportCardItems).values({
+                  reportCardId: record.reportCardId,
+                  subjectId: record.subjectId,
+                  totalMarks: 100,
+                  obtainedMarks: 0,
+                  percentage: 0,
+                  testExamId: isTest ? record.examId : null,
+                  testExamCreatedBy: isTest ? record.createdBy : null,
+                  testScore: isTest ? safeScore : null,
+                  testMaxScore: isTest ? safeMaxScore : null,
+                  examExamId: isMainExam ? record.examId : null,
+                  examExamCreatedBy: isMainExam ? record.createdBy : null,
+                  examScore: isMainExam ? safeScore : null,
+                  examMaxScore: isMainExam ? safeMaxScore : null
+                }).returning();
+                reportCardIdsToRecalculate.add(record.reportCardId);
+                synced++;
+                console.log(`[SYNC-ALL-MISSING] Created new item for report card ${record.reportCardId}, subject ${record.subjectId}`);
+              }
+            } catch (recordError) {
+              failed++;
+              errors.push(`Failed to sync exam result ${record.examResultId}: ${recordError.message}`);
+            }
+          }
+          console.log(`[SYNC-ALL-MISSING] Recalculating ${reportCardIdsToRecalculate.size} report cards...`);
+          for (const reportCardId of reportCardIdsToRecalculate) {
+            try {
+              await this.recalculateReportCard(reportCardId, "standard");
+            } catch (calcError) {
+              errors.push(`Failed to recalculate report card ${reportCardId}: ${calcError.message}`);
+            }
+          }
+          console.log(`[SYNC-ALL-MISSING] Completed: ${synced} synced, ${failed} failed`);
+          return { synced, failed, errors };
+        } catch (error) {
+          console.error("[SYNC-ALL-MISSING] Error:", error);
+          return { synced: 0, failed: 0, errors: [error.message] };
+        }
+      }
+      /**
+       * Bulk sync all results for a specific exam to report cards
+       * Useful for teachers to sync all their exam results at once
+       */
+      async syncExamResultsToReportCards(examId) {
+        let synced = 0;
+        let failed = 0;
+        const errors = [];
+        try {
+          console.log(`[SYNC-EXAM-RESULTS] Starting bulk sync for exam ${examId}...`);
+          const examResults3 = await db2.select({
+            id: schema.examResults.id,
+            studentId: schema.examResults.studentId,
+            score: schema.examResults.score,
+            maxScore: schema.examResults.maxScore
+          }).from(schema.examResults).where(and2(
+            eq2(schema.examResults.examId, examId),
+            sql2`${schema.examResults.score} IS NOT NULL`
+          ));
+          console.log(`[SYNC-EXAM-RESULTS] Found ${examResults3.length} results to sync for exam ${examId}`);
+          const exam = await this.getExamById(examId);
+          if (!exam) {
+            return { synced: 0, failed: 0, errors: ["Exam not found"] };
+          }
+          for (const result of examResults3) {
+            try {
+              const syncResult = await this.syncExamScoreToReportCard(
+                result.studentId,
+                examId,
+                result.score || 0,
+                result.maxScore || exam.totalMarks || 100
+              );
+              if (syncResult.success) {
+                synced++;
+              } else {
+                failed++;
+                errors.push(`Student ${result.studentId}: ${syncResult.message}`);
+              }
+            } catch (studentError) {
+              failed++;
+              errors.push(`Student ${result.studentId}: ${studentError.message}`);
+            }
+          }
+          console.log(`[SYNC-EXAM-RESULTS] Completed: ${synced} synced, ${failed} failed`);
+          return { synced, failed, errors };
+        } catch (error) {
+          console.error("[SYNC-EXAM-RESULTS] Error:", error);
+          return { synced: 0, failed: 0, errors: [error.message] };
+        }
+      }
+      // Report Card Skills Methods
+      async getReportCardSkills(reportCardId) {
+        try {
+          const result = await db2.select().from(schema.reportCardSkills).where(eq2(schema.reportCardSkills.reportCardId, reportCardId)).limit(1);
+          return result[0];
+        } catch (error) {
+          console.error("Error getting report card skills:", error);
+          return void 0;
+        }
+      }
+      async saveReportCardSkills(reportCardId, skills) {
+        try {
+          const existing = await this.getReportCardSkills(reportCardId);
+          if (existing) {
+            const mergeSkill = (key, existingVal) => {
+              const newVal = skills[key];
+              return newVal !== void 0 ? newVal : existingVal ?? 0;
+            };
+            const result = await db2.update(schema.reportCardSkills).set({
+              punctuality: mergeSkill("punctuality", existing.punctuality),
+              neatness: mergeSkill("neatness", existing.neatness),
+              attentiveness: mergeSkill("attentiveness", existing.attentiveness),
+              teamwork: mergeSkill("teamwork", existing.teamwork),
+              leadership: mergeSkill("leadership", existing.leadership),
+              assignments: mergeSkill("assignments", existing.assignments),
+              classParticipation: mergeSkill("classParticipation", existing.classParticipation),
+              sports: mergeSkill("sports", existing.sports),
+              handwriting: mergeSkill("handwriting", existing.handwriting),
+              musicalSkills: mergeSkill("musicalSkills", existing.musicalSkills),
+              creativity: mergeSkill("creativity", existing.creativity),
+              recordedBy: skills.recordedBy,
+              updatedAt: /* @__PURE__ */ new Date()
+            }).where(eq2(schema.reportCardSkills.reportCardId, reportCardId)).returning();
+            return result[0];
+          } else {
+            const result = await db2.insert(schema.reportCardSkills).values({
+              reportCardId,
+              punctuality: skills.punctuality || 0,
+              neatness: skills.neatness || 0,
+              attentiveness: skills.attentiveness || 0,
+              teamwork: skills.teamwork || 0,
+              leadership: skills.leadership || 0,
+              assignments: skills.assignments || 0,
+              classParticipation: skills.classParticipation || 0,
+              sports: skills.sports || 0,
+              handwriting: skills.handwriting || 0,
+              musicalSkills: skills.musicalSkills || 0,
+              creativity: skills.creativity || 0,
+              recordedBy: skills.recordedBy
+            }).returning();
+            return result[0];
+          }
+        } catch (error) {
+          console.error("Error saving report card skills:", error);
+          throw error;
+        }
+      }
     };
     storage = initializeStorageSync();
   }
 });
 
-// shared/schema.ts
-import { sql as sql2 } from "drizzle-orm";
-import { sqliteTable, text as text2, integer as integer2, index as index2, uniqueIndex as uniqueIndex2 } from "drizzle-orm/sqlite-core";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod";
-var roles2, users2, passwordResetTokens2, passwordResetAttempts2, invites2, notifications2, academicTerms2, classes2, subjects2, students2, teacherProfiles2, adminProfiles2, parentProfiles2, superAdminProfiles2, systemSettings2, attendance2, exams2, examQuestions2, questionOptions2, examSessions2, studentAnswers2, examResults2, examSubmissionsArchive2, questionBanks2, questionBankItems2, questionBankOptions2, announcements2, messages2, galleryCategories2, gallery2, homePageContent2, contactMessages2, reportCards2, reportCardItems2, studyResources2, performanceEvents2, teacherClassAssignments2, teacherAssignmentHistory2, gradingBoundaries2, continuousAssessment2, unauthorizedAccessLogs2, studentSubjectAssignments2, classSubjectMappings2, timetable2, gradingTasks2, auditLogs2, settings2, counters2, vacancies2, teacherApplications2, approvedTeachers2, insertRoleSchema, insertUserSchema, insertPasswordResetTokenSchema, insertPasswordResetAttemptSchema, insertInviteSchema, insertStudentSchema, insertClassSchema, insertSubjectSchema, insertAcademicTermSchema, insertAttendanceSchema, insertExamSchema, insertExamResultSchema, insertExamSubmissionsArchiveSchema, insertAnnouncementSchema, insertMessageSchema, insertGalleryCategorySchema, insertGallerySchema, insertHomePageContentSchema, insertContactMessageSchema, insertReportCardSchema, insertReportCardItemSchema, insertStudyResourceSchema, insertPerformanceEventSchema, insertTeacherClassAssignmentSchema, insertTeacherAssignmentHistorySchema, insertGradingBoundarySchema, insertContinuousAssessmentSchema, insertUnauthorizedAccessLogSchema, insertTimetableSchema, insertGradingTaskSchema, insertAuditLogSchema, insertSettingSchema, insertCounterSchema, createStudentWithAutoCredsSchema, createStudentSchema, quickCreateStudentSchema, csvStudentSchema, insertExamQuestionSchema, insertQuestionOptionSchema, createQuestionOptionSchema, insertExamSessionSchema, updateExamSessionSchema, insertStudentAnswerSchema, insertNotificationSchema, insertTeacherProfileSchema, insertAdminProfileSchema, insertParentProfileSchema, insertStudentSubjectAssignmentSchema, insertClassSubjectMappingSchema, insertVacancySchema, insertTeacherApplicationSchema, insertApprovedTeacherSchema, insertSuperAdminProfileSchema, insertSystemSettingsSchema, insertQuestionBankSchema, insertQuestionBankItemSchema, insertQuestionBankOptionSchema;
-var init_schema = __esm({
-  "shared/schema.ts"() {
+// shared/role-constants.ts
+var ROLE_IDS, ROLE_CODES, ROLE_NAMES, ROLE_PORTALS;
+var init_role_constants = __esm({
+  "shared/role-constants.ts"() {
     "use strict";
-    roles2 = sqliteTable("roles", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      name: text2("name").notNull().unique(),
-      permissions: text2("permissions").notNull().default("[]"),
-      // JSON array as text
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    });
-    users2 = sqliteTable("users", {
-      id: text2("id").primaryKey(),
-      username: text2("username").unique(),
-      email: text2("email").notNull(),
-      recoveryEmail: text2("recovery_email"),
-      passwordHash: text2("password_hash"),
-      mustChangePassword: integer2("must_change_password", { mode: "boolean" }).notNull().default(true),
-      roleId: integer2("role_id").notNull().references(() => roles2.id),
-      firstName: text2("first_name").notNull(),
-      lastName: text2("last_name").notNull(),
-      phone: text2("phone"),
-      address: text2("address"),
-      dateOfBirth: text2("date_of_birth"),
-      // YYYY-MM-DD format
-      gender: text2("gender"),
-      // 'Male', 'Female', 'Other'
-      nationalId: text2("national_id"),
-      profileImageUrl: text2("profile_image_url"),
-      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
-      authProvider: text2("auth_provider").notNull().default("local"),
-      googleId: text2("google_id").unique(),
-      // Security & audit fields
-      status: text2("status").notNull().default("active"),
-      // 'pending', 'active', 'suspended', 'disabled'
-      createdVia: text2("created_via").notNull().default("admin"),
-      // 'bulk', 'invite', 'self', 'google', 'admin'
-      createdBy: text2("created_by"),
-      approvedBy: text2("approved_by"),
-      approvedAt: integer2("approved_at", { mode: "timestamp" }),
-      lastLoginAt: integer2("last_login_at", { mode: "timestamp" }),
-      lastLoginIp: text2("last_login_ip"),
-      mfaEnabled: integer2("mfa_enabled", { mode: "boolean" }).notNull().default(false),
-      mfaSecret: text2("mfa_secret"),
-      accountLockedUntil: integer2("account_locked_until", { mode: "timestamp" }),
-      // Profile completion fields
-      profileCompleted: integer2("profile_completed", { mode: "boolean" }).notNull().default(false),
-      profileSkipped: integer2("profile_skipped", { mode: "boolean" }).notNull().default(false),
-      profileCompletionPercentage: integer2("profile_completion_percentage").notNull().default(0),
-      state: text2("state"),
-      country: text2("country"),
-      securityQuestion: text2("security_question"),
-      securityAnswerHash: text2("security_answer_hash"),
-      dataPolicyAgreed: integer2("data_policy_agreed", { mode: "boolean" }).notNull().default(false),
-      dataPolicyAgreedAt: integer2("data_policy_agreed_at", { mode: "timestamp" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      usersEmailIdx: index2("users_email_idx").on(table.email),
-      usersStatusIdx: index2("users_status_idx").on(table.status),
-      usersGoogleIdIdx: index2("users_google_id_idx").on(table.googleId),
-      usersRoleIdIdx: index2("users_role_id_idx").on(table.roleId),
-      usersUsernameIdx: index2("users_username_idx").on(table.username)
-    }));
-    passwordResetTokens2 = sqliteTable("password_reset_tokens", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      userId: text2("user_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
-      token: text2("token").notNull().unique(),
-      expiresAt: integer2("expires_at", { mode: "timestamp" }).notNull(),
-      usedAt: integer2("used_at", { mode: "timestamp" }),
-      ipAddress: text2("ip_address"),
-      resetBy: text2("reset_by").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      passwordResetTokensUserIdIdx: index2("password_reset_tokens_user_id_idx").on(table.userId),
-      passwordResetTokensTokenIdx: index2("password_reset_tokens_token_idx").on(table.token)
-    }));
-    passwordResetAttempts2 = sqliteTable("password_reset_attempts", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      identifier: text2("identifier").notNull(),
-      ipAddress: text2("ip_address").notNull(),
-      attemptedAt: integer2("attempted_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      success: integer2("success", { mode: "boolean" }).notNull().default(false)
-    }, (table) => ({
-      passwordResetAttemptsIdentifierIdx: index2("password_reset_attempts_identifier_idx").on(table.identifier),
-      passwordResetAttemptsIpIdx: index2("password_reset_attempts_ip_idx").on(table.ipAddress),
-      passwordResetAttemptsTimeIdx: index2("password_reset_attempts_time_idx").on(table.attemptedAt)
-    }));
-    invites2 = sqliteTable("invites", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      token: text2("token").notNull().unique(),
-      email: text2("email").notNull(),
-      roleId: integer2("role_id").notNull().references(() => roles2.id),
-      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
-      expiresAt: integer2("expires_at", { mode: "timestamp" }).notNull(),
-      acceptedAt: integer2("accepted_at", { mode: "timestamp" }),
-      acceptedBy: text2("accepted_by").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      invitesTokenIdx: index2("invites_token_idx").on(table.token),
-      invitesEmailIdx: index2("invites_email_idx").on(table.email)
-    }));
-    notifications2 = sqliteTable("notifications", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      userId: text2("user_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
-      type: text2("type").notNull(),
-      title: text2("title").notNull(),
-      message: text2("message").notNull(),
-      relatedEntityType: text2("related_entity_type"),
-      relatedEntityId: text2("related_entity_id"),
-      isRead: integer2("is_read", { mode: "boolean" }).notNull().default(false),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      notificationsUserIdIdx: index2("notifications_user_id_idx").on(table.userId),
-      notificationsIsReadIdx: index2("notifications_is_read_idx").on(table.isRead)
-    }));
-    academicTerms2 = sqliteTable("academic_terms", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      name: text2("name").notNull(),
-      year: text2("year").notNull(),
-      startDate: text2("start_date").notNull(),
-      // YYYY-MM-DD format
-      endDate: text2("end_date").notNull(),
-      isCurrent: integer2("is_current", { mode: "boolean" }).notNull().default(false),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    });
-    classes2 = sqliteTable("classes", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      name: text2("name").notNull().unique(),
-      level: text2("level").notNull(),
-      capacity: integer2("capacity").notNull().default(30),
-      classTeacherId: text2("class_teacher_id").references(() => users2.id, { onDelete: "set null" }),
-      currentTermId: integer2("current_term_id").references(() => academicTerms2.id),
-      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    });
-    subjects2 = sqliteTable("subjects", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      name: text2("name").notNull(),
-      code: text2("code").notNull().unique(),
-      description: text2("description"),
-      category: text2("category").notNull().default("general"),
-      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    });
-    students2 = sqliteTable("students", {
-      id: text2("id").primaryKey().references(() => users2.id, { onDelete: "cascade" }),
-      admissionNumber: text2("admission_number").notNull().unique(),
-      classId: integer2("class_id").references(() => classes2.id),
-      parentId: text2("parent_id").references(() => users2.id, { onDelete: "set null" }),
-      department: text2("department"),
-      admissionDate: text2("admission_date").notNull(),
-      // YYYY-MM-DD format
-      emergencyContact: text2("emergency_contact"),
-      emergencyPhone: text2("emergency_phone"),
-      medicalInfo: text2("medical_info"),
-      guardianName: text2("guardian_name"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    });
-    teacherProfiles2 = sqliteTable("teacher_profiles", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      userId: text2("user_id").notNull().unique().references(() => users2.id, { onDelete: "cascade" }),
-      staffId: text2("staff_id").unique(),
-      subjects: text2("subjects").notNull().default("[]"),
-      // JSON array of integers
-      assignedClasses: text2("assigned_classes").notNull().default("[]"),
-      // JSON array of integers
-      qualification: text2("qualification"),
-      yearsOfExperience: integer2("years_of_experience").notNull().default(0),
-      specialization: text2("specialization"),
-      department: text2("department"),
-      signatureUrl: text2("signature_url"),
-      gradingMode: text2("grading_mode").notNull().default("manual"),
-      autoGradeTheoryQuestions: integer2("auto_grade_theory_questions", { mode: "boolean" }).notNull().default(false),
-      theoryGradingInstructions: text2("theory_grading_instructions"),
-      notificationPreference: text2("notification_preference").notNull().default("all"),
-      availability: text2("availability"),
-      firstLogin: integer2("first_login", { mode: "boolean" }).notNull().default(true),
-      verified: integer2("verified", { mode: "boolean" }).notNull().default(false),
-      verifiedBy: text2("verified_by").references(() => users2.id, { onDelete: "set null" }),
-      verifiedAt: integer2("verified_at", { mode: "timestamp" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    });
-    adminProfiles2 = sqliteTable("admin_profiles", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      userId: text2("user_id").notNull().unique().references(() => users2.id, { onDelete: "cascade" }),
-      department: text2("department"),
-      roleDescription: text2("role_description"),
-      accessLevel: text2("access_level"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    });
-    parentProfiles2 = sqliteTable("parent_profiles", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      userId: text2("user_id").notNull().unique().references(() => users2.id, { onDelete: "cascade" }),
-      occupation: text2("occupation"),
-      contactPreference: text2("contact_preference"),
-      linkedStudents: text2("linked_students").notNull().default("[]"),
-      // JSON array of UUIDs
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    });
-    superAdminProfiles2 = sqliteTable("super_admin_profiles", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      userId: text2("user_id").notNull().unique().references(() => users2.id, { onDelete: "cascade" }),
-      department: text2("department"),
-      accessLevel: text2("access_level").notNull().default("full"),
-      twoFactorEnabled: integer2("two_factor_enabled", { mode: "boolean" }).notNull().default(false),
-      twoFactorSecret: text2("two_factor_secret"),
-      lastPasswordChange: integer2("last_password_change", { mode: "timestamp" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    });
-    systemSettings2 = sqliteTable("system_settings", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      schoolName: text2("school_name"),
-      schoolMotto: text2("school_motto"),
-      schoolLogo: text2("school_logo"),
-      schoolEmail: text2("school_email"),
-      schoolPhone: text2("school_phone"),
-      schoolAddress: text2("school_address"),
-      maintenanceMode: integer2("maintenance_mode", { mode: "boolean" }).notNull().default(false),
-      maintenanceModeMessage: text2("maintenance_mode_message"),
-      enableSmsNotifications: integer2("enable_sms_notifications", { mode: "boolean" }).notNull().default(false),
-      enableEmailNotifications: integer2("enable_email_notifications", { mode: "boolean" }).notNull().default(true),
-      enableExamsModule: integer2("enable_exams_module", { mode: "boolean" }).notNull().default(true),
-      enableAttendanceModule: integer2("enable_attendance_module", { mode: "boolean" }).notNull().default(true),
-      enableResultsModule: integer2("enable_results_module", { mode: "boolean" }).notNull().default(true),
-      themeColor: text2("theme_color").notNull().default("blue"),
-      favicon: text2("favicon"),
-      usernameStudentPrefix: text2("username_student_prefix").notNull().default("THS-STU"),
-      usernameParentPrefix: text2("username_parent_prefix").notNull().default("THS-PAR"),
-      usernameTeacherPrefix: text2("username_teacher_prefix").notNull().default("THS-TCH"),
-      usernameAdminPrefix: text2("username_admin_prefix").notNull().default("THS-ADM"),
-      tempPasswordFormat: text2("temp_password_format").notNull().default("THS@{year}#{random4}"),
-      hideAdminAccountsFromAdmins: integer2("hide_admin_accounts_from_admins", { mode: "boolean" }).notNull().default(true),
-      testWeight: integer2("test_weight").notNull().default(40),
-      examWeight: integer2("exam_weight").notNull().default(60),
-      defaultGradingScale: text2("default_grading_scale").notNull().default("standard"),
-      scoreAggregationMode: text2("score_aggregation_mode").notNull().default("last"),
-      autoCreateReportCard: integer2("auto_create_report_card", { mode: "boolean" }).notNull().default(true),
-      showGradeBreakdown: integer2("show_grade_breakdown", { mode: "boolean" }).notNull().default(true),
-      allowTeacherOverrides: integer2("allow_teacher_overrides", { mode: "boolean" }).notNull().default(true),
-      updatedBy: text2("updated_by").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    });
-    attendance2 = sqliteTable("attendance", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
-      classId: integer2("class_id").notNull().references(() => classes2.id),
-      date: text2("date").notNull(),
-      // YYYY-MM-DD format
-      status: text2("status").notNull(),
-      // 'Present', 'Absent', 'Late', 'Excused'
-      recordedBy: text2("recorded_by").references(() => users2.id, { onDelete: "set null" }),
-      notes: text2("notes"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    });
-    exams2 = sqliteTable("exams", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      name: text2("name").notNull(),
-      classId: integer2("class_id").notNull().references(() => classes2.id),
-      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
-      totalMarks: integer2("total_marks").notNull(),
-      date: text2("date").notNull(),
-      // YYYY-MM-DD format
-      termId: integer2("term_id").notNull().references(() => academicTerms2.id),
-      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
-      teacherInChargeId: text2("teacher_in_charge_id").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      examType: text2("exam_type").notNull().default("exam"),
-      // 'test', 'exam'
-      timerMode: text2("timer_mode").notNull().default("individual"),
-      // 'global', 'individual'
-      timeLimit: integer2("time_limit"),
-      // in minutes
-      startTime: integer2("start_time", { mode: "timestamp" }),
-      endTime: integer2("end_time", { mode: "timestamp" }),
-      instructions: text2("instructions"),
-      isPublished: integer2("is_published", { mode: "boolean" }).notNull().default(false),
-      allowRetakes: integer2("allow_retakes", { mode: "boolean" }).notNull().default(false),
-      shuffleQuestions: integer2("shuffle_questions", { mode: "boolean" }).notNull().default(false),
-      autoGradingEnabled: integer2("auto_grading_enabled", { mode: "boolean" }).notNull().default(true),
-      instantFeedback: integer2("instant_feedback", { mode: "boolean" }).notNull().default(false),
-      showCorrectAnswers: integer2("show_correct_answers", { mode: "boolean" }).notNull().default(false),
-      passingScore: integer2("passing_score"),
-      gradingScale: text2("grading_scale").notNull().default("standard"),
-      enableProctoring: integer2("enable_proctoring", { mode: "boolean" }).notNull().default(false),
-      lockdownMode: integer2("lockdown_mode", { mode: "boolean" }).notNull().default(false),
-      requireWebcam: integer2("require_webcam", { mode: "boolean" }).notNull().default(false),
-      requireFullscreen: integer2("require_fullscreen", { mode: "boolean" }).notNull().default(false),
-      maxTabSwitches: integer2("max_tab_switches").notNull().default(3),
-      shuffleOptions: integer2("shuffle_options", { mode: "boolean" }).notNull().default(false)
-    });
-    examQuestions2 = sqliteTable("exam_questions", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      examId: integer2("exam_id").notNull().references(() => exams2.id),
-      questionText: text2("question_text").notNull(),
-      questionType: text2("question_type").notNull(),
-      // 'multiple_choice', 'text', 'essay', 'true_false', 'fill_blank'
-      points: integer2("points").notNull().default(1),
-      orderNumber: integer2("order_number").notNull(),
-      imageUrl: text2("image_url"),
-      autoGradable: integer2("auto_gradable", { mode: "boolean" }).notNull().default(true),
-      expectedAnswers: text2("expected_answers").notNull().default("[]"),
-      // JSON array
-      caseSensitive: integer2("case_sensitive", { mode: "boolean" }).notNull().default(false),
-      allowPartialCredit: integer2("allow_partial_credit", { mode: "boolean" }).notNull().default(false),
-      partialCreditRules: text2("partial_credit_rules"),
-      explanationText: text2("explanation_text"),
-      hintText: text2("hint_text"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      examQuestionsExamIdIdx: index2("exam_questions_exam_id_idx").on(table.examId),
-      examQuestionsOrderIdx: index2("exam_questions_order_idx").on(table.examId, table.orderNumber)
-    }));
-    questionOptions2 = sqliteTable("question_options", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      questionId: integer2("question_id").notNull().references(() => examQuestions2.id),
-      optionText: text2("option_text").notNull(),
-      isCorrect: integer2("is_correct", { mode: "boolean" }).notNull().default(false),
-      orderNumber: integer2("order_number").notNull(),
-      partialCreditValue: integer2("partial_credit_value").notNull().default(0),
-      explanationText: text2("explanation_text"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      questionOptionsQuestionIdIdx: index2("question_options_question_id_idx").on(table.questionId),
-      questionOptionsCorrectIdx: index2("question_options_correct_idx").on(table.questionId, table.isCorrect)
-    }));
-    examSessions2 = sqliteTable("exam_sessions", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      examId: integer2("exam_id").notNull().references(() => exams2.id),
-      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
-      startedAt: integer2("started_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      submittedAt: integer2("submitted_at", { mode: "timestamp" }),
-      timeRemaining: integer2("time_remaining"),
-      isCompleted: integer2("is_completed", { mode: "boolean" }).notNull().default(false),
-      score: integer2("score"),
-      maxScore: integer2("max_score"),
-      status: text2("status").notNull().default("in_progress"),
-      // 'in_progress', 'submitted', 'graded'
-      metadata: text2("metadata"),
-      // JSON string
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      examSessionsExamStudentIdx: index2("exam_sessions_exam_student_idx").on(table.examId, table.studentId),
-      examSessionsStudentCompletedIdx: index2("exam_sessions_student_completed_idx").on(table.studentId, table.isCompleted),
-      examSessionsActiveSessionsIdx: index2("exam_sessions_active_idx").on(table.examId, table.studentId, table.isCompleted)
-    }));
-    studentAnswers2 = sqliteTable("student_answers", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      sessionId: integer2("session_id").notNull().references(() => examSessions2.id),
-      questionId: integer2("question_id").notNull().references(() => examQuestions2.id),
-      selectedOptionId: integer2("selected_option_id").references(() => questionOptions2.id),
-      textAnswer: text2("text_answer"),
-      isCorrect: integer2("is_correct", { mode: "boolean" }),
-      pointsEarned: integer2("points_earned").notNull().default(0),
-      answeredAt: integer2("answered_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      autoScored: integer2("auto_scored", { mode: "boolean" }).notNull().default(false),
-      manualOverride: integer2("manual_override", { mode: "boolean" }).notNull().default(false),
-      feedbackText: text2("feedback_text"),
-      partialCreditReason: text2("partial_credit_reason")
-    }, (table) => ({
-      studentAnswersSessionIdIdx: index2("student_answers_session_id_idx").on(table.sessionId),
-      studentAnswersSessionQuestionIdx: index2("student_answers_session_question_idx").on(table.sessionId, table.questionId),
-      studentAnswersQuestionIdx: index2("student_answers_question_id_idx").on(table.questionId)
-    }));
-    examResults2 = sqliteTable("exam_results", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      examId: integer2("exam_id").notNull().references(() => exams2.id),
-      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
-      score: integer2("score"),
-      maxScore: integer2("max_score"),
-      marksObtained: integer2("marks_obtained"),
-      grade: text2("grade"),
-      remarks: text2("remarks"),
-      autoScored: integer2("auto_scored", { mode: "boolean" }).notNull().default(false),
-      recordedBy: text2("recorded_by").notNull().references(() => users2.id),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      examResultsExamIdIdx: index2("exam_results_exam_id_idx").on(table.examId),
-      examResultsStudentIdIdx: index2("exam_results_student_id_idx").on(table.studentId),
-      examResultsExamStudentIdx: index2("exam_results_exam_student_idx").on(table.examId, table.studentId),
-      examResultsAutoScoredIdx: index2("exam_results_auto_scored_idx").on(table.autoScored, table.examId)
-    }));
-    examSubmissionsArchive2 = sqliteTable("exam_submissions_archive", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      examId: integer2("exam_id").notNull().references(() => exams2.id),
-      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
-      originalSessionId: integer2("original_session_id"),
-      originalResultId: integer2("original_result_id"),
-      oldScore: integer2("old_score"),
-      oldMaxScore: integer2("old_max_score"),
-      oldAnswers: text2("old_answers"),
-      // JSON string of archived answers
-      archivedBy: text2("archived_by").notNull().references(() => users2.id),
-      archiveReason: text2("archive_reason").notNull().default("retake_allowed"),
-      archivedAt: integer2("archived_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      examSubmissionsArchiveExamIdx: index2("exam_submissions_archive_exam_idx").on(table.examId),
-      examSubmissionsArchiveStudentIdx: index2("exam_submissions_archive_student_idx").on(table.studentId),
-      examSubmissionsArchiveExamStudentIdx: index2("exam_submissions_archive_exam_student_idx").on(table.examId, table.studentId)
-    }));
-    questionBanks2 = sqliteTable("question_banks", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      name: text2("name").notNull(),
-      description: text2("description"),
-      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
-      classLevel: text2("class_level"),
-      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
-      isPublic: integer2("is_public", { mode: "boolean" }).notNull().default(false),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      questionBanksSubjectIdx: index2("question_banks_subject_idx").on(table.subjectId),
-      questionBanksCreatedByIdx: index2("question_banks_created_by_idx").on(table.createdBy)
-    }));
-    questionBankItems2 = sqliteTable("question_bank_items", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      bankId: integer2("bank_id").notNull().references(() => questionBanks2.id, { onDelete: "cascade" }),
-      questionText: text2("question_text").notNull(),
-      questionType: text2("question_type").notNull(),
-      points: integer2("points").notNull().default(1),
-      difficulty: text2("difficulty").notNull().default("medium"),
-      tags: text2("tags").notNull().default("[]"),
-      // JSON array
-      imageUrl: text2("image_url"),
-      autoGradable: integer2("auto_gradable", { mode: "boolean" }).notNull().default(true),
-      expectedAnswers: text2("expected_answers").notNull().default("[]"),
-      // JSON array
-      caseSensitive: integer2("case_sensitive", { mode: "boolean" }).notNull().default(false),
-      explanationText: text2("explanation_text"),
-      hintText: text2("hint_text"),
-      practicalInstructions: text2("practical_instructions"),
-      practicalFileUrl: text2("practical_file_url"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      questionBankItemsBankIdIdx: index2("question_bank_items_bank_id_idx").on(table.bankId),
-      questionBankItemsTypeIdx: index2("question_bank_items_type_idx").on(table.questionType),
-      questionBankItemsDifficultyIdx: index2("question_bank_items_difficulty_idx").on(table.difficulty)
-    }));
-    questionBankOptions2 = sqliteTable("question_bank_options", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      questionItemId: integer2("question_item_id").notNull().references(() => questionBankItems2.id, { onDelete: "cascade" }),
-      optionText: text2("option_text").notNull(),
-      isCorrect: integer2("is_correct", { mode: "boolean" }).notNull().default(false),
-      orderNumber: integer2("order_number").notNull(),
-      explanationText: text2("explanation_text"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      questionBankOptionsItemIdIdx: index2("question_bank_options_item_id_idx").on(table.questionItemId)
-    }));
-    announcements2 = sqliteTable("announcements", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      title: text2("title").notNull(),
-      content: text2("content").notNull(),
-      authorId: text2("author_id").references(() => users2.id, { onDelete: "set null" }),
-      targetRoles: text2("target_roles").notNull().default('["All"]'),
-      // JSON array
-      targetClasses: text2("target_classes").notNull().default("[]"),
-      // JSON array
-      isPublished: integer2("is_published", { mode: "boolean" }).notNull().default(false),
-      publishedAt: integer2("published_at", { mode: "timestamp" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    });
-    messages2 = sqliteTable("messages", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      senderId: text2("sender_id").references(() => users2.id, { onDelete: "set null" }),
-      recipientId: text2("recipient_id").references(() => users2.id, { onDelete: "set null" }),
-      subject: text2("subject").notNull(),
-      content: text2("content").notNull(),
-      isRead: integer2("is_read", { mode: "boolean" }).notNull().default(false),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    });
-    galleryCategories2 = sqliteTable("gallery_categories", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      name: text2("name").notNull(),
-      description: text2("description"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    });
-    gallery2 = sqliteTable("gallery", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      imageUrl: text2("image_url").notNull(),
-      caption: text2("caption"),
-      categoryId: integer2("category_id").references(() => galleryCategories2.id),
-      uploadedBy: text2("uploaded_by").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    });
-    homePageContent2 = sqliteTable("home_page_content", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      contentType: text2("content_type").notNull(),
-      imageUrl: text2("image_url"),
-      altText: text2("alt_text"),
-      caption: text2("caption"),
-      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
-      displayOrder: integer2("display_order").notNull().default(0),
-      uploadedBy: text2("uploaded_by").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    });
-    contactMessages2 = sqliteTable("contact_messages", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      name: text2("name").notNull(),
-      email: text2("email").notNull(),
-      subject: text2("subject"),
-      message: text2("message").notNull(),
-      isRead: integer2("is_read", { mode: "boolean" }).notNull().default(false),
-      respondedAt: integer2("responded_at", { mode: "timestamp" }),
-      respondedBy: text2("responded_by").references(() => users2.id, { onDelete: "set null" }),
-      response: text2("response"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    });
-    reportCards2 = sqliteTable("report_cards", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
-      classId: integer2("class_id").notNull().references(() => classes2.id),
-      termId: integer2("term_id").notNull().references(() => academicTerms2.id),
-      averagePercentage: integer2("average_percentage"),
-      overallGrade: text2("overall_grade"),
-      teacherRemarks: text2("teacher_remarks"),
-      status: text2("status").notNull().default("draft"),
-      // 'draft', 'finalized', 'published'
-      locked: integer2("locked", { mode: "boolean" }).notNull().default(false),
-      generatedAt: integer2("generated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      finalizedAt: integer2("finalized_at", { mode: "timestamp" }),
-      publishedAt: integer2("published_at", { mode: "timestamp" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    });
-    reportCardItems2 = sqliteTable("report_card_items", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      reportCardId: integer2("report_card_id").notNull().references(() => reportCards2.id),
-      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
-      teacherId: text2("teacher_id").references(() => users2.id, { onDelete: "set null" }),
-      testExamId: integer2("test_exam_id").references(() => exams2.id),
-      testExamCreatedBy: text2("test_exam_created_by").references(() => users2.id, { onDelete: "set null" }),
-      testScore: integer2("test_score"),
-      testMaxScore: integer2("test_max_score"),
-      testWeightedScore: integer2("test_weighted_score"),
-      examExamId: integer2("exam_exam_id").references(() => exams2.id),
-      examExamCreatedBy: text2("exam_exam_created_by").references(() => users2.id, { onDelete: "set null" }),
-      examScore: integer2("exam_score"),
-      examMaxScore: integer2("exam_max_score"),
-      examWeightedScore: integer2("exam_weighted_score"),
-      totalMarks: integer2("total_marks").notNull().default(100),
-      obtainedMarks: integer2("obtained_marks").notNull(),
-      percentage: integer2("percentage").notNull(),
-      grade: text2("grade"),
-      teacherRemarks: text2("teacher_remarks"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    });
-    studyResources2 = sqliteTable("study_resources", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      title: text2("title").notNull(),
-      description: text2("description"),
-      fileUrl: text2("file_url").notNull(),
-      fileName: text2("file_name").notNull(),
-      fileSize: integer2("file_size"),
-      resourceType: text2("resource_type").notNull(),
-      subjectId: integer2("subject_id").references(() => subjects2.id),
-      classId: integer2("class_id").references(() => classes2.id),
-      termId: integer2("term_id").references(() => academicTerms2.id),
-      uploadedBy: text2("uploaded_by").references(() => users2.id, { onDelete: "set null" }),
-      isPublished: integer2("is_published", { mode: "boolean" }).notNull().default(true),
-      downloads: integer2("downloads").notNull().default(0),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    });
-    performanceEvents2 = sqliteTable("performance_events", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      sessionId: integer2("session_id").references(() => examSessions2.id),
-      eventType: text2("event_type").notNull(),
-      duration: integer2("duration").notNull(),
-      goalAchieved: integer2("goal_achieved", { mode: "boolean" }).notNull(),
-      metadata: text2("metadata"),
-      clientSide: integer2("client_side", { mode: "boolean" }).notNull().default(false),
-      userId: text2("user_id").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      performanceEventsTypeIdx: index2("performance_events_type_idx").on(table.eventType),
-      performanceEventsDateIdx: index2("performance_events_date_idx").on(table.createdAt),
-      performanceEventsGoalIdx: index2("performance_events_goal_idx").on(table.goalAchieved, table.eventType)
-    }));
-    teacherClassAssignments2 = sqliteTable("teacher_class_assignments", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      teacherId: text2("teacher_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
-      classId: integer2("class_id").notNull().references(() => classes2.id),
-      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
-      department: text2("department"),
-      termId: integer2("term_id").references(() => academicTerms2.id),
-      session: text2("session"),
-      // Academic session e.g., "2024/2025"
-      assignedBy: text2("assigned_by").references(() => users2.id, { onDelete: "set null" }),
-      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
-      validUntil: integer2("valid_until", { mode: "timestamp" }),
-      // Optional expiration date
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      teacherAssignmentsTeacherIdx: index2("teacher_assignments_teacher_idx").on(table.teacherId, table.isActive),
-      teacherAssignmentsClassSubjectIdx: index2("teacher_assignments_class_subject_idx").on(table.classId, table.subjectId),
-      teacherAssignmentsDeptIdx: index2("teacher_assignments_dept_idx").on(table.department),
-      teacherAssignmentsSessionIdx: index2("teacher_assignments_session_idx").on(table.session),
-      teacherAssignmentsUniqueIdx: uniqueIndex2("teacher_assignments_unique_idx").on(table.teacherId, table.classId, table.subjectId, table.termId)
-    }));
-    teacherAssignmentHistory2 = sqliteTable("teacher_assignment_history", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      assignmentId: integer2("assignment_id").references(() => teacherClassAssignments2.id, { onDelete: "set null" }),
-      teacherId: text2("teacher_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
-      classId: integer2("class_id").notNull().references(() => classes2.id),
-      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
-      action: text2("action").notNull(),
-      // 'created', 'updated', 'disabled', 'deleted'
-      previousValues: text2("previous_values"),
-      // JSON of old values
-      newValues: text2("new_values"),
-      // JSON of new values
-      performedBy: text2("performed_by").references(() => users2.id, { onDelete: "set null" }),
-      reason: text2("reason"),
-      ipAddress: text2("ip_address"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      assignmentHistoryTeacherIdx: index2("assignment_history_teacher_idx").on(table.teacherId),
-      assignmentHistoryActionIdx: index2("assignment_history_action_idx").on(table.action),
-      assignmentHistoryDateIdx: index2("assignment_history_date_idx").on(table.createdAt)
-    }));
-    gradingBoundaries2 = sqliteTable("grading_boundaries", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      name: text2("name").notNull(),
-      // e.g., "Standard", "Custom Science"
-      grade: text2("grade").notNull(),
-      // e.g., "A", "B", "C", "D", "E", "F"
-      minScore: integer2("min_score").notNull(),
-      // Minimum score for this grade
-      maxScore: integer2("max_score").notNull(),
-      // Maximum score for this grade
-      remark: text2("remark"),
-      // e.g., "Excellent", "Very Good", "Good", "Pass", "Fail"
-      gradePoint: integer2("grade_point"),
-      // Optional: for GPA calculation
-      isDefault: integer2("is_default", { mode: "boolean" }).notNull().default(false),
-      termId: integer2("term_id").references(() => academicTerms2.id),
-      classId: integer2("class_id").references(() => classes2.id),
-      // Optional: class-specific grading
-      subjectId: integer2("subject_id").references(() => subjects2.id),
-      // Optional: subject-specific grading
-      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      gradingBoundariesNameIdx: index2("grading_boundaries_name_idx").on(table.name),
-      gradingBoundariesGradeIdx: index2("grading_boundaries_grade_idx").on(table.grade),
-      gradingBoundariesDefaultIdx: index2("grading_boundaries_default_idx").on(table.isDefault)
-    }));
-    continuousAssessment2 = sqliteTable("continuous_assessment", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
-      classId: integer2("class_id").notNull().references(() => classes2.id),
-      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
-      termId: integer2("term_id").notNull().references(() => academicTerms2.id),
-      testScore: integer2("test_score"),
-      // CA score (max typically 40)
-      examScore: integer2("exam_score"),
-      // Exam score (max typically 60)
-      totalScore: integer2("total_score"),
-      // Calculated: testScore + examScore
-      grade: text2("grade"),
-      // Auto-calculated based on grading boundaries
-      remark: text2("remark"),
-      teacherId: text2("teacher_id").references(() => users2.id, { onDelete: "set null" }),
-      enteredBy: text2("entered_by").references(() => users2.id, { onDelete: "set null" }),
-      verifiedBy: text2("verified_by").references(() => users2.id, { onDelete: "set null" }),
-      verifiedAt: integer2("verified_at", { mode: "timestamp" }),
-      isLocked: integer2("is_locked", { mode: "boolean" }).notNull().default(false),
-      lockedBy: text2("locked_by").references(() => users2.id, { onDelete: "set null" }),
-      lockedAt: integer2("locked_at", { mode: "timestamp" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      caStudentIdx: index2("ca_student_idx").on(table.studentId),
-      caClassSubjectIdx: index2("ca_class_subject_idx").on(table.classId, table.subjectId),
-      caTermIdx: index2("ca_term_idx").on(table.termId),
-      caTeacherIdx: index2("ca_teacher_idx").on(table.teacherId),
-      caUniqueIdx: uniqueIndex2("ca_unique_idx").on(table.studentId, table.subjectId, table.classId, table.termId)
-    }));
-    unauthorizedAccessLogs2 = sqliteTable("unauthorized_access_logs", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      userId: text2("user_id").references(() => users2.id, { onDelete: "set null" }),
-      attemptedAction: text2("attempted_action").notNull(),
-      attemptedResource: text2("attempted_resource").notNull(),
-      classId: integer2("class_id").references(() => classes2.id),
-      subjectId: integer2("subject_id").references(() => subjects2.id),
-      ipAddress: text2("ip_address"),
-      userAgent: text2("user_agent"),
-      reason: text2("reason"),
-      // Why access was denied
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      unauthorizedUserIdx: index2("unauthorized_user_idx").on(table.userId),
-      unauthorizedActionIdx: index2("unauthorized_action_idx").on(table.attemptedAction),
-      unauthorizedDateIdx: index2("unauthorized_date_idx").on(table.createdAt)
-    }));
-    studentSubjectAssignments2 = sqliteTable("student_subject_assignments", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
-      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
-      classId: integer2("class_id").notNull().references(() => classes2.id),
-      termId: integer2("term_id").references(() => academicTerms2.id),
-      assignedBy: text2("assigned_by").references(() => users2.id, { onDelete: "set null" }),
-      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      studentSubjectAssignmentsStudentIdx: index2("student_subject_assignments_student_idx").on(table.studentId),
-      studentSubjectAssignmentsSubjectIdx: index2("student_subject_assignments_subject_idx").on(table.subjectId),
-      studentSubjectAssignmentsClassIdx: index2("student_subject_assignments_class_idx").on(table.classId),
-      studentSubjectAssignmentsUniqueIdx: uniqueIndex2("student_subject_assignments_unique_idx").on(table.studentId, table.subjectId, table.classId)
-    }));
-    classSubjectMappings2 = sqliteTable("class_subject_mappings", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      classId: integer2("class_id").notNull().references(() => classes2.id),
-      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
-      department: text2("department"),
-      isCompulsory: integer2("is_compulsory", { mode: "boolean" }).notNull().default(false),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      classSubjectMappingsClassIdx: index2("class_subject_mappings_class_idx").on(table.classId),
-      classSubjectMappingsSubjectIdx: index2("class_subject_mappings_subject_idx").on(table.subjectId),
-      classSubjectMappingsDeptIdx: index2("class_subject_mappings_dept_idx").on(table.department),
-      classSubjectMappingsUniqueIdx: uniqueIndex2("class_subject_mappings_unique_idx").on(table.classId, table.subjectId, table.department)
-    }));
-    timetable2 = sqliteTable("timetable", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      teacherId: text2("teacher_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
-      classId: integer2("class_id").notNull().references(() => classes2.id),
-      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
-      dayOfWeek: text2("day_of_week").notNull(),
-      startTime: text2("start_time").notNull(),
-      endTime: text2("end_time").notNull(),
-      location: text2("location"),
-      termId: integer2("term_id").references(() => academicTerms2.id),
-      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      timetableTeacherIdx: index2("timetable_teacher_idx").on(table.teacherId, table.isActive),
-      timetableDayIdx: index2("timetable_day_idx").on(table.dayOfWeek, table.teacherId)
-    }));
-    gradingTasks2 = sqliteTable("grading_tasks", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      sessionId: integer2("session_id").notNull().references(() => examSessions2.id, { onDelete: "cascade" }),
-      answerId: integer2("answer_id").notNull().references(() => studentAnswers2.id, { onDelete: "cascade" }),
-      assignedTeacherId: text2("assigned_teacher_id").references(() => users2.id, { onDelete: "set null" }),
-      status: text2("status").notNull().default("pending"),
-      priority: integer2("priority").notNull().default(0),
-      assignedAt: integer2("assigned_at", { mode: "timestamp" }),
-      startedAt: integer2("started_at", { mode: "timestamp" }),
-      completedAt: integer2("completed_at", { mode: "timestamp" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      gradingTasksAssignedIdx: index2("grading_tasks_assigned_idx").on(table.assignedTeacherId, table.status),
-      gradingTasksStatusIdx: index2("grading_tasks_status_idx").on(table.status, table.priority),
-      gradingTasksSessionIdx: index2("grading_tasks_session_idx").on(table.sessionId),
-      gradingTasksAnswerUniqueIdx: uniqueIndex2("grading_tasks_answer_unique_idx").on(table.answerId)
-    }));
-    auditLogs2 = sqliteTable("audit_logs", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      userId: text2("user_id").references(() => users2.id, { onDelete: "set null" }),
-      action: text2("action").notNull(),
-      entityType: text2("entity_type").notNull(),
-      entityId: text2("entity_id").notNull(),
-      oldValue: text2("old_value"),
-      newValue: text2("new_value"),
-      reason: text2("reason"),
-      ipAddress: text2("ip_address"),
-      userAgent: text2("user_agent"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      auditLogsUserIdx: index2("audit_logs_user_idx").on(table.userId),
-      auditLogsEntityIdx: index2("audit_logs_entity_idx").on(table.entityType, table.entityId),
-      auditLogsDateIdx: index2("audit_logs_date_idx").on(table.createdAt),
-      auditLogsActionIdx: index2("audit_logs_action_idx").on(table.action)
-    }));
-    settings2 = sqliteTable("settings", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      key: text2("key").notNull().unique(),
-      value: text2("value").notNull(),
-      description: text2("description"),
-      dataType: text2("data_type").notNull().default("string"),
-      updatedBy: text2("updated_by").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      settingsKeyIdx: index2("settings_key_idx").on(table.key)
-    }));
-    counters2 = sqliteTable("counters", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      roleCode: text2("role_code"),
-      classCode: text2("class_code"),
-      year: text2("year"),
-      sequence: integer2("sequence").notNull().default(0),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      countersRoleCodeIdx: uniqueIndex2("counters_role_code_idx").on(table.roleCode)
-    }));
-    vacancies2 = sqliteTable("vacancies", {
-      id: text2("id").primaryKey(),
-      title: text2("title").notNull(),
-      description: text2("description").notNull(),
-      requirements: text2("requirements"),
-      deadline: integer2("deadline", { mode: "timestamp" }).notNull(),
-      status: text2("status").notNull().default("open"),
-      // 'open', 'closed', 'filled'
-      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      vacanciesStatusIdx: index2("vacancies_status_idx").on(table.status),
-      vacanciesDeadlineIdx: index2("vacancies_deadline_idx").on(table.deadline)
-    }));
-    teacherApplications2 = sqliteTable("teacher_applications", {
-      id: text2("id").primaryKey(),
-      vacancyId: text2("vacancy_id").references(() => vacancies2.id, { onDelete: "set null" }),
-      fullName: text2("full_name").notNull(),
-      googleEmail: text2("google_email").notNull(),
-      phone: text2("phone").notNull(),
-      subjectSpecialty: text2("subject_specialty").notNull(),
-      qualification: text2("qualification").notNull(),
-      experienceYears: integer2("experience_years").notNull(),
-      bio: text2("bio").notNull(),
-      resumeUrl: text2("resume_url"),
-      status: text2("status").notNull().default("pending"),
-      // 'pending', 'approved', 'rejected'
-      reviewedBy: text2("reviewed_by").references(() => users2.id, { onDelete: "set null" }),
-      reviewedAt: integer2("reviewed_at", { mode: "timestamp" }),
-      rejectionReason: text2("rejection_reason"),
-      dateApplied: integer2("date_applied", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      teacherApplicationsStatusIdx: index2("teacher_applications_status_idx").on(table.status),
-      teacherApplicationsEmailIdx: index2("teacher_applications_email_idx").on(table.googleEmail),
-      teacherApplicationsVacancyIdx: index2("teacher_applications_vacancy_idx").on(table.vacancyId)
-    }));
-    approvedTeachers2 = sqliteTable("approved_teachers", {
-      id: text2("id").primaryKey(),
-      applicationId: text2("application_id").references(() => teacherApplications2.id, { onDelete: "set null" }),
-      googleEmail: text2("google_email").notNull().unique(),
-      fullName: text2("full_name").notNull(),
-      subjectSpecialty: text2("subject_specialty"),
-      approvedBy: text2("approved_by").references(() => users2.id, { onDelete: "set null" }),
-      dateApproved: integer2("date_approved", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
-    }, (table) => ({
-      approvedTeachersEmailIdx: index2("approved_teachers_email_idx").on(table.googleEmail)
-    }));
-    insertRoleSchema = createInsertSchema(roles2).omit({ id: true, createdAt: true });
-    insertUserSchema = createInsertSchema(users2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens2).omit({ id: true, createdAt: true });
-    insertPasswordResetAttemptSchema = createInsertSchema(passwordResetAttempts2).omit({ id: true, attemptedAt: true });
-    insertInviteSchema = createInsertSchema(invites2).omit({ id: true, createdAt: true });
-    insertStudentSchema = createInsertSchema(students2).omit({ createdAt: true });
-    insertClassSchema = createInsertSchema(classes2).omit({ id: true, createdAt: true });
-    insertSubjectSchema = createInsertSchema(subjects2).omit({ id: true, createdAt: true });
-    insertAcademicTermSchema = createInsertSchema(academicTerms2).omit({ id: true, createdAt: true });
-    insertAttendanceSchema = createInsertSchema(attendance2).omit({ id: true, createdAt: true });
-    insertExamSchema = createInsertSchema(exams2).omit({ id: true, createdAt: true }).extend({
-      classId: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
-        z.number().positive("Please select a valid class")
-      ),
-      subjectId: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
-        z.number().positive("Please select a valid subject")
-      ),
-      termId: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
-        z.number().positive("Please select a valid term")
-      ),
-      totalMarks: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
-        z.number().positive("Total marks must be a positive number")
-      ),
-      name: z.string().min(1, "Exam name is required"),
-      date: z.string().min(1, "Exam date is required").regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").refine((dateStr) => {
-        const date = new Date(dateStr);
-        return !isNaN(date.getTime()) && date.toISOString().startsWith(dateStr);
-      }, "Please enter a valid date"),
-      examType: z.enum(["test", "exam"]).default("exam"),
-      timerMode: z.string().default("individual"),
-      timeLimit: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
-        z.number().int().min(1, "Time limit must be at least 1 minute").optional()
-      ),
-      passingScore: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
-        z.number().int().min(0).max(100, "Passing score must be between 0 and 100").optional()
-      ),
-      startTime: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? void 0 : new Date(val),
-        z.date().optional()
-      ),
-      endTime: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? void 0 : new Date(val),
-        z.date().optional()
-      ),
-      instructions: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? void 0 : val,
-        z.string().optional()
-      ),
-      gradingScale: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? "standard" : val,
-        z.string().default("standard")
-      ),
-      teacherInChargeId: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? void 0 : val,
-        z.string().optional()
-      ),
-      isPublished: z.boolean().default(false),
-      allowRetakes: z.boolean().default(false),
-      shuffleQuestions: z.boolean().default(false),
-      autoGradingEnabled: z.boolean().default(true),
-      instantFeedback: z.boolean().default(false),
-      showCorrectAnswers: z.boolean().default(false)
-    });
-    insertExamResultSchema = createInsertSchema(examResults2).omit({ id: true, createdAt: true });
-    insertExamSubmissionsArchiveSchema = createInsertSchema(examSubmissionsArchive2).omit({ id: true, archivedAt: true });
-    insertAnnouncementSchema = createInsertSchema(announcements2).omit({ id: true, createdAt: true });
-    insertMessageSchema = createInsertSchema(messages2).omit({ id: true, createdAt: true });
-    insertGalleryCategorySchema = createInsertSchema(galleryCategories2).omit({ id: true, createdAt: true });
-    insertGallerySchema = createInsertSchema(gallery2).omit({ id: true, createdAt: true });
-    insertHomePageContentSchema = createInsertSchema(homePageContent2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertContactMessageSchema = createInsertSchema(contactMessages2).omit({ id: true, createdAt: true });
-    insertReportCardSchema = createInsertSchema(reportCards2).omit({ id: true, createdAt: true });
-    insertReportCardItemSchema = createInsertSchema(reportCardItems2).omit({ id: true, createdAt: true });
-    insertStudyResourceSchema = createInsertSchema(studyResources2).omit({ id: true, createdAt: true, downloads: true });
-    insertPerformanceEventSchema = createInsertSchema(performanceEvents2).omit({ id: true, createdAt: true });
-    insertTeacherClassAssignmentSchema = createInsertSchema(teacherClassAssignments2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertTeacherAssignmentHistorySchema = createInsertSchema(teacherAssignmentHistory2).omit({ id: true, createdAt: true });
-    insertGradingBoundarySchema = createInsertSchema(gradingBoundaries2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertContinuousAssessmentSchema = createInsertSchema(continuousAssessment2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertUnauthorizedAccessLogSchema = createInsertSchema(unauthorizedAccessLogs2).omit({ id: true, createdAt: true });
-    insertTimetableSchema = createInsertSchema(timetable2).omit({ id: true, createdAt: true });
-    insertGradingTaskSchema = createInsertSchema(gradingTasks2).omit({ id: true, createdAt: true });
-    insertAuditLogSchema = createInsertSchema(auditLogs2).omit({ id: true, createdAt: true });
-    insertSettingSchema = createInsertSchema(settings2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertCounterSchema = createInsertSchema(counters2).omit({ id: true, createdAt: true, updatedAt: true });
-    createStudentWithAutoCredsSchema = z.object({
-      firstName: z.string().min(1, "First name is required"),
-      lastName: z.string().min(1, "Last name is required"),
-      phone: z.string().optional(),
-      address: z.string().optional(),
-      dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
-      gender: z.enum(["Male", "Female", "Other"], { required_error: "Gender is required" }),
-      profileImageUrl: z.string().optional(),
-      admissionNumber: z.string().min(1, "Admission number is required"),
-      classId: z.coerce.number().positive("Please select a valid class"),
-      parentId: z.string().optional().nullable(),
-      admissionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Admission date must be in YYYY-MM-DD format"),
-      emergencyContact: z.string().min(1, "Emergency contact is required"),
-      medicalInfo: z.string().optional(),
-      parentEmail: z.string().email("Invalid parent email").optional(),
-      parentPhone: z.string().optional()
-    });
-    createStudentSchema = z.object({
-      firstName: z.string().min(1, "First name is required"),
-      lastName: z.string().min(1, "Last name is required"),
-      phone: z.string().optional(),
-      address: z.string().optional(),
-      dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
-      gender: z.enum(["Male", "Female", "Other"], { required_error: "Gender is required" }),
-      profileImageUrl: z.string().optional(),
-      classId: z.coerce.number().positive("Please select a valid class"),
-      parentId: z.string().optional().nullable(),
-      parentPhone: z.string().optional(),
-      admissionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Admission date must be in YYYY-MM-DD format"),
-      emergencyContact: z.string().optional(),
-      medicalInfo: z.string().optional(),
-      guardianName: z.string().optional(),
-      department: z.enum(["science", "art", "commercial"]).optional().nullable()
-    });
-    quickCreateStudentSchema = z.object({
-      fullName: z.string().min(2, "Full name is required").refine(
-        (name) => name.trim().split(/\s+/).length >= 2,
-        "Please enter both first and last name (e.g., 'John Adebayo')"
-      ),
-      gender: z.enum(["Male", "Female", "Other"], { required_error: "Gender is required" }),
-      dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
-      classId: z.coerce.number().positive("Please select a valid class"),
-      department: z.enum(["science", "art", "commercial"]).optional().nullable()
-    });
-    csvStudentSchema = z.object({
-      fullName: z.string().min(1, "Full name is required"),
-      class: z.string().min(1, "Class is required"),
-      gender: z.enum(["Male", "Female", "Other"], { required_error: "Gender is required" }),
-      dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
-      parentEmail: z.string().email("Invalid parent email").optional(),
-      parentPhone: z.string().optional(),
-      emergencyContact: z.string().min(1, "Emergency contact is required"),
-      admissionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Admission date must be in YYYY-MM-DD format").optional(),
-      medicalInfo: z.string().optional(),
-      guardianName: z.string().optional()
-    });
-    insertExamQuestionSchema = createInsertSchema(examQuestions2).omit({ id: true, createdAt: true }).extend({
-      examId: z.coerce.number().positive("Please select a valid exam"),
-      questionText: z.string().min(1, "Question text is required"),
-      questionType: z.enum(["multiple_choice", "text", "essay", "true_false", "fill_blank"], { required_error: "Question type is required" }),
-      points: z.preprocess((val) => val === "" ? 1 : val, z.coerce.number().int().min(0, "Points must be a non-negative number").default(1)),
-      orderNumber: z.coerce.number().int().min(1, "Order number must be a positive number"),
-      imageUrl: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional()),
-      expectedAnswers: z.preprocess((val) => {
-        if (val === "" || val === null || val === void 0) return void 0;
-        if (Array.isArray(val)) return val;
-        if (typeof val === "string") return val.split(",").map((s) => s.trim()).filter((s) => s !== "");
-        return void 0;
-      }, z.array(z.string()).optional()),
-      explanationText: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional()),
-      hintText: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional()),
-      partialCreditRules: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional())
-    });
-    insertQuestionOptionSchema = createInsertSchema(questionOptions2).omit({ id: true, createdAt: true }).extend({
-      questionId: z.coerce.number().positive("Please select a valid question"),
-      orderNumber: z.coerce.number().int().min(1, "Order number must be a positive number"),
-      partialCreditValue: z.preprocess((val) => val === "" ? 0 : val, z.coerce.number().int().min(0, "Partial credit must be non-negative").default(0)),
-      explanationText: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional())
-    });
-    createQuestionOptionSchema = insertQuestionOptionSchema.omit({ questionId: true, orderNumber: true }).extend({
-      partialCreditValue: z.preprocess((val) => val === "" ? 0 : val, z.coerce.number().int().min(0, "Partial credit must be non-negative").default(0)).optional(),
-      explanationText: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional())
-    });
-    insertExamSessionSchema = createInsertSchema(examSessions2).omit({
-      id: true,
-      createdAt: true,
-      startedAt: true,
-      studentId: true
-    }).partial().required({
-      examId: true
-    }).extend({
-      submittedAt: z.union([z.date(), z.string()]).optional().transform((val) => {
-        if (typeof val === "string") {
-          return new Date(val);
-        }
-        return val;
-      })
-    });
-    updateExamSessionSchema = z.object({
-      isCompleted: z.boolean().optional(),
-      submittedAt: z.coerce.date().refine((d) => !isNaN(d.getTime()), "Invalid date").optional(),
-      timeRemaining: z.number().int().min(0).optional(),
-      status: z.enum(["in_progress", "submitted"]).optional(),
-      submissionMethod: z.string().optional(),
-      autoSubmitted: z.boolean().optional()
-    }).strict();
-    insertStudentAnswerSchema = createInsertSchema(studentAnswers2).omit({ id: true });
-    insertNotificationSchema = createInsertSchema(notifications2).omit({ id: true, createdAt: true });
-    insertTeacherProfileSchema = createInsertSchema(teacherProfiles2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertAdminProfileSchema = createInsertSchema(adminProfiles2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertParentProfileSchema = createInsertSchema(parentProfiles2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertStudentSubjectAssignmentSchema = createInsertSchema(studentSubjectAssignments2).omit({ id: true, createdAt: true });
-    insertClassSubjectMappingSchema = createInsertSchema(classSubjectMappings2).omit({ id: true, createdAt: true });
-    insertVacancySchema = createInsertSchema(vacancies2).omit({
-      id: true,
-      createdAt: true,
-      updatedAt: true
-    });
-    insertTeacherApplicationSchema = createInsertSchema(teacherApplications2).omit({
-      id: true,
-      createdAt: true,
-      updatedAt: true,
-      dateApplied: true,
-      reviewedAt: true,
-      reviewedBy: true,
-      status: true
-    });
-    insertApprovedTeacherSchema = createInsertSchema(approvedTeachers2).omit({
-      id: true,
-      createdAt: true,
-      dateApproved: true
-    });
-    insertSuperAdminProfileSchema = createInsertSchema(superAdminProfiles2).omit({
-      id: true,
-      createdAt: true,
-      updatedAt: true
-    });
-    insertSystemSettingsSchema = createInsertSchema(systemSettings2).omit({
-      id: true,
-      createdAt: true,
-      updatedAt: true
-    });
-    insertQuestionBankSchema = createInsertSchema(questionBanks2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertQuestionBankItemSchema = createInsertSchema(questionBankItems2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertQuestionBankOptionSchema = createInsertSchema(questionBankOptions2).omit({ id: true, createdAt: true });
+    ROLE_IDS = {
+      SUPER_ADMIN: 1,
+      ADMIN: 2,
+      TEACHER: 3,
+      STUDENT: 4,
+      PARENT: 5
+    };
+    ROLE_CODES = {
+      [ROLE_IDS.SUPER_ADMIN]: "SUP",
+      [ROLE_IDS.ADMIN]: "ADM",
+      [ROLE_IDS.TEACHER]: "TCH",
+      [ROLE_IDS.STUDENT]: "STU",
+      [ROLE_IDS.PARENT]: "PAR"
+    };
+    ROLE_NAMES = {
+      [ROLE_IDS.SUPER_ADMIN]: "Super Admin",
+      [ROLE_IDS.ADMIN]: "Admin",
+      [ROLE_IDS.TEACHER]: "Teacher",
+      [ROLE_IDS.STUDENT]: "Student",
+      [ROLE_IDS.PARENT]: "Parent"
+    };
+    ROLE_PORTALS = {
+      [ROLE_IDS.SUPER_ADMIN]: "/portal/superadmin",
+      [ROLE_IDS.ADMIN]: "/portal/admin",
+      [ROLE_IDS.TEACHER]: "/portal/teacher",
+      [ROLE_IDS.STUDENT]: "/portal/student",
+      [ROLE_IDS.PARENT]: "/portal/parent"
+    };
   }
 });
 
@@ -9557,22 +10566,10 @@ function getRoleIdFromCode(roleCode) {
   }
   return null;
 }
-var ROLE_CODES;
 var init_auth_utils = __esm({
   "server/auth-utils.ts"() {
     "use strict";
-    ROLE_CODES = {
-      1: "SUP",
-      // Super Admin
-      2: "ADM",
-      // Admin
-      3: "TCH",
-      // Teacher
-      4: "STU",
-      // Student
-      5: "PAR"
-      // Parent
-    };
+    init_role_constants();
   }
 });
 
@@ -9606,36 +10603,36 @@ async function getNextSequenceForRole(roleCode) {
   return result[0].sequence;
 }
 async function generateStudentUsername2() {
-  const sequence = await getNextSequenceForRole(ROLE_CODES2.STUDENT);
-  return `THS-${ROLE_CODES2.STUDENT}-${String(sequence).padStart(3, "0")}`;
+  const sequence = await getNextSequenceForRole(ROLE_CODE_STRINGS.STUDENT);
+  return `THS-${ROLE_CODE_STRINGS.STUDENT}-${String(sequence).padStart(3, "0")}`;
 }
 async function generateParentUsername() {
-  const sequence = await getNextSequenceForRole(ROLE_CODES2.PARENT);
-  return `THS-${ROLE_CODES2.PARENT}-${String(sequence).padStart(3, "0")}`;
+  const sequence = await getNextSequenceForRole(ROLE_CODE_STRINGS.PARENT);
+  return `THS-${ROLE_CODE_STRINGS.PARENT}-${String(sequence).padStart(3, "0")}`;
 }
 async function generateTeacherUsername() {
-  const sequence = await getNextSequenceForRole(ROLE_CODES2.TEACHER);
-  return `THS-${ROLE_CODES2.TEACHER}-${String(sequence).padStart(3, "0")}`;
+  const sequence = await getNextSequenceForRole(ROLE_CODE_STRINGS.TEACHER);
+  return `THS-${ROLE_CODE_STRINGS.TEACHER}-${String(sequence).padStart(3, "0")}`;
 }
 async function generateAdminUsername() {
-  const sequence = await getNextSequenceForRole(ROLE_CODES2.ADMIN);
-  return `THS-${ROLE_CODES2.ADMIN}-${String(sequence).padStart(3, "0")}`;
+  const sequence = await getNextSequenceForRole(ROLE_CODE_STRINGS.ADMIN);
+  return `THS-${ROLE_CODE_STRINGS.ADMIN}-${String(sequence).padStart(3, "0")}`;
 }
 async function generateSuperAdminUsername() {
-  const sequence = await getNextSequenceForRole(ROLE_CODES2.SUPER_ADMIN);
-  return `THS-${ROLE_CODES2.SUPER_ADMIN}-${String(sequence).padStart(3, "0")}`;
+  const sequence = await getNextSequenceForRole(ROLE_CODE_STRINGS.SUPER_ADMIN);
+  return `THS-${ROLE_CODE_STRINGS.SUPER_ADMIN}-${String(sequence).padStart(3, "0")}`;
 }
 async function generateUsernameByRole(roleId) {
   switch (roleId) {
-    case ROLE_IDS2.SUPER_ADMIN:
+    case ROLE_IDS.SUPER_ADMIN:
       return generateSuperAdminUsername();
-    case ROLE_IDS2.ADMIN:
+    case ROLE_IDS.ADMIN:
       return generateAdminUsername();
-    case ROLE_IDS2.TEACHER:
+    case ROLE_IDS.TEACHER:
       return generateTeacherUsername();
-    case ROLE_IDS2.STUDENT:
+    case ROLE_IDS.STUDENT:
       return generateStudentUsername2();
-    case ROLE_IDS2.PARENT:
+    case ROLE_IDS.PARENT:
       return generateParentUsername();
     default:
       throw new Error(`Invalid role ID: ${roleId}. Valid IDs are 1-5.`);
@@ -9687,25 +10684,19 @@ function validateUsername(username) {
   }
   return { valid: false, error: "Invalid username format" };
 }
-var ROLE_CODES2, ROLE_IDS2;
+var ROLE_CODE_STRINGS;
 var init_username_generator = __esm({
   "server/username-generator.ts"() {
     "use strict";
     init_storage();
     init_schema_pg();
-    ROLE_CODES2 = {
+    init_role_constants();
+    ROLE_CODE_STRINGS = {
       SUPER_ADMIN: "SUP",
       ADMIN: "ADM",
       TEACHER: "TCH",
       STUDENT: "STU",
       PARENT: "PAR"
-    };
-    ROLE_IDS2 = {
-      SUPER_ADMIN: 1,
-      ADMIN: 2,
-      TEACHER: 3,
-      STUDENT: 4,
-      PARENT: 5
     };
   }
 });
@@ -10257,6 +11248,619 @@ var init_performance_cache = __esm({
       }
     };
     performanceCache = new PerformanceCache();
+  }
+});
+
+// server/services/reliable-sync-service.ts
+var reliable_sync_service_exports = {};
+__export(reliable_sync_service_exports, {
+  ReliableSyncService: () => ReliableSyncService,
+  reliableSyncService: () => reliableSyncService
+});
+import { eq as eq5, and as and5, inArray as inArray4, desc as desc3, sql as sql6 } from "drizzle-orm";
+var ReliableSyncService, reliableSyncService;
+var init_reliable_sync_service = __esm({
+  "server/services/reliable-sync-service.ts"() {
+    "use strict";
+    init_db();
+    init_schema_pg();
+    init_grading_config();
+    init_grading_utils();
+    init_realtime_service();
+    ReliableSyncService = class {
+      constructor() {
+        this.defaultMaxRetries = 3;
+        this.retryDelayMs = [1e3, 5e3, 15e3];
+      }
+      async syncExamScoreToReportCardReliable(studentId, examId, score, maxScore, options) {
+        const stableIdempotencyKey = `${options.syncType}:${studentId}:${examId}`;
+        let auditLogId;
+        try {
+          const existingSuccessSync = await db.select().from(syncAuditLogs).where(and5(
+            eq5(syncAuditLogs.studentId, studentId),
+            eq5(syncAuditLogs.examId, examId),
+            eq5(syncAuditLogs.status, "success")
+          )).orderBy(desc3(syncAuditLogs.createdAt)).limit(1);
+          if (existingSuccessSync.length > 0) {
+            const syncTime = existingSuccessSync[0].syncedAt;
+            if (syncTime && Date.now() - new Date(syncTime).getTime() < 6e4) {
+              console.log(`[RELIABLE-SYNC] Idempotent skip: recent sync completed for student ${studentId}, exam ${examId}`);
+              return {
+                success: true,
+                reportCardId: existingSuccessSync[0].reportCardId ?? void 0,
+                message: "Sync already completed (idempotent)",
+                auditLogId: existingSuccessSync[0].id
+              };
+            }
+          }
+          const exam = await db.select().from(exams).where(eq5(exams.id, examId)).limit(1);
+          if (exam.length === 0) {
+            return this.createFailedResult("Exam not found", "EXAM_NOT_FOUND");
+          }
+          const examData = exam[0];
+          const { subjectId, classId, termId } = examData;
+          if (!subjectId || !classId || !termId) {
+            return this.createFailedResult("Exam missing required fields", "MISSING_EXAM_FIELDS");
+          }
+          const student = await db.select().from(students).where(eq5(students.id, studentId)).limit(1);
+          if (student.length === 0) {
+            return this.createFailedResult("Student not found", "STUDENT_NOT_FOUND");
+          }
+          if (!options.skipAuditLog) {
+            const existingAuditLog = await db.select().from(syncAuditLogs).where(and5(
+              eq5(syncAuditLogs.studentId, studentId),
+              eq5(syncAuditLogs.examId, examId),
+              eq5(syncAuditLogs.syncType, options.syncType),
+              inArray4(syncAuditLogs.status, ["pending", "failed", "retrying"])
+            )).orderBy(desc3(syncAuditLogs.createdAt)).limit(1);
+            if (existingAuditLog.length > 0) {
+              auditLogId = existingAuditLog[0].id;
+              await db.update(syncAuditLogs).set({
+                status: "retrying",
+                retryCount: (existingAuditLog[0].retryCount || 0) + 1,
+                score,
+                maxScore,
+                updatedAt: /* @__PURE__ */ new Date()
+              }).where(eq5(syncAuditLogs.id, auditLogId));
+              console.log(`[RELIABLE-SYNC] Reusing audit log ${auditLogId} for retry`);
+            } else {
+              const auditEntry = await db.insert(syncAuditLogs).values({
+                syncType: options.syncType,
+                studentId,
+                examId,
+                subjectId,
+                termId,
+                score,
+                maxScore,
+                status: "pending",
+                triggeredBy: options.triggeredBy ?? null,
+                idempotencyKey: stableIdempotencyKey,
+                maxRetries: options.maxRetries ?? this.defaultMaxRetries,
+                metadata: JSON.stringify({
+                  examType: examData.examType,
+                  classId,
+                  gradingScale: examData.gradingScale
+                })
+              }).returning();
+              auditLogId = auditEntry[0].id;
+            }
+          }
+          const result = await this.performSyncWithTransaction(
+            studentId,
+            examId,
+            score,
+            maxScore,
+            examData,
+            student[0],
+            auditLogId,
+            options.triggeredBy
+          );
+          if (auditLogId) {
+            await db.update(syncAuditLogs).set({
+              status: result.success ? "success" : "failed",
+              reportCardId: result.reportCardId ?? null,
+              reportCardItemId: result.reportCardItemId ?? null,
+              syncedAt: result.success ? /* @__PURE__ */ new Date() : null,
+              errorMessage: result.success ? null : result.message,
+              errorCode: result.errorCode ?? null,
+              updatedAt: /* @__PURE__ */ new Date()
+            }).where(eq5(syncAuditLogs.id, auditLogId));
+          }
+          if (result.success && result.reportCardId) {
+            try {
+              realtimeService.emitTableChange("report_cards", "UPDATE", {
+                id: result.reportCardId,
+                syncType: options.syncType,
+                studentId,
+                examId
+              }, void 0, options.triggeredBy);
+            } catch (emitError) {
+              console.warn("[RELIABLE-SYNC] Failed to emit realtime event:", emitError);
+            }
+          }
+          return { ...result, auditLogId };
+        } catch (error) {
+          console.error("[RELIABLE-SYNC] Unhandled error in syncExamScoreToReportCardReliable:", error);
+          if (auditLogId) {
+            try {
+              await db.update(syncAuditLogs).set({
+                status: "failed",
+                errorMessage: error.message || "Unknown error",
+                errorCode: "UNHANDLED_ERROR",
+                updatedAt: /* @__PURE__ */ new Date()
+              }).where(eq5(syncAuditLogs.id, auditLogId));
+            } catch (updateError) {
+              console.error("[RELIABLE-SYNC] Failed to update audit log after error:", updateError);
+            }
+          }
+          return {
+            success: false,
+            message: error.message || "Sync failed with unhandled error",
+            errorCode: "UNHANDLED_ERROR",
+            auditLogId
+          };
+        }
+      }
+      async performSyncWithTransaction(studentId, examId, score, maxScore, examData, studentData, auditLogId, triggeredBy) {
+        const { subjectId, classId, termId, examType, gradingScale: examGradingScale, createdBy: examCreatedBy } = examData;
+        try {
+          const result = await db.transaction(async (tx) => {
+            const academicTerm = await tx.select().from(academicTerms).where(eq5(academicTerms.id, termId)).limit(1);
+            const sessionYear = academicTerm.length > 0 ? `${academicTerm[0].year}/${academicTerm[0].year + 1}` : null;
+            let reportCard = await tx.select().from(reportCards).where(and5(
+              eq5(reportCards.studentId, studentId),
+              eq5(reportCards.termId, termId)
+            )).limit(1);
+            let reportCardId;
+            let isNewReportCard = false;
+            const gradingScale = examGradingScale || "standard";
+            if (reportCard.length === 0) {
+              console.log(`[RELIABLE-SYNC-TX] Creating new report card for student ${studentId}, term ${termId}`);
+              isNewReportCard = true;
+              const newReportCard = await tx.insert(reportCards).values({
+                studentId,
+                classId,
+                termId,
+                sessionYear,
+                status: "draft",
+                gradingScale,
+                scoreAggregationMode: "last",
+                generatedAt: /* @__PURE__ */ new Date(),
+                autoGenerated: true,
+                locked: false
+              }).returning();
+              reportCardId = newReportCard[0].id;
+              await this.initializeReportCardItemsTx(tx, reportCardId, studentId, classId, studentData);
+            } else {
+              reportCardId = reportCard[0].id;
+              await this.ensureMissingSubjectsAddedTx(tx, reportCardId, studentId, classId, studentData);
+            }
+            let reportCardItem = await tx.select().from(reportCardItems).where(and5(
+              eq5(reportCardItems.reportCardId, reportCardId),
+              eq5(reportCardItems.subjectId, subjectId)
+            )).limit(1);
+            if (reportCardItem.length === 0) {
+              const newItem = await tx.insert(reportCardItems).values({
+                reportCardId,
+                subjectId,
+                totalMarks: 100,
+                obtainedMarks: 0,
+                percentage: 0
+              }).returning();
+              reportCardItem = newItem;
+            }
+            if (reportCardItem[0].isOverridden) {
+              console.log(`[RELIABLE-SYNC-TX] Item ${reportCardItem[0].id} is manually overridden, skipping`);
+              return {
+                success: true,
+                reportCardId,
+                reportCardItemId: reportCardItem[0].id,
+                message: "Skipped - item manually overridden",
+                isNewReportCard
+              };
+            }
+            const isTest = ["test", "quiz", "assignment"].includes(examType);
+            const isMainExam = ["exam", "final", "midterm"].includes(examType);
+            const safeScore = typeof score === "number" ? score : parseInt(String(score), 10) || 0;
+            const safeMaxScore = typeof maxScore === "number" ? maxScore : parseInt(String(maxScore), 10) || 0;
+            const safeExamId = typeof examId === "number" ? examId : parseInt(String(examId), 10);
+            const updateData = { updatedAt: /* @__PURE__ */ new Date() };
+            if (isTest) {
+              updateData.testExamId = safeExamId;
+              updateData.testExamCreatedBy = examCreatedBy;
+              updateData.testScore = safeScore;
+              updateData.testMaxScore = safeMaxScore;
+            } else if (isMainExam) {
+              updateData.examExamId = safeExamId;
+              updateData.examExamCreatedBy = examCreatedBy;
+              updateData.examScore = safeScore;
+              updateData.examMaxScore = safeMaxScore;
+            } else {
+              updateData.testExamId = safeExamId;
+              updateData.testExamCreatedBy = examCreatedBy;
+              updateData.testScore = safeScore;
+              updateData.testMaxScore = safeMaxScore;
+            }
+            const existingItem = reportCardItem[0];
+            const finalTestScore = isTest ? safeScore : existingItem.testScore ?? null;
+            const finalTestMaxScore = isTest ? safeMaxScore : existingItem.testMaxScore ?? null;
+            const finalExamScore = isMainExam ? safeScore : existingItem.examScore ?? null;
+            const finalExamMaxScore = isMainExam ? safeMaxScore : existingItem.examMaxScore ?? null;
+            const gradingConfig = getGradingConfig(gradingScale);
+            const weighted = calculateWeightedScore(finalTestScore, finalTestMaxScore, finalExamScore, finalExamMaxScore, gradingConfig);
+            const gradeInfo = calculateGradeFromPercentage(weighted.percentage, gradingScale);
+            const safeTestWeighted = Number.isFinite(weighted.testWeighted) ? Math.round(weighted.testWeighted) : 0;
+            const safeExamWeighted = Number.isFinite(weighted.examWeighted) ? Math.round(weighted.examWeighted) : 0;
+            const safeObtainedMarks = Number.isFinite(weighted.weightedScore) ? Math.round(weighted.weightedScore) : 0;
+            const safePercentage = Number.isFinite(weighted.percentage) ? Math.round(weighted.percentage) : 0;
+            updateData.testWeightedScore = safeTestWeighted;
+            updateData.examWeightedScore = safeExamWeighted;
+            updateData.obtainedMarks = safeObtainedMarks;
+            updateData.percentage = safePercentage;
+            updateData.grade = gradeInfo.grade;
+            updateData.remarks = gradeInfo.remarks;
+            await tx.update(reportCardItems).set(updateData).where(eq5(reportCardItems.id, existingItem.id));
+            console.log(`[RELIABLE-SYNC-TX] Updated item ${existingItem.id}: ${isTest ? "test" : "exam"} ${safeScore}/${safeMaxScore}, grade: ${gradeInfo.grade}`);
+            await this.recalculateReportCardTx(tx, reportCardId, gradingScale);
+            return {
+              success: true,
+              reportCardId,
+              reportCardItemId: existingItem.id,
+              isNewReportCard,
+              message: isNewReportCard ? `New report card created. Grade: ${gradeInfo.grade} (${safePercentage}%)` : `Score synced. Grade: ${gradeInfo.grade} (${safePercentage}%)`
+            };
+          });
+          try {
+            await this.recalculateClassPositions(classId, termId);
+          } catch (positionError) {
+            console.warn("[RELIABLE-SYNC] Failed to recalculate class positions (non-critical):", positionError);
+          }
+          return result;
+        } catch (txError) {
+          console.error("[RELIABLE-SYNC-TX] Transaction failed and rolled back:", txError);
+          return {
+            success: false,
+            message: `Transaction failed: ${txError.message || "Unknown error"}`,
+            errorCode: "TRANSACTION_FAILED"
+          };
+        }
+      }
+      // Transaction-aware version of initializeReportCardItems
+      async initializeReportCardItemsTx(tx, reportCardId, studentId, classId, studentData) {
+        const studentClass = await tx.select().from(classes).where(eq5(classes.id, classId)).limit(1);
+        const isSeniorSecondary = studentClass.length > 0 && (studentClass[0].level || "").trim().toLowerCase() === "senior secondary";
+        const rawDepartment = (studentData.department || "").trim().toLowerCase();
+        const studentDepartment = rawDepartment.length > 0 ? rawDepartment : void 0;
+        const studentSubjectAssignments3 = await tx.select({ subjectId: studentSubjectAssignments.subjectId }).from(studentSubjectAssignments).where(and5(
+          eq5(studentSubjectAssignments.studentId, studentId),
+          eq5(studentSubjectAssignments.classId, classId),
+          eq5(studentSubjectAssignments.isActive, true)
+        ));
+        let relevantSubjects = [];
+        if (studentSubjectAssignments3.length > 0) {
+          const studentSubjectIds = studentSubjectAssignments3.map((a) => a.subjectId);
+          relevantSubjects = await tx.select().from(subjects).where(and5(
+            inArray4(subjects.id, studentSubjectIds),
+            eq5(subjects.isActive, true)
+          ));
+        } else {
+          relevantSubjects = await this.getSubjectsByClassAndDepartmentTx(tx, classId, studentDepartment);
+        }
+        console.log(`[RELIABLE-SYNC-TX] Initializing ${relevantSubjects.length} subject items for report card ${reportCardId}`);
+        for (const subject of relevantSubjects) {
+          await tx.insert(reportCardItems).values({
+            reportCardId,
+            subjectId: subject.id,
+            totalMarks: 100,
+            obtainedMarks: 0,
+            percentage: 0
+          });
+        }
+      }
+      // Transaction-aware version of ensureMissingSubjectsAdded
+      async ensureMissingSubjectsAddedTx(tx, reportCardId, studentId, classId, studentData) {
+        const existingItems = await tx.select({ subjectId: reportCardItems.subjectId }).from(reportCardItems).where(eq5(reportCardItems.reportCardId, reportCardId));
+        const existingSubjectIds = new Set(existingItems.map((item) => item.subjectId));
+        const rawDepartment = (studentData.department || "").trim().toLowerCase();
+        const studentDepartment = rawDepartment.length > 0 ? rawDepartment : void 0;
+        const studentSubjectAssignments3 = await tx.select({ subjectId: studentSubjectAssignments.subjectId }).from(studentSubjectAssignments).where(and5(
+          eq5(studentSubjectAssignments.studentId, studentId),
+          eq5(studentSubjectAssignments.classId, classId),
+          eq5(studentSubjectAssignments.isActive, true)
+        ));
+        let assignedSubjectIds = [];
+        if (studentSubjectAssignments3.length > 0) {
+          assignedSubjectIds = studentSubjectAssignments3.map((a) => a.subjectId);
+        } else {
+          const relevantSubjects = await this.getSubjectsByClassAndDepartmentTx(tx, classId, studentDepartment);
+          assignedSubjectIds = relevantSubjects.map((s) => s.id);
+        }
+        const missingSubjectIds = assignedSubjectIds.filter((id) => !existingSubjectIds.has(id));
+        if (missingSubjectIds.length > 0) {
+          console.log(`[RELIABLE-SYNC-TX] Adding ${missingSubjectIds.length} missing subjects to report card ${reportCardId}`);
+          for (const subjectId of missingSubjectIds) {
+            await tx.insert(reportCardItems).values({
+              reportCardId,
+              subjectId,
+              totalMarks: 100,
+              obtainedMarks: 0,
+              percentage: 0
+            });
+          }
+        }
+      }
+      // Transaction-aware version of getSubjectsByClassAndDepartment
+      async getSubjectsByClassAndDepartmentTx(tx, classId, department) {
+        const mappings = await tx.select({
+          subjectId: classSubjectMappings.subjectId
+        }).from(classSubjectMappings).where(eq5(classSubjectMappings.classId, classId));
+        if (mappings.length === 0) {
+          return [];
+        }
+        const subjectIds = mappings.map((m) => m.subjectId);
+        const subjects3 = await tx.select().from(subjects).where(and5(
+          inArray4(subjects.id, subjectIds),
+          eq5(subjects.isActive, true)
+        ));
+        return subjects3;
+      }
+      // Transaction-aware version of recalculateReportCard
+      async recalculateReportCardTx(tx, reportCardId, gradingScale) {
+        const items = await tx.select().from(reportCardItems).where(eq5(reportCardItems.reportCardId, reportCardId));
+        if (items.length === 0) return;
+        const itemsWithScores = items.filter(
+          (item) => item.testScore !== null && item.testScore > 0 || item.examScore !== null && item.examScore > 0
+        );
+        if (itemsWithScores.length === 0) return;
+        const totalObtained = itemsWithScores.reduce((sum, item) => sum + (item.obtainedMarks || 0), 0);
+        const totalMarks = itemsWithScores.length * 100;
+        const averagePercentage = totalMarks > 0 ? Math.round(totalObtained / totalMarks * 100) : 0;
+        const gradeInfo = calculateGradeFromPercentage(averagePercentage, gradingScale);
+        await tx.update(reportCards).set({
+          totalMarks,
+          obtainedMarks: totalObtained,
+          percentage: averagePercentage,
+          grade: gradeInfo.grade,
+          remarks: gradeInfo.remarks,
+          subjectsCount: itemsWithScores.length,
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(eq5(reportCards.id, reportCardId));
+      }
+      async initializeReportCardItems(reportCardId, studentId, classId, studentData) {
+        const studentClass = await db.select().from(classes).where(eq5(classes.id, classId)).limit(1);
+        const isSeniorSecondary = studentClass.length > 0 && (studentClass[0].level || "").trim().toLowerCase() === "senior secondary";
+        const rawDepartment = (studentData.department || "").trim().toLowerCase();
+        const studentDepartment = rawDepartment.length > 0 ? rawDepartment : void 0;
+        const studentSubjectAssignments3 = await db.select({ subjectId: studentSubjectAssignments.subjectId }).from(studentSubjectAssignments).where(and5(
+          eq5(studentSubjectAssignments.studentId, studentId),
+          eq5(studentSubjectAssignments.classId, classId),
+          eq5(studentSubjectAssignments.isActive, true)
+        ));
+        let relevantSubjects = [];
+        if (studentSubjectAssignments3.length > 0) {
+          const studentSubjectIds = studentSubjectAssignments3.map((a) => a.subjectId);
+          relevantSubjects = await db.select().from(subjects).where(and5(
+            inArray4(subjects.id, studentSubjectIds),
+            eq5(subjects.isActive, true)
+          ));
+        } else {
+          relevantSubjects = await this.getSubjectsByClassAndDepartment(classId, studentDepartment);
+        }
+        console.log(`[RELIABLE-SYNC] Initializing ${relevantSubjects.length} subject items for report card ${reportCardId}`);
+        for (const subject of relevantSubjects) {
+          await db.insert(reportCardItems).values({
+            reportCardId,
+            subjectId: subject.id,
+            totalMarks: 100,
+            obtainedMarks: 0,
+            percentage: 0
+          });
+        }
+      }
+      async ensureMissingSubjectsAdded(reportCardId, studentId, classId, studentData) {
+        const existingItems = await db.select({ subjectId: reportCardItems.subjectId }).from(reportCardItems).where(eq5(reportCardItems.reportCardId, reportCardId));
+        const existingSubjectIds = new Set(existingItems.map((item) => item.subjectId));
+        const rawDepartment = (studentData.department || "").trim().toLowerCase();
+        const studentDepartment = rawDepartment.length > 0 ? rawDepartment : void 0;
+        const studentSubjectAssignments3 = await db.select({ subjectId: studentSubjectAssignments.subjectId }).from(studentSubjectAssignments).where(and5(
+          eq5(studentSubjectAssignments.studentId, studentId),
+          eq5(studentSubjectAssignments.classId, classId),
+          eq5(studentSubjectAssignments.isActive, true)
+        ));
+        let assignedSubjectIds = [];
+        if (studentSubjectAssignments3.length > 0) {
+          assignedSubjectIds = studentSubjectAssignments3.map((a) => a.subjectId);
+        } else {
+          const relevantSubjects = await this.getSubjectsByClassAndDepartment(classId, studentDepartment);
+          assignedSubjectIds = relevantSubjects.map((s) => s.id);
+        }
+        const missingSubjectIds = assignedSubjectIds.filter((id) => !existingSubjectIds.has(id));
+        if (missingSubjectIds.length > 0) {
+          console.log(`[RELIABLE-SYNC] Adding ${missingSubjectIds.length} missing subjects to report card ${reportCardId}`);
+          for (const subjectId of missingSubjectIds) {
+            await db.insert(reportCardItems).values({
+              reportCardId,
+              subjectId,
+              totalMarks: 100,
+              obtainedMarks: 0,
+              percentage: 0
+            });
+          }
+        }
+      }
+      async getSubjectsByClassAndDepartment(classId, department) {
+        const mappings = await db.select({
+          subjectId: classSubjectMappings.subjectId
+        }).from(classSubjectMappings).where(eq5(classSubjectMappings.classId, classId));
+        if (mappings.length === 0) {
+          return [];
+        }
+        const subjectIds = mappings.map((m) => m.subjectId);
+        const subjects3 = await db.select().from(subjects).where(and5(
+          inArray4(subjects.id, subjectIds),
+          eq5(subjects.isActive, true)
+        ));
+        return subjects3;
+      }
+      async recalculateReportCard(reportCardId, gradingScale) {
+        const items = await db.select().from(reportCardItems).where(eq5(reportCardItems.reportCardId, reportCardId));
+        if (items.length === 0) return;
+        const itemsWithScores = items.filter(
+          (item) => item.testScore !== null && item.testScore > 0 || item.examScore !== null && item.examScore > 0
+        );
+        if (itemsWithScores.length === 0) return;
+        const totalObtained = itemsWithScores.reduce((sum, item) => sum + (item.obtainedMarks || 0), 0);
+        const totalMarks = itemsWithScores.length * 100;
+        const averagePercentage = totalMarks > 0 ? Math.round(totalObtained / totalMarks * 100) : 0;
+        const gradeInfo = calculateGradeFromPercentage(averagePercentage, gradingScale);
+        await db.update(reportCards).set({
+          totalScore: totalObtained,
+          averageScore: Math.round(totalObtained / itemsWithScores.length),
+          averagePercentage,
+          overallGrade: gradeInfo.grade,
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(eq5(reportCards.id, reportCardId));
+      }
+      async recalculateClassPositions(classId, termId) {
+        try {
+          const reportCards3 = await db.select({
+            id: reportCards.id,
+            studentId: reportCards.studentId,
+            averagePercentage: reportCards.averagePercentage
+          }).from(reportCards).where(and5(
+            eq5(reportCards.classId, classId),
+            eq5(reportCards.termId, termId)
+          )).orderBy(desc3(reportCards.averagePercentage));
+          if (reportCards3.length === 0) return;
+          const positionMap = /* @__PURE__ */ new Map();
+          let currentPosition = 1;
+          let previousPercentage = null;
+          let samePositionCount = 0;
+          for (const card of reportCards3) {
+            const percentage = card.averagePercentage ?? 0;
+            if (previousPercentage !== null && percentage === previousPercentage) {
+              samePositionCount++;
+            } else {
+              currentPosition += samePositionCount;
+              samePositionCount = 1;
+            }
+            positionMap.set(card.id, currentPosition);
+            previousPercentage = percentage;
+          }
+          const totalStudentsInClass = reportCards3.length;
+          for (const card of reportCards3) {
+            const position = positionMap.get(card.id) || 0;
+            await db.update(reportCards).set({
+              position,
+              totalStudentsInClass,
+              updatedAt: /* @__PURE__ */ new Date()
+            }).where(eq5(reportCards.id, card.id));
+          }
+        } catch (error) {
+          console.error(`[RELIABLE-SYNC] Error calculating positions:`, error);
+        }
+      }
+      createFailedResult(message, errorCode) {
+        return { success: false, message, errorCode };
+      }
+      async retryFailedSyncs() {
+        const now = /* @__PURE__ */ new Date();
+        const failedSyncs = await db.select().from(syncAuditLogs).where(and5(
+          eq5(syncAuditLogs.status, "failed"),
+          sql6`${syncAuditLogs.retryCount} < ${syncAuditLogs.maxRetries}`,
+          sql6`${syncAuditLogs.nextRetryAt} IS NULL OR ${syncAuditLogs.nextRetryAt} <= ${now}`
+        )).limit(50);
+        let succeeded = 0;
+        let failed = 0;
+        for (const sync of failedSyncs) {
+          try {
+            await db.update(syncAuditLogs).set({
+              status: "retrying",
+              retryCount: sync.retryCount + 1,
+              lastRetryAt: now,
+              updatedAt: now
+            }).where(eq5(syncAuditLogs.id, sync.id));
+            const result = await this.syncExamScoreToReportCardReliable(
+              sync.studentId,
+              sync.examId,
+              sync.score,
+              sync.maxScore,
+              {
+                syncType: "retry",
+                triggeredBy: sync.triggeredBy ?? void 0,
+                skipAuditLog: true
+              }
+            );
+            if (result.success) {
+              await db.update(syncAuditLogs).set({
+                status: "success",
+                reportCardId: result.reportCardId ?? null,
+                syncedAt: now,
+                errorMessage: null,
+                updatedAt: now
+              }).where(eq5(syncAuditLogs.id, sync.id));
+              succeeded++;
+            } else {
+              const nextRetryDelay = this.retryDelayMs[Math.min(sync.retryCount, this.retryDelayMs.length - 1)];
+              const nextRetryAt = new Date(now.getTime() + nextRetryDelay);
+              await db.update(syncAuditLogs).set({
+                status: "failed",
+                errorMessage: result.message,
+                nextRetryAt: sync.retryCount + 1 < sync.maxRetries ? nextRetryAt : null,
+                updatedAt: now
+              }).where(eq5(syncAuditLogs.id, sync.id));
+              failed++;
+            }
+          } catch (error) {
+            console.error(`[RELIABLE-SYNC] Retry failed for sync ${sync.id}:`, error);
+            failed++;
+          }
+        }
+        return { processed: failedSyncs.length, succeeded, failed };
+      }
+      async getSyncAuditLogs(filters) {
+        const conditions = [];
+        if (filters.studentId) {
+          conditions.push(eq5(syncAuditLogs.studentId, filters.studentId));
+        }
+        if (filters.examId) {
+          conditions.push(eq5(syncAuditLogs.examId, filters.examId));
+        }
+        if (filters.status) {
+          conditions.push(eq5(syncAuditLogs.status, filters.status));
+        }
+        if (filters.syncType) {
+          conditions.push(eq5(syncAuditLogs.syncType, filters.syncType));
+        }
+        const whereClause = conditions.length > 0 ? and5(...conditions) : void 0;
+        const [logs, countResult] = await Promise.all([
+          db.select().from(syncAuditLogs).where(whereClause).orderBy(desc3(syncAuditLogs.createdAt)).limit(filters.limit || 50).offset(filters.offset || 0),
+          db.select({ count: sql6`count(*)` }).from(syncAuditLogs).where(whereClause)
+        ]);
+        return { logs, total: Number(countResult[0]?.count || 0) };
+      }
+      async manualResyncById(auditLogId, triggeredBy) {
+        const log = await db.select().from(syncAuditLogs).where(eq5(syncAuditLogs.id, auditLogId)).limit(1);
+        if (log.length === 0) {
+          return { success: false, message: "Audit log not found", errorCode: "NOT_FOUND" };
+        }
+        const syncLog = log[0];
+        if (!syncLog.examId || !syncLog.score || !syncLog.maxScore) {
+          return { success: false, message: "Incomplete sync data", errorCode: "INCOMPLETE_DATA" };
+        }
+        return this.syncExamScoreToReportCardReliable(
+          syncLog.studentId,
+          syncLog.examId,
+          syncLog.score,
+          syncLog.maxScore,
+          {
+            syncType: "admin_repair",
+            triggeredBy
+          }
+        );
+      }
+    };
+    reliableSyncService = new ReliableSyncService();
   }
 });
 
@@ -11207,13 +12811,10 @@ var query_optimizer_exports = {};
 __export(query_optimizer_exports, {
   BatchLoader: () => BatchLoader,
   RateLimiter: () => RateLimiter,
-  apiRateLimiter: () => apiRateLimiter,
   bulkInsertWithConflict: () => bulkInsertWithConflict,
   createPaginatedResult: () => createPaginatedResult,
   getPaginationParams: () => getPaginationParams,
   getPoolStats: () => getPoolStats,
-  heavyOperationLimiter: () => heavyOperationLimiter,
-  loginRateLimiter: () => loginRateLimiter,
   selectFields: () => selectFields,
   timedQuery: () => timedQuery
 });
@@ -11281,7 +12882,7 @@ function selectFields(data, fields) {
     return result;
   });
 }
-var BatchLoader, RateLimiter, apiRateLimiter, loginRateLimiter, heavyOperationLimiter;
+var BatchLoader, RateLimiter;
 var init_query_optimizer = __esm({
   "server/query-optimizer.ts"() {
     "use strict";
@@ -11376,9 +12977,6 @@ var init_query_optimizer = __esm({
         this.requests.clear();
       }
     };
-    apiRateLimiter = new RateLimiter(100, 6e4);
-    loginRateLimiter = new RateLimiter(5, 9e5);
-    heavyOperationLimiter = new RateLimiter(10, 6e4);
   }
 });
 
@@ -11659,7 +13257,7 @@ __export(csv_import_service_exports, {
   previewCSVImport: () => previewCSVImport
 });
 import { parse } from "csv-parse/sync";
-import { eq as eq5, and as and5 } from "drizzle-orm";
+import { eq as eq6, and as and6 } from "drizzle-orm";
 import bcrypt from "bcrypt";
 async function previewCSVImport(csvContent) {
   const rows = parse(csvContent, {
@@ -11695,9 +13293,9 @@ async function previewCSVImport(csvContent) {
     }
     let parentExists = false;
     if (row.parentPhone) {
-      const existingParent = await db2.select().from(users2).where(and5(
-        eq5(users2.phone, row.parentPhone),
-        eq5(users2.roleId, 5)
+      const existingParent = await db2.select().from(users2).where(and6(
+        eq6(users2.phone, row.parentPhone),
+        eq6(users2.roleId, 5)
         // Parent role
       )).limit(1);
       parentExists = existingParent.length > 0;
@@ -11780,7 +13378,7 @@ async function commitCSVImport(validRows, adminUserId) {
         createdBy: adminUserId,
         mustChangePassword: true
       }).returning();
-      const admissionNumber = item.data.admissionNo || `THS/${year}/${String(successCount + 1).padStart(4, "0")}`;
+      const admissionNumber = item.data.admissionNo || `THS-STU-${studentUsername.toUpperCase()}`;
       await db2.insert(students2).values({
         id: studentUser.id,
         admissionNumber,
@@ -11792,14 +13390,14 @@ async function commitCSVImport(validRows, adminUserId) {
       let parentCredentials = null;
       if (item.data.parentPhone) {
         if (item.parentExists) {
-          const [existingParent] = await db2.select().from(users2).where(and5(
-            eq5(users2.phone, item.data.parentPhone),
-            eq5(users2.roleId, 5)
+          const [existingParent] = await db2.select().from(users2).where(and6(
+            eq6(users2.phone, item.data.parentPhone),
+            eq6(users2.roleId, 5)
             // Parent
           )).limit(1);
           if (existingParent) {
             parentUserId = existingParent.id;
-            await db2.update(students2).set({ parentId: parentUserId }).where(eq5(students2.id, studentUser.id));
+            await db2.update(students2).set({ parentId: parentUserId }).where(eq6(students2.id, studentUser.id));
           }
         } else {
           const parentUsername = await generateParentUsername();
@@ -11821,7 +13419,7 @@ async function commitCSVImport(validRows, adminUserId) {
             mustChangePassword: true
           }).returning();
           parentUserId = parentUser.id;
-          await db2.update(students2).set({ parentId: parentUserId }).where(eq5(students2.id, studentUser.id));
+          await db2.update(students2).set({ parentId: parentUserId }).where(eq6(students2.id, studentUser.id));
           parentCredentials = {
             username: parentUsername,
             password: parentPassword
@@ -11865,7 +13463,7 @@ __export(score_permissions_exports, {
 });
 function calculateScorePermissions(context) {
   const { loggedInUserId, loggedInRoleId, testExamCreatedBy, examExamCreatedBy, assignedTeacherId } = context;
-  const isAdmin = ADMIN_ROLE_IDS.includes(loggedInRoleId);
+  const isAdmin = ADMIN_ROLE_IDS2.includes(loggedInRoleId);
   if (isAdmin) {
     return {
       canEditTest: true,
@@ -11876,18 +13474,20 @@ function calculateScorePermissions(context) {
     };
   }
   const isAssignedTeacher = assignedTeacherId === loggedInUserId;
-  const canEditTest = !testExamCreatedBy || testExamCreatedBy === loggedInUserId || isAssignedTeacher;
-  const canEditExam = !examExamCreatedBy || examExamCreatedBy === loggedInUserId || isAssignedTeacher;
+  const canEditTest = isAssignedTeacher || testExamCreatedBy === loggedInUserId;
+  const canEditExam = isAssignedTeacher || examExamCreatedBy === loggedInUserId;
   const canEditRemarks = canEditTest || canEditExam;
   let reason = "";
   if (!canEditTest && !canEditExam) {
-    reason = "Not authorized: You did not create the exam and are not assigned to this subject";
+    reason = "Not authorized: You are not assigned to this subject and did not create any exams for it";
   } else if (!canEditTest) {
-    reason = "Cannot edit test scores: Created by another teacher and you are not assigned to this subject";
+    reason = "Cannot edit test scores: Another teacher created the test and you are not assigned to this subject";
   } else if (!canEditExam) {
-    reason = "Cannot edit exam scores: Created by another teacher and you are not assigned to this subject";
+    reason = "Cannot edit exam scores: Another teacher created the exam and you are not assigned to this subject";
   } else if (isAssignedTeacher) {
     reason = "Authorized via subject assignment";
+  } else if (testExamCreatedBy === loggedInUserId || examExamCreatedBy === loggedInUserId) {
+    reason = "Authorized as exam creator";
   }
   return {
     canEditTest,
@@ -11957,11 +13557,11 @@ function getPermissionDeniedMessage(action, context) {
   }
   return "Permission denied";
 }
-var ADMIN_ROLE_IDS;
+var ADMIN_ROLE_IDS2;
 var init_score_permissions = __esm({
   "shared/score-permissions.ts"() {
     "use strict";
-    ADMIN_ROLE_IDS = [1, 2];
+    ADMIN_ROLE_IDS2 = [1, 2];
   }
 });
 
@@ -12077,7 +13677,7 @@ __export(seed_test_users_exports, {
   seedTestUsers: () => seedTestUsers
 });
 import bcrypt3 from "bcrypt";
-import { eq as eq7 } from "drizzle-orm";
+import { eq as eq8 } from "drizzle-orm";
 import { randomUUID as randomUUID3 } from "crypto";
 async function seedTestUsers() {
   try {
@@ -12142,7 +13742,7 @@ async function seedTestUsers() {
     const defaultStudentClass = classes3.find((c) => c.name === "JSS 1") || classes3[0];
     console.log("\u{1F4CB} Creating test user accounts for all 5 roles...");
     for (const userData of testUsers) {
-      const existingUser = await db2.select().from(users2).where(eq7(users2.username, userData.username)).limit(1);
+      const existingUser = await db2.select().from(users2).where(eq8(users2.username, userData.username)).limit(1);
       let userId = userData.id;
       if (existingUser.length === 0) {
         const roleId = roleMap[userData.roleName];
@@ -12172,11 +13772,9 @@ async function seedTestUsers() {
         console.log(`\u2139\uFE0F  ${userData.roleName} account already exists: ${userData.username}`);
       }
       if (userData.roleName === "Student" && defaultStudentClass) {
-        const existingStudent = await db2.select().from(students2).where(eq7(students2.id, userId)).limit(1);
+        const existingStudent = await db2.select().from(students2).where(eq8(students2.id, userId)).limit(1);
         if (existingStudent.length === 0) {
-          const year = (/* @__PURE__ */ new Date()).getFullYear();
-          const randomNum = Math.floor(1e5 + Math.random() * 9e5);
-          const admissionNumber = `THS/${year}/${randomNum}`;
+          const admissionNumber = `THS-STU-${userData.username.toUpperCase()}`;
           await db2.insert(students2).values({
             id: userId,
             admissionNumber,
@@ -12225,27 +13823,86 @@ init_storage();
 init_schema_pg();
 import { createServer } from "http";
 
-// shared/role-constants.ts
-var ROLE_IDS = {
-  SUPER_ADMIN: 1,
-  ADMIN: 2,
-  TEACHER: 3,
-  STUDENT: 4,
-  PARENT: 5
+// server/routes/middleware.ts
+init_storage();
+init_role_constants();
+import jwt2 from "jsonwebtoken";
+var JWT_SECRET2 = process.env.JWT_SECRET || (process.env.NODE_ENV === "development" ? "dev-secret-key-change-in-production" : void 0);
+if (!JWT_SECRET2) {
+  process.exit(1);
+}
+var SECRET_KEY = JWT_SECRET2;
+var JWT_EXPIRES_IN = "24h";
+function normalizeUuid2(raw) {
+  if (!raw) return void 0;
+  if (typeof raw === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
+    return raw;
+  }
+  let bytes;
+  if (typeof raw === "string" && raw.includes(",")) {
+    const parts = raw.split(",").map((s) => parseInt(s.trim()));
+    if (parts.length === 16 && parts.every((n) => n >= 0 && n <= 255)) {
+      bytes = parts;
+    }
+  }
+  if (Array.isArray(raw) && raw.length === 16) {
+    bytes = raw;
+  } else if (raw instanceof Uint8Array && raw.length === 16) {
+    bytes = Array.from(raw);
+  }
+  if (bytes) {
+    const hex = bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+  }
+  return void 0;
+}
+var authenticateUser = async (req, res, next) => {
+  try {
+    const authHeader = (req.headers.authorization || "").trim();
+    const [scheme, token] = authHeader.split(/\s+/);
+    if (!/^bearer$/i.test(scheme) || !token) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+    let decoded;
+    try {
+      decoded = jwt2.verify(token, SECRET_KEY);
+    } catch (jwtError) {
+      return res.status(401).json({ message: "Invalid or expired token" });
+    }
+    const normalizedUserId = normalizeUuid2(decoded.userId);
+    if (!normalizedUserId) {
+      return res.status(401).json({ message: "Invalid token format" });
+    }
+    const user = await storage.getUser(normalizedUserId);
+    if (!user) {
+      return res.status(401).json({ message: "User no longer exists" });
+    }
+    if (user.isActive === false) {
+      return res.status(401).json({ message: "Account has been deactivated. Please contact administrator." });
+    }
+    if (user.roleId !== decoded.roleId) {
+      return res.status(401).json({ message: "User role has changed, please log in again" });
+    }
+    req.user = user;
+    next();
+  } catch (error) {
+    res.status(401).json({ message: "Authentication failed" });
+  }
 };
-var ROLE_NAMES = {
-  [ROLE_IDS.SUPER_ADMIN]: "Super Admin",
-  [ROLE_IDS.ADMIN]: "Admin",
-  [ROLE_IDS.TEACHER]: "Teacher",
-  [ROLE_IDS.STUDENT]: "Student",
-  [ROLE_IDS.PARENT]: "Parent"
-};
-var ROLE_PORTALS = {
-  [ROLE_IDS.SUPER_ADMIN]: "/portal/superadmin",
-  [ROLE_IDS.ADMIN]: "/portal/admin",
-  [ROLE_IDS.TEACHER]: "/portal/teacher",
-  [ROLE_IDS.STUDENT]: "/portal/student",
-  [ROLE_IDS.PARENT]: "/portal/parent"
+var authorizeRoles = (...allowedRoles) => {
+  return async (req, res, next) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+      if (!allowedRoles.includes(req.user.roleId)) {
+        return res.status(403).json({ message: "Insufficient permissions" });
+      }
+      next();
+    } catch (error) {
+      res.status(403).json({ message: "Authorization failed" });
+    }
+  };
 };
 
 // server/routes.ts
@@ -12258,13 +13915,14 @@ import { z as z3, ZodError } from "zod";
 import multer from "multer";
 import path2 from "path";
 import fs3 from "fs/promises";
-import jwt3 from "jsonwebtoken";
+import sharp from "sharp";
+import jwt4 from "jsonwebtoken";
 import bcrypt2 from "bcrypt";
 import { randomUUID as randomUUID2 } from "crypto";
 import passport from "passport";
 import session from "express-session";
 import memorystore from "memorystore";
-import { and as and6, eq as eq6, sql as sql6, desc as desc3 } from "drizzle-orm";
+import { and as and7, eq as eq7, sql as sql7, desc as desc4 } from "drizzle-orm";
 
 // server/upload-service.ts
 init_cloudinary_service();
@@ -12278,7 +13936,9 @@ var uploadTypeMap = {
   "teacher": "teacher",
   "admin": "admin",
   "assignment": "assignment",
-  "result": "result"
+  "result": "result",
+  "system_settings": "homepage",
+  "system-settings": "homepage"
 };
 async function uploadFileToStorage(file, options) {
   try {
@@ -12341,14 +14001,16 @@ async function replaceFile2(file, oldUrl, options) {
 init_db();
 init_storage();
 init_schema_pg();
+init_role_constants();
 import { Router } from "express";
-import jwt2 from "jsonwebtoken";
+import jwt3 from "jsonwebtoken";
 import { eq as eq4, and as and4, desc as desc2, sql as sql5, isNull as isNull3, or as or4, gte as gte3, inArray as inArray3 } from "drizzle-orm";
 import { z as z2 } from "zod";
 
 // server/teacher-auth-middleware.ts
 init_db();
 init_schema_pg();
+init_role_constants();
 import { eq as eq3, and as and3, isNull as isNull2, or as or3, gte as gte2 } from "drizzle-orm";
 function sanitizeIp(ip) {
   if (!ip) return null;
@@ -12375,7 +14037,7 @@ async function checkTeacherAssignment(teacherId, classId, subjectId, termId) {
     if (termId) {
       conditions.push(eq3(teacherClassAssignments.termId, termId));
     }
-    const assignments = await database.select().from(teacherClassAssignments).where(and3(...conditions)).limit(1);
+    const assignments = await db.select().from(teacherClassAssignments).where(and3(...conditions)).limit(1);
     return assignments.length > 0;
   } catch (error) {
     console.error("Error checking teacher assignment:", error);
@@ -12396,7 +14058,7 @@ async function getTeacherAssignments(teacherId, termId) {
     if (termId) {
       conditions.push(eq3(teacherClassAssignments.termId, termId));
     }
-    return await database.select().from(teacherClassAssignments).where(and3(...conditions));
+    return await db.select().from(teacherClassAssignments).where(and3(...conditions));
   } catch (error) {
     console.error("Error getting teacher assignments:", error);
     return [];
@@ -12404,7 +14066,7 @@ async function getTeacherAssignments(teacherId, termId) {
 }
 async function logUnauthorizedAccess(userId, attemptedAction, attemptedResource, classId, subjectId, reason, req) {
   try {
-    await database.insert(unauthorizedAccessLogs).values({
+    await db.insert(unauthorizedAccessLogs).values({
       userId: userId || null,
       attemptedAction,
       attemptedResource,
@@ -12489,7 +14151,7 @@ var validateExamTimeWindow = async (req, res, next) => {
     if (!examId) {
       return res.status(400).json({ message: "Exam ID is required" });
     }
-    const [exam] = await database.select().from(exams).where(eq3(exams.id, examId)).limit(1);
+    const [exam] = await db.select().from(exams).where(eq3(exams.id, examId)).limit(1);
     if (!exam) {
       return res.status(404).json({ message: "Exam not found" });
     }
@@ -12538,7 +14200,7 @@ var validateExamTimeWindow = async (req, res, next) => {
         endedAt: exam.endTime
       });
     }
-    const [student] = await database.select().from(students).where(eq3(students.id, userId)).limit(1);
+    const [student] = await db.select().from(students).where(eq3(students.id, userId)).limit(1);
     if (!student) {
       await logUnauthorizedAccess(
         userId,
@@ -12586,8 +14248,8 @@ var logExamAccess = async (req, res, next) => {
 };
 
 // server/teacher-assignment-routes.ts
-var JWT_SECRET2 = process.env.JWT_SECRET || (process.env.NODE_ENV === "development" ? "dev-secret-key-change-in-production" : void 0);
-function normalizeUuid2(raw) {
+var JWT_SECRET3 = process.env.JWT_SECRET || (process.env.NODE_ENV === "development" ? "dev-secret-key-change-in-production" : void 0);
+function normalizeUuid3(raw) {
   if (!raw) return void 0;
   if (typeof raw === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
     return raw;
@@ -12659,11 +14321,11 @@ var requireAuth = async (req, res, next) => {
     }
     let decoded;
     try {
-      decoded = jwt2.verify(token, JWT_SECRET2);
+      decoded = jwt3.verify(token, JWT_SECRET3);
     } catch (jwtError) {
       return res.status(401).json({ message: "Invalid or expired token" });
     }
-    const normalizedUserId = normalizeUuid2(decoded.userId);
+    const normalizedUserId = normalizeUuid3(decoded.userId);
     if (!normalizedUserId) {
       return res.status(401).json({ message: "Invalid token format" });
     }
@@ -12731,7 +14393,7 @@ router.get("/api/teacher-assignments", requireAuth, async (req, res) => {
     if (termId) {
       conditions.push(eq4(teacherClassAssignments.termId, parseInt(termId)));
     }
-    const assignments = await database.select({
+    const assignments = await db.select({
       id: teacherClassAssignments.id,
       teacherId: teacherClassAssignments.teacherId,
       classId: teacherClassAssignments.classId,
@@ -12759,7 +14421,7 @@ router.post("/api/teacher-assignments", requireAdmin, async (req, res) => {
   try {
     const user = req.user;
     const data = createAssignmentSchema.parse(req.body);
-    const existingAssignment = await database.select().from(teacherClassAssignments).where(and4(
+    const existingAssignment = await db.select().from(teacherClassAssignments).where(and4(
       eq4(teacherClassAssignments.teacherId, data.teacherId),
       eq4(teacherClassAssignments.classId, data.classId),
       eq4(teacherClassAssignments.subjectId, data.subjectId),
@@ -12781,7 +14443,7 @@ router.post("/api/teacher-assignments", requireAdmin, async (req, res) => {
     }
     let newAssignment;
     try {
-      [newAssignment] = await database.insert(teacherClassAssignments).values({
+      [newAssignment] = await db.insert(teacherClassAssignments).values({
         teacherId: data.teacherId,
         classId: data.classId,
         subjectId: data.subjectId,
@@ -12801,7 +14463,7 @@ router.post("/api/teacher-assignments", requireAdmin, async (req, res) => {
       }
       throw dbError;
     }
-    await database.insert(teacherAssignmentHistory).values({
+    await db.insert(teacherAssignmentHistory).values({
       assignmentId: newAssignment.id,
       teacherId: data.teacherId,
       classId: data.classId,
@@ -12825,7 +14487,7 @@ router.put("/api/teacher-assignments/:id", requireAdmin, async (req, res) => {
     const user = req.user;
     const assignmentId = parseInt(req.params.id);
     const data = updateAssignmentSchema.parse(req.body);
-    const [existing] = await database.select().from(teacherClassAssignments).where(eq4(teacherClassAssignments.id, assignmentId));
+    const [existing] = await db.select().from(teacherClassAssignments).where(eq4(teacherClassAssignments.id, assignmentId));
     if (!existing) {
       return res.status(404).json({ message: "Assignment not found" });
     }
@@ -12837,8 +14499,8 @@ router.put("/api/teacher-assignments/:id", requireAdmin, async (req, res) => {
     if (data.validUntil !== void 0) {
       updateData.validUntil = data.validUntil ? new Date(data.validUntil) : null;
     }
-    const [updated] = await database.update(teacherClassAssignments).set(updateData).where(eq4(teacherClassAssignments.id, assignmentId)).returning();
-    await database.insert(teacherAssignmentHistory).values({
+    const [updated] = await db.update(teacherClassAssignments).set(updateData).where(eq4(teacherClassAssignments.id, assignmentId)).returning();
+    await db.insert(teacherAssignmentHistory).values({
       assignmentId,
       teacherId: existing.teacherId,
       classId: existing.classId,
@@ -12862,11 +14524,11 @@ router.delete("/api/teacher-assignments/:id", requireAdmin, async (req, res) => 
   try {
     const user = req.user;
     const assignmentId = parseInt(req.params.id);
-    const [existing] = await database.select().from(teacherClassAssignments).where(eq4(teacherClassAssignments.id, assignmentId));
+    const [existing] = await db.select().from(teacherClassAssignments).where(eq4(teacherClassAssignments.id, assignmentId));
     if (!existing) {
       return res.status(404).json({ message: "Assignment not found" });
     }
-    await database.insert(teacherAssignmentHistory).values({
+    await db.insert(teacherAssignmentHistory).values({
       assignmentId,
       teacherId: existing.teacherId,
       classId: existing.classId,
@@ -12877,7 +14539,7 @@ router.delete("/api/teacher-assignments/:id", requireAdmin, async (req, res) => 
       reason: req.body.reason || null,
       ipAddress: sanitizeIp2(req.headers["x-forwarded-for"]) || sanitizeIp2(req.ip)
     });
-    await database.delete(teacherClassAssignments).where(eq4(teacherClassAssignments.id, assignmentId));
+    await db.delete(teacherClassAssignments).where(eq4(teacherClassAssignments.id, assignmentId));
     res.json({ message: "Assignment deleted successfully" });
   } catch (error) {
     console.error("Error deleting teacher assignment:", error);
@@ -12892,7 +14554,7 @@ router.get("/api/grading-boundaries", requireAuth, async (req, res) => {
     if (classId) conditions.push(eq4(gradingBoundaries.classId, parseInt(classId)));
     if (subjectId) conditions.push(eq4(gradingBoundaries.subjectId, parseInt(subjectId)));
     if (defaultOnly === "true") conditions.push(eq4(gradingBoundaries.isDefault, true));
-    const boundaries = await database.select().from(gradingBoundaries).where(conditions.length > 0 ? and4(...conditions) : void 0).orderBy(desc2(gradingBoundaries.minScore));
+    const boundaries = await db.select().from(gradingBoundaries).where(conditions.length > 0 ? and4(...conditions) : void 0).orderBy(desc2(gradingBoundaries.minScore));
     res.json(boundaries);
   } catch (error) {
     console.error("Error fetching grading boundaries:", error);
@@ -12906,7 +14568,7 @@ router.post("/api/grading-boundaries", requireAdmin, async (req, res) => {
     if (data.minScore > data.maxScore) {
       return res.status(400).json({ message: "Minimum score cannot be greater than maximum score" });
     }
-    const [newBoundary] = await database.insert(gradingBoundaries).values({
+    const [newBoundary] = await db.insert(gradingBoundaries).values({
       name: data.name,
       grade: data.grade,
       minScore: data.minScore,
@@ -12948,7 +14610,7 @@ router.post("/api/grading-boundaries/bulk", requireAdmin, async (req, res) => {
       subjectId: subjectId || null,
       createdBy: user.id
     }));
-    const created = await database.insert(gradingBoundaries).values(boundariesToInsert).returning();
+    const created = await db.insert(gradingBoundaries).values(boundariesToInsert).returning();
     res.status(201).json(created);
   } catch (error) {
     console.error("Error creating bulk grading boundaries:", error);
@@ -12979,7 +14641,7 @@ router.patch("/api/grading-boundaries/:id", requireAdmin, async (req, res) => {
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({ message: "No update data provided" });
     }
-    const [updated] = await database.update(gradingBoundaries).set(updateData).where(eq4(gradingBoundaries.id, boundaryId)).returning();
+    const [updated] = await db.update(gradingBoundaries).set(updateData).where(eq4(gradingBoundaries.id, boundaryId)).returning();
     if (!updated) {
       return res.status(404).json({ message: "Grading boundary not found" });
     }
@@ -12992,7 +14654,7 @@ router.patch("/api/grading-boundaries/:id", requireAdmin, async (req, res) => {
 router.delete("/api/grading-boundaries/:id", requireAdmin, async (req, res) => {
   try {
     const boundaryId = parseInt(req.params.id);
-    await database.delete(gradingBoundaries).where(eq4(gradingBoundaries.id, boundaryId));
+    await db.delete(gradingBoundaries).where(eq4(gradingBoundaries.id, boundaryId));
     res.json({ message: "Grading boundary deleted successfully" });
   } catch (error) {
     console.error("Error deleting grading boundary:", error);
@@ -13018,7 +14680,7 @@ router.get("/api/continuous-assessment", requireAuth, async (req, res) => {
     if (subjectId) conditions.push(eq4(continuousAssessment.subjectId, parseInt(subjectId)));
     if (termId) conditions.push(eq4(continuousAssessment.termId, parseInt(termId)));
     if (studentId) conditions.push(eq4(continuousAssessment.studentId, studentId));
-    const assessments = await database.select({
+    const assessments = await db.select({
       id: continuousAssessment.id,
       studentId: continuousAssessment.studentId,
       classId: continuousAssessment.classId,
@@ -13060,7 +14722,7 @@ router.post("/api/continuous-assessment", requireAuth, async (req, res) => {
       }
     }
     const totalScore = (data.testScore || 0) + (data.examScore || 0);
-    const defaultBoundaries = await database.select().from(gradingBoundaries).where(eq4(gradingBoundaries.isDefault, true)).orderBy(desc2(gradingBoundaries.minScore));
+    const defaultBoundaries = await db.select().from(gradingBoundaries).where(eq4(gradingBoundaries.isDefault, true)).orderBy(desc2(gradingBoundaries.minScore));
     let grade = "F";
     let remark = "Fail";
     for (const boundary of defaultBoundaries) {
@@ -13070,7 +14732,7 @@ router.post("/api/continuous-assessment", requireAuth, async (req, res) => {
         break;
       }
     }
-    const [existing] = await database.select().from(continuousAssessment).where(and4(
+    const [existing] = await db.select().from(continuousAssessment).where(and4(
       eq4(continuousAssessment.studentId, data.studentId),
       eq4(continuousAssessment.classId, data.classId),
       eq4(continuousAssessment.subjectId, data.subjectId),
@@ -13080,7 +14742,7 @@ router.post("/api/continuous-assessment", requireAuth, async (req, res) => {
       if (existing.isLocked) {
         return res.status(403).json({ message: "This assessment record is locked and cannot be modified" });
       }
-      const [updated] = await database.update(continuousAssessment).set({
+      const [updated] = await db.update(continuousAssessment).set({
         testScore: data.testScore ?? existing.testScore,
         examScore: data.examScore ?? existing.examScore,
         totalScore,
@@ -13091,7 +14753,7 @@ router.post("/api/continuous-assessment", requireAuth, async (req, res) => {
       }).where(eq4(continuousAssessment.id, existing.id)).returning();
       return res.json(updated);
     }
-    const [newAssessment] = await database.insert(continuousAssessment).values({
+    const [newAssessment] = await db.insert(continuousAssessment).values({
       studentId: data.studentId,
       classId: data.classId,
       subjectId: data.subjectId,
@@ -13117,7 +14779,7 @@ router.post("/api/continuous-assessment/:id/lock", requireAdmin, async (req, res
   try {
     const user = req.user;
     const assessmentId = parseInt(req.params.id);
-    const [updated] = await database.update(continuousAssessment).set({
+    const [updated] = await db.update(continuousAssessment).set({
       isLocked: true,
       lockedBy: user.id,
       lockedAt: /* @__PURE__ */ new Date(),
@@ -13132,7 +14794,7 @@ router.post("/api/continuous-assessment/:id/lock", requireAdmin, async (req, res
 router.post("/api/continuous-assessment/:id/unlock", requireAdmin, async (req, res) => {
   try {
     const assessmentId = parseInt(req.params.id);
-    const [updated] = await database.update(continuousAssessment).set({
+    const [updated] = await db.update(continuousAssessment).set({
       isLocked: false,
       lockedBy: null,
       lockedAt: null,
@@ -13151,7 +14813,7 @@ router.get("/api/teacher-assignments/history", requireAdmin, async (req, res) =>
     if (teacherId) {
       conditions.push(eq4(teacherAssignmentHistory.teacherId, teacherId));
     }
-    const history = await database.select({
+    const history = await db.select({
       id: teacherAssignmentHistory.id,
       assignmentId: teacherAssignmentHistory.assignmentId,
       teacherId: teacherAssignmentHistory.teacherId,
@@ -13178,7 +14840,7 @@ router.get("/api/teacher/my-classes", requireAuth, async (req, res) => {
       return res.status(403).json({ message: "Only teachers can access this endpoint" });
     }
     const now = /* @__PURE__ */ new Date();
-    const assignments = await database.select({
+    const assignments = await db.select({
       assignmentId: teacherClassAssignments.id,
       classId: teacherClassAssignments.classId,
       subjectId: teacherClassAssignments.subjectId,
@@ -13225,7 +14887,7 @@ router.get("/api/teacher/my-students/:classId/:subjectId", requireAuth, async (r
       );
       return res.status(403).json({ message: "You are not authorized to view students for this class/subject" });
     }
-    const studentList = await database.select({
+    const studentList = await db.select({
       id: students.id,
       admissionNumber: students.admissionNumber,
       firstName: users.firstName,
@@ -13246,7 +14908,7 @@ router.get("/api/teacher/my-subjects", requireAuth, async (req, res) => {
       return res.status(403).json({ message: "Only teachers can access this endpoint" });
     }
     const now = /* @__PURE__ */ new Date();
-    const assignedSubjects = await database.selectDistinct({
+    const assignedSubjects = await db.selectDistinct({
       id: subjects.id,
       name: subjects.name,
       code: subjects.code,
@@ -13273,7 +14935,7 @@ router.get("/api/teacher/my-dashboard-stats", requireAuth, async (req, res) => {
       return res.status(403).json({ message: "Only teachers can access this endpoint" });
     }
     const now = /* @__PURE__ */ new Date();
-    const assignments = await database.select({
+    const assignments = await db.select({
       classId: teacherClassAssignments.classId,
       subjectId: teacherClassAssignments.subjectId
     }).from(teacherClassAssignments).where(and4(
@@ -13288,7 +14950,7 @@ router.get("/api/teacher/my-dashboard-stats", requireAuth, async (req, res) => {
     const uniqueSubjectIds = [...new Set(assignments.map((a) => a.subjectId))];
     let studentCount = 0;
     if (uniqueClassIds.length > 0) {
-      const studentData = await database.select({ count: sql5`count(*)` }).from(students).where(inArray3(students.classId, uniqueClassIds));
+      const studentData = await db.select({ count: sql5`count(*)` }).from(students).where(inArray3(students.classId, uniqueClassIds));
       studentCount = Number(studentData[0]?.count || 0);
     }
     res.json({
@@ -13309,7 +14971,7 @@ router.get("/api/teacher/my-all-students", requireAuth, async (req, res) => {
       return res.status(403).json({ message: "Only teachers can access this endpoint" });
     }
     const now = /* @__PURE__ */ new Date();
-    const assignments = await database.select({ classId: teacherClassAssignments.classId }).from(teacherClassAssignments).where(and4(
+    const assignments = await db.select({ classId: teacherClassAssignments.classId }).from(teacherClassAssignments).where(and4(
       eq4(teacherClassAssignments.teacherId, user.id),
       eq4(teacherClassAssignments.isActive, true),
       or4(
@@ -13321,7 +14983,7 @@ router.get("/api/teacher/my-all-students", requireAuth, async (req, res) => {
     if (classIds.length === 0) {
       return res.json([]);
     }
-    const studentList = await database.select({
+    const studentList = await db.select({
       id: students.id,
       admissionNumber: students.admissionNumber,
       classId: students.classId,
@@ -13541,6 +15203,54 @@ function invalidateVisibilityCache(options) {
   return invalidated;
 }
 
+// shared/class-teacher-permissions.ts
+var ADMIN_ROLE_IDS = [1, 2];
+function calculateClassTeacherPermissions(context) {
+  const { loggedInUserId, loggedInRoleId, classTeacherId } = context;
+  const isAdmin = ADMIN_ROLE_IDS.includes(loggedInRoleId);
+  if (isAdmin) {
+    return {
+      canRateSkills: true,
+      canWriteClassTeacherComment: true,
+      canManageClassRecords: true,
+      isAdmin: true,
+      isClassTeacher: false,
+      reason: "Administrator access"
+    };
+  }
+  const isClassTeacher = classTeacherId === loggedInUserId;
+  if (isClassTeacher) {
+    return {
+      canRateSkills: true,
+      canWriteClassTeacherComment: true,
+      canManageClassRecords: true,
+      isAdmin: false,
+      isClassTeacher: true,
+      reason: "Authorized as class teacher"
+    };
+  }
+  return {
+    canRateSkills: false,
+    canWriteClassTeacherComment: false,
+    canManageClassRecords: false,
+    isAdmin: false,
+    isClassTeacher: false,
+    reason: "Only the assigned class teacher or administrators can perform this action"
+  };
+}
+function getClassTeacherPermissionDeniedMessage(action) {
+  switch (action) {
+    case "skills":
+      return "Only the assigned class teacher or an administrator can rate student skills. If you believe you should have access, please contact an administrator.";
+    case "comment":
+      return "Only the assigned class teacher or an administrator can write class teacher comments. If you believe you should have access, please contact an administrator.";
+    case "records":
+      return "Only the assigned class teacher or an administrator can manage class records. If you believe you should have access, please contact an administrator.";
+    default:
+      return "Permission denied. This action requires class teacher authorization.";
+  }
+}
+
 // server/services/subject-assignment-service.ts
 init_storage();
 init_enhanced_cache();
@@ -13693,6 +15403,7 @@ var SubjectAssignmentService = {
 // server/routes.ts
 init_performance_cache();
 init_enhanced_cache();
+init_reliable_sync_service();
 async function invalidateSubjectMappingsAndSync(affectedClassIds, options = {}) {
   let cacheKeysInvalidated = 0;
   let totalSynced = 0;
@@ -13751,37 +15462,6 @@ var contactSchema = z3.object({
   email: z3.string().email(),
   message: z3.string().min(1)
 });
-var JWT_SECRET3 = process.env.JWT_SECRET || (process.env.NODE_ENV === "development" ? "dev-secret-key-change-in-production" : void 0);
-if (!JWT_SECRET3) {
-  process.exit(1);
-}
-if (process.env.NODE_ENV === "development" && JWT_SECRET3 === "dev-secret-key-change-in-production") {
-}
-var SECRET_KEY = JWT_SECRET3;
-var JWT_EXPIRES_IN = "24h";
-function normalizeUuid3(raw) {
-  if (!raw) return void 0;
-  if (typeof raw === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
-    return raw;
-  }
-  let bytes;
-  if (typeof raw === "string" && raw.includes(",")) {
-    const parts = raw.split(",").map((s) => parseInt(s.trim()));
-    if (parts.length === 16 && parts.every((n) => n >= 0 && n <= 255)) {
-      bytes = parts;
-    }
-  }
-  if (Array.isArray(raw) && raw.length === 16) {
-    bytes = raw;
-  } else if (raw instanceof Uint8Array && raw.length === 16) {
-    bytes = Array.from(raw);
-  }
-  if (bytes) {
-    const hex = bytes.map((b) => b.toString(16).padStart(2, "0")).join("");
-    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
-  }
-  return void 0;
-}
 var loginAttempts = /* @__PURE__ */ new Map();
 var lockoutViolations = /* @__PURE__ */ new Map();
 var isDevelopment = process.env.NODE_ENV !== "production";
@@ -13806,54 +15486,6 @@ setInterval(() => {
     }
   }
 }, 5 * 60 * 1e3);
-var authenticateUser = async (req, res, next) => {
-  try {
-    const authHeader = (req.headers.authorization || "").trim();
-    const [scheme, token] = authHeader.split(/\s+/);
-    if (!/^bearer$/i.test(scheme) || !token) {
-      return res.status(401).json({ message: "Authentication required" });
-    }
-    let decoded;
-    try {
-      decoded = jwt3.verify(token, SECRET_KEY);
-    } catch (jwtError) {
-      return res.status(401).json({ message: "Invalid or expired token" });
-    }
-    const normalizedUserId = normalizeUuid3(decoded.userId);
-    if (!normalizedUserId) {
-      return res.status(401).json({ message: "Invalid token format" });
-    }
-    const user = await storage.getUser(normalizedUserId);
-    if (!user) {
-      return res.status(401).json({ message: "User no longer exists" });
-    }
-    if (user.isActive === false) {
-      return res.status(401).json({ message: "Account has been deactivated. Please contact administrator." });
-    }
-    if (user.roleId !== decoded.roleId) {
-      return res.status(401).json({ message: "User role has changed, please log in again" });
-    }
-    req.user = user;
-    next();
-  } catch (error) {
-    res.status(401).json({ message: "Authentication failed" });
-  }
-};
-var authorizeRoles = (...allowedRoles) => {
-  return async (req, res, next) => {
-    try {
-      if (!req.user) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-      if (!allowedRoles.includes(req.user.roleId)) {
-        return res.status(403).json({ message: "Insufficient permissions" });
-      }
-      next();
-    } catch (error) {
-      res.status(403).json({ message: "Authorization failed" });
-    }
-  };
-};
 var uploadDir = "server/uploads";
 var galleryDir = "server/uploads/gallery";
 var profileDir = "server/uploads/profiles";
@@ -13871,31 +15503,32 @@ fs3.mkdir(homepageDir, { recursive: true }).catch(() => {
 });
 var storage_multer = multer.diskStorage({
   destination: (req, file, cb) => {
-    const uploadType = req.body.uploadType || "general";
-    let dir = uploadDir;
+    const isBranding = req.originalUrl && req.originalUrl.includes("branding") || req.body && (req.body.uploadType === "logo" || req.body.uploadType === "favicon");
+    const uploadType = req.body && req.body.uploadType || "general";
+    let dir = "server/uploads/general";
     if (uploadType === "gallery") {
-      dir = galleryDir;
+      dir = "server/uploads/gallery";
     } else if (uploadType === "profile") {
-      dir = profileDir;
+      dir = "server/uploads/profiles";
     } else if (uploadType === "study-resource") {
-      dir = studyResourcesDir;
-    } else if (uploadType === "homepage") {
-      dir = homepageDir;
+      dir = "server/uploads/study-resources";
+    } else if (isBranding || uploadType === "homepage" || uploadType === "system_settings" || uploadType === "system-settings") {
+      dir = "server/uploads/homepage";
     }
     cb(null, dir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     const ext = path2.extname(file.originalname);
-    const name = path2.basename(file.originalname, ext);
+    const name = path2.basename(file.originalname, ext).replace(/[^a-z0-9]/gi, "_").toLowerCase();
     cb(null, `${name}-${uniqueSuffix}${ext}`);
   }
 });
 var upload = multer({
   storage: storage_multer,
   limits: {
-    fileSize: 5 * 1024 * 1024
-    // 5MB limit
+    fileSize: 10 * 1024 * 1024
+    // Increased to 10MB to allow uncompressed uploads
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes2 = /jpeg|jpg|png|gif|webp/;
@@ -14333,6 +15966,86 @@ async function mergeExamScores(answerId, storage2) {
   } catch (error) {
   }
 }
+function generateTeacherComment(studentName, percentage) {
+  const nameParts = studentName.trim().split(" ");
+  const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0];
+  if (percentage >= 70) {
+    const comments = [
+      `${lastName} has shown exceptional academic performance this term. Keep up the excellent work!`,
+      `Outstanding achievement this term! ${lastName} demonstrates strong understanding and dedication to learning.`,
+      `${lastName} has maintained an excellent standard throughout this term. A truly commendable performance.`
+    ];
+    return comments[Math.floor(Math.random() * comments.length)];
+  } else if (percentage >= 60) {
+    const comments = [
+      `${lastName} has performed very well this term. With a little more effort, excellence is within reach.`,
+      `A very good performance from ${lastName}. Continue with the same dedication and aim higher.`,
+      `${lastName} shows great potential and has done very well this term. Keep striving for the best.`
+    ];
+    return comments[Math.floor(Math.random() * comments.length)];
+  } else if (percentage >= 50) {
+    const comments = [
+      `${lastName} has shown good effort this term. There is room for improvement with more focus and hard work.`,
+      `A satisfactory performance from ${lastName}. With extra effort, better results are achievable.`,
+      `${lastName} is capable of more. Encourage consistent study habits for improved performance next term.`
+    ];
+    return comments[Math.floor(Math.random() * comments.length)];
+  } else if (percentage >= 40) {
+    const comments = [
+      `${lastName} needs to put in more effort. With additional support and dedication, improvement is possible.`,
+      `${lastName} should focus more on studies. Regular revision and asking questions will help improve performance.`,
+      `${lastName} has the potential to do better. Extra tutoring and more practice are recommended.`
+    ];
+    return comments[Math.floor(Math.random() * comments.length)];
+  } else {
+    const comments = [
+      `${lastName} needs significant improvement. Extra classes and consistent practice are strongly recommended.`,
+      `${lastName} should seek additional help and focus on building strong foundations in all subjects.`,
+      `${lastName} requires intensive support. Regular study sessions and parent involvement will be beneficial.`
+    ];
+    return comments[Math.floor(Math.random() * comments.length)];
+  }
+}
+function generatePrincipalComment(studentName, percentage) {
+  const nameParts = studentName.trim().split(" ");
+  const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : nameParts[0];
+  if (percentage >= 70) {
+    const comments = [
+      `${lastName} is a model student who consistently demonstrates excellence. The school is proud of this achievement.`,
+      `Congratulations to ${lastName} on an outstanding performance. Continue to be an inspiration to others.`,
+      `${lastName} has achieved excellent results. We look forward to continued success in future terms.`
+    ];
+    return comments[Math.floor(Math.random() * comments.length)];
+  } else if (percentage >= 60) {
+    const comments = [
+      `${lastName} has shown commendable effort and achieved very good results. Keep up the good work.`,
+      `Well done to ${lastName} on a very good performance. The potential for excellence is evident.`,
+      `${lastName} is on the right track. Continue working hard and aim for even greater heights.`
+    ];
+    return comments[Math.floor(Math.random() * comments.length)];
+  } else if (percentage >= 50) {
+    const comments = [
+      `${lastName} has shown satisfactory progress. With increased focus, even better results are attainable.`,
+      `We encourage ${lastName} to continue making efforts. The school supports all students on their learning journey.`,
+      `${lastName} has the ability to excel. We encourage more dedication to studies next term.`
+    ];
+    return comments[Math.floor(Math.random() * comments.length)];
+  } else if (percentage >= 40) {
+    const comments = [
+      `${lastName} should dedicate more time to academic work. The school will provide necessary support for improvement.`,
+      `We urge ${lastName} to take studies more seriously. With proper guidance and effort, improvement is possible.`,
+      `${lastName} needs to focus more on academics. We recommend parent-teacher collaboration for support.`
+    ];
+    return comments[Math.floor(Math.random() * comments.length)];
+  } else {
+    const comments = [
+      `${lastName} requires immediate academic intervention. We recommend scheduling a meeting to discuss a support plan.`,
+      `The school is concerned about ${lastName}'s performance. A structured study plan and monitoring are recommended.`,
+      `${lastName} needs intensive academic support. We encourage parents to work closely with teachers for improvement.`
+    ];
+    return comments[Math.floor(Math.random() * comments.length)];
+  }
+}
 async function registerRoutes(app2) {
   const { performanceMonitor: performanceMonitor2 } = await Promise.resolve().then(() => (init_performance_monitor(), performance_monitor_exports));
   const { databaseOptimizer: databaseOptimizer2 } = await Promise.resolve().then(() => (init_database_optimization(), database_optimization_exports));
@@ -14389,6 +16102,51 @@ async function registerRoutes(app2) {
     res.json({ ...stats, roomCounts });
   });
   app2.use(teacher_assignment_routes_default);
+  app2.post("/api/upload", authenticateUser, upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      const uploadType = req.body.uploadType || "general";
+      const isImage = req.file.mimetype.startsWith("image/");
+      let fileToUpload = req.file;
+      if (isImage) {
+        try {
+          const originalPath = req.file.path;
+          const compressedPath = `${originalPath}-compressed.webp`;
+          await sharp(originalPath).resize(1200, 1200, { fit: "inside", withoutEnlargement: true }).ensureAlpha().webp({ quality: 80, lossless: false, nearLossless: false, force: true }).toFile(compressedPath);
+          fileToUpload = {
+            ...req.file,
+            path: compressedPath,
+            filename: path2.basename(compressedPath),
+            originalname: `${path2.parse(req.file.originalname).name}.webp`,
+            mimetype: "image/webp"
+          };
+          await fs3.unlink(originalPath).catch((err) => console.error("Failed to delete original file:", err));
+        } catch (sharpError) {
+          console.error("Image compression failed:", sharpError);
+          fileToUpload = req.file;
+        }
+      }
+      const options = {
+        uploadType,
+        userId: req.user.id
+      };
+      const result = await uploadFileToStorage(fileToUpload, options);
+      if (isImage && fileToUpload.path !== req.file.path) {
+        await fs3.unlink(fileToUpload.path).catch(() => {
+        });
+      }
+      if (result.success) {
+        res.json({ url: result.url });
+      } else {
+        res.status(500).json({ message: result.error || "Upload failed" });
+      }
+    } catch (error) {
+      console.error("Upload error:", error);
+      res.status(500).json({ message: error.message || "Upload failed" });
+    }
+  });
   const ALLOWED_SYNC_TABLES = ["classes", "subjects", "academic_terms", "users", "students", "announcements", "exams", "homepage_content", "notifications"];
   const TABLE_PERMISSIONS = {
     "classes": { [ROLE_IDS.SUPER_ADMIN]: true, [ROLE_IDS.ADMIN]: true, [ROLE_IDS.TEACHER]: true, [ROLE_IDS.STUDENT]: true, [ROLE_IDS.PARENT]: true },
@@ -14989,14 +16747,22 @@ async function registerRoutes(app2) {
           return res.status(403).json({ message: "You can only sync results for exams you created, are assigned to, or teach" });
         }
       }
-      const syncResult = await storage.syncExamScoreToReportCard(
+      const syncResult = await reliableSyncService.syncExamScoreToReportCardReliable(
         result.studentId,
         result.examId,
         result.score || 0,
-        result.maxScore || exam.totalMarks || 100
+        result.maxScore || exam.totalMarks || 100,
+        {
+          syncType: "manual_sync",
+          triggeredBy: teacherId
+        }
       );
       if (!syncResult.success) {
-        return res.status(400).json({ message: syncResult.message });
+        return res.status(400).json({
+          message: syncResult.message,
+          errorCode: syncResult.errorCode,
+          auditLogId: syncResult.auditLogId
+        });
       }
       if (syncResult.reportCardId) {
         realtimeService.emitTableChange("report_cards", "UPDATE", { id: syncResult.reportCardId }, void 0, teacherId);
@@ -15004,7 +16770,9 @@ async function registerRoutes(app2) {
       res.json({
         message: syncResult.message,
         reportCardId: syncResult.reportCardId,
-        isNewReportCard: syncResult.isNewReportCard
+        reportCardItemId: syncResult.reportCardItemId,
+        isNewReportCard: syncResult.isNewReportCard,
+        auditLogId: syncResult.auditLogId
       });
     } catch (error) {
       console.error("[EXAM-RESULTS] Error syncing to report card:", error?.message);
@@ -15396,9 +17164,19 @@ async function registerRoutes(app2) {
       const percentage = maxScore > 0 ? totalScore / maxScore * 100 : 0;
       let reportCardSync = { success: false, message: "" };
       try {
-        reportCardSync = await storage.syncExamScoreToReportCard(studentId, examId, totalScore, maxScore);
+        console.log(`[SUBMIT] Starting reliable sync for student ${studentId}, exam ${examId}, score ${totalScore}/${maxScore}`);
+        reportCardSync = await reliableSyncService.syncExamScoreToReportCardReliable(
+          studentId,
+          examId,
+          totalScore,
+          maxScore,
+          {
+            syncType: "exam_submit",
+            triggeredBy: studentId
+          }
+        );
         if (reportCardSync.success) {
-          console.log(`[SUBMIT] Report card sync successful: ${reportCardSync.message}`);
+          console.log(`[SUBMIT] Reliable sync successful: ${reportCardSync.message} (auditLogId: ${reportCardSync.auditLogId})`);
           if (reportCardSync.reportCardId) {
             const eventType = reportCardSync.isNewReportCard ? "created" : "updated";
             realtimeService.emitReportCardEvent(reportCardSync.reportCardId, eventType, {
@@ -15423,10 +17201,12 @@ async function registerRoutes(app2) {
             isNewReportCard: reportCardSync.isNewReportCard
           }, void 0, studentId);
         } else {
-          console.warn(`[SUBMIT] Report card sync warning: ${reportCardSync.message}`);
+          console.error(`[SUBMIT] Reliable sync failed for student ${studentId}, exam ${examId}: ${reportCardSync.message}`);
+          console.error(`[SUBMIT] Sync failure logged with auditLogId: ${reportCardSync.auditLogId}`);
         }
       } catch (syncError) {
-        console.warn("[SUBMIT] Report card sync failed (non-blocking):", syncError?.message);
+        console.error(`[SUBMIT] Reliable sync unhandled error for student ${studentId}, exam ${examId}:`, syncError?.message);
+        reportCardSync = { success: false, message: syncError?.message || "Unknown sync error" };
       }
       const formatTimeTaken = (seconds) => {
         const mins = Math.floor(seconds / 60);
@@ -15477,7 +17257,20 @@ async function registerRoutes(app2) {
         },
         reportCardSync: {
           synced: reportCardSync.success,
-          message: reportCardSync.message
+          failed: !reportCardSync.success,
+          message: reportCardSync.message,
+          // Include context for failed syncs to help with debugging and manual intervention
+          ...reportCardSync.success ? {} : {
+            context: {
+              studentId,
+              examId,
+              classId: exam.classId,
+              termId: exam.termId,
+              score: totalScore,
+              maxScore
+            },
+            warning: 'Report card sync failed. Teachers may need to manually sync this result using the "Sync to Report Card" button.'
+          }
         }
       });
     } catch (error) {
@@ -16986,10 +18779,42 @@ async function registerRoutes(app2) {
       res.status(500).json({ message: "Failed to fetch academic terms" });
     }
   });
+  app2.get("/api/terms/grouped", authenticateUser, async (req, res) => {
+    try {
+      const terms = await storage.getAcademicTerms();
+      const grouped = {};
+      for (const term of terms) {
+        if (!grouped[term.year]) {
+          grouped[term.year] = [];
+        }
+        grouped[term.year].push(term);
+      }
+      const termOrder = ["First Term", "Second Term", "Third Term"];
+      for (const year of Object.keys(grouped)) {
+        grouped[year].sort((a, b) => {
+          const aIndex = termOrder.findIndex((t) => a.name.includes(t.replace(" Term", "")));
+          const bIndex = termOrder.findIndex((t) => b.name.includes(t.replace(" Term", "")));
+          return aIndex - bIndex;
+        });
+      }
+      const result = Object.entries(grouped).sort((a, b) => b[0].localeCompare(a[0])).map(([year, terms2]) => ({ year, terms: terms2 }));
+      res.json(result);
+    } catch (error) {
+      res.status(500).json({ message: error.message || "Failed to fetch grouped terms" });
+    }
+  });
   app2.post("/api/terms", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
     try {
       if (!req.body.name || !req.body.year || !req.body.startDate || !req.body.endDate) {
         return res.status(400).json({ message: "Missing required fields: name, year, startDate, endDate" });
+      }
+      const yearPattern = /^\d{4}\/\d{4}$/;
+      if (!yearPattern.test(req.body.year)) {
+        return res.status(400).json({ message: "Academic year must be in YYYY/YYYY format (e.g., 2024/2025)" });
+      }
+      const [startYear, endYear] = req.body.year.split("/").map(Number);
+      if (endYear !== startYear + 1) {
+        return res.status(400).json({ message: "Academic year must span consecutive years (e.g., 2024/2025)" });
       }
       const term = await storage.createAcademicTerm(req.body);
       realtimeService.emitTableChange("academic_terms", "INSERT", term, void 0, req.user.id);
@@ -17009,6 +18834,19 @@ async function registerRoutes(app2) {
       const existingTerm = await storage.getAcademicTerm(termId);
       if (!existingTerm) {
         return res.status(404).json({ message: "Academic term not found" });
+      }
+      if (existingTerm.isLocked && req.body.isLocked !== false) {
+        return res.status(403).json({ message: "This term is locked and cannot be edited. Unlock it first." });
+      }
+      if (req.body.year) {
+        const yearPattern = /^\d{4}\/\d{4}$/;
+        if (!yearPattern.test(req.body.year)) {
+          return res.status(400).json({ message: "Academic year must be in YYYY/YYYY format (e.g., 2024/2025)" });
+        }
+        const [startYear, endYear] = req.body.year.split("/").map(Number);
+        if (endYear !== startYear + 1) {
+          return res.status(400).json({ message: "Academic year must span consecutive years (e.g., 2024/2025)" });
+        }
       }
       const term = await storage.updateAcademicTerm(termId, req.body);
       realtimeService.emitTableChange("academic_terms", "UPDATE", term, existingTerm, req.user.id);
@@ -17068,6 +18906,64 @@ async function registerRoutes(app2) {
       res.json(term);
     } catch (error) {
       res.status(500).json({ message: error.message || "Failed to mark term as current" });
+    }
+  });
+  app2.put("/api/terms/:id/toggle-lock", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
+    try {
+      const termId = parseInt(req.params.id);
+      if (isNaN(termId)) {
+        return res.status(400).json({ message: "Invalid term ID" });
+      }
+      const existingTerm = await storage.getAcademicTerm(termId);
+      if (!existingTerm) {
+        return res.status(404).json({ message: "Academic term not found" });
+      }
+      const newLockStatus = !existingTerm.isLocked;
+      const term = await storage.updateAcademicTerm(termId, { isLocked: newLockStatus });
+      realtimeService.emitTableChange("academic_terms", "UPDATE", term, existingTerm, req.user.id);
+      realtimeService.emitToRole("admin", "term.lock_changed", term);
+      realtimeService.emitToRole("teacher", "term.lock_changed", term);
+      res.json(term);
+    } catch (error) {
+      res.status(500).json({ message: error.message || "Failed to toggle term lock status" });
+    }
+  });
+  app2.put("/api/terms/:id/status", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
+    try {
+      const termId = parseInt(req.params.id);
+      const { status } = req.body;
+      if (isNaN(termId)) {
+        return res.status(400).json({ message: "Invalid term ID" });
+      }
+      const validStatuses = ["upcoming", "active", "completed", "archived"];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ message: "Invalid status. Must be: upcoming, active, completed, or archived" });
+      }
+      const existingTerm = await storage.getAcademicTerm(termId);
+      if (!existingTerm) {
+        return res.status(404).json({ message: "Academic term not found" });
+      }
+      const updateData = { status };
+      if (status === "active") {
+        updateData.isCurrent = true;
+        const allTerms = await storage.getAcademicTerms();
+        for (const t of allTerms) {
+          if (t.id !== termId && t.isCurrent) {
+            await storage.updateAcademicTerm(t.id, { isCurrent: false });
+          }
+        }
+      } else if (status === "archived") {
+        updateData.isLocked = true;
+        updateData.isCurrent = false;
+      } else if (status === "completed") {
+        updateData.isCurrent = false;
+      }
+      const term = await storage.updateAcademicTerm(termId, updateData);
+      realtimeService.emitTableChange("academic_terms", "UPDATE", term, existingTerm, req.user.id);
+      realtimeService.emitEvent("term.status_changed", term);
+      res.json(term);
+    } catch (error) {
+      res.status(500).json({ message: error.message || "Failed to update term status" });
     }
   });
   app2.post("/api/admin/delete-demo-accounts", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
@@ -17284,30 +19180,45 @@ async function registerRoutes(app2) {
   app2.get("/api/announcements", async (req, res) => {
     try {
       const { targetRole } = req.query;
-      const cacheKey = targetRole ? PerformanceCache.keys.announcementsByRole(targetRole) : PerformanceCache.keys.announcements();
-      const announcements3 = await performanceCache.getOrSet(
-        cacheKey,
-        () => storage.getAnnouncements(targetRole),
-        PerformanceCache.TTL.SHORT
-        // 30 second cache for more dynamic content
-      );
+      const announcements3 = await storage.getAnnouncements(targetRole, false);
       res.json(announcements3);
     } catch (error) {
       res.status(500).json({ message: "Failed to get announcements" });
     }
   });
-  app2.post("/api/announcements", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
+  app2.get("/api/admin/announcements", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN, ROLE_IDS.TEACHER), async (req, res) => {
     try {
-      const { title, content, targetRole, priority, expiresAt } = req.body;
+      const { targetRole, includeDrafts } = req.query;
+      const announcements3 = await storage.getAnnouncements(targetRole, includeDrafts === "true");
+      res.json(announcements3);
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch announcements" });
+    }
+  });
+  app2.post("/api/announcements", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN, ROLE_IDS.TEACHER), async (req, res) => {
+    try {
+      const { title, content, targetRoles, targetClasses, priority, announcementType, publishOption, scheduledAt, expiryDate, attachments, coverImageUrl, notificationSettings, allowComments, allowEdit, status, isPublished, publishedAt } = req.body;
       if (!title || !content) {
         return res.status(400).json({ message: "Title and content are required" });
       }
       const announcementData = {
         title,
         content,
-        targetRole: targetRole || null,
+        authorId: req.user.id,
+        targetRoles: Array.isArray(targetRoles) ? JSON.stringify(targetRoles) : targetRoles || JSON.stringify(["All"]),
+        targetClasses: Array.isArray(targetClasses) ? JSON.stringify(targetClasses) : targetClasses || JSON.stringify([]),
         priority: priority || "normal",
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
+        announcementType: announcementType || "general",
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+        expiryDate: expiryDate ? new Date(expiryDate) : null,
+        attachments: Array.isArray(attachments) ? JSON.stringify(attachments) : attachments || JSON.stringify([]),
+        coverImageUrl: coverImageUrl || null,
+        notificationSettings: typeof notificationSettings === "object" ? JSON.stringify(notificationSettings) : notificationSettings || JSON.stringify({ inApp: true, email: false, sms: false }),
+        allowComments: allowComments ?? false,
+        allowEdit: allowEdit ?? true,
+        status: status || "published",
+        isPublished: isPublished ?? true,
+        publishedAt: publishedAt ? new Date(publishedAt) : /* @__PURE__ */ new Date(),
         createdBy: req.user.id,
         isActive: true
       };
@@ -17328,12 +19239,39 @@ async function registerRoutes(app2) {
       if (!existingAnnouncement) {
         return res.status(404).json({ message: "Announcement not found" });
       }
-      const { title, content, targetRoles, targetClasses, isPublished, publishedAt } = req.body;
-      const updatedAnnouncement = await storage.updateAnnouncement(announcementId, {
+      const {
         title,
         content,
         targetRoles,
         targetClasses,
+        priority,
+        announcementType,
+        scheduledAt,
+        expiryDate,
+        attachments,
+        coverImageUrl,
+        notificationSettings,
+        allowComments,
+        allowEdit,
+        status,
+        isPublished,
+        publishedAt
+      } = req.body;
+      const updatedAnnouncement = await storage.updateAnnouncement(announcementId, {
+        title,
+        content,
+        targetRoles: Array.isArray(targetRoles) ? JSON.stringify(targetRoles) : targetRoles,
+        targetClasses: Array.isArray(targetClasses) ? JSON.stringify(targetClasses) : targetClasses,
+        priority,
+        announcementType,
+        scheduledAt: scheduledAt ? new Date(scheduledAt) : void 0,
+        expiryDate: expiryDate ? new Date(expiryDate) : void 0,
+        attachments: Array.isArray(attachments) ? JSON.stringify(attachments) : attachments,
+        coverImageUrl,
+        notificationSettings: typeof notificationSettings === "object" ? JSON.stringify(notificationSettings) : notificationSettings,
+        allowComments,
+        allowEdit,
+        status,
         isPublished,
         publishedAt: publishedAt ? new Date(publishedAt) : void 0
       });
@@ -17357,10 +19295,13 @@ async function registerRoutes(app2) {
       if (!success) {
         return res.status(500).json({ message: "Failed to delete announcement" });
       }
-      realtimeService.emitAnnouncementEvent("deleted", { ...existingAnnouncement, id: announcementId }, req.user.id);
+      if (existingAnnouncement) {
+        realtimeService.emitAnnouncementEvent("deleted", { ...existingAnnouncement, id: announcementId }, req.user.id);
+      }
       res.json({ message: "Announcement deleted successfully" });
     } catch (error) {
-      res.status(500).json({ message: "Failed to delete announcement" });
+      console.error("[ANNOUNCEMENT-DELETE] Error:", error);
+      res.status(500).json({ message: error.message || "Failed to delete announcement" });
     }
   });
   app2.post("/api/attendance", authenticateUser, authorizeRoles(ROLE_IDS.TEACHER, ROLE_IDS.ADMIN), async (req, res) => {
@@ -17464,9 +19405,17 @@ async function registerRoutes(app2) {
   });
   app2.post("/api/setup-demo", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
     try {
+      const existingRoles = await storage.getRoles();
+      if (existingRoles.length === 0) {
+        console.log("\u{1F4E6} Seeding roles for development...");
+        const roleNames = ["Super Admin", "Admin", "Teacher", "Student", "Parent"];
+        for (const name of roleNames) {
+          await db2.insert(roles).values({ name, permissions: "[]" });
+        }
+      }
       try {
-        const existingRoles = await storage.getRoles();
-        if (existingRoles.length === 0) {
+        const existingRoles2 = await storage.getRoles();
+        if (existingRoles2.length === 0) {
           return res.json({
             message: "No roles found. Database tables may need to be created first.",
             rolesCount: 0
@@ -17477,7 +19426,7 @@ async function registerRoutes(app2) {
             email: "student@demo.com",
             firstName: "John",
             lastName: "Doe",
-            roleId: existingRoles.find((r) => r.name === "Student")?.id || existingRoles[0].id,
+            roleId: existingRoles2.find((r) => r.name === "Student")?.id || existingRoles2[0].id,
             profileCompleted: false,
             // 🔧 FIX: Explicitly set profile fields
             profileSkipped: false
@@ -17487,7 +19436,7 @@ async function registerRoutes(app2) {
             email: "teacher@demo.com",
             firstName: "Jane",
             lastName: "Smith",
-            roleId: existingRoles.find((r) => r.name === "Teacher")?.id || existingRoles[0].id,
+            roleId: existingRoles2.find((r) => r.name === "Teacher")?.id || existingRoles2[0].id,
             profileCompleted: false,
             // 🔧 FIX: Explicitly set profile fields
             profileSkipped: false
@@ -17497,7 +19446,7 @@ async function registerRoutes(app2) {
             email: "parent@demo.com",
             firstName: "Bob",
             lastName: "Johnson",
-            roleId: existingRoles.find((r) => r.name === "Parent")?.id || existingRoles[0].id,
+            roleId: existingRoles2.find((r) => r.name === "Parent")?.id || existingRoles2[0].id,
             profileCompleted: false,
             // 🔧 FIX: Explicitly set profile fields
             profileSkipped: false
@@ -17507,7 +19456,7 @@ async function registerRoutes(app2) {
             email: "admin@demo.com",
             firstName: "Admin",
             lastName: "User",
-            roleId: existingRoles.find((r) => r.name === "Admin")?.id || existingRoles[0].id,
+            roleId: existingRoles2.find((r) => r.name === "Admin")?.id || existingRoles2[0].id,
             profileCompleted: false,
             // 🔧 FIX: Explicitly set profile fields
             profileSkipped: false
@@ -17529,9 +19478,9 @@ async function registerRoutes(app2) {
         }
         res.json({
           message: "Demo setup completed",
-          rolesCount: existingRoles.length,
+          rolesCount: existingRoles2.length,
           usersCreated: createdCount,
-          roles: existingRoles.map((r) => r.name)
+          roles: existingRoles2.map((r) => r.name)
         });
       } catch (dbError) {
         res.status(500).json({
@@ -17751,7 +19700,7 @@ async function registerRoutes(app2) {
         authorizedStudentIds,
         iat: Math.floor(Date.now() / 1e3)
       };
-      const token = jwt3.sign(tokenPayload, SECRET_KEY, { expiresIn: JWT_EXPIRES_IN });
+      const token = jwt4.sign(tokenPayload, SECRET_KEY, { expiresIn: JWT_EXPIRES_IN });
       res.json({
         token,
         mustChangePassword: user.mustChangePassword || false,
@@ -18287,7 +20236,7 @@ Treasure-Home School Administration
         // 🔧 FIX: New staff start with incomplete profile
       });
       await storage.markInviteAsAccepted(invite.id, user.id);
-      const token_jwt = jwt3.sign(
+      const token_jwt = jwt4.sign(
         { userId: user.id, roleId: user.roleId },
         SECRET_KEY,
         { expiresIn: "24h" }
@@ -19613,12 +21562,12 @@ Treasure-Home School Administration
         }).returning();
         let parentCredentials = null;
         if (validatedData.parentPhone && !validatedData.parentId) {
-          const existingParent = await tx.select().from(users).where(and6(
-            eq6(users.phone, validatedData.parentPhone),
-            eq6(users.roleId, ROLE_IDS.PARENT)
+          const existingParent = await tx.select().from(users).where(and7(
+            eq7(users.phone, validatedData.parentPhone),
+            eq7(users.roleId, ROLE_IDS.PARENT)
           )).limit(1);
           if (existingParent.length > 0) {
-            await tx.update(students).set({ parentId: existingParent[0].id }).where(eq6(students.id, studentUser.id));
+            await tx.update(students).set({ parentId: existingParent[0].id }).where(eq7(students.id, studentUser.id));
             student.parentId = existingParent[0].id;
           } else {
             const parentUsername = await generateParentUsername();
@@ -19642,7 +21591,7 @@ Treasure-Home School Administration
               createdBy: adminUserId,
               mustChangePassword: true
             }).returning();
-            await tx.update(students).set({ parentId: parentUser.id }).where(eq6(students.id, studentUser.id));
+            await tx.update(students).set({ parentId: parentUser.id }).where(eq7(students.id, studentUser.id));
             student.parentId = parentUser.id;
             parentCredentials = {
               username: parentUsername,
@@ -19843,7 +21792,7 @@ Treasure-Home School Administration
       if (!student) {
         return res.status(404).json({ message: "Student not found" });
       }
-      const deleted = await storage.deleteStudent(studentId);
+      const deleted = await storage.deleteStudent(studentId, req.user.id);
       if (!deleted) {
         return res.status(500).json({ message: "Failed to delete student" });
       }
@@ -20221,6 +22170,20 @@ Treasure-Home School Administration
       res.status(500).json({ message: "Failed to create administrator" });
     }
   });
+  app2.get("/api/public/settings", async (_req, res) => {
+    try {
+      const cacheKey = "public:settings";
+      const cached = enhancedCache2.get(cacheKey);
+      if (cached) return res.json(cached);
+      const settings3 = await storage.getSystemSettings();
+      if (settings3) {
+        enhancedCache2.set(cacheKey, settings3, 3600);
+      }
+      res.json(settings3 || {});
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch public settings" });
+    }
+  });
   app2.get("/api/superadmin/logs", authenticateUser, authorizeRoles(ROLE_IDS.SUPER_ADMIN), async (req, res) => {
     try {
       const logs = await storage.getAuditLogs();
@@ -20237,9 +22200,63 @@ Treasure-Home School Administration
       res.status(500).json({ message: "Failed to fetch system settings" });
     }
   });
+  app2.post("/api/superadmin/branding/upload", authenticateUser, authorizeRoles(ROLE_IDS.SUPER_ADMIN), upload.single("file"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      const uploadType = req.body.uploadType || "logo";
+      const fileName = req.file.filename;
+      const filePath = `/uploads/homepage/${fileName}`;
+      console.log(`[BRANDING] File uploaded to: ${req.file.path}`);
+      const settings3 = await storage.getSystemSettings();
+      if (!settings3) {
+        return res.status(404).json({ message: "System settings not found" });
+      }
+      const updateData = { updatedAt: /* @__PURE__ */ new Date() };
+      if (uploadType === "favicon" || fileName.toLowerCase().includes("favicon")) {
+        updateData.favicon = filePath;
+      } else {
+        updateData.schoolLogo = filePath;
+      }
+      await storage.updateSystemSettings(updateData);
+      if (enhancedCache2 && typeof enhancedCache2.invalidate === "function") {
+        enhancedCache2.invalidate(/^public:settings/);
+        enhancedCache2.invalidate(/^superadmin:settings/);
+      }
+      res.json({
+        message: `${uploadType.charAt(0).toUpperCase() + uploadType.slice(1)} uploaded successfully`,
+        url: filePath
+      });
+    } catch (error) {
+      console.error("Branding upload error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
   app2.put("/api/superadmin/settings", authenticateUser, authorizeRoles(ROLE_IDS.SUPER_ADMIN), async (req, res) => {
     try {
-      const settings3 = await storage.updateSystemSettings(req.body);
+      const settingsData = { ...req.body };
+      delete settingsData.id;
+      delete settingsData.createdAt;
+      delete settingsData.updatedAt;
+      const settings3 = await storage.updateSystemSettings(settingsData);
+      if (typeof enhancedCache2.invalidate === "function") {
+        enhancedCache2.invalidate(/^superadmin:settings/);
+        enhancedCache2.invalidate(/^public:settings/);
+        enhancedCache2.invalidate(/\/api\/superadmin\/settings/);
+      }
+      try {
+        if (realtimeService && typeof realtimeService.broadcastSettingsUpdate === "function") {
+          realtimeService.broadcastSettingsUpdate(settings3);
+        }
+        const rs = realtimeService;
+        if (rs && typeof rs.broadcastSystemSettingsUpdate === "function") {
+          rs.broadcastSystemSettingsUpdate(settings3);
+        }
+        realtimeService.emitTableChange("system_settings", "UPDATE", settings3, void 0, req.user.id);
+      } catch (ioError) {
+        console.error("Error broadcasting settings update:", ioError);
+      }
       await storage.createAuditLog({
         userId: req.user.id,
         action: "settings_updated",
@@ -20247,16 +22264,199 @@ Treasure-Home School Administration
         entityId: String(settings3.id),
         reason: "System settings updated by Super Admin"
       });
-      realtimeService.emitTableChange("system_settings", "UPDATE", {
-        ...settings3,
-        testWeight: settings3.testWeight,
-        examWeight: settings3.examWeight,
-        defaultGradingScale: settings3.defaultGradingScale,
-        scoreAggregationMode: settings3.scoreAggregationMode
-      }, void 0, req.user.id);
       res.json(settings3);
     } catch (error) {
-      res.status(500).json({ message: "Failed to update system settings" });
+      console.error("Failed to update system settings:", error);
+      res.status(500).json({
+        message: "Failed to update system settings",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  app2.get("/api/recovery/deleted-users", authenticateUser, authorizeRoles(ROLE_IDS.SUPER_ADMIN, ROLE_IDS.ADMIN), async (req, res) => {
+    try {
+      const currentUser = req.user;
+      const isSuperAdmin = currentUser.roleId === ROLE_IDS.SUPER_ADMIN;
+      let roleFilter;
+      if (!isSuperAdmin) {
+        roleFilter = [3, 4, 5];
+      }
+      const deletedUsers = await storage.getDeletedUsers(roleFilter);
+      const roles3 = await storage.getRoles();
+      const roleMap = new Map(roles3.map((r) => [r.id, r.name]));
+      const enrichedUsers = await Promise.all(deletedUsers.map(async (user) => {
+        const roleName = roleMap.get(user.roleId) || "Unknown";
+        let additionalInfo = {};
+        if (user.roleId === 4) {
+          const student = await storage.getStudent(user.id);
+          if (student) {
+            additionalInfo.admissionNumber = student.admissionNumber;
+            if (student.classId) {
+              const cls = await storage.getClass(student.classId);
+              additionalInfo.className = cls?.name;
+            }
+          }
+        }
+        const settings3 = await storage.getSystemSettings();
+        const retentionDays = settings3?.deletedUserRetentionDays ?? 30;
+        const deletedAt = new Date(user.deletedAt);
+        const expiresAt = new Date(deletedAt);
+        expiresAt.setDate(expiresAt.getDate() + retentionDays);
+        const daysRemaining = Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / (1e3 * 60 * 60 * 24)));
+        return {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          roleName,
+          roleId: user.roleId,
+          deletedAt: user.deletedAt,
+          deletedBy: user.deletedBy,
+          daysRemaining,
+          expiresAt: expiresAt.toISOString(),
+          ...additionalInfo
+        };
+      }));
+      res.json(enrichedUsers);
+    } catch (error) {
+      console.error("Error fetching deleted users:", error);
+      res.status(500).json({ message: "Failed to fetch deleted users" });
+    }
+  });
+  app2.post("/api/recovery/restore/:userId", authenticateUser, authorizeRoles(ROLE_IDS.SUPER_ADMIN, ROLE_IDS.ADMIN), async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const currentUser = req.user;
+      const isSuperAdmin = currentUser.roleId === ROLE_IDS.SUPER_ADMIN;
+      const userToRestore = await storage.getUser(userId);
+      if (!userToRestore) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      if (!userToRestore.deletedAt) {
+        return res.status(400).json({ message: "User is not deleted" });
+      }
+      if (!isSuperAdmin && (userToRestore.roleId === ROLE_IDS.ADMIN || userToRestore.roleId === ROLE_IDS.SUPER_ADMIN)) {
+        return res.status(403).json({ message: "Only Super Admin can restore Admin or Super Admin accounts" });
+      }
+      const restoredUser = await storage.restoreUser(userId, currentUser.id);
+      if (!restoredUser) {
+        return res.status(500).json({ message: "Failed to restore user" });
+      }
+      await storage.createAuditLog({
+        userId: currentUser.id,
+        action: "user_restored",
+        entityType: "user",
+        entityId: userId,
+        reason: `User ${restoredUser.username || restoredUser.email} restored from deletion`
+      });
+      realtimeService.emitTableChange("users", "UPDATE", restoredUser, void 0, currentUser.id);
+      res.json({
+        message: "User restored successfully",
+        user: {
+          id: restoredUser.id,
+          username: restoredUser.username,
+          email: restoredUser.email,
+          firstName: restoredUser.firstName,
+          lastName: restoredUser.lastName
+        }
+      });
+    } catch (error) {
+      console.error("Error restoring user:", error);
+      res.status(500).json({ message: "Failed to restore user" });
+    }
+  });
+  app2.delete("/api/recovery/permanent/:userId", authenticateUser, authorizeRoles(ROLE_IDS.SUPER_ADMIN, ROLE_IDS.ADMIN), async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const currentUser = req.user;
+      const isSuperAdmin = currentUser.roleId === ROLE_IDS.SUPER_ADMIN;
+      const userToDelete = await storage.getUser(userId);
+      if (!userToDelete) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      if (!isSuperAdmin && (userToDelete.roleId === ROLE_IDS.ADMIN || userToDelete.roleId === ROLE_IDS.SUPER_ADMIN)) {
+        return res.status(403).json({ message: "Only Super Admin can permanently delete Admin or Super Admin accounts" });
+      }
+      const userInfo = {
+        username: userToDelete.username,
+        email: userToDelete.email,
+        roleId: userToDelete.roleId
+      };
+      const success = await storage.permanentlyDeleteUser(userId);
+      if (!success) {
+        return res.status(500).json({ message: "Failed to permanently delete user" });
+      }
+      await storage.createAuditLog({
+        userId: currentUser.id,
+        action: "user_permanently_deleted",
+        entityType: "user",
+        entityId: userId,
+        reason: `User ${userInfo.username || userInfo.email} permanently deleted`
+      });
+      res.json({ message: "User permanently deleted successfully" });
+    } catch (error) {
+      console.error("Error permanently deleting user:", error);
+      res.status(500).json({ message: "Failed to permanently delete user" });
+    }
+  });
+  app2.get("/api/recovery/settings", authenticateUser, authorizeRoles(ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      const settings3 = await storage.getSystemSettings();
+      res.json({
+        deletedUserRetentionDays: settings3?.deletedUserRetentionDays ?? 30
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to fetch retention settings" });
+    }
+  });
+  app2.put("/api/recovery/settings", authenticateUser, authorizeRoles(ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      const { deletedUserRetentionDays } = req.body;
+      if (typeof deletedUserRetentionDays !== "number" || deletedUserRetentionDays < 1 || deletedUserRetentionDays > 365) {
+        return res.status(400).json({ message: "Retention days must be between 1 and 365" });
+      }
+      const settings3 = await storage.updateSystemSettings({
+        deletedUserRetentionDays,
+        updatedBy: req.user.id
+      });
+      await storage.createAuditLog({
+        userId: req.user.id,
+        action: "retention_settings_updated",
+        entityType: "system_settings",
+        entityId: String(settings3.id),
+        reason: `Deleted user retention period changed to ${deletedUserRetentionDays} days`
+      });
+      res.json({
+        message: "Retention settings updated successfully",
+        deletedUserRetentionDays: settings3.deletedUserRetentionDays
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update retention settings" });
+    }
+  });
+  app2.post("/api/recovery/cleanup-expired", authenticateUser, authorizeRoles(ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      const settings3 = await storage.getSystemSettings();
+      const retentionDays = settings3?.deletedUserRetentionDays ?? 30;
+      const result = await storage.permanentlyDeleteExpiredUsers(retentionDays);
+      if (result.deleted > 0) {
+        await storage.createAuditLog({
+          userId: req.user.id,
+          action: "expired_users_cleanup",
+          entityType: "system",
+          entityId: "cleanup",
+          reason: `Manually triggered cleanup: ${result.deleted} expired deleted users permanently removed`
+        });
+      }
+      res.json({
+        message: `Cleanup completed. ${result.deleted} expired users permanently deleted.`,
+        deleted: result.deleted,
+        errors: result.errors
+      });
+    } catch (error) {
+      console.error("Error cleaning up expired users:", error);
+      res.status(500).json({ message: "Failed to cleanup expired users" });
     }
   });
   app2.get("/api/grading-config", authenticateUser, async (req, res) => {
@@ -20330,6 +22530,43 @@ Treasure-Home School Administration
       res.status(500).json({ message: "Failed to update grading settings" });
     }
   });
+  app2.get("/api/settings/positioning-method", authenticateUser, authorizeRoles(ROLE_IDS.SUPER_ADMIN, ROLE_IDS.ADMIN), async (req, res) => {
+    try {
+      const settings3 = await storage.getSystemSettings();
+      res.json({
+        positioningMethod: settings3?.positioningMethod || "average"
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to get positioning method setting" });
+    }
+  });
+  app2.patch("/api/settings/positioning-method", authenticateUser, authorizeRoles(ROLE_IDS.SUPER_ADMIN, ROLE_IDS.ADMIN), async (req, res) => {
+    try {
+      const { positioningMethod } = req.body;
+      if (!positioningMethod || !["average", "total"].includes(positioningMethod)) {
+        return res.status(400).json({
+          message: 'Invalid positioning method. Must be "average" or "total".'
+        });
+      }
+      const settings3 = await storage.updateSystemSettings({
+        positioningMethod,
+        updatedBy: req.user.id
+      });
+      await storage.createAuditLog({
+        userId: req.user.id,
+        action: "positioning_method_updated",
+        entityType: "system_settings",
+        entityId: String(settings3.id),
+        reason: `Class position calculation method changed to: ${positioningMethod}`
+      });
+      res.json({
+        message: "Positioning method updated successfully",
+        positioningMethod: settings3.positioningMethod
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update positioning method setting" });
+    }
+  });
   app2.get("/api/reports/student-report-card/:studentId", authenticateUser, async (req, res) => {
     try {
       const { studentId } = req.params;
@@ -20337,7 +22574,6 @@ Treasure-Home School Administration
       if (!termId) {
         return res.status(400).json({ message: "Term ID is required" });
       }
-      const { calculateGrade, calculateWeightedScore: calculateWeightedScore2 } = await Promise.resolve().then(() => (init_grading_config(), grading_config_exports));
       const student = await storage.getStudent(studentId);
       if (!student) {
         return res.status(404).json({ message: "Student not found" });
@@ -20361,15 +22597,14 @@ Treasure-Home School Administration
           return res.status(403).json({ message: "You are not authorized to view report cards for students in this class" });
         }
       }
+      const publishedReportCard = await db2.select().from(reportCards).where(
+        and7(
+          eq7(reportCards.studentId, studentId),
+          eq7(reportCards.termId, Number(termId))
+        )
+      ).limit(1);
       if (req.user.roleId === ROLE_IDS.STUDENT || req.user.roleId === ROLE_IDS.PARENT) {
-        const existingReportCard = await db2.select({ status: reportCards.status }).from(reportCards).where(
-          and6(
-            eq6(reportCards.studentId, studentId),
-            eq6(reportCards.termId, Number(termId)),
-            eq6(reportCards.status, "published")
-          )
-        ).limit(1);
-        if (!existingReportCard.length) {
+        if (!publishedReportCard.length || publishedReportCard[0].status !== "published") {
           return res.status(404).json({
             message: "Report card not yet published. Please check back later.",
             status: "not_published"
@@ -20382,6 +22617,166 @@ Treasure-Home School Administration
       }
       const studentClass = await storage.getClass(student.classId);
       const term = await storage.getAcademicTerm(Number(termId));
+      if (publishedReportCard.length > 0) {
+        const dbReportCard = publishedReportCard[0];
+        const reportCardItems3 = await db2.select({
+          id: reportCardItems.id,
+          subjectId: reportCardItems.subjectId,
+          subjectName: subjects.name,
+          testScore: reportCardItems.testScore,
+          testMaxScore: reportCardItems.testMaxScore,
+          testWeightedScore: reportCardItems.testWeightedScore,
+          examScore: reportCardItems.examScore,
+          examMaxScore: reportCardItems.examMaxScore,
+          examWeightedScore: reportCardItems.examWeightedScore,
+          totalMarks: reportCardItems.totalMarks,
+          obtainedMarks: reportCardItems.obtainedMarks,
+          percentage: reportCardItems.percentage,
+          grade: reportCardItems.grade,
+          remarks: reportCardItems.remarks,
+          teacherRemarks: reportCardItems.teacherRemarks
+        }).from(reportCardItems).innerJoin(subjects, eq7(reportCardItems.subjectId, subjects.id)).where(eq7(reportCardItems.reportCardId, dbReportCard.id)).orderBy(subjects.name);
+        const savedSkills = await storage.getReportCardSkills(dbReportCard.id);
+        const classReportCards = await db2.select({
+          id: reportCards.id,
+          studentId: reportCards.studentId,
+          totalScore: reportCards.totalScore,
+          averagePercentage: reportCards.averagePercentage,
+          averageScore: reportCards.averageScore
+        }).from(reportCards).where(
+          and7(
+            eq7(reportCards.classId, student.classId),
+            eq7(reportCards.termId, Number(termId))
+          )
+        );
+        const totalStudentsInClass = dbReportCard.totalStudentsInClass || classReportCards.length;
+        let validScores = classReportCards.filter((r) => r.averagePercentage !== null && r.averagePercentage > 0).map((r) => r.averagePercentage);
+        if (validScores.length === 0 && classReportCards.length > 0) {
+          console.log(`[REPORT-CARD] Computing class statistics dynamically for class ${student.classId}, term ${termId}`);
+          const computedScores = [];
+          for (const rc of classReportCards) {
+            const items2 = await db2.select({
+              obtainedMarks: reportCardItems.obtainedMarks,
+              totalMarks: reportCardItems.totalMarks
+            }).from(reportCardItems).where(eq7(reportCardItems.reportCardId, rc.id));
+            if (items2.length > 0) {
+              const totalObt = items2.reduce((sum, i) => sum + (i.obtainedMarks || 0), 0);
+              const totalMax2 = items2.reduce((sum, i) => sum + (i.totalMarks || 100), 0);
+              if (totalMax2 > 0) {
+                const pct = totalObt / totalMax2 * 100;
+                if (pct > 0) {
+                  computedScores.push(pct);
+                }
+              }
+            }
+          }
+          if (computedScores.length > 0) {
+            validScores = computedScores;
+          }
+        }
+        const classHighest = validScores.length > 0 ? Math.max(...validScores) : 0;
+        const classLowest = validScores.length > 0 ? Math.min(...validScores) : 0;
+        const classAverage = validScores.length > 0 ? validScores.reduce((a, b) => a + b, 0) / validScores.length : 0;
+        const items = reportCardItems3.map((item) => ({
+          id: item.id,
+          subjectId: item.subjectId,
+          subjectName: item.subjectName,
+          testScore: item.testWeightedScore ?? item.testScore ?? 0,
+          testMaxScore: item.testMaxScore || 40,
+          examScore: item.examWeightedScore ?? item.examScore ?? 0,
+          examMaxScore: item.examMaxScore || 60,
+          totalMarks: item.totalMarks || 100,
+          obtainedMarks: item.obtainedMarks ?? 0,
+          percentage: item.percentage ?? 0,
+          grade: item.grade || "-",
+          remarks: item.remarks || item.teacherRemarks || "-",
+          hasData: (item.obtainedMarks ?? 0) > 0 || (item.testWeightedScore ?? 0) > 0 || (item.examWeightedScore ?? 0) > 0
+        }));
+        const totalObtained2 = items.reduce((sum, item) => sum + (item.obtainedMarks || 0), 0);
+        const totalMax = items.length * 100;
+        const isSSS2 = studentClass?.name?.startsWith("SS") || studentClass?.level?.includes("Senior Secondary");
+        const reportCard2 = {
+          id: dbReportCard.id,
+          status: dbReportCard.status,
+          // Flat fields for easy frontend access
+          studentName: `${user.firstName} ${user.lastName}`,
+          admissionNumber: student.admissionNumber,
+          className: studentClass?.name || "Unknown",
+          classLevel: studentClass?.level || "Unknown",
+          department: isSSS2 ? student.department : null,
+          isSSS: isSSS2,
+          termName: term?.name || "Unknown",
+          termYear: term?.year?.toString() || "",
+          // Use term year directly as it's stored in YYYY/YYYY format (e.g., "2024/2025")
+          academicSession: term?.year || "2024/2025",
+          // Nested objects (backwards compatibility)
+          student: {
+            id: studentId,
+            name: `${user.firstName} ${user.lastName}`,
+            admissionNumber: student.admissionNumber,
+            className: studentClass?.name || "Unknown",
+            classLevel: studentClass?.level || "Unknown",
+            department: isSSS2 ? student.department : null
+          },
+          term: term ? {
+            id: term.id,
+            name: term.name,
+            year: term.year,
+            startDate: term.startDate,
+            endDate: term.endDate
+          } : null,
+          items,
+          subjects: items,
+          // Keep for backwards compatibility
+          totalScore: dbReportCard.totalScore ?? totalObtained2,
+          averageScore: dbReportCard.averageScore ?? Math.round(totalObtained2 / (items.length || 1)),
+          averagePercentage: dbReportCard.averagePercentage ?? Math.round(totalObtained2 / totalMax * 100),
+          overallGrade: dbReportCard.overallGrade || "-",
+          position: dbReportCard.position,
+          totalStudentsInClass,
+          totalStudents: totalStudentsInClass,
+          classStatistics: {
+            highestScore: Math.round(classHighest),
+            lowestScore: Math.round(classLowest),
+            classAverage: Math.round(classAverage * 10) / 10,
+            totalStudents: totalStudentsInClass
+          },
+          teacherRemarks: dbReportCard.teacherRemarks,
+          principalRemarks: dbReportCard.principalRemarks,
+          attendance: {
+            timesSchoolOpened: 0,
+            timesPresent: 0,
+            timesAbsent: 0,
+            attendancePercentage: 0
+          },
+          affectiveTraits: {
+            punctuality: savedSkills?.punctuality || 0,
+            neatness: savedSkills?.neatness || 0,
+            attentiveness: savedSkills?.attentiveness || 0,
+            teamwork: savedSkills?.teamwork || 0,
+            leadership: savedSkills?.leadership || 0,
+            assignments: savedSkills?.assignments || 0,
+            classParticipation: savedSkills?.classParticipation || 0
+          },
+          psychomotorSkills: {
+            sports: savedSkills?.sports || 0,
+            handwriting: savedSkills?.handwriting || 0,
+            musicalSkills: savedSkills?.musicalSkills || 0,
+            creativity: savedSkills?.creativity || 0
+          },
+          summary: {
+            percentage: dbReportCard.averagePercentage ?? Math.round(totalObtained2 / totalMax * 100),
+            grade: dbReportCard.overallGrade || "-",
+            remarks: dbReportCard.teacherRemarks || "-",
+            subjectsCount: items.length,
+            subjectsWithData: items.filter((s) => s.hasData).length
+          },
+          generatedAt: dbReportCard.generatedAt?.toISOString() || (/* @__PURE__ */ new Date()).toISOString(),
+          publishedAt: dbReportCard.publishedAt?.toISOString()
+        };
+        return res.json(reportCard2);
+      }
+      const { calculateGrade, calculateWeightedScore: calculateWeightedScore2 } = await Promise.resolve().then(() => (init_grading_config(), grading_config_exports));
       const exams3 = await storage.getExamsByClassAndTerm(student.classId, Number(termId));
       const classLevel = studentClass?.level ?? "";
       const isSSS = studentClass?.name?.startsWith("SS") || classLevel.includes("Senior Secondary");
@@ -20399,7 +22794,6 @@ Treasure-Home School Administration
         }
       }
       if (classSubjects.length === 0) {
-        console.log(`[REPORT-CARD] No class-subject mappings for ${studentClass?.name}, falling back to exam-based subjects`);
         const classSubjectIds = new Set(exams3.map((e) => e.subjectId));
         const allSubjects = await storage.getSubjects();
         classSubjects.push(...allSubjects.filter((s) => classSubjectIds.has(s.id)));
@@ -20444,11 +22838,12 @@ Treasure-Home School Administration
         subjects3.push({
           subjectId,
           subjectName: scores.subjectName,
-          testScore,
-          testMax: testMax || 40,
-          examScore,
-          examMax: examMax || 60,
-          totalScore: testScore + examScore,
+          testScore: weighted.testWeighted,
+          testMaxScore: 40,
+          examScore: weighted.examWeighted,
+          examMaxScore: 60,
+          obtainedMarks: weighted.weightedScore,
+          totalMarks: 100,
           percentage: weighted.percentage,
           grade: gradeInfo.grade,
           remarks: gradeInfo.remarks,
@@ -20458,13 +22853,51 @@ Treasure-Home School Administration
       }
       const overallPercentage = totalSubjects > 0 ? totalWeightedPercentage / totalSubjects : 0;
       const overallGradeInfo = calculateGrade(overallPercentage);
+      const totalObtained = subjects3.reduce((sum, s) => sum + (s.obtainedMarks || 0), 0);
+      const allClassReportCards = await db2.select({
+        studentId: reportCards.studentId,
+        totalScore: reportCards.totalScore,
+        averagePercentage: reportCards.averagePercentage
+      }).from(reportCards).where(
+        and7(
+          eq7(reportCards.classId, student.classId),
+          eq7(reportCards.termId, Number(termId))
+        )
+      );
+      const scoreMap = /* @__PURE__ */ new Map();
+      for (const rc of allClassReportCards) {
+        if (rc.studentId !== studentId && rc.averagePercentage !== null && rc.averagePercentage > 0) {
+          scoreMap.set(rc.studentId, rc.averagePercentage);
+        }
+      }
+      const currentStudentScore = Math.round(overallPercentage);
+      scoreMap.set(studentId, currentStudentScore);
+      const validDraftScores = Array.from(scoreMap.values());
+      const totalStudentsInClassDraft = Math.max(allClassReportCards.length, scoreMap.size);
+      const draftClassHighest = validDraftScores.length > 0 ? Math.max(...validDraftScores) : currentStudentScore;
+      const draftClassLowest = validDraftScores.length > 0 ? Math.min(...validDraftScores) : currentStudentScore;
+      const draftClassAverage = validDraftScores.length > 0 ? validDraftScores.reduce((a, b) => a + b, 0) / validDraftScores.length : currentStudentScore;
       const reportCard = {
+        status: "draft",
+        // Flat fields for easy frontend access
+        studentName: `${user.firstName} ${user.lastName}`,
+        admissionNumber: student.admissionNumber,
+        className: studentClass?.name || "Unknown",
+        classLevel: studentClass?.level || "Unknown",
+        department: isSSS ? student.department : null,
+        isSSS,
+        termName: term?.name || "Unknown",
+        termYear: term?.year?.toString() || "",
+        // Use term year directly as it's stored in YYYY/YYYY format (e.g., "2024/2025")
+        academicSession: term?.year || "2024/2025",
+        // Nested objects (backwards compatibility)
         student: {
           id: studentId,
           name: `${user.firstName} ${user.lastName}`,
           admissionNumber: student.admissionNumber,
           className: studentClass?.name || "Unknown",
-          classLevel: studentClass?.level || "Unknown"
+          classLevel: studentClass?.level || "Unknown",
+          department: isSSS ? student.department : null
         },
         term: term ? {
           id: term.id,
@@ -20473,7 +22906,21 @@ Treasure-Home School Administration
           startDate: term.startDate,
           endDate: term.endDate
         } : null,
+        items: subjects3,
         subjects: subjects3,
+        totalScore: totalObtained,
+        averageScore: Math.round(totalObtained / (subjects3.length || 1)),
+        averagePercentage: Math.round(overallPercentage),
+        overallGrade: overallGradeInfo.grade,
+        position: null,
+        totalStudentsInClass: totalStudentsInClassDraft,
+        totalStudents: totalStudentsInClassDraft,
+        classStatistics: {
+          highestScore: Math.round(draftClassHighest),
+          lowestScore: Math.round(draftClassLowest),
+          classAverage: Math.round(draftClassAverage * 10) / 10,
+          totalStudents: totalStudentsInClassDraft
+        },
         summary: {
           percentage: Math.round(overallPercentage * 10) / 10,
           grade: overallGradeInfo.grade,
@@ -20673,9 +23120,9 @@ Treasure-Home School Administration
       }
       const averageScore = subjectCount > 0 ? Math.round(totalScore / subjectCount) : 0;
       const existingReportCard = await db2.select().from(reportCards).where(
-        and6(
-          eq6(reportCards.studentId, studentId),
-          eq6(reportCards.termId, termId)
+        and7(
+          eq7(reportCards.studentId, studentId),
+          eq7(reportCards.termId, termId)
         )
       ).limit(1);
       let reportCard;
@@ -20685,8 +23132,8 @@ Treasure-Home School Administration
           totalScore,
           averageScore,
           updatedAt: /* @__PURE__ */ new Date()
-        }).where(eq6(reportCards.id, existingReportCard[0].id)).returning();
-        await db2.delete(reportCardItems).where(eq6(reportCardItems.reportCardId, reportCard.id));
+        }).where(eq7(reportCards.id, existingReportCard[0].id)).returning();
+        await db2.delete(reportCardItems).where(eq7(reportCardItems.reportCardId, reportCard.id));
       } else {
         [reportCard] = await db2.insert(reportCards).values({
           ...reportCardData,
@@ -20732,13 +23179,13 @@ Treasure-Home School Administration
     try {
       const { reportCardId } = req.params;
       const { teacherRemarks, principalRemarks, status } = req.body;
-      const [existingReportCard] = await db2.select().from(reportCards).where(eq6(reportCards.id, Number(reportCardId))).limit(1);
+      const [existingReportCard] = await db2.select().from(reportCards).where(eq7(reportCards.id, Number(reportCardId))).limit(1);
       const [updatedReportCard] = await db2.update(reportCards).set({
         teacherRemarks,
         principalRemarks,
         status,
         updatedAt: /* @__PURE__ */ new Date()
-      }).where(eq6(reportCards.id, Number(reportCardId))).returning();
+      }).where(eq7(reportCards.id, Number(reportCardId))).returning();
       if (!updatedReportCard) {
         return res.status(404).json({ message: "Report card not found" });
       }
@@ -20756,7 +23203,7 @@ Treasure-Home School Administration
   app2.get("/api/reports/:reportCardId", authenticateUser, async (req, res) => {
     try {
       const { reportCardId } = req.params;
-      const [reportCard] = await db2.select().from(reportCards).where(eq6(reportCards.id, Number(reportCardId))).limit(1);
+      const [reportCard] = await db2.select().from(reportCards).where(eq7(reportCards.id, Number(reportCardId))).limit(1);
       if (!reportCard) {
         return res.status(404).json({ message: "Report card not found" });
       }
@@ -20768,7 +23215,7 @@ Treasure-Home School Administration
         maxScore: reportCardItems.totalMarks,
         grade: reportCardItems.grade,
         remarks: reportCardItems.remarks
-      }).from(reportCardItems).innerJoin(subjects, eq6(reportCardItems.subjectId, subjects.id)).where(eq6(reportCardItems.reportCardId, Number(reportCardId)));
+      }).from(reportCardItems).innerJoin(subjects, eq7(reportCardItems.subjectId, subjects.id)).where(eq7(reportCardItems.reportCardId, Number(reportCardId)));
       const student = await storage.getStudent(reportCard.studentId);
       const user = student ? await storage.getUser(student.id) : null;
       const classInfo = reportCard.classId ? await storage.getClass(reportCard.classId) : null;
@@ -20811,17 +23258,17 @@ Treasure-Home School Administration
         let reportCards3;
         if (termId) {
           reportCards3 = await db2.select().from(reportCards).where(
-            and6(
-              eq6(reportCards.studentId, child.id),
-              eq6(reportCards.termId, Number(termId)),
-              eq6(reportCards.status, "published")
+            and7(
+              eq7(reportCards.studentId, child.id),
+              eq7(reportCards.termId, Number(termId)),
+              eq7(reportCards.status, "published")
             )
           );
         } else {
           reportCards3 = await db2.select().from(reportCards).where(
-            and6(
-              eq6(reportCards.studentId, child.id),
-              eq6(reportCards.status, "published")
+            and7(
+              eq7(reportCards.studentId, child.id),
+              eq7(reportCards.status, "published")
             )
           ).orderBy(reportCards.createdAt);
         }
@@ -20894,9 +23341,9 @@ Treasure-Home School Administration
           }
           const averageScore = subjectCount > 0 ? Math.round(totalScore / subjectCount) : 0;
           const existingReportCard = await db2.select().from(reportCards).where(
-            and6(
-              eq6(reportCards.studentId, student.id),
-              eq6(reportCards.termId, termId)
+            and7(
+              eq7(reportCards.studentId, student.id),
+              eq7(reportCards.termId, termId)
             )
           ).limit(1);
           let reportCard;
@@ -20908,8 +23355,8 @@ Treasure-Home School Administration
               generatedBy: req.user.id,
               generatedAt: /* @__PURE__ */ new Date(),
               updatedAt: /* @__PURE__ */ new Date()
-            }).where(eq6(reportCards.id, existingReportCard[0].id)).returning();
-            await db2.delete(reportCardItems).where(eq6(reportCardItems.reportCardId, reportCard.id));
+            }).where(eq7(reportCards.id, existingReportCard[0].id)).returning();
+            await db2.delete(reportCardItems).where(eq7(reportCardItems.reportCardId, reportCard.id));
           } else {
             [reportCard] = await db2.insert(reportCards).values({
               studentId: student.id,
@@ -21012,7 +23459,33 @@ Treasure-Home School Administration
           canEditRemarks: permissions.canEditRemarks
         };
       });
-      res.json({ ...reportCard, items: enhancedItems });
+      let classStatistics = {
+        highestScore: 0,
+        lowestScore: 0,
+        classAverage: 0,
+        totalStudents: 0
+      };
+      if (reportCard.classId && reportCard.termId) {
+        try {
+          const allClassReportCards = await storage.getReportCardsByClassAndTerm(
+            reportCard.classId,
+            reportCard.termId
+          );
+          if (allClassReportCards && allClassReportCards.length > 0) {
+            const percentages = allClassReportCards.map((rc) => rc.averagePercentage || 0);
+            const totalStudents = allClassReportCards.length;
+            classStatistics = {
+              highestScore: Math.max(...percentages),
+              lowestScore: Math.min(...percentages),
+              classAverage: Math.round(percentages.reduce((sum, p) => sum + p, 0) / totalStudents * 10) / 10,
+              totalStudents
+            };
+          }
+        } catch (statsError) {
+          console.error("Error calculating class statistics:", statsError);
+        }
+      }
+      res.json({ ...reportCard, items: enhancedItems, classStatistics });
     } catch (error) {
       console.error("Error getting report card:", error);
       res.status(500).json({ message: error.message || "Failed to get report card" });
@@ -21216,6 +23689,19 @@ Treasure-Home School Administration
           code: "UPDATE_FAILED"
         });
       }
+      let reportCardTotals;
+      if (updatedItem.reportCardId) {
+        const updatedReportCard = await storage.getReportCard(updatedItem.reportCardId);
+        if (updatedReportCard) {
+          reportCardTotals = {
+            totalScore: updatedReportCard.totalScore ?? 0,
+            averageScore: updatedReportCard.averageScore ?? 0,
+            averagePercentage: updatedReportCard.averagePercentage ?? 0,
+            overallGrade: updatedReportCard.overallGrade ?? "",
+            position: updatedReportCard.position ?? void 0
+          };
+        }
+      }
       realtimeService.emitTableChange("report_card_items", "UPDATE", updatedItem, void 0, userId);
       if (updatedItem.reportCardId) {
         realtimeService.emitReportCardEvent(updatedItem.reportCardId, "updated", {
@@ -21225,14 +23711,16 @@ Treasure-Home School Administration
           examScore: updatedItem.examScore,
           grade: updatedItem.grade,
           percentage: updatedItem.percentage,
-          overriddenBy: userId
+          overriddenBy: userId,
+          reportCardTotals
         }, userId);
       }
       res.json({
         ...updatedItem,
         message: "Score updated successfully",
         canEditTest,
-        canEditExam
+        canEditExam,
+        reportCardTotals
       });
     } catch (error) {
       console.error("Error overriding score:", error);
@@ -21258,28 +23746,30 @@ Treasure-Home School Administration
         return res.status(500).json({ message: "Failed to update report card status" });
       }
       const { reportCard: updatedReportCard, previousStatus } = result;
-      setImmediate(async () => {
-        const eventType = status === "published" ? "published" : status === "finalized" ? "finalized" : "reverted";
-        let parentIds = [];
-        if (status === "published" && updatedReportCard.studentId) {
+      const eventType = status === "published" ? "published" : status === "finalized" ? "finalized" : "reverted";
+      realtimeService.emitReportCardEvent(Number(reportCardId), eventType, {
+        reportCardId: Number(reportCardId),
+        status,
+        studentId: updatedReportCard.studentId,
+        classId: updatedReportCard.classId,
+        termId: updatedReportCard.termId
+      }, req.user.id);
+      if (status === "published" && updatedReportCard.studentId) {
+        setImmediate(async () => {
           try {
             const student = await storage.getStudent(updatedReportCard.studentId);
             if (student?.parentId) {
-              parentIds = [student.parentId];
+              realtimeService.emitToUser(student.parentId, "reportcard.published", {
+                reportCardId: Number(reportCardId),
+                status,
+                studentId: updatedReportCard.studentId
+              });
             }
           } catch (e) {
             console.warn("Could not fetch parent ID for notification:", e);
           }
-        }
-        realtimeService.emitReportCardEvent(Number(reportCardId), eventType, {
-          reportCardId: Number(reportCardId),
-          status,
-          studentId: updatedReportCard.studentId,
-          classId: updatedReportCard.classId,
-          termId: updatedReportCard.termId,
-          parentIds
-        }, req.user.id);
-      });
+        });
+      }
       let message = "Status updated successfully";
       if (status === "draft") {
         message = "Report card reverted to draft. Editing is now enabled.";
@@ -21304,10 +23794,50 @@ Treasure-Home School Administration
     try {
       const { reportCardId } = req.params;
       const { teacherRemarks, principalRemarks } = req.body;
+      const userId = req.user.id;
+      const userRoleId = req.user.roleId;
+      const reportCard = await storage.getReportCard(Number(reportCardId));
+      if (!reportCard) {
+        return res.status(404).json({ message: "Report card not found" });
+      }
+      const classInfo = await storage.getClass(reportCard.classId);
+      if (!classInfo) {
+        return res.status(404).json({ message: "Class not found" });
+      }
+      const isClassTeacher = classInfo.classTeacherId === userId;
+      const isPrincipal = userRoleId === ROLE_IDS.ADMIN;
+      const isAdminOrSuperAdmin = userRoleId === ROLE_IDS.ADMIN || userRoleId === ROLE_IDS.SUPER_ADMIN;
+      if (principalRemarks !== void 0 && !isPrincipal) {
+        return res.status(403).json({
+          message: "Only the school administrator (principal) can edit principal comments. This field is not allowed in your request.",
+          code: "NOT_PRINCIPAL"
+        });
+      }
+      if (teacherRemarks !== void 0 && !isClassTeacher && !isAdminOrSuperAdmin) {
+        return res.status(403).json({
+          message: "Only the assigned class teacher can edit class teacher comments. This field is not allowed in your request.",
+          code: "NOT_CLASS_TEACHER"
+        });
+      }
+      const hasTeacherRemarks = teacherRemarks !== void 0;
+      const hasPrincipalRemarks = principalRemarks !== void 0;
+      if (!hasTeacherRemarks && !hasPrincipalRemarks) {
+        return res.status(400).json({
+          message: "No remarks fields provided for update",
+          code: "NO_FIELDS"
+        });
+      }
+      const updateData = {};
+      if (hasTeacherRemarks) {
+        updateData.teacherRemarks = teacherRemarks;
+      }
+      if (hasPrincipalRemarks) {
+        updateData.principalRemarks = principalRemarks;
+      }
       const updatedReportCard = await storage.updateReportCardRemarks(
         Number(reportCardId),
-        teacherRemarks,
-        principalRemarks
+        updateData.teacherRemarks,
+        updateData.principalRemarks
       );
       if (!updatedReportCard) {
         return res.status(404).json({ message: "Report card not found" });
@@ -21322,6 +23852,329 @@ Treasure-Home School Administration
     } catch (error) {
       console.error("Error updating remarks:", error);
       res.status(500).json({ message: error.message || "Failed to update remarks" });
+    }
+  });
+  app2.get("/api/reports/:reportCardId/default-comments", authenticateUser, authorizeRoles(ROLE_IDS.TEACHER, ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      const { reportCardId } = req.params;
+      const reportCard = await storage.getReportCard(Number(reportCardId));
+      if (!reportCard) {
+        return res.status(404).json({ message: "Report card not found" });
+      }
+      const student = await storage.getStudent(reportCard.studentId);
+      const studentName = student ? `${student.firstName || "Student"}` : "Student";
+      const percentage = reportCard.averagePercentage || 0;
+      const teacherComment = generateTeacherComment(studentName, percentage);
+      const principalComment = generatePrincipalComment(studentName, percentage);
+      res.json({
+        teacherComment,
+        principalComment,
+        studentName,
+        averagePercentage: percentage
+      });
+    } catch (error) {
+      console.error("Error generating default comments:", error);
+      res.status(500).json({ message: error.message || "Failed to generate comments" });
+    }
+  });
+  app2.post("/api/reports/backfill-comments", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      const { termId, classId, overwrite = false } = req.body;
+      const conditions = [];
+      if (termId) conditions.push(eq7(reportCards.termId, Number(termId)));
+      if (classId) conditions.push(eq7(reportCards.classId, Number(classId)));
+      let query = db2.select({
+        id: reportCards.id,
+        studentId: reportCards.studentId,
+        averagePercentage: reportCards.averagePercentage,
+        teacherRemarks: reportCards.teacherRemarks,
+        principalRemarks: reportCards.principalRemarks
+      }).from(reportCards);
+      if (conditions.length > 0) {
+        query = query.where(and7(...conditions));
+      }
+      const reportCards3 = await query;
+      let updated = 0;
+      let skipped = 0;
+      const errors = [];
+      for (const rc of reportCards3) {
+        try {
+          if (!overwrite && rc.teacherRemarks && rc.principalRemarks) {
+            skipped++;
+            continue;
+          }
+          const student = await storage.getStudent(rc.studentId);
+          let studentName = "Student";
+          if (student) {
+            studentName = student.lastName || "Student";
+          }
+          const percentage = rc.averagePercentage || 0;
+          const updateData = { updatedAt: /* @__PURE__ */ new Date() };
+          if (overwrite || !rc.teacherRemarks) {
+            updateData.teacherRemarks = generateTeacherComment(studentName, percentage);
+          }
+          if (overwrite || !rc.principalRemarks) {
+            updateData.principalRemarks = generatePrincipalComment(studentName, percentage);
+          }
+          await db2.update(reportCards).set(updateData).where(eq7(reportCards.id, rc.id));
+          updated++;
+        } catch (err) {
+          errors.push(`Report card ${rc.id}: ${err.message}`);
+        }
+      }
+      res.json({
+        message: `Backfill completed. Updated ${updated} report cards, skipped ${skipped}.`,
+        updated,
+        skipped,
+        total: reportCards3.length,
+        errors: errors.length > 0 ? errors.slice(0, 10) : void 0
+      });
+    } catch (error) {
+      console.error("Error backfilling comments:", error);
+      res.status(500).json({ message: error.message || "Failed to backfill comments" });
+    }
+  });
+  app2.post("/api/reports/:reportCardId/sign/teacher", authenticateUser, authorizeRoles(ROLE_IDS.TEACHER, ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      const { reportCardId } = req.params;
+      const { teacherRemarks } = req.body;
+      const userId = req.user.id;
+      const reportCard = await storage.getReportCard(Number(reportCardId));
+      if (!reportCard) {
+        return res.status(404).json({ message: "Report card not found" });
+      }
+      const classInfo = await storage.getClass(reportCard.classId);
+      if (!classInfo) {
+        return res.status(404).json({ message: "Class not found" });
+      }
+      if (classInfo.classTeacherId !== userId) {
+        return res.status(403).json({
+          message: "Only the assigned class teacher can sign this report card. Please use the principal signature option if you are an administrator.",
+          code: "NOT_CLASS_TEACHER"
+        });
+      }
+      const teacherProfile = await storage.getTeacherProfile(userId);
+      const signatureUrl = teacherProfile?.signatureUrl || null;
+      if (!signatureUrl) {
+        return res.status(400).json({
+          message: "You must set up your signature first in your profile settings",
+          code: "NO_SIGNATURE"
+        });
+      }
+      const updatedReportCard = await db2.update(reportCards).set({
+        teacherSignedBy: userId,
+        teacherSignedAt: /* @__PURE__ */ new Date(),
+        teacherSignatureUrl: signatureUrl,
+        teacherRemarks: teacherRemarks || reportCard.teacherRemarks,
+        status: reportCard.status === "draft" ? "finalized" : reportCard.status,
+        updatedAt: /* @__PURE__ */ new Date()
+      }).where(eq7(reportCards.id, Number(reportCardId))).returning();
+      if (!updatedReportCard.length) {
+        return res.status(500).json({ message: "Failed to sign report card" });
+      }
+      realtimeService.emitReportCardEvent(Number(reportCardId), "updated", {
+        reportCardId: Number(reportCardId),
+        signedBy: "teacher",
+        signerId: userId
+      }, userId);
+      res.json({
+        reportCard: updatedReportCard[0],
+        message: "Report card signed successfully as class teacher"
+      });
+    } catch (error) {
+      console.error("Error signing report card as teacher:", error);
+      res.status(500).json({ message: error.message || "Failed to sign report card" });
+    }
+  });
+  app2.post("/api/reports/:reportCardId/sign/principal", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      const { reportCardId } = req.params;
+      const { principalRemarks } = req.body;
+      const userId = req.user.id;
+      const userRoleId = req.user.roleId;
+      const reportCard = await storage.getReportCard(Number(reportCardId));
+      if (!reportCard) {
+        return res.status(404).json({ message: "Report card not found" });
+      }
+      let signatureUrl = null;
+      if (userRoleId === ROLE_IDS.SUPER_ADMIN) {
+        const superAdminProfile = await storage.getSuperAdminProfile(userId);
+        signatureUrl = superAdminProfile?.signatureUrl || null;
+      } else {
+        const adminProfile = await storage.getAdminProfile(userId);
+        signatureUrl = adminProfile?.signatureUrl || null;
+      }
+      if (!signatureUrl) {
+        return res.status(400).json({
+          message: "You must set up your signature first in your profile settings",
+          code: "NO_SIGNATURE"
+        });
+      }
+      const updatedReportCard = await db2.update(reportCards).set({
+        principalSignedBy: userId,
+        principalSignedAt: /* @__PURE__ */ new Date(),
+        principalSignatureUrl: signatureUrl,
+        principalRemarks: principalRemarks || reportCard.principalRemarks,
+        status: "published",
+        publishedAt: /* @__PURE__ */ new Date(),
+        updatedAt: /* @__PURE__ */ new Date()
+      }).where(eq7(reportCards.id, Number(reportCardId))).returning();
+      if (!updatedReportCard.length) {
+        return res.status(500).json({ message: "Failed to sign report card" });
+      }
+      realtimeService.emitReportCardEvent(Number(reportCardId), "published", {
+        reportCardId: Number(reportCardId),
+        signedBy: "principal",
+        signerId: userId
+      }, userId);
+      setImmediate(async () => {
+        try {
+          const student = await storage.getStudent(reportCard.studentId);
+          if (student?.parentId) {
+            realtimeService.emitToUser(student.parentId, "reportcard.published", {
+              reportCardId: Number(reportCardId),
+              studentId: reportCard.studentId
+            });
+          }
+        } catch (e) {
+          console.warn("Could not notify parent:", e);
+        }
+      });
+      res.json({
+        reportCard: updatedReportCard[0],
+        message: "Report card signed and published successfully as principal"
+      });
+    } catch (error) {
+      console.error("Error signing report card as principal:", error);
+      res.status(500).json({ message: error.message || "Failed to sign report card" });
+    }
+  });
+  app2.post("/api/user/signature", authenticateUser, async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const userRoleId = req.user.roleId;
+      const { signatureDataUrl } = req.body;
+      if (!signatureDataUrl) {
+        return res.status(400).json({ message: "Signature data is required" });
+      }
+      if (!signatureDataUrl.startsWith("data:image/")) {
+        return res.status(400).json({ message: "Invalid signature format" });
+      }
+      if (userRoleId === ROLE_IDS.TEACHER) {
+        const existingProfile = await storage.getTeacherProfile(userId);
+        if (!existingProfile) {
+          await db2.insert(teacherProfiles).values({
+            userId,
+            signatureUrl: signatureDataUrl,
+            firstLogin: true,
+            createdAt: /* @__PURE__ */ new Date(),
+            updatedAt: /* @__PURE__ */ new Date()
+          });
+        } else {
+          await db2.update(teacherProfiles).set({
+            signatureUrl: signatureDataUrl,
+            updatedAt: /* @__PURE__ */ new Date()
+          }).where(eq7(teacherProfiles.userId, userId));
+        }
+      } else if (userRoleId === ROLE_IDS.ADMIN) {
+        const existingProfile = await storage.getAdminProfile(userId);
+        if (!existingProfile) {
+          await db2.insert(adminProfiles).values({
+            userId,
+            signatureUrl: signatureDataUrl,
+            createdAt: /* @__PURE__ */ new Date(),
+            updatedAt: /* @__PURE__ */ new Date()
+          });
+        } else {
+          await db2.update(adminProfiles).set({
+            signatureUrl: signatureDataUrl,
+            updatedAt: /* @__PURE__ */ new Date()
+          }).where(eq7(adminProfiles.userId, userId));
+        }
+      } else if (userRoleId === ROLE_IDS.SUPER_ADMIN) {
+        const existingProfile = await storage.getSuperAdminProfile(userId);
+        if (!existingProfile) {
+          await db2.insert(superAdminProfiles).values({
+            userId,
+            signatureUrl: signatureDataUrl,
+            createdAt: /* @__PURE__ */ new Date(),
+            updatedAt: /* @__PURE__ */ new Date()
+          });
+        } else {
+          await db2.update(superAdminProfiles).set({
+            signatureUrl: signatureDataUrl,
+            updatedAt: /* @__PURE__ */ new Date()
+          }).where(eq7(superAdminProfiles.userId, userId));
+        }
+      } else {
+        return res.status(403).json({ message: "Signature not applicable for your role" });
+      }
+      res.json({ message: "Signature saved successfully" });
+    } catch (error) {
+      console.error("Error saving signature:", error);
+      res.status(500).json({ message: error.message || "Failed to save signature" });
+    }
+  });
+  app2.get("/api/user/signature", authenticateUser, async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const userRoleId = req.user.roleId;
+      let signatureUrl = null;
+      if (userRoleId === ROLE_IDS.TEACHER) {
+        const profile = await storage.getTeacherProfile(userId);
+        signatureUrl = profile?.signatureUrl || null;
+      } else if (userRoleId === ROLE_IDS.ADMIN) {
+        const profile = await storage.getAdminProfile(userId);
+        signatureUrl = profile?.signatureUrl || null;
+      } else if (userRoleId === ROLE_IDS.SUPER_ADMIN) {
+        const profile = await storage.getSuperAdminProfile(userId);
+        signatureUrl = profile?.signatureUrl || null;
+      }
+      res.json({ signatureUrl, hasSignature: !!signatureUrl });
+    } catch (error) {
+      console.error("Error getting signature:", error);
+      res.status(500).json({ message: error.message || "Failed to get signature" });
+    }
+  });
+  app2.get("/api/reports/:reportCardId/sign-permissions", authenticateUser, async (req, res) => {
+    try {
+      const { reportCardId } = req.params;
+      const userId = req.user.id;
+      const userRoleId = req.user.roleId;
+      const reportCard = await storage.getReportCard(Number(reportCardId));
+      if (!reportCard) {
+        return res.status(404).json({ message: "Report card not found" });
+      }
+      const classInfo = await storage.getClass(reportCard.classId);
+      const isClassTeacher = classInfo?.classTeacherId === userId;
+      const isAdmin = userRoleId === ROLE_IDS.ADMIN || userRoleId === ROLE_IDS.SUPER_ADMIN;
+      let hasSignature = false;
+      if (userRoleId === ROLE_IDS.TEACHER) {
+        const profile = await storage.getTeacherProfile(userId);
+        hasSignature = !!profile?.signatureUrl;
+      } else if (userRoleId === ROLE_IDS.ADMIN) {
+        const profile = await storage.getAdminProfile(userId);
+        hasSignature = !!profile?.signatureUrl;
+      } else if (userRoleId === ROLE_IDS.SUPER_ADMIN) {
+        const profile = await storage.getSuperAdminProfile(userId);
+        hasSignature = !!profile?.signatureUrl;
+      }
+      res.json({
+        canSignAsTeacher: isClassTeacher && !reportCard.teacherSignedBy,
+        canSignAsPrincipal: isAdmin && !reportCard.principalSignedBy,
+        isClassTeacher,
+        isAdmin,
+        hasSignature,
+        teacherSigned: !!reportCard.teacherSignedBy,
+        principalSigned: !!reportCard.principalSignedBy,
+        teacherSignatureUrl: reportCard.teacherSignatureUrl,
+        principalSignatureUrl: reportCard.principalSignatureUrl,
+        teacherSignedAt: reportCard.teacherSignedAt,
+        principalSignedAt: reportCard.principalSignedAt
+      });
+    } catch (error) {
+      console.error("Error getting sign permissions:", error);
+      res.status(500).json({ message: error.message || "Failed to get sign permissions" });
     }
   });
   app2.get("/api/reports/exams/:classId", authenticateUser, authorizeRoles(ROLE_IDS.TEACHER, ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
@@ -21920,16 +24773,96 @@ Treasure-Home School Administration
       res.status(500).json({ message: error.message || "Failed to repair report cards" });
     }
   });
+  app2.get("/api/admin/report-comment-templates", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      const { role } = req.query;
+      const templates = await storage.getReportCommentTemplates(role);
+      res.json(templates);
+    } catch (error) {
+      console.error("[COMMENT-TEMPLATES] Error fetching templates:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch comment templates" });
+    }
+  });
+  app2.get("/api/admin/report-comment-templates/:id", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      const template = await storage.getReportCommentTemplate(parseInt(req.params.id));
+      if (!template) {
+        return res.status(404).json({ message: "Comment template not found" });
+      }
+      res.json(template);
+    } catch (error) {
+      console.error("[COMMENT-TEMPLATES] Error fetching template:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch comment template" });
+    }
+  });
+  app2.post("/api/admin/report-comment-templates", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      const { role, performanceLevel, minPercentage, maxPercentage, commentTemplate, isActive } = req.body;
+      if (!role || !performanceLevel || minPercentage === void 0 || maxPercentage === void 0 || !commentTemplate) {
+        return res.status(400).json({ message: "All fields are required" });
+      }
+      if (!["teacher", "principal"].includes(role)) {
+        return res.status(400).json({ message: "Role must be either teacher or principal" });
+      }
+      const template = await storage.createReportCommentTemplate({
+        role,
+        performanceLevel,
+        minPercentage,
+        maxPercentage,
+        commentTemplate,
+        isActive: isActive !== false,
+        createdBy: req.user.id
+      });
+      res.status(201).json(template);
+    } catch (error) {
+      console.error("[COMMENT-TEMPLATES] Error creating template:", error);
+      res.status(500).json({ message: error.message || "Failed to create comment template" });
+    }
+  });
+  app2.patch("/api/admin/report-comment-templates/:id", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      const { role, performanceLevel, minPercentage, maxPercentage, commentTemplate, isActive } = req.body;
+      const updateData = { updatedBy: req.user.id };
+      if (role !== void 0) updateData.role = role;
+      if (performanceLevel !== void 0) updateData.performanceLevel = performanceLevel;
+      if (minPercentage !== void 0) updateData.minPercentage = minPercentage;
+      if (maxPercentage !== void 0) updateData.maxPercentage = maxPercentage;
+      if (commentTemplate !== void 0) updateData.commentTemplate = commentTemplate;
+      if (isActive !== void 0) updateData.isActive = isActive;
+      const template = await storage.updateReportCommentTemplate(parseInt(req.params.id), updateData);
+      if (!template) {
+        return res.status(404).json({ message: "Comment template not found" });
+      }
+      res.json(template);
+    } catch (error) {
+      console.error("[COMMENT-TEMPLATES] Error updating template:", error);
+      res.status(500).json({ message: error.message || "Failed to update comment template" });
+    }
+  });
+  app2.delete("/api/admin/report-comment-templates/:id", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      const success = await storage.deleteReportCommentTemplate(parseInt(req.params.id));
+      if (!success) {
+        return res.status(404).json({ message: "Comment template not found" });
+      }
+      res.json({ message: "Comment template deleted successfully" });
+    } catch (error) {
+      console.error("[COMMENT-TEMPLATES] Error deleting template:", error);
+      res.status(500).json({ message: error.message || "Failed to delete comment template" });
+    }
+  });
   app2.get("/api/admin/report-cards/finalized", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
     try {
       const { classId, termId, status = "finalized" } = req.query;
       const query = db2.select({
         id: reportCards.id,
         studentId: reportCards.studentId,
-        studentName: sql6`${users.firstName} || ' ' || ${users.lastName}`,
+        studentName: sql7`${users.firstName} || ' ' || ${users.lastName}`,
         admissionNumber: students.admissionNumber,
+        department: students.department,
         classId: reportCards.classId,
         className: classes.name,
+        classLevel: classes.level,
         termId: reportCards.termId,
         termName: academicTerms.name,
         sessionYear: academicTerms.year,
@@ -21939,21 +24872,29 @@ Treasure-Home School Administration
         finalizedAt: reportCards.finalizedAt,
         publishedAt: reportCards.publishedAt,
         generatedAt: reportCards.generatedAt
-      }).from(reportCards).innerJoin(students, eq6(students.id, reportCards.studentId)).innerJoin(users, eq6(users.id, students.id)).innerJoin(classes, eq6(classes.id, reportCards.classId)).innerJoin(academicTerms, eq6(academicTerms.id, reportCards.termId)).where(
-        and6(
-          status === "all" ? sql6`${reportCards.status} IN ('finalized', 'published')` : eq6(reportCards.status, status),
-          classId ? eq6(reportCards.classId, Number(classId)) : sql6`1=1`,
-          termId ? eq6(reportCards.termId, Number(termId)) : sql6`1=1`
+      }).from(reportCards).innerJoin(students, eq7(students.id, reportCards.studentId)).innerJoin(users, eq7(users.id, students.id)).innerJoin(classes, eq7(classes.id, reportCards.classId)).innerJoin(academicTerms, eq7(academicTerms.id, reportCards.termId)).where(
+        and7(
+          status === "all" ? sql7`${reportCards.status} IN ('finalized', 'published')` : eq7(reportCards.status, status),
+          classId ? eq7(reportCards.classId, Number(classId)) : sql7`1=1`,
+          termId ? eq7(reportCards.termId, Number(termId)) : sql7`1=1`
         )
-      ).orderBy(desc3(reportCards.finalizedAt));
-      const results = await query;
+      ).orderBy(desc4(reportCards.finalizedAt));
+      const rawResults = await query;
+      const results = rawResults.map((r) => {
+        const isSSS = r.className?.startsWith("SS") || r.classLevel?.includes("Senior Secondary");
+        return {
+          ...r,
+          isSSS,
+          department: isSSS ? r.department : null
+        };
+      });
       const allReports = await db2.select({
         status: reportCards.status,
-        count: sql6`count(*)`
+        count: sql7`count(*)`
       }).from(reportCards).where(
-        and6(
-          classId ? eq6(reportCards.classId, Number(classId)) : sql6`1=1`,
-          termId ? eq6(reportCards.termId, Number(termId)) : sql6`1=1`
+        and7(
+          classId ? eq7(reportCards.classId, Number(classId)) : sql7`1=1`,
+          termId ? eq7(reportCards.termId, Number(termId)) : sql7`1=1`
         )
       ).groupBy(reportCards.status);
       const stats = {
@@ -21993,6 +24934,38 @@ Treasure-Home School Administration
       );
       const successCount = results.filter((r) => r.success).length;
       const failedCount = results.filter((r) => !r.success).length;
+      for (const r of results.filter((r2) => r2.success && r2.result)) {
+        const reportCard = r.result.reportCard;
+        if (reportCard) {
+          realtimeService.emitReportCardEvent(reportCard.id, "published", {
+            reportCardId: reportCard.id,
+            status: "published",
+            studentId: reportCard.studentId,
+            classId: reportCard.classId,
+            termId: reportCard.termId,
+            action: "bulk-publish"
+          }, req.user.id);
+        }
+      }
+      setImmediate(async () => {
+        for (const r of results.filter((r2) => r2.success && r2.result)) {
+          const reportCard = r.result.reportCard;
+          if (reportCard && reportCard.studentId) {
+            try {
+              const student = await storage.getStudent(reportCard.studentId);
+              if (student?.parentId) {
+                realtimeService.emitToUser(student.parentId, "reportcard.published", {
+                  reportCardId: reportCard.id,
+                  status: "published",
+                  studentId: reportCard.studentId
+                });
+              }
+            } catch (e) {
+              console.warn("Could not emit parent notification:", e);
+            }
+          }
+        }
+      });
       res.json({
         message: `${successCount} report cards published successfully${failedCount > 0 ? `, ${failedCount} failed` : ""}`,
         results,
@@ -22012,6 +24985,16 @@ Treasure-Home School Administration
       if (!result) {
         return res.status(404).json({ message: "Report card not found" });
       }
+      const reportCard = result.reportCard;
+      realtimeService.emitReportCardEvent(Number(id), "reverted", {
+        reportCardId: Number(id),
+        status: "draft",
+        studentId: reportCard.studentId,
+        classId: reportCard.classId,
+        termId: reportCard.termId,
+        reason: reason || "Rejected by admin",
+        action: "reject"
+      }, req.user.id);
       res.json({
         message: "Report card rejected and reverted to draft",
         reportCard: result.reportCard,
@@ -22088,6 +25071,193 @@ Treasure-Home School Administration
     } catch (error) {
       console.error("[ADMIN-RESYNC-SUBJECTS] Error:", error);
       res.status(500).json({ message: error.message || "Failed to resync report card subjects" });
+    }
+  });
+  app2.post("/api/admin/sync-all-missing-exam-scores", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      const { termId } = req.body;
+      console.log(`[ADMIN-SYNC-MISSING] User ${req.user.id} triggered comprehensive exam score sync`);
+      const result = await storage.syncAllMissingExamScores(termId ? Number(termId) : void 0);
+      enhancedCache2.invalidate(/^reportcard:/);
+      console.log(`[ADMIN-SYNC-MISSING] Completed: ${result.synced} synced, ${result.failed} failed`);
+      res.json({
+        message: `Comprehensive exam score sync completed`,
+        synced: result.synced,
+        failed: result.failed,
+        errors: result.errors.length > 0 ? result.errors.slice(0, 20) : void 0,
+        totalErrors: result.errors.length
+      });
+    } catch (error) {
+      console.error("[ADMIN-SYNC-MISSING] Error:", error);
+      res.status(500).json({ message: error.message || "Failed to sync missing exam scores" });
+    }
+  });
+  app2.post("/api/teacher/exams/:examId/sync-all-to-reportcards", authenticateUser, authorizeRoles(ROLE_IDS.TEACHER, ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      const examId = parseInt(req.params.examId);
+      const teacherId = req.user.id;
+      if (isNaN(examId) || examId <= 0) {
+        return res.status(400).json({ message: "Invalid exam ID" });
+      }
+      const exam = await storage.getExamById(examId);
+      if (!exam) {
+        return res.status(404).json({ message: "Exam not found" });
+      }
+      if (req.user.roleId === ROLE_IDS.TEACHER) {
+        const isCreator = exam.createdBy === teacherId;
+        const isTeacherInCharge = exam.teacherInChargeId === teacherId;
+        let isClassSubjectTeacher = false;
+        if (exam.classId && exam.subjectId) {
+          try {
+            const teachers = await storage.getTeachersForClassSubject(exam.classId, exam.subjectId);
+            isClassSubjectTeacher = teachers?.some((t) => t.id === teacherId) || false;
+          } catch (e) {
+          }
+        }
+        if (!isCreator && !isTeacherInCharge && !isClassSubjectTeacher) {
+          return res.status(403).json({ message: "You can only sync results for exams you created, are assigned to, or teach" });
+        }
+      }
+      console.log(`[TEACHER-BULK-SYNC] User ${teacherId} syncing all results for exam ${examId}`);
+      const result = await storage.syncExamResultsToReportCards(examId);
+      realtimeService.emitTableChange("report_cards", "UPDATE", { examId, bulkSync: true }, void 0, teacherId);
+      res.json({
+        message: `Synced ${result.synced} exam results to report cards`,
+        synced: result.synced,
+        failed: result.failed,
+        errors: result.errors.length > 0 ? result.errors.slice(0, 10) : void 0,
+        totalErrors: result.errors.length
+      });
+    } catch (error) {
+      console.error("[TEACHER-BULK-SYNC] Error:", error);
+      res.status(500).json({ message: error.message || "Failed to sync exam results" });
+    }
+  });
+  app2.get("/api/teacher/exams/:examId/sync-status", authenticateUser, authorizeRoles(ROLE_IDS.TEACHER, ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      const examId = parseInt(req.params.examId);
+      if (isNaN(examId) || examId <= 0) {
+        return res.status(400).json({ message: "Invalid exam ID" });
+      }
+      const syncStatuses = await db2.select({
+        studentId: syncAuditLogs.studentId,
+        status: syncAuditLogs.status,
+        syncedAt: syncAuditLogs.syncedAt,
+        errorMessage: syncAuditLogs.errorMessage,
+        retryCount: syncAuditLogs.retryCount
+      }).from(syncAuditLogs).where(eq7(syncAuditLogs.examId, examId)).orderBy(desc4(syncAuditLogs.createdAt));
+      const statusByStudent = /* @__PURE__ */ new Map();
+      for (const s of syncStatuses) {
+        if (!statusByStudent.has(s.studentId)) {
+          statusByStudent.set(s.studentId, {
+            status: s.status,
+            syncedAt: s.syncedAt,
+            errorMessage: s.errorMessage,
+            retryCount: s.retryCount
+          });
+        }
+      }
+      let synced = 0, pending = 0, failed = 0, retrying = 0;
+      statusByStudent.forEach((v) => {
+        if (v.status === "success") synced++;
+        else if (v.status === "pending") pending++;
+        else if (v.status === "failed") failed++;
+        else if (v.status === "retrying") retrying++;
+      });
+      res.json({
+        byStudent: Object.fromEntries(statusByStudent),
+        summary: { synced, pending, failed, retrying, total: statusByStudent.size }
+      });
+    } catch (error) {
+      console.error("[TEACHER-SYNC-STATUS] Error:", error);
+      res.status(500).json({ message: error.message || "Failed to get sync status" });
+    }
+  });
+  app2.get("/api/admin/sync-audit-logs", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      const { studentId, examId, status, syncType, limit, offset } = req.query;
+      const result = await reliableSyncService.getSyncAuditLogs({
+        studentId,
+        examId: examId ? parseInt(examId) : void 0,
+        status,
+        syncType,
+        limit: limit ? parseInt(limit) : 50,
+        offset: offset ? parseInt(offset) : 0
+      });
+      res.json(result);
+    } catch (error) {
+      console.error("[SYNC-AUDIT] Error fetching logs:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch sync audit logs" });
+    }
+  });
+  app2.post("/api/admin/sync-audit-logs/retry-failed", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      console.log(`[SYNC-AUDIT] User ${req.user.id} triggered batch retry of failed syncs`);
+      const result = await reliableSyncService.retryFailedSyncs();
+      res.json({
+        message: `Processed ${result.processed} failed syncs: ${result.succeeded} succeeded, ${result.failed} still failing`,
+        processed: result.processed,
+        succeeded: result.succeeded,
+        failed: result.failed
+      });
+    } catch (error) {
+      console.error("[SYNC-AUDIT] Error retrying failed syncs:", error);
+      res.status(500).json({ message: error.message || "Failed to retry syncs" });
+    }
+  });
+  app2.post("/api/admin/sync-audit-logs/:auditLogId/resync", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      const auditLogId = parseInt(req.params.auditLogId);
+      const adminId = req.user.id;
+      if (isNaN(auditLogId) || auditLogId <= 0) {
+        return res.status(400).json({ message: "Invalid audit log ID" });
+      }
+      console.log(`[SYNC-AUDIT] Admin ${adminId} manually resyncing audit log ${auditLogId}`);
+      const result = await reliableSyncService.manualResyncById(auditLogId, adminId);
+      if (!result.success) {
+        return res.status(400).json({
+          message: result.message,
+          errorCode: result.errorCode
+        });
+      }
+      res.json({
+        message: result.message,
+        reportCardId: result.reportCardId,
+        reportCardItemId: result.reportCardItemId,
+        isNewReportCard: result.isNewReportCard,
+        auditLogId: result.auditLogId
+      });
+    } catch (error) {
+      console.error("[SYNC-AUDIT] Error resyncing:", error);
+      res.status(500).json({ message: error.message || "Failed to resync" });
+    }
+  });
+  app2.get("/api/admin/sync-audit-logs/stats", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      const [
+        totalLogs,
+        successfulSyncs,
+        failedSyncs,
+        pendingSyncs,
+        retryingSyncs
+      ] = await Promise.all([
+        db2.select({ count: sql7`count(*)` }).from(syncAuditLogs),
+        db2.select({ count: sql7`count(*)` }).from(syncAuditLogs).where(eq7(syncAuditLogs.status, "success")),
+        db2.select({ count: sql7`count(*)` }).from(syncAuditLogs).where(eq7(syncAuditLogs.status, "failed")),
+        db2.select({ count: sql7`count(*)` }).from(syncAuditLogs).where(eq7(syncAuditLogs.status, "pending")),
+        db2.select({ count: sql7`count(*)` }).from(syncAuditLogs).where(eq7(syncAuditLogs.status, "retrying"))
+      ]);
+      res.json({
+        total: Number(totalLogs[0]?.count || 0),
+        successful: Number(successfulSyncs[0]?.count || 0),
+        failed: Number(failedSyncs[0]?.count || 0),
+        pending: Number(pendingSyncs[0]?.count || 0),
+        retrying: Number(retryingSyncs[0]?.count || 0),
+        successRate: totalLogs[0]?.count ? Math.round(Number(successfulSyncs[0]?.count || 0) / Number(totalLogs[0]?.count) * 100) : 0
+      });
+    } catch (error) {
+      console.error("[SYNC-AUDIT] Error fetching stats:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch sync stats" });
     }
   });
   app2.get("/api/students/me", authenticateUser, authorizeRoles(ROLE_IDS.STUDENT), async (req, res) => {
@@ -22321,55 +25491,50 @@ Treasure-Home School Administration
       res.status(500).json({ message: "Failed to save setting" });
     }
   });
-  if (process.env.NODE_ENV === "production" && process.env.FRONTEND_URL) {
-    app2.get("*", (req, res) => {
-      if (!req.path.startsWith("/api/") && !req.path.startsWith("/uploads/")) {
-        const frontendUrl = process.env.FRONTEND_URL;
-        res.status(200).send(`
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <title>Treasure Home School - Backend API</title>
-                <meta http-equiv="refresh" content="3;url=${frontendUrl}">
-                <style>
-                  body {
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    min-height: 100vh;
-                    margin: 0;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                  }
-                  .container {
-                    text-align: center;
-                    padding: 2rem;
-                    background: rgba(255, 255, 255, 0.1);
-                    border-radius: 12px;
-                    backdrop-filter: blur(10px);
-                  }
-                  h1 { margin: 0 0 1rem 0; }
-                  a {
-                    color: #ffd700;
-                    text-decoration: none;
-                    font-weight: bold;
-                  }
-                </style>
-              </head>
-              <body>
-                <div class="container">
-                  <h1>\u{1F393} Treasure Home School</h1>
-                  <p>This is the backend API server.</p>
-                  <p>Redirecting you to the main website...</p>
-                  <p><a href="${frontendUrl}">Click here if not redirected automatically</a></p>
-                </div>
-              </body>
-            </html>
-          `);
+  app2.get("/api/reports/:reportCardId/skills", authenticateUser, async (req, res) => {
+    try {
+      const { reportCardId } = req.params;
+      const reportCard = await storage.getReportCard(Number(reportCardId));
+      if (!reportCard) {
+        return res.status(404).json({ message: "Report card not found" });
       }
-    });
-  }
+      const skills = await storage.getReportCardSkills(Number(reportCardId));
+      res.json(skills || {});
+    } catch (error) {
+      console.error("Error getting skills:", error);
+      res.status(500).json({ message: error.message || "Failed to get skills" });
+    }
+  });
+  app2.post("/api/reports/:reportCardId/skills", authenticateUser, authorizeRoles(ROLE_IDS.TEACHER, ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      const { reportCardId } = req.params;
+      const userId = req.user.id;
+      const roleId = req.user.roleId;
+      const skillsData = req.body;
+      const reportCard = await storage.getReportCard(Number(reportCardId));
+      if (!reportCard) {
+        return res.status(404).json({ message: "Report card not found" });
+      }
+      const classInfo = reportCard.classId ? await storage.getClass(reportCard.classId) : null;
+      const classTeacherId = classInfo?.classTeacherId || null;
+      const permissions = calculateClassTeacherPermissions({
+        loggedInUserId: userId,
+        loggedInRoleId: roleId,
+        classTeacherId
+      });
+      if (!permissions.canRateSkills) {
+        return res.status(403).json({
+          message: getClassTeacherPermissionDeniedMessage("skills"),
+          isClassTeacher: false
+        });
+      }
+      const result = await storage.saveReportCardSkills(Number(reportCardId), { ...skillsData, recordedBy: userId });
+      res.json(result);
+    } catch (error) {
+      console.error("Error saving skills:", error);
+      res.status(500).json({ message: error.message || "Failed to save skills" });
+    }
+  });
   const httpServer = createServer(app2);
   return httpServer;
 }
@@ -22903,6 +26068,51 @@ function sanitizeLogData(data) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.log(`\u26A0\uFE0F Performance monitoring initialization warning: ${errorMessage}`);
+  }
+  try {
+    const cron = await import("node-cron");
+    const { storage: storage2 } = await Promise.resolve().then(() => (init_storage(), storage_exports));
+    cron.default.schedule("0 2 * * *", async () => {
+      try {
+        console.log("\u{1F504} Running scheduled cleanup of expired deleted users...");
+        const settings3 = await storage2.getSystemSettings();
+        const retentionDays = settings3?.deletedUserRetentionDays ?? 30;
+        const result = await storage2.permanentlyDeleteExpiredUsers(retentionDays);
+        if (result.deleted > 0) {
+          console.log(`\u2705 Cleanup completed: ${result.deleted} expired deleted users permanently removed`);
+          await storage2.createAuditLog({
+            userId: "system",
+            action: "expired_users_cleanup",
+            entityType: "system",
+            entityId: "scheduled_cleanup",
+            reason: `Scheduled cleanup: ${result.deleted} expired deleted users permanently removed`
+          });
+        } else {
+          console.log("\u2705 No expired deleted users to cleanup");
+        }
+        if (result.errors.length > 0) {
+          console.log(`\u26A0\uFE0F Cleanup errors: ${result.errors.join(", ")}`);
+        }
+      } catch (error) {
+        console.error("\u274C Scheduled cleanup error:", error.message);
+      }
+    });
+    console.log("\u2705 Scheduled cleanup job initialized (runs daily at 2:00 AM)");
+    const { reliableSyncService: reliableSyncService2 } = await Promise.resolve().then(() => (init_reliable_sync_service(), reliable_sync_service_exports));
+    cron.default.schedule("*/5 * * * *", async () => {
+      try {
+        const result = await reliableSyncService2.retryFailedSyncs();
+        if (result.processed > 0) {
+          console.log(`\u{1F504} Sync retry: ${result.succeeded} succeeded, ${result.failed} failed out of ${result.processed} processed`);
+        }
+      } catch (error) {
+        console.error("\u274C Sync retry job error:", error.message);
+      }
+    });
+    console.log("\u2705 Sync retry job initialized (runs every 5 minutes)");
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.log(`\u26A0\uFE0F Scheduled jobs initialization warning: ${errorMessage}`);
   }
   app.use((err, req, res, next) => {
     if (err.name === "MulterError" || err.message?.includes("Only image files") || err.message?.includes("Only document files") || err.message?.includes("Only CSV files")) {

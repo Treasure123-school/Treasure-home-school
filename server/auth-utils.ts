@@ -1,27 +1,10 @@
-
 /**
  * THS Authentication Utilities
  * Username and password generation following THS simplified branding standards
  */
 
 import crypto from 'crypto';
-
-// NEW Simplified Username format: THS-<ROLE>-<NUMBER>
-// Examples:
-// - Student: THS-STU-021
-// - Teacher: THS-TCH-005
-// - Parent: THS-PAR-012
-// - Admin: THS-ADM-001
-
-// Role IDs: 1=Super Admin, 2=Admin, 3=Teacher, 4=Student, 5=Parent
-// IMPORTANT: Must match server/username-generator.ts ROLE_CODES
-const ROLE_CODES = {
-  1: 'SUP', // Super Admin
-  2: 'ADM', // Admin
-  3: 'TCH', // Teacher
-  4: 'STU', // Student
-  5: 'PAR', // Parent
-} as const;
+import { ROLE_CODES, ROLE_IDS } from '@shared/role-constants';
 
 /**
  * Generate a cryptographically strong random string for passwords

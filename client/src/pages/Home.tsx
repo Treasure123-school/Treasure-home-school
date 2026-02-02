@@ -1,14 +1,27 @@
-import PublicLayout from '@/components/layout/PublicLayout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Link } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
-import { useState, useEffect, useRef } from 'react';
-import { Calendar, Clock, ChevronLeft, ChevronRight, Users, Award, GraduationCap, Star } from 'lucide-react';
-import type { HomePageContent } from '@shared/schema';
-import Typed from 'typed.js';
-import { HeroCarousel } from '@/components/hero/HeroCarousel';
+import { useState, useEffect } from "react";
+import PublicLayout from "@/components/layout/PublicLayout";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, User } from "lucide-react";
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import girlsImage from "@/assets/girls-image.png";
+import gallery1 from "@/assets/gallery-1.png";
+import gallery2 from "@/assets/gallery-2.png";
+import gallery3 from "@/assets/gallery-3.png";
+import gallery4 from "@/assets/gallery-4.png";
+import gallery5 from "@/assets/gallery-5.png";
+import gallery6 from "@/assets/gallery-6.png";
+import heroImage from "@/assets/hero-image.png";
+import schoolBuilding from "@/assets/school-building.png";
+import heroStudents from "@/assets/hero-students.png";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 interface SettingsData {
   schoolName: string;
@@ -16,443 +29,550 @@ interface SettingsData {
   schoolEmail: string;
   schoolPhone: string;
   schoolAddress: string;
+  schoolLogo?: string;
 }
+
+const fadeIn = {
+  initial: { opacity: 0, y: 20 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: "-100px" },
+  transition: { duration: 0.6, ease: "easeOut" },
+};
 
 export default function Home() {
   const { data: settings } = useQuery<SettingsData>({
     queryKey: ["/api/public/settings"],
-    staleTime: 0,
-    gcTime: 0,
   });
+
+  const { scrollY } = useScroll();
+  const y = useTransform(scrollY, [0, 500], [0, -80]);
+  const [isAtTop, setIsAtTop] = useState(true);
+
+  useEffect(() => {
+    return scrollY.onChange((latest) => {
+      if (latest <= 5) {
+        setIsAtTop(true);
+      } else {
+        setIsAtTop(false);
+      }
+    });
+  }, [scrollY]);
 
   const schoolName = settings?.schoolName || "Treasure-Home School";
-  const schoolMotto = settings?.schoolMotto || "Qualitative Education & Moral Excellence";
-  const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State";
-
-  // Fetch dynamic content from database with optimized caching
-  const { data: allHomePageContent = [], isLoading: contentLoading } = useQuery<HomePageContent[]>({
-    queryKey: ['/api', 'public', 'homepage-content'],
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
-
-  // Filter content by type
-  const heroImages = allHomePageContent.filter(content => content.contentType === 'hero_image');
-  const galleryPreviewImages = allHomePageContent.filter(content => 
-    content.contentType === 'gallery_preview_1' || 
-    content.contentType === 'gallery_preview_2' || 
-    content.contentType === 'gallery_preview_3'
-  );
-
-  // Fetch latest published announcements for homepage preview
-  const { data: allAnnouncements = [] } = useQuery<any[]>({
-    queryKey: ['/api', 'announcements'],
-    staleTime: 2 * 60 * 1000, // 2 minutes
-  });
-
-  // Filter and sort announcements client-side for better caching
-  const recentAnnouncements = allAnnouncements
-    .filter((ann: any) => ann.isPublished && ann.publishedAt)
-    .sort((a: any, b: any) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
-    .slice(0, 3);
-
-  // Gallery carousel state
-  const [currentGalleryIndex, setCurrentGalleryIndex] = useState(0);
+  const schoolAddress = settings?.schoolAddress || "Seriki, Ogun State";
+  const schoolLogo = settings?.schoolLogo || "";
 
   const features = [
     {
-      icon: GraduationCap,
-      title: 'Qualified Teachers',
-      description: 'Our experienced and certified teachers provide personalized attention to every student\'s learning journey.',
-      color: 'primary'
+      title: "Uprightness",
+      desc: "Promoting honesty, integrity, and moral values in all aspects of school life.",
+      icon: "/images/01.png",
     },
     {
-      icon: Award,
-      title: 'Modern Facilities',
-      description: 'State-of-the-art classrooms, computer labs, and interactive learning tools for enhanced education.',
-      color: 'secondary'
+      title: "Academic Excellence",
+      desc: "Striving for high academic standards and continuous improvement in teaching and learning.",
+      icon: "/images/02.png",
     },
     {
-      icon: Star,
-      title: 'Excellence Track Record',
-      description: 'Consistent outstanding performance in WAEC, NECO, and other standardized examinations.',
-      color: 'green'
-    }
+      title: "Innovation",
+      desc: "Encouraging creativity, critical thinking, and problem-solving skills among students.",
+      icon: "/images/03.png",
+    },
+    {
+      title: "Inclusivity",
+      desc: "Embracing diversity and ensuring that all students have equal access to quality education.",
+      icon: "/images/04.png",
+    },
+    {
+      title: "Community Engagement",
+      desc: "Fostering a sense of social responsibility and active involvement in the local community.",
+      icon: "/images/05.png",
+    },
+    {
+      title: "Lifelong Learning",
+      desc: "Instilling a passion for learning that extends beyond the classroom.",
+      icon: "/images/06.png",
+    },
   ];
 
   const stats = [
-    { value: '15+', label: 'Years of Excellence' },
-    { value: '500+', label: 'Students Enrolled' },
-    { value: '50+', label: 'Qualified Teachers' },
-    { value: '95%', label: 'Success Rate' }
+    { label: "Satisfied Parents", value: "100%" },
+    { label: "Experienced Teachers", value: "20+" },
+    { label: "Enrolled Students", value: "900+" },
+    { label: "Pass Rate", value: "99%" },
   ];
 
-  // Combine dynamic gallery preview images with fallbacks
-  const dynamicGalleryImages = galleryPreviewImages
-    .filter(img => img.isActive && img.imageUrl)
-    .sort((a, b) => a.displayOrder - b.displayOrder)
-    .slice(0, 4)
-    .map(img => ({
-      src: img.imageUrl!,
-      alt: img.altText || img.caption || 'School gallery image'
-    }));
-
-  // Fallback images if no dynamic images are available
-  const fallbackGalleryImages = [
+  const testimonials = [
     {
-      src: 'https://images.unsplash.com/photo-1497486751825-1233686d5d80?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&h=300',
-      alt: 'Students engaged in classroom learning'
+      name: "Adebayo Daniel",
+      role: "Student",
+      text: `${schoolName} has not only prepared me academically but has also taught me important life skills. The school's focus on values and ethics has shaped my perspective on the world.`,
+      img: "",
     },
     {
-      src: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&h=300',
-      alt: 'Students participating in sports activities'
+      name: "Abubakar Korede",
+      role: "Student",
+      text: `At ${schoolName}, I've learned the value of leadership and teamwork. The school's emphasis on character development has empowered me to take on responsibilities.`,
+      img: "",
     },
-    {
-      src: 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=400&h=300',
-      alt: 'Students conducting science experiments'
-    },
-    {
-      src: 'https://pixabay.com/get/g4b5de1b17360e7341ea05b3642f661cdaf69148acab371a0683000806209ef4e0fe83b5de589985b71b982913fd361ff36cf54100f89a9b6599375dc964cbe4e_1280.jpg',
-      alt: 'Graduation ceremony with students and families'
-    }
   ];
 
-  // Use dynamic images if available, otherwise use fallbacks
-  const galleryImages = dynamicGalleryImages.length > 0 ? dynamicGalleryImages : fallbackGalleryImages;
+  const galleryImages = [
+    gallery1,
+    gallery2,
+    gallery3,
+    gallery4,
+    gallery5,
+    gallery6,
+  ];
 
-  // Gallery carousel navigation
-  const nextGalleryImage = () => {
-    setCurrentGalleryIndex((prev) => (prev + 1) % galleryImages.length);
-  };
-
-  const prevGalleryImage = () => {
-    setCurrentGalleryIndex((prev) => (prev - 1 + galleryImages.length) % galleryImages.length);
-  };
-
-  // Auto-advance gallery carousel
-  useEffect(() => {
-    if (galleryImages.length > 1) {
-      const timer = setInterval(nextGalleryImage, 5000);
-      return () => clearInterval(timer);
-    }
-  }, [galleryImages.length]);
-
-  // Helper to format announcement date
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
-  };
-
-  // Helper to truncate text
-  const truncateText = (text: string, maxLength: number) => {
-    if (text.length <= maxLength) return text;
-    return text.substring(0, maxLength) + '...';
-  };
-
-  // Typed.js animation for changing text
-  const typedElementRef = useRef<HTMLSpanElement>(null);
-  const typedInstance = useRef<Typed | null>(null);
+  const [currentTestimonial, setCurrentTestimonial] = useState(0);
 
   useEffect(() => {
-    if (typedElementRef.current) {
-      // Destroy previous instance if it exists
-      if (typedInstance.current) {
-        typedInstance.current.destroy();
-      }
-      // Create new Typed instance
-      typedInstance.current = new Typed(typedElementRef.current, {
-        strings: ["Integrity", "Excellence", "Confidence", "Creativity", "Compassion"],
-        typeSpeed: 80,
-        backSpeed: 50,
-        loop: true,
-        backDelay: 2000,
-        startDelay: 500,
-        showCursor: true,
-        cursorChar: "|",
-        smartBackspace: true
-      });
-    }
-    // Cleanup on unmount
-    return () => {
-      if (typedInstance.current) {
-        typedInstance.current.destroy();
-      }
-    };
-  }, []); // Empty dependency array means this runs once on mount
+    const timer = setInterval(() => {
+      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [testimonials.length]);
 
   return (
     <PublicLayout>
-      {/* Advanced Hero Section with Image Carousel */}
-      <section className="relative min-h-[85vh] lg:min-h-[90vh] overflow-hidden">
-        {/* Background gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-900 z-0"></div>
-        
-        {/* Animated background patterns */}
-        <div className="absolute inset-0 opacity-10 z-0">
-          <div className="absolute top-0 -left-4 w-72 h-72 bg-white rounded-full mix-blend-overlay filter blur-3xl animate-blob"></div>
-          <div className="absolute top-0 -right-4 w-72 h-72 bg-yellow-300 rounded-full mix-blend-overlay filter blur-3xl animate-blob animation-delay-2000"></div>
-          <div className="absolute -bottom-8 left-20 w-72 h-72 bg-blue-300 rounded-full mix-blend-overlay filter blur-3xl animate-blob animation-delay-4000"></div>
+      {/* Hero Section */}
+      <section className="relative h-[70vh] flex items-center justify-center overflow-hidden">
+        <AnimatePresence>
+          {isAtTop && (
+            <motion.div 
+              key="hero-bg"
+              initial={{ opacity: 0, scale: 1.1 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 1 }}
+              transition={{ duration: 1.5, ease: "easeOut" }}
+              style={{ y }}
+              className="absolute inset-0 z-0"
+            >
+              <img
+                src={heroStudents}
+                alt="Hero"
+                className="w-full h-full object-cover object-[center_20%]"
+              />
+              <div className="absolute inset-0 bg-black/50" />
+            </motion.div>
+          )}
+          {!isAtTop && (
+            <motion.div 
+              key="hero-bg-scrolled"
+              style={{ y }}
+              className="absolute inset-0 z-0"
+            >
+              <img
+                src={heroStudents}
+                alt="Hero"
+                className="w-full h-full object-cover object-[center_20%]"
+              />
+              <div className="absolute inset-0 bg-black/50" />
+            </motion.div>
+          )}
+        </AnimatePresence>
+        <div className="container relative z-10 text-center text-white px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="max-w-4xl mx-auto"
+          >
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold mb-4 leading-tight">
+              We Nurture{" "}
+              <motion.span
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
+                className="text-[#00BFFF] inline-block"
+              >
+                Young Minds.
+              </motion.span>
+              <br />
+              We Build{" "}
+              <motion.span
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.5, duration: 0.5 }}
+                className="text-[#00BFFF] inline-block"
+              >
+                Character.
+              </motion.span>
+              <br />
+              We Shape the{" "}
+              <motion.span
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.7, duration: 0.5 }}
+                className="text-[#00BFFF] inline-block"
+              >
+                Future.
+              </motion.span>
+            </h1>
+            <motion.p
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              transition={{ delay: 0.9, duration: 0.6 }}
+              className="text-sm md:text-base mb-8 text-gray-200 italic font-medium max-w-2xl mx-auto"
+            >
+              Treasure Home School is a school where qualitative education and
+              moral excellence shape confident learners.
+            </motion.p>
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 1.1, duration: 0.5 }} className="flex flex-row gap-3 justify-center items-center">
+              <Button asChild className="btn-hero-about h-10 px-6 text-sm hover-elevate active-elevate-2"><Link href="/admission">ENROLL</Link></Button>
+              <Button asChild className="btn-hero-contact h-10 px-6 text-sm hover-elevate active-elevate-2"><Link href="/contact">CONTACT US</Link></Button>
+            </motion.div>
+          </motion.div>
         </div>
+      </section>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 py-24 lg:py-32">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center min-h-[75vh]">
-            {/* Left Content */}
-            <div className="text-white order-2 lg:order-1 text-center lg:text-left space-y-8">
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl text-white leading-relaxed max-w-2xl mx-auto lg:mx-0 animate-fade-in font-normal" data-testid="text-hero-tagline">
-                <span className="block">
-                  <span className="inline">Nurturing Bright Minds with</span>{' '}
-                  <span className="inline-block align-baseline min-w-[200px] sm:min-w-[240px] lg:min-w-[300px]">
-                    <span ref={typedElementRef} className="changing-text font-bold bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent"></span>
-                  </span>
-                </span>
-              </h1>
-
-              <p className="text-base sm:text-lg text-blue-100/90 leading-relaxed max-w-2xl mx-auto lg:mx-0 animate-fade-in" style={{ animationDelay: '0.3s' }} data-testid="text-hero-description">
-                At {schoolName}, we provide qualitative education anchored on moral values and lifelong learning. Located in {schoolAddress}, we offer comprehensive education from Playgroup to Senior Secondary School — shaping confident, responsible, and successful learners.
+      {/* About Section */}
+      <section className="py-24 bg-white">
+        <div className="container px-4 max-w-6xl mx-auto">
+          <div className="flex flex-col lg:flex-row gap-12 items-center lg:items-start">
+            <motion.div {...fadeIn} className="flex-1 text-left">
+              <div className="flex flex-col items-start gap-4 mb-8">
+                <h2 className="text-3xl md:text-5xl font-bold mb-2">
+                  {schoolName}
+                </h2>
+                <div className="w-12 h-[2px] bg-gradient-to-r from-[#0000FF] to-[#00BFFF]" />
+              </div>
+              <p className="text-[16px] md:text-[18px] text-gray-600 leading-relaxed mb-6">
+                Treasure Home School is a private educational institution
+                committed to providing quality education and strong moral
+                upbringing. We believe every child is unique and deserves
+                careful guidance to discover their full potential.
               </p>
+              <p className="text-[16px] md:text-[18px] text-gray-600 leading-relaxed mb-8">
+                Our teaching approach combines sound academics, discipline,
+                creativity, and life skills to prepare pupils for future
+                challenges.
+              </p>
+              <Button asChild className="btn-primary">
+                <Link href="/about" className="flex items-center gap-2">
+                  <span>Learn More</span>
+                  <ArrowRight className="w-3 h-3" />
+                </Link>
+              </Button>
+            </motion.div>
 
-              <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center lg:justify-start animate-slide-up pt-4" style={{ animationDelay: '0.4s' }}>
+            <motion.div {...fadeIn} className="flex-1 w-full lg:w-1/2">
+              <img
+                src={schoolBuilding}
+                alt="Treasure Home School Building"
+                className="rounded-lg shadow-lg w-full h-[300px] md:h-[400px] lg:h-[450px] object-cover"
+              />
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Core Values */}
+      <section className="py-24 bg-white">
+        <div className="container px-4 max-w-6xl mx-auto text-center">
+          <h2 className="section-title">{schoolName} Core Values</h2>
+          <p className="section-subtitle">
+            At {schoolName}, we are guided by six core values that form the
+            foundation of our educational philosophy.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {features.map((f, i) => (
+              <motion.div key={i} {...fadeIn}>
+                <div className="card-value h-full">
+                  <div
+                    className="icon-gradient mb-6"
+                    style={{
+                      WebkitMaskImage: `url(${f.icon})`,
+                      maskImage: `url(${f.icon})`,
+                    }}
+                  />
+                  <h3 className="text-lg font-bold mb-3">{f.title}</h3>
+                  <p className="text-[14px] text-gray-500 leading-relaxed">
+                    {f.desc}
+                  </p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-24 bg-white relative overflow-hidden">
+        {/* Subtle Gradient background */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,191,255,0.05),transparent_70%),radial-gradient(circle_at_bottom_left,rgba(0,0,255,0.03),transparent_70%)] pointer-events-none" />
+
+        <div className="container px-4 max-w-6xl mx-auto relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
+            <div className="space-y-8 lg:sticky lg:top-32 text-left">
+              <div className="space-y-4">
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight text-[#1a1a1a]">
+                  Why Choose
+                  <br />
+                  <span className="bg-gradient-to-r from-[#0000FF] to-[#00BFFF] bg-clip-text text-transparent">
+                    Treasure-Home
+                  </span>
+                  <br />
+                  School?
+                </h2>
+                <div className="w-16 h-1 bg-[#0000FF] rounded-full" />
+              </div>
+
+              <div className="space-y-6">
+                <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed">
+                  At Treasure-Home School, Seriki-Soyinka, we don't just
+                  teach—we inspire academic excellence and deep-rooted moral
+                  values. Our vision is to be a sanctuary of brilliance and
+                  character development in Ogun State and beyond.
+                </p>
+                <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed">
+                  We are dedicated to equipping our students with the critical
+                  thinking skills, technological savvy, and unwavering integrity
+                  needed to thrive. By choosing us, you place your child in an
+                  environment that fosters leadership, ensuring they emerge as
+                  confident trailblazers of tomorrow.
+                </p>
+              </div>
+
+              <div className="pt-4 flex justify-start">
                 <Button 
                   asChild 
-                  size="lg"
-                  className="bg-gradient-to-r from-yellow-400 via-yellow-500 to-orange-500 hover:from-yellow-500 hover:via-orange-500 hover:to-orange-600 text-gray-900 font-bold h-14 px-10 text-lg rounded-full shadow-2xl hover:shadow-3xl transform transition-all duration-300 hover:scale-105 border-0"
-                  data-testid="button-apply-admission"
+                  className="enroll-button-custom h-12 md:h-14 px-8 md:px-10 transition-all duration-300 rounded-lg flex items-center gap-3 w-full sm:w-auto shadow-lg hover:shadow-blue-500/25"
                 >
-                  <Link href="/admissions">Apply for Admission</Link>
-                </Button>
-                <Button 
-                  asChild
-                  size="lg"
-                  variant="outline" 
-                  className="border-2 border-white/80 bg-white/10 backdrop-blur-md text-white hover:bg-white hover:text-blue-600 hover:border-white font-bold h-14 px-10 text-lg rounded-full shadow-xl transition-all duration-300 hover:scale-105"
-                  data-testid="button-contact-us"
-                >
-                  <Link href="/contact">Contact Us</Link>
+                  <Link href="/login">
+                    <span>
+                      ENROLL YOUR CHILD
+                      <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                    </span>
+                  </Link>
                 </Button>
               </div>
             </div>
 
-            {/* Right Content - Hero Carousel */}
-            <div className="order-1 lg:order-2 animate-fade-in" style={{ animationDelay: '0.2s' }}>
-              <HeroCarousel
-                images={heroImages}
-                isLoading={contentLoading}
-                autoRotateInterval={5000}
-                transitionDuration={700}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Decorative bottom wave */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg className="w-full h-16 lg:h-24 fill-current text-white" viewBox="0 0 1440 74" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0,32L48,37.3C96,43,192,53,288,48C384,43,480,21,576,16C672,11,768,21,864,26.7C960,32,1056,32,1152,26.7C1248,21,1344,11,1392,5.3L1440,0L1440,74L1392,74C1344,74,1248,74,1152,74C1056,74,960,74,864,74C768,74,672,74,576,74C480,74,384,74,288,74C192,74,96,74,48,74L0,74Z"></path>
-          </svg>
-        </div>
-      </section>
-
-      {/* Enhanced Key Features Section */}
-      <section className="section-gradient-light py-20 md:py-24 lg:py-32 relative">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center mb-16 lg:mb-20">
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6 lg:mb-8 animate-slide-down" data-testid="text-features-title">
-              Why Choose {schoolName}?
-            </h2>
-            <p className="text-muted-foreground max-w-3xl mx-auto text-lg sm:text-xl leading-relaxed animate-fade-in" data-testid="text-features-description">
-              We provide comprehensive education with modern facilities and experienced teachers, preparing students for academic excellence and moral development.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-10">
-            {features.map((feature, index) => (
-              <Card key={index} className="card-hover bg-white/80 backdrop-blur-sm border-0 shadow-xl animate-slide-up" data-testid={`card-feature-${index}`}>
-                <CardContent className="p-8 lg:p-10 text-center">
-                  <div className={`w-16 h-16 lg:w-20 lg:h-20 rounded-2xl flex items-center justify-center mb-6 mx-auto transform transition-all duration-300 ${
-                    feature.color === 'primary' ? 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/25' :
-                    feature.color === 'secondary' ? 'bg-gradient-to-br from-yellow-400 to-orange-500 shadow-lg shadow-yellow-500/25' :
-                    'bg-gradient-to-br from-green-500 to-emerald-600 shadow-lg shadow-green-500/25'
-                  }`}>
-                    <feature.icon className="text-white h-8 w-8 lg:h-10 lg:w-10" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 pt-12 lg:pt-0">
+              {stats.map((s, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 30 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1, duration: 0.5 }}
+                  className="group relative p-8 md:p-10 bg-white border border-gray-100 rounded-xl shadow-[0_10px_30px_-15px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_50px_-15px_rgba(0,0,0,0.1)] transition-all duration-500 hover:-translate-y-1 text-center"
+                >
+                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-1 bg-[#0000FF]/10 group-hover:bg-[#0000FF] transition-colors duration-500 rounded-b-full" />
+                  <div className="text-4xl md:text-5xl font-black mb-3 text-gray-900 group-hover:bg-gradient-to-r group-hover:from-[#0000FF] group-hover:to-[#00BFFF] group-hover:bg-clip-text group-hover:text-transparent transition-all duration-500">
+                    {s.value}
                   </div>
-                  <h3 className="text-xl lg:text-2xl font-bold mb-4 text-gray-900" data-testid={`text-feature-title-${index}`}>
-                    {feature.title}
-                  </h3>
-                  <p className="text-gray-600 text-base lg:text-lg leading-relaxed" data-testid={`text-feature-description-${index}`}>
-                    {feature.description}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Enhanced Stats Section */}
-      <section className="py-20 bg-gradient-to-br from-white to-blue-50/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            {stats.map((stat, index) => (
-              <div key={index} className="group animate-bounce-gentle" style={{ animationDelay: `${index * 0.2}s` }} data-testid={`stat-${index}`}>
-                <div className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 to-teal-600 bg-clip-text text-transparent mb-3 group-hover:scale-110 transition-transform duration-300" data-testid={`text-stat-value-${index}`}>
-                  {stat.value}
-                </div>
-                <div className="text-gray-600 font-medium text-sm lg:text-base" data-testid={`text-stat-label-${index}`}>
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Beautiful Mission/Vision Section */}
-      <section className="section-gradient-accent py-20 lg:py-28 relative overflow-hidden">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center mb-12">
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold gradient-text mb-6 animate-slide-down">Our Mission & Vision</h2>
-            <div className="w-24 h-1 bg-gradient-to-r from-blue-500 to-teal-500 mx-auto rounded-full"></div>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-12 lg:gap-16">
-            <div className="text-center md:text-left animate-slide-up">
-              <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 lg:p-10 shadow-xl card-hover">
-                <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-6">Our Mission</h3>
-                <p className="text-gray-600 text-lg leading-relaxed">
-                  To provide quality, comprehensive education from playgroup to senior secondary level, fostering academic excellence and moral development. We are committed to nurturing students with our core values of <strong className="text-blue-600">honesty and success</strong> through innovative teaching methods and modern facilities.
-                </p>
-              </div>
-            </div>
-
-            <div className="text-center md:text-left animate-slide-up" style={{ animationDelay: '0.2s' }}>
-              <div className="bg-white/90 backdrop-blur-sm rounded-3xl p-8 lg:p-10 shadow-xl card-hover">
-                <h3 className="text-2xl lg:text-3xl font-bold text-gray-900 mb-6">Our Vision</h3>
-                <p className="text-gray-600 text-lg leading-relaxed">
-                  To be a leading educational institution that shapes future leaders with strong moral character, academic excellence, and practical skills. We envision a generation of students who embody <strong className="text-green-600">integrity, knowledge, and success</strong> in all their endeavors.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Recent Announcements Preview */}
-      <section className="py-16 bg-muted/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-4" data-testid="text-announcements-title">
-              Latest School News
-            </h2>
-            <p className="text-muted-foreground" data-testid="text-announcements-description">
-              Stay informed with our latest updates and important announcements
-            </p>
-          </div>
-
-          {recentAnnouncements.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {recentAnnouncements.map((announcement: any, index: number) => (
-                <Card key={announcement.id} className="card-hover h-full" data-testid={`card-announcement-${index}`}>
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <Badge variant="secondary" className="text-xs">
-                        <Calendar className="h-3 w-3 mr-1" />
-                        {formatDate(announcement.publishedAt)}
-                      </Badge>
-                      <Clock className="h-4 w-4 text-muted-foreground" />
+                  <div className="w-8 h-[2px] bg-gray-100 mx-auto mb-4 group-hover:bg-[#0000FF]/30 transition-colors" />
+                  <div className="text-[11px] text-gray-400 uppercase tracking-[0.2em] font-extrabold">
+                    {s.label}
+                  </div>
+                  {s.label === "Pass Rate" && (
+                    <div className="text-[12px] text-gray-300 mt-1 italic">
+                      to Universities
                     </div>
-                    <h3 className="text-lg font-semibold mb-3 line-clamp-2" data-testid={`text-announcement-title-${index}`}>
-                      {announcement.title}
-                    </h3>
-                    <p className="text-muted-foreground text-sm mb-4 line-clamp-3" data-testid={`text-announcement-content-${index}`}>
-                      {truncateText(announcement.content, 120)}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-muted-foreground">School Administration</span>
-                      <Button variant="ghost" size="sm" className="p-0 h-auto text-primary hover:text-primary/80">
-                        Read more →
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                  )}
+                </motion.div>
               ))}
             </div>
-          ) : (
-            <div className="text-center py-12">
-              <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No recent announcements available</p>
-            </div>
-          )}
-
-          <div className="text-center mt-8">
-            <Button asChild data-testid="button-view-announcements">
-              <Link href="/portal/login">View All Announcements</Link>
-            </Button>
           </div>
         </div>
       </section>
 
-      {/* Gallery Carousel */}
-      <section className="py-20 lg:py-28">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16 lg:mb-20">
-            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground mb-6 animate-slide-down" data-testid="text-gallery-title">
-              School Life Gallery
-            </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto animate-fade-in" data-testid="text-gallery-description">
-              Capturing moments of learning, growth, and achievement
-            </p>
+      {/* Testimonials */}
+      <section className="py-24 bg-gray-50 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(at_0%_0%,rgba(0,0,255,0.02)_0px,transparent_50%),radial-gradient(at_100%_100%,rgba(0,191,255,0.02)_0px,transparent_50%)] pointer-events-none" />
+        <div className="container px-4 max-w-4xl mx-auto text-center relative z-10">
+          <h2 className="section-title">School Testimonial</h2>
+          <div className="w-12 h-[2px] bg-[#0000FF] mx-auto mb-6" />
+          <p className="section-subtitle mb-12">
+            Our education brings satisfaction to our students. Here are a few
+            testimonials.
+          </p>
+
+          <div className="relative h-[400px] md:h-[300px]">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentTestimonial}
+                initial={{ opacity: 0, x: 100 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -100 }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+                className="absolute inset-0"
+              >
+                <Card className="p-10 text-left bg-white border-none shadow-xl rounded-2xl h-full flex flex-col justify-center">
+                  <div className="text-[#0000FF] mb-6">
+                    <svg
+                      width="30"
+                      height="30"
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M14.017 21L14.017 18C14.017 16.8954 14.9124 16 16.017 16H19.017C20.1216 16 21.017 16.8954 21.017 18V21M14.017 21H21.017M14.017 21C12.9124 21 12.017 20.1046 12.017 19V15C12.017 13.8954 12.9124 13 14.017 13H15.017C15.017 10.2386 12.7784 8 10.017 8V5C14.4353 5 18.017 8.58172 18.017 13V13.017"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        fill="none"
+                      />
+                      <path
+                        d="M5.017 21L5.017 18C5.017 16.8954 5.91243 16 7.017 16H10.017C11.1216 16 12.017 16.8954 12.017 18V21M5.017 21H12.017M5.017 21C3.91243 21 3.017 20.1046 3.017 19V15C3.017 13.8954 3.91243 13 5.017 13H6.017C6.017 10.2386 3.77843 8 1.017 8V5C5.43528 5 9.017 8.58172 9.017 13V13.017"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        fill="none"
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-[16px] md:text-[18px] text-gray-600 leading-relaxed mb-8">
+                    {testimonials[currentTestimonial].text}
+                  </p>
+                  <div className="flex items-center gap-4">
+                    {testimonials[currentTestimonial].img ? (
+                      <img
+                        src={testimonials[currentTestimonial].img}
+                        alt={testimonials[currentTestimonial].name}
+                        className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-md"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center border-2 border-white shadow-md">
+                        <User className="w-8 h-8 text-blue-600" />
+                      </div>
+                    )}
+                    <div>
+                      <div className="w-8 h-[2px] bg-[#0000FF] mb-2" />
+                      <h4 className="font-bold text-base text-gray-900">
+                        {testimonials[currentTestimonial].name}
+                      </h4>
+                      <p className="text-[12px] text-gray-400 uppercase tracking-widest">
+                        {testimonials[currentTestimonial].role}
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              </motion.div>
+            </AnimatePresence>
           </div>
 
-          {galleryImages.length > 0 ? (
-            <div className="relative max-w-5xl mx-auto animate-fade-in">
-              {/* Main carousel */}
-              <div className="relative aspect-video rounded-3xl overflow-hidden shadow-2xl group bg-gradient-to-br from-gray-200 to-gray-300">
+          <div className="flex justify-center gap-2 mt-8">
+            {testimonials.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentTestimonial(i)}
+                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                  currentTestimonial === i ? "bg-[#0000FF] w-6" : "bg-gray-300"
+                }`}
+                aria-label={`Go to testimonial ${i + 1}`}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Gallery Section */}
+      <section className="py-24 bg-white text-center">
+        <div className="container px-4 max-w-6xl mx-auto">
+          <h2 className="section-title">School Gallery</h2>
+          <p className="section-subtitle">
+            Check out some pictures of our students.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
+            {galleryImages.map((img, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1, duration: 0.5 }}
+                className="aspect-[4/3] rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-shadow duration-500"
+              >
                 <img
-                  src={galleryImages[currentGalleryIndex]?.src}
-                  alt={galleryImages[currentGalleryIndex]?.alt}
-                  className="w-full h-full object-cover transition-all duration-700 ease-in-out"
-                  data-testid={`img-gallery-main-${currentGalleryIndex}`}
-                  loading="lazy"
+                  src={typeof img === 'string' && !img.startsWith('data:') && !img.startsWith('/') ? `/images/${img}` : img}
+                  alt="Gallery"
+                  className="w-full h-full object-cover hover:scale-110 transition-transform duration-700"
                 />
+              </motion.div>
+            ))}
+          </div>
+          <Button asChild className="btn-primary mx-auto">
+            <Link href="/gallery" className="flex items-center gap-2">
+              <span>View More</span>
+              <ArrowRight className="w-3 h-3" />
+            </Link>
+          </Button>
+        </div>
+      </section>
 
-                {/* Enhanced navigation arrows with better styling */}
-                <div className="absolute inset-0 flex items-center justify-between px-4 sm:px-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-12 w-12 sm:h-14 sm:w-14 bg-white/30 hover:bg-white/50 text-white rounded-full backdrop-blur-md border border-white/30 transition-all duration-300 hover:scale-110 shadow-lg"
-                    onClick={prevGalleryImage}
-                    data-testid="button-gallery-prev"
-                  >
-                    <ChevronLeft className="h-6 w-6 sm:h-7 sm:w-7" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-12 w-12 sm:h-14 sm:w-14 bg-white/30 hover:bg-white/50 text-white rounded-full backdrop-blur-md border border-white/30 transition-all duration-300 hover:scale-110 shadow-lg"
-                    onClick={nextGalleryImage}
-                    data-testid="button-gallery-next"
-                  >
-                    <ChevronRight className="h-6 w-6 sm:h-7 sm:w-7" />
-                  </Button>
-                </div>
-
-              </div>
-
+      {/* Contact & FAQ */}
+      <section className="py-24 bg-white">
+        <div className="container px-4 max-w-4xl mx-auto text-center">
+          <h2 className="section-title">Contact Us</h2>
+          <p className="section-subtitle">Let us know your thoughts.</p>
+          <form className="space-y-6 text-left mb-24">
+            <div className="grid md:grid-cols-2 gap-6">
+              <input
+                type="text"
+                placeholder="First Name"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <input
+                type="text"
+                placeholder="Last Name"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
             </div>
-          ) : (
-            <div className="text-center py-12">
-              <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">Gallery images will be available soon</p>
+            <div className="grid md:grid-cols-2 gap-6">
+              <input
+                type="email"
+                placeholder="Email"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
+              <input
+                type="tel"
+                placeholder="Phone"
+                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500"
+              />
             </div>
-          )}
-
-          <div className="text-center mt-8">
-            <Button asChild data-testid="button-view-gallery">
-              <Link href="/gallery">Explore Full Gallery</Link>
+            <textarea
+              placeholder="Message"
+              rows={4}
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <Button type="submit" className="btn-primary mx-auto">
+              Send Message
             </Button>
+          </form>
+
+          <h2 className="section-title">Frequently Asked Questions</h2>
+          <div className="text-left space-y-4">
+            {[
+              { q: "When established?", a: "2012" },
+              { q: "Curriculum?", a: "Approved curriculum" },
+              { q: "Location?", a: "Egbedi, Osun State" },
+              { q: "Boarding?", a: "Both" },
+            ].map((faq, i) => (
+              <Accordion
+                type="single"
+                collapsible
+                key={i}
+                className="bg-white px-6 rounded-lg shadow-sm border border-gray-50"
+              >
+                <AccordionItem value={`i-${i}`} className="border-none">
+                  <AccordionTrigger className="text-[11px] font-bold py-5 hover:no-underline">
+                    {faq.q}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-[11px] text-gray-500 pb-5">
+                    {faq.a}
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            ))}
           </div>
         </div>
       </section>
