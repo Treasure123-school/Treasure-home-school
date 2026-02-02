@@ -177,55 +177,26 @@ fs.mkdir(profileDir, { recursive: true }).catch(() => {});
 fs.mkdir(studyResourcesDir, { recursive: true }).catch(() => {});
 fs.mkdir(homepageDir, { recursive: true }).catch(() => {});
 
-// Use disk storage for all uploads (local server/uploads directory)
-const storage_multer = multer.diskStorage({
-  destination: (req, file, cb) => {
-    // For branding uploads, check the route path if uploadType isn't in body yet
-    const isBranding = (req.originalUrl && req.originalUrl.includes('branding')) || 
-                      (req.body && (req.body.uploadType === 'logo' || req.body.uploadType === 'favicon'));
-    const uploadType = (req.body && req.body.uploadType) || 'general';
-    
-    let dir = 'server/uploads/general';
+// Replace disk storage with memory storage for serverless support (Vercel/Render)
+const storage_multer = multer.memoryStorage();
 
-    if (uploadType === 'gallery') {
-      dir = 'server/uploads/gallery';
-    } else if (uploadType === 'profile') {
-      dir = 'server/uploads/profiles';
-    } else if (uploadType === 'study-resource') {
-      dir = 'server/uploads/study-resources';
-    } else if (isBranding || uploadType === 'homepage' || uploadType === 'system_settings' || uploadType === 'system-settings') {
-      dir = 'server/uploads/homepage';
-    }
-    
-    // Ensure directory exists synchronously or before returning
-    // (multer destination should exist)
-    cb(null, dir);
+const upload = multer({
+  storage: storage_multer,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // Increased to 10MB to allow uncompressed uploads
   },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    const name = path.basename(file.originalname, ext).replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    cb(null, `${name}-${uniqueSuffix}${ext}`);
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only image files are allowed!'));
+    }
   }
 });
-
-  const upload = multer({
-    storage: storage_multer,
-    limits: {
-      fileSize: 10 * 1024 * 1024, // Increased to 10MB to allow uncompressed uploads
-    },
-    fileFilter: (req, file, cb) => {
-      const allowedTypes = /jpeg|jpg|png|gif|webp/;
-      const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-      const mimetype = allowedTypes.test(file.mimetype);
-
-      if (mimetype && extname) {
-        return cb(null, true);
-      } else {
-        cb(new Error('Only image files are allowed!'));
-      }
-    }
-  });
 
 // Separate multer configuration for study resources (documents)
 const uploadDocument = multer({
@@ -251,15 +222,7 @@ const csvDir = 'server/uploads/csv';
 fs.mkdir(csvDir, { recursive: true }).catch(() => {});
 
 const uploadCSV = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, csvDir);
-    },
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      cb(null, 'users-' + uniqueSuffix + '.csv');
-    }
-  }),
+  storage: storage_multer,
   limits: {
     fileSize: 2 * 1024 * 1024, // 2MB limit for CSV
   },
@@ -1050,28 +1013,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle image compression if it's an image
       if (isImage) {
         try {
-          const originalPath = req.file.path;
-          const compressedPath = `${originalPath}-compressed.webp`;
+          // Use buffer for serverless compatibility (e.g. Vercel)
+          const imageBuffer = req.file.buffer;
+          if (!imageBuffer) {
+            throw new Error("No file buffer available for compression");
+          }
           
           // Professional compression using sharp
-          // Ensure alpha channel is preserved for transparency
-          await sharp(originalPath)
+          // Ensure alpha channel is preserved for transparency (critical for logos/favicons)
+          const compressedBuffer = await sharp(imageBuffer)
             .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
             .ensureAlpha()
             .webp({ quality: 80, lossless: false, nearLossless: false, force: true })
-            .toFile(compressedPath);
+            .toBuffer();
 
-          // Update the file object to point to the compressed version
+          // Update the file object with compressed buffer
           fileToUpload = {
             ...req.file,
-            path: compressedPath,
-            filename: path.basename(compressedPath),
+            buffer: compressedBuffer,
             originalname: `${path.parse(req.file.originalname).name}.webp`,
-            mimetype: 'image/webp'
+            mimetype: 'image/webp',
+            size: compressedBuffer.length
           };
-
-          // Clean up the original uncompressed file
-          await fs.unlink(originalPath).catch(err => console.error("Failed to delete original file:", err));
         } catch (sharpError) {
           console.error("Image compression failed:", sharpError);
           // Fallback to original file
@@ -1086,11 +1049,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Use the unified storage service
       const result = await uploadFileToStorage(fileToUpload, options);
-
-      // CRITICAL: Clean up compressed temporary file after it's been handled
-      if (isImage && fileToUpload.path !== req.file.path) {
-        await fs.unlink(fileToUpload.path).catch(() => {});
-      }
 
       if (result.success) {
         res.json({ url: result.url });
@@ -8945,43 +8903,79 @@ Treasure-Home School Administration
 
     // Update system settings (Super Admin only)
   // Logo and Favicon upload for Super Admin
-  app.post("/api/superadmin/branding/upload", authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), upload.single("file"), async (req, res) => {
+  app.post("/api/superadmin/branding/upload", authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), upload.single("file"), async (req: any, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
       const uploadType = req.body.uploadType || 'logo';
-      const fileName = req.file.filename;
-      const filePath = `/uploads/homepage/${fileName}`;
+      const isFavicon = uploadType === 'favicon' || req.file.originalname.toLowerCase().includes('favicon');
       
-      console.log(`[BRANDING] File uploaded to: ${req.file.path}`);
-      
-      const settings = await storage.getSystemSettings();
-      if (!settings) {
-        return res.status(404).json({ message: "System settings not found" });
+      // Use buffer for serverless compatibility (Vercel/Render)
+      let fileToUpload = req.file;
+      try {
+        const imageBuffer = req.file.buffer;
+        if (imageBuffer) {
+          let sharpInstance = sharp(imageBuffer);
+          
+          if (isFavicon) {
+            sharpInstance = sharpInstance.resize(64, 64, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } });
+          } else {
+            sharpInstance = sharpInstance.resize(400, 400, { fit: 'inside', withoutEnlargement: true });
+          }
+
+          const compressedBuffer = await sharpInstance
+            .ensureAlpha()
+            .webp({ quality: 90 })
+            .toBuffer();
+
+          fileToUpload = {
+            ...req.file,
+            buffer: compressedBuffer,
+            originalname: `${path.parse(req.file.originalname).name}.webp`,
+            mimetype: 'image/webp',
+            size: compressedBuffer.length
+          };
+        }
+      } catch (err) {
+        console.error("Branding image compression failed:", err);
       }
 
-      const updateData: any = { updatedAt: new Date() };
-      if (uploadType === 'favicon' || fileName.toLowerCase().includes('favicon')) {
-        updateData.favicon = filePath;
+      const options = {
+        uploadType: 'homepage',
+        userId: req.user.id
+      };
+
+      const result = await uploadFileToStorage(fileToUpload, options);
+
+      if (result.success && result.url) {
+        const settings = await storage.getSystemSettings();
+        if (!settings) {
+          return res.status(404).json({ message: "System settings not found" });
+        }
+
+        const updateData: any = { updatedAt: new Date() };
+        if (isFavicon) {
+          updateData.favicon = result.url;
+        } else {
+          updateData.schoolLogo = result.url;
+        }
+
+        await (storage as any).updateSystemSettings(updateData);
+        
+        if (enhancedCache && typeof (enhancedCache as any).invalidate === 'function') {
+          (enhancedCache as any).invalidate(/^public:settings/);
+          (enhancedCache as any).invalidate(/^superadmin:settings/);
+        }
+
+        res.json({ 
+          message: `${uploadType.charAt(0).toUpperCase() + uploadType.slice(1)} uploaded successfully`,
+          url: result.url 
+        });
       } else {
-        updateData.schoolLogo = filePath;
+        res.status(500).json({ message: result.error || "Upload failed" });
       }
-
-      // Explicitly update only branding fields to avoid overwriting other settings
-      await (storage as any).updateSystemSettings(updateData);
-      
-      // Clear settings cache to ensure immediate update across the site
-      if (enhancedCache && typeof (enhancedCache as any).invalidate === 'function') {
-        (enhancedCache as any).invalidate(/^public:settings/);
-        (enhancedCache as any).invalidate(/^superadmin:settings/);
-      }
-
-      res.json({ 
-        message: `${uploadType.charAt(0).toUpperCase() + uploadType.slice(1)} uploaded successfully`,
-        url: filePath 
-      });
     } catch (error: any) {
       console.error("Branding upload error:", error);
       res.status(500).json({ message: error.message });
