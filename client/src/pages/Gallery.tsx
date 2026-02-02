@@ -30,12 +30,6 @@ export default function Gallery() {
     { id: 4, src: gallery4, alt: 'School Activity 4' },
     { id: 5, src: gallery5, alt: 'School Activity 5' },
     { id: 6, src: gallery6, alt: 'School Activity 6' },
-    { id: 7, src: gallery2, alt: 'School Activity 7' },
-    { id: 8, src: gallery3, alt: 'School Activity 8' },
-    { id: 9, src: gallery1, alt: 'School Activity 9' },
-    { id: 10, src: gallery4, alt: 'School Activity 10' },
-    { id: 11, src: gallery5, alt: 'School Activity 11' },
-    { id: 12, src: gallery6, alt: 'School Activity 12' },
   ];
 
   return (
@@ -103,20 +97,17 @@ export default function Gallery() {
           {/* Bottom Call to Action Section */}
           <section className="mt-24 py-16 border-t border-gray-100">
             <div className="flex flex-col lg:flex-row items-center gap-12">
-              <div className="flex-1 w-full lg:w-1/2 rounded-lg overflow-hidden shadow-md">
-                {/* Mock Map Placeholder matching sample */}
-                <div className="bg-gray-50 h-[300px] flex items-center justify-center relative">
-                  <div className="absolute inset-0 opacity-40 grayscale pointer-events-none">
-                    <img src="https://images.unsplash.com/photo-1524661135-423995f22d0b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" alt="Map pattern" className="w-full h-full object-cover" />
-                  </div>
-                  <div className="relative z-10 text-center p-8">
-                     <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <div className="w-4 h-4 bg-primary rounded-full animate-ping" />
-                     </div>
-                     <p className="font-semibold text-gray-900">Treasure-Home School Location</p>
-                     <p className="text-sm text-gray-500">Seriki, Ogun State, Nigeria</p>
-                  </div>
-                </div>
+              <div className="flex-1 w-full lg:w-1/2 rounded-lg overflow-hidden shadow-md h-[400px]">
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15848.48911295384!2d3.220197479532822!3d6.75510688632612!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x103b987621c166d1%3A0xcb1b5e5899c7c25c!2sSeriki%20Sotinka%2C%20Ogun%20State%2C%20Nigeria!5e0!3m2!1sen!2sng!4v1706886326120!5m2!1sen!2sng"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen={true}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Treasure-Home School Location"
+                ></iframe>
               </div>
               
               <div className="flex-1 text-left space-y-6">
