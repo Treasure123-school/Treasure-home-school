@@ -12,6 +12,8 @@ import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { MapPin, Phone, Mail, Clock, Car, Calendar } from 'lucide-react';
 import { useEffect } from 'react';
+import { motion } from 'framer-motion';
+import heroStudents from "@/assets/hero-students.png";
 
 interface SettingsData {
   schoolName: string;
@@ -299,4 +301,3 @@ export default function Contact() {
     </PublicLayout>
   );
 }
-
