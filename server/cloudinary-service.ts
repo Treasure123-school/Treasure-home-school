@@ -28,8 +28,8 @@ const hasCloudinaryConfig = !!(
   process.env.CLOUDINARY_API_SECRET
 );
 
-// Use Cloudinary in production when configured
-export const useCloudinary = isProduction && hasCloudinaryConfig;
+// Use Cloudinary for all environments to ensure consistency
+export const useCloudinary = true; 
 
 // Storage initialization status flag
 let storageInitialized = false;
@@ -227,20 +227,27 @@ async function uploadToCloudinary(
     let result: UploadApiResponse;
     
     if (file.buffer) {
+      console.log("[CLOUDINARY] Uploading from buffer to folder:", folderMap[options.uploadType]);
       // Upload from buffer
       result = await new Promise<UploadApiResponse>((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
           uploadOptions,
           (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
-            if (error) reject(error);
-            else if (result) resolve(result);
+            if (error) {
+              console.error("[CLOUDINARY] Stream upload error:", error);
+              reject(error);
+            }
+            else if (result) {
+              console.log("[CLOUDINARY] Stream upload success:", result.secure_url);
+              resolve(result);
+            }
             else reject(new Error('No result from Cloudinary'));
           }
         );
         uploadStream.end(file.buffer);
       });
     } else if (file.path) {
-      // Upload from file path
+      console.log("[CLOUDINARY] Uploading from file path:", file.path);
       result = await cloudinary.uploader.upload(file.path, uploadOptions);
     } else {
       return { success: false, error: 'No file data available for upload' };

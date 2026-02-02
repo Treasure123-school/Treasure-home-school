@@ -7107,8 +7107,9 @@ export class DatabaseStorage implements IStorage {
     
     // Safety check: ensure we don't accidentally overwrite absolute URLs with relative paths if they contain http
     for (const key in updateData) {
-      if (typeof updateData[key] === 'string' && updateData[key].startsWith('http')) {
+      if (typeof updateData[key] === 'string' && (updateData[key].startsWith('http') || updateData[key].includes('cloudinary.com'))) {
         // Keep absolute URLs as is
+        console.log(`[STORAGE] Preserving absolute URL for ${key}:`, updateData[key]);
       }
     }
 
