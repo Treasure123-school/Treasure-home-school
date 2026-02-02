@@ -6440,7 +6440,11 @@ Treasure-Home School Administration
         status: 'healthy',
         database: 'connected',
         timestamp: new Date().toISOString(),
-        uptime: process.uptime()
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV,
+        storage: useCloudinary ? "cloudinary" : "local",
+        vercel: !!process.env.VERCEL,
+        render: !!process.env.RENDER
       });
     } catch (error) {
       res.status(503).json({
