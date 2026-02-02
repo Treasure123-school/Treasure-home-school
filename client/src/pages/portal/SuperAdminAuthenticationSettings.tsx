@@ -24,7 +24,7 @@ export default function SuperAdminAuthenticationSettings() {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
 
-  const { data: settings, isLoading } = useQuery({
+  const { data: settings, isLoading } = useQuery<Record<string, any>>({
     queryKey: ["/api/superadmin/settings"],
   });
 

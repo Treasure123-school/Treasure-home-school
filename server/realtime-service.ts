@@ -982,22 +982,6 @@ class RealtimeService {
     }
   }
 
-  emitAnnouncementEvent(operation: 'created' | 'updated' | 'deleted', announcement: any, userId?: string) {
-    const fullEventType = `announcement.${operation}`;
-    const op = operation === 'created' ? 'INSERT' : operation === 'updated' ? 'UPDATE' : 'DELETE';
-    
-    // 1. Standard table change event for generic listeners
-    this.emitTableChange('announcements', op, announcement, undefined, userId);
-    
-    // 2. Specific announcement event for direct listeners
-    this.emitEvent(fullEventType, announcement);
-    
-    // 3. Broadcast to all for legacy/general component sync
-    this.emitEvent('announcements-updated', { operation, id: announcement.id });
-    
-    console.log(`📢 Announcement ${operation} broadcasted: ${announcement.title}`);
-  }
-
   emitExamSessionEvent(examId: string | number, sessionId: string | number, eventType: 'started' | 'progress' | 'completed' | 'auto_submitted', data: any, userId?: string) {
     const fullEventType = `examSession.${eventType}`;
     

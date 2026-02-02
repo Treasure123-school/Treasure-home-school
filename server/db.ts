@@ -42,7 +42,7 @@ export const isPostgres = !!databaseUrl;
 export const isSqlite = !databaseUrl;
 
 // Database instances
-let db: DatabaseInstance | null = null;
+let dbInternal: DatabaseInstance | null = null;
 let pool: Pool | null = null;
 let neonClient: NeonClient | null = null;
 let sqliteDb: any = null;
@@ -58,8 +58,8 @@ export function getSchema() {
  * Initialize and return the database instance
  */
 export function initializeDatabase(): DatabaseInstance {
-  if (db) {
-    return db;
+  if (dbInternal) {
+    return dbInternal;
   }
 
   if (isProduction && !databaseUrl) {
@@ -72,7 +72,7 @@ export function initializeDatabase(): DatabaseInstance {
     console.log('🐘 Initializing PostgreSQL database (Neon with WebSocket)...');
     try {
       pool = new Pool({ connectionString: databaseUrl });
-      db = drizzlePg(pool, { schema: pgSchema });
+      dbInternal = drizzlePg(pool, { schema: pgSchema });
       neonClient = neon(databaseUrl);
       console.log('✅ PostgreSQL database initialized');
     } catch (error) {
@@ -84,7 +84,7 @@ export function initializeDatabase(): DatabaseInstance {
     console.log('📦 Initializing SQLite database (development)...');
     try {
       sqliteDb = new Database("sqlite.db");
-      db = drizzleSqlite(sqliteDb, { schema: sqliteSchema });
+      dbInternal = drizzleSqlite(sqliteDb, { schema: sqliteSchema });
       console.log('✅ SQLite database initialized');
     } catch (error) {
       console.error('❌ Failed to initialize SQLite database:', error);
@@ -92,17 +92,17 @@ export function initializeDatabase(): DatabaseInstance {
     }
   }
 
-  return db;
+  return dbInternal;
 }
 
 /**
  * Get the database instance (initializes if needed)
  */
 export function getDatabase(): DatabaseInstance {
-  if (!db) {
+  if (!dbInternal) {
     return initializeDatabase();
   }
-  return db;
+  return dbInternal;
 }
 
 
@@ -130,7 +130,7 @@ export async function closeDatabase(): Promise<void> {
   }
   pool = null;
   neonClient = null;
-  db = null;
+  dbInternal = null;
 }
 
 // Export database type info for conditional logic
@@ -142,4 +142,8 @@ export const dbInfo = {
 
 // Initialize on import
 const database = initializeDatabase();
-export { database as db };
+
+// Export with proper PostgreSQL typing for TypeScript compatibility
+// Since this project uses Neon PostgreSQL (DATABASE_URL is always set), we can safely type it
+import type { NeonDatabase } from 'drizzle-orm/neon-serverless';
+export const db = database as unknown as NeonDatabase<typeof pgSchema>;
