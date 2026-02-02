@@ -20,8 +20,8 @@ import { v2 as cloudinary, UploadApiResponse, UploadApiErrorResponse } from 'clo
 import fs from 'fs/promises';
 import path from 'path';
 
-// Environment detection
-const isProduction = process.env.NODE_ENV === 'production';
+    // Environment detection
+const isProduction = process.env.NODE_ENV === 'production' || !!process.env.VERCEL || !!process.env.RENDER;
 const hasCloudinaryConfig = !!(
   process.env.CLOUDINARY_CLOUD_NAME &&
   process.env.CLOUDINARY_API_KEY &&
