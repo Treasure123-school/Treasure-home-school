@@ -29,7 +29,7 @@ const hasCloudinaryConfig = !!(
 );
 
 // Use Cloudinary for all environments if configured, but prioritize it in production
-export const useCloudinary = hasCloudinaryConfig && (isProduction || process.env.FORCE_CLOUDINARY === 'true' || !!process.env.REPLIT_DEV_DOMAIN); 
+export const useCloudinary = hasCloudinaryConfig; 
 
 // Storage initialization status flag
 let storageInitialized = false;

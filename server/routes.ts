@@ -206,17 +206,6 @@ const uploadDocument = multer({
   storage: storage_multer,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit for documents
-  },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /pdf|doc|docx|txt|rtf|odt|ppt|pptx|xls|xlsx/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = /application\/(pdf|msword|vnd\.openxmlformats-officedocument|vnd\.oasis\.opendocument|text\/plain|vnd\.ms-powerpoint|vnd\.ms-excel)/.test(file.mimetype);
-
-    if (mimetype && extname) {
-      return cb(null, true);
-    } else {
-      cb(new Error('Only document files (PDF, DOC, DOCX, TXT, RTF, ODT, PPT, PPTX, XLS, XLSX) are allowed!'));
-    }
   }
 });
 
@@ -228,16 +217,6 @@ const uploadCSV = multer({
   storage: storage_multer,
   limits: {
     fileSize: 2 * 1024 * 1024, // 2MB limit for CSV
-  },
-  fileFilter: (req, file, cb) => {
-    const isCSV = /csv|txt/.test(path.extname(file.originalname).toLowerCase());
-    const mimeOk = /text\/(csv|plain)|application\/(vnd\.ms-excel|csv)/.test(file.mimetype);
-
-    if (isCSV || mimeOk) {
-      return cb(null, true);
-    } else {
-      cb(new Error('Only CSV files are allowed!'));
-    }
   }
 });
 
