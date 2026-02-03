@@ -8976,6 +8976,7 @@ Treasure-Home School Administration
       console.log("[BRANDING] Storage result:", JSON.stringify(result));
 
       if (result.success && result.url) {
+        console.log("[BRANDING] Upload successful, updating settings...");
         const settings = await storage.getSystemSettings();
         if (!settings) {
           console.error("[BRANDING] System settings not found in database");
@@ -8994,7 +8995,7 @@ Treasure-Home School Administration
         }
 
         console.log("[BRANDING] Updating system settings in database", updateData);
-        await (storage as any).updateSystemSettings(updateData);
+        await storage.updateSystemSettings(updateData);
         
         if (enhancedCache && typeof (enhancedCache as any).invalidate === 'function') {
           (enhancedCache as any).invalidate(/^public:settings/);
