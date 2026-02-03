@@ -42,9 +42,14 @@ export default function SuperAdminBrandingTheme() {
       const formData = new FormData();
       formData.append("uploadType", "logo");
       formData.append("file", file);
+      
+      // Use apiRequest helper if possible for consistent auth headers, 
+      // but apiRequest usually handles JSON. For FormData, we use fetch with credentials.
       const res = await fetch("/api/superadmin/branding/upload", {
         method: "POST",
         body: formData,
+        // Ensure credentials are sent for session-based auth
+        credentials: 'include', 
       });
       if (!res.ok) {
         const errorText = await res.text();
@@ -84,6 +89,7 @@ export default function SuperAdminBrandingTheme() {
       const res = await fetch("/api/superadmin/branding/upload", {
         method: "POST",
         body: formData,
+        credentials: 'include',
       });
       if (!res.ok) {
         const errorText = await res.text();

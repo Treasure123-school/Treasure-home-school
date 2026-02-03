@@ -8903,7 +8903,22 @@ Treasure-Home School Administration
 
     // Update system settings (Super Admin only)
   // Logo and Favicon upload for Super Admin
-  app.post("/api/superadmin/branding/upload", authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), upload.single("file"), async (req: any, res) => {
+  app.post("/api/superadmin/branding/upload", (req, res, next) => {
+    // Manually run authentication and authorization but with better error logging
+    authenticateUser(req, res, (err: any) => {
+      if (err) {
+        console.error("Branding upload auth error:", err);
+        return res.status(401).json({ message: "Authentication required for branding upload" });
+      }
+      authorizeRoles(ROLES.SUPER_ADMIN)(req, res, (err: any) => {
+        if (err) {
+          console.error("Branding upload role error:", err);
+          return res.status(403).json({ message: "Super Admin access required" });
+        }
+        next();
+      });
+    });
+  }, upload.single("file"), async (req: any, res) => {
     try {
       console.log("[BRANDING] Received upload request", {
         uploadType: req.body.uploadType,
