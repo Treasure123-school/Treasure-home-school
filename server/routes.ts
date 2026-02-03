@@ -999,8 +999,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(teacherAssignmentRoutes);
 
   // ==================== FILE UPLOAD ROUTES ====================
-    }
-  });
 
   // Register the centralized upload route
   app.post("/api/upload", authenticateUser, upload.single("file"), async (req: any, res) => {
@@ -9010,19 +9008,6 @@ Treasure-Home School Administration
     } catch (error: any) {
       console.error("[BRANDING] Error in upload route:", error);
       res.status(500).json({ message: error.message || "Internal server error" });
-    }
-  });
-          success: true,
-          message: `${uploadType.charAt(0).toUpperCase() + uploadType.slice(1)} uploaded successfully`,
-          url: result.url 
-        });
-      } else {
-        console.error("[BRANDING] Upload failed at storage level:", result.error);
-        res.status(500).json({ success: false, message: result.error || "Upload failed" });
-      }
-    } catch (error: any) {
-      console.error("[BRANDING] Critical upload error:", error);
-      res.status(500).json({ success: false, message: error.message || "Internal server error during upload" });
     }
   });
 
