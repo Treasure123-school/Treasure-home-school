@@ -29,7 +29,7 @@ const hasCloudinaryConfig = !!(
 );
 
 // Force Cloudinary in production environments like Vercel/Render/Replit
-export const useCloudinary = isProduction || hasCloudinaryConfig; 
+export const useCloudinary = hasCloudinaryConfig; 
 
 // Storage initialization status flag
 let storageInitialized = false;

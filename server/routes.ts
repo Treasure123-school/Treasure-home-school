@@ -180,16 +180,16 @@ fs.mkdir(homepageDir, { recursive: true }).catch(() => {});
 // Replace disk storage with memory storage for serverless support (Vercel/Render)
 const storage_multer = multer.memoryStorage();
 
-// Increase timeout for all requests in production
-const isProductionMode = process.env.NODE_ENV === 'production' || !!process.env.REPLIT_DEV_DOMAIN;
-
 const upload = multer({
   storage: storage_multer,
   limits: {
     fileSize: 10 * 1024 * 1024, // Increased to 10MB to allow uncompressed uploads
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    // Branding and system settings need more flexible validation if they are being mapped to homepage
+    const isBranding = req.body.uploadType === 'logo' || req.body.uploadType === 'favicon' || req.body.uploadType === 'branding';
+    
+    const allowedTypes = isBranding ? /jpeg|jpg|png|gif|webp|ico|svg/ : /jpeg|jpg|png|gif|webp/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
 
@@ -209,6 +209,17 @@ const uploadDocument = multer({
   storage: storage_multer,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB limit for documents
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /pdf|doc|docx|txt/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype) || file.mimetype === 'application/pdf' || file.mimetype.includes('word');
+
+    if (mimetype || extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only document files (PDF, DOC, DOCX, TXT) are allowed!'));
+    }
   }
 });
 

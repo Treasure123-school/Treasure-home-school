@@ -45,7 +45,8 @@ const uploadTypeMap: Record<string, CloudinaryUploadType> = {
   'system_settings': 'homepage',
   'system-settings': 'homepage',
   'favicon': 'homepage',
-  'logo': 'homepage'
+  'logo': 'homepage',
+  'branding': 'homepage'
 };
 
 /**
