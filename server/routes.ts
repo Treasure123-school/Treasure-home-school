@@ -8931,7 +8931,7 @@ Treasure-Home School Administration
 
           const compressedBuffer = await sharpInstance
             .ensureAlpha()
-            .toFormat(format, { quality: 90 })
+            .toFormat(format, { quality: 100 })
             .toBuffer();
 
           fileToUpload = {
@@ -8952,11 +8952,11 @@ Treasure-Home School Administration
       }
 
       const options = {
-        uploadType: uploadType === 'favicon' ? 'homepage' : 'homepage',
+        uploadType: isFavicon ? 'favicon' : 'homepage',
         userId: req.user.id
       };
 
-      console.log("[BRANDING] Sending to storage service...");
+      console.log("[BRANDING] Sending to storage service...", options);
       const result = await uploadFileToStorage(fileToUpload, options);
       console.log("[BRANDING] Storage result:", JSON.stringify(result));
 
@@ -8988,6 +8988,7 @@ Treasure-Home School Administration
 
         res.json({ url: result.url });
       } else {
+        console.error("[BRANDING] Storage upload failed:", result.error);
         res.status(500).json({ message: result.error || "Upload failed" });
       }
     } catch (error: any) {

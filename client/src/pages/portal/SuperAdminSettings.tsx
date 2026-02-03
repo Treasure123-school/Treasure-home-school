@@ -80,19 +80,6 @@ export default function SuperAdminSettings() {
       queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/public/settings"] });
       
-      // Update favicon in the browser immediately if it changed
-      if (formData.favicon) {
-        const link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
-        if (link) {
-          link.href = formData.favicon;
-        } else {
-          const newLink = document.createElement('link');
-          newLink.rel = 'icon';
-          newLink.href = formData.favicon;
-          document.head.appendChild(newLink);
-        }
-      }
-      
       setIsEditing(false);
     },
     onError: (error: any) => {
