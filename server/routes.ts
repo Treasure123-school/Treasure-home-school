@@ -8986,12 +8986,18 @@ Treasure-Home School Administration
         console.log("[BRANDING] Updating system settings in database", updateData);
         await (storage as any).updateSystemSettings(updateData);
         
+        // Clear caches
         if (enhancedCache && typeof (enhancedCache as any).invalidate === 'function') {
           (enhancedCache as any).invalidate(/^public:settings/);
           (enhancedCache as any).invalidate(/^superadmin:settings/);
         }
+        
+        // Also invalidate performanceCache if it exists
+        if (performanceCache && typeof (performanceCache as any).invalidate === 'function') {
+          (performanceCache as any).invalidate(PerformanceCache.keys.homepageContent());
+        }
 
-        res.json({ url: result.url });
+        res.json({ url: finalUrl });
       } else {
         console.error("[BRANDING] Storage upload failed:", result.error);
         res.status(500).json({ message: result.error || "Upload failed" });
