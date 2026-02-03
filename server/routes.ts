@@ -8967,7 +8967,7 @@ Treasure-Home School Administration
       }
 
       const options = {
-        uploadType: 'system-settings',
+        uploadType: uploadType === 'favicon' ? 'homepage' : 'homepage',
         userId: req.user.id
       };
 
