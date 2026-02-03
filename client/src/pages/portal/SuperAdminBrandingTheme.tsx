@@ -44,9 +44,6 @@ export default function SuperAdminBrandingTheme() {
       formData.append("file", file);
       const res = await fetch("/api/superadmin/branding/upload", {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        },
         body: formData,
       });
       if (!res.ok) {
@@ -86,9 +83,6 @@ export default function SuperAdminBrandingTheme() {
       formData.append("file", file);
       const res = await fetch("/api/superadmin/branding/upload", {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        },
         body: formData,
       });
       if (!res.ok) {

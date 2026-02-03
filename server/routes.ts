@@ -201,6 +201,9 @@ const upload = multer({
   }
 });
 
+// Configure branding upload route explicitly to handle Cloudinary if available
+const brandingUpload = upload.single("file");
+
 // Separate multer configuration for study resources (documents)
 const uploadDocument = multer({
   storage: storage_multer,
