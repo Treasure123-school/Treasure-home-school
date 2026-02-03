@@ -999,58 +999,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(teacherAssignmentRoutes);
 
   // ==================== FILE UPLOAD ROUTES ====================
-  // Super Admin Branding Upload Route
-  app.post("/api/superadmin/branding/upload", authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), upload.single("file"), async (req: any, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: "No file uploaded" });
-      }
-
-      const uploadType = req.body.uploadType === "favicon" ? "homepage" : "system-settings";
-      const isImage = req.file.mimetype.startsWith('image/');
-      let fileToUpload = req.file;
-
-      if (isImage) {
-        try {
-          const imageBuffer = req.file.buffer;
-          if (!imageBuffer) {
-            throw new Error("No file buffer available for compression");
-          }
-          
-          const compressedBuffer = await sharp(imageBuffer)
-            .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
-            .ensureAlpha()
-            .webp({ quality: 80, lossless: false, nearLossless: false, force: true })
-            .toBuffer();
-
-          fileToUpload = {
-            ...req.file,
-            buffer: compressedBuffer,
-            originalname: `${path.parse(req.file.originalname).name}.webp`,
-            mimetype: 'image/webp',
-            size: compressedBuffer.length
-          };
-        } catch (sharpError) {
-          console.error("Image compression failed:", sharpError);
-          fileToUpload = req.file;
-        }
-      }
-
-      const options = {
-        uploadType,
-        userId: req.user.id
-      };
-
-      const result = await uploadFileToStorage(fileToUpload, options);
-
-      if (result.success) {
-        res.json({ url: result.url });
-      } else {
-        res.status(500).json({ message: result.error || "Upload failed" });
-      }
-    } catch (error: any) {
-      console.error("Super Admin Upload error:", error);
-      res.status(500).json({ message: error.message || "Upload failed" });
     }
   });
 
@@ -8991,13 +8939,12 @@ Treasure-Home School Administration
           if (isFavicon) {
             sharpInstance = sharpInstance.resize(64, 64, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } });
           } else {
-            sharpInstance = sharpInstance.resize(400, 400, { fit: 'inside', withoutEnlargement: true });
+            sharpInstance = sharpInstance.resize(800, 800, { fit: 'inside', withoutEnlargement: true });
           }
 
           // Force conversion to png for favicons and webp for logos to ensure compatibility
           const format = isFavicon ? 'png' : 'webp';
           const mimetype = isFavicon ? 'image/png' : 'image/webp';
-          const extension = isFavicon ? 'png' : 'webp';
 
           const compressedBuffer = await sharpInstance
             .ensureAlpha()
@@ -9007,7 +8954,7 @@ Treasure-Home School Administration
           fileToUpload = {
             ...req.file,
             buffer: compressedBuffer,
-            originalname: `${path.parse(req.file.originalname).name}.${extension}`,
+            originalname: `${path.parse(req.file.originalname).name}.${isFavicon ? 'png' : 'webp'}`,
             mimetype: mimetype,
             size: compressedBuffer.length
           };
@@ -9022,7 +8969,7 @@ Treasure-Home School Administration
       }
 
       const options = {
-        uploadType: 'homepage',
+        uploadType: 'system-settings',
         userId: req.user.id
       };
 
@@ -9056,7 +9003,15 @@ Treasure-Home School Administration
           (enhancedCache as any).invalidate(/^superadmin:settings/);
         }
 
-        res.json({ 
+        res.json({ url: result.url });
+      } else {
+        res.status(500).json({ message: result.error || "Upload failed" });
+      }
+    } catch (error: any) {
+      console.error("[BRANDING] Error in upload route:", error);
+      res.status(500).json({ message: error.message || "Internal server error" });
+    }
+  });
           success: true,
           message: `${uploadType.charAt(0).toUpperCase() + uploadType.slice(1)} uploaded successfully`,
           url: result.url 
