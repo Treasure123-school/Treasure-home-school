@@ -28,8 +28,8 @@ const hasCloudinaryConfig = !!(
   process.env.CLOUDINARY_API_SECRET
 );
 
-// Use Cloudinary for all environments if configured, but prioritize it in production
-export const useCloudinary = hasCloudinaryConfig; 
+// Force Cloudinary in production environments like Vercel/Render/Replit
+export const useCloudinary = isProduction || hasCloudinaryConfig; 
 
 // Storage initialization status flag
 let storageInitialized = false;

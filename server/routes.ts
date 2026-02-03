@@ -8961,6 +8961,11 @@ Treasure-Home School Administration
       console.log("[BRANDING] Storage result:", JSON.stringify(result));
 
       if (result.success && result.url) {
+        // Ensure we're using a full URL if it's a relative path in production
+        let finalUrl = result.url;
+        if (!finalUrl.startsWith('http') && !finalUrl.startsWith('/')) {
+          finalUrl = '/' + finalUrl;
+        }
         const settings = await storage.getSystemSettings();
         if (!settings) {
           console.error("[BRANDING] System settings not found in database");
