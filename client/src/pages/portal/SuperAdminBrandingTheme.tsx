@@ -43,13 +43,15 @@ export default function SuperAdminBrandingTheme() {
       formData.append("uploadType", "logo");
       formData.append("file", file);
       
-      // Use apiRequest helper if possible for consistent auth headers, 
-      // but apiRequest usually handles JSON. For FormData, we use fetch with credentials.
+      const token = localStorage.getItem('token');
+      console.log('Uploading logo with token:', token ? 'Present' : 'Missing');
+      
       const res = await fetch("/api/superadmin/branding/upload", {
         method: "POST",
         body: formData,
-        // Ensure credentials are sent for session-based auth
-        credentials: 'include', 
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       });
       if (!res.ok) {
         const errorText = await res.text();
@@ -86,10 +88,15 @@ export default function SuperAdminBrandingTheme() {
       const formData = new FormData();
       formData.append("uploadType", "favicon");
       formData.append("file", file);
+      const token = localStorage.getItem('token');
+      console.log('Uploading favicon with token:', token ? 'Present' : 'Missing');
+      
       const res = await fetch("/api/superadmin/branding/upload", {
         method: "POST",
         body: formData,
-        credentials: 'include',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       });
       if (!res.ok) {
         const errorText = await res.text();
