@@ -8924,7 +8924,7 @@ Treasure-Home School Administration
       }
 
       const uploadType = req.body.uploadType || 'logo';
-      const isFavicon = uploadType === 'favicon' || req.file.originalname.toLowerCase().includes('favicon');
+      const isFavicon = uploadType === 'favicon' || (req.file.originalname && req.file.originalname.toLowerCase().includes('favicon'));
       
       // Use buffer for serverless compatibility (Vercel/Render)
       let fileToUpload = req.file;
@@ -8952,7 +8952,7 @@ Treasure-Home School Administration
           fileToUpload = {
             ...req.file,
             buffer: compressedBuffer,
-            originalname: `${path.parse(req.file.originalname).name}.${isFavicon ? 'png' : 'webp'}`,
+            originalname: `${path.parse(req.file.originalname || 'upload').name}.${isFavicon ? 'png' : 'webp'}`,
             mimetype: mimetype,
             size: compressedBuffer.length
           };
