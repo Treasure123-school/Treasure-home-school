@@ -180,6 +180,9 @@ fs.mkdir(homepageDir, { recursive: true }).catch(() => {});
 // Replace disk storage with memory storage for serverless support (Vercel/Render)
 const storage_multer = multer.memoryStorage();
 
+// Increase timeout for all requests in production
+const isProductionMode = process.env.NODE_ENV === 'production' || !!process.env.REPLIT_DEV_DOMAIN;
+
 const upload = multer({
   storage: storage_multer,
   limits: {

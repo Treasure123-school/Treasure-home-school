@@ -21,7 +21,7 @@ import fs from 'fs/promises';
 import path from 'path';
 
 // Environment detection
-const isProduction = process.env.NODE_ENV === 'production' || !!process.env.VERCEL || !!process.env.RENDER;
+const isProduction = process.env.NODE_ENV === 'production' || !!process.env.VERCEL || !!process.env.RENDER || !!process.env.REPLIT_DEV_DOMAIN;
 const hasCloudinaryConfig = !!(
   process.env.CLOUDINARY_CLOUD_NAME &&
   process.env.CLOUDINARY_API_KEY &&
@@ -29,7 +29,7 @@ const hasCloudinaryConfig = !!(
 );
 
 // Use Cloudinary for all environments if configured, but prioritize it in production
-export const useCloudinary = hasCloudinaryConfig && (isProduction || process.env.FORCE_CLOUDINARY === 'true'); 
+export const useCloudinary = hasCloudinaryConfig && (isProduction || process.env.FORCE_CLOUDINARY === 'true' || !!process.env.REPLIT_DEV_DOMAIN); 
 
 // Storage initialization status flag
 let storageInitialized = false;
@@ -231,7 +231,7 @@ async function uploadToCloudinary(
       // Upload from buffer
       result = await new Promise<UploadApiResponse>((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
-          uploadOptions,
+          { ...uploadOptions, timeout: 60000 },
           (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
             if (error) {
               console.error("[CLOUDINARY] Stream upload error:", error);
