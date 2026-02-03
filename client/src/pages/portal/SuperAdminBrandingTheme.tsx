@@ -64,9 +64,10 @@ export default function SuperAdminBrandingTheme() {
     },
     onSuccess: (data) => {
       setFormData(prev => ({ ...prev, schoolLogo: data.url }));
+      // Invalidate both settings queries to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/public/settings"] });
-      toast({ title: "Logo Uploaded", description: "The school logo has been updated successfully." });
+      toast({ title: "Logo Uploaded", description: "The school logo has been updated successfully. Click 'Save Changes' to apply permanently." });
     },
     onError: (error: any) => {
       console.error('Logo upload error:', error);
@@ -105,6 +106,7 @@ export default function SuperAdminBrandingTheme() {
     },
     onSuccess: (data) => {
       setFormData(prev => ({ ...prev, favicon: data.url }));
+      // Invalidate both settings queries to ensure fresh data
       queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/public/settings"] });
       
@@ -119,7 +121,7 @@ export default function SuperAdminBrandingTheme() {
         document.head.appendChild(link);
       }
       
-      toast({ title: "Favicon Uploaded", description: "The school favicon has been updated successfully." });
+      toast({ title: "Favicon Uploaded", description: "The school favicon has been updated successfully. Click 'Save Changes' to apply permanently." });
     },
     onError: (error: any) => {
       console.error('Favicon upload error:', error);
