@@ -8939,19 +8939,24 @@ Treasure-Home School Administration
             sharpInstance = sharpInstance.resize(400, 400, { fit: 'inside', withoutEnlargement: true });
           }
 
+          // Force conversion to png for favicons and webp for logos to ensure compatibility
+          const format = isFavicon ? 'png' : 'webp';
+          const mimetype = isFavicon ? 'image/png' : 'image/webp';
+          const extension = isFavicon ? 'png' : 'webp';
+
           const compressedBuffer = await sharpInstance
             .ensureAlpha()
-            .webp({ quality: 90 })
+            .toFormat(format, { quality: 90 })
             .toBuffer();
 
           fileToUpload = {
             ...req.file,
             buffer: compressedBuffer,
-            originalname: `${path.parse(req.file.originalname).name}.webp`,
-            mimetype: 'image/webp',
+            originalname: `${path.parse(req.file.originalname).name}.${extension}`,
+            mimetype: mimetype,
             size: compressedBuffer.length
           };
-          console.log("[BRANDING] Image processed successfully", { newSize: compressedBuffer.length });
+          console.log("[BRANDING] Image processed successfully", { newSize: compressedBuffer.length, format });
         } else {
           console.warn("[BRANDING] No buffer available in req.file");
         }
