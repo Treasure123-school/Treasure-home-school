@@ -999,6 +999,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(teacherAssignmentRoutes);
 
   // ==================== FILE UPLOAD ROUTES ====================
+  // Super Admin Branding Upload Route
+  app.post("/api/superadmin/branding/upload", authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), upload.single("file"), async (req: any, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const uploadType = req.body.uploadType === "favicon" ? "homepage" : "system-settings";
+      const isImage = req.file.mimetype.startsWith('image/');
+      let fileToUpload = req.file;
+
+      if (isImage) {
+        try {
+          const imageBuffer = req.file.buffer;
+          if (!imageBuffer) {
+            throw new Error("No file buffer available for compression");
+          }
+          
+          const compressedBuffer = await sharp(imageBuffer)
+            .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
+            .ensureAlpha()
+            .webp({ quality: 80, lossless: false, nearLossless: false, force: true })
+            .toBuffer();
+
+          fileToUpload = {
+            ...req.file,
+            buffer: compressedBuffer,
+            originalname: `${path.parse(req.file.originalname).name}.webp`,
+            mimetype: 'image/webp',
+            size: compressedBuffer.length
+          };
+        } catch (sharpError) {
+          console.error("Image compression failed:", sharpError);
+          fileToUpload = req.file;
+        }
+      }
+
+      const options = {
+        uploadType,
+        userId: req.user.id
+      };
+
+      const result = await uploadFileToStorage(fileToUpload, options);
+
+      if (result.success) {
+        res.json({ url: result.url });
+      } else {
+        res.status(500).json({ message: result.error || "Upload failed" });
+      }
+    } catch (error: any) {
+      console.error("Super Admin Upload error:", error);
+      res.status(500).json({ message: error.message || "Upload failed" });
+    }
+  });
+
   // Register the centralized upload route
   app.post("/api/upload", authenticateUser, upload.single("file"), async (req: any, res) => {
     try {
