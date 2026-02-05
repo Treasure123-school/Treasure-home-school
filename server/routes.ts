@@ -9002,13 +9002,21 @@ Treasure-Home School Administration
           (enhancedCache as any).invalidate(/^superadmin:settings/);
         }
 
-        res.json({ url: result.url });
+        return res.json({ 
+          success: true, 
+          url: result.url,
+          message: `${uploadType.charAt(0).toUpperCase() + uploadType.slice(1)} updated successfully`
+        });
       } else {
-        res.status(500).json({ message: result.error || "Upload failed" });
+        console.error("[BRANDING] Upload failed:", result.error);
+        return res.status(500).json({ 
+          message: result.error || "Failed to upload branding asset",
+          details: result.error
+        });
       }
     } catch (error: any) {
       console.error("[BRANDING] Error in upload route:", error);
-      res.status(500).json({ message: error.message || "Internal server error" });
+      return res.status(500).json({ message: error.message || "Internal server error" });
     }
   });
 

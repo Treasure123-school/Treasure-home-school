@@ -213,9 +213,19 @@ export default function SuperAdminSettings() {
                                     body: formDataUpload
                                   });
                                   const data = await res.json();
-                                  if (data.url) setFormData(prev => ({...prev, schoolLogo: data.url}));
-                                } catch (err) {
-                                  toast({ title: "Upload Failed", variant: "destructive" });
+                                  if (res.ok && data.url) {
+                                    setFormData(prev => ({...prev, schoolLogo: data.url}));
+                                    toast({ title: "Logo Updated", description: "School logo has been successfully uploaded." });
+                                  } else {
+                                    throw new Error(data.message || "Upload failed");
+                                  }
+                                } catch (err: any) {
+                                  toast({ 
+                                    title: "Upload Failed", 
+                                    description: err.message || "Failed to upload logo. Check console for details.",
+                                    variant: "destructive" 
+                                  });
+                                  console.error("Logo upload error:", err);
                                 }
                               }
                             }}
@@ -275,9 +285,25 @@ export default function SuperAdminSettings() {
                                     body: formDataUpload
                                   });
                                   const data = await res.json();
-                                  if (data.url) setFormData(prev => ({...prev, favicon: data.url}));
-                                } catch (err) {
-                                  toast({ title: "Upload Failed", variant: "destructive" });
+                                  if (res.ok && data.url) {
+                                    setFormData(prev => ({...prev, favicon: data.url}));
+                                    toast({ title: "Favicon Updated", description: "Favicon has been successfully uploaded." });
+                                    
+                                    // Update favicon in browser immediately
+                                    const link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
+                                    if (link) {
+                                      link.href = data.url;
+                                    }
+                                  } else {
+                                    throw new Error(data.message || "Upload failed");
+                                  }
+                                } catch (err: any) {
+                                  toast({ 
+                                    title: "Upload Failed", 
+                                    description: err.message || "Failed to upload favicon. Check console for details.",
+                                    variant: "destructive" 
+                                  });
+                                  console.error("Favicon upload error:", err);
                                 }
                               }
                             }}
