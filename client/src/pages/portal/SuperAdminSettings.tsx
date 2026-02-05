@@ -47,7 +47,9 @@ export default function SuperAdminSettings() {
     timeFormat: "HH:mm",
     maintenanceMode: false,
     maintenanceModeMessage: "",
-    footerText: ""
+    footerText: "",
+    schoolLogo: "",
+    favicon: ""
   });
 
   useEffect(() => {
@@ -66,7 +68,9 @@ export default function SuperAdminSettings() {
         timeFormat: settings.timeFormat || "HH:mm",
         maintenanceMode: settings.maintenanceMode || false,
         maintenanceModeMessage: settings.maintenanceModeMessage || "",
-        footerText: settings.footerText || ""
+        footerText: settings.footerText || "",
+        schoolLogo: settings.schoolLogo || "",
+        favicon: settings.favicon || ""
       });
     }
   }, [settings]);
