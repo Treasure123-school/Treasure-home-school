@@ -227,11 +227,16 @@ async function uploadToCloudinary(
     let result: UploadApiResponse;
     
     if (file.buffer) {
-      console.log("[CLOUDINARY] Uploading from buffer to folder:", folderMap[options.uploadType]);
+      const folder = folderMap[options.uploadType] || 'general';
+      console.log(`[CLOUDINARY] Uploading buffer to folder: ${folder}, publicId: ${publicId}`);
       // Upload from buffer
       result = await new Promise<UploadApiResponse>((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
-          { ...uploadOptions, timeout: 60000 },
+          { 
+            ...uploadOptions, 
+            timeout: 60000,
+            folder: folder // Explicitly set folder here as well
+          },
           (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
             if (error) {
               console.error("[CLOUDINARY] Stream upload error:", error);

@@ -8979,7 +8979,12 @@ Treasure-Home School Administration
 
       console.log("[BRANDING] Sending to storage service...", options);
       const result = await uploadFileToStorage(fileToUpload, options);
-      console.log("[BRANDING] Storage result:", JSON.stringify(result));
+      console.log("[BRANDING] Storage result:", JSON.stringify({
+        success: result.success,
+        url: result.url,
+        isCloudinary: result.isCloudinary,
+        error: result.error
+      }));
 
       if (result.success && result.url) {
 

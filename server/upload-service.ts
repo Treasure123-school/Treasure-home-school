@@ -47,7 +47,8 @@ export interface UploadResponse {
       'favicon': 'homepage',
       'logo': 'homepage',
       'branding': 'homepage',
-      'branding_upload': 'homepage'
+      'branding_upload': 'homepage',
+      'schoolLogo': 'homepage'
     };
 
 /**
