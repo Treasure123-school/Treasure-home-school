@@ -9030,11 +9030,6 @@ Treasure-Home School Administration
           message: result.error || "Failed to upload branding asset",
           details: result.error
         });
-
-        res.json({ url: finalUrl });
-      } else {
-        console.error("[BRANDING] Storage upload failed:", result.error);
-        res.status(500).json({ message: result.error || "Upload failed" });
       }
     } catch (error: any) {
       console.error("[BRANDING] Error in upload route:", error);
