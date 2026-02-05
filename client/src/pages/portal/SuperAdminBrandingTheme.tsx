@@ -50,7 +50,8 @@ export default function SuperAdminBrandingTheme() {
         method: "POST",
         body: formData,
         headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          'Accept': 'application/json'
         }
       });
       if (!res.ok) {
@@ -95,7 +96,8 @@ export default function SuperAdminBrandingTheme() {
         method: "POST",
         body: formData,
         headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          'Accept': 'application/json'
         }
       });
       if (!res.ok) {

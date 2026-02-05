@@ -30,24 +30,25 @@ export interface UploadResponse {
   isCloudinary?: boolean;
 }
 
-// Map UploadType to Cloudinary upload types
-const uploadTypeMap: Record<string, CloudinaryUploadType> = {
-  'profile': 'profile',
-  'homepage': 'homepage',
-  'gallery': 'gallery',
-  'study-resource': 'study-resource',
-  'general': 'general',
-  'student': 'student',
-  'teacher': 'teacher',
-  'admin': 'admin',
-  'assignment': 'assignment',
-  'result': 'result',
-  'system_settings': 'homepage',
-  'system-settings': 'homepage',
-  'favicon': 'homepage',
-  'logo': 'homepage',
-  'branding': 'homepage'
-};
+    // Map UploadType to Cloudinary upload types
+    const uploadTypeMap: Record<string, CloudinaryUploadType> = {
+      'profile': 'profile',
+      'homepage': 'homepage',
+      'gallery': 'gallery',
+      'study-resource': 'study-resource',
+      'general': 'general',
+      'student': 'student',
+      'teacher': 'teacher',
+      'admin': 'admin',
+      'assignment': 'assignment',
+      'result': 'result',
+      'system_settings': 'homepage',
+      'system-settings': 'homepage',
+      'favicon': 'homepage',
+      'logo': 'homepage',
+      'branding': 'homepage',
+      'branding_upload': 'homepage'
+    };
 
 /**
  * Upload file using Cloudinary or local storage
