@@ -186,7 +186,11 @@ const upload = multer({
     fileSize: 10 * 1024 * 1024, // Increased to 10MB to allow uncompressed uploads
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    // Branding and system settings need more flexible validation if they are being mapped to homepage
+    const isBranding = req.body.uploadType === 'logo' || req.body.uploadType === 'favicon' || req.body.uploadType === 'branding';
+    
+    // Support more types and be more permissive for branding
+    const allowedTypes = isBranding ? /jpeg|jpg|png|gif|webp|ico|svg/ : /jpeg|jpg|png|gif|webp|pdf|doc|docx|txt/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
 
@@ -198,6 +202,9 @@ const upload = multer({
   }
 });
 
+// Configure branding upload route explicitly to handle Cloudinary if available
+const brandingUpload = upload.single("file");
+
 // Separate multer configuration for study resources (documents)
 const uploadDocument = multer({
   storage: storage_multer,
@@ -205,14 +212,14 @@ const uploadDocument = multer({
     fileSize: 10 * 1024 * 1024, // 10MB limit for documents
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /pdf|doc|docx|txt|rtf|odt|ppt|pptx|xls|xlsx/;
+    const allowedTypes = /pdf|doc|docx|txt/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = /application\/(pdf|msword|vnd\.openxmlformats-officedocument|vnd\.oasis\.opendocument|text\/plain|vnd\.ms-powerpoint|vnd\.ms-excel)/.test(file.mimetype);
+    const mimetype = allowedTypes.test(file.mimetype) || file.mimetype === 'application/pdf' || file.mimetype.includes('word');
 
-    if (mimetype && extname) {
+    if (mimetype || extname) {
       return cb(null, true);
     } else {
-      cb(new Error('Only document files (PDF, DOC, DOCX, TXT, RTF, ODT, PPT, PPTX, XLS, XLSX) are allowed!'));
+      cb(new Error('Only document files (PDF, DOC, DOCX, TXT) are allowed!'));
     }
   }
 });
@@ -225,16 +232,6 @@ const uploadCSV = multer({
   storage: storage_multer,
   limits: {
     fileSize: 2 * 1024 * 1024, // 2MB limit for CSV
-  },
-  fileFilter: (req, file, cb) => {
-    const isCSV = /csv|txt/.test(path.extname(file.originalname).toLowerCase());
-    const mimeOk = /text\/(csv|plain)|application\/(vnd\.ms-excel|csv)/.test(file.mimetype);
-
-    if (isCSV || mimeOk) {
-      return cb(null, true);
-    } else {
-      cb(new Error('Only CSV files are allowed!'));
-    }
   }
 });
 
@@ -8907,7 +8904,16 @@ Treasure-Home School Administration
 
     // Update system settings (Super Admin only)
   // Logo and Favicon upload for Super Admin
-  app.post("/api/superadmin/branding/upload", authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), upload.single("file"), async (req: any, res) => {
+  app.post("/api/superadmin/branding/upload", (req, res, next) => {
+    // Log headers for debugging auth issues in production
+    const authHeader = req.headers.authorization;
+    console.log("[BRANDING] Upload Request Headers:", {
+      auth: authHeader ? "Present" : "Missing",
+      authStart: authHeader ? authHeader.substring(0, 15) + "..." : "N/A",
+      contentType: req.headers['content-type']
+    });
+    next();
+  }, authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), upload.single("file"), async (req: any, res) => {
     try {
       console.log("[BRANDING] Received upload request", {
         uploadType: req.body.uploadType,
@@ -8946,7 +8952,7 @@ Treasure-Home School Administration
 
           const compressedBuffer = await sharpInstance
             .ensureAlpha()
-            .toFormat(format, { quality: 90 })
+            .toFormat(format, { quality: 100 })
             .toBuffer();
 
           fileToUpload = {
@@ -8967,16 +8973,22 @@ Treasure-Home School Administration
       }
 
       const options = {
-        uploadType: 'system-settings',
+        uploadType: uploadType, // Use the actual upload type from request
         userId: req.user.id
       };
 
-      console.log("[BRANDING] Sending to storage service...");
+      console.log("[BRANDING] Sending to storage service...", options);
       const result = await uploadFileToStorage(fileToUpload, options);
       console.log("[BRANDING] Storage result:", JSON.stringify(result));
 
       if (result.success && result.url) {
+
         console.log("[BRANDING] Upload successful, updating settings...");
+        // Ensure we're using a full URL if it's a relative path in production
+        let finalUrl = result.url;
+        if (!finalUrl.startsWith('http') && !finalUrl.startsWith('/')) {
+          finalUrl = '/' + finalUrl;
+        }
         const settings = await storage.getSystemSettings();
         if (!settings) {
           console.error("[BRANDING] System settings not found in database");
@@ -8997,11 +9009,16 @@ Treasure-Home School Administration
         console.log("[BRANDING] Updating system settings in database", updateData);
         await storage.updateSystemSettings(updateData);
         
+        // Clear caches
         if (enhancedCache && typeof (enhancedCache as any).invalidate === 'function') {
           (enhancedCache as any).invalidate(/^public:settings/);
           (enhancedCache as any).invalidate(/^superadmin:settings/);
         }
-
+        
+        // Also invalidate performanceCache if it exists
+        if (performanceCache && typeof (performanceCache as any).invalidate === 'function') {
+          (performanceCache as any).invalidate(PerformanceCache.keys.homepageContent());
+        }
         return res.json({ 
           success: true, 
           url: result.url,
@@ -9013,6 +9030,11 @@ Treasure-Home School Administration
           message: result.error || "Failed to upload branding asset",
           details: result.error
         });
+
+        res.json({ url: finalUrl });
+      } else {
+        console.error("[BRANDING] Storage upload failed:", result.error);
+        res.status(500).json({ message: result.error || "Upload failed" });
       }
     } catch (error: any) {
       console.error("[BRANDING] Error in upload route:", error);

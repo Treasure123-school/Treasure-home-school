@@ -91,13 +91,14 @@ app.use(compression({
   }
 }));
 
-// Request timeout middleware (30 seconds)
+// Request timeout middleware (60 seconds for production/replit)
 app.use((req, res, next) => {
-  req.setTimeout(30000, () => {
-    res.status(408).json({ message: 'Request timeout' });
+  const timeout = (process.env.NODE_ENV === 'production' || !!process.env.REPLIT_DEV_DOMAIN) ? 60000 : 30000;
+  req.setTimeout(timeout, () => {
+    if (!res.headersSent) res.status(408).json({ message: 'Request timeout' });
   });
-  res.setTimeout(30000, () => {
-    res.status(408).json({ message: 'Response timeout' });
+  res.setTimeout(timeout, () => {
+    if (!res.headersSent) res.status(408).json({ message: 'Response timeout' });
   });
   next();
 });
@@ -380,7 +381,10 @@ function sanitizeLogData(data: any): any {
   // Multer error handling middleware - must come before general error handler
   app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     if (err.name === 'MulterError' || err.message?.includes('Only image files') || err.message?.includes('Only document files') || err.message?.includes('Only CSV files')) {
-      console.log(`MULTER ERROR: ${req.method} ${req.path} - ${err.message}`);
+      console.log(`MULTER ERROR: ${req.method} ${req.path} - ${err.message}`, {
+        body: req.body,
+        file: req.file ? "File present" : "File missing"
+      });
       
       let status = 400;
       let message = err.message;

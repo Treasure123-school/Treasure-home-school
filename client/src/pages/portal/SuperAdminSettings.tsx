@@ -47,9 +47,7 @@ export default function SuperAdminSettings() {
     timeFormat: "HH:mm",
     maintenanceMode: false,
     maintenanceModeMessage: "",
-    footerText: "",
-    schoolLogo: "",
-    favicon: ""
+    footerText: ""
   });
 
   useEffect(() => {
@@ -68,9 +66,7 @@ export default function SuperAdminSettings() {
         timeFormat: settings.timeFormat || "HH:mm",
         maintenanceMode: settings.maintenanceMode || false,
         maintenanceModeMessage: settings.maintenanceModeMessage || "",
-        footerText: settings.footerText || "",
-        schoolLogo: settings.schoolLogo || "",
-        favicon: settings.favicon || ""
+        footerText: settings.footerText || ""
       });
     }
   }, [settings]);
@@ -83,20 +79,6 @@ export default function SuperAdminSettings() {
       toast({ title: "Configuration Saved", description: "General configuration has been successfully updated." });
       queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/public/settings"] });
-      
-      // Update favicon in the browser immediately if it changed
-      if (formData.favicon) {
-        const link: HTMLLinkElement | null = document.querySelector("link[rel~='icon']");
-        if (link) {
-          link.href = formData.favicon;
-        } else {
-          const newLink = document.createElement('link');
-          newLink.rel = 'icon';
-          newLink.href = formData.favicon;
-          document.head.appendChild(newLink);
-        }
-      }
-      
       setIsEditing(false);
     },
     onError: (error: any) => {
@@ -159,6 +141,9 @@ export default function SuperAdminSettings() {
                     />
                   </div>
                 </div>
+              </div>
+
+              <div className="space-y-4">
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold">School Motto</Label>
                   <Input 
@@ -323,17 +308,9 @@ export default function SuperAdminSettings() {
                   </div>
                 </div>
               </div>
+
             </div>
             
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">School Motto</Label>
-              <Input 
-                disabled={!isEditing}
-                value={formData.schoolMotto}
-                onChange={(e) => setFormData({...formData, schoolMotto: e.target.value})}
-              />
-            </div>
-
             <div className="space-y-2">
               <Label className="text-sm font-semibold flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-muted-foreground" />

@@ -42,12 +42,17 @@ export default function SuperAdminBrandingTheme() {
       const formData = new FormData();
       formData.append("uploadType", "logo");
       formData.append("file", file);
+      
+      const token = localStorage.getItem('token');
+      console.log('Uploading logo with token:', token ? 'Present' : 'Missing');
+      
       const res = await fetch("/api/superadmin/branding/upload", {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        },
         body: formData,
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          'Accept': 'application/json'
+        }
       });
       if (!res.ok) {
         const errorText = await res.text();
@@ -84,12 +89,16 @@ export default function SuperAdminBrandingTheme() {
       const formData = new FormData();
       formData.append("uploadType", "favicon");
       formData.append("file", file);
+      const token = localStorage.getItem('token');
+      console.log('Uploading favicon with token:', token ? 'Present' : 'Missing');
+      
       const res = await fetch("/api/superadmin/branding/upload", {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`,
-        },
         body: formData,
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          'Accept': 'application/json'
+        }
       });
       if (!res.ok) {
         const errorText = await res.text();
