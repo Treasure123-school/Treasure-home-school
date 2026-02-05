@@ -8930,7 +8930,7 @@ Treasure-Home School Administration
       }
 
       const uploadType = req.body.uploadType || 'logo';
-      const isFavicon = uploadType === 'favicon' || req.file.originalname.toLowerCase().includes('favicon');
+      const isFavicon = uploadType === 'favicon' || (req.file.originalname && req.file.originalname.toLowerCase().includes('favicon'));
       
       // Use buffer for serverless compatibility (Vercel/Render)
       let fileToUpload = req.file;
@@ -8958,7 +8958,7 @@ Treasure-Home School Administration
           fileToUpload = {
             ...req.file,
             buffer: compressedBuffer,
-            originalname: `${path.parse(req.file.originalname).name}.${isFavicon ? 'png' : 'webp'}`,
+            originalname: `${path.parse(req.file.originalname || 'upload').name}.${isFavicon ? 'png' : 'webp'}`,
             mimetype: mimetype,
             size: compressedBuffer.length
           };
@@ -8982,6 +8982,8 @@ Treasure-Home School Administration
       console.log("[BRANDING] Storage result:", JSON.stringify(result));
 
       if (result.success && result.url) {
+
+        console.log("[BRANDING] Upload successful, updating settings...");
         // Ensure we're using a full URL if it's a relative path in production
         let finalUrl = result.url;
         if (!finalUrl.startsWith('http') && !finalUrl.startsWith('/')) {
@@ -9005,7 +9007,7 @@ Treasure-Home School Administration
         }
 
         console.log("[BRANDING] Updating system settings in database", updateData);
-        await (storage as any).updateSystemSettings(updateData);
+        await storage.updateSystemSettings(updateData);
         
         // Clear caches
         if (enhancedCache && typeof (enhancedCache as any).invalidate === 'function') {
@@ -9017,6 +9019,17 @@ Treasure-Home School Administration
         if (performanceCache && typeof (performanceCache as any).invalidate === 'function') {
           (performanceCache as any).invalidate(PerformanceCache.keys.homepageContent());
         }
+        return res.json({ 
+          success: true, 
+          url: result.url,
+          message: `${uploadType.charAt(0).toUpperCase() + uploadType.slice(1)} updated successfully`
+        });
+      } else {
+        console.error("[BRANDING] Upload failed:", result.error);
+        return res.status(500).json({ 
+          message: result.error || "Failed to upload branding asset",
+          details: result.error
+        });
 
         res.json({ url: finalUrl });
       } else {
@@ -9025,7 +9038,7 @@ Treasure-Home School Administration
       }
     } catch (error: any) {
       console.error("[BRANDING] Error in upload route:", error);
-      res.status(500).json({ message: error.message || "Internal server error" });
+      return res.status(500).json({ message: error.message || "Internal server error" });
     }
   });
 
