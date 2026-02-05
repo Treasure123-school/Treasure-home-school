@@ -74,14 +74,17 @@ export default function HomepageManagement() {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('Authentication required');
 
+      console.log('📤 [UPLOAD] Starting logo upload with token:', token.substring(0, 10) + '...');
+
       const formData = new FormData();
-      formData.append('homePageImage', file);
+      formData.append('file', file); // Use 'file' as expected by app.post("/api/upload")
+      formData.append('uploadType', 'homepage'); // Required by Multer routing
       formData.append('contentType', data.contentType);
       formData.append('altText', data.altText);
       formData.append('caption', data.caption);
       formData.append('displayOrder', data.displayOrder.toString());
 
-      const response = await fetch(getApiUrl('/api/upload/homepage'), {
+      const response = await fetch(getApiUrl('/api/upload'), {
         method: 'POST',
         body: formData,
         headers: { 'Authorization': `Bearer ${token}` },
@@ -90,9 +93,13 @@ export default function HomepageManagement() {
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || 'Upload failed');
+        console.error('❌ [UPLOAD] Logo upload error:', error);
+        throw new Error(error.message || `Upload failed with status ${response.status}`);
       }
-      return response.json();
+      
+      const result = await response.json();
+      console.log('✅ [UPLOAD] Logo upload successful:', result);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/homepage-content'] });

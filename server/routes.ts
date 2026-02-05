@@ -1001,10 +1001,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/upload", authenticateUser, upload.single("file"), async (req: any, res) => {
     try {
       if (!req.file) {
+        console.error("❌ [UPLOAD] No file received in request");
         return res.status(400).json({ message: "No file uploaded" });
       }
 
       const uploadType = req.body.uploadType || "general";
+      console.log(`🚀 [UPLOAD] Processing upload. Type: ${uploadType}, Name: ${req.file.originalname}, Size: ${req.file.size} bytes`);
+      
       const isImage = req.file.mimetype.startsWith('image/');
       let fileToUpload = req.file;
 
@@ -1017,6 +1020,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             throw new Error("No file buffer available for compression");
           }
           
+          console.log(`🖼️ [UPLOAD] Compressing image: ${req.file.originalname}`);
+          
           // Professional compression using sharp
           // Ensure alpha channel is preserved for transparency (critical for logos/favicons)
           const compressedBuffer = await sharp(imageBuffer)
@@ -1024,6 +1029,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             .ensureAlpha()
             .webp({ quality: 80, lossless: false, nearLossless: false, force: true })
             .toBuffer();
+
+          console.log(`✅ [UPLOAD] Compression success. Original: ${req.file.size}, Compressed: ${compressedBuffer.length}`);
 
           // Update the file object with compressed buffer
           fileToUpload = {
@@ -1034,7 +1041,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             size: compressedBuffer.length
           };
         } catch (sharpError) {
-          console.error("Image compression failed:", sharpError);
+          console.error("⚠️ [UPLOAD] Image compression failed, falling back to original:", sharpError);
           // Fallback to original file
           fileToUpload = req.file;
         }
@@ -1045,16 +1052,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: req.user.id
       };
 
+      console.log(`📦 [UPLOAD] Sending to unified storage service. Type: ${uploadType}`);
+      
       // Use the unified storage service
       const result = await uploadFileToStorage(fileToUpload, options);
 
       if (result.success) {
+        console.log(`✅ [UPLOAD] Storage success. URL: ${result.url}`);
         res.json({ url: result.url });
       } else {
+        console.error(`❌ [UPLOAD] Storage failed: ${result.error}`);
         res.status(500).json({ message: result.error || "Upload failed" });
       }
     } catch (error: any) {
-      console.error("Upload error:", error);
+      console.error("❌ [UPLOAD] Route error:", error);
       res.status(500).json({ message: error.message || "Upload failed" });
     }
   });
