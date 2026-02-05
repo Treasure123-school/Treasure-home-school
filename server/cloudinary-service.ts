@@ -21,15 +21,15 @@ import fs from 'fs/promises';
 import path from 'path';
 
 // Environment detection
-const isProduction = process.env.NODE_ENV === 'production' || !!process.env.VERCEL || !!process.env.RENDER || !!process.env.REPLIT_DEV_DOMAIN;
+const isProduction = process.env.NODE_ENV === 'production' || !!process.env.VERCEL || !!process.env.RENDER;
 const hasCloudinaryConfig = !!(
   process.env.CLOUDINARY_CLOUD_NAME &&
   process.env.CLOUDINARY_API_KEY &&
   process.env.CLOUDINARY_API_SECRET
 );
 
-// Force Cloudinary in production environments like Vercel/Render/Replit
-export const useCloudinary = hasCloudinaryConfig || isProduction; 
+// Force Cloudinary in production environments like Vercel/Render
+export const useCloudinary = hasCloudinaryConfig && (isProduction || !!process.env.CLOUDINARY_CLOUD_NAME); 
 
 // Storage initialization status flag
 let storageInitialized = false;

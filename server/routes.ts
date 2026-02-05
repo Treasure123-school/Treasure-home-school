@@ -9001,9 +9001,9 @@ Treasure-Home School Administration
         };
         
         if (isFavicon) {
-          updateData.favicon = result.url;
+          updateData.favicon = finalUrl;
         } else {
-          updateData.schoolLogo = result.url;
+          updateData.schoolLogo = finalUrl;
         }
 
         console.log("[BRANDING] Updating system settings in database", updateData);
