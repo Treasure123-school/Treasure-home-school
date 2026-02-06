@@ -1062,15 +1062,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         console.error(`❌ [UPLOAD] Storage failed: ${result.error}`);
         res.status(500).json({ 
-          success: false,
-          message: result.error || "Upload failed" 
+          success: false, 
+          message: result.error || "The storage service was unable to save your file. Please try a different file or try again later." 
         });
       }
     } catch (error: any) {
       console.error("❌ [UPLOAD] Route error:", error);
       res.status(500).json({ 
-        success: false,
-        message: error.message || "Upload failed" 
+        success: false, 
+        message: error.message || "An unexpected error occurred while processing your upload. Please check your connection and try again." 
       });
     }
   });
@@ -1101,14 +1101,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post('/api/upload/homepage', authenticateUser, authorizeRoles(ROLES.ADMIN), upload.single('file'), async (req: any, res) => {
-    console.warn("⚠️ [UPLOAD] Calling deprecated homepage upload endpoint. Redirecting to centralized handler.");
+    console.warn("⚠️ [UPLOAD] Calling deprecated homepage upload endpoint.");
     try {
-      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+      if (!req.file) return res.status(400).json({ success: false, message: "No file selected for upload." });
       const result = await uploadFileToStorage(req.file, { uploadType: 'homepage', userId: req.user.id });
-      if (result.success) res.json({ url: result.url });
-      else res.status(500).json({ message: result.error || "Upload failed" });
+      if (result.success) res.json({ success: true, url: result.url });
+      else res.status(500).json({ success: false, message: result.error || "The storage service was unable to save your image." });
     } catch (error: any) {
-      res.status(500).json({ message: error.message || "Upload failed" });
+      res.status(500).json({ success: false, message: error.message || "An unexpected error occurred during the homepage upload." });
     }
   });
 

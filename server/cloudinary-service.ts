@@ -352,6 +352,7 @@ export async function uploadFile(
   if (useCloudinary) {
     return uploadToCloudinary(file, options);
   } else {
+    console.log(`ℹ️ [STORAGE] Using local storage fallback for ${options.uploadType} upload`);
     return uploadToLocal(file, options);
   }
 }

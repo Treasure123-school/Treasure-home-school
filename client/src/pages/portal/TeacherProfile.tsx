@@ -272,8 +272,8 @@ export default function TeacherProfile() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to update profile');
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'We could not update your profile at this time. Please check your information and try again.');
       }
       const result = await response.json();
 

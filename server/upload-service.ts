@@ -71,7 +71,7 @@ export async function uploadFileToStorage(
     if (!result.success) {
       return {
         success: false,
-        error: result.error || 'Upload failed'
+        error: result.error || 'The storage service was unable to accept this file. Please ensure it is a valid image and try again.'
       };
     }
 

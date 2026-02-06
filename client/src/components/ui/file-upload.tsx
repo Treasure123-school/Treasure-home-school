@@ -99,14 +99,15 @@ export function FileUpload({
         }
       });
 
+      const result = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        throw new Error('Upload failed');
+        throw new Error(result.message || 'The server was unable to process your upload. Please check your connection and try again.');
       }
-      const result = await response.json();
       
       toast({
-        title: "Upload successful",
-        description: `${type === 'profile' ? 'Profile image' : 'Gallery image'} uploaded successfully`,
+        title: "Success",
+        description: `${type === 'profile' ? 'Profile image' : 'Gallery image'} has been updated successfully.`,
       });
 
       // Reset form

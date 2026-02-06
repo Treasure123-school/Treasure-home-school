@@ -91,14 +91,14 @@ export default function HomepageManagement() {
         credentials: 'include'
       });
 
+      const result = await response.json().catch(() => ({}));
+
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        console.error('❌ [UPLOAD] Logo upload error:', error);
-        throw new Error(error.message || `Upload failed with status ${response.status}`);
+        console.error('❌ [UPLOAD] Homepage image upload error:', result);
+        throw new Error(result.message || `We couldn't upload your image (Error ${response.status}). Please try a different file or contact support.`);
       }
       
-      const result = await response.json();
-      console.log('✅ [UPLOAD] Logo upload successful:', result);
+      console.log('✅ [UPLOAD] Homepage image upload successful:', result);
       return result;
     },
     onSuccess: () => {
