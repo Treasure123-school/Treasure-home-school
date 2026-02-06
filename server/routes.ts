@@ -997,7 +997,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ==================== FILE UPLOAD ROUTES ====================
 
-  // Register the centralized upload route
+  // Centralized file upload route
   app.post("/api/upload", authenticateUser, upload.single("file"), async (req: any, res) => {
     try {
       if (!req.file) {
@@ -1005,7 +1005,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      const uploadType = req.body.uploadType || "general";
+      const uploadType = (req.body.uploadType || req.query.uploadType || "general").toLowerCase();
       console.log(`🚀 [UPLOAD] Processing upload. Type: ${uploadType}, Name: ${req.file.originalname}, Size: ${req.file.size} bytes`);
       
       const isImage = req.file.mimetype.startsWith('image/');
@@ -1014,7 +1014,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle image compression if it's an image
       if (isImage) {
         try {
-          // Use buffer for serverless compatibility (e.g. Vercel)
           const imageBuffer = req.file.buffer;
           if (!imageBuffer) {
             throw new Error("No file buffer available for compression");
@@ -1023,7 +1022,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`🖼️ [UPLOAD] Compressing image: ${req.file.originalname}`);
           
           // Professional compression using sharp
-          // Ensure alpha channel is preserved for transparency (critical for logos/favicons)
           const compressedBuffer = await sharp(imageBuffer)
             .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
             .ensureAlpha()
@@ -1032,7 +1030,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           console.log(`✅ [UPLOAD] Compression success. Original: ${req.file.size}, Compressed: ${compressedBuffer.length}`);
 
-          // Update the file object with compressed buffer
           fileToUpload = {
             ...req.file,
             buffer: compressedBuffer,
@@ -1042,30 +1039,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
           };
         } catch (sharpError) {
           console.error("⚠️ [UPLOAD] Image compression failed, falling back to original:", sharpError);
-          // Fallback to original file
           fileToUpload = req.file;
         }
       }
 
       const options = {
         uploadType,
-        userId: req.user.id
+        userId: req.user.id,
+        categoryId: req.body.categoryId ? parseInt(req.body.categoryId) : undefined
       };
 
       console.log(`📦 [UPLOAD] Sending to unified storage service. Type: ${uploadType}`);
-      
-      // Use the unified storage service
       const result = await uploadFileToStorage(fileToUpload, options);
 
       if (result.success) {
         console.log(`✅ [UPLOAD] Storage success. URL: ${result.url}`);
-        res.json({ url: result.url });
+        res.json({ 
+          success: true,
+          url: result.url,
+          isCloudinary: result.isCloudinary 
+        });
       } else {
         console.error(`❌ [UPLOAD] Storage failed: ${result.error}`);
-        res.status(500).json({ message: result.error || "Upload failed" });
+        res.status(500).json({ 
+          success: false,
+          message: result.error || "Upload failed" 
+        });
       }
     } catch (error: any) {
       console.error("❌ [UPLOAD] Route error:", error);
+      res.status(500).json({ 
+        success: false,
+        message: error.message || "Upload failed" 
+      });
+    }
+  });
+
+  // DEPRECATED: Use /api/upload instead
+  app.post("/api/upload/profile", authenticateUser, upload.single("file"), async (req: any, res) => {
+    console.warn("⚠️ [UPLOAD] Calling deprecated profile upload endpoint.");
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+      const result = await uploadFileToStorage(req.file, { uploadType: 'profile', userId: req.user.id });
+      if (result.success) res.json({ success: true, url: result.url });
+      else res.status(500).json({ success: false, message: result.error || "Upload failed" });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message || "Upload failed" });
+    }
+  });
+
+  app.post("/api/upload/gallery", authenticateUser, upload.single("file"), async (req: any, res) => {
+    console.warn("⚠️ [UPLOAD] Calling deprecated gallery upload endpoint.");
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+      const result = await uploadFileToStorage(req.file, { uploadType: 'gallery', userId: req.user.id });
+      if (result.success) res.json({ success: true, url: result.url });
+      else res.status(500).json({ success: false, message: result.error || "Upload failed" });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message || "Upload failed" });
+    }
+  });
+
+  app.post('/api/upload/homepage', authenticateUser, authorizeRoles(ROLES.ADMIN), upload.single('file'), async (req: any, res) => {
+    console.warn("⚠️ [UPLOAD] Calling deprecated homepage upload endpoint. Redirecting to centralized handler.");
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+      const result = await uploadFileToStorage(req.file, { uploadType: 'homepage', userId: req.user.id });
+      if (result.success) res.json({ url: result.url });
+      else res.status(500).json({ message: result.error || "Upload failed" });
+    } catch (error: any) {
       res.status(500).json({ message: error.message || "Upload failed" });
     }
   });
@@ -4907,8 +4949,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // ==================== HOMEPAGE CONTENT MANAGEMENT ROUTES ====================
 
-  // Homepage image upload endpoint (using organized storage system)
-  app.post('/api/upload/homepage', authenticateUser, authorizeRoles(ROLES.ADMIN), upload.single('homePageImage'), async (req, res) => {
+  // Homepage image upload endpoint (using organized storage system) - DEPRECATED: Use /api/upload instead
+  app.post('/api/upload/homepage-deprecated', authenticateUser, authorizeRoles(ROLES.ADMIN), upload.single('homePageImage'), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded' });

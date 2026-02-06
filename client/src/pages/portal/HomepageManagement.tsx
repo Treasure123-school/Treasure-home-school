@@ -78,7 +78,7 @@ export default function HomepageManagement() {
 
       const formData = new FormData();
       formData.append('file', file); // Use 'file' as expected by app.post("/api/upload")
-      formData.append('uploadType', 'homepage'); // Required by Multer routing
+      formData.append('uploadType', 'homepage'); 
       formData.append('contentType', data.contentType);
       formData.append('altText', data.altText);
       formData.append('caption', data.caption);

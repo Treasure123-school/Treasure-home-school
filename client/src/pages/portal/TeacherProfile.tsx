@@ -223,12 +223,14 @@ export default function TeacherProfile() {
 
       // Add profile image if changed
       if (profileImageFile) {
-        formData.append('profileImage', profileImageFile);
+        formData.append('file', profileImageFile);
       }
       // Add signature if changed
       if (signatureFile) {
         formData.append('signature', signatureFile);
       }
+      // Explicitly set uploadType for teacher profile updates
+      formData.append('uploadType', 'profile');
       // Add all personal data
       formData.append('firstName', profileData.firstName);
       formData.append('lastName', profileData.lastName);

@@ -71,14 +71,13 @@ export function FileUpload({
     setUploading(true);
     const formData = new FormData();
     
-    // Set uploadType for backend multer routing
+    // Standardize field name to 'file' for centralized API
+    formData.append('file', selectedFile);
     formData.append('uploadType', type);
     
     if (type === 'profile') {
-      formData.append('file', selectedFile);
       formData.append('userId', userId || '');
     } else {
-      formData.append('file', selectedFile);
       formData.append('caption', caption);
       if (categoryId) {
         formData.append('categoryId', categoryId.toString());
