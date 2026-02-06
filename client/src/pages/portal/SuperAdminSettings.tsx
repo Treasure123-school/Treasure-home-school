@@ -197,15 +197,21 @@ export default function SuperAdminSettings() {
                                 formDataUpload.append("file", file);
                                 formDataUpload.append("uploadType", "logo");
                                 try {
-                                  const res = await fetch("/api/superadmin/branding/upload", {
+                                  console.log('📤 [UPLOAD] Starting logo upload...');
+                                  const res = await fetch("/api/upload", {
                                     method: "POST",
-                                    body: formDataUpload
+                                    body: formDataUpload,
+                                    headers: {
+                                      "Authorization": `Bearer ${localStorage.getItem('token')}`
+                                    }
                                   });
                                   const data = await res.json();
                                   if (res.ok && data.url) {
+                                    console.log('✅ [UPLOAD] Logo upload successful:', data.url);
                                     setFormData(prev => ({...prev, schoolLogo: data.url}));
                                     toast({ title: "Logo Updated", description: "School logo has been successfully uploaded." });
                                   } else {
+                                    console.error('❌ [UPLOAD] Logo upload failed:', data);
                                     throw new Error(data.message || "Upload failed");
                                   }
                                 } catch (err: any) {
@@ -269,12 +275,17 @@ export default function SuperAdminSettings() {
                                 formDataUpload.append("file", file);
                                 formDataUpload.append("uploadType", "favicon");
                                 try {
-                                  const res = await fetch("/api/superadmin/branding/upload", {
+                                  console.log('📤 [UPLOAD] Starting favicon upload...');
+                                  const res = await fetch("/api/upload", {
                                     method: "POST",
-                                    body: formDataUpload
+                                    body: formDataUpload,
+                                    headers: {
+                                      "Authorization": `Bearer ${localStorage.getItem('token')}`
+                                    }
                                   });
                                   const data = await res.json();
                                   if (res.ok && data.url) {
+                                    console.log('✅ [UPLOAD] Favicon upload successful:', data.url);
                                     setFormData(prev => ({...prev, favicon: data.url}));
                                     toast({ title: "Favicon Updated", description: "Favicon has been successfully uploaded." });
                                     
@@ -284,6 +295,7 @@ export default function SuperAdminSettings() {
                                       link.href = data.url;
                                     }
                                   } else {
+                                    console.error('❌ [UPLOAD] Favicon upload failed:', data);
                                     throw new Error(data.message || "Upload failed");
                                   }
                                 } catch (err: any) {
