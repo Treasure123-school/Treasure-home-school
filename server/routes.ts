@@ -8915,16 +8915,7 @@ Treasure-Home School Administration
 
     // Update system settings (Super Admin only)
   // Logo and Favicon upload for Super Admin
-  app.post("/api/superadmin/branding/upload", (req, res, next) => {
-    // Log headers for debugging auth issues in production
-    const authHeader = req.headers.authorization;
-    console.log("[BRANDING] Upload Request Headers:", {
-      auth: authHeader ? "Present" : "Missing",
-      authStart: authHeader ? authHeader.substring(0, 15) + "..." : "N/A",
-      contentType: req.headers['content-type']
-    });
-    next();
-  }, authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), upload.single("file"), async (req: any, res) => {
+  app.post("/api/superadmin/branding/upload", authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), upload.single("file"), async (req: any, res) => {
     try {
       console.log("[BRANDING] Received upload request", {
         uploadType: req.body.uploadType,

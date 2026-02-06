@@ -44,9 +44,8 @@ export default function SuperAdminBrandingTheme() {
       formData.append("file", file);
       
       const token = localStorage.getItem('token');
-      console.log('Uploading logo with token:', token ? 'Present' : 'Missing');
-      
-      const res = await fetch("/api/superadmin/branding/upload", {
+      console.log('📤 [UPLOAD] Starting logo upload...');
+      const res = await fetch("/api/upload", {
         method: "POST",
         body: formData,
         headers: {
@@ -90,9 +89,8 @@ export default function SuperAdminBrandingTheme() {
       formData.append("uploadType", "favicon");
       formData.append("file", file);
       const token = localStorage.getItem('token');
-      console.log('Uploading favicon with token:', token ? 'Present' : 'Missing');
-      
-      const res = await fetch("/api/superadmin/branding/upload", {
+      console.log('📤 [UPLOAD] Starting favicon upload...');
+      const res = await fetch("/api/upload", {
         method: "POST",
         body: formData,
         headers: {
