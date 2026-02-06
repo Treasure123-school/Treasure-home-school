@@ -75,10 +75,10 @@ export function FileUpload({
     formData.append('uploadType', type);
     
     if (type === 'profile') {
-      formData.append('profileImage', selectedFile);
+      formData.append('file', selectedFile);
       formData.append('userId', userId || '');
     } else {
-      formData.append('galleryImage', selectedFile);
+      formData.append('file', selectedFile);
       formData.append('caption', caption);
       if (categoryId) {
         formData.append('categoryId', categoryId.toString());
@@ -89,10 +89,15 @@ export function FileUpload({
     }
 
     try {
-      const endpoint = type === 'profile' ? '/api/upload/profile' : '/api/upload/gallery';
-      const response = await fetch(endpoint, {
+      const token = localStorage.getItem('token');
+      console.log(`📤 [UPLOAD] Starting ${type} upload...`);
+      
+      const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       });
 
       if (!response.ok) {
