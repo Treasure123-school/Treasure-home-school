@@ -18,8 +18,8 @@ import heroStudents from "@/assets/hero-students.png";
 interface SettingsData {
   schoolName: string;
   schoolMotto: string;
-  schoolEmail: string;
-  schoolPhone: string;
+  schoolEmails: string;
+  schoolPhones: string;
   schoolAddress: string;
   websiteTitle?: string;
 }
@@ -40,10 +40,24 @@ export default function Contact() {
   });
 
   const schoolName = settings?.schoolName || "Treasure-Home School";
-  const schoolEmail = settings?.schoolEmail || "info@treasurehomeschool.com";
-  const schoolPhone = settings?.schoolPhone || "080-1734-5676";
   const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State, Nigeria";
   const websiteTitle = settings?.websiteTitle || `${schoolName} - Contact Us`;
+
+  let schoolPhones: Array<{ countryCode: string; number: string }> = [];
+  let schoolEmails: string[] = [];
+  try {
+    schoolPhones = JSON.parse(settings?.schoolPhones || "[]");
+    schoolEmails = JSON.parse(settings?.schoolEmails || "[]");
+  } catch (e) {
+    console.error("Error parsing settings JSON", e);
+  }
+
+  const displayPhones = schoolPhones.length > 0 
+    ? schoolPhones.map(p => `${p.countryCode}${p.number}`).join(', ') 
+    : "080-1734-5676";
+  const displayEmails = schoolEmails.length > 0 
+    ? schoolEmails.join(', ') 
+    : "info@treasurehomeschool.com";
 
   useEffect(() => {
     if (websiteTitle) {
@@ -92,13 +106,13 @@ export default function Contact() {
     {
       icon: Phone,
       title: 'Phone',
-      content: schoolPhone,
+      content: displayPhones,
       color: 'secondary'
     },
     {
       icon: Mail,
       title: 'Email',
-      content: schoolEmail,
+      content: displayEmails,
       color: 'green'
     },
     {

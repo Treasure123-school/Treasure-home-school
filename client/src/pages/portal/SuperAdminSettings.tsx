@@ -21,9 +21,29 @@ import {
   Languages,
   CalendarDays,
   Upload,
-  X
+  X,
+  Plus,
+  Phone,
+  Mail,
+  Trash2
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { SystemSettings } from "@shared/schema";
+
+const countryCodes = [
+  { code: "+234", name: "Nigeria" },
+  { code: "+1", name: "USA/Canada" },
+  { code: "+44", name: "UK" },
+  { code: "+233", name: "Ghana" },
+  { code: "+254", name: "Kenya" },
+  { code: "+27", name: "South Africa" },
+];
 
 export default function SuperAdminSettings() {
   const { toast } = useToast();
@@ -52,6 +72,9 @@ export default function SuperAdminSettings() {
     favicon: ""
   });
 
+  const [phones, setPhones] = useState<Array<{ countryCode: string; number: string }>>([]);
+  const [emails, setEmails] = useState<string[]>([]);
+
   useEffect(() => {
     if (settings) {
       setFormData({
@@ -72,12 +95,54 @@ export default function SuperAdminSettings() {
         schoolLogo: settings.schoolLogo || "",
         favicon: settings.favicon || ""
       });
+
+      try {
+        setPhones(JSON.parse(settings.schoolPhones || "[]"));
+        setEmails(JSON.parse(settings.schoolEmails || "[]"));
+      } catch (e) {
+        console.error("Error parsing settings JSON", e);
+        setPhones([]);
+        setEmails([]);
+      }
     }
   }, [settings]);
 
+  const addPhone = () => {
+    setPhones([...phones, { countryCode: "+234", number: "" }]);
+  };
+
+  const removePhone = (index: number) => {
+    setPhones(phones.filter((_, i) => i !== index));
+  };
+
+  const updatePhone = (index: number, field: "countryCode" | "number", value: string) => {
+    const newPhones = [...phones];
+    newPhones[index] = { ...newPhones[index], [field]: value };
+    setPhones(newPhones);
+  };
+
+  const addEmail = () => {
+    setEmails([...emails, ""]);
+  };
+
+  const removeEmail = (index: number) => {
+    setEmails(emails.filter((_, i) => i !== index));
+  };
+
+  const updateEmail = (index: number, value: string) => {
+    const newEmails = [...emails];
+    newEmails[index] = value;
+    setEmails(newEmails);
+  };
+
   const saveMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      return apiRequest("PUT", "/api/superadmin/settings", data);
+      const finalData = {
+        ...data,
+        schoolPhones: JSON.stringify(phones),
+        schoolEmails: JSON.stringify(emails)
+      };
+      return apiRequest("PUT", "/api/superadmin/settings", finalData);
     },
     onSuccess: () => {
       toast({ title: "Configuration Saved", description: "General configuration has been successfully updated." });
@@ -168,8 +233,108 @@ export default function SuperAdminSettings() {
                 className="min-h-[80px]"
               />
             </div>
-                className="min-h-[80px]"
-              />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-4">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    Phone Numbers
+                  </Label>
+                  {isEditing && (
+                    <Button type="button" variant="outline" size="sm" onClick={addPhone}>
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add
+                    </Button>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  {phones.map((phone, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Select
+                        disabled={!isEditing}
+                        value={phone.countryCode}
+                        onValueChange={(val) => updatePhone(index, "countryCode", val)}
+                      >
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue placeholder="Code" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {countryCodes.map((c) => (
+                            <SelectItem key={c.code} value={c.code}>
+                              {c.code}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        disabled={!isEditing}
+                        value={phone.number}
+                        onChange={(e) => updatePhone(index, "number", e.target.value)}
+                        placeholder="Number"
+                        className="flex-1"
+                      />
+                      {isEditing && (
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => removePhone(index)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  {phones.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic">No phone numbers added.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-semibold flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    Email Addresses
+                  </Label>
+                  {isEditing && (
+                    <Button type="button" variant="outline" size="sm" onClick={addEmail}>
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add
+                    </Button>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  {emails.map((email, index) => (
+                    <div key={index} className="flex gap-2">
+                      <Input
+                        disabled={!isEditing}
+                        type="email"
+                        value={email}
+                        onChange={(e) => updateEmail(index, e.target.value)}
+                        placeholder="Email Address"
+                        className="flex-1"
+                      />
+                      {isEditing && (
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => removeEmail(index)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  {emails.length === 0 && (
+                    <p className="text-xs text-muted-foreground italic">No email addresses added.</p>
+                  )}
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

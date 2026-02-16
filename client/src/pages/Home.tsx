@@ -26,8 +26,8 @@ import {
 interface SettingsData {
   schoolName: string;
   schoolMotto: string;
-  schoolEmail: string;
-  schoolPhone: string;
+  schoolEmails: string;
+  schoolPhones: string;
   schoolAddress: string;
   schoolLogo?: string;
 }
@@ -61,6 +61,15 @@ export default function Home() {
   const schoolName = settings?.schoolName || "Treasure-Home School";
   const schoolAddress = settings?.schoolAddress || "Seriki, Ogun State";
   const schoolLogo = settings?.schoolLogo || "";
+
+  let schoolPhones: Array<{ countryCode: string; number: string }> = [];
+  let schoolEmails: string[] = [];
+  try {
+    schoolPhones = JSON.parse(settings?.schoolPhones || "[]");
+    schoolEmails = JSON.parse(settings?.schoolEmails || "[]");
+  } catch (e) {
+    console.error("Error parsing settings JSON", e);
+  }
 
   const features = [
     {
@@ -539,6 +548,49 @@ export default function Home() {
                 className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500"
               />
             </div>
+            <textarea
+              placeholder="Message"
+              rows={6}
+              className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500"
+            ></textarea>
+            <Button type="submit" className="btn-primary w-full md:w-auto">
+              SEND MESSAGE
+            </Button>
+          </form>
+
+          {/* Quick Contact Info */}
+          <div className="grid md:grid-cols-3 gap-8 text-left mb-24">
+            <div className="space-y-4">
+              <h4 className="font-bold text-lg">Visit Us</h4>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                {schoolAddress}
+              </p>
+            </div>
+            <div className="space-y-4">
+              <h4 className="font-bold text-lg">Call Us</h4>
+              <div className="space-y-1">
+                {schoolPhones.length > 0 ? (
+                  schoolPhones.map((p, i) => (
+                    <p key={i} className="text-gray-500 text-sm">{p.countryCode} {p.number}</p>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm">080-1734-5676</p>
+                )}
+              </div>
+            </div>
+            <div className="space-y-4">
+              <h4 className="font-bold text-lg">Email Us</h4>
+              <div className="space-y-1">
+                {schoolEmails.length > 0 ? (
+                  schoolEmails.map((e, i) => (
+                    <p key={i} className="text-gray-500 text-sm">{e}</p>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm">info@treasurehomeschool.com</p>
+                )}
+              </div>
+            </div>
+          </div>
             <textarea
               placeholder="Message"
               rows={4}
