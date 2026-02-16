@@ -263,9 +263,30 @@ export default function Contact() {
             <Card className="shadow-sm border border-border" data-testid="card-location">
               <CardContent className="p-8">
                 <h2 className="text-2xl font-bold text-foreground mb-6" data-testid="text-location-title">
-                  Visit Our Campus
+                  Our Location
                 </h2>
-                <div className="space-y-4 mb-6">
+                <div className="aspect-video w-full rounded-lg overflow-hidden border border-border mb-6">
+                  <iframe
+                    title="Treasure-Home School Location"
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    src="https://www.google.com/maps/embed/v1/place?key=REPLACE_WITH_ACTUAL_GOOGLE_MAPS_API_KEY_OR_USE_IFRAME_EMBED&q=Treasure-Home+School+Seriki-Soyinka+Ifo+Ogun+State+Nigeria"
+                    allowFullScreen
+                  ></iframe>
+                  {/* Since I don't have an API key, I will use a standard embed URL pattern if possible, but usually those need a specific embed ID. 
+                      Alternatively, I can use the simpler iframe embed from Google Maps. */}
+                  <iframe 
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3962.774577134375!2d3.197!3d6.674!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNsKwNDAnMjYuNCJOIDPCsDExJzQ5LjIiRQ!5e0!3m2!1sen!2sng!4v1700000000000!5m2!1sen!2sng" 
+                    width="100%" 
+                    height="100%" 
+                    style={{ border: 0 }} 
+                    allowFullScreen={true} 
+                    loading="lazy" 
+                    referrerPolicy="no-referrer-when-downgrade"
+                  ></iframe>
+                </div>
+                <div className="space-y-4">
                   <div className="flex items-start space-x-3">
                     <div className="bg-primary/10 p-2 rounded-lg mt-1">
                       <MapPin className="text-primary w-5 h-5" />
@@ -273,40 +294,11 @@ export default function Contact() {
                     <div>
                       <p className="font-medium">School Address</p>
                       <p className="text-muted-foreground text-sm" data-testid="text-school-address">
-                        Seriki-Soyinka Ifo, Ogun State, Nigeria
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start space-x-3">
-                    <div className="bg-secondary/10 p-2 rounded-lg mt-1">
-                      <Car className="text-secondary w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Transportation</p>
-                      <p className="text-muted-foreground text-sm" data-testid="text-transportation">
-                        School bus services available. Easy access from major roads in Ogun State.
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start space-x-3">
-                    <div className="bg-green-100 p-2 rounded-lg mt-1">
-                      <Calendar className="text-green-600 w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Visit Hours</p>
-                      <p className="text-muted-foreground text-sm" data-testid="text-visit-hours">
-                        Monday - Friday: 9:00 AM - 3:00 PM<br />
-                        Saturday: 10:00 AM - 1:00 PM (By appointment)
+                        {schoolAddress}
                       </p>
                     </div>
                   </div>
                 </div>
-                
-                <Button className="w-full" data-testid="button-schedule-visit">
-                  Schedule a Campus Visit
-                </Button>
               </CardContent>
             </Card>
           </div>

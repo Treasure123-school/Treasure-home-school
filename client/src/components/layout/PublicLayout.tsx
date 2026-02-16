@@ -54,7 +54,19 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
 
   const schoolName = settings?.schoolName || "Treasure-Home School";
   const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State, Nigeria";
-  const schoolPhone = settings?.schoolPhone || "080-1734-5676";
+  const schoolPhones: Array<{ countryCode: string; number: string }> = (() => {
+    try {
+      return JSON.parse(settings?.schoolPhone || "[]");
+    } catch (e) {
+      return [];
+    }
+  })();
+
+  const displayPhone = schoolPhones.length > 0 
+    ? `${schoolPhones[0].countryCode}${schoolPhones[0].number}`
+    : "080-1734-5676";
+
+  const schoolPhone = displayPhone;
   const schoolEmail = settings?.schoolEmail || "info@treasurehomeschool.com";
 
   const navigation = [
