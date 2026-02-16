@@ -517,103 +517,32 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Contact & FAQ */}
-      <section className="py-24 bg-white">
-        <div className="container px-4 max-w-4xl mx-auto text-center">
-          <h2 className="section-title">Contact Us</h2>
-          <p className="section-subtitle">Let us know your thoughts.</p>
-          <form className="space-y-6 text-left mb-24">
-            <div className="grid md:grid-cols-2 gap-6">
-              <input
-                type="text"
-                placeholder="First Name"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-              <input
-                type="text"
-                placeholder="Last Name"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-            <div className="grid md:grid-cols-2 gap-6">
-              <input
-                type="email"
-                placeholder="Email"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-              <input
-                type="tel"
-                placeholder="Phone"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-            <textarea
-              placeholder="Message"
-              rows={6}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500"
-            ></textarea>
-            <Button type="submit" className="btn-primary w-full md:w-auto">
-              SEND MESSAGE
-            </Button>
-          </form>
-
-          {/* Quick Contact Info */}
-          <div className="grid md:grid-cols-3 gap-8 text-left mb-24">
-            <div className="space-y-4">
-              <h4 className="font-bold text-lg">Visit Us</h4>
-              <p className="text-gray-500 text-sm leading-relaxed">
-                {schoolAddress}
-              </p>
-            </div>
-            <div className="space-y-4">
-              <h4 className="font-bold text-lg">Call Us</h4>
-              <div className="space-y-1">
-                {schoolPhones.length > 0 ? (
-                  schoolPhones.map((p, i) => (
-                    <p key={i} className="text-gray-500 text-sm">{p.countryCode} {p.number}</p>
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-sm">080-1734-5676</p>
-                )}
-              </div>
-            </div>
-            <div className="space-y-4">
-              <h4 className="font-bold text-lg">Email Us</h4>
-              <div className="space-y-1">
-                {schoolEmails.length > 0 ? (
-                  schoolEmails.map((e, i) => (
-                    <p key={i} className="text-gray-500 text-sm">{e}</p>
-                  ))
-                ) : (
-                  <p className="text-gray-500 text-sm">info@treasurehomeschool.com</p>
-                )}
-              </div>
-            </div>
-          </div>
+      {/* FAQ Section */}
+      <section className="py-24 bg-gray-50">
+        <div className="container px-4 max-w-4xl mx-auto">
+          <h2 className="section-title text-center">Frequently Asked Questions</h2>
+          <p className="section-subtitle text-center">Find answers to common questions about Treasure-Home School.</p>
           
-          <div className="max-w-2xl mx-auto">
-            <h2 className="section-title">Frequently Asked Questions</h2>
-            <Accordion type="single" collapsible className="w-full text-left">
-              <AccordionItem value="item-1">
-                <AccordionTrigger className="text-sm font-bold">How can I enroll my child?</AccordionTrigger>
-                <AccordionContent className="text-[13px] text-gray-500">
-                  You can enroll your child by clicking the "ENROLL" button on our home page or by visiting our admission office.
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="item-2">
-                <AccordionTrigger className="text-sm font-bold">What are the school hours?</AccordionTrigger>
-                <AccordionContent className="text-[13px] text-gray-500">
-                  Our school hours are from 8:00 AM to 4:00 PM, Monday to Friday.
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="item-3">
-                <AccordionTrigger className="text-sm font-bold">Do you offer transportation services?</AccordionTrigger>
-                <AccordionContent className="text-[13px] text-gray-500">
-                  Yes, we offer safe and secure transportation services for our students.
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </div>
+          <Accordion type="single" collapsible className="w-full space-y-4">
+            <AccordionItem value="item-1" className="border border-gray-200 rounded-lg bg-white px-6">
+              <AccordionTrigger className="text-left font-bold py-6 hover:no-underline">What is the school curriculum?</AccordionTrigger>
+              <AccordionContent className="text-gray-600 pb-6">
+                We follow a comprehensive curriculum that blends national standards with international best practices, focusing on academic excellence and character development.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2" className="border border-gray-200 rounded-lg bg-white px-6">
+              <AccordionTrigger className="text-left font-bold py-6 hover:no-underline">How do I enroll my child?</AccordionTrigger>
+              <AccordionContent className="text-gray-600 pb-6">
+                You can start the enrollment process by visiting our Admissions page or clicking the "ENROLL" button on the home page to fill out the registration form.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3" className="border border-gray-200 rounded-lg bg-white px-6">
+              <AccordionTrigger className="text-left font-bold py-6 hover:no-underline">What are the school hours?</AccordionTrigger>
+              <AccordionContent className="text-gray-600 pb-6">
+                Our standard school hours are from 8:00 AM to 3:30 PM, Monday through Friday. Extracurricular activities may extend these hours for participating students.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       </section>
     </PublicLayout>
