@@ -11,8 +11,8 @@ interface PublicLayoutProps {
 interface SettingsData {
   schoolName: string;
   schoolMotto?: string;
-  schoolEmail: string;
-  schoolPhone: string;
+  schoolEmails: any;
+  schoolPhones: any;
   schoolAddress: string;
   schoolLogo?: string;
 }
@@ -56,7 +56,8 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
   const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State, Nigeria";
   const schoolPhones: Array<{ countryCode: string; number: string }> = (() => {
     try {
-      return JSON.parse(settings?.schoolPhone || "[]");
+      const phones = settings?.schoolPhones || "[]";
+      return JSON.parse(typeof phones === 'string' ? phones : JSON.stringify(phones));
     } catch (e) {
       return [];
     }
@@ -67,7 +68,16 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
     : "";
 
   const schoolPhone = displayPhone;
-  const schoolEmail = settings?.schoolEmail || "info@treasurehomeschool.com";
+  const schoolEmail = Array.isArray(settings?.schoolEmails) 
+    ? settings.schoolEmails[0] 
+    : (() => {
+        try {
+          const emails = JSON.parse(settings?.schoolEmails || "[]");
+          return Array.isArray(emails) ? emails[0] : "";
+        } catch (e) {
+          return "";
+        }
+      })();
 
   const navigation = [
     { name: 'Home', href: '/' },
