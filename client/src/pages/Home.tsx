@@ -311,7 +311,6 @@ export default function Home() {
 
       {/* Stats Section */}
       <section className="py-24 bg-white relative overflow-hidden">
-        {/* Subtle Gradient background */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,191,255,0.05),transparent_70%),radial-gradient(circle_at_bottom_left,rgba(0,0,255,0.03),transparent_70%)] pointer-events-none" />
 
         <div className="container px-4 max-w-6xl mx-auto relative z-10">
@@ -591,40 +590,29 @@ export default function Home() {
               </div>
             </div>
           </div>
-            <textarea
-              placeholder="Message"
-              rows={4}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-            <Button type="submit" className="btn-primary mx-auto">
-              Send Message
-            </Button>
-          </form>
-
-          <h2 className="section-title">Frequently Asked Questions</h2>
-          <div className="text-left space-y-4">
-            {[
-              { q: "When established?", a: "2012" },
-              { q: "Curriculum?", a: "Approved curriculum" },
-              { q: "Location?", a: "Egbedi, Osun State" },
-              { q: "Boarding?", a: "Both" },
-            ].map((faq, i) => (
-              <Accordion
-                type="single"
-                collapsible
-                key={i}
-                className="bg-white px-6 rounded-lg shadow-sm border border-gray-50"
-              >
-                <AccordionItem value={`i-${i}`} className="border-none">
-                  <AccordionTrigger className="text-[11px] font-bold py-5 hover:no-underline">
-                    {faq.q}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-[11px] text-gray-500 pb-5">
-                    {faq.a}
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            ))}
+          
+          <div className="max-w-2xl mx-auto">
+            <h2 className="section-title">Frequently Asked Questions</h2>
+            <Accordion type="single" collapsible className="w-full text-left">
+              <AccordionItem value="item-1">
+                <AccordionTrigger className="text-sm font-bold">How can I enroll my child?</AccordionTrigger>
+                <AccordionContent className="text-[13px] text-gray-500">
+                  You can enroll your child by clicking the "ENROLL" button on our home page or by visiting our admission office.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-2">
+                <AccordionTrigger className="text-sm font-bold">What are the school hours?</AccordionTrigger>
+                <AccordionContent className="text-[13px] text-gray-500">
+                  Our school hours are from 8:00 AM to 4:00 PM, Monday to Friday.
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="item-3">
+                <AccordionTrigger className="text-sm font-bold">Do you offer transportation services?</AccordionTrigger>
+                <AccordionContent className="text-[13px] text-gray-500">
+                  Yes, we offer safe and secure transportation services for our students.
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
           </div>
         </div>
       </section>
