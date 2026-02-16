@@ -31,15 +31,6 @@ task = "shell.exec"
 args = "npm run dev"
 waitForPort = 5000
 
-[[workflows.workflow]]
-name = "Verify Supabase Storage"
-author = 48707310
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npx tsx verify-supabase-storage.ts"
-
 [deployment]
 deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
