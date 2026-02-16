@@ -64,7 +64,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
 
   const displayPhone = schoolPhones.length > 0 
     ? `${schoolPhones[0].countryCode}${schoolPhones[0].number}`
-    : "080-1734-5676";
+    : "";
 
   const schoolPhone = displayPhone;
   const schoolEmail = settings?.schoolEmail || "info@treasurehomeschool.com";
@@ -187,7 +187,12 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               <h4 className="text-white font-black uppercase tracking-widest text-[11px] border-b border-white/40 pb-2">Contact Info</h4>
               <ul className="space-y-4">
                 <li className="flex gap-4"><MapPin className="h-5 w-5 text-white shrink-0" /><span className="text-[13px] text-white font-bold">{schoolAddress}</span></li>
-                <li className="flex gap-4"><Phone className="h-5 w-5 text-white shrink-0" /><span className="text-[13px] text-white font-bold">{schoolPhone}</span></li>
+                {schoolPhone && (
+                  <li className="flex gap-4">
+                    <Phone className="h-5 w-5 text-white shrink-0" />
+                    <span className="text-[13px] text-white font-bold">{schoolPhone}</span>
+                  </li>
+                )}
                 <li className="flex gap-4"><Mail className="h-5 w-5 text-white shrink-0" /><span className="text-[13px] text-white font-bold">{schoolEmail}</span></li>
               </ul>
             </div>
