@@ -134,6 +134,13 @@ async function makeRequest(
         // Classify the error type based on HTTP status
         if (res.status === 401 || res.status === 403) {
           error.errorType = 'auth';
+          // Auto logout on 401
+          if (res.status === 401) {
+            localStorage.removeItem('auth-user');
+            localStorage.removeItem('token');
+            localStorage.removeItem('last-activity');
+            window.location.href = '/login';
+          }
         } else if (res.status >= 400 && res.status < 500) {
           error.errorType = 'client';
         } else if (res.status >= 500 || res.status === 429) {
