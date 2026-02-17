@@ -2062,7 +2062,7 @@ export default function StudentExams() {
     const subjectName = subjects.find(s => s.id === selectedExam?.subjectId)?.name || 'Exam';
 
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pt-20">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pt-28">
         <ExamHeader
           subjectName={subjectName}
           className="Treasure-Home School"
