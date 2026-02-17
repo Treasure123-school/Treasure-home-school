@@ -467,10 +467,12 @@ export default function PortalLayout({ children, userRole, userName, userInitial
     );
   };
 
+  const isExamPage = location.includes('/portal/student/exams/') && location.split('/').length > 4;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex">
       {/* Desktop Sidebar - Modern Design */}
-      {!isMobile && (
+      {!isMobile && !isExamPage && (
         <div className={`${sidebarCollapsed ? 'w-20' : 'w-64'} bg-white dark:bg-gray-900 shadow-xl border-r border-gray-200 dark:border-gray-700 h-screen sticky top-0 transition-all duration-300 ease-in-out`}>
           <SidebarContent collapsed={sidebarCollapsed} />
           <div className={`absolute bottom-6 ${sidebarCollapsed ? 'left-1/2 -translate-x-1/2' : 'right-4'}`}>
@@ -491,88 +493,90 @@ export default function PortalLayout({ children, userRole, userName, userInitial
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header - Modern Responsive Design - Fixed at Top */}
-        <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-md h-[100px] flex items-center px-4 sm:px-5 md:px-6">
-          <div className="flex justify-between items-center gap-2 sm:gap-3 w-full max-w-7xl mx-auto">
-            <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4 flex-1 min-w-0">
-              {/* Modern Mobile Menu Trigger */}
-              {isMobile && (
-                <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                  <SheetTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      className="md:hidden h-9 w-9 flex-shrink-0 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border-gray-200 dark:border-gray-700"
-                      data-testid="button-mobile-menu"
-                    >
-                      <Menu className="h-5 w-5" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 bg-white dark:bg-gray-900">
-                    <div className="h-full overflow-y-auto">
-                      <SidebarContent onNavigate={() => setMobileMenuOpen(false)} />
-                    </div>
-                  </SheetContent>
-                </Sheet>
-              )}
-              <div className="flex flex-col ml-2 min-w-0 flex-1">
-                <h1 className="text-lg sm:text-xl md:text-2xl font-bold truncate bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-400 dark:to-blue-500 bg-clip-text text-transparent leading-tight">
-                  {schoolName}
-                </h1>
-                <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm truncate font-medium">
-                  {schoolMotto}
-                </p>
+        {!isExamPage && (
+          <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-md h-[100px] flex items-center px-4 sm:px-5 md:px-6">
+            <div className="flex justify-between items-center gap-2 sm:gap-3 w-full max-w-7xl mx-auto">
+              <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4 flex-1 min-w-0">
+                {/* Modern Mobile Menu Trigger */}
+                {isMobile && (
+                  <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                    <SheetTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        className="md:hidden h-9 w-9 flex-shrink-0 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border-gray-200 dark:border-gray-700"
+                        data-testid="button-mobile-menu"
+                      >
+                        <Menu className="h-5 w-5" />
+                      </Button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 bg-white dark:bg-gray-900">
+                      <div className="h-full overflow-y-auto">
+                        <SidebarContent onNavigate={() => setMobileMenuOpen(false)} />
+                      </div>
+                    </SheetContent>
+                  </Sheet>
+                )}
+                <div className="flex flex-col ml-2 min-w-0 flex-1">
+                  <h1 className="text-lg sm:text-xl md:text-2xl font-bold truncate bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-400 dark:to-blue-500 bg-clip-text text-transparent leading-tight">
+                    {schoolName}
+                  </h1>
+                  <p className="text-gray-500 dark:text-gray-400 text-xs sm:text-sm truncate font-medium">
+                    {schoolMotto}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-3 flex-shrink-0">
+                <ThemeToggle />
+                <NotificationBell />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800 rounded-full px-2 sm:px-3 py-1.5 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 outline-none group">
+                      <Avatar className="h-7 w-7 sm:h-8 sm:w-8 ring-2 ring-white dark:ring-gray-800 group-hover:ring-blue-100 dark:group-hover:ring-blue-900 transition-all">
+                        <AvatarFallback className="bg-gradient-to-br from-blue-600 to-blue-700 text-white text-xs sm:text-sm font-bold">
+                          {userInitials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="hidden md:flex flex-col items-start min-w-0 text-left">
+                        <span className="text-xs sm:text-sm font-semibold truncate max-w-[100px] lg:max-w-none text-gray-700 dark:text-gray-300" data-testid="text-username">
+                          {userName}
+                        </span>
+                        <span className="text-[10px] text-gray-500 dark:text-gray-400 leading-none capitalize">{userRole}</span>
+                      </div>
+                      <ChevronDown className="h-3.5 w-3.5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 mt-2 rounded-xl shadow-xl border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm">
+                    <DropdownMenuLabel className="font-normal p-3">
+                      <div className="flex flex-col space-y-1">
+                        <p className="text-sm font-bold leading-none text-gray-900 dark:text-gray-100">{userName}</p>
+                        <p className="text-xs leading-none text-gray-500 dark:text-gray-400 capitalize">{userRole} Account</p>
+                      </div>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-gray-100 dark:bg-gray-800" />
+                    <DropdownMenuItem onClick={() => window.location.href = `/portal/${userRole}/profile`} className="p-2.5 cursor-pointer focus:bg-blue-50 dark:focus:bg-blue-900/20 focus:text-blue-700 dark:focus:text-blue-300 rounded-lg mx-1 transition-colors">
+                      <User className="mr-2.5 h-4 w-4" />
+                      <span>My Profile</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => window.location.href = `/portal/${userRole}/settings`} className="p-2.5 cursor-pointer focus:bg-blue-50 dark:focus:bg-blue-900/20 focus:text-blue-700 dark:focus:text-blue-300 rounded-lg mx-1 transition-colors">
+                      <Settings className="mr-2.5 h-4 w-4" />
+                      <span>Account Settings</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator className="bg-gray-100 dark:bg-gray-800" />
+                    <DropdownMenuItem onClick={handleLogout} className="px-3 py-2.5 rounded-xl cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 font-bold transition-all">
+                      <LogOut className="mr-3 h-4 w-4" />
+                      <span>Sign out</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
-            <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-3 flex-shrink-0">
-              <ThemeToggle />
-              <NotificationBell />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800 rounded-full px-2 sm:px-3 py-1.5 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 outline-none group">
-                    <Avatar className="h-7 w-7 sm:h-8 sm:w-8 ring-2 ring-white dark:ring-gray-800 group-hover:ring-blue-100 dark:group-hover:ring-blue-900 transition-all">
-                      <AvatarFallback className="bg-gradient-to-br from-blue-600 to-blue-700 text-white text-xs sm:text-sm font-bold">
-                        {userInitials}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="hidden md:flex flex-col items-start min-w-0 text-left">
-                      <span className="text-xs sm:text-sm font-semibold truncate max-w-[100px] lg:max-w-none text-gray-700 dark:text-gray-300" data-testid="text-username">
-                        {userName}
-                      </span>
-                      <span className="text-[10px] text-gray-500 dark:text-gray-400 leading-none capitalize">{userRole}</span>
-                    </div>
-                    <ChevronDown className="h-3.5 w-3.5 text-gray-400 group-hover:text-blue-500 transition-colors" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 mt-2 rounded-xl shadow-xl border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm">
-                  <DropdownMenuLabel className="font-normal p-3">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-bold leading-none text-gray-900 dark:text-gray-100">{userName}</p>
-                      <p className="text-xs leading-none text-gray-500 dark:text-gray-400 capitalize">{userRole} Account</p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-gray-100 dark:bg-gray-800" />
-                  <DropdownMenuItem onClick={() => window.location.href = `/portal/${userRole}/profile`} className="p-2.5 cursor-pointer focus:bg-blue-50 dark:focus:bg-blue-900/20 focus:text-blue-700 dark:focus:text-blue-300 rounded-lg mx-1 transition-colors">
-                    <User className="mr-2.5 h-4 w-4" />
-                    <span>My Profile</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => window.location.href = `/portal/${userRole}/settings`} className="p-2.5 cursor-pointer focus:bg-blue-50 dark:focus:bg-blue-900/20 focus:text-blue-700 dark:focus:text-blue-300 rounded-lg mx-1 transition-colors">
-                    <Settings className="mr-2.5 h-4 w-4" />
-                    <span>Account Settings</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-gray-100 dark:bg-gray-800" />
-                  <DropdownMenuItem onClick={handleLogout} className="p-2.5 cursor-pointer focus:bg-red-50 dark:focus:bg-red-900/20 text-red-600 dark:text-red-400 focus:text-red-700 dark:focus:text-red-300 rounded-lg mx-1 transition-colors font-medium">
-                    <LogOut className="mr-2.5 h-4 w-4" />
-                    <span>Log out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-          </div>
-        </header>
+          </header>
+        )}
 
         {/* Page Content - Modern Responsive Layout */}
-        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 overflow-x-hidden">
-          <div className="max-w-7xl mx-auto">
+        <main className={`flex-1 overflow-x-hidden ${isExamPage ? 'p-0' : 'p-3 sm:p-4 md:p-6 lg:p-8'}`}>
+          <div className={`${isExamPage ? 'max-w-none h-screen' : 'max-w-7xl mx-auto'}`}>
             {children}
           </div>
         </main>
