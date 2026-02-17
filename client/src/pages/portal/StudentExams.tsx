@@ -2072,14 +2072,13 @@ export default function StudentExams() {
   if (activeSession && examQuestions.length > 0) {
     const studentInitials = user ? `${(user as any).firstName?.[0] || ''}${(user as any).lastName?.[0] || ''}` || (user as any).username?.[0]?.toUpperCase() || 'ST' : 'ST';
     const studentName = user ? `${(user as any).firstName} ${(user as any).lastName}` : ((user as any)?.username || 'Student');
-    const exam = exams.find(e => e.id === activeSession.examId);
-    const subjectName = subjects.find(s => s.id === exam?.subjectId)?.name || 'Exam';
+    const subjectName = subjects.find(s => s.id === selectedExam?.subjectId)?.name || 'Exam';
 
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-24 sm:pt-32">
         <ExamHeader
           subjectName={subjectName}
-          className={studentClassName}
+          className={studentClassName === "Loading..." ? "Student" : studentClassName}
           currentQuestion={currentQuestionIndex + 1}
           totalQuestions={examQuestions.length}
           timeRemaining={timeRemaining}
