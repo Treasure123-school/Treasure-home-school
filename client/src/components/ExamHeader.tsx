@@ -50,10 +50,12 @@ export function ExamHeader({
               <h1 className="text-lg sm:text-2xl md:text-3xl font-bold text-[#1e40af] dark:text-blue-400 leading-tight truncate">
                 Treasure-Home School
               </h1>
-              <div className="flex items-center gap-2 sm:gap-3 mt-1 text-xs sm:text-base font-medium text-slate-500 dark:text-slate-400">
-                <span className="truncate">Subject: <span className="font-semibold text-slate-900 dark:text-slate-100">{subjectName}</span></span>
-                <span className="text-slate-300 dark:text-slate-700">|</span>
-                <span className="font-semibold text-slate-900 dark:text-slate-100 truncate">{schoolClassName}</span>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs sm:text-sm md:text-base font-medium text-slate-500 dark:text-slate-400">
+                <span className="truncate max-w-[150px] sm:max-w-none">Subject: <span className="font-semibold text-slate-900 dark:text-slate-100">{subjectName}</span></span>
+                <span className="text-slate-300 dark:text-slate-700 hidden xs:inline">|</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100 truncate max-w-[100px] sm:max-w-none">{schoolClassName}</span>
+                <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">|</span>
+                <span className="hidden sm:inline font-medium text-slate-600 dark:text-slate-300 truncate">Candidate: {studentName}</span>
               </div>
             </div>
           </div>

@@ -2070,9 +2070,10 @@ export default function StudentExams() {
 
   // Render active exam without PortalLayout wrapper
   if (activeSession && examQuestions.length > 0) {
-    const studentInitials = user ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}` || 'ST' : 'ST';
-    const studentName = user ? `${user.firstName} ${user.lastName}` : 'Student';
-    const subjectName = subjects.find(s => s.id === selectedExam?.subjectId)?.name || 'Exam';
+    const studentInitials = user ? `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}` || user.username?.[0]?.toUpperCase() || 'ST' : 'ST';
+    const studentName = user ? `${user.firstName} ${user.lastName}` : (user?.username || 'Student');
+    const exam = exams.find(e => e.id === activeSession.examId);
+    const subjectName = subjects.find(s => s.id === exam?.subjectId)?.name || 'Exam';
 
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-24 sm:pt-32">
