@@ -2065,13 +2065,13 @@ export default function StudentExams() {
       <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pt-20">
         <ExamHeader
           subjectName={subjectName}
-          className={user?.className || 'Class'}
+          className="Treasure-Home School"
           currentQuestion={currentQuestionIndex + 1}
           totalQuestions={examQuestions.length}
           timeRemaining={timeRemaining}
           studentName={studentName}
           studentInitials={studentInitials}
-          profileImageUrl={user?.profileImageUrl}
+          profileImageUrl={user?.profileImageUrl || undefined}
         />
 
         <div className="container mx-auto px-4 pb-12 max-w-4xl">
@@ -2339,6 +2339,7 @@ export default function StudentExams() {
             </DialogContent>
           </Dialog>
         </div>
+      </div>
     );
   }
   // Render exam list and results with PortalLayout wrapper
