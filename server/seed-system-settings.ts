@@ -1,5 +1,5 @@
 import { db } from "./storage";
-import { systemSettings } from "../shared/schema";
+import { systemSettings } from "../shared/schema.pg";
 
 export async function seedSystemSettings() {
   try {
@@ -11,8 +11,8 @@ export async function seedSystemSettings() {
       await db.insert(systemSettings).values({
         schoolName: "Treasure-Home School",
         schoolMotto: "Honesty and Success",
-        schoolEmail: "info@treasurehomeschool.edu.ng",
-        schoolPhone: "+234-XXX-XXX-XXXX",
+        schoolEmails: JSON.stringify(["info@treasurehomeschool.edu.ng"]),
+        schoolPhones: JSON.stringify(["+234-XXX-XXX-XXXX"]),
         schoolAddress: "Lagos, Nigeria",
         maintenanceMode: false,
         enableSmsNotifications: false,
