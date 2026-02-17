@@ -281,6 +281,13 @@ export default function StudentExams() {
   // PERFORMANCE: Memoize current question to prevent unnecessary re-renders
   const currentQuestion = useMemo(() => examQuestions[currentQuestionIndex], [examQuestions, currentQuestionIndex]);
 
+  // Find school class name for header
+  const studentClassName = useMemo(() => {
+    if (!user?.classId) return "Loading...";
+    const studentClass = classes.find(c => c.id === user.classId);
+    return studentClass?.name || "Student";
+  }, [user?.classId, classes]);
+
   // Fetch question options for current question
   const { data: questionOptionsRaw = [] } = useQuery<QuestionOption[]>({
     queryKey: ['/api/question-options', currentQuestion?.id],

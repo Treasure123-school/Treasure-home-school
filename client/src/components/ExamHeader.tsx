@@ -1,6 +1,5 @@
-import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Timer, BookOpen, GraduationCap } from "lucide-react";
+import { Timer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import schoolLogo from "@assets/1000025432-removebg-preview (1)_1757796555126.png";
 
@@ -35,67 +34,63 @@ export function ExamHeader({
   const progress = (currentQuestion / totalQuestions) * 100;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-slate-950 border-b shadow-md">
-      <div className="container mx-auto px-4 h-24 flex flex-col justify-center">
-        <div className="flex items-center justify-between gap-4">
-          {/* Left: School Identity */}
-          <div className="flex items-center gap-3 min-w-0">
-            <img 
-              src={schoolLogo} 
-              alt="School Logo" 
-              className="w-10 h-10 object-contain shrink-0"
-            />
+    <div className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-slate-950 border-b shadow-sm h-28 flex items-center">
+      <div className="container mx-auto px-6 max-w-5xl">
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800 shadow-sm p-4 flex items-center justify-between">
+          {/* Left Side: Logo and School Info */}
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 flex items-center justify-center bg-white dark:bg-slate-800 rounded-lg shrink-0">
+              <img 
+                src={schoolLogo} 
+                alt="School Logo" 
+                className="w-14 h-14 object-contain"
+              />
+            </div>
             <div className="flex flex-col">
-              <span className="font-bold text-lg text-blue-600 dark:text-blue-400 leading-tight">
+              <h1 className="text-2xl font-bold text-[#1e40af] dark:text-blue-400 leading-tight">
                 Treasure-Home School
-              </span>
-              <span className="text-sm font-medium text-slate-500 truncate">
-                {subjectName}
-              </span>
+              </h1>
+              <p className="text-sm font-medium text-slate-500 italic">
+                Honesty and Success
+              </p>
+              <div className="flex items-center gap-2 mt-1 text-sm font-medium text-slate-600 dark:text-slate-400">
+                <span>Subject: <span className="font-bold text-slate-900 dark:text-slate-100">{subjectName}</span></span>
+                <span className="text-slate-300">|</span>
+                <span className="font-bold text-slate-900 dark:text-slate-100">{schoolClassName}</span>
+              </div>
             </div>
           </div>
 
-          {/* Center: Timer */}
-          <div className="flex items-center justify-center">
+          {/* Right Side: Timer and Student Avatar */}
+          <div className="flex items-center gap-4">
             {timeRemaining !== null && (
               <div className={cn(
-                "flex items-center gap-2 px-4 py-1.5 rounded-lg text-lg font-mono font-bold shadow-sm transition-colors",
+                "flex items-center gap-3 px-6 py-3 rounded-xl text-2xl font-bold transition-all duration-300 border shadow-sm",
                 isLowTime 
-                  ? "bg-red-50 text-red-600 border border-red-200 dark:bg-red-900/20 dark:text-red-400 animate-pulse" 
-                  : "bg-blue-50 text-blue-700 border border-blue-100 dark:bg-blue-900/20 dark:text-blue-300"
+                  ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400 animate-pulse" 
+                  : "bg-blue-50/50 text-[#1e40af] border-blue-100 dark:bg-blue-900/10 dark:text-blue-300 dark:border-blue-900/30"
               )}>
-                <Timer className="w-5 h-5" />
-                {formatTime(timeRemaining)}
+                <Timer className={cn("w-7 h-7", isLowTime ? "text-red-500" : "text-[#1e40af]")} />
+                <span className="font-mono tabular-nums">{formatTime(timeRemaining)}</span>
               </div>
             )}
-          </div>
 
-          {/* Right: Student Info */}
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="hidden sm:flex flex-col items-end text-right">
-              <span className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                {studentName}
-              </span>
-              <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded">
-                Question {currentQuestion} / {totalQuestions}
-              </span>
-            </div>
-            <Avatar className="h-10 w-10 border-2 border-blue-100 dark:border-blue-800 shadow-sm">
+            <Avatar className="h-14 w-14 border-2 border-white shadow-md ring-1 ring-slate-100 dark:ring-slate-800">
               <AvatarImage src={profileImageUrl || undefined} alt={studentName} />
-              <AvatarFallback className="bg-blue-600 text-white text-xs font-bold">
+              <AvatarFallback className="bg-[#1e40af] text-white text-xl font-bold">
                 {studentInitials}
               </AvatarFallback>
             </Avatar>
           </div>
         </div>
-      </div>
-      
-      {/* Progress Bar - Full Width below header */}
-      <div className="h-1 w-full bg-slate-100 dark:bg-slate-800">
-        <div 
-          className="h-full bg-primary transition-all duration-300 ease-in-out"
-          style={{ width: `${progress}%` }}
-        />
+
+        {/* Subtle Progress Bar attached to the bottom of the card */}
+        <div className="mx-4 mt-[-2px] h-1.5 w-[calc(100%-32px)] bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-[#1e40af] transition-all duration-500 ease-out rounded-full"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
       </div>
     </div>
   );
