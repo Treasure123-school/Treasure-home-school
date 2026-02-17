@@ -26,8 +26,8 @@ import {
 interface SettingsData {
   schoolName: string;
   schoolMotto: string;
-  schoolEmail: string;
-  schoolPhone: string;
+  schoolEmails: string;
+  schoolPhones: string;
   schoolAddress: string;
   schoolLogo?: string;
 }
@@ -61,6 +61,15 @@ export default function Home() {
   const schoolName = settings?.schoolName || "Treasure-Home School";
   const schoolAddress = settings?.schoolAddress || "Seriki, Ogun State";
   const schoolLogo = settings?.schoolLogo || "";
+
+  let schoolPhones: Array<{ countryCode: string; number: string }> = [];
+  let schoolEmails: string[] = [];
+  try {
+    schoolPhones = JSON.parse(settings?.schoolPhones || "[]");
+    schoolEmails = JSON.parse(settings?.schoolEmails || "[]");
+  } catch (e) {
+    console.error("Error parsing settings JSON", e);
+  }
 
   const features = [
     {
@@ -302,7 +311,6 @@ export default function Home() {
 
       {/* Stats Section */}
       <section className="py-24 bg-white relative overflow-hidden">
-        {/* Subtle Gradient background */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,191,255,0.05),transparent_70%),radial-gradient(circle_at_bottom_left,rgba(0,0,255,0.03),transparent_70%)] pointer-events-none" />
 
         <div className="container px-4 max-w-6xl mx-auto relative z-10">
@@ -509,71 +517,32 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Contact & FAQ */}
-      <section className="py-24 bg-white">
-        <div className="container px-4 max-w-4xl mx-auto text-center">
-          <h2 className="section-title">Contact Us</h2>
-          <p className="section-subtitle">Let us know your thoughts.</p>
-          <form className="space-y-6 text-left mb-24">
-            <div className="grid md:grid-cols-2 gap-6">
-              <input
-                type="text"
-                placeholder="First Name"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-              <input
-                type="text"
-                placeholder="Last Name"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-            <div className="grid md:grid-cols-2 gap-6">
-              <input
-                type="email"
-                placeholder="Email"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-              <input
-                type="tel"
-                placeholder="Phone"
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-            </div>
-            <textarea
-              placeholder="Message"
-              rows={4}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-100 text-[13px] focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-            <Button type="submit" className="btn-primary mx-auto">
-              Send Message
-            </Button>
-          </form>
-
-          <h2 className="section-title">Frequently Asked Questions</h2>
-          <div className="text-left space-y-4">
-            {[
-              { q: "When established?", a: "2012" },
-              { q: "Curriculum?", a: "Approved curriculum" },
-              { q: "Location?", a: "Egbedi, Osun State" },
-              { q: "Boarding?", a: "Both" },
-            ].map((faq, i) => (
-              <Accordion
-                type="single"
-                collapsible
-                key={i}
-                className="bg-white px-6 rounded-lg shadow-sm border border-gray-50"
-              >
-                <AccordionItem value={`i-${i}`} className="border-none">
-                  <AccordionTrigger className="text-[11px] font-bold py-5 hover:no-underline">
-                    {faq.q}
-                  </AccordionTrigger>
-                  <AccordionContent className="text-[11px] text-gray-500 pb-5">
-                    {faq.a}
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-            ))}
-          </div>
+      {/* FAQ Section */}
+      <section className="py-24 bg-gray-50">
+        <div className="container px-4 max-w-4xl mx-auto">
+          <h2 className="section-title text-center">Frequently Asked Questions</h2>
+          <p className="section-subtitle text-center">Find answers to common questions about Treasure-Home School.</p>
+          
+          <Accordion type="single" collapsible className="w-full space-y-4">
+            <AccordionItem value="item-1" className="border border-gray-200 rounded-lg bg-white px-6">
+              <AccordionTrigger className="text-left font-bold py-6 hover:no-underline">What is the school curriculum?</AccordionTrigger>
+              <AccordionContent className="text-gray-600 pb-6">
+                We follow a comprehensive curriculum that blends national standards with international best practices, focusing on academic excellence and character development.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2" className="border border-gray-200 rounded-lg bg-white px-6">
+              <AccordionTrigger className="text-left font-bold py-6 hover:no-underline">How do I enroll my child?</AccordionTrigger>
+              <AccordionContent className="text-gray-600 pb-6">
+                You can start the enrollment process by visiting our Admissions page or clicking the "ENROLL" button on the home page to fill out the registration form.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3" className="border border-gray-200 rounded-lg bg-white px-6">
+              <AccordionTrigger className="text-left font-bold py-6 hover:no-underline">What are the school hours?</AccordionTrigger>
+              <AccordionContent className="text-gray-600 pb-6">
+                Our standard school hours are from 8:00 AM to 3:30 PM, Monday through Friday. Extracurricular activities may extend these hours for participating students.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
         </div>
       </section>
     </PublicLayout>

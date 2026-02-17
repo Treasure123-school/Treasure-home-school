@@ -18,8 +18,8 @@ import heroStudents from "@/assets/hero-students.png";
 interface SettingsData {
   schoolName: string;
   schoolMotto: string;
-  schoolEmail: string;
-  schoolPhone: string;
+  schoolEmails: string;
+  schoolPhones: string;
   schoolAddress: string;
   websiteTitle?: string;
 }
@@ -40,10 +40,24 @@ export default function Contact() {
   });
 
   const schoolName = settings?.schoolName || "Treasure-Home School";
-  const schoolEmail = settings?.schoolEmail || "info@treasurehomeschool.com";
-  const schoolPhone = settings?.schoolPhone || "080-1734-5676";
   const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State, Nigeria";
   const websiteTitle = settings?.websiteTitle || `${schoolName} - Contact Us`;
+
+  let schoolPhones: Array<{ countryCode: string; number: string }> = [];
+  let schoolEmails: string[] = [];
+  try {
+    schoolPhones = JSON.parse(settings?.schoolPhones || "[]");
+    schoolEmails = JSON.parse(settings?.schoolEmails || "[]");
+  } catch (e) {
+    console.error("Error parsing settings JSON", e);
+  }
+
+  const displayPhones = schoolPhones.length > 0 
+    ? schoolPhones.map(p => `${p.countryCode}${p.number}`).join(', ') 
+    : "080-1734-5676";
+  const displayEmails = schoolEmails.length > 0 
+    ? schoolEmails.join(', ') 
+    : "info@treasurehomeschool.com";
 
   useEffect(() => {
     if (websiteTitle) {
@@ -92,13 +106,13 @@ export default function Contact() {
     {
       icon: Phone,
       title: 'Phone',
-      content: schoolPhone,
+      content: displayPhones,
       color: 'secondary'
     },
     {
       icon: Mail,
       title: 'Email',
-      content: schoolEmail,
+      content: displayEmails,
       color: 'green'
     },
     {
@@ -249,9 +263,20 @@ export default function Contact() {
             <Card className="shadow-sm border border-border" data-testid="card-location">
               <CardContent className="p-8">
                 <h2 className="text-2xl font-bold text-foreground mb-6" data-testid="text-location-title">
-                  Visit Our Campus
+                  Our Location
                 </h2>
-                <div className="space-y-4 mb-6">
+                <div className="aspect-video w-full rounded-lg overflow-hidden border border-border mb-6">
+                  <iframe 
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3962.774577134375!2d3.197!3d6.674!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNsKwNDAnMjYuNCJOIDPCsDExJzQ5LjIiRQ!5e0!3m2!1sen!2sng!4v1700000000000!5m2!1sen!2sng" 
+                    width="100%" 
+                    height="100%" 
+                    style={{ border: 0 }} 
+                    allowFullScreen={true} 
+                    loading="lazy" 
+                    referrerPolicy="no-referrer-when-downgrade"
+                  ></iframe>
+                </div>
+                <div className="space-y-4">
                   <div className="flex items-start space-x-3">
                     <div className="bg-primary/10 p-2 rounded-lg mt-1">
                       <MapPin className="text-primary w-5 h-5" />
@@ -259,40 +284,11 @@ export default function Contact() {
                     <div>
                       <p className="font-medium">School Address</p>
                       <p className="text-muted-foreground text-sm" data-testid="text-school-address">
-                        Seriki-Soyinka Ifo, Ogun State, Nigeria
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start space-x-3">
-                    <div className="bg-secondary/10 p-2 rounded-lg mt-1">
-                      <Car className="text-secondary w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Transportation</p>
-                      <p className="text-muted-foreground text-sm" data-testid="text-transportation">
-                        School bus services available. Easy access from major roads in Ogun State.
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start space-x-3">
-                    <div className="bg-green-100 p-2 rounded-lg mt-1">
-                      <Calendar className="text-green-600 w-5 h-5" />
-                    </div>
-                    <div>
-                      <p className="font-medium">Visit Hours</p>
-                      <p className="text-muted-foreground text-sm" data-testid="text-visit-hours">
-                        Monday - Friday: 9:00 AM - 3:00 PM<br />
-                        Saturday: 10:00 AM - 1:00 PM (By appointment)
+                        {schoolAddress}
                       </p>
                     </div>
                   </div>
                 </div>
-                
-                <Button className="w-full" data-testid="button-schedule-visit">
-                  Schedule a Campus Visit
-                </Button>
               </CardContent>
             </Card>
           </div>

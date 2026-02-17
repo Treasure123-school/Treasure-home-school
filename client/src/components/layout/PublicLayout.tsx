@@ -11,8 +11,8 @@ interface PublicLayoutProps {
 interface SettingsData {
   schoolName: string;
   schoolMotto?: string;
-  schoolEmail: string;
-  schoolPhone: string;
+  schoolEmails: any;
+  schoolPhones: any;
   schoolAddress: string;
   schoolLogo?: string;
 }
@@ -54,8 +54,30 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
 
   const schoolName = settings?.schoolName || "Treasure-Home School";
   const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State, Nigeria";
-  const schoolPhone = settings?.schoolPhone || "080-1734-5676";
-  const schoolEmail = settings?.schoolEmail || "info@treasurehomeschool.com";
+  const schoolPhones: Array<{ countryCode: string; number: string }> = (() => {
+    try {
+      const phones = settings?.schoolPhones || "[]";
+      return JSON.parse(typeof phones === 'string' ? phones : JSON.stringify(phones));
+    } catch (e) {
+      return [];
+    }
+  })();
+
+  const displayPhone = schoolPhones.length > 0 
+    ? `${schoolPhones[0].countryCode}${schoolPhones[0].number}`
+    : "";
+
+  const schoolPhone = displayPhone;
+  const schoolEmail = Array.isArray(settings?.schoolEmails) 
+    ? settings.schoolEmails[0] 
+    : (() => {
+        try {
+          const emails = JSON.parse(settings?.schoolEmails || "[]");
+          return Array.isArray(emails) ? emails[0] : "";
+        } catch (e) {
+          return "";
+        }
+      })();
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -158,7 +180,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                 <img 
                   src={settings.schoolLogo} 
                   alt="Logo" 
-                  className="h-20 w-auto brightness-0 invert" 
+                  className="h-20 w-auto brightness-0 invert object-contain" 
                 />
               ) : null}
               <p className="text-[13px] text-white font-bold leading-relaxed">{settings?.schoolName || "Treasure-Home School"}, located at Seriki-Soyinka, Ifo Local Government, Ogun State, Nigeria, has a rich history of educational excellence.</p>
@@ -175,7 +197,12 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               <h4 className="text-white font-black uppercase tracking-widest text-[11px] border-b border-white/40 pb-2">Contact Info</h4>
               <ul className="space-y-4">
                 <li className="flex gap-4"><MapPin className="h-5 w-5 text-white shrink-0" /><span className="text-[13px] text-white font-bold">{schoolAddress}</span></li>
-                <li className="flex gap-4"><Phone className="h-5 w-5 text-white shrink-0" /><span className="text-[13px] text-white font-bold">{schoolPhone}</span></li>
+                {schoolPhone && (
+                  <li className="flex gap-4">
+                    <Phone className="h-5 w-5 text-white shrink-0" />
+                    <span className="text-[13px] text-white font-bold">{schoolPhone}</span>
+                  </li>
+                )}
                 <li className="flex gap-4"><Mail className="h-5 w-5 text-white shrink-0" /><span className="text-[13px] text-white font-bold">{schoolEmail}</span></li>
               </ul>
             </div>

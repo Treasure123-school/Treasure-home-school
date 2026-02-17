@@ -16,6 +16,7 @@ import { Clock, BookOpen, Trophy, Play, Eye, CheckCircle, XCircle, Timer, Save, 
 import type { Exam, ExamSession, ExamQuestion, QuestionOption, StudentAnswer } from '@shared/schema';
 import schoolLogo from '@assets/1000025432-removebg-preview (1)_1757796555126.png';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
+import { ExamHeader } from '@/components/ExamHeader';
 
 // ENHANCED EXAM SECURITY CONSTANTS
 // Allow only 2 warnings per exam session. On the 3rd violation, auto-submit the exam instantly.
@@ -277,8 +278,21 @@ export default function StudentExams() {
     return examQuestionsRaw;
   }, [examQuestionsRaw, activeSession?.examId, activeSession?.isCompleted, activeSession?.id, exams]);
 
+  const { data: classes = [] } = useQuery<any[]>({
+    queryKey: ['/api/classes'],
+    enabled: !!user,
+  });
+
   // PERFORMANCE: Memoize current question to prevent unnecessary re-renders
   const currentQuestion = useMemo(() => examQuestions[currentQuestionIndex], [examQuestions, currentQuestionIndex]);
+
+  // Find school class name for header
+  const studentClassName = useMemo(() => {
+    const classId = (user as any)?.classId;
+    if (!classId) return "Loading...";
+    const studentClass = classes.find((c: any) => c.id === classId);
+    return studentClass?.name || "Student";
+  }, [user, classes]);
 
   // Fetch question options for current question
   const { data: questionOptionsRaw = [] } = useQuery<QuestionOption[]>({
@@ -2056,11 +2070,27 @@ export default function StudentExams() {
 
   // Render active exam without PortalLayout wrapper
   if (activeSession && examQuestions.length > 0) {
+    const studentInitials = user ? `${(user as any).firstName?.[0] || ''}${(user as any).lastName?.[0] || ''}` || (user as any).username?.[0]?.toUpperCase() || 'ST' : 'ST';
+    const studentName = user ? `${(user as any).firstName} ${(user as any).lastName}` : ((user as any)?.username || 'Student');
+    const subjectName = subjects.find(s => s.id === selectedExam?.subjectId)?.name || 'Exam';
+
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-24 sm:pt-32">
+        <ExamHeader
+          subjectName={subjectName}
+          className={studentClassName === "Loading..." ? "Student" : studentClassName}
+          currentQuestion={currentQuestionIndex + 1}
+          totalQuestions={examQuestions.length}
+          timeRemaining={timeRemaining}
+          studentName={studentName}
+          studentInitials={studentInitials}
+          profileImageUrl={(user as any)?.profileImageUrl}
+        />
+
+        <div className="container mx-auto px-4 pb-12 max-w-4xl">
           {/* Warning Banners */}
           {(showTabSwitchWarning || !isOnline) && (
-            <div className="sticky top-0 z-40 space-y-2 p-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-b shadow-sm">
+            <div className="mb-6 space-y-2">
               {showTabSwitchWarning && (
                 <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-500 rounded-r-lg p-3 flex items-center gap-3 text-yellow-800 dark:text-yellow-200 shadow-sm">
                   <AlertCircle className="w-5 h-5 flex-shrink-0" />
@@ -2087,54 +2117,8 @@ export default function StudentExams() {
             </div>
           )}
 
-          {/* Modern Sticky Exam Header - Responsive */}
-          <div className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
-            <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-              {/* Top Section - Branding */}
-              <div className="flex items-center justify-between py-2 sm:py-3 border-b border-gray-100 dark:border-gray-800">
-                <div className="flex items-center space-x-2 sm:space-x-3">
-                  <img 
-                    src={schoolLogo} 
-                    alt="Treasure-Home School" 
-                    className="h-8 w-8 sm:h-9 sm:w-9 object-contain"
-                  />
-                  <div>
-                    <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600 dark:text-blue-400">Treasure-Home School</h2>
-                    <p className="text-sm sm:text-base md:text-lg text-gray-500 dark:text-gray-400">Online Examination Portal</p>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Bottom Section - Progress Info - Responsive */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between py-2 sm:py-3 gap-2 sm:gap-0">
-                <div className="flex items-center gap-3 sm:gap-6">
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
-                    <span className="text-sm sm:text-base md:text-lg font-medium text-gray-700 dark:text-gray-300">
-                      Q {currentQuestionIndex + 1}/{examQuestions.length}
-                    </span>
-                  </div>
-                  {timeRemaining !== null && (
-                    <div className="flex items-center gap-1.5 sm:gap-2">
-                      <Clock className={`w-4 h-4 sm:w-5 sm:h-5 ${timeRemaining > 300 ? 'text-blue-600 dark:text-blue-400' : timeRemaining > 60 ? 'text-yellow-600' : 'text-red-600'}`} />
-                      <span className={`text-sm sm:text-base md:text-lg font-medium ${timeRemaining > 300 ? 'text-gray-700 dark:text-gray-300' : timeRemaining > 60 ? 'text-yellow-600' : 'text-red-600'}`}>
-                        {formatTime(timeRemaining)}
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
-                  <span className="text-sm sm:text-base md:text-lg font-medium text-gray-700 dark:text-gray-300">
-                    {Object.keys(answers).length} answered
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
           {/* Exam Content - Responsive */}
-          <div className="max-w-5xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
+          <div className="max-w-5xl mx-auto py-4 sm:py-6 md:py-8">
 
             {/* Question Card - Responsive */}
             {currentQuestion && (
@@ -2368,6 +2352,7 @@ export default function StudentExams() {
             </DialogContent>
           </Dialog>
         </div>
+      </div>
     );
   }
   // Render exam list and results with PortalLayout wrapper
