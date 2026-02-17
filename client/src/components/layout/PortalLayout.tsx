@@ -467,9 +467,9 @@ export default function PortalLayout({ children, userRole, userName, userInitial
     );
   };
 
-  const isExamPage = location.includes('/portal/student/exams/') && location.split('/').length > 4;
   const isTakingExam = location.includes('/portal/student/exams/') && location.endsWith('/take');
-  const isExamSession = location.includes('/portal/student/exams/') || location.includes('/portal/student/exam-sessions');
+  const isExamSession = location.includes('/portal/student/exams/') && (location.split('/').length > 4 || location.includes('/exam-sessions'));
+  const isExamPage = isExamSession;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex">
