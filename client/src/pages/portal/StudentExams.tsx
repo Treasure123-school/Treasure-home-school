@@ -278,15 +278,21 @@ export default function StudentExams() {
     return examQuestionsRaw;
   }, [examQuestionsRaw, activeSession?.examId, activeSession?.isCompleted, activeSession?.id, exams]);
 
+  const { data: classes = [] } = useQuery<any[]>({
+    queryKey: ['/api/classes'],
+    enabled: !!user,
+  });
+
   // PERFORMANCE: Memoize current question to prevent unnecessary re-renders
   const currentQuestion = useMemo(() => examQuestions[currentQuestionIndex], [examQuestions, currentQuestionIndex]);
 
   // Find school class name for header
   const studentClassName = useMemo(() => {
-    if (!user?.classId) return "Loading...";
-    const studentClass = classes.find(c => c.id === user.classId);
+    const classId = (user as any)?.classId;
+    if (!classId) return "Loading...";
+    const studentClass = classes.find((c: any) => c.id === classId);
     return studentClass?.name || "Student";
-  }, [user?.classId, classes]);
+  }, [user, classes]);
 
   // Fetch question options for current question
   const { data: questionOptionsRaw = [] } = useQuery<QuestionOption[]>({
@@ -2069,16 +2075,16 @@ export default function StudentExams() {
     const subjectName = subjects.find(s => s.id === selectedExam?.subjectId)?.name || 'Exam';
 
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pt-28">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 pt-32 sm:pt-36">
         <ExamHeader
           subjectName={subjectName}
-          className="Treasure-Home School"
+          className={studentClassName}
           currentQuestion={currentQuestionIndex + 1}
           totalQuestions={examQuestions.length}
           timeRemaining={timeRemaining}
           studentName={studentName}
           studentInitials={studentInitials}
-          profileImageUrl={user?.profileImageUrl || undefined}
+          profileImageUrl={(user as any)?.profileImageUrl}
         />
 
         <div className="container mx-auto px-4 pb-12 max-w-4xl">

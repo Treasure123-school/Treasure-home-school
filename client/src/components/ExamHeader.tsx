@@ -70,7 +70,7 @@ export function ExamHeader({
                   ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400 animate-pulse" 
                   : "bg-blue-50/50 text-[#1e40af] border-blue-100 dark:bg-blue-900/10 dark:text-blue-300 dark:border-blue-900/30"
               )}>
-                <Timer className={cn("w-7 h-7", isLowTime ? "text-red-500" : "text-[#1e40af]")} />
+                <Timer className={cn("w-7 h-7", isLowTime ? "text-red-500" : "text-[#1e40af] dark:text-blue-300")} />
                 <span className="font-mono tabular-nums">{formatTime(timeRemaining)}</span>
               </div>
             )}
