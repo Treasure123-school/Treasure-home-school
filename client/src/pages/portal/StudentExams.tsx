@@ -2075,7 +2075,7 @@ export default function StudentExams() {
     const subjectName = subjects.find(s => s.id === selectedExam?.subjectId)?.name || 'Exam';
 
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-24 sm:pt-32">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-[120px] sm:pt-[140px]">
         <ExamHeader
           subjectName={subjectName}
           className={studentClassName === "Loading..." ? "Student" : studentClassName}
