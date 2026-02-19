@@ -53,7 +53,7 @@ export function ExamHeader({
               <img 
                 src={displayLogo} 
                 alt="School Logo" 
-                className="h-14 w-14 sm:h-16 sm:w-16 md:h-20 md:w-20 object-contain"
+                className="h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 object-contain"
               />
             </div>
             
@@ -100,6 +100,13 @@ export function ExamHeader({
             </div>
           </div>
         </div>
+      </div>
+      {/* Animated Progress Line */}
+      <div className="absolute bottom-0 left-0 w-full h-0.5 bg-slate-100 dark:bg-slate-800 overflow-hidden">
+        <div 
+          className="h-full bg-[#0000FF] dark:bg-blue-500 transition-all duration-500 ease-out shadow-[0_0_8px_rgba(0,0,255,0.4)]"
+          style={{ width: `${(currentQuestion / totalQuestions) * 100}%` }}
+        />
       </div>
     </header>
   );
