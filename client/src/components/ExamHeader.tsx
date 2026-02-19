@@ -23,6 +23,8 @@ interface SystemSettings {
 export function ExamHeader({
   subjectName,
   className: studentClassName,
+  currentQuestion,
+  totalQuestions,
   timeRemaining,
   studentName,
   studentInitials,
