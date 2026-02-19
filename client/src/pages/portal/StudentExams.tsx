@@ -16,7 +16,6 @@ import { Clock, BookOpen, Trophy, Play, Eye, CheckCircle, XCircle, Timer, Save, 
 import type { Exam, ExamSession, ExamQuestion, QuestionOption, StudentAnswer } from '@shared/schema';
 import schoolLogo from '@assets/1000025432-removebg-preview (1)_1757796555126.png';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
-import PortalLayout from '@/components/layout/PortalLayout';
 import { ExamHeader } from '@/components/ExamHeader';
 
 // ENHANCED EXAM SECURITY CONSTANTS
@@ -2423,12 +2422,7 @@ export default function StudentExams() {
     const strokeDashoffset = circumference * (1 - normalizedResults.percentage / 100);
 
     return (
-      <PortalLayout
-        userRole="student"
-        userName={studentName}
-        userInitials={studentInitials}
-      >
-        <div className="p-6 max-w-4xl mx-auto">
+      <div className="p-6 max-w-4xl mx-auto">
           <div className="text-center mb-8">
             <div className="flex justify-center mb-4">
               <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
@@ -2492,119 +2486,106 @@ export default function StudentExams() {
             </Button>
           </div>
         </div>
-      </PortalLayout>
     );
   }
 
   if (isScoring) {
     return (
-      <PortalLayout
-        userRole="student"
-        userName={studentName}
-        userInitials={studentInitials}
-      >
-        <div className="flex flex-col items-center justify-center min-h-[400px]">
-          <Loader className="w-12 h-12 animate-spin text-blue-600 mb-4" />
-          <h2 className="text-2xl font-bold">Scoring Your Exam</h2>
-          <p className="text-slate-500">Please wait while we calculate your results...</p>
-        </div>
-      </PortalLayout>
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <Loader className="w-12 h-12 animate-spin text-blue-600 mb-4" />
+        <h2 className="text-2xl font-bold">Scoring Your Exam</h2>
+        <p className="text-slate-500">Please wait while we calculate your results...</p>
+      </div>
     );
   }
 
   return (
-    <PortalLayout
-      userRole="student"
-      userName={studentName}
-      userInitials={studentInitials}
-    >
-      <div className="p-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">My Exams & Assessments</h1>
-          <p className="text-slate-600 dark:text-slate-400">View your scheduled exams, take active tests, and check your performance.</p>
-        </div>
-
-        {/* Exams List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {exams.length === 0 ? (
-            <Card className="col-span-full py-12">
-              <CardContent className="flex flex-col items-center justify-center text-center">
-                <div className="h-16 w-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                  <FileText className="h-8 w-8 text-slate-400" />
-                </div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Exams Available</h3>
-                <p className="text-slate-500 max-w-xs">There are currently no exams scheduled for your class. Check back later!</p>
-              </CardContent>
-            </Card>
-          ) : (
-            exams.map((exam) => {
-              const status = getExamStatus(exam.id);
-              return (
-                <Card key={exam.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start gap-4">
-                      <div className="h-10 w-10 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center shrink-0">
-                        <BookOpen className="h-5 w-5 text-blue-600" />
-                      </div>
-                      {status.isCompleted ? (
-                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Completed</Badge>
-                      ) : status.isInProgress ? (
-                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 animate-pulse">In Progress</Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Available</Badge>
-                      )
-                      }
-                    </div>
-                    <CardTitle className="mt-4 text-lg line-clamp-1">{exam.name}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex items-center text-sm text-slate-600 dark:text-slate-400">
-                        <Clock className="h-4 w-4 mr-2 shrink-0" />
-                        <span>{exam.timeLimit} Minutes</span>
-                      </div>
-                      <div className="flex items-center text-sm text-slate-600 dark:text-slate-400">
-                        <Trophy className="h-4 w-4 mr-2 shrink-0" />
-                        <span>{exam.totalMarks || 0} Total Points</span>
-                      </div>
-                      
-                      {status.isCompleted ? (
-                        <div className="pt-4 flex items-center justify-between">
-                          <div className="text-sm">
-                            <span className="text-slate-500">Score:</span>
-                            <span className="ml-2 font-bold text-blue-600">{status.score}/{status.maxScore}</span>
-                          </div>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                              setSelectedExam(exam);
-                              setShowResults(true);
-                            }}
-                          >
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Review
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="pt-4">
-                          <Button 
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                            onClick={() => handleStartExam(exam)}
-                          >
-                            <Play className="h-4 w-4 mr-2" />
-                            {status.isInProgress ? 'Resume Exam' : 'Start Exam'}
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })
-          )}
-        </div>
+    <div className="p-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">My Exams & Assessments</h1>
+        <p className="text-slate-600 dark:text-slate-400">View your scheduled exams, take active tests, and check your performance.</p>
       </div>
-    </PortalLayout>
+
+      {/* Exams List */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {exams.length === 0 ? (
+          <Card className="col-span-full py-12">
+            <CardContent className="flex flex-col items-center justify-center text-center">
+              <div className="h-16 w-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
+                <FileText className="h-8 w-8 text-slate-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Exams Available</h3>
+              <p className="text-slate-500 max-w-xs">There are currently no exams scheduled for your class. Check back later!</p>
+            </CardContent>
+          </Card>
+        ) : (
+          exams.map((exam) => {
+            const status = getExamStatus(exam.id);
+            return (
+              <Card key={exam.id} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start gap-4">
+                    <div className="h-10 w-10 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center shrink-0">
+                      <BookOpen className="h-5 w-5 text-blue-600" />
+                    </div>
+                    {status.isCompleted ? (
+                      <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Completed</Badge>
+                    ) : status.isInProgress ? (
+                      <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 animate-pulse">In Progress</Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Available</Badge>
+                    )
+                    }
+                  </div>
+                  <CardTitle className="mt-4 text-lg line-clamp-1">{exam.name}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    <div className="flex items-center text-sm text-slate-600 dark:text-slate-400">
+                      <Clock className="h-4 w-4 mr-2 shrink-0" />
+                      <span>{exam.timeLimit} Minutes</span>
+                    </div>
+                    <div className="flex items-center text-sm text-slate-600 dark:text-slate-400">
+                      <Trophy className="h-4 w-4 mr-2 shrink-0" />
+                      <span>{exam.totalMarks || 0} Total Points</span>
+                    </div>
+                    
+                    {status.isCompleted ? (
+                      <div className="pt-4 flex items-center justify-between">
+                        <div className="text-sm">
+                          <span className="text-slate-500">Score:</span>
+                          <span className="ml-2 font-bold text-blue-600">{status.score}/{status.maxScore}</span>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => {
+                            setSelectedExam(exam);
+                            setShowResults(true);
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Review
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="pt-4">
+                        <Button 
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                          onClick={() => handleStartExam(exam)}
+                        >
+                          <Play className="h-4 w-4 mr-2" />
+                          {status.isInProgress ? 'Resume Exam' : 'Start Exam'}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })
+        )}
+      </div>
+    </div>
   );
 }
