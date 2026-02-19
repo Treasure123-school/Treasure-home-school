@@ -2371,6 +2371,147 @@ export default function StudentExams() {
     );
   }
   // Render main portal view
+  if (showResults && examResults) {
+    const normalizedResults = {
+      score: examResults.totalScore || examResults.score || 0,
+      maxScore: examResults.maxScore || 0,
+      percentage: 0,
+      pendingCount: examResults.pendingReview?.count || 0,
+      correctAnswers: 0,
+      wrongAnswers: 0,
+      totalAnswered: 0,
+      autoScoredQuestions: 0,
+      submittedAt: examResults.submittedAt,
+      timeTakenFormatted: examResults.timeTakenFormatted || null,
+      timeTakenSeconds: examResults.timeTakenSeconds || 0,
+      submissionReason: examResults.submissionReason || 'manual',
+      violationCount: examResults.violationCount || 0,
+      breakdown: examResults.breakdown || null,
+      questionDetails: examResults.questionDetails || [],
+      hasDetailedResults: false
+    };
+
+    if (examResults.breakdown) {
+      const breakdown = examResults.breakdown;
+      normalizedResults.correctAnswers = 'correct' in breakdown ? breakdown.correct : 
+                                         ('correctAnswers' in breakdown ? breakdown.correctAnswers : 0);
+      normalizedResults.wrongAnswers = 'incorrect' in breakdown ? breakdown.incorrect : 
+                                        ('incorrectAnswers' in breakdown ? breakdown.incorrectAnswers : 0);
+      normalizedResults.totalAnswered = 'totalQuestions' in breakdown ? breakdown.totalQuestions : 
+                                         ('answered' in breakdown ? breakdown.answered : 0);
+      normalizedResults.autoScoredQuestions = 'autoScored' in breakdown ? breakdown.autoScored : 
+                                               ('autoScoredQuestions' in breakdown ? breakdown.autoScoredQuestions : 0);
+      normalizedResults.hasDetailedResults = true;
+      if (examResults.questionDetails && examResults.questionDetails.length > 0) {
+        normalizedResults.questionDetails = examResults.questionDetails;
+      }
+    } else if (examResults.questionDetails && examResults.questionDetails.length > 0) {
+      const questions = examResults.questionDetails;
+      normalizedResults.correctAnswers = questions.filter((q: any) => q.isCorrect === true).length;
+      normalizedResults.wrongAnswers = questions.filter((q: any) => q.isCorrect === false).length;
+      normalizedResults.totalAnswered = questions.length;
+      normalizedResults.autoScoredQuestions = questions.filter((q: any) => q.pointsAwarded > 0 || q.isCorrect === true).length;
+      normalizedResults.hasDetailedResults = true;
+    }
+
+    if (normalizedResults.maxScore > 0) {
+      normalizedResults.percentage = Math.round((normalizedResults.score / normalizedResults.maxScore) * 100);
+      normalizedResults.percentage = Math.max(0, Math.min(100, normalizedResults.percentage));
+    }
+    const radius = 85;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDashoffset = circumference * (1 - normalizedResults.percentage / 100);
+
+    return (
+      <PortalLayout
+        userRole="student"
+        userName={studentName}
+        userInitials={studentInitials}
+      >
+        <div className="p-6 max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
+              </div>
+            </div>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Exam Results</h1>
+            <p className="text-slate-600 dark:text-slate-400">Review your performance details below.</p>
+          </div>
+
+          <Card className="mb-8">
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                <div className="flex flex-col items-center">
+                  <div className="relative w-48 h-48">
+                    <svg className="w-48 h-48 transform -rotate-90" viewBox="0 0 200 200">
+                      <circle cx="100" cy="100" r={radius} stroke="currentColor" strokeWidth="10" fill="transparent" className="text-slate-100 dark:text-slate-800" />
+                      <circle cx="100" cy="100" r={radius} stroke="currentColor" strokeWidth="10" fill="transparent" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} className="text-blue-600 transition-all duration-1000" strokeLinecap="round" />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-4xl font-bold">{normalizedResults.percentage}%</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <p className="text-lg font-semibold">{normalizedResults.score} / {normalizedResults.maxScore}</p>
+                    <p className="text-sm text-slate-500">Total Score</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                      <span>Correct Answers</span>
+                    </div>
+                    <span className="font-bold">{normalizedResults.correctAnswers}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <XCircle className="w-5 h-5 text-red-500" />
+                      <span>Incorrect Answers</span>
+                    </div>
+                    <span className="font-bold">{normalizedResults.wrongAnswers}</span>
+                  </div>
+                  {normalizedResults.timeTakenFormatted && (
+                    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-5 h-5 text-blue-500" />
+                        <span>Time Taken</span>
+                      </div>
+                      <span className="font-bold">{normalizedResults.timeTakenFormatted}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-center">
+            <Button onClick={() => setShowResults(false)} className="bg-blue-600 hover:bg-blue-700 text-white">
+              Back to Exams
+            </Button>
+          </div>
+        </div>
+      </PortalLayout>
+    );
+  }
+
+  if (isScoring) {
+    return (
+      <PortalLayout
+        userRole="student"
+        userName={studentName}
+        userInitials={studentInitials}
+      >
+        <div className="flex flex-col items-center justify-center min-h-[400px]">
+          <Loader className="w-12 h-12 animate-spin text-blue-600 mb-4" />
+          <h2 className="text-2xl font-bold">Scoring Your Exam</h2>
+          <p className="text-slate-500">Please wait while we calculate your results...</p>
+        </div>
+      </PortalLayout>
+    );
+  }
+
   return (
     <PortalLayout
       userRole="student"
@@ -2424,7 +2565,7 @@ export default function StudentExams() {
                       </div>
                       <div className="flex items-center text-sm text-slate-600 dark:text-slate-400">
                         <Trophy className="h-4 w-4 mr-2 shrink-0" />
-                        <span>{exam.totalPoints} Total Points</span>
+                        <span>{exam.totalMarks || exam.totalPoints || 0} Total Points</span>
                       </div>
                       
                       {status.isCompleted ? (
@@ -2467,349 +2608,6 @@ export default function StudentExams() {
     </PortalLayout>
   );
 }
-                              aria-label={`Score: ${normalizedResults.percentage}% (${normalizedResults.score} out of ${normalizedResults.maxScore})`}
-                              data-testid="progress-circular"
-                            >
-                              {/* Background circle */}
-                              <circle
-                                cx="100"
-                                cy="100"
-                                r={radius}
-                                stroke="currentColor"
-                                strokeWidth="10"
-                                fill="transparent"
-                                className="text-gray-200"
-                              />
-                              {/* Progress circle */}
-                              <circle
-                                cx="100"
-                                cy="100"
-                                r={radius}
-                                stroke="currentColor"
-                                strokeWidth="10"
-                                fill="transparent"
-                                strokeDasharray={circumference}
-                                strokeDashoffset={strokeDashoffset}
-                                className="text-green-500 transition-all duration-1000 ease-in-out"
-                                strokeLinecap="round"
-                              />
-                            </svg>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center">
-                              <div className="text-4xl font-bold text-gray-900" data-testid="text-percentage">
-                                {normalizedResults.percentage}%
-                              </div>
-                            </div>
-                          </div>
-                          <div className="mt-4 text-center">
-                            <h2 className="text-xl font-semibold text-gray-900">Objective Questions Score:</h2>
-                            <p className="text-lg text-gray-600" data-testid="text-score-fraction">
-                              {normalizedResults.score}/{normalizedResults.maxScore} ({normalizedResults.percentage}%)
-                            </p>
-                            <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
-                              <FileText className="w-3 h-3" />
-                              Multiple-choice and automatic scoring only
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Enhanced Quick Stats */}
-                        <div className="space-y-6">
-                          <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Detailed Results</h3>
-
-                          <div className="space-y-4">
-                            {/* Correct Answers */}
-                            <div className="flex items-center space-x-3" data-testid="stat-correct-answers">
-                              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                <CheckCircle className="w-5 h-5 text-green-600" aria-hidden="true" />
-                              </div>
-                              <div className="flex-1">
-                                <span className="font-semibold text-green-600">Correct Answers: </span>
-                                <span className="text-gray-900 text-lg font-bold" data-testid="value-correct-count">
-                                  {normalizedResults.correctAnswers}
-                                </span>
-                                {normalizedResults.autoScoredQuestions > 0 && (
-                                  <span className="text-xs text-gray-500 ml-2">
-                                    (out of {normalizedResults.autoScoredQuestions} auto-scored)
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Wrong Answers */}
-                            <div className="flex items-center space-x-3" data-testid="stat-wrong-answers">
-                              <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                                <XCircle className="w-5 h-5 text-red-600" aria-hidden="true" />
-                              </div>
-                              <div className="flex-1">
-                                <span className="font-semibold text-red-600">Incorrect Answers: </span>
-                                <span className="text-gray-900 text-lg font-bold" data-testid="value-wrong-count">
-                                  {normalizedResults.wrongAnswers}
-                                </span>
-                                {normalizedResults.autoScoredQuestions > 0 && (
-                                  <span className="text-xs text-gray-500 ml-2">
-                                    (out of {normalizedResults.autoScoredQuestions} auto-scored)
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Auto-Scored Progress */}
-                            {normalizedResults.autoScoredQuestions > 0 && (
-                              <div className="flex items-center space-x-3" data-testid="stat-auto-scored">
-                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                  <CheckCircle2 className="w-5 h-5 text-blue-600" aria-hidden="true" />
-                                </div>
-                                <div className="flex-1">
-                                  <span className="font-semibold text-blue-600">Auto-Scored: </span>
-                                  <span className="text-gray-900" data-testid="value-auto-scored-count">
-                                    {normalizedResults.autoScoredQuestions} / {normalizedResults.totalAnswered} questions
-                                  </span>
-                                  <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                                    <div 
-                                      className="bg-blue-600 h-2 rounded-full" 
-                                      style={{
-                                        width: `${normalizedResults.totalAnswered > 0 ? (normalizedResults.autoScoredQuestions / normalizedResults.totalAnswered) * 100 : 0}%`
-                                      }}
-                                    ></div>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Performance Indicator */}
-                            <div className="flex items-center space-x-3" data-testid="stat-performance">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                normalizedResults.percentage >= 80 ? 'bg-green-100' : 
-                                normalizedResults.percentage >= 60 ? 'bg-yellow-100' : 'bg-red-100'
-                              }`}>
-                                <Trophy className={`w-5 h-5 ${
-                                  normalizedResults.percentage >= 80 ? 'text-green-600' : 
-                                  normalizedResults.percentage >= 60 ? 'text-yellow-600' : 'text-red-600'
-                                }`} aria-hidden="true" />
-                              </div>
-                              <div>
-                                <span className="font-semibold text-gray-700">Performance: </span>
-                                <span className={`font-bold ${
-                                  normalizedResults.percentage >= 80 ? 'text-green-600' : 
-                                  normalizedResults.percentage >= 60 ? 'text-yellow-600' : 'text-red-600'
-                                }`} data-testid="value-performance">
-                                  {normalizedResults.percentage >= 80 ? 'Excellent!' : 
-                                   normalizedResults.percentage >= 60 ? 'Good!' : 'Needs Improvement'}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Time Taken */}
-                            {normalizedResults.timeTakenFormatted && (
-                              <div className="flex items-center space-x-3" data-testid="stat-time-taken">
-                                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                                  <Clock className="w-5 h-5 text-indigo-600" aria-hidden="true" />
-                                </div>
-                                <div>
-                                  <span className="font-semibold text-indigo-600">Time Taken: </span>
-                                  <span className="text-gray-900" data-testid="value-time-taken">
-                                    {normalizedResults.timeTakenFormatted}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Completion Time */}
-                            <div className="flex items-center space-x-3" data-testid="stat-completion-time">
-                              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                                <Calendar className="w-5 h-5 text-purple-600" aria-hidden="true" />
-                              </div>
-                              <div>
-                                <span className="font-semibold text-purple-600">Submitted: </span>
-                                <span className="text-gray-900" data-testid="value-completion-time">
-                                  {normalizedResults.submittedAt ? 
-                                    new Date(normalizedResults.submittedAt).toLocaleString() : 
-                                    'Just now'
-                                  }
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Submission Type */}
-                            {normalizedResults.submissionReason !== 'manual' && (
-                              <div className="flex items-center space-x-3" data-testid="stat-submission-type">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                  normalizedResults.submissionReason === 'timeout' ? 'bg-orange-100' : 'bg-red-100'
-                                }`}>
-                                  <AlertCircle className={`w-5 h-5 ${
-                                    normalizedResults.submissionReason === 'timeout' ? 'text-orange-600' : 'text-red-600'
-                                  }`} aria-hidden="true" />
-                                </div>
-                                <div>
-                                  <span className={`font-semibold ${
-                                    normalizedResults.submissionReason === 'timeout' ? 'text-orange-600' : 'text-red-600'
-                                  }`}>Submission Type: </span>
-                                  <span className="text-gray-900" data-testid="value-submission-type">
-                                    {normalizedResults.submissionReason === 'timeout' 
-                                      ? 'Auto-submitted (Time Expired)' 
-                                      : `Auto-submitted (${normalizedResults.violationCount} Tab Violations)`}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                    {/* Question-by-Question Breakdown */}
-                    {normalizedResults.hasDetailedResults && normalizedResults.questionDetails.length > 0 && (
-                      <div className="mt-8 p-6 bg-gray-50 border border-gray-200 rounded-lg" data-testid="section-question-breakdown">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                            <FileText className="w-5 h-5" />
-                            Question-by-Question Results
-                          </h3>
-                          <Badge variant="outline" className="text-xs">
-                            {normalizedResults.autoScoredQuestions} auto-scored
-                          </Badge>
-                        </div>
-
-                        <div className="grid gap-3 max-h-64 overflow-y-auto">
-                          {normalizedResults.questionDetails.map((questionResult: any, index: number) => (
-                            <div 
-                              key={index} 
-                              className={`p-3 rounded-lg border-l-4 ${
-                                questionResult.isCorrect === true 
-                                  ? 'bg-green-50 border-green-400' 
-                                  : questionResult.isCorrect === false
-                                  ? 'bg-red-50 border-red-400'
-                                  : 'bg-yellow-50 border-yellow-400'
-                              }`}
-                            >
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center space-x-2 mb-1">
-                                    <span className="text-sm font-medium text-gray-700">
-                                      Question {index + 1}
-                                    </span>
-                                    {questionResult.isCorrect === true && (
-                                      <Badge variant="default" className="bg-green-600 text-white text-xs">
-                                        ✓ Correct
-                                      </Badge>
-                                    )}
-                                    {questionResult.isCorrect === false && (
-                                      <Badge variant="destructive" className="text-xs">
-                                        ✗ Incorrect
-                                      </Badge>
-                                    )}
-                                    {questionResult.isCorrect === null && (
-                                      <Badge variant="secondary" className="text-xs">
-                                        ⏳ Manual Review
-                                      </Badge>
-                                    )}
-                                  </div>
-
-                                  <div className="text-xs text-gray-600 space-y-1">
-                                    <div>
-                                      <span className="font-medium">Points:</span> 
-                                      <span className="ml-1">
-                                        {questionResult.pointsEarned || 0} / {questionResult.maxPoints || questionResult.points || 1}
-                                      </span>
-                                    </div>
-
-                                    {questionResult.questionType && (
-                                      <div>
-                                        <span className="font-medium">Type:</span> 
-                                        <span className="ml-1 capitalize">
-                                          {questionResult.questionType.replace('_', ' ')}
-                                        </span>
-                                      </div>
-                                    )}
-
-                                    {questionResult.autoScored !== false && (
-                                      <div className="text-blue-600">
-                                        <span className="font-medium">✨ Auto-scored</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-
-                                <div className="ml-3">
-                                  {questionResult.isCorrect === true && (
-                                    <CheckCircle className="w-5 h-5 text-green-600" />
-                                  )}
-                                  {questionResult.isCorrect === false && (
-                                    <XCircle className="w-5 h-5 text-red-600" />
-                                  )}
-                                  {questionResult.isCorrect === null && (
-                                    <Clock className="w-5 h-5 text-yellow-600" />
-                                  )}
-                                </div>
-                              </div>
-
-                              {questionResult.feedback && (
-                                <div className="mt-2 p-2 bg-white rounded text-xs text-gray-700">
-                                  <span className="font-medium">Feedback:</span> {questionResult.feedback}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="mt-4 pt-3 border-t border-gray-200">
-                          <div className="flex justify-between text-sm text-gray-600">
-                            <span>
-                              <strong>{normalizedResults.correctAnswers}</strong> correct, 
-                              <strong className="ml-1">{normalizedResults.wrongAnswers}</strong> incorrect
-                            </span>
-                            <span>
-                              Auto-scored: <strong>{normalizedResults.autoScoredQuestions}</strong>/{normalizedResults.totalAnswered}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Pending Sections */}
-                    {examResults.pendingReview && examResults.pendingReview.count > 0 && (
-                      <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-lg" data-testid="section-pending-review">
-                        <div className="flex items-center space-x-2 mb-4">
-                          <Clock className="w-5 h-5 text-blue-600" aria-hidden="true" />
-                          <h3 className="text-lg font-semibold text-blue-900">🔍 Still Under Review</h3>
-                        </div>
-                        <div className="space-y-3 mb-4">
-                          <div className="flex items-start space-x-2 text-sm text-blue-800">
-                            <span className="font-medium">•</span>
-                            <span><strong>Essay Questions</strong> - Being graded by your teacher</span>
-                          </div>
-                          <div className="flex items-start space-x-2 text-sm text-blue-800">
-                            <span className="font-medium">•</span>
-                            <span><strong>Theory Responses</strong> - Manual evaluation in progress</span>
-                          </div>
-                          <div className="flex items-start space-x-2 text-sm text-blue-800">
-                            <span className="font-medium">•</span>
-                            <span><strong>Practical Assessments</strong> - Awaiting instructor feedback</span>
-                          </div>
-                          <div className="flex items-start space-x-2 text-sm text-blue-800">
-                            <span className="font-medium">•</span>
-                            <span><strong>Final Grade Calculation</strong> - Will include all components</span>
-                          </div>
-                        </div>
-                        <div className="bg-white p-3 rounded border-l-4 border-blue-400">
-                          <p className="text-sm text-gray-700">
-                            <strong>📅 Expected Release:</strong> Your complete report with final grades, 
-                            teacher comments, and detailed feedback will be available within 2-3 business days.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="mt-8 flex flex-wrap gap-3 justify-center">
-                      <Button 
-                        onClick={handleBackToExams}
-                        variant="default"
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                        data-testid="button-back-to-exams"
-                      >
-                        View All Exams
-                      </Button>
-
                       {examResults.pendingReview && examResults.pendingReview.count > 0 && (
                         <Button 
                           variant="outline"
