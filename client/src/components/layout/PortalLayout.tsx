@@ -468,7 +468,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
   };
 
   const isTakingExam = location.includes('/portal/student/exams/') && (location.endsWith('/take') || location.split('/').length > 4);
-  const isExamPage = userRole === 'student' && (location === '/portal/student/exams' ? false : isTakingExam);
+  // Hide layout for students when on ANY exam subpage
+  const isExamPage = userRole === 'student' && location.startsWith('/portal/student/exams');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex">

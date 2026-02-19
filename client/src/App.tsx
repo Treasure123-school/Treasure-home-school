@@ -55,6 +55,8 @@ const SuperAdminIntegrations = lazy(() => import("@/pages/portal/SuperAdminInteg
 const SuperAdminBackupRestore = lazy(() => import("@/pages/portal/SuperAdminBackupRestore"));
 const SuperAdminApiAccess = lazy(() => import("@/pages/portal/SuperAdminApiAccess"));
 
+import StudentExams from "@/pages/portal/StudentExams";
+
 function Router() {
   return (
     <Suspense fallback={<MinimalRouteFallback />}>
@@ -454,6 +456,16 @@ function Router() {
       </Route>
 
       {/* Student Portal - Persistent Layout Shell */}
+      <Route path="/portal/student/exams/:rest*">
+        <ProtectedRoute allowedRoleIds={[ROLE_IDS.STUDENT]}>
+          <StudentExams />
+        </ProtectedRoute>
+      </Route>
+      <Route path="/portal/student/exams">
+        <ProtectedRoute allowedRoleIds={[ROLE_IDS.STUDENT]}>
+          <StudentExams />
+        </ProtectedRoute>
+      </Route>
       <Route path="/portal/student/*">
         <ProtectedRoute allowedRoleIds={[ROLE_IDS.STUDENT]}>
           <StudentPortalShell />

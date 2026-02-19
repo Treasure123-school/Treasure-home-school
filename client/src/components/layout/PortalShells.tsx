@@ -92,7 +92,6 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
         {role === 'student' && (
           <Switch>
             <Route path="/portal/student" component={StudentDashboard} />
-            <Route path="/portal/student/exams" component={StudentExams} />
             <Route path="/portal/student/exam-results" component={StudentExamResults} />
             <Route path="/portal/student/grades" component={StudentGrades} />
             <Route path="/portal/student/announcements" component={StudentAnnouncements} />
