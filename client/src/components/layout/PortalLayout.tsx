@@ -469,12 +469,12 @@ export default function PortalLayout({ children, userRole, userName, userInitial
 
   const isTakingExam = location.includes('/portal/student/exams/') && location.endsWith('/take');
   const isExamSession = location.includes('/portal/student/exams/') && (location.split('/').length > 4 || location.includes('/exam-sessions'));
-  const isExamPage = isExamSession || (location === '/portal/student/exams');
+  const isExamPage = isExamSession || isTakingExam;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex">
       {/* Desktop Sidebar - Modern Design */}
-      {!isMobile && !isExamPage && !isTakingExam && !isExamSession && (
+      {!isMobile && !isExamPage && (
         <div className={`${sidebarCollapsed ? 'w-20' : 'w-64'} bg-white dark:bg-gray-900 shadow-xl border-r border-gray-200 dark:border-gray-700 h-screen sticky top-0 transition-all duration-300 ease-in-out`}>
           <SidebarContent collapsed={sidebarCollapsed} />
           <div className={`absolute bottom-6 ${sidebarCollapsed ? 'left-1/2 -translate-x-1/2' : 'right-4'}`}>
@@ -495,7 +495,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header - Modern Responsive Design - Fixed at Top */}
-        {!isExamPage && !isTakingExam && !isExamSession && (
+        {!isExamPage && (
           <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-md h-[100px] flex items-center px-4 sm:px-5 md:px-6">
             <div className="flex justify-between items-center gap-2 sm:gap-3 w-full max-w-7xl mx-auto">
               <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4 flex-1 min-w-0">
@@ -577,8 +577,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
         )}
 
         {/* Page Content - Modern Responsive Layout */}
-        <main className={`flex-1 overflow-x-hidden ${isExamPage ? 'p-0' : 'p-3 sm:p-4 md:p-6 lg:p-8'}`}>
-          <div className={`${isExamPage ? 'max-w-none h-screen' : 'max-w-7xl mx-auto'}`}>
+        <main className={`flex-1 overflow-x-hidden ${isExamPage ? 'p-0 h-screen' : 'p-3 sm:p-4 md:p-6 lg:p-8'}`}>
+          <div className={`${isExamPage ? 'max-w-none h-full' : 'max-w-7xl mx-auto'}`}>
             {children}
           </div>
         </main>
