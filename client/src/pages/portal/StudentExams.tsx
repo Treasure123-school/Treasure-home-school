@@ -16,6 +16,7 @@ import { Clock, BookOpen, Trophy, Play, Eye, CheckCircle, XCircle, Timer, Save, 
 import type { Exam, ExamSession, ExamQuestion, QuestionOption, StudentAnswer } from '@shared/schema';
 import schoolLogo from '@assets/1000025432-removebg-preview (1)_1757796555126.png';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
+import PortalLayout from '@/components/layout/PortalLayout';
 import { ExamHeader } from '@/components/ExamHeader';
 
 // ENHANCED EXAM SECURITY CONSTANTS
@@ -2369,169 +2370,103 @@ export default function StudentExams() {
       </div>
     );
   }
-  // Render exam list and results with PortalLayout wrapper
-  return isScoring ? (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-          {/* Modern Sticky Header - Responsive */}
-          <div className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
-            <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4">
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <img 
-                  src={schoolLogo} 
-                  alt="Treasure-Home School" 
-                  className="h-8 w-8 sm:h-9 sm:w-9 object-contain"
-                />
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">Treasure-Home School</h2>
-                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Auto-Scoring Exam</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Scoring Content */}
-          <div className="flex items-center justify-center min-h-[500px]">
-            <div className="text-center space-y-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-12 border border-blue-200 dark:border-blue-800">
-              <Loader className="w-16 h-16 animate-spin mx-auto text-blue-600" />
-              <div>
-                <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Scoring Your Exam</h2>
-                <p className="text-gray-600 dark:text-gray-300 mt-2">Please wait while we calculate your results...</p>
-              </div>
-            </div>
-          </div>
+  // Render main portal view
+  return (
+    <PortalLayout
+      userRole="student"
+      userName={studentName}
+      userInitials={studentInitials}
+    >
+      <div className="p-6">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">My Exams & Assessments</h1>
+          <p className="text-slate-600 dark:text-slate-400">View your scheduled exams, take active tests, and check your performance.</p>
         </div>
-      ) : /* Results Screen */
-      showResults ? (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-          {/* Modern Sticky Header - Responsive */}
-          <div className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
-            <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4">
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <img 
-                  src={schoolLogo} 
-                  alt="Treasure-Home School" 
-                  className="h-8 w-8 sm:h-9 sm:w-9 object-contain"
-                />
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">Treasure-Home School</h2>
-                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Exam Results</p>
+
+        {/* Exams List */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {exams.length === 0 ? (
+            <Card className="col-span-full py-12">
+              <CardContent className="flex flex-col items-center justify-center text-center">
+                <div className="h-16 w-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4">
+                  <FileText className="h-8 w-8 text-slate-400" />
                 </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Results Content - Responsive */}
-          <div className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
-            {/* Professional Success Message - Responsive with Larger Text */}
-            <div className="text-center mb-6 sm:mb-8 px-2" data-testid="banner-success">
-              <div className="flex justify-center mb-4">
-                <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                  <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
-                </div>
-              </div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
-                Exam Submitted Successfully
-              </h1>
-              <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400">
-                Congratulations on completing your exam! Your answers have been recorded and scored. Review your results below.
-              </p>
-            </div>
-
-            {examResults && (() => {
-              // Enhanced data structure to handle all response formats and show detailed feedback
-              const normalizedResults = {
-                score: examResults.totalScore || examResults.score || 0,
-                maxScore: examResults.maxScore || 0,
-                percentage: 0,
-                pendingCount: examResults.pendingReview?.count || 0,
-                correctAnswers: 0,
-                wrongAnswers: 0,
-                totalAnswered: 0,
-                autoScoredQuestions: 0,
-                submittedAt: examResults.submittedAt,
-                timeTakenFormatted: examResults.timeTakenFormatted || null,
-                timeTakenSeconds: examResults.timeTakenSeconds || 0,
-                submissionReason: examResults.submissionReason || 'manual',
-                violationCount: examResults.violationCount || 0,
-                breakdown: examResults.breakdown || null,
-                questionDetails: examResults.questionDetails || [],
-                hasDetailedResults: false
-              };
-
-              // Enhanced result parsing for better feedback - handle multiple response formats
-              // Priority: breakdown > questionDetails > immediateResults > fallback calculation
-              
-              if (examResults.breakdown) {
-                // Primary source: Use breakdown data from server
-                // Trust backend values even if they are 0 (use 'in' operator to check key existence)
-                const breakdown = examResults.breakdown;
-                normalizedResults.correctAnswers = 'correct' in breakdown ? breakdown.correct : 
-                                                   ('correctAnswers' in breakdown ? breakdown.correctAnswers : 0);
-                normalizedResults.wrongAnswers = 'incorrect' in breakdown ? breakdown.incorrect : 
-                                                  ('incorrectAnswers' in breakdown ? breakdown.incorrectAnswers : 0);
-                normalizedResults.totalAnswered = 'totalQuestions' in breakdown ? breakdown.totalQuestions : 
-                                                   ('answered' in breakdown ? breakdown.answered : 0);
-                normalizedResults.autoScoredQuestions = 'autoScored' in breakdown ? breakdown.autoScored : 
-                                                         ('autoScoredQuestions' in breakdown ? breakdown.autoScoredQuestions : 0);
-                normalizedResults.hasDetailedResults = true;
-                
-                // Also populate questionDetails from the response if available
-                if (examResults.questionDetails && examResults.questionDetails.length > 0) {
-                  normalizedResults.questionDetails = examResults.questionDetails;
-                }
-              } else if (examResults.questionDetails && examResults.questionDetails.length > 0) {
-                // Secondary source: Parse from questionDetails array in response
-                const questions = examResults.questionDetails;
-                normalizedResults.correctAnswers = questions.filter((q: any) => q.isCorrect === true).length;
-                normalizedResults.wrongAnswers = questions.filter((q: any) => q.isCorrect === false).length;
-                normalizedResults.totalAnswered = questions.length;
-                normalizedResults.autoScoredQuestions = questions.filter((q: any) => q.pointsAwarded > 0 || q.isCorrect === true).length;
-                normalizedResults.hasDetailedResults = true;
-              } else if (examResults.immediateResults?.questions) {
-                // Tertiary source: Parse from immediateResults.questions array
-                const questions = examResults.immediateResults.questions;
-                normalizedResults.correctAnswers = questions.filter((q: any) => q.isCorrect === true).length;
-                normalizedResults.wrongAnswers = questions.filter((q: any) => q.isCorrect === false).length;
-                normalizedResults.totalAnswered = questions.length;
-                normalizedResults.autoScoredQuestions = questions.filter((q: any) => q.autoScored !== false).length;
-                normalizedResults.hasDetailedResults = true;
-                normalizedResults.questionDetails = questions;
-              } else if (examQuestions.length > 0) {
-                // Fallback: estimate breakdown from score and question count
-                const mcQuestions = examQuestions.filter(q => q.questionType === 'multiple_choice' || q.questionType === 'true_false');
-                normalizedResults.autoScoredQuestions = mcQuestions.length;
-                normalizedResults.totalAnswered = examQuestions.length;
-                // Calculate estimated correct based on score percentage
-                if (normalizedResults.maxScore > 0 && mcQuestions.length > 0) {
-                  const estimatedCorrect = Math.round((normalizedResults.score / normalizedResults.maxScore) * mcQuestions.length);
-                  normalizedResults.correctAnswers = Math.min(mcQuestions.length, Math.max(0, estimatedCorrect));
-                  normalizedResults.wrongAnswers = Math.max(0, mcQuestions.length - normalizedResults.correctAnswers);
-                }
-              }
-
-              // Safe percentage calculation with guards
-              if (normalizedResults.maxScore > 0) {
-                normalizedResults.percentage = Math.round((normalizedResults.score / normalizedResults.maxScore) * 100);
-                normalizedResults.percentage = Math.max(0, Math.min(100, normalizedResults.percentage)); // Clamp to [0,100]
-              }
-              // SVG progress calculations
-              const radius = 85;
-              const circumference = 2 * Math.PI * radius;
-              const strokeDashoffset = circumference * (1 - normalizedResults.percentage / 100);
-
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">No Exams Available</h3>
+                <p className="text-slate-500 max-w-xs">There are currently no exams scheduled for your class. Check back later!</p>
+              </CardContent>
+            </Card>
+          ) : (
+            exams.map((exam) => {
+              const status = getExamStatus(exam.id);
               return (
-                <>
-                  {/* Main Results Card */}
-                  <Card className="bg-white dark:bg-gray-800 shadow-lg border-blue-200 dark:border-blue-800" data-testid="card-exam-results">
-                    <CardContent className="p-8">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Circular Progress */}
-                        <div className="flex flex-col items-center justify-center">
-                          <div className="relative w-48 h-48">
-                            <svg 
-                              className="w-48 h-48 transform -rotate-90" 
-                              viewBox="0 0 200 200"
-                              role="img"
+                <Card key={exam.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start gap-4">
+                      <div className="h-10 w-10 bg-blue-50 dark:bg-blue-900/20 rounded-lg flex items-center justify-center shrink-0">
+                        <BookOpen className="h-5 w-5 text-blue-600" />
+                      </div>
+                      {status.isCompleted ? (
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Completed</Badge>
+                      ) : status.isInProgress ? (
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 animate-pulse">In Progress</Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Available</Badge>
+                      )
+                      }
+                    </div>
+                    <CardTitle className="mt-4 text-lg line-clamp-1">{exam.name}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex items-center text-sm text-slate-600 dark:text-slate-400">
+                        <Clock className="h-4 w-4 mr-2 shrink-0" />
+                        <span>{exam.timeLimit} Minutes</span>
+                      </div>
+                      <div className="flex items-center text-sm text-slate-600 dark:text-slate-400">
+                        <Trophy className="h-4 w-4 mr-2 shrink-0" />
+                        <span>{exam.totalPoints} Total Points</span>
+                      </div>
+                      
+                      {status.isCompleted ? (
+                        <div className="pt-4 flex items-center justify-between">
+                          <div className="text-sm">
+                            <span className="text-slate-500">Score:</span>
+                            <span className="ml-2 font-bold text-blue-600">{status.score}/{status.maxScore}</span>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedExam(exam);
+                              setShowResults(true);
+                            }}
+                          >
+                            <Eye className="h-4 w-4 mr-2" />
+                            View Review
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="pt-4">
+                          <Button 
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                            onClick={() => handleStartExam(exam)}
+                          >
+                            <Play className="h-4 w-4 mr-2" />
+                            {status.isInProgress ? 'Resume Exam' : 'Start Exam'}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </PortalLayout>
+  );
+}
                               aria-label={`Score: ${normalizedResults.percentage}% (${normalizedResults.score} out of ${normalizedResults.maxScore})`}
                               data-testid="progress-circular"
                             >
