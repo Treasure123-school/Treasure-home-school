@@ -2502,13 +2502,13 @@ export default function StudentExams() {
   // Main rendering of the student exams portal
   if (!selectedExam && !activeSession) {
     return (
-      <div className="p-6 space-y-6 max-w-5xl mx-auto">
-        <div className="flex flex-col space-y-2">
+      <div className="p-2 sm:p-4 space-y-4 max-w-5xl mx-auto">
+        <div className="flex flex-col space-y-1">
           <div className="flex items-center gap-2 text-black dark:text-white">
-            <BookOpen className="h-6 w-6" />
-            <h1 className="text-2xl font-bold tracking-tight">My Exams</h1>
+            <BookOpen className="h-5 w-5" />
+            <h1 className="text-xl font-bold tracking-tight">My Exams</h1>
           </div>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground text-xs">
             View and take your available examinations
           </p>
         </div>
