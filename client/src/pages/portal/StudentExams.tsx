@@ -2504,11 +2504,11 @@ export default function StudentExams() {
     return (
       <div className="p-6 space-y-6 max-w-5xl mx-auto">
         <div className="flex flex-col space-y-2">
-          <div className="flex items-center gap-2 text-primary">
+          <div className="flex items-center gap-2 text-black dark:text-white">
             <BookOpen className="h-6 w-6" />
-            <h1 className="text-3xl font-bold tracking-tight">My Exams</h1>
+            <h1 className="text-2xl font-bold tracking-tight">My Exams</h1>
           </div>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground text-sm">
             View and take your available examinations
           </p>
         </div>
@@ -2542,39 +2542,31 @@ export default function StudentExams() {
               return (
                 <Card 
                   key={exam.id} 
-                  className="group overflow-hidden border-none shadow-md hover:shadow-lg transition-all duration-300 bg-white dark:bg-card relative"
+                  className="group overflow-hidden border border-slate-200 dark:border-slate-800 shadow-none hover:border-green-400/50 transition-all duration-300 bg-white dark:bg-card relative rounded-xl"
                   data-testid={`card-exam-${exam.id}`}
                 >
-                  <div className="absolute top-4 right-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                    <GraduationCap className="h-16 w-16 text-primary" />
+                  <div className="absolute top-4 right-4 text-green-100 dark:text-green-900/20">
+                    <GraduationCap className="h-8 w-8" />
                   </div>
 
                   <CardContent className="p-6">
                     <div className="flex flex-col space-y-4">
                       {/* Status Badge */}
                       <div className="flex items-center justify-between">
-                        <Badge 
-                          className={`${
-                            status.isCompleted 
-                              ? "bg-green-500 hover:bg-green-600" 
-                              : "bg-green-500 hover:bg-green-600"
-                          } text-white px-3 py-1 rounded-full text-xs font-medium border-none`}
-                        >
-                          <div className="flex items-center gap-1.5">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            {status.isCompleted ? "Done" : "Available"}
-                          </div>
-                        </Badge>
+                        <div className="bg-green-600 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          {status.isCompleted ? "Done" : "Available"}
+                        </div>
                       </div>
 
                       {/* Exam Title & Date */}
                       <div className="space-y-1">
-                        <h3 className="text-xl font-bold text-foreground group-hover:text-primary transition-colors uppercase">
+                        <h3 className="text-lg font-bold text-black dark:text-white">
                           {exam.name}
                         </h3>
-                        <div className="flex items-center gap-2 text-muted-foreground">
+                        <div className="flex items-center gap-2 text-slate-500">
                           <Calendar className="h-4 w-4" />
-                          <span className="text-sm font-medium">
+                          <span className="text-sm">
                             {new Date(exam.date).toLocaleDateString('en-US', {
                               weekday: 'short',
                               year: 'numeric',
@@ -2586,24 +2578,24 @@ export default function StudentExams() {
                       </div>
 
                       {/* Details Grid */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-blue-50/50 dark:bg-blue-900/10 rounded-xl p-3 flex items-center gap-3">
-                          <div className="bg-blue-100 dark:bg-blue-800/20 p-2 rounded-lg">
+                      <div className="grid grid-cols-2 gap-4 bg-slate-50/80 dark:bg-slate-900/30 rounded-xl p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-blue-100/50 dark:bg-blue-900/30 p-2 rounded-lg">
                             <Trophy className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                           </div>
                           <div>
-                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Total Marks</p>
-                            <p className="text-sm font-bold text-foreground">{exam.totalMarks}</p>
+                            <p className="text-xs text-slate-500 font-medium">Total Marks</p>
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">{exam.totalMarks}</p>
                           </div>
                         </div>
 
-                        <div className="bg-orange-50/50 dark:bg-orange-900/10 rounded-xl p-3 flex items-center gap-3">
-                          <div className="bg-orange-100 dark:bg-orange-800/20 p-2 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-orange-100/50 dark:bg-orange-900/30 p-2 rounded-lg">
                             <Clock className="h-5 w-5 text-orange-600 dark:text-orange-400" />
                           </div>
                           <div>
-                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold">Duration</p>
-                            <p className="text-sm font-bold text-foreground">{exam.timeLimit} min</p>
+                            <p className="text-xs text-slate-500 font-medium">Duration</p>
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">{exam.timeLimit} min</p>
                           </div>
                         </div>
                       </div>
@@ -2611,11 +2603,11 @@ export default function StudentExams() {
                       {/* Action Button */}
                       <Button 
                         onClick={() => status.isCompleted ? setLocation('/portal/student/exam-results') : handleStartExam(exam)}
-                        className="w-full h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-sm hover:shadow-md transition-all group/btn"
+                        className="w-full h-11 bg-[#3b82f6] hover:bg-blue-700 text-white rounded-lg font-medium shadow-none transition-all group/btn text-sm"
                         data-testid={`button-action-${exam.id}`}
                       >
                         <div className="flex items-center justify-center gap-2">
-                          <Eye className="h-5 w-5 group-hover/btn:scale-110 transition-transform" />
+                          <Eye className="h-4 w-4" />
                           {status.isCompleted ? "View Score" : "Start Exam"}
                         </div>
                       </Button>
