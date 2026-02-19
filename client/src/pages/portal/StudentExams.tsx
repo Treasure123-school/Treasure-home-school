@@ -289,10 +289,28 @@ export default function StudentExams() {
   // Find school class name for header
   const studentClassName = useMemo(() => {
     const classId = (user as any)?.classId;
-    if (!classId) return "Loading...";
+    if (!classId) return "";
     const studentClass = classes.find((c: any) => c.id === classId);
-    return studentClass?.name || "Student";
+    return studentClass?.name || "";
   }, [user, classes]);
+
+  // Find subject name for header
+  const subjectName = useMemo(() => {
+    const exam = exams.find(e => e.id === activeSession?.examId);
+    if (!exam) return "";
+    const subject = subjects.find(s => s.id === exam.subjectId);
+    return subject?.name || exam.name || "";
+  }, [exams, activeSession?.examId, subjects]);
+
+  const studentName = useMemo(() => {
+    if (!user) return "";
+    return `${user.firstName} ${user.lastName}`;
+  }, [user]);
+
+  const studentInitials = useMemo(() => {
+    if (!user) return "";
+    return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase();
+  }, [user]);
 
   // Fetch question options for current question
   const { data: questionOptionsRaw = [] } = useQuery<QuestionOption[]>({
