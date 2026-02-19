@@ -467,9 +467,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
     );
   };
 
-  const isTakingExam = location.includes('/portal/student/exams/') && location.endsWith('/take');
-  const isExamSession = location.includes('/portal/student/exams/') && (location.split('/').length > 4 || location.includes('/exam-sessions'));
-  const isExamPage = isExamSession || isTakingExam;
+  const isTakingExam = location.includes('/portal/student/exams/') && (location.endsWith('/take') || location.split('/').length > 4);
+  const isExamPage = userRole === 'student' && (location === '/portal/student/exams' ? false : isTakingExam);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex">
@@ -577,8 +576,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
         )}
 
         {/* Page Content - Modern Responsive Layout */}
-        <main className={`flex-1 overflow-x-hidden ${isExamPage ? 'p-0 h-screen' : 'p-3 sm:p-4 md:p-6 lg:p-8'}`}>
-          <div className={`${isExamPage ? 'max-w-none h-full' : 'max-w-7xl mx-auto'}`}>
+        <main className={`flex-1 overflow-x-hidden ${isExamPage ? 'p-0 h-screen overflow-hidden' : 'p-3 sm:p-4 md:p-6 lg:p-8'}`}>
+          <div className={`${isExamPage ? 'max-w-none h-full w-full' : 'max-w-7xl mx-auto'}`}>
             {children}
           </div>
         </main>
