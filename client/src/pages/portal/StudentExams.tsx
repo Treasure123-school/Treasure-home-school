@@ -2070,19 +2070,19 @@ export default function StudentExams() {
 
   // Render active exam without PortalLayout wrapper
   if (activeSession && examQuestions.length > 0) {
-    const studentInitials = user ? `${(user as any).firstName?.[0] || ''}${(user as any).lastName?.[0] || ''}` || (user as any).username?.[0]?.toUpperCase() || 'ST' : 'ST';
-    const studentName = user ? `${(user as any).firstName} ${(user as any).lastName}` : ((user as any)?.username || 'Student');
-    const subjectName = subjects.find(s => s.id === selectedExam?.subjectId)?.name || 'Exam';
+    const studentInitials = user?.fullName ? (user.fullName as string).split(' ').map((n: string) => n[0]).join('').toUpperCase() : (user?.username?.substring(0, 2).toUpperCase() || "ST");
+    const studentNameDisplay = (user as any)?.fullName || user?.username || "Student";
+    const subjectNameDisplay = subjects.find(s => s.id === selectedExam?.subjectId)?.name || 'Exam';
 
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-[120px] sm:pt-[140px]">
         <ExamHeader
-          subjectName={subjectName}
+          subjectName={subjectNameDisplay}
           className={studentClassName === "Loading..." ? "Student" : studentClassName}
           currentQuestion={currentQuestionIndex + 1}
           totalQuestions={examQuestions.length}
           timeRemaining={timeRemaining}
-          studentName={studentName}
+          studentName={studentNameDisplay}
           studentInitials={studentInitials}
           profileImageUrl={(user as any)?.profileImageUrl}
         />
