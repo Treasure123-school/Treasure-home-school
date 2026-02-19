@@ -1722,6 +1722,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const maxScore = result.maxScore ?? exam.totalMarks ?? 100;
       const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
       
+      // Get all student answers for this session
+      const sessions = await storage.getExamSessionsByStudent(studentId);
+      const matchingSession = sessions.find((s: any) => s.examId === examId && s.status === 'completed');
+      
+      let questionDetails: any[] = [];
+      if (matchingSession) {
+        const answers = await storage.getStudentAnswers(matchingSession.id);
+        const questions = await storage.getExamQuestions(examId);
+        
+        questionDetails = await Promise.all(questions.map(async (q: any) => {
+          const studentAns = answers.find((a: any) => a.questionId === q.id);
+          const options = q.questionType === 'multiple_choice' ? await storage.getQuestionOptions(q.id) : [];
+          const correctOption = options.find((o: any) => o.isCorrect);
+          const studentOption = options.find((o: any) => o.id === studentAns?.selectedOptionId);
+
+          return {
+            questionId: q.id,
+            questionText: q.questionText,
+            isCorrect: studentAns?.isCorrect ?? null,
+            pointsAwarded: studentAns?.pointsEarned ?? 0,
+            maxPoints: q.points,
+            studentAnswer: q.questionType === 'multiple_choice' 
+              ? (studentOption?.optionText || "No answer provided")
+              : (studentAns?.textAnswer || "No answer provided"),
+            correctAnswer: q.questionType === 'multiple_choice'
+              ? (correctOption?.optionText || "Not available")
+              : (q.expectedAnswers ? JSON.parse(q.expectedAnswers).join(", ") : "Not available")
+          };
+        }));
+      }
+
       // Return the EXACT result for this specific exam - no mixing with other exams
       const enrichedResult = {
         id: result.id,
@@ -1739,6 +1770,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         examTitle: exam.name,
         subjectName: subjectName,
         className: className,
+        questionDetails: questionDetails,
         // Include exam details for verification
         exam: {
           id: exam.id,
