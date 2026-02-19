@@ -64,11 +64,11 @@ export function ExamHeader({
               <div className="grid grid-cols-1 gap-x-4 gap-y-0.5 text-xs sm:text-sm font-medium overflow-hidden">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-slate-400 dark:text-slate-500 shrink-0">Subject:</span>
-                  <span className="text-slate-900 dark:text-slate-100 font-bold truncate block">{subjectName}</span>
+                  <span className="text-slate-900 dark:text-slate-100 font-bold truncate block">{subjectName || "—"}</span>
                 </div>
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-slate-400 dark:text-slate-500 shrink-0">Student:</span>
-                  <span className="text-slate-900 dark:text-slate-100 font-bold truncate block">{studentName}</span>
+                  <span className="text-slate-900 dark:text-slate-100 font-bold truncate block">{studentName || "—"}</span>
                 </div>
               </div>
             </div>
