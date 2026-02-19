@@ -544,12 +544,38 @@ export default function StudentExamResults() {
                           )}
                         </div>
                         {question.questionText && (
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                          <p className="text-sm text-gray-700 dark:text-gray-300 font-medium mb-3">
                             {question.questionText}
                           </p>
                         )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                          <div className={`p-2 rounded border ${
+                            question.isCorrect 
+                              ? "bg-green-100/50 border-green-200 dark:bg-green-900/10 dark:border-green-800" 
+                              : "bg-red-100/50 border-red-200 dark:bg-red-900/10 dark:border-red-800"
+                          }`}>
+                            <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-1 block">Your Answer</span>
+                            <p className={`text-sm ${question.isCorrect ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"} font-semibold`}>
+                              {question.studentAnswer || "No answer provided"}
+                            </p>
+                          </div>
+                          
+                          {!question.isCorrect && (
+                            <div className="p-2 rounded border bg-blue-50/50 border-blue-100 dark:bg-blue-900/10 dark:border-blue-800">
+                              <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-1 block">Correct Answer</span>
+                              <p className="text-sm text-blue-700 dark:text-blue-400 font-semibold">
+                                {question.correctAnswer || "Not available"}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
                         <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <span>Points: {question.pointsAwarded}/{question.maxPoints}</span>
+                          <span className="flex items-center gap-1">
+                            <Target className="w-3 h-3" />
+                            Points: {question.pointsAwarded}/{question.maxPoints}
+                          </span>
                         </div>
                       </div>
                     </div>
