@@ -2505,8 +2505,8 @@ export default function StudentExams() {
       <div className="p-2 sm:p-4 space-y-4 max-w-5xl mx-auto">
         <div className="flex flex-col space-y-1">
           <div className="flex items-center gap-2 text-black dark:text-white">
-            <BookOpen className="h-5 w-5" />
-            <h1 className="text-xl font-bold tracking-tight">My Exams</h1>
+            <BookOpen className="h-6 w-6 text-blue-600 dark:text-blue-500" />
+            <h1 className="text-2xl font-bold tracking-tight">My Exams</h1>
           </div>
           <p className="text-muted-foreground text-xs">
             View and take your available examinations
@@ -2603,7 +2603,7 @@ export default function StudentExams() {
                       {/* Action Button */}
                       <Button 
                         onClick={() => status.isCompleted ? setLocation('/portal/student/exam-results') : handleStartExam(exam)}
-                        className="w-full h-11 bg-[#3b82f6] hover:bg-blue-700 text-white rounded-lg font-medium shadow-none transition-all group/btn text-sm"
+                        className="w-full h-9 bg-[#3b82f6] hover:bg-blue-700 text-white rounded-md font-medium shadow-none transition-all group/btn text-sm"
                         data-testid={`button-action-${exam.id}`}
                       >
                         <div className="flex items-center justify-center gap-2">
