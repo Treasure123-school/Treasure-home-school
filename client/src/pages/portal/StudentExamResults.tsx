@@ -312,51 +312,9 @@ export default function StudentExamResults() {
           <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Exam Results</h1>
           <p className="text-sm text-muted-foreground">View your exam scores and performance</p>
         </div>
-        <Button 
-          variant="outline" 
-          onClick={() => setLocation('/portal/student/exams')}
-          data-testid="button-back-to-exams"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Exams
-        </Button>
       </div>
 
       <div className="space-y-6">
-        {allResults.length > 1 && (
-          <Card className="bg-white dark:bg-gray-800">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-blue-600" />
-                Your Exam History
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {allResults.map((r, index) => {
-                  const resultPercentage = r.percentage ?? (r.maxScore > 0 ? Math.round((r.score / r.maxScore) * 100) : 0);
-                  const isSelected = selectedResultId === r.id || (!selectedResultId && index === 0);
-                  return (
-                    <Button
-                      key={r.id || r.sessionId || index}
-                      variant={isSelected ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => r.id && setSelectedResultId(r.id)}
-                      className="flex items-center gap-2"
-                      data-testid={`button-result-${r.id || index}`}
-                    >
-                      <span>{r.examTitle || r.exam?.title || `Exam #${r.examId || index + 1}`}</span>
-                      <Badge variant={resultPercentage >= 60 ? "default" : "destructive"} className="text-xs">
-                        {resultPercentage}%
-                      </Badge>
-                    </Button>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         <div className="text-center mb-6" data-testid="banner-result-success">
           <div className="flex justify-center mb-4">
             <div className={`w-20 h-20 ${performance.bgColor} rounded-full flex items-center justify-center`}>

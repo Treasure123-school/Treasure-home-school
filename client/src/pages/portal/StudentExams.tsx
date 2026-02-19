@@ -289,10 +289,28 @@ export default function StudentExams() {
   // Find school class name for header
   const studentClassName = useMemo(() => {
     const classId = (user as any)?.classId;
-    if (!classId) return "Loading...";
+    if (!classId) return "";
     const studentClass = classes.find((c: any) => c.id === classId);
-    return studentClass?.name || "Student";
+    return studentClass?.name || "";
   }, [user, classes]);
+
+  // Find subject name for header
+  const subjectName = useMemo(() => {
+    const exam = exams.find(e => e.id === activeSession?.examId);
+    if (!exam) return "";
+    const subject = subjects.find(s => s.id === exam.subjectId);
+    return subject?.name || exam.name || "";
+  }, [exams, activeSession?.examId, subjects]);
+
+  const studentName = useMemo(() => {
+    if (!user) return "";
+    return `${user.firstName} ${user.lastName}`;
+  }, [user]);
+
+  const studentInitials = useMemo(() => {
+    if (!user) return "";
+    return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase();
+  }, [user]);
 
   // Fetch question options for current question
   const { data: questionOptionsRaw = [] } = useQuery<QuestionOption[]>({
@@ -2070,21 +2088,17 @@ export default function StudentExams() {
 
   // Render active exam without PortalLayout wrapper
   if (activeSession && examQuestions.length > 0) {
-    const studentInitials = user ? `${(user as any).firstName?.[0] || ''}${(user as any).lastName?.[0] || ''}` || (user as any).username?.[0]?.toUpperCase() || 'ST' : 'ST';
-    const studentName = user ? `${(user as any).firstName} ${(user as any).lastName}` : ((user as any)?.username || 'Student');
-    const subjectName = subjects.find(s => s.id === selectedExam?.subjectId)?.name || 'Exam';
-
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-[120px] sm:pt-[140px]">
         <ExamHeader
           subjectName={subjectName}
-          className={studentClassName === "Loading..." ? "Student" : studentClassName}
+          className={studentClassName}
           currentQuestion={currentQuestionIndex + 1}
           totalQuestions={examQuestions.length}
           timeRemaining={timeRemaining}
           studentName={studentName}
           studentInitials={studentInitials}
-          profileImageUrl={(user as any)?.profileImageUrl}
+          profileImageUrl={user?.profileImageUrl}
         />
 
         <div className="container mx-auto px-4 pb-12 max-w-4xl">
@@ -2355,738 +2369,256 @@ export default function StudentExams() {
       </div>
     );
   }
-  // Render exam list and results with PortalLayout wrapper
-  return isScoring ? (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-          {/* Modern Sticky Header - Responsive */}
-          <div className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
-            <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4">
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <img 
-                  src={schoolLogo} 
-                  alt="Treasure-Home School" 
-                  className="h-8 w-8 sm:h-9 sm:w-9 object-contain"
-                />
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">Treasure-Home School</h2>
-                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Auto-Scoring Exam</p>
-                </div>
+  // Render main portal view
+  if (showResults && examResults) {
+    const normalizedResults = {
+      score: examResults.totalScore || examResults.score || 0,
+      maxScore: examResults.maxScore || 0,
+      percentage: 0,
+      pendingCount: examResults.pendingReview?.count || 0,
+      correctAnswers: 0,
+      wrongAnswers: 0,
+      totalAnswered: 0,
+      autoScoredQuestions: 0,
+      submittedAt: examResults.submittedAt,
+      timeTakenFormatted: examResults.timeTakenFormatted || null,
+      timeTakenSeconds: examResults.timeTakenSeconds || 0,
+      submissionReason: examResults.submissionReason || 'manual',
+      violationCount: examResults.violationCount || 0,
+      breakdown: examResults.breakdown || null,
+      questionDetails: examResults.questionDetails || [],
+      hasDetailedResults: false
+    };
+
+    if (examResults.breakdown) {
+      const breakdown = examResults.breakdown;
+      normalizedResults.correctAnswers = 'correct' in breakdown ? breakdown.correct : 
+                                         ('correctAnswers' in breakdown ? breakdown.correctAnswers : 0);
+      normalizedResults.wrongAnswers = 'incorrect' in breakdown ? breakdown.incorrect : 
+                                        ('incorrectAnswers' in breakdown ? breakdown.incorrectAnswers : 0);
+      normalizedResults.totalAnswered = 'totalQuestions' in breakdown ? breakdown.totalQuestions : 
+                                         ('answered' in breakdown ? breakdown.answered : 0);
+      normalizedResults.autoScoredQuestions = 'autoScored' in breakdown ? breakdown.autoScored : 
+                                               ('autoScoredQuestions' in breakdown ? breakdown.autoScoredQuestions : 0);
+      normalizedResults.hasDetailedResults = true;
+      if (examResults.questionDetails && examResults.questionDetails.length > 0) {
+        normalizedResults.questionDetails = examResults.questionDetails;
+      }
+    } else if (examResults.questionDetails && examResults.questionDetails.length > 0) {
+      const questions = examResults.questionDetails;
+      normalizedResults.correctAnswers = questions.filter((q: any) => q.isCorrect === true).length;
+      normalizedResults.wrongAnswers = questions.filter((q: any) => q.isCorrect === false).length;
+      normalizedResults.totalAnswered = questions.length;
+      normalizedResults.autoScoredQuestions = questions.filter((q: any) => q.pointsAwarded > 0 || q.isCorrect === true).length;
+      normalizedResults.hasDetailedResults = true;
+    }
+
+    if (normalizedResults.maxScore > 0) {
+      normalizedResults.percentage = Math.round((normalizedResults.score / normalizedResults.maxScore) * 100);
+      normalizedResults.percentage = Math.max(0, Math.min(100, normalizedResults.percentage));
+    }
+    const radius = 85;
+    const circumference = 2 * Math.PI * radius;
+    const strokeDashoffset = circumference * (1 - normalizedResults.percentage / 100);
+
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
               </div>
             </div>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Exam Results</h1>
+            <p className="text-slate-600 dark:text-slate-400">Review your performance details below.</p>
           </div>
 
-          {/* Scoring Content */}
-          <div className="flex items-center justify-center min-h-[500px]">
-            <div className="text-center space-y-6 bg-white dark:bg-gray-800 rounded-lg shadow-lg p-12 border border-blue-200 dark:border-blue-800">
-              <Loader className="w-16 h-16 animate-spin mx-auto text-blue-600" />
-              <div>
-                <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Scoring Your Exam</h2>
-                <p className="text-gray-600 dark:text-gray-300 mt-2">Please wait while we calculate your results...</p>
+          <Card className="mb-8">
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                <div className="flex flex-col items-center">
+                  <div className="relative w-48 h-48">
+                    <svg className="w-48 h-48 transform -rotate-90" viewBox="0 0 200 200">
+                      <circle cx="100" cy="100" r={radius} stroke="currentColor" strokeWidth="10" fill="transparent" className="text-slate-100 dark:text-slate-800" />
+                      <circle cx="100" cy="100" r={radius} stroke="currentColor" strokeWidth="10" fill="transparent" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} className="text-blue-600 transition-all duration-1000" strokeLinecap="round" />
+                    </svg>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-4xl font-bold">{normalizedResults.percentage}%</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <p className="text-lg font-semibold">{normalizedResults.score} / {normalizedResults.maxScore}</p>
+                    <p className="text-sm text-slate-500">Total Score</p>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-5 h-5 text-green-500" />
+                      <span>Correct Answers</span>
+                    </div>
+                    <span className="font-bold">{normalizedResults.correctAnswers}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                    <div className="flex items-center gap-2">
+                      <XCircle className="w-5 h-5 text-red-500" />
+                      <span>Incorrect Answers</span>
+                    </div>
+                    <span className="font-bold">{normalizedResults.wrongAnswers}</span>
+                  </div>
+                  {normalizedResults.timeTakenFormatted && (
+                    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-5 h-5 text-blue-500" />
+                        <span>Time Taken</span>
+                      </div>
+                      <span className="font-bold">{normalizedResults.timeTakenFormatted}</span>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-center">
+            <Button onClick={() => setShowResults(false)} className="bg-blue-600 hover:bg-blue-700 text-white">
+              Back to Exams
+            </Button>
           </div>
         </div>
-      ) : /* Results Screen */
-      showResults ? (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-          {/* Modern Sticky Header - Responsive */}
-          <div className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
-            <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4">
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <img 
-                  src={schoolLogo} 
-                  alt="Treasure-Home School" 
-                  className="h-8 w-8 sm:h-9 sm:w-9 object-contain"
-                />
-                <div>
-                  <h2 className="text-base sm:text-lg font-bold text-blue-600 dark:text-blue-400">Treasure-Home School</h2>
-                  <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Exam Results</p>
-                </div>
-              </div>
-            </div>
+    );
+  }
+
+  if (isScoring) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px]">
+        <Loader className="w-12 h-12 animate-spin text-blue-600 mb-4" />
+        <h2 className="text-2xl font-bold">Scoring Your Exam</h2>
+        <p className="text-slate-500">Please wait while we calculate your results...</p>
+      </div>
+    );
+  }
+
+  // Main rendering of the student exams portal
+  if (!selectedExam && !activeSession) {
+    return (
+      <div className="p-2 sm:p-4 space-y-4 max-w-5xl mx-auto">
+        <div className="flex flex-col space-y-1">
+          <div className="flex items-center gap-2 text-black dark:text-white">
+            <BookOpen className="h-6 w-6 text-blue-600 dark:text-blue-500" />
+            <h1 className="text-2xl font-bold tracking-tight">My Exams</h1>
           </div>
+          <p className="text-muted-foreground text-xs">
+            View and take your available examinations
+          </p>
+        </div>
 
-          {/* Results Content - Responsive */}
-          <div className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
-            {/* Professional Success Message - Responsive with Larger Text */}
-            <div className="text-center mb-6 sm:mb-8 px-2" data-testid="banner-success">
-              <div className="flex justify-center mb-4">
-                <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
-                  <CheckCircle className="w-10 h-10 text-green-600 dark:text-green-400" />
-                </div>
+        {loadingExams ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="overflow-hidden border-none shadow-sm animate-pulse">
+                <div className="h-48 bg-muted" />
+              </Card>
+            ))}
+          </div>
+        ) : exams.length === 0 ? (
+          <Card className="border-dashed border-2 bg-muted/30">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="bg-background p-4 rounded-full shadow-sm mb-4">
+                <BookOpen className="h-10 w-10 text-muted-foreground" />
               </div>
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 dark:text-white mb-3">
-                Exam Submitted Successfully
-              </h1>
-              <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400">
-                Congratulations on completing your exam! Your answers have been recorded and scored. Review your results below.
+              <h3 className="text-xl font-semibold mb-2">No Exams Available</h3>
+              <p className="text-muted-foreground max-w-sm">
+                There are currently no examinations published for your class. Check back later or contact your teacher.
               </p>
-            </div>
-
-            {examResults && (() => {
-              // Enhanced data structure to handle all response formats and show detailed feedback
-              const normalizedResults = {
-                score: examResults.totalScore || examResults.score || 0,
-                maxScore: examResults.maxScore || 0,
-                percentage: 0,
-                pendingCount: examResults.pendingReview?.count || 0,
-                correctAnswers: 0,
-                wrongAnswers: 0,
-                totalAnswered: 0,
-                autoScoredQuestions: 0,
-                submittedAt: examResults.submittedAt,
-                timeTakenFormatted: examResults.timeTakenFormatted || null,
-                timeTakenSeconds: examResults.timeTakenSeconds || 0,
-                submissionReason: examResults.submissionReason || 'manual',
-                violationCount: examResults.violationCount || 0,
-                breakdown: examResults.breakdown || null,
-                questionDetails: examResults.questionDetails || [],
-                hasDetailedResults: false
-              };
-
-              // Enhanced result parsing for better feedback - handle multiple response formats
-              // Priority: breakdown > questionDetails > immediateResults > fallback calculation
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-1 max-w-3xl">
+            {exams.map((exam) => {
+              const status = getExamStatus(exam.id);
+              const subject = subjects.find(s => s.id === exam.subjectId);
               
-              if (examResults.breakdown) {
-                // Primary source: Use breakdown data from server
-                // Trust backend values even if they are 0 (use 'in' operator to check key existence)
-                const breakdown = examResults.breakdown;
-                normalizedResults.correctAnswers = 'correct' in breakdown ? breakdown.correct : 
-                                                   ('correctAnswers' in breakdown ? breakdown.correctAnswers : 0);
-                normalizedResults.wrongAnswers = 'incorrect' in breakdown ? breakdown.incorrect : 
-                                                  ('incorrectAnswers' in breakdown ? breakdown.incorrectAnswers : 0);
-                normalizedResults.totalAnswered = 'totalQuestions' in breakdown ? breakdown.totalQuestions : 
-                                                   ('answered' in breakdown ? breakdown.answered : 0);
-                normalizedResults.autoScoredQuestions = 'autoScored' in breakdown ? breakdown.autoScored : 
-                                                         ('autoScoredQuestions' in breakdown ? breakdown.autoScoredQuestions : 0);
-                normalizedResults.hasDetailedResults = true;
-                
-                // Also populate questionDetails from the response if available
-                if (examResults.questionDetails && examResults.questionDetails.length > 0) {
-                  normalizedResults.questionDetails = examResults.questionDetails;
-                }
-              } else if (examResults.questionDetails && examResults.questionDetails.length > 0) {
-                // Secondary source: Parse from questionDetails array in response
-                const questions = examResults.questionDetails;
-                normalizedResults.correctAnswers = questions.filter((q: any) => q.isCorrect === true).length;
-                normalizedResults.wrongAnswers = questions.filter((q: any) => q.isCorrect === false).length;
-                normalizedResults.totalAnswered = questions.length;
-                normalizedResults.autoScoredQuestions = questions.filter((q: any) => q.pointsAwarded > 0 || q.isCorrect === true).length;
-                normalizedResults.hasDetailedResults = true;
-              } else if (examResults.immediateResults?.questions) {
-                // Tertiary source: Parse from immediateResults.questions array
-                const questions = examResults.immediateResults.questions;
-                normalizedResults.correctAnswers = questions.filter((q: any) => q.isCorrect === true).length;
-                normalizedResults.wrongAnswers = questions.filter((q: any) => q.isCorrect === false).length;
-                normalizedResults.totalAnswered = questions.length;
-                normalizedResults.autoScoredQuestions = questions.filter((q: any) => q.autoScored !== false).length;
-                normalizedResults.hasDetailedResults = true;
-                normalizedResults.questionDetails = questions;
-              } else if (examQuestions.length > 0) {
-                // Fallback: estimate breakdown from score and question count
-                const mcQuestions = examQuestions.filter(q => q.questionType === 'multiple_choice' || q.questionType === 'true_false');
-                normalizedResults.autoScoredQuestions = mcQuestions.length;
-                normalizedResults.totalAnswered = examQuestions.length;
-                // Calculate estimated correct based on score percentage
-                if (normalizedResults.maxScore > 0 && mcQuestions.length > 0) {
-                  const estimatedCorrect = Math.round((normalizedResults.score / normalizedResults.maxScore) * mcQuestions.length);
-                  normalizedResults.correctAnswers = Math.min(mcQuestions.length, Math.max(0, estimatedCorrect));
-                  normalizedResults.wrongAnswers = Math.max(0, mcQuestions.length - normalizedResults.correctAnswers);
-                }
-              }
-
-              // Safe percentage calculation with guards
-              if (normalizedResults.maxScore > 0) {
-                normalizedResults.percentage = Math.round((normalizedResults.score / normalizedResults.maxScore) * 100);
-                normalizedResults.percentage = Math.max(0, Math.min(100, normalizedResults.percentage)); // Clamp to [0,100]
-              }
-              // SVG progress calculations
-              const radius = 85;
-              const circumference = 2 * Math.PI * radius;
-              const strokeDashoffset = circumference * (1 - normalizedResults.percentage / 100);
-
               return (
-                <>
-                  {/* Main Results Card */}
-                  <Card className="bg-white dark:bg-gray-800 shadow-lg border-blue-200 dark:border-blue-800" data-testid="card-exam-results">
-                    <CardContent className="p-8">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Circular Progress */}
-                        <div className="flex flex-col items-center justify-center">
-                          <div className="relative w-48 h-48">
-                            <svg 
-                              className="w-48 h-48 transform -rotate-90" 
-                              viewBox="0 0 200 200"
-                              role="img"
-                              aria-label={`Score: ${normalizedResults.percentage}% (${normalizedResults.score} out of ${normalizedResults.maxScore})`}
-                              data-testid="progress-circular"
-                            >
-                              {/* Background circle */}
-                              <circle
-                                cx="100"
-                                cy="100"
-                                r={radius}
-                                stroke="currentColor"
-                                strokeWidth="10"
-                                fill="transparent"
-                                className="text-gray-200"
-                              />
-                              {/* Progress circle */}
-                              <circle
-                                cx="100"
-                                cy="100"
-                                r={radius}
-                                stroke="currentColor"
-                                strokeWidth="10"
-                                fill="transparent"
-                                strokeDasharray={circumference}
-                                strokeDashoffset={strokeDashoffset}
-                                className="text-green-500 transition-all duration-1000 ease-in-out"
-                                strokeLinecap="round"
-                              />
-                            </svg>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center">
-                              <div className="text-4xl font-bold text-gray-900" data-testid="text-percentage">
-                                {normalizedResults.percentage}%
-                              </div>
-                            </div>
+                <Card 
+                  key={exam.id} 
+                  className="group overflow-hidden border border-slate-200 dark:border-slate-800 shadow-none hover:border-green-400/50 transition-all duration-300 bg-white dark:bg-card relative rounded-xl"
+                  data-testid={`card-exam-${exam.id}`}
+                >
+                  <div className="absolute top-4 right-4 text-green-100 dark:text-green-900/20">
+                    <GraduationCap className="h-8 w-8" />
+                  </div>
+
+                  <CardContent className="p-6">
+                    <div className="flex flex-col space-y-4">
+                      {/* Status Badge */}
+                      <div className="flex items-center justify-between">
+                        <div className="bg-green-600 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          {status.isCompleted ? "Done" : "Available"}
+                        </div>
+                      </div>
+
+                      {/* Exam Title & Date */}
+                      <div className="space-y-1">
+                        <h3 className="text-lg font-bold text-black dark:text-white">
+                          {exam.name}
+                        </h3>
+                        <div className="flex items-center gap-2 text-slate-500">
+                          <Calendar className="h-4 w-4" />
+                          <span className="text-sm">
+                            {new Date(exam.date).toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Details Grid */}
+                      <div className="grid grid-cols-2 gap-4 bg-slate-50/80 dark:bg-slate-900/30 rounded-xl p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-blue-100/50 dark:bg-blue-900/30 p-2 rounded-lg">
+                            <Trophy className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                           </div>
-                          <div className="mt-4 text-center">
-                            <h2 className="text-xl font-semibold text-gray-900">Objective Questions Score:</h2>
-                            <p className="text-lg text-gray-600" data-testid="text-score-fraction">
-                              {normalizedResults.score}/{normalizedResults.maxScore} ({normalizedResults.percentage}%)
-                            </p>
-                            <p className="text-sm text-gray-500 mt-1 flex items-center gap-1.5">
-                              <FileText className="w-3 h-3" />
-                              Multiple-choice and automatic scoring only
-                            </p>
+                          <div>
+                            <p className="text-xs text-slate-500 font-medium">Total Marks</p>
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">{exam.totalMarks}</p>
                           </div>
                         </div>
 
-                        {/* Enhanced Quick Stats */}
-                        <div className="space-y-6">
-                          <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Detailed Results</h3>
-
-                          <div className="space-y-4">
-                            {/* Correct Answers */}
-                            <div className="flex items-center space-x-3" data-testid="stat-correct-answers">
-                              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                <CheckCircle className="w-5 h-5 text-green-600" aria-hidden="true" />
-                              </div>
-                              <div className="flex-1">
-                                <span className="font-semibold text-green-600">Correct Answers: </span>
-                                <span className="text-gray-900 text-lg font-bold" data-testid="value-correct-count">
-                                  {normalizedResults.correctAnswers}
-                                </span>
-                                {normalizedResults.autoScoredQuestions > 0 && (
-                                  <span className="text-xs text-gray-500 ml-2">
-                                    (out of {normalizedResults.autoScoredQuestions} auto-scored)
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Wrong Answers */}
-                            <div className="flex items-center space-x-3" data-testid="stat-wrong-answers">
-                              <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
-                                <XCircle className="w-5 h-5 text-red-600" aria-hidden="true" />
-                              </div>
-                              <div className="flex-1">
-                                <span className="font-semibold text-red-600">Incorrect Answers: </span>
-                                <span className="text-gray-900 text-lg font-bold" data-testid="value-wrong-count">
-                                  {normalizedResults.wrongAnswers}
-                                </span>
-                                {normalizedResults.autoScoredQuestions > 0 && (
-                                  <span className="text-xs text-gray-500 ml-2">
-                                    (out of {normalizedResults.autoScoredQuestions} auto-scored)
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Auto-Scored Progress */}
-                            {normalizedResults.autoScoredQuestions > 0 && (
-                              <div className="flex items-center space-x-3" data-testid="stat-auto-scored">
-                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                                  <CheckCircle2 className="w-5 h-5 text-blue-600" aria-hidden="true" />
-                                </div>
-                                <div className="flex-1">
-                                  <span className="font-semibold text-blue-600">Auto-Scored: </span>
-                                  <span className="text-gray-900" data-testid="value-auto-scored-count">
-                                    {normalizedResults.autoScoredQuestions} / {normalizedResults.totalAnswered} questions
-                                  </span>
-                                  <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-                                    <div 
-                                      className="bg-blue-600 h-2 rounded-full" 
-                                      style={{
-                                        width: `${normalizedResults.totalAnswered > 0 ? (normalizedResults.autoScoredQuestions / normalizedResults.totalAnswered) * 100 : 0}%`
-                                      }}
-                                    ></div>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Performance Indicator */}
-                            <div className="flex items-center space-x-3" data-testid="stat-performance">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                normalizedResults.percentage >= 80 ? 'bg-green-100' : 
-                                normalizedResults.percentage >= 60 ? 'bg-yellow-100' : 'bg-red-100'
-                              }`}>
-                                <Trophy className={`w-5 h-5 ${
-                                  normalizedResults.percentage >= 80 ? 'text-green-600' : 
-                                  normalizedResults.percentage >= 60 ? 'text-yellow-600' : 'text-red-600'
-                                }`} aria-hidden="true" />
-                              </div>
-                              <div>
-                                <span className="font-semibold text-gray-700">Performance: </span>
-                                <span className={`font-bold ${
-                                  normalizedResults.percentage >= 80 ? 'text-green-600' : 
-                                  normalizedResults.percentage >= 60 ? 'text-yellow-600' : 'text-red-600'
-                                }`} data-testid="value-performance">
-                                  {normalizedResults.percentage >= 80 ? 'Excellent!' : 
-                                   normalizedResults.percentage >= 60 ? 'Good!' : 'Needs Improvement'}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Time Taken */}
-                            {normalizedResults.timeTakenFormatted && (
-                              <div className="flex items-center space-x-3" data-testid="stat-time-taken">
-                                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
-                                  <Clock className="w-5 h-5 text-indigo-600" aria-hidden="true" />
-                                </div>
-                                <div>
-                                  <span className="font-semibold text-indigo-600">Time Taken: </span>
-                                  <span className="text-gray-900" data-testid="value-time-taken">
-                                    {normalizedResults.timeTakenFormatted}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Completion Time */}
-                            <div className="flex items-center space-x-3" data-testid="stat-completion-time">
-                              <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-                                <Calendar className="w-5 h-5 text-purple-600" aria-hidden="true" />
-                              </div>
-                              <div>
-                                <span className="font-semibold text-purple-600">Submitted: </span>
-                                <span className="text-gray-900" data-testid="value-completion-time">
-                                  {normalizedResults.submittedAt ? 
-                                    new Date(normalizedResults.submittedAt).toLocaleString() : 
-                                    'Just now'
-                                  }
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Submission Type */}
-                            {normalizedResults.submissionReason !== 'manual' && (
-                              <div className="flex items-center space-x-3" data-testid="stat-submission-type">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                                  normalizedResults.submissionReason === 'timeout' ? 'bg-orange-100' : 'bg-red-100'
-                                }`}>
-                                  <AlertCircle className={`w-5 h-5 ${
-                                    normalizedResults.submissionReason === 'timeout' ? 'text-orange-600' : 'text-red-600'
-                                  }`} aria-hidden="true" />
-                                </div>
-                                <div>
-                                  <span className={`font-semibold ${
-                                    normalizedResults.submissionReason === 'timeout' ? 'text-orange-600' : 'text-red-600'
-                                  }`}>Submission Type: </span>
-                                  <span className="text-gray-900" data-testid="value-submission-type">
-                                    {normalizedResults.submissionReason === 'timeout' 
-                                      ? 'Auto-submitted (Time Expired)' 
-                                      : `Auto-submitted (${normalizedResults.violationCount} Tab Violations)`}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
+                        <div className="flex items-center gap-3">
+                          <div className="bg-orange-100/50 dark:bg-orange-900/30 p-2 rounded-lg">
+                            <Clock className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-500 font-medium">Duration</p>
+                            <p className="text-sm font-bold text-slate-900 dark:text-white">{exam.timeLimit} min</p>
                           </div>
                         </div>
                       </div>
 
-                    {/* Question-by-Question Breakdown */}
-                    {normalizedResults.hasDetailedResults && normalizedResults.questionDetails.length > 0 && (
-                      <div className="mt-8 p-6 bg-gray-50 border border-gray-200 rounded-lg" data-testid="section-question-breakdown">
-                        <div className="flex items-center justify-between mb-4">
-                          <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                            <FileText className="w-5 h-5" />
-                            Question-by-Question Results
-                          </h3>
-                          <Badge variant="outline" className="text-xs">
-                            {normalizedResults.autoScoredQuestions} auto-scored
-                          </Badge>
-                        </div>
-
-                        <div className="grid gap-3 max-h-64 overflow-y-auto">
-                          {normalizedResults.questionDetails.map((questionResult: any, index: number) => (
-                            <div 
-                              key={index} 
-                              className={`p-3 rounded-lg border-l-4 ${
-                                questionResult.isCorrect === true 
-                                  ? 'bg-green-50 border-green-400' 
-                                  : questionResult.isCorrect === false
-                                  ? 'bg-red-50 border-red-400'
-                                  : 'bg-yellow-50 border-yellow-400'
-                              }`}
-                            >
-                              <div className="flex items-start justify-between">
-                                <div className="flex-1">
-                                  <div className="flex items-center space-x-2 mb-1">
-                                    <span className="text-sm font-medium text-gray-700">
-                                      Question {index + 1}
-                                    </span>
-                                    {questionResult.isCorrect === true && (
-                                      <Badge variant="default" className="bg-green-600 text-white text-xs">
-                                        ✓ Correct
-                                      </Badge>
-                                    )}
-                                    {questionResult.isCorrect === false && (
-                                      <Badge variant="destructive" className="text-xs">
-                                        ✗ Incorrect
-                                      </Badge>
-                                    )}
-                                    {questionResult.isCorrect === null && (
-                                      <Badge variant="secondary" className="text-xs">
-                                        ⏳ Manual Review
-                                      </Badge>
-                                    )}
-                                  </div>
-
-                                  <div className="text-xs text-gray-600 space-y-1">
-                                    <div>
-                                      <span className="font-medium">Points:</span> 
-                                      <span className="ml-1">
-                                        {questionResult.pointsEarned || 0} / {questionResult.maxPoints || questionResult.points || 1}
-                                      </span>
-                                    </div>
-
-                                    {questionResult.questionType && (
-                                      <div>
-                                        <span className="font-medium">Type:</span> 
-                                        <span className="ml-1 capitalize">
-                                          {questionResult.questionType.replace('_', ' ')}
-                                        </span>
-                                      </div>
-                                    )}
-
-                                    {questionResult.autoScored !== false && (
-                                      <div className="text-blue-600">
-                                        <span className="font-medium">✨ Auto-scored</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-
-                                <div className="ml-3">
-                                  {questionResult.isCorrect === true && (
-                                    <CheckCircle className="w-5 h-5 text-green-600" />
-                                  )}
-                                  {questionResult.isCorrect === false && (
-                                    <XCircle className="w-5 h-5 text-red-600" />
-                                  )}
-                                  {questionResult.isCorrect === null && (
-                                    <Clock className="w-5 h-5 text-yellow-600" />
-                                  )}
-                                </div>
-                              </div>
-
-                              {questionResult.feedback && (
-                                <div className="mt-2 p-2 bg-white rounded text-xs text-gray-700">
-                                  <span className="font-medium">Feedback:</span> {questionResult.feedback}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="mt-4 pt-3 border-t border-gray-200">
-                          <div className="flex justify-between text-sm text-gray-600">
-                            <span>
-                              <strong>{normalizedResults.correctAnswers}</strong> correct, 
-                              <strong className="ml-1">{normalizedResults.wrongAnswers}</strong> incorrect
-                            </span>
-                            <span>
-                              Auto-scored: <strong>{normalizedResults.autoScoredQuestions}</strong>/{normalizedResults.totalAnswered}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Pending Sections */}
-                    {examResults.pendingReview && examResults.pendingReview.count > 0 && (
-                      <div className="mt-8 p-6 bg-blue-50 border border-blue-200 rounded-lg" data-testid="section-pending-review">
-                        <div className="flex items-center space-x-2 mb-4">
-                          <Clock className="w-5 h-5 text-blue-600" aria-hidden="true" />
-                          <h3 className="text-lg font-semibold text-blue-900">🔍 Still Under Review</h3>
-                        </div>
-                        <div className="space-y-3 mb-4">
-                          <div className="flex items-start space-x-2 text-sm text-blue-800">
-                            <span className="font-medium">•</span>
-                            <span><strong>Essay Questions</strong> - Being graded by your teacher</span>
-                          </div>
-                          <div className="flex items-start space-x-2 text-sm text-blue-800">
-                            <span className="font-medium">•</span>
-                            <span><strong>Theory Responses</strong> - Manual evaluation in progress</span>
-                          </div>
-                          <div className="flex items-start space-x-2 text-sm text-blue-800">
-                            <span className="font-medium">•</span>
-                            <span><strong>Practical Assessments</strong> - Awaiting instructor feedback</span>
-                          </div>
-                          <div className="flex items-start space-x-2 text-sm text-blue-800">
-                            <span className="font-medium">•</span>
-                            <span><strong>Final Grade Calculation</strong> - Will include all components</span>
-                          </div>
-                        </div>
-                        <div className="bg-white p-3 rounded border-l-4 border-blue-400">
-                          <p className="text-sm text-gray-700">
-                            <strong>📅 Expected Release:</strong> Your complete report with final grades, 
-                            teacher comments, and detailed feedback will be available within 2-3 business days.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Action Buttons */}
-                    <div className="mt-8 flex flex-wrap gap-3 justify-center">
+                      {/* Action Button */}
                       <Button 
-                        onClick={handleBackToExams}
-                        variant="default"
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                        data-testid="button-back-to-exams"
+                        onClick={() => status.isCompleted ? setLocation('/portal/student/exam-results') : handleStartExam(exam)}
+                        className="w-full h-9 bg-[#3b82f6] hover:bg-blue-700 text-white rounded-md font-medium shadow-none transition-all group/btn text-sm"
+                        data-testid={`button-action-${exam.id}`}
                       >
-                        View All Exams
-                      </Button>
-
-                      {examResults.pendingReview && examResults.pendingReview.count > 0 && (
-                        <Button 
-                          variant="outline"
-                          disabled
-                          className="text-gray-500"
-                          data-testid="button-full-report-pending"
-                        >
-                          Full Report - Coming Soon
-                        </Button>
-                      )}
-
-                      <Button 
-                        variant="outline"
-                        onClick={() => {
-                          // Could add functionality to view detailed breakdown
-                          toast({
-                            title: "Feature Coming Soon",
-                            description: "Detailed question breakdown will be available soon."
-                          });
-                        }}
-                        data-testid="button-view-details"
-                      >
-                        View Details
+                        <div className="flex items-center justify-center gap-2">
+                          <Eye className="h-4 w-4" />
+                          {status.isCompleted ? "View Score" : "Start Exam"}
+                        </div>
                       </Button>
                     </div>
                   </CardContent>
                 </Card>
-              </>
-            );
-            })()}
+              );
+            })}
           </div>
-        </div>
-      ) : (
-        <>
-        <div className="space-y-6">
-          <div className="mb-6">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <BookOpen className="h-7 w-7 text-blue-600 dark:text-blue-400" />
-              My Exams
-            </h1>
-            <p className="text-base sm:text-lg text-gray-600 dark:text-gray-400 mt-2">View and take your available examinations</p>
-          </div>
-
-          <div className="grid gap-5">
-            {loadingExams ? (
-              <Card className="shadow-sm border-blue-100 dark:border-blue-900">
-                <CardContent className="text-center py-12">
-                  <div className="flex flex-col items-center justify-center space-y-3">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                    <span className="text-gray-600 dark:text-gray-400 font-medium">Loading exams...</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : examsError ? (
-              <Card className="shadow-sm border-red-100 dark:border-red-900">
-                <CardContent className="text-center py-12">
-                  <XCircle className="h-12 w-12 text-red-500 mx-auto mb-3" />
-                  <div className="text-red-600 font-semibold mb-2">Failed to load exams</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    {examsError instanceof Error ? examsError.message : 'Unknown error occurred'}
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => window.location.reload()}
-                  >
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    Reload Page
-                  </Button>
-                </CardContent>
-              </Card>
-            ) : exams.filter(exam => exam.isPublished).length === 0 ? (
-              <Card className="shadow-sm border-gray-200 dark:border-gray-700">
-                <CardContent className="text-center py-12">
-                  <BookOpen className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                  <div className="text-lg font-medium text-gray-900 dark:text-white mb-2">No exams available</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
-                    Check back later for new examinations
-                  </div>
-                  {exams.length > 0 && (
-                    <div className="text-sm text-yellow-600 dark:text-yellow-500 mt-3 flex items-center justify-center gap-1">
-                      <AlertCircle className="h-4 w-4" />
-                      {exams.length} exam(s) found but not yet published
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ) : (
-              exams
-                .filter(exam => exam.isPublished)
-                .map((exam) => {
-                  const examStatus = getExamStatus(exam.id);
-                  return (
-                  <Card 
-                    key={exam.id}
-                    className={`group hover:shadow-md transition-all duration-200 ${
-                      examStatus.isCompleted 
-                        ? 'border-green-200 dark:border-green-800 hover:border-green-300 dark:hover:border-green-700' 
-                        : 'border-blue-100 dark:border-blue-900 hover:border-blue-300 dark:hover:border-blue-700'
-                    }`}
-                    data-testid={`exam-card-${exam.id}`}
-                  >
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            {examStatus.isCompleted ? (
-                              <Badge className="bg-green-600 hover:bg-green-700 text-white">
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Done
-                              </Badge>
-                            ) : examStatus.isInProgress ? (
-                              <Badge className="bg-amber-500 hover:bg-amber-600 text-white">
-                                <Clock className="h-3 w-3 mr-1" />
-                                In Progress
-                              </Badge>
-                            ) : (
-                              <Badge className="bg-blue-500 hover:bg-blue-600 text-white">
-                                <CheckCircle className="h-3 w-3 mr-1" />
-                                Available
-                              </Badge>
-                            )}
-                          </div>
-                          <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                            {exam.name}
-                          </h3>
-                          <p className="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                            <Calendar className="h-4 w-4" />
-                            {new Date(exam.date).toLocaleDateString('en-US', { 
-                              weekday: 'short',
-                              year: 'numeric', 
-                              month: 'long', 
-                              day: 'numeric' 
-                            })}
-                          </p>
-                        </div>
-                        <GraduationCap className={`h-10 w-10 transition-colors ${
-                          examStatus.isCompleted 
-                            ? 'text-green-100 dark:text-green-900 group-hover:text-green-200 dark:group-hover:text-green-800' 
-                            : 'text-blue-100 dark:text-blue-900 group-hover:text-blue-200 dark:group-hover:text-blue-800'
-                        }`} />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4 mb-5 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
-                        <div className="flex items-center gap-2">
-                          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                            <Trophy className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                          </div>
-                          <div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">Total Marks</div>
-                            <div className="text-sm font-semibold text-gray-900 dark:text-white">{exam.totalMarks || 60}</div>
-                          </div>
-                        </div>
-                        {exam.timeLimit && (
-                          <div className="flex items-center gap-2">
-                            <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
-                              <Clock className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-                            </div>
-                            <div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400">Duration</div>
-                              <div className="text-sm font-semibold text-gray-900 dark:text-white">{exam.timeLimit} min</div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {examStatus.isCompleted ? (
-                        <Button
-                          onClick={() => setLocation(`/portal/student/exam-results?examId=${exam.id}`)}
-                          className="w-full bg-green-600 hover:bg-green-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
-                          data-testid={`button-view-score-${exam.id}`}
-                        >
-                          <Eye className="w-4 h-4 mr-2" />
-                          View Score
-                        </Button>
-                      ) : examStatus.isInProgress ? (
-                        <Button
-                          onClick={() => handleStartExam(exam)}
-                          disabled={startExamMutation.isPending}
-                          className="w-full bg-amber-500 hover:bg-amber-600 text-white shadow-sm hover:shadow-md transition-all duration-200"
-                          data-testid={`button-resume-exam-${exam.id}`}
-                        >
-                          {startExamMutation.isPending ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                              Resuming...
-                            </>
-                          ) : (
-                            <>
-                              <Play className="w-4 h-4 mr-2" />
-                              Resume Exam
-                            </>
-                          )}
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={() => handleStartExam(exam)}
-                          disabled={startExamMutation.isPending || !exam.isPublished}
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
-                          data-testid={`button-start-exam-${exam.id}`}
-                        >
-                          {startExamMutation.isPending ? (
-                            <>
-                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                              Starting Exam...
-                            </>
-                          ) : !exam.isPublished ? (
-                            <>
-                              <Clock className="w-4 h-4 mr-2" />
-                              Not Available
-                            </>
-                          ) : (
-                            <>
-                              <Play className="w-4 h-4 mr-2" />
-                              Start Exam
-                            </>
-                          )}
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                  );
-                })
-            )}
-          </div>
-        </div>
-        </>
-      );
+        )}
+      </div>
+    );
+  }
 }

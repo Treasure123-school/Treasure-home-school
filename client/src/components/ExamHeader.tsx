@@ -23,6 +23,8 @@ interface SystemSettings {
 export function ExamHeader({
   subjectName,
   className: studentClassName,
+  currentQuestion,
+  totalQuestions,
   timeRemaining,
   studentName,
   studentInitials,
@@ -53,7 +55,7 @@ export function ExamHeader({
               <img 
                 src={displayLogo} 
                 alt="School Logo" 
-                className="h-14 w-14 sm:h-16 sm:w-16 md:h-20 md:w-20 object-contain"
+                className="h-16 w-16 sm:h-20 sm:w-20 md:h-24 md:w-24 object-contain"
               />
             </div>
             
@@ -61,14 +63,14 @@ export function ExamHeader({
               <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-[#0000FF] dark:text-blue-400 tracking-tight leading-none truncate mb-2">
                 {schoolName}
               </h1>
-              <div className="grid grid-cols-1 gap-x-4 gap-y-0.5 text-xs sm:text-sm font-medium">
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-400 dark:text-slate-500 min-w-[50px]">Subject:</span>
-                  <span className="text-slate-900 dark:text-slate-100 font-bold truncate">{subjectName}</span>
+              <div className="grid grid-cols-1 gap-x-4 gap-y-0.5 text-xs sm:text-sm font-medium overflow-hidden">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-slate-400 dark:text-slate-500 shrink-0">Subject:</span>
+                  <span className="text-slate-900 dark:text-slate-100 font-bold truncate block">{subjectName || "—"}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-400 dark:text-slate-500 min-w-[50px]">Student:</span>
-                  <span className="text-slate-900 dark:text-slate-100 font-bold truncate">{studentName}</span>
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-slate-400 dark:text-slate-500 shrink-0">Student:</span>
+                  <span className="text-slate-900 dark:text-slate-100 font-bold truncate block">{studentName || "—"}</span>
                 </div>
               </div>
             </div>
@@ -100,6 +102,13 @@ export function ExamHeader({
             </div>
           </div>
         </div>
+      </div>
+      {/* Animated Progress Line */}
+      <div className="absolute bottom-0 left-0 w-full h-0.5 bg-slate-100 dark:bg-slate-800 overflow-hidden">
+        <div 
+          className="h-full bg-[#0000FF] dark:bg-blue-500 transition-all duration-500 ease-out shadow-[0_0_8px_rgba(0,0,255,0.4)]"
+          style={{ width: `${(currentQuestion / totalQuestions) * 100}%` }}
+        />
       </div>
     </header>
   );
