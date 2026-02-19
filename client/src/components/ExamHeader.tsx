@@ -50,7 +50,7 @@ export function ExamHeader({
           {/* Left Side: Logo and Info */}
           <div className="flex items-center gap-6 min-w-0">
             <div className="relative group shrink-0">
-              <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-blue-400 rounded-full blur opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+              <div className="absolute -inset-1 bg-gradient-to-r from-[#0000FF] to-[#00BFFF] rounded-full blur opacity-25 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
               <img 
                 src={displayLogo} 
                 alt="School Logo" 
@@ -59,7 +59,7 @@ export function ExamHeader({
             </div>
             
             <div className="flex flex-col min-w-0 space-y-1">
-              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-[#1e40af] dark:text-blue-400 tracking-tight leading-none truncate">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-[#0000FF] dark:text-blue-400 tracking-tight leading-none truncate">
                 {schoolName}
               </h1>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm sm:text-base font-medium text-slate-500 dark:text-slate-400">
@@ -80,23 +80,23 @@ export function ExamHeader({
           <div className="flex items-center gap-4 sm:gap-8 shrink-0">
             {timeRemaining !== null && (
               <div className={cn(
-                "flex items-center gap-3 px-5 py-3 rounded-2xl transition-all duration-500 border",
+                "flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-500 border",
                 isLowTime 
                   ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400 animate-pulse shadow-lg shadow-red-200/50" 
                   : "bg-slate-50 text-slate-900 border-slate-200 dark:bg-slate-800/50 dark:text-slate-100 dark:border-slate-700 shadow-sm"
               )}>
-                <Timer className={cn("w-6 h-6 sm:w-7 sm:h-7", isLowTime ? "text-red-500" : "text-slate-500 dark:text-slate-400")} />
-                <span className="text-2xl sm:text-3xl font-bold font-mono tabular-nums tracking-tighter">
+                <Timer className={cn("w-5 h-5 sm:w-6 sm:h-6", isLowTime ? "text-red-500" : "text-slate-500 dark:text-slate-400")} />
+                <span className="text-xl sm:text-2xl font-bold font-mono tabular-nums tracking-tighter">
                   {formatTime(timeRemaining)}
                 </span>
               </div>
             )}
 
             <div className="relative group">
-              <div className="absolute -inset-0.5 bg-gradient-to-tr from-blue-600 to-blue-400 rounded-full opacity-20 group-hover:opacity-40 transition duration-300"></div>
+              <div className="absolute -inset-0.5 bg-gradient-to-tr from-[#0000FF] to-[#00BFFF] rounded-full opacity-20 group-hover:opacity-40 transition duration-300"></div>
               <Avatar className="relative h-14 w-14 sm:h-16 sm:w-16 md:h-18 md:w-18 border-2 border-white dark:border-slate-800 shadow-xl ring-1 ring-slate-100 dark:ring-slate-700">
                 <AvatarImage src={profileImageUrl || undefined} alt={studentName} className="object-cover" />
-                <AvatarFallback className="bg-[#1e40af] text-white text-xl sm:text-2xl font-bold">
+                <AvatarFallback className="bg-[#0000FF] text-white text-xl sm:text-2xl font-bold">
                   {studentInitials}
                 </AvatarFallback>
               </Avatar>
