@@ -1773,30 +1773,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           return {
-            id: q.id,
-            questionText: q.questionText,
-            questionType: q.questionType,
-            points: q.points,
-            studentAnswer: studentAnswerText,
-            correctAnswer: correctAnswerText,
-            isCorrect: isCorrect,
-            pointsEarned: pointsEarned,
-            explanation: q.explanationText
-          };
-              studentAnswerText = studentAns.textAnswer;
-            }
-          }
-
-          return {
             questionId: q.id,
             questionText: q.questionText,
-            isCorrect: studentAns?.isCorrect ?? false, // Default to false if no answer
-            pointsAwarded: studentAns?.pointsEarned ?? 0,
+            isCorrect: isCorrect,
+            pointsAwarded: pointsEarned,
             maxPoints: q.points,
             studentAnswer: studentAnswerText,
-            correctAnswer: q.questionType === 'multiple_choice'
-              ? (correctOption?.optionText || "Not available")
-              : (q.expectedAnswers ? (Array.isArray(JSON.parse(q.expectedAnswers)) ? JSON.parse(q.expectedAnswers).join(", ") : JSON.parse(q.expectedAnswers)) : "Not available")
+            correctAnswer: correctAnswerText,
+            explanation: q.explanationText
           };
         }));
       }
