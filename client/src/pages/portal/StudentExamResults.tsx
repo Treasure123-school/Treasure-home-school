@@ -553,7 +553,7 @@ export default function StudentExamResults() {
                           <div className={`p-2 rounded border ${
                             question.isCorrect === true
                               ? "bg-green-100/50 border-green-200 dark:bg-green-900/10 dark:border-green-800" 
-                              : question.isCorrect === false
+                              : question.isCorrect === false && question.studentAnswer !== "No answer provided"
                               ? "bg-red-100/50 border-red-200 dark:bg-red-900/10 dark:border-red-800"
                               : "bg-gray-100/50 border-gray-200 dark:bg-gray-900/10 dark:border-gray-800"
                           }`}>
@@ -561,9 +561,9 @@ export default function StudentExamResults() {
                             <p className={`text-sm ${
                               question.isCorrect === true 
                                 ? "text-green-700 dark:text-green-400" 
-                                : question.isCorrect === false
+                                : question.isCorrect === false && question.studentAnswer !== "No answer provided"
                                 ? "text-red-700 dark:text-red-400"
-                                : "text-gray-700 dark:text-gray-400"
+                                : "text-gray-500 dark:text-gray-400"
                             } font-semibold`}>
                               {question.studentAnswer || "No answer provided"}
                             </p>
