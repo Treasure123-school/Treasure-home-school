@@ -1724,10 +1724,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Get all student answers for this session
       const sessions = await storage.getExamSessionsByStudent(studentId);
-      const matchingSession = sessions.find((s: any) => s.examId === examId && s.status === 'completed');
+      // Look for any session for this exam, prioritizing completed ones
+      const matchingSession = sessions.find((s: any) => s.examId === examId && s.status === 'completed') || 
+                             sessions.find((s: any) => s.examId === examId);
       
       let questionDetails: any[] = [];
       if (matchingSession) {
+        console.log(`[STRICT-EXAM-RESULT] Using session ${matchingSession.id} for question breakdown`);
         const answers = await storage.getStudentAnswers(matchingSession.id);
         const questions = await storage.getExamQuestions(examId);
         
@@ -1735,20 +1738,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const studentAns = answers.find((a: any) => a.questionId === q.id);
           const options = q.questionType === 'multiple_choice' ? await storage.getQuestionOptions(q.id) : [];
           const correctOption = options.find((o: any) => o.isCorrect);
-          const studentOption = options.find((o: any) => o.id === studentAns?.selectedOptionId);
+          
+          // CRITICAL FIX: Direct mapping of student answer text
+          let studentAnswerText = "No answer provided";
+          
+          if (studentAns) {
+            if (q.questionType === 'multiple_choice' && studentAns.selectedOptionId) {
+              const studentOption = options.find((o: any) => o.id === studentAns.selectedOptionId);
+              studentAnswerText = studentOption?.optionText || `Option (ID: ${studentAns.selectedOptionId})`;
+            } else if (studentAns.textAnswer) {
+              studentAnswerText = studentAns.textAnswer;
+            }
+          }
 
           return {
             questionId: q.id,
             questionText: q.questionText,
-            isCorrect: studentAns?.isCorrect ?? null,
+            isCorrect: studentAns?.isCorrect ?? false, // Default to false if no answer
             pointsAwarded: studentAns?.pointsEarned ?? 0,
             maxPoints: q.points,
-            studentAnswer: q.questionType === 'multiple_choice' 
-              ? (studentOption?.optionText || "No answer provided")
-              : (studentAns?.textAnswer || "No answer provided"),
+            studentAnswer: studentAnswerText,
             correctAnswer: q.questionType === 'multiple_choice'
               ? (correctOption?.optionText || "Not available")
-              : (q.expectedAnswers ? JSON.parse(q.expectedAnswers).join(", ") : "Not available")
+              : (q.expectedAnswers ? (Array.isArray(JSON.parse(q.expectedAnswers)) ? JSON.parse(q.expectedAnswers).join(", ") : JSON.parse(q.expectedAnswers)) : "Not available")
           };
         }));
       }
