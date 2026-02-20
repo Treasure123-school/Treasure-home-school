@@ -1741,12 +1741,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // CRITICAL FIX: Direct mapping of student answer text
           let studentAnswerText = "No answer provided";
+          let isCorrect = false;
+          let pointsEarned = 0;
           
           if (studentAns) {
+            isCorrect = studentAns.isCorrect || false;
+            pointsEarned = studentAns.pointsEarned || 0;
+            
             if (q.questionType === 'multiple_choice' && studentAns.selectedOptionId) {
               const studentOption = options.find((o: any) => o.id === studentAns.selectedOptionId);
               studentAnswerText = studentOption?.optionText || `Option (ID: ${studentAns.selectedOptionId})`;
             } else if (studentAns.textAnswer) {
+              studentAnswerText = studentAns.textAnswer;
+            }
+          }
+
+          // Determine correct answer text
+          let correctAnswerText = "Not available";
+          if (q.questionType === 'multiple_choice') {
+            const correctOption = options.find((o: any) => o.isCorrect);
+            correctAnswerText = correctOption?.optionText || "Not specified";
+          } else {
+            try {
+              const expected = typeof q.expectedAnswers === 'string' 
+                ? JSON.parse(q.expectedAnswers) 
+                : q.expectedAnswers;
+              correctAnswerText = Array.isArray(expected) ? expected.join(", ") : String(expected || "Not specified");
+            } catch (e) {
+              correctAnswerText = String(q.expectedAnswers || "Not specified");
+            }
+          }
+          
+          return {
+            id: q.id,
+            questionText: q.questionText,
+            questionType: q.questionType,
+            points: q.points,
+            studentAnswer: studentAnswerText,
+            correctAnswer: correctAnswerText,
+            isCorrect: isCorrect,
+            pointsEarned: pointsEarned,
+            explanation: q.explanationText
+          };
               studentAnswerText = studentAns.textAnswer;
             }
           }
