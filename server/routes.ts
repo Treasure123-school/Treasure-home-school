@@ -1722,6 +1722,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const maxScore = result.maxScore ?? exam.totalMarks ?? 100;
       const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
       
+      // Get all student answers for this session
+      const sessions = await storage.getExamSessionsByStudent(studentId);
+      // Look for any session for this exam, prioritizing completed ones
+      const matchingSession = sessions.find((s: any) => s.examId === examId && s.status === 'completed') || 
+                             sessions.find((s: any) => s.examId === examId);
+      
+      let questionDetails: any[] = [];
+      if (matchingSession) {
+        console.log(`[STRICT-EXAM-RESULT] Using session ${matchingSession.id} for question breakdown`);
+        const answers = await storage.getStudentAnswers(matchingSession.id);
+        const questions = await storage.getExamQuestions(examId);
+        
+        questionDetails = await Promise.all(questions.map(async (q: any) => {
+          const studentAns = answers.find((a: any) => a.questionId === q.id);
+          const options = q.questionType === 'multiple_choice' ? await storage.getQuestionOptions(q.id) : [];
+          const correctOption = options.find((o: any) => o.isCorrect);
+          
+          // CRITICAL FIX: Direct mapping of student answer text
+          let studentAnswerText = "No answer provided";
+          let isCorrect = false;
+          let pointsEarned = 0;
+          
+          if (studentAns) {
+            isCorrect = studentAns.isCorrect || false;
+            pointsEarned = studentAns.pointsEarned || 0;
+            
+            if (q.questionType === 'multiple_choice' && studentAns.selectedOptionId) {
+              const studentOption = options.find((o: any) => o.id === studentAns.selectedOptionId);
+              studentAnswerText = studentOption?.optionText || `Option (ID: ${studentAns.selectedOptionId})`;
+            } else if (studentAns.textAnswer) {
+              studentAnswerText = studentAns.textAnswer;
+            }
+          }
+
+          // Determine correct answer text
+          let correctAnswerText = "Not available";
+          if (q.questionType === 'multiple_choice') {
+            const correctOption = options.find((o: any) => o.isCorrect);
+            correctAnswerText = correctOption?.optionText || "Not specified";
+          } else {
+            try {
+              const expected = typeof q.expectedAnswers === 'string' 
+                ? JSON.parse(q.expectedAnswers) 
+                : q.expectedAnswers;
+              correctAnswerText = Array.isArray(expected) ? expected.join(", ") : String(expected || "Not specified");
+            } catch (e) {
+              correctAnswerText = String(q.expectedAnswers || "Not specified");
+            }
+          }
+          
+          return {
+            questionId: q.id,
+            questionText: q.questionText,
+            isCorrect: isCorrect,
+            pointsAwarded: pointsEarned,
+            maxPoints: q.points,
+            studentAnswer: studentAnswerText,
+            correctAnswer: correctAnswerText,
+            explanation: q.explanationText
+          };
+        }));
+      }
+
       // Return the EXACT result for this specific exam - no mixing with other exams
       const enrichedResult = {
         id: result.id,
@@ -1739,6 +1802,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         examTitle: exam.name,
         subjectName: subjectName,
         className: className,
+        questionDetails: questionDetails,
         // Include exam details for verification
         exam: {
           id: exam.id,
@@ -2361,20 +2425,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const studentAnswers = await storage.getStudentAnswers(completedSession.id);
           const examQuestions = await storage.getExamQuestions(examId);
           
-          const questionDetails = examQuestions.map(q => {
+          const questionDetails = await Promise.all(examQuestions.map(async (q) => {
             const answer = studentAnswers.find(a => a.questionId === q.id);
+            const options = q.questionType === 'multiple_choice' ? await storage.getQuestionOptions(q.id) : [];
+            
+            // Student Answer Text
+            let studentAnswerText = "No answer provided";
+            if (answer) {
+              if (q.questionType === 'multiple_choice' && answer.selectedOptionId) {
+                const selectedOption = options.find(o => o.id === answer.selectedOptionId);
+                studentAnswerText = selectedOption?.optionText || "Option not found";
+              } else if (answer.textAnswer) {
+                studentAnswerText = answer.textAnswer;
+              }
+            }
+
+            // Correct Answer Text from Teacher's setup
+            let correctAnswerText = "Not available";
+            let isCorrect = answer?.isCorrect || false;
+            let pointsAwarded = answer?.pointsEarned || 0;
+
+            if (q.questionType === 'multiple_choice') {
+              const correctOption = options.find(o => o.isCorrect);
+              correctAnswerText = correctOption?.optionText || "Not specified";
+              
+              // Re-verify correctness if it's missing or needs enforcement
+              if (answer && answer.selectedOptionId && correctOption) {
+                isCorrect = answer.selectedOptionId === correctOption.id;
+              }
+            } else {
+              try {
+                const expected = typeof q.expectedAnswers === 'string' 
+                  ? JSON.parse(q.expectedAnswers) 
+                  : q.expectedAnswers;
+                correctAnswerText = Array.isArray(expected) ? expected.join(", ") : String(expected || "Not specified");
+              } catch (e) {
+                correctAnswerText = String(q.expectedAnswers || "Not specified");
+              }
+            }
+
             return {
               questionId: q.id,
               questionText: q.questionText,
               questionType: q.questionType,
               points: q.points,
-              studentAnswer: answer?.textAnswer || null,
+              studentAnswer: studentAnswerText,
               selectedOptionId: answer?.selectedOptionId || null,
-              isCorrect: answer?.isCorrect || false,
-              pointsAwarded: answer?.pointsEarned || 0,
+              isCorrect: isCorrect,
+              pointsAwarded: pointsAwarded,
+              correctAnswer: correctAnswerText,
+              explanation: q.explanationText,
               feedback: answer?.feedbackText || null
             };
-          });
+          }));
 
           return res.json({
             submitted: true,
@@ -2480,21 +2583,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Build question details for frontend
-      const questionDetails = examQuestions.map(q => {
-        const answer = studentAnswers.find(a => a.questionId === q.id);
-        return {
-          questionId: q.id,
-          questionText: q.questionText,
-          questionType: q.questionType,
-          points: q.points,
-          studentAnswer: answer?.textAnswer || null,
-          selectedOptionId: answer?.selectedOptionId || null,
-          isCorrect: answer?.isCorrect || false,
-          pointsAwarded: answer?.pointsEarned || 0,
-          feedback: answer?.feedbackText || null
-        };
-      });
+    // Build question details for frontend
+    const questionDetails = await Promise.all(examQuestions.map(async (q) => {
+      const answer = studentAnswers.find(a => a.questionId === q.id);
+      const options = q.questionType === 'multiple_choice' ? await storage.getQuestionOptions(q.id) : [];
+      
+      // Student Answer Text
+      let studentAnswerText = "No answer provided";
+      if (answer) {
+        if (q.questionType === 'multiple_choice' && answer.selectedOptionId) {
+          const selectedOption = options.find(o => o.id === answer.selectedOptionId);
+          studentAnswerText = selectedOption?.optionText || "Option not found";
+        } else if (answer.textAnswer) {
+          studentAnswerText = answer.textAnswer;
+        }
+      }
+
+      // Correct Answer Text from Teacher's setup
+      let correctAnswerText = "Not available";
+      let isCorrect = answer?.isCorrect || false;
+      let pointsAwarded = answer?.pointsEarned || 0;
+
+      if (q.questionType === 'multiple_choice') {
+        const correctOption = options.find(o => o.isCorrect);
+        correctAnswerText = correctOption?.optionText || "Not specified";
+        
+        // Re-verify correctness if it's missing or needs enforcement
+        if (answer && answer.selectedOptionId && correctOption) {
+          isCorrect = answer.selectedOptionId === correctOption.id;
+        }
+      } else {
+        try {
+          const expected = typeof q.expectedAnswers === 'string' 
+            ? JSON.parse(q.expectedAnswers) 
+            : q.expectedAnswers;
+          correctAnswerText = Array.isArray(expected) ? expected.join(", ") : String(expected || "Not specified");
+        } catch (e) {
+          correctAnswerText = String(q.expectedAnswers || "Not specified");
+        }
+      }
+
+      return {
+        questionId: q.id,
+        questionText: q.questionText,
+        questionType: q.questionType,
+        points: q.points,
+        studentAnswer: studentAnswerText,
+        selectedOptionId: answer?.selectedOptionId || null,
+        isCorrect: isCorrect,
+        pointsAwarded: pointsAwarded,
+        correctAnswer: correctAnswerText,
+        explanation: q.explanationText,
+        feedback: answer?.feedbackText || null
+      };
+    }));
 
       const totalTime = Date.now() - startTime;
       const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
