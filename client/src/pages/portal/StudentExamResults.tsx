@@ -432,7 +432,19 @@ export default function StudentExamResults() {
                   <span className="font-medium text-green-700 dark:text-green-300">Correct Answers</span>
                 </div>
                 <span className="text-xl font-bold text-green-600" data-testid="value-correct">
-                  {result.correct_answers ?? result.breakdown?.correct ?? 0}
+                  {result.questionDetails ? result.questionDetails.filter(q => q.isCorrect === true).length : (result.correct_answers ?? result.breakdown?.correct ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center">
+                    <XCircle className="w-5 h-5 text-red-600" />
+                  </div>
+                  <span className="font-medium text-red-700 dark:text-red-300">Incorrect Answers</span>
+                </div>
+                <span className="text-xl font-bold text-red-600" data-testid="value-incorrect">
+                  {result.questionDetails ? result.questionDetails.filter(q => q.isCorrect === false).length : (result.incorrect_answers ?? result.breakdown?.incorrect ?? 0)}
                 </span>
               </div>
 
@@ -444,7 +456,19 @@ export default function StudentExamResults() {
                   <span className="font-medium text-blue-700 dark:text-blue-300">Total Questions</span>
                 </div>
                 <span className="text-xl font-bold text-blue-600" data-testid="value-total">
-                  {result.total_questions ?? result.breakdown?.totalQuestions ?? 0}
+                  {result.questionDetails ? result.questionDetails.length : (result.total_questions ?? result.breakdown?.totalQuestions ?? 0)}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/40 rounded-full flex items-center justify-center">
+                    <Clock className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <span className="font-medium text-orange-700 dark:text-orange-300">Time Taken</span>
+                </div>
+                <span className="text-xl font-bold text-orange-600" data-testid="value-time-taken">
+                  {result.timeTakenFormatted || (result.time_taken ? `${Math.floor(result.time_taken / 60)}m ${result.time_taken % 60}s` : 'N/A')}
                 </span>
               </div>
 
