@@ -1683,6 +1683,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[STRICT-EXAM-RESULT] Found result ID ${result.id} for student ${studentId}, exam ${examId}`);
       
+      // Map new schema fields for the frontend
+      const responseData = {
+        ...result,
+        correct_answers: (result as any).correctAnswers ?? 0,
+        incorrect_answers: (result as any).incorrectAnswers ?? 0,
+        total_questions: (result as any).totalQuestions ?? 0,
+        time_taken: (result as any).timeTaken ?? 0,
+        submitted_at: (result as any).submittedAt ?? (result as any).createdAt
+      };
+      
       // Get subject and class information for display
       let subjectName = 'Unknown Subject';
       let className = 'Unknown Class';
@@ -1795,8 +1805,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         percentage: percentage,
         grade: result.grade || null,
         remarks: result.remarks || null,
-        submittedAt: result.createdAt?.toISOString() || null,
-        timeTakenSeconds: timeTakenSeconds,
+        submittedAt: (result as any).submittedAt?.toISOString() || (result as any).createdAt?.toISOString() || null,
+        correct_answers: (result as any).correctAnswers ?? 0,
+        incorrect_answers: (result as any).incorrectAnswers ?? 0,
+        total_questions: (result as any).totalQuestions ?? 0,
+        time_taken: (result as any).timeTaken ?? timeTakenSeconds,
+        timeTakenSeconds: (result as any).timeTaken || timeTakenSeconds,
         submissionReason: submissionReason,
         violationCount: violationCount,
         examTitle: exam.name,
@@ -2533,6 +2547,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metadata: JSON.stringify(sessionMetadata)
       });
 
+      // Calculate correct answers count manually - ensure accuracy
+      const studentAnswers = await storage.getStudentAnswers(activeSession.id);
+      const examQuestions = await storage.getExamQuestions(examId);
+      
+      let correctAnswersCount = 0;
+      for (const question of examQuestions) {
+        const answer = studentAnswers.find(a => a.questionId === question.id);
+        if (!answer) continue;
+
+        if (question.questionType === 'multiple_choice') {
+          const options = await storage.getQuestionOptions(question.id);
+          const correctOption = options.find(o => o.isCorrect);
+          if (correctOption && answer.selectedOptionId === correctOption.id) {
+            correctAnswersCount++;
+          }
+        } else if (question.questionType === 'true_false' || question.questionType === 'fill_blank') {
+          // Basic comparison for text-based auto-gradable questions
+          if (answer.textAnswer?.trim().toLowerCase() === question.expectedAnswers?.trim().toLowerCase()) {
+            correctAnswersCount++;
+          }
+        }
+      }
+
+      // Update exam result with correct answers count
+      const existingResults = await storage.getExamResultsByStudent(studentId);
+      const existingResult = existingResults.find((r: any) => r.examId === examId);
+      
+      if (existingResult) {
+        await storage.updateExamResult(existingResult.id, {
+          correct_answers: correctAnswersCount,
+          total_questions: examQuestions.length,
+          submitted_at: now
+        });
+      }
+
       // Auto-score the exam with error recovery
       const scoringStartTime = Date.now();
       let scoringSuccessful = false;
@@ -2551,10 +2600,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get the updated session with scores
       const updatedSession = await storage.getExamSessionById(activeSession.id);
-
-      // Get detailed results for student
-      const studentAnswers = await storage.getStudentAnswers(activeSession.id);
-      const examQuestions = await storage.getExamQuestions(examId);
 
       // Calculate score from answers if session score is missing
       let totalScore = updatedSession?.score || 0;

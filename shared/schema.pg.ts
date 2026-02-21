@@ -425,6 +425,11 @@ export const examResults = pgTable("exam_results", {
   grade: varchar("grade", { length: 10 }),
   remarks: text("remarks"),
   autoScored: boolean("auto_scored").notNull().default(false),
+  correctAnswers: integer("correct_answers").default(0),
+  incorrectAnswers: integer("incorrect_answers").default(0),
+  totalQuestions: integer("total_questions").default(0),
+  timeTaken: integer("time_taken").default(0),
+  submittedAt: timestamp("submitted_at"),
   recordedBy: varchar("recorded_by", { length: 36 }).notNull().references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => ({

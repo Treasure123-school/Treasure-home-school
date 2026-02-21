@@ -39,6 +39,11 @@ interface ExamResult {
   violationCount?: number;
   examTitle?: string;
   subjectName?: string;
+  correct_answers: number | null;
+  incorrect_answers: number | null;
+  total_questions: number | null;
+  time_taken: number | null;
+  submitted_at: string | null;
   breakdown?: {
     correct: number;
     incorrect: number;
@@ -419,59 +424,29 @@ export default function StudentExamResults() {
                 </div>
               )}
 
-              {result.breakdown && (
-                <>
-                  <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center">
-                        <CheckCircle className="w-5 h-5 text-green-600" />
-                      </div>
-                      <span className="font-medium text-green-700 dark:text-green-300">Correct Answers</span>
-                    </div>
-                    <span className="text-xl font-bold text-green-600" data-testid="value-correct">
-                      {result.breakdown.correct}
-                    </span>
+              <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
                   </div>
-
-                  <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center">
-                        <XCircle className="w-5 h-5 text-red-600" />
-                      </div>
-                      <span className="font-medium text-red-700 dark:text-red-300">Incorrect Answers</span>
-                    </div>
-                    <span className="text-xl font-bold text-red-600" data-testid="value-incorrect">
-                      {result.breakdown.incorrect}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <span className="font-medium text-blue-700 dark:text-blue-300">Total Questions</span>
-                    </div>
-                    <span className="text-xl font-bold text-blue-600" data-testid="value-total">
-                      {result.breakdown.totalQuestions}
-                    </span>
-                  </div>
-                </>
-              )}
-
-              {result.timeTakenFormatted && (
-                <div className="flex items-center justify-between p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-indigo-100 dark:bg-indigo-900/40 rounded-full flex items-center justify-center">
-                      <Clock className="w-5 h-5 text-indigo-600" />
-                    </div>
-                    <span className="font-medium text-indigo-700 dark:text-indigo-300">Time Taken</span>
-                  </div>
-                  <span className="text-xl font-bold text-indigo-600" data-testid="value-time">
-                    {result.timeTakenFormatted}
-                  </span>
+                  <span className="font-medium text-green-700 dark:text-green-300">Correct Answers</span>
                 </div>
-              )}
+                <span className="text-xl font-bold text-green-600" data-testid="value-correct">
+                  {result.correct_answers ?? result.breakdown?.correct ?? 0}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <span className="font-medium text-blue-700 dark:text-blue-300">Total Questions</span>
+                </div>
+                <span className="text-xl font-bold text-blue-600" data-testid="value-total">
+                  {result.total_questions ?? result.breakdown?.totalQuestions ?? 0}
+                </span>
+              </div>
 
               <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                 <div className="flex items-center gap-3">
