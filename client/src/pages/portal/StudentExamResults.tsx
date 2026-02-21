@@ -39,10 +39,11 @@ interface ExamResult {
   violationCount?: number;
   examTitle?: string;
   subjectName?: string;
-  correct_answers?: number;
-  incorrect_answers?: number;
-  total_questions?: number;
-  time_taken?: number;
+  correct_answers: number | null;
+  incorrect_answers: number | null;
+  total_questions: number | null;
+  time_taken: number | null;
+  submitted_at: string | null;
   breakdown?: {
     correct: number;
     incorrect: number;
