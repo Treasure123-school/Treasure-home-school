@@ -1814,8 +1814,10 @@ export default function StudentExams() {
       });
     }
     
-    // STEP 6: Navigate to results page
-    setLocation('/portal/student/exam-results');
+    // STEP 6: Navigate to results page with exam ID for strict matching
+    const examId = resultData?.examId || activeSessionRef.current?.examId;
+    const url = examId ? `/portal/student/exam-results?examId=${examId}` : '/portal/student/exam-results';
+    setLocation(url);
   };
 
   // Handle returning to exam list after viewing results
@@ -2602,7 +2604,7 @@ export default function StudentExams() {
 
                       {/* Action Button */}
                       <Button 
-                        onClick={() => status.isCompleted ? setLocation('/portal/student/exam-results') : handleStartExam(exam)}
+                        onClick={() => status.isCompleted ? setLocation(`/portal/student/exam-results?examId=${exam.id}`) : handleStartExam(exam)}
                         className="w-full h-9 bg-[#3b82f6] hover:bg-blue-700 text-white rounded-md font-medium shadow-none transition-all group/btn text-sm"
                         data-testid={`button-action-${exam.id}`}
                       >
