@@ -2547,6 +2547,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metadata: JSON.stringify(sessionMetadata)
       });
 
+      // Recalculate correct answers and score before final saving
+      const scoringData = await storage.getExamScoringData(activeSession.id);
+      const correctCount = scoringData.scoringData.filter((q: any) => q.isCorrect).length;
+      const totalQuestionsCount = scoringData.summary.totalQuestions;
+
+      // Update exam result with correct answers count
+      const existingResults = await storage.getExamResultsByStudent(studentId);
+      const existingResult = existingResults.find((r: any) => r.examId === examId);
+      
+      if (existingResult) {
+        await storage.updateExamResult(existingResult.id, {
+          correctAnswers: correctCount,
+          totalQuestions: totalQuestionsCount,
+          submittedAt: now
+        });
+      }
+
       // Auto-score the exam with error recovery
       const scoringStartTime = Date.now();
       let scoringSuccessful = false;
