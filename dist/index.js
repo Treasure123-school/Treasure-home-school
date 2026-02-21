@@ -453,6 +453,11 @@ var init_schema_pg = __esm({
       grade: varchar("grade", { length: 10 }),
       remarks: text("remarks"),
       autoScored: boolean("auto_scored").notNull().default(false),
+      correctAnswers: integer("correct_answers").default(0),
+      incorrectAnswers: integer("incorrect_answers").default(0),
+      totalQuestions: integer("total_questions").default(0),
+      timeTaken: integer("time_taken").default(0),
+      submittedAt: timestamp("submitted_at"),
       recordedBy: varchar("recorded_by", { length: 36 }).notNull().references(() => users.id),
       createdAt: timestamp("created_at").notNull().defaultNow()
     }, (table) => ({
@@ -1060,1435 +1065,54 @@ var init_schema_pg = __esm({
   }
 });
 
-// shared/schema.ts
-var schema_exports = {};
-__export(schema_exports, {
-  academicTerms: () => academicTerms2,
-  adminProfiles: () => adminProfiles2,
-  announcements: () => announcements2,
-  approvedTeachers: () => approvedTeachers2,
-  attendance: () => attendance2,
-  auditLogs: () => auditLogs2,
-  classSubjectMappings: () => classSubjectMappings2,
-  classes: () => classes2,
-  contactMessages: () => contactMessages2,
-  continuousAssessment: () => continuousAssessment2,
-  counters: () => counters2,
-  createQuestionOptionSchema: () => createQuestionOptionSchema,
-  createStudentSchema: () => createStudentSchema,
-  createStudentWithAutoCredsSchema: () => createStudentWithAutoCredsSchema,
-  csvStudentSchema: () => csvStudentSchema,
-  examQuestions: () => examQuestions2,
-  examResults: () => examResults2,
-  examSessions: () => examSessions2,
-  examSubmissionsArchive: () => examSubmissionsArchive2,
-  exams: () => exams2,
-  gallery: () => gallery2,
-  galleryCategories: () => galleryCategories2,
-  gradingBoundaries: () => gradingBoundaries2,
-  gradingTasks: () => gradingTasks2,
-  homePageContent: () => homePageContent2,
-  insertAcademicTermSchema: () => insertAcademicTermSchema,
-  insertAdminProfileSchema: () => insertAdminProfileSchema,
-  insertAnnouncementSchema: () => insertAnnouncementSchema,
-  insertApprovedTeacherSchema: () => insertApprovedTeacherSchema,
-  insertAttendanceSchema: () => insertAttendanceSchema,
-  insertAuditLogSchema: () => insertAuditLogSchema,
-  insertClassSchema: () => insertClassSchema,
-  insertClassSubjectMappingSchema: () => insertClassSubjectMappingSchema,
-  insertContactMessageSchema: () => insertContactMessageSchema,
-  insertContinuousAssessmentSchema: () => insertContinuousAssessmentSchema,
-  insertCounterSchema: () => insertCounterSchema,
-  insertExamQuestionSchema: () => insertExamQuestionSchema,
-  insertExamResultSchema: () => insertExamResultSchema,
-  insertExamSchema: () => insertExamSchema,
-  insertExamSessionSchema: () => insertExamSessionSchema,
-  insertExamSubmissionsArchiveSchema: () => insertExamSubmissionsArchiveSchema,
-  insertGalleryCategorySchema: () => insertGalleryCategorySchema,
-  insertGallerySchema: () => insertGallerySchema,
-  insertGradingBoundarySchema: () => insertGradingBoundarySchema,
-  insertGradingTaskSchema: () => insertGradingTaskSchema,
-  insertHomePageContentSchema: () => insertHomePageContentSchema,
-  insertInviteSchema: () => insertInviteSchema,
-  insertMessageSchema: () => insertMessageSchema,
-  insertNotificationSchema: () => insertNotificationSchema,
-  insertParentProfileSchema: () => insertParentProfileSchema,
-  insertPasswordResetAttemptSchema: () => insertPasswordResetAttemptSchema,
-  insertPasswordResetTokenSchema: () => insertPasswordResetTokenSchema,
-  insertPerformanceEventSchema: () => insertPerformanceEventSchema,
-  insertQuestionBankItemSchema: () => insertQuestionBankItemSchema,
-  insertQuestionBankOptionSchema: () => insertQuestionBankOptionSchema,
-  insertQuestionBankSchema: () => insertQuestionBankSchema,
-  insertQuestionOptionSchema: () => insertQuestionOptionSchema,
-  insertReportCardItemSchema: () => insertReportCardItemSchema,
-  insertReportCardSchema: () => insertReportCardSchema,
-  insertReportCardSkillsSchema: () => insertReportCardSkillsSchema,
-  insertReportCommentTemplateSchema: () => insertReportCommentTemplateSchema,
-  insertRoleSchema: () => insertRoleSchema,
-  insertSettingSchema: () => insertSettingSchema,
-  insertStudentAnswerSchema: () => insertStudentAnswerSchema,
-  insertStudentSchema: () => insertStudentSchema,
-  insertStudentSubjectAssignmentSchema: () => insertStudentSubjectAssignmentSchema,
-  insertStudyResourceSchema: () => insertStudyResourceSchema,
-  insertSubjectSchema: () => insertSubjectSchema,
-  insertSuperAdminProfileSchema: () => insertSuperAdminProfileSchema,
-  insertSystemSettingsSchema: () => insertSystemSettingsSchema,
-  insertTeacherApplicationSchema: () => insertTeacherApplicationSchema,
-  insertTeacherAssignmentHistorySchema: () => insertTeacherAssignmentHistorySchema,
-  insertTeacherClassAssignmentSchema: () => insertTeacherClassAssignmentSchema,
-  insertTeacherProfileSchema: () => insertTeacherProfileSchema,
-  insertTimetableSchema: () => insertTimetableSchema,
-  insertUnauthorizedAccessLogSchema: () => insertUnauthorizedAccessLogSchema,
-  insertUserSchema: () => insertUserSchema,
-  insertVacancySchema: () => insertVacancySchema,
-  invites: () => invites2,
-  messages: () => messages2,
-  notifications: () => notifications2,
-  parentProfiles: () => parentProfiles2,
-  passwordResetAttempts: () => passwordResetAttempts2,
-  passwordResetTokens: () => passwordResetTokens2,
-  performanceEvents: () => performanceEvents2,
-  questionBankItems: () => questionBankItems2,
-  questionBankOptions: () => questionBankOptions2,
-  questionBanks: () => questionBanks2,
-  questionOptions: () => questionOptions2,
-  quickCreateStudentSchema: () => quickCreateStudentSchema,
-  reportCardItems: () => reportCardItems2,
-  reportCardSkills: () => reportCardSkills2,
-  reportCards: () => reportCards2,
-  reportCommentTemplates: () => reportCommentTemplates2,
-  roles: () => roles2,
-  settings: () => settings2,
-  studentAnswers: () => studentAnswers2,
-  studentSubjectAssignments: () => studentSubjectAssignments2,
-  students: () => students2,
-  studyResources: () => studyResources2,
-  subjects: () => subjects2,
-  superAdminProfiles: () => superAdminProfiles2,
-  systemSettings: () => systemSettings2,
-  teacherApplications: () => teacherApplications2,
-  teacherAssignmentHistory: () => teacherAssignmentHistory2,
-  teacherClassAssignments: () => teacherClassAssignments2,
-  teacherProfiles: () => teacherProfiles2,
-  timetable: () => timetable2,
-  unauthorizedAccessLogs: () => unauthorizedAccessLogs2,
-  updateExamSessionSchema: () => updateExamSessionSchema,
-  users: () => users2,
-  vacancies: () => vacancies2
-});
-import { sql } from "drizzle-orm";
-import { sqliteTable, text as text2, integer as integer2, index as index2, uniqueIndex as uniqueIndex2 } from "drizzle-orm/sqlite-core";
-import { createInsertSchema } from "drizzle-zod";
-import { z } from "zod";
-var roles2, users2, passwordResetTokens2, passwordResetAttempts2, invites2, notifications2, academicTerms2, classes2, subjects2, students2, teacherProfiles2, adminProfiles2, parentProfiles2, superAdminProfiles2, systemSettings2, attendance2, exams2, examQuestions2, questionOptions2, examSessions2, studentAnswers2, examResults2, examSubmissionsArchive2, questionBanks2, questionBankItems2, questionBankOptions2, announcements2, messages2, galleryCategories2, gallery2, homePageContent2, contactMessages2, reportCommentTemplates2, reportCards2, reportCardItems2, reportCardSkills2, studyResources2, performanceEvents2, teacherClassAssignments2, teacherAssignmentHistory2, gradingBoundaries2, continuousAssessment2, unauthorizedAccessLogs2, studentSubjectAssignments2, classSubjectMappings2, timetable2, gradingTasks2, auditLogs2, settings2, counters2, vacancies2, teacherApplications2, approvedTeachers2, insertRoleSchema, insertUserSchema, insertPasswordResetTokenSchema, insertPasswordResetAttemptSchema, insertInviteSchema, insertStudentSchema, insertClassSchema, insertSubjectSchema, insertAcademicTermSchema, insertAttendanceSchema, insertExamSchema, insertExamResultSchema, insertExamSubmissionsArchiveSchema, insertAnnouncementSchema, insertMessageSchema, insertGalleryCategorySchema, insertGallerySchema, insertHomePageContentSchema, insertContactMessageSchema, insertReportCommentTemplateSchema, insertReportCardSchema, insertReportCardSkillsSchema, insertReportCardItemSchema, insertStudyResourceSchema, insertPerformanceEventSchema, insertTeacherClassAssignmentSchema, insertTeacherAssignmentHistorySchema, insertGradingBoundarySchema, insertContinuousAssessmentSchema, insertUnauthorizedAccessLogSchema, insertTimetableSchema, insertGradingTaskSchema, insertAuditLogSchema, insertSettingSchema, insertCounterSchema, createStudentWithAutoCredsSchema, createStudentSchema, quickCreateStudentSchema, csvStudentSchema, insertExamQuestionSchema, insertQuestionOptionSchema, createQuestionOptionSchema, insertExamSessionSchema, updateExamSessionSchema, insertStudentAnswerSchema, insertNotificationSchema, insertTeacherProfileSchema, insertAdminProfileSchema, insertParentProfileSchema, insertStudentSubjectAssignmentSchema, insertClassSubjectMappingSchema, insertVacancySchema, insertTeacherApplicationSchema, insertApprovedTeacherSchema, insertSuperAdminProfileSchema, insertSystemSettingsSchema, insertQuestionBankSchema, insertQuestionBankItemSchema, insertQuestionBankOptionSchema;
-var init_schema = __esm({
-  "shared/schema.ts"() {
-    "use strict";
-    roles2 = sqliteTable("roles", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      name: text2("name").notNull().unique(),
-      permissions: text2("permissions").notNull().default("[]"),
-      // JSON array as text
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    });
-    users2 = sqliteTable("users", {
-      id: text2("id").primaryKey(),
-      username: text2("username").unique(),
-      email: text2("email").notNull(),
-      recoveryEmail: text2("recovery_email"),
-      passwordHash: text2("password_hash"),
-      mustChangePassword: integer2("must_change_password", { mode: "boolean" }).notNull().default(true),
-      roleId: integer2("role_id").notNull().references(() => roles2.id),
-      firstName: text2("first_name").notNull(),
-      lastName: text2("last_name").notNull(),
-      phone: text2("phone"),
-      address: text2("address"),
-      dateOfBirth: text2("date_of_birth"),
-      // YYYY-MM-DD format
-      gender: text2("gender"),
-      // 'Male', 'Female', 'Other'
-      nationalId: text2("national_id"),
-      profileImageUrl: text2("profile_image_url"),
-      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
-      authProvider: text2("auth_provider").notNull().default("local"),
-      googleId: text2("google_id").unique(),
-      // Security & audit fields
-      status: text2("status").notNull().default("active"),
-      // 'pending', 'active', 'suspended', 'disabled'
-      createdVia: text2("created_via").notNull().default("admin"),
-      // 'bulk', 'invite', 'self', 'google', 'admin'
-      createdBy: text2("created_by"),
-      approvedBy: text2("approved_by"),
-      approvedAt: integer2("approved_at", { mode: "timestamp" }),
-      lastLoginAt: integer2("last_login_at", { mode: "timestamp" }),
-      lastLoginIp: text2("last_login_ip"),
-      mfaEnabled: integer2("mfa_enabled", { mode: "boolean" }).notNull().default(false),
-      mfaSecret: text2("mfa_secret"),
-      accountLockedUntil: integer2("account_locked_until", { mode: "timestamp" }),
-      // Profile completion fields
-      profileCompleted: integer2("profile_completed", { mode: "boolean" }).notNull().default(false),
-      profileSkipped: integer2("profile_skipped", { mode: "boolean" }).notNull().default(false),
-      profileCompletionPercentage: integer2("profile_completion_percentage").notNull().default(0),
-      state: text2("state"),
-      country: text2("country"),
-      securityQuestion: text2("security_question"),
-      securityAnswerHash: text2("security_answer_hash"),
-      dataPolicyAgreed: integer2("data_policy_agreed", { mode: "boolean" }).notNull().default(false),
-      dataPolicyAgreedAt: integer2("data_policy_agreed_at", { mode: "timestamp" }),
-      deletedAt: integer2("deleted_at", { mode: "timestamp" }),
-      deletedBy: text2("deleted_by"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      usersEmailIdx: index2("users_email_idx").on(table.email),
-      usersStatusIdx: index2("users_status_idx").on(table.status),
-      usersGoogleIdIdx: index2("users_google_id_idx").on(table.googleId),
-      usersRoleIdIdx: index2("users_role_id_idx").on(table.roleId),
-      usersUsernameIdx: index2("users_username_idx").on(table.username),
-      usersDeletedAtIdx: index2("users_deleted_at_idx").on(table.deletedAt)
-    }));
-    passwordResetTokens2 = sqliteTable("password_reset_tokens", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      userId: text2("user_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
-      token: text2("token").notNull().unique(),
-      expiresAt: integer2("expires_at", { mode: "timestamp" }).notNull(),
-      usedAt: integer2("used_at", { mode: "timestamp" }),
-      ipAddress: text2("ip_address"),
-      resetBy: text2("reset_by").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      passwordResetTokensUserIdIdx: index2("password_reset_tokens_user_id_idx").on(table.userId),
-      passwordResetTokensTokenIdx: index2("password_reset_tokens_token_idx").on(table.token)
-    }));
-    passwordResetAttempts2 = sqliteTable("password_reset_attempts", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      identifier: text2("identifier").notNull(),
-      ipAddress: text2("ip_address").notNull(),
-      attemptedAt: integer2("attempted_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      success: integer2("success", { mode: "boolean" }).notNull().default(false)
-    }, (table) => ({
-      passwordResetAttemptsIdentifierIdx: index2("password_reset_attempts_identifier_idx").on(table.identifier),
-      passwordResetAttemptsIpIdx: index2("password_reset_attempts_ip_idx").on(table.ipAddress),
-      passwordResetAttemptsTimeIdx: index2("password_reset_attempts_time_idx").on(table.attemptedAt)
-    }));
-    invites2 = sqliteTable("invites", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      token: text2("token").notNull().unique(),
-      email: text2("email").notNull(),
-      roleId: integer2("role_id").notNull().references(() => roles2.id),
-      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
-      expiresAt: integer2("expires_at", { mode: "timestamp" }).notNull(),
-      acceptedAt: integer2("accepted_at", { mode: "timestamp" }),
-      acceptedBy: text2("accepted_by").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      invitesTokenIdx: index2("invites_token_idx").on(table.token),
-      invitesEmailIdx: index2("invites_email_idx").on(table.email)
-    }));
-    notifications2 = sqliteTable("notifications", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      userId: text2("user_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
-      type: text2("type").notNull(),
-      title: text2("title").notNull(),
-      message: text2("message").notNull(),
-      relatedEntityType: text2("related_entity_type"),
-      relatedEntityId: text2("related_entity_id"),
-      isRead: integer2("is_read", { mode: "boolean" }).notNull().default(false),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      notificationsUserIdIdx: index2("notifications_user_id_idx").on(table.userId),
-      notificationsIsReadIdx: index2("notifications_is_read_idx").on(table.isRead)
-    }));
-    academicTerms2 = sqliteTable("academic_terms", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      name: text2("name").notNull(),
-      year: text2("year").notNull(),
-      startDate: text2("start_date").notNull(),
-      // YYYY-MM-DD format
-      endDate: text2("end_date").notNull(),
-      isCurrent: integer2("is_current", { mode: "boolean" }).notNull().default(false),
-      status: text2("status").notNull().default("upcoming"),
-      // upcoming, active, completed, archived
-      isLocked: integer2("is_locked", { mode: "boolean" }).notNull().default(false),
-      description: text2("description"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      academicTermsYearIdx: index2("academic_terms_year_idx").on(table.year),
-      academicTermsStatusIdx: index2("academic_terms_status_idx").on(table.status),
-      academicTermsCurrentIdx: index2("academic_terms_current_idx").on(table.isCurrent)
-    }));
-    classes2 = sqliteTable("classes", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      name: text2("name").notNull().unique(),
-      level: text2("level").notNull(),
-      capacity: integer2("capacity").notNull().default(30),
-      classTeacherId: text2("class_teacher_id").references(() => users2.id, { onDelete: "set null" }),
-      currentTermId: integer2("current_term_id").references(() => academicTerms2.id),
-      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    });
-    subjects2 = sqliteTable("subjects", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      name: text2("name").notNull(),
-      code: text2("code").notNull().unique(),
-      description: text2("description"),
-      category: text2("category").notNull().default("general"),
-      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    });
-    students2 = sqliteTable("students", {
-      id: text2("id").primaryKey().references(() => users2.id, { onDelete: "cascade" }),
-      admissionNumber: text2("admission_number").notNull().unique(),
-      classId: integer2("class_id").references(() => classes2.id),
-      parentId: text2("parent_id").references(() => users2.id, { onDelete: "set null" }),
-      department: text2("department"),
-      admissionDate: text2("admission_date").notNull(),
-      // YYYY-MM-DD format
-      emergencyContact: text2("emergency_contact"),
-      emergencyPhone: text2("emergency_phone"),
-      medicalInfo: text2("medical_info"),
-      guardianName: text2("guardian_name"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    });
-    teacherProfiles2 = sqliteTable("teacher_profiles", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      userId: text2("user_id").notNull().unique().references(() => users2.id, { onDelete: "cascade" }),
-      staffId: text2("staff_id").unique(),
-      subjects: text2("subjects").notNull().default("[]"),
-      // JSON array of integers
-      assignedClasses: text2("assigned_classes").notNull().default("[]"),
-      // JSON array of integers
-      qualification: text2("qualification"),
-      yearsOfExperience: integer2("years_of_experience").notNull().default(0),
-      specialization: text2("specialization"),
-      department: text2("department"),
-      signatureUrl: text2("signature_url"),
-      gradingMode: text2("grading_mode").notNull().default("manual"),
-      autoGradeTheoryQuestions: integer2("auto_grade_theory_questions", { mode: "boolean" }).notNull().default(false),
-      theoryGradingInstructions: text2("theory_grading_instructions"),
-      notificationPreference: text2("notification_preference").notNull().default("all"),
-      availability: text2("availability"),
-      firstLogin: integer2("first_login", { mode: "boolean" }).notNull().default(true),
-      verified: integer2("verified", { mode: "boolean" }).notNull().default(false),
-      verifiedBy: text2("verified_by").references(() => users2.id, { onDelete: "set null" }),
-      verifiedAt: integer2("verified_at", { mode: "timestamp" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    });
-    adminProfiles2 = sqliteTable("admin_profiles", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      userId: text2("user_id").notNull().unique().references(() => users2.id, { onDelete: "cascade" }),
-      department: text2("department"),
-      roleDescription: text2("role_description"),
-      accessLevel: text2("access_level"),
-      signatureUrl: text2("signature_url"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    });
-    parentProfiles2 = sqliteTable("parent_profiles", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      userId: text2("user_id").notNull().unique().references(() => users2.id, { onDelete: "cascade" }),
-      occupation: text2("occupation"),
-      contactPreference: text2("contact_preference"),
-      linkedStudents: text2("linked_students").notNull().default("[]"),
-      // JSON array of UUIDs
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    });
-    superAdminProfiles2 = sqliteTable("super_admin_profiles", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      userId: text2("user_id").notNull().unique().references(() => users2.id, { onDelete: "cascade" }),
-      department: text2("department"),
-      accessLevel: text2("access_level").notNull().default("full"),
-      twoFactorEnabled: integer2("two_factor_enabled", { mode: "boolean" }).notNull().default(false),
-      twoFactorSecret: text2("two_factor_secret"),
-      lastPasswordChange: integer2("last_password_change", { mode: "timestamp" }),
-      signatureUrl: text2("signature_url"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    });
-    systemSettings2 = sqliteTable("system_settings", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      schoolName: text2("school_name"),
-      schoolShortName: text2("school_short_name"),
-      schoolMotto: text2("school_motto"),
-      schoolLogo: text2("school_logo"),
-      favicon: text2("favicon"),
-      schoolAddress: text2("school_address"),
-      schoolPhones: text2("school_phones").notNull().default("[]"),
-      // JSON array of {countryCode, number}
-      schoolEmails: text2("school_emails").notNull().default("[]"),
-      // JSON array of strings
-      websiteTitle: text2("website_title"),
-      footerText: text2("footer_text"),
-      maintenanceMode: integer2("maintenance_mode", { mode: "boolean" }).notNull().default(false),
-      maintenanceModeMessage: text2("maintenance_mode_message"),
-      enableSmsNotifications: integer2("enable_sms_notifications", { mode: "boolean" }).notNull().default(false),
-      enableEmailNotifications: integer2("enable_email_notifications", { mode: "boolean" }).notNull().default(true),
-      enableExamsModule: integer2("enable_exams_module", { mode: "boolean" }).notNull().default(true),
-      enableAttendanceModule: integer2("enable_attendance_module", { mode: "boolean" }).notNull().default(true),
-      enableResultsModule: integer2("enable_results_module", { mode: "boolean" }).notNull().default(true),
-      tempPasswordFormat: text2("temp_password_format").notNull().default("THS@{year}#{random4}"),
-      hideAdminAccountsFromAdmins: integer2("hide_admin_accounts_from_admins", { mode: "boolean" }).notNull().default(true),
-      testWeight: integer2("test_weight").notNull().default(40),
-      examWeight: integer2("exam_weight").notNull().default(60),
-      defaultGradingScale: text2("default_grading_scale").notNull().default("standard"),
-      scoreAggregationMode: text2("score_aggregation_mode").notNull().default("last"),
-      autoCreateReportCard: integer2("auto_create_report_card", { mode: "boolean" }).notNull().default(true),
-      showGradeBreakdown: integer2("show_grade_breakdown", { mode: "boolean" }).notNull().default(true),
-      allowTeacherOverrides: integer2("allow_teacher_overrides", { mode: "boolean" }).notNull().default(true),
-      positioningMethod: text2("positioning_method").notNull().default("average"),
-      deletedUserRetentionDays: integer2("deleted_user_retention_days").notNull().default(30),
-      // Authentication Settings
-      loginIdentifier: text2("login_identifier").notNull().default("username"),
-      // 'email', 'username', 'both'
-      enableRememberMe: integer2("enable_remember_me", { mode: "boolean" }).notNull().default(true),
-      enableStudentPortal: integer2("enable_student_portal", { mode: "boolean" }).notNull().default(true),
-      enableAdminPortal: integer2("enable_admin_portal", { mode: "boolean" }).notNull().default(true),
-      allowRegistration: integer2("allow_registration", { mode: "boolean" }).notNull().default(false),
-      defaultRegistrationRoleId: integer2("default_registration_role_id").notNull().default(4),
-      sessionTimeout: integer2("session_timeout").notNull().default(30),
-      // minutes
-      allowMultipleLogins: integer2("allow_multiple_logins", { mode: "boolean" }).notNull().default(false),
-      autoDisableInactiveDays: integer2("auto_disable_inactive_days").notNull().default(90),
-      requireAdminApproval: integer2("require_admin_approval", { mode: "boolean" }).notNull().default(true),
-      redirectAfterLogin: text2("redirect_after_login").notNull().default("dashboard"),
-      // 'dashboard', 'last_page'
-      loginErrorDisplay: text2("login_error_display").notNull().default("generic"),
-      // 'generic', 'detailed'
-      // Branding & Theme
-      primaryColor: text2("primary_color").notNull().default("#3b82f6"),
-      secondaryColor: text2("secondary_color").notNull().default("#1e293b"),
-      defaultTheme: text2("default_theme").notNull().default("light"),
-      // 'light', 'dark'
-      loginPageText: text2("login_page_text").notNull().default("Welcome to Treasure Home School Portal"),
-      dashboardWelcomeMessage: text2("dashboard_welcome_message").notNull().default("Welcome back to your dashboard"),
-      // General Configuration
-      portalName: text2("portal_name").notNull().default("Treasure Home School Portal"),
-      timezone: text2("timezone").notNull().default("Africa/Lagos"),
-      language: text2("language").notNull().default("en"),
-      dateFormat: text2("date_format").notNull().default("DD/MM/YYYY"),
-      timeFormat: text2("time_format").notNull().default("HH:mm"),
-      // Integrations
-      enableOnlinePayments: integer2("enable_online_payments", { mode: "boolean" }).notNull().default(false),
-      // Backup & Restore
-      autoBackup: integer2("auto_backup", { mode: "boolean" }).notNull().default(false),
-      backupFrequency: text2("backup_frequency").notNull().default("daily"),
-      // 'daily', 'weekly'
-      lastBackupDate: integer2("last_backup_date", { mode: "timestamp" }),
-      // API & Access Tokens
-      enableApiAccess: integer2("enable_api_access", { mode: "boolean" }).notNull().default(false),
-      apiAccessKey: text2("api_access_key"),
-      // Security Policies
-      minPasswordLength: integer2("min_password_length").notNull().default(8),
-      requirePasswordNumbers: integer2("require_password_numbers", { mode: "boolean" }).notNull().default(true),
-      requirePasswordLetters: integer2("require_password_letters", { mode: "boolean" }).notNull().default(true),
-      requirePasswordSpecial: integer2("require_password_special", { mode: "boolean" }).notNull().default(true),
-      maxFailedLoginAttempts: integer2("max_failed_login_attempts").notNull().default(5),
-      enableLockAccount: integer2("enable_lock_account", { mode: "boolean" }).notNull().default(true),
-      lockoutDuration: integer2("lockout_duration").notNull().default(15),
-      // minutes
-      passwordResetExpiry: integer2("password_reset_expiry").notNull().default(30),
-      // minutes
-      invalidateOldPasswordOnReset: integer2("invalidate_old_password_on_reset", { mode: "boolean" }).notNull().default(true),
-      enableTwoFactor: integer2("enable_two_factor", { mode: "boolean" }).notNull().default(false),
-      twoFactorTarget: text2("two_factor_target").notNull().default("admins"),
-      // 'admins', 'all'
-      logoutOnPasswordChange: integer2("logout_on_password_change", { mode: "boolean" }).notNull().default(true),
-      updatedBy: text2("updated_by").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    });
-    attendance2 = sqliteTable("attendance", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
-      classId: integer2("class_id").notNull().references(() => classes2.id),
-      date: text2("date").notNull(),
-      // YYYY-MM-DD format
-      status: text2("status").notNull(),
-      // 'Present', 'Absent', 'Late', 'Excused'
-      recordedBy: text2("recorded_by").references(() => users2.id, { onDelete: "set null" }),
-      notes: text2("notes"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    });
-    exams2 = sqliteTable("exams", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      name: text2("name").notNull(),
-      classId: integer2("class_id").notNull().references(() => classes2.id),
-      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
-      totalMarks: integer2("total_marks").notNull(),
-      date: text2("date").notNull(),
-      // YYYY-MM-DD format
-      termId: integer2("term_id").notNull().references(() => academicTerms2.id),
-      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
-      teacherInChargeId: text2("teacher_in_charge_id").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      examType: text2("exam_type").notNull().default("exam"),
-      // 'test', 'exam'
-      timerMode: text2("timer_mode").notNull().default("individual"),
-      // 'global', 'individual'
-      timeLimit: integer2("time_limit"),
-      // in minutes
-      startTime: integer2("start_time", { mode: "timestamp" }),
-      endTime: integer2("end_time", { mode: "timestamp" }),
-      instructions: text2("instructions"),
-      isPublished: integer2("is_published", { mode: "boolean" }).notNull().default(false),
-      allowRetakes: integer2("allow_retakes", { mode: "boolean" }).notNull().default(false),
-      shuffleQuestions: integer2("shuffle_questions", { mode: "boolean" }).notNull().default(false),
-      autoGradingEnabled: integer2("auto_grading_enabled", { mode: "boolean" }).notNull().default(true),
-      instantFeedback: integer2("instant_feedback", { mode: "boolean" }).notNull().default(false),
-      showCorrectAnswers: integer2("show_correct_answers", { mode: "boolean" }).notNull().default(false),
-      passingScore: integer2("passing_score"),
-      gradingScale: text2("grading_scale").notNull().default("standard"),
-      enableProctoring: integer2("enable_proctoring", { mode: "boolean" }).notNull().default(false),
-      lockdownMode: integer2("lockdown_mode", { mode: "boolean" }).notNull().default(false),
-      requireWebcam: integer2("require_webcam", { mode: "boolean" }).notNull().default(false),
-      requireFullscreen: integer2("require_fullscreen", { mode: "boolean" }).notNull().default(false),
-      maxTabSwitches: integer2("max_tab_switches").notNull().default(3),
-      shuffleOptions: integer2("shuffle_options", { mode: "boolean" }).notNull().default(false)
-    });
-    examQuestions2 = sqliteTable("exam_questions", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      examId: integer2("exam_id").notNull().references(() => exams2.id),
-      questionText: text2("question_text").notNull(),
-      questionType: text2("question_type").notNull(),
-      // 'multiple_choice', 'text', 'essay', 'true_false', 'fill_blank'
-      points: integer2("points").notNull().default(1),
-      orderNumber: integer2("order_number").notNull(),
-      imageUrl: text2("image_url"),
-      autoGradable: integer2("auto_gradable", { mode: "boolean" }).notNull().default(true),
-      expectedAnswers: text2("expected_answers").notNull().default("[]"),
-      // JSON array
-      caseSensitive: integer2("case_sensitive", { mode: "boolean" }).notNull().default(false),
-      allowPartialCredit: integer2("allow_partial_credit", { mode: "boolean" }).notNull().default(false),
-      partialCreditRules: text2("partial_credit_rules"),
-      explanationText: text2("explanation_text"),
-      hintText: text2("hint_text"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      examQuestionsExamIdIdx: index2("exam_questions_exam_id_idx").on(table.examId),
-      examQuestionsOrderIdx: index2("exam_questions_order_idx").on(table.examId, table.orderNumber)
-    }));
-    questionOptions2 = sqliteTable("question_options", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      questionId: integer2("question_id").notNull().references(() => examQuestions2.id),
-      optionText: text2("option_text").notNull(),
-      isCorrect: integer2("is_correct", { mode: "boolean" }).notNull().default(false),
-      orderNumber: integer2("order_number").notNull(),
-      partialCreditValue: integer2("partial_credit_value").notNull().default(0),
-      explanationText: text2("explanation_text"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      questionOptionsQuestionIdIdx: index2("question_options_question_id_idx").on(table.questionId),
-      questionOptionsCorrectIdx: index2("question_options_correct_idx").on(table.questionId, table.isCorrect)
-    }));
-    examSessions2 = sqliteTable("exam_sessions", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      examId: integer2("exam_id").notNull().references(() => exams2.id),
-      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
-      startedAt: integer2("started_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      submittedAt: integer2("submitted_at", { mode: "timestamp" }),
-      timeRemaining: integer2("time_remaining"),
-      isCompleted: integer2("is_completed", { mode: "boolean" }).notNull().default(false),
-      score: integer2("score"),
-      maxScore: integer2("max_score"),
-      status: text2("status").notNull().default("in_progress"),
-      // 'in_progress', 'submitted', 'graded'
-      metadata: text2("metadata"),
-      // JSON string
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      examSessionsExamStudentIdx: index2("exam_sessions_exam_student_idx").on(table.examId, table.studentId),
-      examSessionsStudentCompletedIdx: index2("exam_sessions_student_completed_idx").on(table.studentId, table.isCompleted),
-      examSessionsActiveSessionsIdx: index2("exam_sessions_active_idx").on(table.examId, table.studentId, table.isCompleted)
-    }));
-    studentAnswers2 = sqliteTable("student_answers", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      sessionId: integer2("session_id").notNull().references(() => examSessions2.id),
-      questionId: integer2("question_id").notNull().references(() => examQuestions2.id),
-      selectedOptionId: integer2("selected_option_id").references(() => questionOptions2.id),
-      textAnswer: text2("text_answer"),
-      isCorrect: integer2("is_correct", { mode: "boolean" }),
-      pointsEarned: integer2("points_earned").notNull().default(0),
-      answeredAt: integer2("answered_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      autoScored: integer2("auto_scored", { mode: "boolean" }).notNull().default(false),
-      manualOverride: integer2("manual_override", { mode: "boolean" }).notNull().default(false),
-      feedbackText: text2("feedback_text"),
-      partialCreditReason: text2("partial_credit_reason")
-    }, (table) => ({
-      studentAnswersSessionIdIdx: index2("student_answers_session_id_idx").on(table.sessionId),
-      studentAnswersSessionQuestionIdx: index2("student_answers_session_question_idx").on(table.sessionId, table.questionId),
-      studentAnswersQuestionIdx: index2("student_answers_question_id_idx").on(table.questionId)
-    }));
-    examResults2 = sqliteTable("exam_results", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      examId: integer2("exam_id").notNull().references(() => exams2.id),
-      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
-      score: integer2("score"),
-      maxScore: integer2("max_score"),
-      marksObtained: integer2("marks_obtained"),
-      grade: text2("grade"),
-      remarks: text2("remarks"),
-      autoScored: integer2("auto_scored", { mode: "boolean" }).notNull().default(false),
-      recordedBy: text2("recorded_by").notNull().references(() => users2.id),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      examResultsExamIdIdx: index2("exam_results_exam_id_idx").on(table.examId),
-      examResultsStudentIdIdx: index2("exam_results_student_id_idx").on(table.studentId),
-      examResultsExamStudentIdx: index2("exam_results_exam_student_idx").on(table.examId, table.studentId),
-      examResultsAutoScoredIdx: index2("exam_results_auto_scored_idx").on(table.autoScored, table.examId)
-    }));
-    examSubmissionsArchive2 = sqliteTable("exam_submissions_archive", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      examId: integer2("exam_id").notNull().references(() => exams2.id),
-      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
-      originalSessionId: integer2("original_session_id"),
-      originalResultId: integer2("original_result_id"),
-      oldScore: integer2("old_score"),
-      oldMaxScore: integer2("old_max_score"),
-      oldAnswers: text2("old_answers"),
-      // JSON string of archived answers
-      archivedBy: text2("archived_by").notNull().references(() => users2.id),
-      archiveReason: text2("archive_reason").notNull().default("retake_allowed"),
-      archivedAt: integer2("archived_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      examSubmissionsArchiveExamIdx: index2("exam_submissions_archive_exam_idx").on(table.examId),
-      examSubmissionsArchiveStudentIdx: index2("exam_submissions_archive_student_idx").on(table.studentId),
-      examSubmissionsArchiveExamStudentIdx: index2("exam_submissions_archive_exam_student_idx").on(table.examId, table.studentId)
-    }));
-    questionBanks2 = sqliteTable("question_banks", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      name: text2("name").notNull(),
-      description: text2("description"),
-      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
-      classLevel: text2("class_level"),
-      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
-      isPublic: integer2("is_public", { mode: "boolean" }).notNull().default(false),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      questionBanksSubjectIdx: index2("question_banks_subject_idx").on(table.subjectId),
-      questionBanksCreatedByIdx: index2("question_banks_created_by_idx").on(table.createdBy)
-    }));
-    questionBankItems2 = sqliteTable("question_bank_items", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      bankId: integer2("bank_id").notNull().references(() => questionBanks2.id, { onDelete: "cascade" }),
-      questionText: text2("question_text").notNull(),
-      questionType: text2("question_type").notNull(),
-      points: integer2("points").notNull().default(1),
-      difficulty: text2("difficulty").notNull().default("medium"),
-      tags: text2("tags").notNull().default("[]"),
-      // JSON array
-      imageUrl: text2("image_url"),
-      autoGradable: integer2("auto_gradable", { mode: "boolean" }).notNull().default(true),
-      expectedAnswers: text2("expected_answers").notNull().default("[]"),
-      // JSON array
-      caseSensitive: integer2("case_sensitive", { mode: "boolean" }).notNull().default(false),
-      explanationText: text2("explanation_text"),
-      hintText: text2("hint_text"),
-      practicalInstructions: text2("practical_instructions"),
-      practicalFileUrl: text2("practical_file_url"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      questionBankItemsBankIdIdx: index2("question_bank_items_bank_id_idx").on(table.bankId),
-      questionBankItemsTypeIdx: index2("question_bank_items_type_idx").on(table.questionType),
-      questionBankItemsDifficultyIdx: index2("question_bank_items_difficulty_idx").on(table.difficulty)
-    }));
-    questionBankOptions2 = sqliteTable("question_bank_options", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      questionItemId: integer2("question_item_id").notNull().references(() => questionBankItems2.id, { onDelete: "cascade" }),
-      optionText: text2("option_text").notNull(),
-      isCorrect: integer2("is_correct", { mode: "boolean" }).notNull().default(false),
-      orderNumber: integer2("order_number").notNull(),
-      explanationText: text2("explanation_text"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      questionBankOptionsItemIdIdx: index2("question_bank_options_item_id_idx").on(table.questionItemId)
-    }));
-    announcements2 = sqliteTable("announcements", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      title: text2("title").notNull(),
-      content: text2("content").notNull(),
-      authorId: text2("author_id").references(() => users2.id, { onDelete: "set null" }),
-      targetRoles: text2("target_roles").notNull().default('["All"]'),
-      // JSON array
-      targetClasses: text2("target_classes").notNull().default("[]"),
-      // JSON array
-      isPublished: integer2("is_published", { mode: "boolean" }).notNull().default(false),
-      publishedAt: integer2("published_at", { mode: "timestamp" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      // Priority & Type
-      priority: text2("priority").notNull().default("normal"),
-      // 'normal', 'important', 'urgent'
-      announcementType: text2("announcement_type").notNull().default("general"),
-      // 'general', 'academic', 'examination', 'event', 'emergency'
-      // Scheduling & Expiry
-      scheduledAt: integer2("scheduled_at", { mode: "timestamp" }),
-      expiryDate: integer2("expiry_date", { mode: "timestamp" }),
-      // Attachments (JSON array of file URLs)
-      attachments: text2("attachments").notNull().default("[]"),
-      coverImageUrl: text2("cover_image_url"),
-      // Notification Settings (JSON object)
-      notificationSettings: text2("notification_settings").notNull().default('{"inApp": true, "email": false, "sms": false}'),
-      // Status & Analytics
-      status: text2("status").notNull().default("draft"),
-      // 'draft', 'scheduled', 'published', 'expired', 'archived'
-      viewCount: integer2("view_count").notNull().default(0),
-      allowComments: integer2("allow_comments", { mode: "boolean" }).notNull().default(false),
-      allowEdit: integer2("allow_edit", { mode: "boolean" }).notNull().default(true),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    });
-    messages2 = sqliteTable("messages", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      senderId: text2("sender_id").references(() => users2.id, { onDelete: "set null" }),
-      recipientId: text2("recipient_id").references(() => users2.id, { onDelete: "set null" }),
-      subject: text2("subject").notNull(),
-      content: text2("content").notNull(),
-      isRead: integer2("is_read", { mode: "boolean" }).notNull().default(false),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    });
-    galleryCategories2 = sqliteTable("gallery_categories", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      name: text2("name").notNull(),
-      description: text2("description"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    });
-    gallery2 = sqliteTable("gallery", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      imageUrl: text2("image_url").notNull(),
-      caption: text2("caption"),
-      categoryId: integer2("category_id").references(() => galleryCategories2.id),
-      uploadedBy: text2("uploaded_by").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    });
-    homePageContent2 = sqliteTable("home_page_content", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      contentType: text2("content_type").notNull(),
-      imageUrl: text2("image_url"),
-      altText: text2("alt_text"),
-      caption: text2("caption"),
-      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
-      displayOrder: integer2("display_order").notNull().default(0),
-      uploadedBy: text2("uploaded_by").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    });
-    contactMessages2 = sqliteTable("contact_messages", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      name: text2("name").notNull(),
-      email: text2("email").notNull(),
-      subject: text2("subject"),
-      message: text2("message").notNull(),
-      isRead: integer2("is_read", { mode: "boolean" }).notNull().default(false),
-      respondedAt: integer2("responded_at", { mode: "timestamp" }),
-      respondedBy: text2("responded_by").references(() => users2.id, { onDelete: "set null" }),
-      response: text2("response"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    });
-    reportCommentTemplates2 = sqliteTable("report_comment_templates", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      role: text2("role").notNull(),
-      // 'teacher' or 'principal'
-      performanceLevel: text2("performance_level").notNull(),
-      // 'excellent', 'very_good', 'good', 'fair', 'needs_improvement'
-      minPercentage: integer2("min_percentage").notNull(),
-      maxPercentage: integer2("max_percentage").notNull(),
-      commentTemplate: text2("comment_template").notNull(),
-      // Use {lastName} as placeholder
-      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
-      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
-      updatedBy: text2("updated_by").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    });
-    reportCards2 = sqliteTable("report_cards", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
-      classId: integer2("class_id").notNull().references(() => classes2.id),
-      termId: integer2("term_id").notNull().references(() => academicTerms2.id),
-      averagePercentage: integer2("average_percentage"),
-      overallGrade: text2("overall_grade"),
-      teacherRemarks: text2("teacher_remarks"),
-      principalRemarks: text2("principal_remarks"),
-      status: text2("status").notNull().default("draft"),
-      // 'draft', 'teacher_signed', 'awaiting_approval', 'approved', 'published'
-      locked: integer2("locked", { mode: "boolean" }).notNull().default(false),
-      teacherSignedBy: text2("teacher_signed_by").references(() => users2.id, { onDelete: "set null" }),
-      teacherSignedAt: integer2("teacher_signed_at", { mode: "timestamp" }),
-      teacherSignatureUrl: text2("teacher_signature_url"),
-      principalSignedBy: text2("principal_signed_by").references(() => users2.id, { onDelete: "set null" }),
-      principalSignedAt: integer2("principal_signed_at", { mode: "timestamp" }),
-      principalSignatureUrl: text2("principal_signature_url"),
-      generatedAt: integer2("generated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      finalizedAt: integer2("finalized_at", { mode: "timestamp" }),
-      publishedAt: integer2("published_at", { mode: "timestamp" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    });
-    reportCardItems2 = sqliteTable("report_card_items", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      reportCardId: integer2("report_card_id").notNull().references(() => reportCards2.id),
-      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
-      teacherId: text2("teacher_id").references(() => users2.id, { onDelete: "set null" }),
-      testExamId: integer2("test_exam_id").references(() => exams2.id),
-      testExamCreatedBy: text2("test_exam_created_by").references(() => users2.id, { onDelete: "set null" }),
-      testScore: integer2("test_score"),
-      testMaxScore: integer2("test_max_score"),
-      testWeightedScore: integer2("test_weighted_score"),
-      examExamId: integer2("exam_exam_id").references(() => exams2.id),
-      examExamCreatedBy: text2("exam_exam_created_by").references(() => users2.id, { onDelete: "set null" }),
-      examScore: integer2("exam_score"),
-      examMaxScore: integer2("exam_max_score"),
-      examWeightedScore: integer2("exam_weighted_score"),
-      totalMarks: integer2("total_marks").notNull().default(100),
-      obtainedMarks: integer2("obtained_marks").notNull(),
-      percentage: integer2("percentage").notNull(),
-      grade: text2("grade"),
-      teacherRemarks: text2("teacher_remarks"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    });
-    reportCardSkills2 = sqliteTable("report_card_skills", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      reportCardId: integer2("report_card_id").notNull().references(() => reportCards2.id, { onDelete: "cascade" }),
-      // Affective traits (1-5 scale)
-      punctuality: integer2("punctuality"),
-      neatness: integer2("neatness"),
-      attentiveness: integer2("attentiveness"),
-      teamwork: integer2("teamwork"),
-      leadership: integer2("leadership"),
-      assignments: integer2("assignments"),
-      classParticipation: integer2("class_participation"),
-      // Psychomotor skills (1-5 scale)
-      sports: integer2("sports"),
-      handwriting: integer2("handwriting"),
-      musicalSkills: integer2("musical_skills"),
-      creativity: integer2("creativity"),
-      // Metadata
-      recordedBy: text2("recorded_by").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      reportCardSkillsReportCardIdx: index2("report_card_skills_report_card_idx").on(table.reportCardId)
-    }));
-    studyResources2 = sqliteTable("study_resources", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      title: text2("title").notNull(),
-      description: text2("description"),
-      fileUrl: text2("file_url").notNull(),
-      fileName: text2("file_name").notNull(),
-      fileSize: integer2("file_size"),
-      resourceType: text2("resource_type").notNull(),
-      subjectId: integer2("subject_id").references(() => subjects2.id),
-      classId: integer2("class_id").references(() => classes2.id),
-      termId: integer2("term_id").references(() => academicTerms2.id),
-      uploadedBy: text2("uploaded_by").references(() => users2.id, { onDelete: "set null" }),
-      isPublished: integer2("is_published", { mode: "boolean" }).notNull().default(true),
-      downloads: integer2("downloads").notNull().default(0),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    });
-    performanceEvents2 = sqliteTable("performance_events", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      sessionId: integer2("session_id").references(() => examSessions2.id),
-      eventType: text2("event_type").notNull(),
-      duration: integer2("duration").notNull(),
-      goalAchieved: integer2("goal_achieved", { mode: "boolean" }).notNull(),
-      metadata: text2("metadata"),
-      clientSide: integer2("client_side", { mode: "boolean" }).notNull().default(false),
-      userId: text2("user_id").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      performanceEventsTypeIdx: index2("performance_events_type_idx").on(table.eventType),
-      performanceEventsDateIdx: index2("performance_events_date_idx").on(table.createdAt),
-      performanceEventsGoalIdx: index2("performance_events_goal_idx").on(table.goalAchieved, table.eventType)
-    }));
-    teacherClassAssignments2 = sqliteTable("teacher_class_assignments", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      teacherId: text2("teacher_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
-      classId: integer2("class_id").notNull().references(() => classes2.id),
-      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
-      department: text2("department"),
-      termId: integer2("term_id").references(() => academicTerms2.id),
-      session: text2("session"),
-      // Academic session e.g., "2024/2025"
-      assignedBy: text2("assigned_by").references(() => users2.id, { onDelete: "set null" }),
-      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
-      validUntil: integer2("valid_until", { mode: "timestamp" }),
-      // Optional expiration date
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      teacherAssignmentsTeacherIdx: index2("teacher_assignments_teacher_idx").on(table.teacherId, table.isActive),
-      teacherAssignmentsClassSubjectIdx: index2("teacher_assignments_class_subject_idx").on(table.classId, table.subjectId),
-      teacherAssignmentsDeptIdx: index2("teacher_assignments_dept_idx").on(table.department),
-      teacherAssignmentsSessionIdx: index2("teacher_assignments_session_idx").on(table.session),
-      teacherAssignmentsUniqueIdx: uniqueIndex2("teacher_assignments_unique_idx").on(table.teacherId, table.classId, table.subjectId, table.termId)
-    }));
-    teacherAssignmentHistory2 = sqliteTable("teacher_assignment_history", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      assignmentId: integer2("assignment_id").references(() => teacherClassAssignments2.id, { onDelete: "set null" }),
-      teacherId: text2("teacher_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
-      classId: integer2("class_id").notNull().references(() => classes2.id),
-      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
-      action: text2("action").notNull(),
-      // 'created', 'updated', 'disabled', 'deleted'
-      previousValues: text2("previous_values"),
-      // JSON of old values
-      newValues: text2("new_values"),
-      // JSON of new values
-      performedBy: text2("performed_by").references(() => users2.id, { onDelete: "set null" }),
-      reason: text2("reason"),
-      ipAddress: text2("ip_address"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      assignmentHistoryTeacherIdx: index2("assignment_history_teacher_idx").on(table.teacherId),
-      assignmentHistoryActionIdx: index2("assignment_history_action_idx").on(table.action),
-      assignmentHistoryDateIdx: index2("assignment_history_date_idx").on(table.createdAt)
-    }));
-    gradingBoundaries2 = sqliteTable("grading_boundaries", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      name: text2("name").notNull(),
-      // e.g., "Standard", "Custom Science"
-      grade: text2("grade").notNull(),
-      // e.g., "A", "B", "C", "D", "E", "F"
-      minScore: integer2("min_score").notNull(),
-      // Minimum score for this grade
-      maxScore: integer2("max_score").notNull(),
-      // Maximum score for this grade
-      remark: text2("remark"),
-      // e.g., "Excellent", "Very Good", "Good", "Pass", "Fail"
-      gradePoint: integer2("grade_point"),
-      // Optional: for GPA calculation
-      isDefault: integer2("is_default", { mode: "boolean" }).notNull().default(false),
-      termId: integer2("term_id").references(() => academicTerms2.id),
-      classId: integer2("class_id").references(() => classes2.id),
-      // Optional: class-specific grading
-      subjectId: integer2("subject_id").references(() => subjects2.id),
-      // Optional: subject-specific grading
-      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      gradingBoundariesNameIdx: index2("grading_boundaries_name_idx").on(table.name),
-      gradingBoundariesGradeIdx: index2("grading_boundaries_grade_idx").on(table.grade),
-      gradingBoundariesDefaultIdx: index2("grading_boundaries_default_idx").on(table.isDefault)
-    }));
-    continuousAssessment2 = sqliteTable("continuous_assessment", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
-      classId: integer2("class_id").notNull().references(() => classes2.id),
-      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
-      termId: integer2("term_id").notNull().references(() => academicTerms2.id),
-      testScore: integer2("test_score"),
-      // CA score (max typically 40)
-      examScore: integer2("exam_score"),
-      // Exam score (max typically 60)
-      totalScore: integer2("total_score"),
-      // Calculated: testScore + examScore
-      grade: text2("grade"),
-      // Auto-calculated based on grading boundaries
-      remark: text2("remark"),
-      teacherId: text2("teacher_id").references(() => users2.id, { onDelete: "set null" }),
-      enteredBy: text2("entered_by").references(() => users2.id, { onDelete: "set null" }),
-      verifiedBy: text2("verified_by").references(() => users2.id, { onDelete: "set null" }),
-      verifiedAt: integer2("verified_at", { mode: "timestamp" }),
-      isLocked: integer2("is_locked", { mode: "boolean" }).notNull().default(false),
-      lockedBy: text2("locked_by").references(() => users2.id, { onDelete: "set null" }),
-      lockedAt: integer2("locked_at", { mode: "timestamp" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      caStudentIdx: index2("ca_student_idx").on(table.studentId),
-      caClassSubjectIdx: index2("ca_class_subject_idx").on(table.classId, table.subjectId),
-      caTermIdx: index2("ca_term_idx").on(table.termId),
-      caTeacherIdx: index2("ca_teacher_idx").on(table.teacherId),
-      caUniqueIdx: uniqueIndex2("ca_unique_idx").on(table.studentId, table.subjectId, table.classId, table.termId)
-    }));
-    unauthorizedAccessLogs2 = sqliteTable("unauthorized_access_logs", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      userId: text2("user_id").references(() => users2.id, { onDelete: "set null" }),
-      attemptedAction: text2("attempted_action").notNull(),
-      attemptedResource: text2("attempted_resource").notNull(),
-      classId: integer2("class_id").references(() => classes2.id),
-      subjectId: integer2("subject_id").references(() => subjects2.id),
-      ipAddress: text2("ip_address"),
-      userAgent: text2("user_agent"),
-      reason: text2("reason"),
-      // Why access was denied
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      unauthorizedUserIdx: index2("unauthorized_user_idx").on(table.userId),
-      unauthorizedActionIdx: index2("unauthorized_action_idx").on(table.attemptedAction),
-      unauthorizedDateIdx: index2("unauthorized_date_idx").on(table.createdAt)
-    }));
-    studentSubjectAssignments2 = sqliteTable("student_subject_assignments", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
-      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
-      classId: integer2("class_id").notNull().references(() => classes2.id),
-      termId: integer2("term_id").references(() => academicTerms2.id),
-      assignedBy: text2("assigned_by").references(() => users2.id, { onDelete: "set null" }),
-      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      studentSubjectAssignmentsStudentIdx: index2("student_subject_assignments_student_idx").on(table.studentId),
-      studentSubjectAssignmentsSubjectIdx: index2("student_subject_assignments_subject_idx").on(table.subjectId),
-      studentSubjectAssignmentsClassIdx: index2("student_subject_assignments_class_idx").on(table.classId),
-      studentSubjectAssignmentsUniqueIdx: uniqueIndex2("student_subject_assignments_unique_idx").on(table.studentId, table.subjectId, table.classId)
-    }));
-    classSubjectMappings2 = sqliteTable("class_subject_mappings", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      classId: integer2("class_id").notNull().references(() => classes2.id),
-      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
-      department: text2("department"),
-      isCompulsory: integer2("is_compulsory", { mode: "boolean" }).notNull().default(false),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      classSubjectMappingsClassIdx: index2("class_subject_mappings_class_idx").on(table.classId),
-      classSubjectMappingsSubjectIdx: index2("class_subject_mappings_subject_idx").on(table.subjectId),
-      classSubjectMappingsDeptIdx: index2("class_subject_mappings_dept_idx").on(table.department),
-      classSubjectMappingsUniqueIdx: uniqueIndex2("class_subject_mappings_unique_idx").on(table.classId, table.subjectId, table.department)
-    }));
-    timetable2 = sqliteTable("timetable", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      teacherId: text2("teacher_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
-      classId: integer2("class_id").notNull().references(() => classes2.id),
-      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
-      dayOfWeek: text2("day_of_week").notNull(),
-      startTime: text2("start_time").notNull(),
-      endTime: text2("end_time").notNull(),
-      location: text2("location"),
-      termId: integer2("term_id").references(() => academicTerms2.id),
-      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      timetableTeacherIdx: index2("timetable_teacher_idx").on(table.teacherId, table.isActive),
-      timetableDayIdx: index2("timetable_day_idx").on(table.dayOfWeek, table.teacherId)
-    }));
-    gradingTasks2 = sqliteTable("grading_tasks", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      sessionId: integer2("session_id").notNull().references(() => examSessions2.id, { onDelete: "cascade" }),
-      answerId: integer2("answer_id").notNull().references(() => studentAnswers2.id, { onDelete: "cascade" }),
-      assignedTeacherId: text2("assigned_teacher_id").references(() => users2.id, { onDelete: "set null" }),
-      status: text2("status").notNull().default("pending"),
-      priority: integer2("priority").notNull().default(0),
-      assignedAt: integer2("assigned_at", { mode: "timestamp" }),
-      startedAt: integer2("started_at", { mode: "timestamp" }),
-      completedAt: integer2("completed_at", { mode: "timestamp" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      gradingTasksAssignedIdx: index2("grading_tasks_assigned_idx").on(table.assignedTeacherId, table.status),
-      gradingTasksStatusIdx: index2("grading_tasks_status_idx").on(table.status, table.priority),
-      gradingTasksSessionIdx: index2("grading_tasks_session_idx").on(table.sessionId),
-      gradingTasksAnswerUniqueIdx: uniqueIndex2("grading_tasks_answer_unique_idx").on(table.answerId)
-    }));
-    auditLogs2 = sqliteTable("audit_logs", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      userId: text2("user_id").references(() => users2.id, { onDelete: "set null" }),
-      action: text2("action").notNull(),
-      entityType: text2("entity_type").notNull(),
-      entityId: text2("entity_id").notNull(),
-      oldValue: text2("old_value"),
-      newValue: text2("new_value"),
-      reason: text2("reason"),
-      ipAddress: text2("ip_address"),
-      userAgent: text2("user_agent"),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      auditLogsUserIdx: index2("audit_logs_user_idx").on(table.userId),
-      auditLogsEntityIdx: index2("audit_logs_entity_idx").on(table.entityType, table.entityId),
-      auditLogsDateIdx: index2("audit_logs_date_idx").on(table.createdAt),
-      auditLogsActionIdx: index2("audit_logs_action_idx").on(table.action)
-    }));
-    settings2 = sqliteTable("settings", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      key: text2("key").notNull().unique(),
-      value: text2("value").notNull(),
-      description: text2("description"),
-      dataType: text2("data_type").notNull().default("string"),
-      updatedBy: text2("updated_by").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      settingsKeyIdx: index2("settings_key_idx").on(table.key)
-    }));
-    counters2 = sqliteTable("counters", {
-      id: integer2("id").primaryKey({ autoIncrement: true }),
-      roleCode: text2("role_code"),
-      classCode: text2("class_code"),
-      year: text2("year"),
-      sequence: integer2("sequence").notNull().default(0),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      countersRoleCodeIdx: uniqueIndex2("counters_role_code_idx").on(table.roleCode)
-    }));
-    vacancies2 = sqliteTable("vacancies", {
-      id: text2("id").primaryKey(),
-      title: text2("title").notNull(),
-      description: text2("description").notNull(),
-      requirements: text2("requirements"),
-      deadline: integer2("deadline", { mode: "timestamp" }).notNull(),
-      status: text2("status").notNull().default("open"),
-      // 'open', 'closed', 'filled'
-      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      vacanciesStatusIdx: index2("vacancies_status_idx").on(table.status),
-      vacanciesDeadlineIdx: index2("vacancies_deadline_idx").on(table.deadline)
-    }));
-    teacherApplications2 = sqliteTable("teacher_applications", {
-      id: text2("id").primaryKey(),
-      vacancyId: text2("vacancy_id").references(() => vacancies2.id, { onDelete: "set null" }),
-      fullName: text2("full_name").notNull(),
-      googleEmail: text2("google_email").notNull(),
-      phone: text2("phone").notNull(),
-      subjectSpecialty: text2("subject_specialty").notNull(),
-      qualification: text2("qualification").notNull(),
-      experienceYears: integer2("experience_years").notNull(),
-      bio: text2("bio").notNull(),
-      resumeUrl: text2("resume_url"),
-      status: text2("status").notNull().default("pending"),
-      // 'pending', 'approved', 'rejected'
-      reviewedBy: text2("reviewed_by").references(() => users2.id, { onDelete: "set null" }),
-      reviewedAt: integer2("reviewed_at", { mode: "timestamp" }),
-      rejectionReason: text2("rejection_reason"),
-      dateApplied: integer2("date_applied", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      teacherApplicationsStatusIdx: index2("teacher_applications_status_idx").on(table.status),
-      teacherApplicationsEmailIdx: index2("teacher_applications_email_idx").on(table.googleEmail),
-      teacherApplicationsVacancyIdx: index2("teacher_applications_vacancy_idx").on(table.vacancyId)
-    }));
-    approvedTeachers2 = sqliteTable("approved_teachers", {
-      id: text2("id").primaryKey(),
-      applicationId: text2("application_id").references(() => teacherApplications2.id, { onDelete: "set null" }),
-      googleEmail: text2("google_email").notNull().unique(),
-      fullName: text2("full_name").notNull(),
-      subjectSpecialty: text2("subject_specialty"),
-      approvedBy: text2("approved_by").references(() => users2.id, { onDelete: "set null" }),
-      dateApproved: integer2("date_approved", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`)
-    }, (table) => ({
-      approvedTeachersEmailIdx: index2("approved_teachers_email_idx").on(table.googleEmail)
-    }));
-    insertRoleSchema = createInsertSchema(roles2).omit({ id: true, createdAt: true });
-    insertUserSchema = createInsertSchema(users2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens2).omit({ id: true, createdAt: true });
-    insertPasswordResetAttemptSchema = createInsertSchema(passwordResetAttempts2).omit({ id: true, attemptedAt: true });
-    insertInviteSchema = createInsertSchema(invites2).omit({ id: true, createdAt: true });
-    insertStudentSchema = createInsertSchema(students2).omit({ createdAt: true });
-    insertClassSchema = createInsertSchema(classes2).omit({ id: true, createdAt: true });
-    insertSubjectSchema = createInsertSchema(subjects2).omit({ id: true, createdAt: true });
-    insertAcademicTermSchema = createInsertSchema(academicTerms2).omit({ id: true, createdAt: true });
-    insertAttendanceSchema = createInsertSchema(attendance2).omit({ id: true, createdAt: true });
-    insertExamSchema = createInsertSchema(exams2).omit({ id: true, createdAt: true }).extend({
-      classId: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
-        z.number().positive("Please select a valid class")
-      ),
-      subjectId: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
-        z.number().positive("Please select a valid subject")
-      ),
-      termId: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
-        z.number().positive("Please select a valid term")
-      ),
-      totalMarks: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
-        z.number().positive("Total marks must be a positive number")
-      ),
-      name: z.string().min(1, "Exam name is required"),
-      date: z.string().min(1, "Exam date is required").regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").refine((dateStr) => {
-        const date = new Date(dateStr);
-        return !isNaN(date.getTime()) && date.toISOString().startsWith(dateStr);
-      }, "Please enter a valid date"),
-      examType: z.enum(["test", "exam"]).default("exam"),
-      timerMode: z.string().default("individual"),
-      timeLimit: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
-        z.number().int().min(1, "Time limit must be at least 1 minute").optional()
-      ),
-      passingScore: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
-        z.number().int().min(0).max(100, "Passing score must be between 0 and 100").optional()
-      ),
-      startTime: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? void 0 : new Date(val),
-        z.date().optional()
-      ),
-      endTime: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? void 0 : new Date(val),
-        z.date().optional()
-      ),
-      instructions: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? void 0 : val,
-        z.string().optional()
-      ),
-      gradingScale: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? "standard" : val,
-        z.string().default("standard")
-      ),
-      teacherInChargeId: z.preprocess(
-        (val) => val === "" || val === null || val === void 0 ? void 0 : val,
-        z.string().optional()
-      ),
-      isPublished: z.boolean().default(false),
-      allowRetakes: z.boolean().default(false),
-      shuffleQuestions: z.boolean().default(false),
-      autoGradingEnabled: z.boolean().default(true),
-      instantFeedback: z.boolean().default(false),
-      showCorrectAnswers: z.boolean().default(false)
-    });
-    insertExamResultSchema = createInsertSchema(examResults2).omit({ id: true, createdAt: true });
-    insertExamSubmissionsArchiveSchema = createInsertSchema(examSubmissionsArchive2).omit({ id: true, archivedAt: true });
-    insertAnnouncementSchema = createInsertSchema(announcements2).omit({ id: true, createdAt: true });
-    insertMessageSchema = createInsertSchema(messages2).omit({ id: true, createdAt: true });
-    insertGalleryCategorySchema = createInsertSchema(galleryCategories2).omit({ id: true, createdAt: true });
-    insertGallerySchema = createInsertSchema(gallery2).omit({ id: true, createdAt: true });
-    insertHomePageContentSchema = createInsertSchema(homePageContent2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertContactMessageSchema = createInsertSchema(contactMessages2).omit({ id: true, createdAt: true });
-    insertReportCommentTemplateSchema = createInsertSchema(reportCommentTemplates2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertReportCardSchema = createInsertSchema(reportCards2).omit({ id: true, createdAt: true });
-    insertReportCardSkillsSchema = createInsertSchema(reportCardSkills2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertReportCardItemSchema = createInsertSchema(reportCardItems2).omit({ id: true, createdAt: true });
-    insertStudyResourceSchema = createInsertSchema(studyResources2).omit({ id: true, createdAt: true, downloads: true });
-    insertPerformanceEventSchema = createInsertSchema(performanceEvents2).omit({ id: true, createdAt: true });
-    insertTeacherClassAssignmentSchema = createInsertSchema(teacherClassAssignments2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertTeacherAssignmentHistorySchema = createInsertSchema(teacherAssignmentHistory2).omit({ id: true, createdAt: true });
-    insertGradingBoundarySchema = createInsertSchema(gradingBoundaries2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertContinuousAssessmentSchema = createInsertSchema(continuousAssessment2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertUnauthorizedAccessLogSchema = createInsertSchema(unauthorizedAccessLogs2).omit({ id: true, createdAt: true });
-    insertTimetableSchema = createInsertSchema(timetable2).omit({ id: true, createdAt: true });
-    insertGradingTaskSchema = createInsertSchema(gradingTasks2).omit({ id: true, createdAt: true });
-    insertAuditLogSchema = createInsertSchema(auditLogs2).omit({ id: true, createdAt: true });
-    insertSettingSchema = createInsertSchema(settings2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertCounterSchema = createInsertSchema(counters2).omit({ id: true, createdAt: true, updatedAt: true });
-    createStudentWithAutoCredsSchema = z.object({
-      firstName: z.string().min(1, "First name is required"),
-      lastName: z.string().min(1, "Last name is required"),
-      phone: z.string().optional(),
-      address: z.string().optional(),
-      dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
-      gender: z.enum(["Male", "Female", "Other"], { required_error: "Gender is required" }),
-      profileImageUrl: z.string().optional(),
-      admissionNumber: z.string().min(1, "Admission number is required"),
-      classId: z.coerce.number().positive("Please select a valid class"),
-      parentId: z.string().optional().nullable(),
-      admissionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Admission date must be in YYYY-MM-DD format"),
-      emergencyContact: z.string().min(1, "Emergency contact is required"),
-      medicalInfo: z.string().optional(),
-      parentEmail: z.string().email("Invalid parent email").optional(),
-      parentPhone: z.string().optional()
-    });
-    createStudentSchema = z.object({
-      firstName: z.string().min(1, "First name is required"),
-      lastName: z.string().min(1, "Last name is required"),
-      phone: z.string().optional(),
-      address: z.string().optional(),
-      dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
-      gender: z.enum(["Male", "Female", "Other"], { required_error: "Gender is required" }),
-      profileImageUrl: z.string().optional(),
-      classId: z.coerce.number().positive("Please select a valid class"),
-      parentId: z.string().optional().nullable(),
-      parentPhone: z.string().optional(),
-      admissionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Admission date must be in YYYY-MM-DD format"),
-      emergencyContact: z.string().optional(),
-      medicalInfo: z.string().optional(),
-      guardianName: z.string().optional(),
-      department: z.enum(["science", "art", "commercial"]).optional().nullable()
-    });
-    quickCreateStudentSchema = z.object({
-      fullName: z.string().min(2, "Full name is required").refine(
-        (name) => name.trim().split(/\s+/).length >= 2,
-        "Please enter both first and last name (e.g., 'John Adebayo')"
-      ),
-      gender: z.enum(["Male", "Female", "Other"], { required_error: "Gender is required" }),
-      dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
-      classId: z.coerce.number().positive("Please select a valid class"),
-      department: z.enum(["science", "art", "commercial"]).optional().nullable()
-    });
-    csvStudentSchema = z.object({
-      fullName: z.string().min(1, "Full name is required"),
-      class: z.string().min(1, "Class is required"),
-      gender: z.enum(["Male", "Female", "Other"], { required_error: "Gender is required" }),
-      dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
-      parentEmail: z.string().email("Invalid parent email").optional(),
-      parentPhone: z.string().optional(),
-      emergencyContact: z.string().min(1, "Emergency contact is required"),
-      admissionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Admission date must be in YYYY-MM-DD format").optional(),
-      medicalInfo: z.string().optional(),
-      guardianName: z.string().optional()
-    });
-    insertExamQuestionSchema = createInsertSchema(examQuestions2).omit({ id: true, createdAt: true }).extend({
-      examId: z.coerce.number().positive("Please select a valid exam"),
-      questionText: z.string().min(1, "Question text is required"),
-      questionType: z.enum(["multiple_choice", "text", "essay", "true_false", "fill_blank"], { required_error: "Question type is required" }),
-      points: z.preprocess((val) => val === "" ? 1 : val, z.coerce.number().int().min(0, "Points must be a non-negative number").default(1)),
-      orderNumber: z.coerce.number().int().min(1, "Order number must be a positive number"),
-      imageUrl: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional()),
-      expectedAnswers: z.preprocess((val) => {
-        if (val === "" || val === null || val === void 0) return void 0;
-        if (Array.isArray(val)) return val;
-        if (typeof val === "string") return val.split(",").map((s) => s.trim()).filter((s) => s !== "");
-        return void 0;
-      }, z.array(z.string()).optional()),
-      explanationText: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional()),
-      hintText: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional()),
-      partialCreditRules: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional())
-    });
-    insertQuestionOptionSchema = createInsertSchema(questionOptions2).omit({ id: true, createdAt: true }).extend({
-      questionId: z.coerce.number().positive("Please select a valid question"),
-      orderNumber: z.coerce.number().int().min(1, "Order number must be a positive number"),
-      partialCreditValue: z.preprocess((val) => val === "" ? 0 : val, z.coerce.number().int().min(0, "Partial credit must be non-negative").default(0)),
-      explanationText: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional())
-    });
-    createQuestionOptionSchema = insertQuestionOptionSchema.omit({ questionId: true, orderNumber: true }).extend({
-      partialCreditValue: z.preprocess((val) => val === "" ? 0 : val, z.coerce.number().int().min(0, "Partial credit must be non-negative").default(0)).optional(),
-      explanationText: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional())
-    });
-    insertExamSessionSchema = createInsertSchema(examSessions2).omit({
-      id: true,
-      createdAt: true,
-      startedAt: true,
-      studentId: true
-    }).partial().required({
-      examId: true
-    }).extend({
-      submittedAt: z.union([z.date(), z.string()]).optional().transform((val) => {
-        if (typeof val === "string") {
-          return new Date(val);
-        }
-        return val;
-      })
-    });
-    updateExamSessionSchema = z.object({
-      isCompleted: z.boolean().optional(),
-      submittedAt: z.coerce.date().refine((d) => !isNaN(d.getTime()), "Invalid date").optional(),
-      timeRemaining: z.number().int().min(0).optional(),
-      status: z.enum(["in_progress", "submitted"]).optional(),
-      submissionMethod: z.string().optional(),
-      autoSubmitted: z.boolean().optional()
-    }).strict();
-    insertStudentAnswerSchema = createInsertSchema(studentAnswers2).omit({ id: true });
-    insertNotificationSchema = createInsertSchema(notifications2).omit({ id: true, createdAt: true });
-    insertTeacherProfileSchema = createInsertSchema(teacherProfiles2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertAdminProfileSchema = createInsertSchema(adminProfiles2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertParentProfileSchema = createInsertSchema(parentProfiles2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertStudentSubjectAssignmentSchema = createInsertSchema(studentSubjectAssignments2).omit({ id: true, createdAt: true });
-    insertClassSubjectMappingSchema = createInsertSchema(classSubjectMappings2).omit({ id: true, createdAt: true });
-    insertVacancySchema = createInsertSchema(vacancies2).omit({
-      id: true,
-      createdAt: true,
-      updatedAt: true
-    });
-    insertTeacherApplicationSchema = createInsertSchema(teacherApplications2).omit({
-      id: true,
-      createdAt: true,
-      updatedAt: true,
-      dateApplied: true,
-      reviewedAt: true,
-      reviewedBy: true,
-      status: true
-    });
-    insertApprovedTeacherSchema = createInsertSchema(approvedTeachers2).omit({
-      id: true,
-      createdAt: true,
-      dateApproved: true
-    });
-    insertSuperAdminProfileSchema = createInsertSchema(superAdminProfiles2).omit({
-      id: true,
-      createdAt: true,
-      updatedAt: true
-    });
-    insertSystemSettingsSchema = createInsertSchema(systemSettings2).omit({
-      id: true,
-      createdAt: true,
-      updatedAt: true
-    });
-    insertQuestionBankSchema = createInsertSchema(questionBanks2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertQuestionBankItemSchema = createInsertSchema(questionBankItems2).omit({ id: true, createdAt: true, updatedAt: true });
-    insertQuestionBankOptionSchema = createInsertSchema(questionBankOptions2).omit({ id: true, createdAt: true });
-  }
-});
-
 // server/db.ts
-import { drizzle as drizzlePg } from "drizzle-orm/neon-serverless";
-import { drizzle as drizzleSqlite } from "drizzle-orm/better-sqlite3";
-import { Pool, neonConfig, neon } from "@neondatabase/serverless";
-import Database from "better-sqlite3";
-import ws from "ws";
-function getSchema() {
-  return isPostgres ? schema_pg_exports : schema_exports;
-}
+import { drizzle } from "drizzle-orm/node-postgres";
+import pg from "pg";
 function initializeDatabase() {
-  if (dbInternal) {
-    return dbInternal;
+  if (!databaseUrl) {
+    console.error("DATABASE_URL is required for PostgreSQL connection");
+    throw new Error("DATABASE_URL environment variable is required.");
   }
-  if (isProduction && !databaseUrl) {
-    console.error("\u274C DATABASE_URL is required for PostgreSQL connection in production");
-    throw new Error("DATABASE_URL environment variable is required in production.");
+  console.log("Initializing PostgreSQL database...");
+  try {
+    pool = new Pool({ connectionString: databaseUrl });
+    const dbInstance = drizzle(pool, { schema: schema_pg_exports });
+    console.log("PostgreSQL database initialized");
+    return dbInstance;
+  } catch (error) {
+    console.error("Failed to initialize PostgreSQL database:", error);
+    throw error;
   }
-  if (databaseUrl) {
-    console.log("\u{1F418} Initializing PostgreSQL database (Neon with WebSocket)...");
-    try {
-      pool = new Pool({ connectionString: databaseUrl });
-      dbInternal = drizzlePg(pool, { schema: schema_pg_exports });
-      neonClient = neon(databaseUrl);
-      console.log("\u2705 PostgreSQL database initialized");
-    } catch (error) {
-      console.error("\u274C Failed to initialize PostgreSQL database:", error);
-      throw error;
-    }
-  } else {
-    console.log("\u{1F4E6} Initializing SQLite database (development)...");
-    try {
-      sqliteDb = new Database("sqlite.db");
-      dbInternal = drizzleSqlite(sqliteDb, { schema: schema_exports });
-      console.log("\u2705 SQLite database initialized");
-    } catch (error) {
-      console.error("\u274C Failed to initialize SQLite database:", error);
-      throw error;
-    }
-  }
-  return dbInternal;
-}
-function getDatabase() {
-  if (!dbInternal) {
-    return initializeDatabase();
-  }
-  return dbInternal;
-}
-function getPgClient() {
-  return neonClient;
 }
 function getPgPool() {
   return pool;
 }
-var isProduction, databaseUrl, isPostgres, isSqlite, dbInternal, pool, neonClient, sqliteDb, dbInfo, database, db;
+function getPgClient() {
+  return pool;
+}
+function getSchema() {
+  return schema_pg_exports;
+}
+function getDatabase() {
+  return db;
+}
+var Pool, isProduction, databaseUrl, isPostgres, isSqlite, pool, dbInfo, db;
 var init_db = __esm({
   "server/db.ts"() {
     "use strict";
     init_schema_pg();
-    init_schema();
-    neonConfig.webSocketConstructor = ws;
+    ({ Pool } = pg);
     isProduction = process.env.NODE_ENV === "production";
     databaseUrl = process.env.DATABASE_URL;
-    isPostgres = !!databaseUrl;
-    isSqlite = !databaseUrl;
-    dbInternal = null;
+    isPostgres = true;
+    isSqlite = false;
     pool = null;
-    neonClient = null;
-    sqliteDb = null;
     dbInfo = {
       type: "postgresql",
       isProduction,
-      connectionString: "Neon PostgreSQL (WebSocket)"
+      connectionString: "PostgreSQL"
     };
-    database = initializeDatabase();
-    db = database;
+    db = initializeDatabase();
   }
 });
 
@@ -2784,18 +1408,30 @@ async function uploadToCloudinary(file, options) {
     }
     let result;
     if (file.buffer) {
+      const folder = folderMap[options.uploadType] || "general";
+      console.log(`[CLOUDINARY] Uploading buffer to folder: ${folder}, publicId: ${publicId}`);
       result = await new Promise((resolve, reject) => {
         const uploadStream = cloudinary.uploader.upload_stream(
-          uploadOptions,
+          {
+            ...uploadOptions,
+            timeout: 6e4,
+            folder
+            // Explicitly set folder here as well
+          },
           (error, result2) => {
-            if (error) reject(error);
-            else if (result2) resolve(result2);
-            else reject(new Error("No result from Cloudinary"));
+            if (error) {
+              console.error("[CLOUDINARY] Stream upload error:", error);
+              reject(error);
+            } else if (result2) {
+              console.log("[CLOUDINARY] Stream upload success:", result2.secure_url);
+              resolve(result2);
+            } else reject(new Error("No result from Cloudinary"));
           }
         );
         uploadStream.end(file.buffer);
       });
     } else if (file.path) {
+      console.log("[CLOUDINARY] Uploading from file path:", file.path);
       result = await cloudinary.uploader.upload(file.path, uploadOptions);
     } else {
       return { success: false, error: "No file data available for upload" };
@@ -2862,6 +1498,7 @@ async function uploadFile(file, options) {
   if (useCloudinary) {
     return uploadToCloudinary(file, options);
   } else {
+    console.log(`\u2139\uFE0F [STORAGE] Using local storage fallback for ${options.uploadType} upload`);
     return uploadToLocal(file, options);
   }
 }
@@ -2905,9 +1542,9 @@ var isProduction2, hasCloudinaryConfig, useCloudinary, storageInitialized, folde
 var init_cloudinary_service = __esm({
   "server/cloudinary-service.ts"() {
     "use strict";
-    isProduction2 = process.env.NODE_ENV === "production";
+    isProduction2 = process.env.NODE_ENV === "production" || !!process.env.VERCEL || !!process.env.RENDER;
     hasCloudinaryConfig = !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
-    useCloudinary = isProduction2 && hasCloudinaryConfig;
+    useCloudinary = hasCloudinaryConfig && (isProduction2 || !!process.env.CLOUDINARY_CLOUD_NAME);
     storageInitialized = false;
     initializeStorage();
     folderMap = {
@@ -4858,7 +3495,7 @@ __export(storage_exports, {
   isSqlite: () => isSqlite,
   storage: () => storage
 });
-import { eq as eq2, and as and2, desc, asc, sql as sql2, sql as dsql2, inArray as inArray2, isNull, isNotNull, ne, gte, lte, or as or2, like } from "drizzle-orm";
+import { eq as eq2, and as and2, desc, asc, sql, sql as dsql2, inArray as inArray2, isNull, isNotNull, ne, gte, lte, or as or2, like } from "drizzle-orm";
 import { randomUUID } from "crypto";
 function normalizeUuid(raw) {
   if (!raw) return void 0;
@@ -5395,7 +4032,7 @@ var init_storage = __esm({
         });
       }
       async getUsersByStatus(status) {
-        const result = await this.db.select().from(schema.users).where(sql2`${schema.users.status} = ${status}`);
+        const result = await this.db.select().from(schema.users).where(sql`${schema.users.status} = ${status}`);
         return result.map((user) => {
           if (user && user.id) {
             const normalizedId = normalizeUuid(user.id);
@@ -5710,7 +4347,7 @@ var init_storage = __esm({
         });
       }
       async getAllUsernames() {
-        const result = await this.db.select({ username: schema.users.username }).from(schema.users).where(sql2`${schema.users.username} IS NOT NULL`);
+        const result = await this.db.select({ username: schema.users.username }).from(schema.users).where(sql`${schema.users.username} IS NOT NULL`);
         return result.map((r) => r.username).filter((u) => u !== null);
       }
       async createStudent(student) {
@@ -6207,7 +4844,7 @@ var init_storage = __esm({
       }
       async getExamResultByExamAndStudent(examId, studentId) {
         const result = await db2.select().from(schema.examResults).where(
-          sql2`${schema.examResults.examId} = ${examId} AND ${schema.examResults.studentId} = ${studentId}`
+          sql`${schema.examResults.examId} = ${examId} AND ${schema.examResults.studentId} = ${studentId}`
         ).limit(1);
         return result[0];
       }
@@ -6230,7 +4867,7 @@ var init_storage = __esm({
             examDate: schema.exams.date,
             totalMarks: schema.exams.totalMarks,
             admissionNumber: schema.students.admissionNumber,
-            studentName: sql2`${schema.users.firstName} || ' ' || ${schema.users.lastName}`.as("studentName"),
+            studentName: sql`${schema.users.firstName} || ' ' || ${schema.users.lastName}`.as("studentName"),
             className: schema.classes.name,
             subjectName: schema.subjects.name
           }).from(schema.examResults).innerJoin(schema.exams, eq2(schema.examResults.examId, schema.exams.id)).innerJoin(schema.students, eq2(schema.examResults.studentId, schema.students.id)).innerJoin(schema.users, eq2(schema.students.id, schema.users.id)).leftJoin(schema.classes, eq2(schema.exams.classId, schema.classes.id)).leftJoin(schema.subjects, eq2(schema.exams.subjectId, schema.subjects.id)).where(eq2(schema.exams.classId, classId)).orderBy(desc(schema.examResults.createdAt));
@@ -6638,13 +5275,13 @@ var init_storage = __esm({
             examName: schema.exams.name
           }).from(schema.studentAnswers).innerJoin(schema.examQuestions, eq2(schema.studentAnswers.questionId, schema.examQuestions.id)).innerJoin(schema.examSessions, eq2(schema.studentAnswers.sessionId, schema.examSessions.id)).innerJoin(schema.exams, eq2(schema.examSessions.examId, schema.exams.id)).where(and2(
             inArray2(schema.studentAnswers.sessionId, sessionIds),
-            sql2`(${schema.examQuestions.questionType} = 'text' OR ${schema.examQuestions.questionType} = 'essay')`,
-            sql2`${schema.studentAnswers.textAnswer} IS NOT NULL`
+            sql`(${schema.examQuestions.questionType} = 'text' OR ${schema.examQuestions.questionType} = 'essay')`,
+            sql`${schema.studentAnswers.textAnswer} IS NOT NULL`
           ));
           if (status === "pending") {
-            query = query.where(sql2`${schema.studentAnswers.autoScored} = false AND ${schema.studentAnswers.manualOverride} = false`);
+            query = query.where(sql`${schema.studentAnswers.autoScored} = false AND ${schema.studentAnswers.manualOverride} = false`);
           } else if (status === "reviewed") {
-            query = query.where(sql2`(${schema.studentAnswers.autoScored} = true OR ${schema.studentAnswers.manualOverride} = true)`);
+            query = query.where(sql`(${schema.studentAnswers.autoScored} = true OR ${schema.studentAnswers.manualOverride} = true)`);
           }
           const results = await query;
           const studentIds = Array.from(new Set(results.map((r) => r.studentId)));
@@ -7320,8 +5957,9 @@ var init_storage = __esm({
               }
             }
             query += " ORDER BY es.submitted_at DESC";
-            const result = await pgClient.unsafe(query, [teacherId]);
-            return result;
+            const result = await db2.execute(sql.raw(query.replace(/\$([0-9]+)/g, (_, n) => `$${n}`)));
+            const rows = result.rows || result;
+            return rows;
           }
           return [];
         } catch (error) {
@@ -7335,7 +5973,7 @@ var init_storage = __esm({
           if (isPostgres) {
             const pgClient = getPgClient();
             if (!pgClient) throw new Error("PostgreSQL client not available");
-            const result = await pgClient`
+            const result = await db2.execute(sql`
           INSERT INTO manual_scores (answer_id, grader_id, awarded_marks, comment, graded_at)
           VALUES (${taskId}, ${graderId}, ${score}, ${comment}, NOW())
           ON CONFLICT (answer_id)
@@ -7345,12 +5983,12 @@ var init_storage = __esm({
             graded_at = EXCLUDED.graded_at,
             grader_id = EXCLUDED.grader_id
           RETURNING *
-        `;
-            await pgClient`
+        `);
+            await db2.execute(sql`
           UPDATE student_answers
           SET points_earned = ${score}
           WHERE id = ${taskId}
-        `;
+        `);
             const rows = result;
             return rows.length > 0 ? rows[0] : null;
           }
@@ -7364,7 +6002,7 @@ var init_storage = __esm({
           if (isPostgres) {
             const pgClient = getPgClient();
             if (!pgClient) return [];
-            const result = await pgClient`
+            const result = await db2.execute(sql`
           SELECT
             es.*,
             e.name as exam_title,
@@ -7384,7 +6022,7 @@ var init_storage = __esm({
           JOIN exams e ON es.exam_id = e.id
           JOIN users u ON es.student_id = u.id
           ORDER BY es.started_at DESC
-        `;
+        `);
             return result;
           }
           return [];
@@ -7448,8 +6086,9 @@ var init_storage = __esm({
           GROUP BY e.id, e.name, c.name, s.name, e.date, e.total_marks
           ORDER BY e.date DESC
         `;
-            const result = await pgClient.unsafe(query, params);
-            return result;
+            const result = await db2.execute(sql.raw(query.replace(/\$([0-9]+)/g, (_, n) => `$${n}`)));
+            const rows = result.rows || result;
+            return rows;
           }
           return [];
         } catch (error) {
@@ -7462,7 +6101,7 @@ var init_storage = __esm({
           if (isPostgres) {
             const pgClient = getPgClient();
             if (!pgClient) return [];
-            const result = await pgClient`
+            const result = await db2.execute(sql`
           SELECT
             u.id as student_id,
             u.first_name || ' ' || u.last_name as student_name,
@@ -7492,8 +6131,8 @@ var init_storage = __esm({
           LEFT JOIN exam_results er ON e.id = er.exam_id AND u.id = er.student_id
           WHERE e.id = ${examId} AND es.is_completed = true
           ORDER BY er.marks_obtained DESC
-        `;
-            return result;
+        `);
+            return result.rows || result;
           }
           return [];
         } catch (error) {
@@ -7611,7 +6250,7 @@ var init_storage = __esm({
         try {
           let query = db2.select({
             studentId: schema.reportCards.studentId,
-            studentName: sql2`CONCAT(${schema.users.firstName}, ' ', ${schema.users.lastName})`.as("studentName"),
+            studentName: sql`CONCAT(${schema.users.firstName}, ' ', ${schema.users.lastName})`.as("studentName"),
             admissionNumber: schema.students.admissionNumber,
             subjectName: schema.subjects.name,
             testScore: schema.reportCardItems.testScore,
@@ -7758,7 +6397,7 @@ var init_storage = __esm({
             generatedAt: schema.reportCards.generatedAt,
             finalizedAt: schema.reportCards.finalizedAt,
             publishedAt: schema.reportCards.publishedAt,
-            studentName: sql2`CONCAT(${schema.users.firstName}, ' ', ${schema.users.lastName})`.as("studentName"),
+            studentName: sql`CONCAT(${schema.users.firstName}, ' ', ${schema.users.lastName})`.as("studentName"),
             studentUsername: schema.users.username,
             studentPhoto: schema.users.profileImageUrl,
             admissionNumber: schema.students.admissionNumber,
@@ -7806,7 +6445,7 @@ var init_storage = __esm({
             principalSignatureUrl: schema.reportCards.principalSignatureUrl,
             principalSignedBy: schema.reportCards.principalSignedBy,
             principalSignedAt: schema.reportCards.principalSignedAt,
-            studentName: sql2`CONCAT(${schema.users.firstName}, ' ', ${schema.users.lastName})`.as("studentName"),
+            studentName: sql`CONCAT(${schema.users.firstName}, ' ', ${schema.users.lastName})`.as("studentName"),
             studentUsername: schema.users.username,
             studentPhoto: schema.users.profileImageUrl,
             admissionNumber: schema.students.admissionNumber,
@@ -8697,12 +7336,12 @@ var init_storage = __esm({
             classId: schema.reportCards.classId,
             termId: schema.reportCards.termId,
             status: schema.reportCards.status,
-            studentName: sql2`CONCAT(${schema.users.firstName}, ' ', ${schema.users.lastName})`.as("studentName"),
+            studentName: sql`CONCAT(${schema.users.firstName}, ' ', ${schema.users.lastName})`.as("studentName"),
             admissionNumber: schema.students.admissionNumber,
             className: schema.classes.name,
             termName: schema.academicTerms.name,
-            canEditTest: sql2`CASE WHEN ${schema.reportCardItems.testExamCreatedBy} = ${teacherId} THEN true ELSE false END`.as("canEditTest"),
-            canEditExam: sql2`CASE WHEN ${schema.reportCardItems.examExamCreatedBy} = ${teacherId} THEN true ELSE false END`.as("canEditExam")
+            canEditTest: sql`CASE WHEN ${schema.reportCardItems.testExamCreatedBy} = ${teacherId} THEN true ELSE false END`.as("canEditTest"),
+            canEditExam: sql`CASE WHEN ${schema.reportCardItems.examExamCreatedBy} = ${teacherId} THEN true ELSE false END`.as("canEditExam")
           }).from(schema.reportCardItems).innerJoin(schema.reportCards, eq2(schema.reportCardItems.reportCardId, schema.reportCards.id)).innerJoin(schema.subjects, eq2(schema.reportCardItems.subjectId, schema.subjects.id)).innerJoin(schema.students, eq2(schema.reportCards.studentId, schema.students.id)).innerJoin(schema.users, eq2(schema.students.id, schema.users.id)).innerJoin(schema.classes, eq2(schema.reportCards.classId, schema.classes.id)).innerJoin(schema.academicTerms, eq2(schema.reportCards.termId, schema.academicTerms.id)).where(and2(...conditions)).orderBy(desc(schema.reportCards.id), schema.subjects.name);
           const reportCardMap = /* @__PURE__ */ new Map();
           for (const item of items) {
@@ -9062,7 +7701,7 @@ var init_storage = __esm({
         try {
           const since = new Date(Date.now() - hours * 60 * 60 * 1e3);
           const sinceISO = since.toISOString();
-          const events = await this.db.select().from(schema.performanceEvents).where(sql2`${schema.performanceEvents.createdAt} >= ${sinceISO}`);
+          const events = await this.db.select().from(schema.performanceEvents).where(sql`${schema.performanceEvents.createdAt} >= ${sinceISO}`);
           const totalEvents = events.length;
           const goalAchievedCount = events.filter((e) => e.goalAchieved).length;
           const goalAchievementRate = totalEvents > 0 ? goalAchievedCount / totalEvents * 100 : 0;
@@ -9094,7 +7733,7 @@ var init_storage = __esm({
           const since = new Date(Date.now() - hours * 60 * 60 * 1e3);
           const sinceISO = since.toISOString();
           const alerts = await this.db.select().from(schema.performanceEvents).where(and2(
-            sql2`${schema.performanceEvents.createdAt} >= ${sinceISO}`,
+            sql`${schema.performanceEvents.createdAt} >= ${sinceISO}`,
             eq2(schema.performanceEvents.goalAchieved, false)
           )).orderBy(desc(schema.performanceEvents.createdAt)).limit(50);
           return alerts;
@@ -9626,6 +8265,11 @@ var init_storage = __esm({
         delete updateData.id;
         delete updateData.createdAt;
         delete updateData.updatedAt;
+        for (const key in updateData) {
+          if (typeof updateData[key] === "string" && (updateData[key].startsWith("http") || updateData[key].includes("cloudinary.com"))) {
+            console.log(`[STORAGE] Preserving absolute URL for ${key}:`, updateData[key]);
+          }
+        }
         if (existing) {
           const result = await db2.update(schema.systemSettings).set({ ...updateData, updatedAt: /* @__PURE__ */ new Date() }).where(eq2(schema.systemSettings.id, existing.id)).returning();
           const rows = result;
@@ -9642,11 +8286,11 @@ var init_storage = __esm({
       async getDeletedUsers(roleFilter) {
         if (roleFilter && roleFilter.length > 0) {
           return await this.db.select().from(schema.users).where(and2(
-            sql2`${schema.users.deletedAt} IS NOT NULL`,
+            sql`${schema.users.deletedAt} IS NOT NULL`,
             inArray2(schema.users.roleId, roleFilter)
           )).orderBy(desc(schema.users.deletedAt));
         }
-        return await this.db.select().from(schema.users).where(sql2`${schema.users.deletedAt} IS NOT NULL`).orderBy(desc(schema.users.deletedAt));
+        return await this.db.select().from(schema.users).where(sql`${schema.users.deletedAt} IS NOT NULL`).orderBy(desc(schema.users.deletedAt));
       }
       async restoreUser(userId, restoredBy) {
         const result = await this.db.update(schema.users).set({
@@ -9685,7 +8329,7 @@ var init_storage = __esm({
         const cutoffDate = /* @__PURE__ */ new Date();
         cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
         return await this.db.select().from(schema.users).where(and2(
-          sql2`${schema.users.deletedAt} IS NOT NULL`,
+          sql`${schema.users.deletedAt} IS NOT NULL`,
           lte(schema.users.deletedAt, cutoffDate)
         )).orderBy(asc(schema.users.deletedAt));
       }
@@ -9815,7 +8459,7 @@ var init_storage = __esm({
                 and2(
                   eq2(schema.classSubjectMappings.classId, classId),
                   eq2(schema.classSubjectMappings.subjectId, subjectId),
-                  sql2`${schema.classSubjectMappings.department} IS NULL`
+                  sql`${schema.classSubjectMappings.department} IS NULL`
                 )
               ).returning();
               removedCount += result.length;
@@ -10220,23 +8864,23 @@ var init_storage = __esm({
             eq2(schema.reportCardItems.reportCardId, schema.reportCards.id),
             eq2(schema.reportCardItems.subjectId, schema.exams.subjectId)
           )).where(and2(
-            sql2`${schema.examResults.score} IS NOT NULL`,
-            targetTermId ? eq2(schema.exams.termId, targetTermId) : sql2`1=1`,
+            sql`${schema.examResults.score} IS NOT NULL`,
+            targetTermId ? eq2(schema.exams.termId, targetTermId) : sql`1=1`,
             or2(
               // Exam type results missing in report card
               and2(
                 inArray2(schema.exams.examType, ["exam", "final", "midterm"]),
                 or2(
-                  sql2`${schema.reportCardItems.id} IS NULL`,
-                  sql2`${schema.reportCardItems.exam_score} IS NULL`
+                  sql`${schema.reportCardItems.id} IS NULL`,
+                  sql`${schema.reportCardItems.exam_score} IS NULL`
                 )
               ),
               // Test type results missing in report card
               and2(
                 inArray2(schema.exams.examType, ["test", "quiz", "assignment"]),
                 or2(
-                  sql2`${schema.reportCardItems.id} IS NULL`,
-                  sql2`${schema.reportCardItems.test_score} IS NULL`
+                  sql`${schema.reportCardItems.id} IS NULL`,
+                  sql`${schema.reportCardItems.test_score} IS NULL`
                 )
               )
             )
@@ -10325,7 +8969,7 @@ var init_storage = __esm({
             maxScore: schema.examResults.maxScore
           }).from(schema.examResults).where(and2(
             eq2(schema.examResults.examId, examId),
-            sql2`${schema.examResults.score} IS NOT NULL`
+            sql`${schema.examResults.score} IS NOT NULL`
           ));
           console.log(`[SYNC-EXAM-RESULTS] Found ${examResults3.length} results to sync for exam ${examId}`);
           const exam = await this.getExamById(examId);
@@ -10453,6 +9097,1249 @@ var init_role_constants = __esm({
       [ROLE_IDS.STUDENT]: "/portal/student",
       [ROLE_IDS.PARENT]: "/portal/parent"
     };
+  }
+});
+
+// shared/schema.ts
+import { sql as sql2 } from "drizzle-orm";
+import { sqliteTable, text as text2, integer as integer2, index as index2, uniqueIndex as uniqueIndex2 } from "drizzle-orm/sqlite-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod";
+var roles2, users2, passwordResetTokens2, passwordResetAttempts2, invites2, notifications2, academicTerms2, classes2, subjects2, students2, teacherProfiles2, adminProfiles2, parentProfiles2, superAdminProfiles2, systemSettings2, attendance2, exams2, examQuestions2, questionOptions2, examSessions2, studentAnswers2, examResults2, examSubmissionsArchive2, questionBanks2, questionBankItems2, questionBankOptions2, announcements2, messages2, galleryCategories2, gallery2, homePageContent2, contactMessages2, reportCommentTemplates2, reportCards2, reportCardItems2, reportCardSkills2, studyResources2, performanceEvents2, teacherClassAssignments2, teacherAssignmentHistory2, gradingBoundaries2, continuousAssessment2, unauthorizedAccessLogs2, studentSubjectAssignments2, classSubjectMappings2, timetable2, gradingTasks2, auditLogs2, settings2, counters2, vacancies2, teacherApplications2, approvedTeachers2, insertRoleSchema, insertUserSchema, insertPasswordResetTokenSchema, insertPasswordResetAttemptSchema, insertInviteSchema, insertStudentSchema, insertClassSchema, insertSubjectSchema, insertAcademicTermSchema, insertAttendanceSchema, insertExamSchema, insertExamResultSchema, insertExamSubmissionsArchiveSchema, insertAnnouncementSchema, insertMessageSchema, insertGalleryCategorySchema, insertGallerySchema, insertHomePageContentSchema, insertContactMessageSchema, insertReportCommentTemplateSchema, insertReportCardSchema, insertReportCardSkillsSchema, insertReportCardItemSchema, insertStudyResourceSchema, insertPerformanceEventSchema, insertTeacherClassAssignmentSchema, insertTeacherAssignmentHistorySchema, insertGradingBoundarySchema, insertContinuousAssessmentSchema, insertUnauthorizedAccessLogSchema, insertTimetableSchema, insertGradingTaskSchema, insertAuditLogSchema, insertSettingSchema, insertCounterSchema, createStudentWithAutoCredsSchema, createStudentSchema, quickCreateStudentSchema, csvStudentSchema, insertExamQuestionSchema, insertQuestionOptionSchema, createQuestionOptionSchema, insertExamSessionSchema, updateExamSessionSchema, insertStudentAnswerSchema, insertNotificationSchema, insertTeacherProfileSchema, insertAdminProfileSchema, insertParentProfileSchema, insertStudentSubjectAssignmentSchema, insertClassSubjectMappingSchema, insertVacancySchema, insertTeacherApplicationSchema, insertApprovedTeacherSchema, insertSuperAdminProfileSchema, insertSystemSettingsSchema, insertQuestionBankSchema, insertQuestionBankItemSchema, insertQuestionBankOptionSchema;
+var init_schema = __esm({
+  "shared/schema.ts"() {
+    "use strict";
+    roles2 = sqliteTable("roles", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      name: text2("name").notNull().unique(),
+      permissions: text2("permissions").notNull().default("[]"),
+      // JSON array as text
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    });
+    users2 = sqliteTable("users", {
+      id: text2("id").primaryKey(),
+      username: text2("username").unique(),
+      email: text2("email").notNull(),
+      recoveryEmail: text2("recovery_email"),
+      passwordHash: text2("password_hash"),
+      mustChangePassword: integer2("must_change_password", { mode: "boolean" }).notNull().default(true),
+      roleId: integer2("role_id").notNull().references(() => roles2.id),
+      firstName: text2("first_name").notNull(),
+      lastName: text2("last_name").notNull(),
+      phone: text2("phone"),
+      address: text2("address"),
+      dateOfBirth: text2("date_of_birth"),
+      // YYYY-MM-DD format
+      gender: text2("gender"),
+      // 'Male', 'Female', 'Other'
+      nationalId: text2("national_id"),
+      profileImageUrl: text2("profile_image_url"),
+      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
+      authProvider: text2("auth_provider").notNull().default("local"),
+      googleId: text2("google_id").unique(),
+      // Security & audit fields
+      status: text2("status").notNull().default("active"),
+      // 'pending', 'active', 'suspended', 'disabled'
+      createdVia: text2("created_via").notNull().default("admin"),
+      // 'bulk', 'invite', 'self', 'google', 'admin'
+      createdBy: text2("created_by"),
+      approvedBy: text2("approved_by"),
+      approvedAt: integer2("approved_at", { mode: "timestamp" }),
+      lastLoginAt: integer2("last_login_at", { mode: "timestamp" }),
+      lastLoginIp: text2("last_login_ip"),
+      mfaEnabled: integer2("mfa_enabled", { mode: "boolean" }).notNull().default(false),
+      mfaSecret: text2("mfa_secret"),
+      accountLockedUntil: integer2("account_locked_until", { mode: "timestamp" }),
+      // Profile completion fields
+      profileCompleted: integer2("profile_completed", { mode: "boolean" }).notNull().default(false),
+      profileSkipped: integer2("profile_skipped", { mode: "boolean" }).notNull().default(false),
+      profileCompletionPercentage: integer2("profile_completion_percentage").notNull().default(0),
+      state: text2("state"),
+      country: text2("country"),
+      securityQuestion: text2("security_question"),
+      securityAnswerHash: text2("security_answer_hash"),
+      dataPolicyAgreed: integer2("data_policy_agreed", { mode: "boolean" }).notNull().default(false),
+      dataPolicyAgreedAt: integer2("data_policy_agreed_at", { mode: "timestamp" }),
+      deletedAt: integer2("deleted_at", { mode: "timestamp" }),
+      deletedBy: text2("deleted_by"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      usersEmailIdx: index2("users_email_idx").on(table.email),
+      usersStatusIdx: index2("users_status_idx").on(table.status),
+      usersGoogleIdIdx: index2("users_google_id_idx").on(table.googleId),
+      usersRoleIdIdx: index2("users_role_id_idx").on(table.roleId),
+      usersUsernameIdx: index2("users_username_idx").on(table.username),
+      usersDeletedAtIdx: index2("users_deleted_at_idx").on(table.deletedAt)
+    }));
+    passwordResetTokens2 = sqliteTable("password_reset_tokens", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      userId: text2("user_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
+      token: text2("token").notNull().unique(),
+      expiresAt: integer2("expires_at", { mode: "timestamp" }).notNull(),
+      usedAt: integer2("used_at", { mode: "timestamp" }),
+      ipAddress: text2("ip_address"),
+      resetBy: text2("reset_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      passwordResetTokensUserIdIdx: index2("password_reset_tokens_user_id_idx").on(table.userId),
+      passwordResetTokensTokenIdx: index2("password_reset_tokens_token_idx").on(table.token)
+    }));
+    passwordResetAttempts2 = sqliteTable("password_reset_attempts", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      identifier: text2("identifier").notNull(),
+      ipAddress: text2("ip_address").notNull(),
+      attemptedAt: integer2("attempted_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      success: integer2("success", { mode: "boolean" }).notNull().default(false)
+    }, (table) => ({
+      passwordResetAttemptsIdentifierIdx: index2("password_reset_attempts_identifier_idx").on(table.identifier),
+      passwordResetAttemptsIpIdx: index2("password_reset_attempts_ip_idx").on(table.ipAddress),
+      passwordResetAttemptsTimeIdx: index2("password_reset_attempts_time_idx").on(table.attemptedAt)
+    }));
+    invites2 = sqliteTable("invites", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      token: text2("token").notNull().unique(),
+      email: text2("email").notNull(),
+      roleId: integer2("role_id").notNull().references(() => roles2.id),
+      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
+      expiresAt: integer2("expires_at", { mode: "timestamp" }).notNull(),
+      acceptedAt: integer2("accepted_at", { mode: "timestamp" }),
+      acceptedBy: text2("accepted_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      invitesTokenIdx: index2("invites_token_idx").on(table.token),
+      invitesEmailIdx: index2("invites_email_idx").on(table.email)
+    }));
+    notifications2 = sqliteTable("notifications", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      userId: text2("user_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
+      type: text2("type").notNull(),
+      title: text2("title").notNull(),
+      message: text2("message").notNull(),
+      relatedEntityType: text2("related_entity_type"),
+      relatedEntityId: text2("related_entity_id"),
+      isRead: integer2("is_read", { mode: "boolean" }).notNull().default(false),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      notificationsUserIdIdx: index2("notifications_user_id_idx").on(table.userId),
+      notificationsIsReadIdx: index2("notifications_is_read_idx").on(table.isRead)
+    }));
+    academicTerms2 = sqliteTable("academic_terms", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      name: text2("name").notNull(),
+      year: text2("year").notNull(),
+      startDate: text2("start_date").notNull(),
+      // YYYY-MM-DD format
+      endDate: text2("end_date").notNull(),
+      isCurrent: integer2("is_current", { mode: "boolean" }).notNull().default(false),
+      status: text2("status").notNull().default("upcoming"),
+      // upcoming, active, completed, archived
+      isLocked: integer2("is_locked", { mode: "boolean" }).notNull().default(false),
+      description: text2("description"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      academicTermsYearIdx: index2("academic_terms_year_idx").on(table.year),
+      academicTermsStatusIdx: index2("academic_terms_status_idx").on(table.status),
+      academicTermsCurrentIdx: index2("academic_terms_current_idx").on(table.isCurrent)
+    }));
+    classes2 = sqliteTable("classes", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      name: text2("name").notNull().unique(),
+      level: text2("level").notNull(),
+      capacity: integer2("capacity").notNull().default(30),
+      classTeacherId: text2("class_teacher_id").references(() => users2.id, { onDelete: "set null" }),
+      currentTermId: integer2("current_term_id").references(() => academicTerms2.id),
+      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    });
+    subjects2 = sqliteTable("subjects", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      name: text2("name").notNull(),
+      code: text2("code").notNull().unique(),
+      description: text2("description"),
+      category: text2("category").notNull().default("general"),
+      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    });
+    students2 = sqliteTable("students", {
+      id: text2("id").primaryKey().references(() => users2.id, { onDelete: "cascade" }),
+      admissionNumber: text2("admission_number").notNull().unique(),
+      classId: integer2("class_id").references(() => classes2.id),
+      parentId: text2("parent_id").references(() => users2.id, { onDelete: "set null" }),
+      department: text2("department"),
+      admissionDate: text2("admission_date").notNull(),
+      // YYYY-MM-DD format
+      emergencyContact: text2("emergency_contact"),
+      emergencyPhone: text2("emergency_phone"),
+      medicalInfo: text2("medical_info"),
+      guardianName: text2("guardian_name"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    });
+    teacherProfiles2 = sqliteTable("teacher_profiles", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      userId: text2("user_id").notNull().unique().references(() => users2.id, { onDelete: "cascade" }),
+      staffId: text2("staff_id").unique(),
+      subjects: text2("subjects").notNull().default("[]"),
+      // JSON array of integers
+      assignedClasses: text2("assigned_classes").notNull().default("[]"),
+      // JSON array of integers
+      qualification: text2("qualification"),
+      yearsOfExperience: integer2("years_of_experience").notNull().default(0),
+      specialization: text2("specialization"),
+      department: text2("department"),
+      signatureUrl: text2("signature_url"),
+      gradingMode: text2("grading_mode").notNull().default("manual"),
+      autoGradeTheoryQuestions: integer2("auto_grade_theory_questions", { mode: "boolean" }).notNull().default(false),
+      theoryGradingInstructions: text2("theory_grading_instructions"),
+      notificationPreference: text2("notification_preference").notNull().default("all"),
+      availability: text2("availability"),
+      firstLogin: integer2("first_login", { mode: "boolean" }).notNull().default(true),
+      verified: integer2("verified", { mode: "boolean" }).notNull().default(false),
+      verifiedBy: text2("verified_by").references(() => users2.id, { onDelete: "set null" }),
+      verifiedAt: integer2("verified_at", { mode: "timestamp" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    });
+    adminProfiles2 = sqliteTable("admin_profiles", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      userId: text2("user_id").notNull().unique().references(() => users2.id, { onDelete: "cascade" }),
+      department: text2("department"),
+      roleDescription: text2("role_description"),
+      accessLevel: text2("access_level"),
+      signatureUrl: text2("signature_url"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    });
+    parentProfiles2 = sqliteTable("parent_profiles", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      userId: text2("user_id").notNull().unique().references(() => users2.id, { onDelete: "cascade" }),
+      occupation: text2("occupation"),
+      contactPreference: text2("contact_preference"),
+      linkedStudents: text2("linked_students").notNull().default("[]"),
+      // JSON array of UUIDs
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    });
+    superAdminProfiles2 = sqliteTable("super_admin_profiles", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      userId: text2("user_id").notNull().unique().references(() => users2.id, { onDelete: "cascade" }),
+      department: text2("department"),
+      accessLevel: text2("access_level").notNull().default("full"),
+      twoFactorEnabled: integer2("two_factor_enabled", { mode: "boolean" }).notNull().default(false),
+      twoFactorSecret: text2("two_factor_secret"),
+      lastPasswordChange: integer2("last_password_change", { mode: "timestamp" }),
+      signatureUrl: text2("signature_url"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    });
+    systemSettings2 = sqliteTable("system_settings", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      schoolName: text2("school_name"),
+      schoolShortName: text2("school_short_name"),
+      schoolMotto: text2("school_motto"),
+      schoolLogo: text2("school_logo"),
+      favicon: text2("favicon"),
+      schoolAddress: text2("school_address"),
+      schoolPhones: text2("school_phones").notNull().default("[]"),
+      // JSON array of {countryCode, number}
+      schoolEmails: text2("school_emails").notNull().default("[]"),
+      // JSON array of strings
+      websiteTitle: text2("website_title"),
+      footerText: text2("footer_text"),
+      maintenanceMode: integer2("maintenance_mode", { mode: "boolean" }).notNull().default(false),
+      maintenanceModeMessage: text2("maintenance_mode_message"),
+      enableSmsNotifications: integer2("enable_sms_notifications", { mode: "boolean" }).notNull().default(false),
+      enableEmailNotifications: integer2("enable_email_notifications", { mode: "boolean" }).notNull().default(true),
+      enableExamsModule: integer2("enable_exams_module", { mode: "boolean" }).notNull().default(true),
+      enableAttendanceModule: integer2("enable_attendance_module", { mode: "boolean" }).notNull().default(true),
+      enableResultsModule: integer2("enable_results_module", { mode: "boolean" }).notNull().default(true),
+      tempPasswordFormat: text2("temp_password_format").notNull().default("THS@{year}#{random4}"),
+      hideAdminAccountsFromAdmins: integer2("hide_admin_accounts_from_admins", { mode: "boolean" }).notNull().default(true),
+      testWeight: integer2("test_weight").notNull().default(40),
+      examWeight: integer2("exam_weight").notNull().default(60),
+      defaultGradingScale: text2("default_grading_scale").notNull().default("standard"),
+      scoreAggregationMode: text2("score_aggregation_mode").notNull().default("last"),
+      autoCreateReportCard: integer2("auto_create_report_card", { mode: "boolean" }).notNull().default(true),
+      showGradeBreakdown: integer2("show_grade_breakdown", { mode: "boolean" }).notNull().default(true),
+      allowTeacherOverrides: integer2("allow_teacher_overrides", { mode: "boolean" }).notNull().default(true),
+      positioningMethod: text2("positioning_method").notNull().default("average"),
+      deletedUserRetentionDays: integer2("deleted_user_retention_days").notNull().default(30),
+      // Authentication Settings
+      loginIdentifier: text2("login_identifier").notNull().default("username"),
+      // 'email', 'username', 'both'
+      enableRememberMe: integer2("enable_remember_me", { mode: "boolean" }).notNull().default(true),
+      enableStudentPortal: integer2("enable_student_portal", { mode: "boolean" }).notNull().default(true),
+      enableAdminPortal: integer2("enable_admin_portal", { mode: "boolean" }).notNull().default(true),
+      allowRegistration: integer2("allow_registration", { mode: "boolean" }).notNull().default(false),
+      defaultRegistrationRoleId: integer2("default_registration_role_id").notNull().default(4),
+      sessionTimeout: integer2("session_timeout").notNull().default(30),
+      // minutes
+      allowMultipleLogins: integer2("allow_multiple_logins", { mode: "boolean" }).notNull().default(false),
+      autoDisableInactiveDays: integer2("auto_disable_inactive_days").notNull().default(90),
+      requireAdminApproval: integer2("require_admin_approval", { mode: "boolean" }).notNull().default(true),
+      redirectAfterLogin: text2("redirect_after_login").notNull().default("dashboard"),
+      // 'dashboard', 'last_page'
+      loginErrorDisplay: text2("login_error_display").notNull().default("generic"),
+      // 'generic', 'detailed'
+      // Branding & Theme
+      primaryColor: text2("primary_color").notNull().default("#3b82f6"),
+      secondaryColor: text2("secondary_color").notNull().default("#1e293b"),
+      defaultTheme: text2("default_theme").notNull().default("light"),
+      // 'light', 'dark'
+      loginPageText: text2("login_page_text").notNull().default("Welcome to Treasure Home School Portal"),
+      dashboardWelcomeMessage: text2("dashboard_welcome_message").notNull().default("Welcome back to your dashboard"),
+      // General Configuration
+      portalName: text2("portal_name").notNull().default("Treasure Home School Portal"),
+      timezone: text2("timezone").notNull().default("Africa/Lagos"),
+      language: text2("language").notNull().default("en"),
+      dateFormat: text2("date_format").notNull().default("DD/MM/YYYY"),
+      timeFormat: text2("time_format").notNull().default("HH:mm"),
+      // Integrations
+      enableOnlinePayments: integer2("enable_online_payments", { mode: "boolean" }).notNull().default(false),
+      // Backup & Restore
+      autoBackup: integer2("auto_backup", { mode: "boolean" }).notNull().default(false),
+      backupFrequency: text2("backup_frequency").notNull().default("daily"),
+      // 'daily', 'weekly'
+      lastBackupDate: integer2("last_backup_date", { mode: "timestamp" }),
+      // API & Access Tokens
+      enableApiAccess: integer2("enable_api_access", { mode: "boolean" }).notNull().default(false),
+      apiAccessKey: text2("api_access_key"),
+      // Security Policies
+      minPasswordLength: integer2("min_password_length").notNull().default(8),
+      requirePasswordNumbers: integer2("require_password_numbers", { mode: "boolean" }).notNull().default(true),
+      requirePasswordLetters: integer2("require_password_letters", { mode: "boolean" }).notNull().default(true),
+      requirePasswordSpecial: integer2("require_password_special", { mode: "boolean" }).notNull().default(true),
+      maxFailedLoginAttempts: integer2("max_failed_login_attempts").notNull().default(5),
+      enableLockAccount: integer2("enable_lock_account", { mode: "boolean" }).notNull().default(true),
+      lockoutDuration: integer2("lockout_duration").notNull().default(15),
+      // minutes
+      passwordResetExpiry: integer2("password_reset_expiry").notNull().default(30),
+      // minutes
+      invalidateOldPasswordOnReset: integer2("invalidate_old_password_on_reset", { mode: "boolean" }).notNull().default(true),
+      enableTwoFactor: integer2("enable_two_factor", { mode: "boolean" }).notNull().default(false),
+      twoFactorTarget: text2("two_factor_target").notNull().default("admins"),
+      // 'admins', 'all'
+      logoutOnPasswordChange: integer2("logout_on_password_change", { mode: "boolean" }).notNull().default(true),
+      updatedBy: text2("updated_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    });
+    attendance2 = sqliteTable("attendance", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
+      classId: integer2("class_id").notNull().references(() => classes2.id),
+      date: text2("date").notNull(),
+      // YYYY-MM-DD format
+      status: text2("status").notNull(),
+      // 'Present', 'Absent', 'Late', 'Excused'
+      recordedBy: text2("recorded_by").references(() => users2.id, { onDelete: "set null" }),
+      notes: text2("notes"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    });
+    exams2 = sqliteTable("exams", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      name: text2("name").notNull(),
+      classId: integer2("class_id").notNull().references(() => classes2.id),
+      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
+      totalMarks: integer2("total_marks").notNull(),
+      date: text2("date").notNull(),
+      // YYYY-MM-DD format
+      termId: integer2("term_id").notNull().references(() => academicTerms2.id),
+      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
+      teacherInChargeId: text2("teacher_in_charge_id").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      examType: text2("exam_type").notNull().default("exam"),
+      // 'test', 'exam'
+      timerMode: text2("timer_mode").notNull().default("individual"),
+      // 'global', 'individual'
+      timeLimit: integer2("time_limit"),
+      // in minutes
+      startTime: integer2("start_time", { mode: "timestamp" }),
+      endTime: integer2("end_time", { mode: "timestamp" }),
+      instructions: text2("instructions"),
+      isPublished: integer2("is_published", { mode: "boolean" }).notNull().default(false),
+      allowRetakes: integer2("allow_retakes", { mode: "boolean" }).notNull().default(false),
+      shuffleQuestions: integer2("shuffle_questions", { mode: "boolean" }).notNull().default(false),
+      autoGradingEnabled: integer2("auto_grading_enabled", { mode: "boolean" }).notNull().default(true),
+      instantFeedback: integer2("instant_feedback", { mode: "boolean" }).notNull().default(false),
+      showCorrectAnswers: integer2("show_correct_answers", { mode: "boolean" }).notNull().default(false),
+      passingScore: integer2("passing_score"),
+      gradingScale: text2("grading_scale").notNull().default("standard"),
+      enableProctoring: integer2("enable_proctoring", { mode: "boolean" }).notNull().default(false),
+      lockdownMode: integer2("lockdown_mode", { mode: "boolean" }).notNull().default(false),
+      requireWebcam: integer2("require_webcam", { mode: "boolean" }).notNull().default(false),
+      requireFullscreen: integer2("require_fullscreen", { mode: "boolean" }).notNull().default(false),
+      maxTabSwitches: integer2("max_tab_switches").notNull().default(3),
+      shuffleOptions: integer2("shuffle_options", { mode: "boolean" }).notNull().default(false)
+    });
+    examQuestions2 = sqliteTable("exam_questions", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      examId: integer2("exam_id").notNull().references(() => exams2.id),
+      questionText: text2("question_text").notNull(),
+      questionType: text2("question_type").notNull(),
+      // 'multiple_choice', 'text', 'essay', 'true_false', 'fill_blank'
+      points: integer2("points").notNull().default(1),
+      orderNumber: integer2("order_number").notNull(),
+      imageUrl: text2("image_url"),
+      autoGradable: integer2("auto_gradable", { mode: "boolean" }).notNull().default(true),
+      expectedAnswers: text2("expected_answers").notNull().default("[]"),
+      // JSON array
+      caseSensitive: integer2("case_sensitive", { mode: "boolean" }).notNull().default(false),
+      allowPartialCredit: integer2("allow_partial_credit", { mode: "boolean" }).notNull().default(false),
+      partialCreditRules: text2("partial_credit_rules"),
+      explanationText: text2("explanation_text"),
+      hintText: text2("hint_text"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      examQuestionsExamIdIdx: index2("exam_questions_exam_id_idx").on(table.examId),
+      examQuestionsOrderIdx: index2("exam_questions_order_idx").on(table.examId, table.orderNumber)
+    }));
+    questionOptions2 = sqliteTable("question_options", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      questionId: integer2("question_id").notNull().references(() => examQuestions2.id),
+      optionText: text2("option_text").notNull(),
+      isCorrect: integer2("is_correct", { mode: "boolean" }).notNull().default(false),
+      orderNumber: integer2("order_number").notNull(),
+      partialCreditValue: integer2("partial_credit_value").notNull().default(0),
+      explanationText: text2("explanation_text"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      questionOptionsQuestionIdIdx: index2("question_options_question_id_idx").on(table.questionId),
+      questionOptionsCorrectIdx: index2("question_options_correct_idx").on(table.questionId, table.isCorrect)
+    }));
+    examSessions2 = sqliteTable("exam_sessions", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      examId: integer2("exam_id").notNull().references(() => exams2.id),
+      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
+      startedAt: integer2("started_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      submittedAt: integer2("submitted_at", { mode: "timestamp" }),
+      timeRemaining: integer2("time_remaining"),
+      isCompleted: integer2("is_completed", { mode: "boolean" }).notNull().default(false),
+      score: integer2("score"),
+      maxScore: integer2("max_score"),
+      status: text2("status").notNull().default("in_progress"),
+      // 'in_progress', 'submitted', 'graded'
+      metadata: text2("metadata"),
+      // JSON string
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      examSessionsExamStudentIdx: index2("exam_sessions_exam_student_idx").on(table.examId, table.studentId),
+      examSessionsStudentCompletedIdx: index2("exam_sessions_student_completed_idx").on(table.studentId, table.isCompleted),
+      examSessionsActiveSessionsIdx: index2("exam_sessions_active_idx").on(table.examId, table.studentId, table.isCompleted)
+    }));
+    studentAnswers2 = sqliteTable("student_answers", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      sessionId: integer2("session_id").notNull().references(() => examSessions2.id),
+      questionId: integer2("question_id").notNull().references(() => examQuestions2.id),
+      selectedOptionId: integer2("selected_option_id").references(() => questionOptions2.id),
+      textAnswer: text2("text_answer"),
+      isCorrect: integer2("is_correct", { mode: "boolean" }),
+      pointsEarned: integer2("points_earned").notNull().default(0),
+      answeredAt: integer2("answered_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      autoScored: integer2("auto_scored", { mode: "boolean" }).notNull().default(false),
+      manualOverride: integer2("manual_override", { mode: "boolean" }).notNull().default(false),
+      feedbackText: text2("feedback_text"),
+      partialCreditReason: text2("partial_credit_reason")
+    }, (table) => ({
+      studentAnswersSessionIdIdx: index2("student_answers_session_id_idx").on(table.sessionId),
+      studentAnswersSessionQuestionIdx: index2("student_answers_session_question_idx").on(table.sessionId, table.questionId),
+      studentAnswersQuestionIdx: index2("student_answers_question_id_idx").on(table.questionId)
+    }));
+    examResults2 = sqliteTable("exam_results", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      examId: integer2("exam_id").notNull().references(() => exams2.id),
+      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
+      score: integer2("score"),
+      maxScore: integer2("max_score"),
+      marksObtained: integer2("marks_obtained"),
+      grade: text2("grade"),
+      remarks: text2("remarks"),
+      correct_answers: integer2("correct_answers"),
+      incorrect_answers: integer2("incorrect_answers"),
+      total_questions: integer2("total_questions"),
+      submitted_at: integer2("submitted_at", { mode: "timestamp" }),
+      autoScored: integer2("auto_scored", { mode: "boolean" }).notNull().default(false),
+      recordedBy: text2("recorded_by").notNull().references(() => users2.id),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      examResultsExamIdIdx: index2("exam_results_exam_id_idx").on(table.examId),
+      examResultsStudentIdIdx: index2("exam_results_student_id_idx").on(table.studentId),
+      examResultsExamStudentIdx: index2("exam_results_exam_student_idx").on(table.examId, table.studentId),
+      examResultsAutoScoredIdx: index2("exam_results_auto_scored_idx").on(table.autoScored, table.examId)
+    }));
+    examSubmissionsArchive2 = sqliteTable("exam_submissions_archive", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      examId: integer2("exam_id").notNull().references(() => exams2.id),
+      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
+      originalSessionId: integer2("original_session_id"),
+      originalResultId: integer2("original_result_id"),
+      oldScore: integer2("old_score"),
+      oldMaxScore: integer2("old_max_score"),
+      oldAnswers: text2("old_answers"),
+      // JSON string of archived answers
+      archivedBy: text2("archived_by").notNull().references(() => users2.id),
+      archiveReason: text2("archive_reason").notNull().default("retake_allowed"),
+      archivedAt: integer2("archived_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      examSubmissionsArchiveExamIdx: index2("exam_submissions_archive_exam_idx").on(table.examId),
+      examSubmissionsArchiveStudentIdx: index2("exam_submissions_archive_student_idx").on(table.studentId),
+      examSubmissionsArchiveExamStudentIdx: index2("exam_submissions_archive_exam_student_idx").on(table.examId, table.studentId)
+    }));
+    questionBanks2 = sqliteTable("question_banks", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      name: text2("name").notNull(),
+      description: text2("description"),
+      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
+      classLevel: text2("class_level"),
+      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
+      isPublic: integer2("is_public", { mode: "boolean" }).notNull().default(false),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      questionBanksSubjectIdx: index2("question_banks_subject_idx").on(table.subjectId),
+      questionBanksCreatedByIdx: index2("question_banks_created_by_idx").on(table.createdBy)
+    }));
+    questionBankItems2 = sqliteTable("question_bank_items", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      bankId: integer2("bank_id").notNull().references(() => questionBanks2.id, { onDelete: "cascade" }),
+      questionText: text2("question_text").notNull(),
+      questionType: text2("question_type").notNull(),
+      points: integer2("points").notNull().default(1),
+      difficulty: text2("difficulty").notNull().default("medium"),
+      tags: text2("tags").notNull().default("[]"),
+      // JSON array
+      imageUrl: text2("image_url"),
+      autoGradable: integer2("auto_gradable", { mode: "boolean" }).notNull().default(true),
+      expectedAnswers: text2("expected_answers").notNull().default("[]"),
+      // JSON array
+      caseSensitive: integer2("case_sensitive", { mode: "boolean" }).notNull().default(false),
+      explanationText: text2("explanation_text"),
+      hintText: text2("hint_text"),
+      practicalInstructions: text2("practical_instructions"),
+      practicalFileUrl: text2("practical_file_url"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      questionBankItemsBankIdIdx: index2("question_bank_items_bank_id_idx").on(table.bankId),
+      questionBankItemsTypeIdx: index2("question_bank_items_type_idx").on(table.questionType),
+      questionBankItemsDifficultyIdx: index2("question_bank_items_difficulty_idx").on(table.difficulty)
+    }));
+    questionBankOptions2 = sqliteTable("question_bank_options", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      questionItemId: integer2("question_item_id").notNull().references(() => questionBankItems2.id, { onDelete: "cascade" }),
+      optionText: text2("option_text").notNull(),
+      isCorrect: integer2("is_correct", { mode: "boolean" }).notNull().default(false),
+      orderNumber: integer2("order_number").notNull(),
+      explanationText: text2("explanation_text"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      questionBankOptionsItemIdIdx: index2("question_bank_options_item_id_idx").on(table.questionItemId)
+    }));
+    announcements2 = sqliteTable("announcements", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      title: text2("title").notNull(),
+      content: text2("content").notNull(),
+      authorId: text2("author_id").references(() => users2.id, { onDelete: "set null" }),
+      targetRoles: text2("target_roles").notNull().default('["All"]'),
+      // JSON array
+      targetClasses: text2("target_classes").notNull().default("[]"),
+      // JSON array
+      isPublished: integer2("is_published", { mode: "boolean" }).notNull().default(false),
+      publishedAt: integer2("published_at", { mode: "timestamp" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      // Priority & Type
+      priority: text2("priority").notNull().default("normal"),
+      // 'normal', 'important', 'urgent'
+      announcementType: text2("announcement_type").notNull().default("general"),
+      // 'general', 'academic', 'examination', 'event', 'emergency'
+      // Scheduling & Expiry
+      scheduledAt: integer2("scheduled_at", { mode: "timestamp" }),
+      expiryDate: integer2("expiry_date", { mode: "timestamp" }),
+      // Attachments (JSON array of file URLs)
+      attachments: text2("attachments").notNull().default("[]"),
+      coverImageUrl: text2("cover_image_url"),
+      // Notification Settings (JSON object)
+      notificationSettings: text2("notification_settings").notNull().default('{"inApp": true, "email": false, "sms": false}'),
+      // Status & Analytics
+      status: text2("status").notNull().default("draft"),
+      // 'draft', 'scheduled', 'published', 'expired', 'archived'
+      viewCount: integer2("view_count").notNull().default(0),
+      allowComments: integer2("allow_comments", { mode: "boolean" }).notNull().default(false),
+      allowEdit: integer2("allow_edit", { mode: "boolean" }).notNull().default(true),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    });
+    messages2 = sqliteTable("messages", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      senderId: text2("sender_id").references(() => users2.id, { onDelete: "set null" }),
+      recipientId: text2("recipient_id").references(() => users2.id, { onDelete: "set null" }),
+      subject: text2("subject").notNull(),
+      content: text2("content").notNull(),
+      isRead: integer2("is_read", { mode: "boolean" }).notNull().default(false),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    });
+    galleryCategories2 = sqliteTable("gallery_categories", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      name: text2("name").notNull(),
+      description: text2("description"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    });
+    gallery2 = sqliteTable("gallery", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      imageUrl: text2("image_url").notNull(),
+      caption: text2("caption"),
+      categoryId: integer2("category_id").references(() => galleryCategories2.id),
+      uploadedBy: text2("uploaded_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    });
+    homePageContent2 = sqliteTable("home_page_content", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      contentType: text2("content_type").notNull(),
+      imageUrl: text2("image_url"),
+      altText: text2("alt_text"),
+      caption: text2("caption"),
+      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
+      displayOrder: integer2("display_order").notNull().default(0),
+      uploadedBy: text2("uploaded_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    });
+    contactMessages2 = sqliteTable("contact_messages", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      name: text2("name").notNull(),
+      email: text2("email").notNull(),
+      subject: text2("subject"),
+      message: text2("message").notNull(),
+      isRead: integer2("is_read", { mode: "boolean" }).notNull().default(false),
+      respondedAt: integer2("responded_at", { mode: "timestamp" }),
+      respondedBy: text2("responded_by").references(() => users2.id, { onDelete: "set null" }),
+      response: text2("response"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    });
+    reportCommentTemplates2 = sqliteTable("report_comment_templates", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      role: text2("role").notNull(),
+      // 'teacher' or 'principal'
+      performanceLevel: text2("performance_level").notNull(),
+      // 'excellent', 'very_good', 'good', 'fair', 'needs_improvement'
+      minPercentage: integer2("min_percentage").notNull(),
+      maxPercentage: integer2("max_percentage").notNull(),
+      commentTemplate: text2("comment_template").notNull(),
+      // Use {lastName} as placeholder
+      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
+      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
+      updatedBy: text2("updated_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    });
+    reportCards2 = sqliteTable("report_cards", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
+      classId: integer2("class_id").notNull().references(() => classes2.id),
+      termId: integer2("term_id").notNull().references(() => academicTerms2.id),
+      averagePercentage: integer2("average_percentage"),
+      overallGrade: text2("overall_grade"),
+      teacherRemarks: text2("teacher_remarks"),
+      principalRemarks: text2("principal_remarks"),
+      status: text2("status").notNull().default("draft"),
+      // 'draft', 'teacher_signed', 'awaiting_approval', 'approved', 'published'
+      locked: integer2("locked", { mode: "boolean" }).notNull().default(false),
+      teacherSignedBy: text2("teacher_signed_by").references(() => users2.id, { onDelete: "set null" }),
+      teacherSignedAt: integer2("teacher_signed_at", { mode: "timestamp" }),
+      teacherSignatureUrl: text2("teacher_signature_url"),
+      principalSignedBy: text2("principal_signed_by").references(() => users2.id, { onDelete: "set null" }),
+      principalSignedAt: integer2("principal_signed_at", { mode: "timestamp" }),
+      principalSignatureUrl: text2("principal_signature_url"),
+      generatedAt: integer2("generated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      finalizedAt: integer2("finalized_at", { mode: "timestamp" }),
+      publishedAt: integer2("published_at", { mode: "timestamp" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    });
+    reportCardItems2 = sqliteTable("report_card_items", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      reportCardId: integer2("report_card_id").notNull().references(() => reportCards2.id),
+      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
+      teacherId: text2("teacher_id").references(() => users2.id, { onDelete: "set null" }),
+      testExamId: integer2("test_exam_id").references(() => exams2.id),
+      testExamCreatedBy: text2("test_exam_created_by").references(() => users2.id, { onDelete: "set null" }),
+      testScore: integer2("test_score"),
+      testMaxScore: integer2("test_max_score"),
+      testWeightedScore: integer2("test_weighted_score"),
+      examExamId: integer2("exam_exam_id").references(() => exams2.id),
+      examExamCreatedBy: text2("exam_exam_created_by").references(() => users2.id, { onDelete: "set null" }),
+      examScore: integer2("exam_score"),
+      examMaxScore: integer2("exam_max_score"),
+      examWeightedScore: integer2("exam_weighted_score"),
+      totalMarks: integer2("total_marks").notNull().default(100),
+      obtainedMarks: integer2("obtained_marks").notNull(),
+      percentage: integer2("percentage").notNull(),
+      grade: text2("grade"),
+      teacherRemarks: text2("teacher_remarks"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    });
+    reportCardSkills2 = sqliteTable("report_card_skills", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      reportCardId: integer2("report_card_id").notNull().references(() => reportCards2.id, { onDelete: "cascade" }),
+      // Affective traits (1-5 scale)
+      punctuality: integer2("punctuality"),
+      neatness: integer2("neatness"),
+      attentiveness: integer2("attentiveness"),
+      teamwork: integer2("teamwork"),
+      leadership: integer2("leadership"),
+      assignments: integer2("assignments"),
+      classParticipation: integer2("class_participation"),
+      // Psychomotor skills (1-5 scale)
+      sports: integer2("sports"),
+      handwriting: integer2("handwriting"),
+      musicalSkills: integer2("musical_skills"),
+      creativity: integer2("creativity"),
+      // Metadata
+      recordedBy: text2("recorded_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      reportCardSkillsReportCardIdx: index2("report_card_skills_report_card_idx").on(table.reportCardId)
+    }));
+    studyResources2 = sqliteTable("study_resources", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      title: text2("title").notNull(),
+      description: text2("description"),
+      fileUrl: text2("file_url").notNull(),
+      fileName: text2("file_name").notNull(),
+      fileSize: integer2("file_size"),
+      resourceType: text2("resource_type").notNull(),
+      subjectId: integer2("subject_id").references(() => subjects2.id),
+      classId: integer2("class_id").references(() => classes2.id),
+      termId: integer2("term_id").references(() => academicTerms2.id),
+      uploadedBy: text2("uploaded_by").references(() => users2.id, { onDelete: "set null" }),
+      isPublished: integer2("is_published", { mode: "boolean" }).notNull().default(true),
+      downloads: integer2("downloads").notNull().default(0),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    });
+    performanceEvents2 = sqliteTable("performance_events", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      sessionId: integer2("session_id").references(() => examSessions2.id),
+      eventType: text2("event_type").notNull(),
+      duration: integer2("duration").notNull(),
+      goalAchieved: integer2("goal_achieved", { mode: "boolean" }).notNull(),
+      metadata: text2("metadata"),
+      clientSide: integer2("client_side", { mode: "boolean" }).notNull().default(false),
+      userId: text2("user_id").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      performanceEventsTypeIdx: index2("performance_events_type_idx").on(table.eventType),
+      performanceEventsDateIdx: index2("performance_events_date_idx").on(table.createdAt),
+      performanceEventsGoalIdx: index2("performance_events_goal_idx").on(table.goalAchieved, table.eventType)
+    }));
+    teacherClassAssignments2 = sqliteTable("teacher_class_assignments", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      teacherId: text2("teacher_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
+      classId: integer2("class_id").notNull().references(() => classes2.id),
+      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
+      department: text2("department"),
+      termId: integer2("term_id").references(() => academicTerms2.id),
+      session: text2("session"),
+      // Academic session e.g., "2024/2025"
+      assignedBy: text2("assigned_by").references(() => users2.id, { onDelete: "set null" }),
+      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
+      validUntil: integer2("valid_until", { mode: "timestamp" }),
+      // Optional expiration date
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      teacherAssignmentsTeacherIdx: index2("teacher_assignments_teacher_idx").on(table.teacherId, table.isActive),
+      teacherAssignmentsClassSubjectIdx: index2("teacher_assignments_class_subject_idx").on(table.classId, table.subjectId),
+      teacherAssignmentsDeptIdx: index2("teacher_assignments_dept_idx").on(table.department),
+      teacherAssignmentsSessionIdx: index2("teacher_assignments_session_idx").on(table.session),
+      teacherAssignmentsUniqueIdx: uniqueIndex2("teacher_assignments_unique_idx").on(table.teacherId, table.classId, table.subjectId, table.termId)
+    }));
+    teacherAssignmentHistory2 = sqliteTable("teacher_assignment_history", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      assignmentId: integer2("assignment_id").references(() => teacherClassAssignments2.id, { onDelete: "set null" }),
+      teacherId: text2("teacher_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
+      classId: integer2("class_id").notNull().references(() => classes2.id),
+      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
+      action: text2("action").notNull(),
+      // 'created', 'updated', 'disabled', 'deleted'
+      previousValues: text2("previous_values"),
+      // JSON of old values
+      newValues: text2("new_values"),
+      // JSON of new values
+      performedBy: text2("performed_by").references(() => users2.id, { onDelete: "set null" }),
+      reason: text2("reason"),
+      ipAddress: text2("ip_address"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      assignmentHistoryTeacherIdx: index2("assignment_history_teacher_idx").on(table.teacherId),
+      assignmentHistoryActionIdx: index2("assignment_history_action_idx").on(table.action),
+      assignmentHistoryDateIdx: index2("assignment_history_date_idx").on(table.createdAt)
+    }));
+    gradingBoundaries2 = sqliteTable("grading_boundaries", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      name: text2("name").notNull(),
+      // e.g., "Standard", "Custom Science"
+      grade: text2("grade").notNull(),
+      // e.g., "A", "B", "C", "D", "E", "F"
+      minScore: integer2("min_score").notNull(),
+      // Minimum score for this grade
+      maxScore: integer2("max_score").notNull(),
+      // Maximum score for this grade
+      remark: text2("remark"),
+      // e.g., "Excellent", "Very Good", "Good", "Pass", "Fail"
+      gradePoint: integer2("grade_point"),
+      // Optional: for GPA calculation
+      isDefault: integer2("is_default", { mode: "boolean" }).notNull().default(false),
+      termId: integer2("term_id").references(() => academicTerms2.id),
+      classId: integer2("class_id").references(() => classes2.id),
+      // Optional: class-specific grading
+      subjectId: integer2("subject_id").references(() => subjects2.id),
+      // Optional: subject-specific grading
+      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      gradingBoundariesNameIdx: index2("grading_boundaries_name_idx").on(table.name),
+      gradingBoundariesGradeIdx: index2("grading_boundaries_grade_idx").on(table.grade),
+      gradingBoundariesDefaultIdx: index2("grading_boundaries_default_idx").on(table.isDefault)
+    }));
+    continuousAssessment2 = sqliteTable("continuous_assessment", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
+      classId: integer2("class_id").notNull().references(() => classes2.id),
+      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
+      termId: integer2("term_id").notNull().references(() => academicTerms2.id),
+      testScore: integer2("test_score"),
+      // CA score (max typically 40)
+      examScore: integer2("exam_score"),
+      // Exam score (max typically 60)
+      totalScore: integer2("total_score"),
+      // Calculated: testScore + examScore
+      grade: text2("grade"),
+      // Auto-calculated based on grading boundaries
+      remark: text2("remark"),
+      teacherId: text2("teacher_id").references(() => users2.id, { onDelete: "set null" }),
+      enteredBy: text2("entered_by").references(() => users2.id, { onDelete: "set null" }),
+      verifiedBy: text2("verified_by").references(() => users2.id, { onDelete: "set null" }),
+      verifiedAt: integer2("verified_at", { mode: "timestamp" }),
+      isLocked: integer2("is_locked", { mode: "boolean" }).notNull().default(false),
+      lockedBy: text2("locked_by").references(() => users2.id, { onDelete: "set null" }),
+      lockedAt: integer2("locked_at", { mode: "timestamp" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      caStudentIdx: index2("ca_student_idx").on(table.studentId),
+      caClassSubjectIdx: index2("ca_class_subject_idx").on(table.classId, table.subjectId),
+      caTermIdx: index2("ca_term_idx").on(table.termId),
+      caTeacherIdx: index2("ca_teacher_idx").on(table.teacherId),
+      caUniqueIdx: uniqueIndex2("ca_unique_idx").on(table.studentId, table.subjectId, table.classId, table.termId)
+    }));
+    unauthorizedAccessLogs2 = sqliteTable("unauthorized_access_logs", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      userId: text2("user_id").references(() => users2.id, { onDelete: "set null" }),
+      attemptedAction: text2("attempted_action").notNull(),
+      attemptedResource: text2("attempted_resource").notNull(),
+      classId: integer2("class_id").references(() => classes2.id),
+      subjectId: integer2("subject_id").references(() => subjects2.id),
+      ipAddress: text2("ip_address"),
+      userAgent: text2("user_agent"),
+      reason: text2("reason"),
+      // Why access was denied
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      unauthorizedUserIdx: index2("unauthorized_user_idx").on(table.userId),
+      unauthorizedActionIdx: index2("unauthorized_action_idx").on(table.attemptedAction),
+      unauthorizedDateIdx: index2("unauthorized_date_idx").on(table.createdAt)
+    }));
+    studentSubjectAssignments2 = sqliteTable("student_subject_assignments", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      studentId: text2("student_id").notNull().references(() => students2.id, { onDelete: "cascade" }),
+      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
+      classId: integer2("class_id").notNull().references(() => classes2.id),
+      termId: integer2("term_id").references(() => academicTerms2.id),
+      assignedBy: text2("assigned_by").references(() => users2.id, { onDelete: "set null" }),
+      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      studentSubjectAssignmentsStudentIdx: index2("student_subject_assignments_student_idx").on(table.studentId),
+      studentSubjectAssignmentsSubjectIdx: index2("student_subject_assignments_subject_idx").on(table.subjectId),
+      studentSubjectAssignmentsClassIdx: index2("student_subject_assignments_class_idx").on(table.classId),
+      studentSubjectAssignmentsUniqueIdx: uniqueIndex2("student_subject_assignments_unique_idx").on(table.studentId, table.subjectId, table.classId)
+    }));
+    classSubjectMappings2 = sqliteTable("class_subject_mappings", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      classId: integer2("class_id").notNull().references(() => classes2.id),
+      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
+      department: text2("department"),
+      isCompulsory: integer2("is_compulsory", { mode: "boolean" }).notNull().default(false),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      classSubjectMappingsClassIdx: index2("class_subject_mappings_class_idx").on(table.classId),
+      classSubjectMappingsSubjectIdx: index2("class_subject_mappings_subject_idx").on(table.subjectId),
+      classSubjectMappingsDeptIdx: index2("class_subject_mappings_dept_idx").on(table.department),
+      classSubjectMappingsUniqueIdx: uniqueIndex2("class_subject_mappings_unique_idx").on(table.classId, table.subjectId, table.department)
+    }));
+    timetable2 = sqliteTable("timetable", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      teacherId: text2("teacher_id").notNull().references(() => users2.id, { onDelete: "cascade" }),
+      classId: integer2("class_id").notNull().references(() => classes2.id),
+      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
+      dayOfWeek: text2("day_of_week").notNull(),
+      startTime: text2("start_time").notNull(),
+      endTime: text2("end_time").notNull(),
+      location: text2("location"),
+      termId: integer2("term_id").references(() => academicTerms2.id),
+      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      timetableTeacherIdx: index2("timetable_teacher_idx").on(table.teacherId, table.isActive),
+      timetableDayIdx: index2("timetable_day_idx").on(table.dayOfWeek, table.teacherId)
+    }));
+    gradingTasks2 = sqliteTable("grading_tasks", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      sessionId: integer2("session_id").notNull().references(() => examSessions2.id, { onDelete: "cascade" }),
+      answerId: integer2("answer_id").notNull().references(() => studentAnswers2.id, { onDelete: "cascade" }),
+      assignedTeacherId: text2("assigned_teacher_id").references(() => users2.id, { onDelete: "set null" }),
+      status: text2("status").notNull().default("pending"),
+      priority: integer2("priority").notNull().default(0),
+      assignedAt: integer2("assigned_at", { mode: "timestamp" }),
+      startedAt: integer2("started_at", { mode: "timestamp" }),
+      completedAt: integer2("completed_at", { mode: "timestamp" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      gradingTasksAssignedIdx: index2("grading_tasks_assigned_idx").on(table.assignedTeacherId, table.status),
+      gradingTasksStatusIdx: index2("grading_tasks_status_idx").on(table.status, table.priority),
+      gradingTasksSessionIdx: index2("grading_tasks_session_idx").on(table.sessionId),
+      gradingTasksAnswerUniqueIdx: uniqueIndex2("grading_tasks_answer_unique_idx").on(table.answerId)
+    }));
+    auditLogs2 = sqliteTable("audit_logs", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      userId: text2("user_id").references(() => users2.id, { onDelete: "set null" }),
+      action: text2("action").notNull(),
+      entityType: text2("entity_type").notNull(),
+      entityId: text2("entity_id").notNull(),
+      oldValue: text2("old_value"),
+      newValue: text2("new_value"),
+      reason: text2("reason"),
+      ipAddress: text2("ip_address"),
+      userAgent: text2("user_agent"),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      auditLogsUserIdx: index2("audit_logs_user_idx").on(table.userId),
+      auditLogsEntityIdx: index2("audit_logs_entity_idx").on(table.entityType, table.entityId),
+      auditLogsDateIdx: index2("audit_logs_date_idx").on(table.createdAt),
+      auditLogsActionIdx: index2("audit_logs_action_idx").on(table.action)
+    }));
+    settings2 = sqliteTable("settings", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      key: text2("key").notNull().unique(),
+      value: text2("value").notNull(),
+      description: text2("description"),
+      dataType: text2("data_type").notNull().default("string"),
+      updatedBy: text2("updated_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      settingsKeyIdx: index2("settings_key_idx").on(table.key)
+    }));
+    counters2 = sqliteTable("counters", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      roleCode: text2("role_code"),
+      classCode: text2("class_code"),
+      year: text2("year"),
+      sequence: integer2("sequence").notNull().default(0),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      countersRoleCodeIdx: uniqueIndex2("counters_role_code_idx").on(table.roleCode)
+    }));
+    vacancies2 = sqliteTable("vacancies", {
+      id: text2("id").primaryKey(),
+      title: text2("title").notNull(),
+      description: text2("description").notNull(),
+      requirements: text2("requirements"),
+      deadline: integer2("deadline", { mode: "timestamp" }).notNull(),
+      status: text2("status").notNull().default("open"),
+      // 'open', 'closed', 'filled'
+      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      vacanciesStatusIdx: index2("vacancies_status_idx").on(table.status),
+      vacanciesDeadlineIdx: index2("vacancies_deadline_idx").on(table.deadline)
+    }));
+    teacherApplications2 = sqliteTable("teacher_applications", {
+      id: text2("id").primaryKey(),
+      vacancyId: text2("vacancy_id").references(() => vacancies2.id, { onDelete: "set null" }),
+      fullName: text2("full_name").notNull(),
+      googleEmail: text2("google_email").notNull(),
+      phone: text2("phone").notNull(),
+      subjectSpecialty: text2("subject_specialty").notNull(),
+      qualification: text2("qualification").notNull(),
+      experienceYears: integer2("experience_years").notNull(),
+      bio: text2("bio").notNull(),
+      resumeUrl: text2("resume_url"),
+      status: text2("status").notNull().default("pending"),
+      // 'pending', 'approved', 'rejected'
+      reviewedBy: text2("reviewed_by").references(() => users2.id, { onDelete: "set null" }),
+      reviewedAt: integer2("reviewed_at", { mode: "timestamp" }),
+      rejectionReason: text2("rejection_reason"),
+      dateApplied: integer2("date_applied", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      teacherApplicationsStatusIdx: index2("teacher_applications_status_idx").on(table.status),
+      teacherApplicationsEmailIdx: index2("teacher_applications_email_idx").on(table.googleEmail),
+      teacherApplicationsVacancyIdx: index2("teacher_applications_vacancy_idx").on(table.vacancyId)
+    }));
+    approvedTeachers2 = sqliteTable("approved_teachers", {
+      id: text2("id").primaryKey(),
+      applicationId: text2("application_id").references(() => teacherApplications2.id, { onDelete: "set null" }),
+      googleEmail: text2("google_email").notNull().unique(),
+      fullName: text2("full_name").notNull(),
+      subjectSpecialty: text2("subject_specialty"),
+      approvedBy: text2("approved_by").references(() => users2.id, { onDelete: "set null" }),
+      dateApproved: integer2("date_approved", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      approvedTeachersEmailIdx: index2("approved_teachers_email_idx").on(table.googleEmail)
+    }));
+    insertRoleSchema = createInsertSchema(roles2).omit({ id: true, createdAt: true });
+    insertUserSchema = createInsertSchema(users2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens2).omit({ id: true, createdAt: true });
+    insertPasswordResetAttemptSchema = createInsertSchema(passwordResetAttempts2).omit({ id: true, attemptedAt: true });
+    insertInviteSchema = createInsertSchema(invites2).omit({ id: true, createdAt: true });
+    insertStudentSchema = createInsertSchema(students2).omit({ createdAt: true });
+    insertClassSchema = createInsertSchema(classes2).omit({ id: true, createdAt: true });
+    insertSubjectSchema = createInsertSchema(subjects2).omit({ id: true, createdAt: true });
+    insertAcademicTermSchema = createInsertSchema(academicTerms2).omit({ id: true, createdAt: true });
+    insertAttendanceSchema = createInsertSchema(attendance2).omit({ id: true, createdAt: true });
+    insertExamSchema = createInsertSchema(exams2).omit({ id: true, createdAt: true }).extend({
+      classId: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
+        z.number().positive("Please select a valid class")
+      ),
+      subjectId: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
+        z.number().positive("Please select a valid subject")
+      ),
+      termId: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
+        z.number().positive("Please select a valid term")
+      ),
+      totalMarks: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
+        z.number().positive("Total marks must be a positive number")
+      ),
+      name: z.string().min(1, "Exam name is required"),
+      date: z.string().min(1, "Exam date is required").regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").refine((dateStr) => {
+        const date = new Date(dateStr);
+        return !isNaN(date.getTime()) && date.toISOString().startsWith(dateStr);
+      }, "Please enter a valid date"),
+      examType: z.enum(["test", "exam"]).default("exam"),
+      timerMode: z.string().default("individual"),
+      timeLimit: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
+        z.number().int().min(1, "Time limit must be at least 1 minute").optional()
+      ),
+      passingScore: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? void 0 : Number(val),
+        z.number().int().min(0).max(100, "Passing score must be between 0 and 100").optional()
+      ),
+      startTime: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? void 0 : new Date(val),
+        z.date().optional()
+      ),
+      endTime: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? void 0 : new Date(val),
+        z.date().optional()
+      ),
+      instructions: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? void 0 : val,
+        z.string().optional()
+      ),
+      gradingScale: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? "standard" : val,
+        z.string().default("standard")
+      ),
+      teacherInChargeId: z.preprocess(
+        (val) => val === "" || val === null || val === void 0 ? void 0 : val,
+        z.string().optional()
+      ),
+      isPublished: z.boolean().default(false),
+      allowRetakes: z.boolean().default(false),
+      shuffleQuestions: z.boolean().default(false),
+      autoGradingEnabled: z.boolean().default(true),
+      instantFeedback: z.boolean().default(false),
+      showCorrectAnswers: z.boolean().default(false)
+    });
+    insertExamResultSchema = createInsertSchema(examResults2).omit({ id: true, createdAt: true });
+    insertExamSubmissionsArchiveSchema = createInsertSchema(examSubmissionsArchive2).omit({ id: true, archivedAt: true });
+    insertAnnouncementSchema = createInsertSchema(announcements2).omit({ id: true, createdAt: true });
+    insertMessageSchema = createInsertSchema(messages2).omit({ id: true, createdAt: true });
+    insertGalleryCategorySchema = createInsertSchema(galleryCategories2).omit({ id: true, createdAt: true });
+    insertGallerySchema = createInsertSchema(gallery2).omit({ id: true, createdAt: true });
+    insertHomePageContentSchema = createInsertSchema(homePageContent2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertContactMessageSchema = createInsertSchema(contactMessages2).omit({ id: true, createdAt: true });
+    insertReportCommentTemplateSchema = createInsertSchema(reportCommentTemplates2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertReportCardSchema = createInsertSchema(reportCards2).omit({ id: true, createdAt: true });
+    insertReportCardSkillsSchema = createInsertSchema(reportCardSkills2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertReportCardItemSchema = createInsertSchema(reportCardItems2).omit({ id: true, createdAt: true });
+    insertStudyResourceSchema = createInsertSchema(studyResources2).omit({ id: true, createdAt: true, downloads: true });
+    insertPerformanceEventSchema = createInsertSchema(performanceEvents2).omit({ id: true, createdAt: true });
+    insertTeacherClassAssignmentSchema = createInsertSchema(teacherClassAssignments2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertTeacherAssignmentHistorySchema = createInsertSchema(teacherAssignmentHistory2).omit({ id: true, createdAt: true });
+    insertGradingBoundarySchema = createInsertSchema(gradingBoundaries2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertContinuousAssessmentSchema = createInsertSchema(continuousAssessment2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertUnauthorizedAccessLogSchema = createInsertSchema(unauthorizedAccessLogs2).omit({ id: true, createdAt: true });
+    insertTimetableSchema = createInsertSchema(timetable2).omit({ id: true, createdAt: true });
+    insertGradingTaskSchema = createInsertSchema(gradingTasks2).omit({ id: true, createdAt: true });
+    insertAuditLogSchema = createInsertSchema(auditLogs2).omit({ id: true, createdAt: true });
+    insertSettingSchema = createInsertSchema(settings2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertCounterSchema = createInsertSchema(counters2).omit({ id: true, createdAt: true, updatedAt: true });
+    createStudentWithAutoCredsSchema = z.object({
+      firstName: z.string().min(1, "First name is required"),
+      lastName: z.string().min(1, "Last name is required"),
+      phone: z.string().optional(),
+      address: z.string().optional(),
+      dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
+      gender: z.enum(["Male", "Female", "Other"], { required_error: "Gender is required" }),
+      profileImageUrl: z.string().optional(),
+      admissionNumber: z.string().min(1, "Admission number is required"),
+      classId: z.coerce.number().positive("Please select a valid class"),
+      parentId: z.string().optional().nullable(),
+      admissionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Admission date must be in YYYY-MM-DD format"),
+      emergencyContact: z.string().min(1, "Emergency contact is required"),
+      medicalInfo: z.string().optional(),
+      parentEmail: z.string().email("Invalid parent email").optional(),
+      parentPhone: z.string().optional()
+    });
+    createStudentSchema = z.object({
+      firstName: z.string().min(1, "First name is required"),
+      lastName: z.string().min(1, "Last name is required"),
+      phone: z.string().optional(),
+      address: z.string().optional(),
+      dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
+      gender: z.enum(["Male", "Female", "Other"], { required_error: "Gender is required" }),
+      profileImageUrl: z.string().optional(),
+      classId: z.coerce.number().positive("Please select a valid class"),
+      parentId: z.string().optional().nullable(),
+      parentPhone: z.string().optional(),
+      admissionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Admission date must be in YYYY-MM-DD format"),
+      emergencyContact: z.string().optional(),
+      medicalInfo: z.string().optional(),
+      guardianName: z.string().optional(),
+      department: z.enum(["science", "art", "commercial"]).optional().nullable()
+    });
+    quickCreateStudentSchema = z.object({
+      fullName: z.string().min(2, "Full name is required").refine(
+        (name) => name.trim().split(/\s+/).length >= 2,
+        "Please enter both first and last name (e.g., 'John Adebayo')"
+      ),
+      gender: z.enum(["Male", "Female", "Other"], { required_error: "Gender is required" }),
+      dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
+      classId: z.coerce.number().positive("Please select a valid class"),
+      department: z.enum(["science", "art", "commercial"]).optional().nullable()
+    });
+    csvStudentSchema = z.object({
+      fullName: z.string().min(1, "Full name is required"),
+      class: z.string().min(1, "Class is required"),
+      gender: z.enum(["Male", "Female", "Other"], { required_error: "Gender is required" }),
+      dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
+      parentEmail: z.string().email("Invalid parent email").optional(),
+      parentPhone: z.string().optional(),
+      emergencyContact: z.string().min(1, "Emergency contact is required"),
+      admissionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Admission date must be in YYYY-MM-DD format").optional(),
+      medicalInfo: z.string().optional(),
+      guardianName: z.string().optional()
+    });
+    insertExamQuestionSchema = createInsertSchema(examQuestions2).omit({ id: true, createdAt: true }).extend({
+      examId: z.coerce.number().positive("Please select a valid exam"),
+      questionText: z.string().min(1, "Question text is required"),
+      questionType: z.enum(["multiple_choice", "text", "essay", "true_false", "fill_blank"], { required_error: "Question type is required" }),
+      points: z.preprocess((val) => val === "" ? 1 : val, z.coerce.number().int().min(0, "Points must be a non-negative number").default(1)),
+      orderNumber: z.coerce.number().int().min(1, "Order number must be a positive number"),
+      imageUrl: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional()),
+      expectedAnswers: z.preprocess((val) => {
+        if (val === "" || val === null || val === void 0) return void 0;
+        if (Array.isArray(val)) return val;
+        if (typeof val === "string") return val.split(",").map((s) => s.trim()).filter((s) => s !== "");
+        return void 0;
+      }, z.array(z.string()).optional()),
+      explanationText: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional()),
+      hintText: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional()),
+      partialCreditRules: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional())
+    });
+    insertQuestionOptionSchema = createInsertSchema(questionOptions2).omit({ id: true, createdAt: true }).extend({
+      questionId: z.coerce.number().positive("Please select a valid question"),
+      orderNumber: z.coerce.number().int().min(1, "Order number must be a positive number"),
+      partialCreditValue: z.preprocess((val) => val === "" ? 0 : val, z.coerce.number().int().min(0, "Partial credit must be non-negative").default(0)),
+      explanationText: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional())
+    });
+    createQuestionOptionSchema = insertQuestionOptionSchema.omit({ questionId: true, orderNumber: true }).extend({
+      partialCreditValue: z.preprocess((val) => val === "" ? 0 : val, z.coerce.number().int().min(0, "Partial credit must be non-negative").default(0)).optional(),
+      explanationText: z.preprocess((val) => val === "" ? void 0 : val, z.string().optional())
+    });
+    insertExamSessionSchema = createInsertSchema(examSessions2).omit({
+      id: true,
+      createdAt: true,
+      startedAt: true,
+      studentId: true
+    }).partial().required({
+      examId: true
+    }).extend({
+      submittedAt: z.union([z.date(), z.string()]).optional().transform((val) => {
+        if (typeof val === "string") {
+          return new Date(val);
+        }
+        return val;
+      })
+    });
+    updateExamSessionSchema = z.object({
+      isCompleted: z.boolean().optional(),
+      submittedAt: z.coerce.date().refine((d) => !isNaN(d.getTime()), "Invalid date").optional(),
+      timeRemaining: z.number().int().min(0).optional(),
+      status: z.enum(["in_progress", "submitted"]).optional(),
+      submissionMethod: z.string().optional(),
+      autoSubmitted: z.boolean().optional()
+    }).strict();
+    insertStudentAnswerSchema = createInsertSchema(studentAnswers2).omit({ id: true });
+    insertNotificationSchema = createInsertSchema(notifications2).omit({ id: true, createdAt: true });
+    insertTeacherProfileSchema = createInsertSchema(teacherProfiles2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertAdminProfileSchema = createInsertSchema(adminProfiles2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertParentProfileSchema = createInsertSchema(parentProfiles2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertStudentSubjectAssignmentSchema = createInsertSchema(studentSubjectAssignments2).omit({ id: true, createdAt: true });
+    insertClassSubjectMappingSchema = createInsertSchema(classSubjectMappings2).omit({ id: true, createdAt: true });
+    insertVacancySchema = createInsertSchema(vacancies2).omit({
+      id: true,
+      createdAt: true,
+      updatedAt: true
+    });
+    insertTeacherApplicationSchema = createInsertSchema(teacherApplications2).omit({
+      id: true,
+      createdAt: true,
+      updatedAt: true,
+      dateApplied: true,
+      reviewedAt: true,
+      reviewedBy: true,
+      status: true
+    });
+    insertApprovedTeacherSchema = createInsertSchema(approvedTeachers2).omit({
+      id: true,
+      createdAt: true,
+      dateApproved: true
+    });
+    insertSuperAdminProfileSchema = createInsertSchema(superAdminProfiles2).omit({
+      id: true,
+      createdAt: true,
+      updatedAt: true
+    });
+    insertSystemSettingsSchema = createInsertSchema(systemSettings2).omit({
+      id: true,
+      createdAt: true,
+      updatedAt: true
+    });
+    insertQuestionBankSchema = createInsertSchema(questionBanks2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertQuestionBankItemSchema = createInsertSchema(questionBankItems2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertQuestionBankOptionSchema = createInsertSchema(questionBankOptions2).omit({ id: true, createdAt: true });
   }
 });
 
@@ -13572,13 +13459,13 @@ __export(seed_system_settings_exports, {
 });
 async function seedSystemSettings() {
   try {
-    const existingSettings = await db2.select().from(systemSettings2).limit(1);
+    const existingSettings = await db2.select().from(systemSettings).limit(1);
     if (existingSettings.length === 0) {
-      await db2.insert(systemSettings2).values({
+      await db2.insert(systemSettings).values({
         schoolName: "Treasure-Home School",
         schoolMotto: "Honesty and Success",
-        schoolEmail: "info@treasurehomeschool.edu.ng",
-        schoolPhone: "+234-XXX-XXX-XXXX",
+        schoolEmails: JSON.stringify(["info@treasurehomeschool.edu.ng"]),
+        schoolPhones: JSON.stringify(["+234-XXX-XXX-XXXX"]),
         schoolAddress: "Lagos, Nigeria",
         maintenanceMode: false,
         enableSmsNotifications: false,
@@ -13608,7 +13495,7 @@ var init_seed_system_settings = __esm({
   "server/seed-system-settings.ts"() {
     "use strict";
     init_storage();
-    init_schema();
+    init_schema_pg();
   }
 });
 
@@ -13832,7 +13719,7 @@ if (!JWT_SECRET2) {
   process.exit(1);
 }
 var SECRET_KEY = JWT_SECRET2;
-var JWT_EXPIRES_IN = "24h";
+var JWT_EXPIRES_IN = "15m";
 function normalizeUuid2(raw) {
   if (!raw) return void 0;
   if (typeof raw === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
@@ -13938,7 +13825,12 @@ var uploadTypeMap = {
   "assignment": "assignment",
   "result": "result",
   "system_settings": "homepage",
-  "system-settings": "homepage"
+  "system-settings": "homepage",
+  "favicon": "homepage",
+  "logo": "homepage",
+  "branding": "homepage",
+  "branding_upload": "homepage",
+  "schoolLogo": "homepage"
 };
 async function uploadFileToStorage(file, options) {
   try {
@@ -13952,7 +13844,7 @@ async function uploadFileToStorage(file, options) {
     if (!result.success) {
       return {
         success: false,
-        error: result.error || "Upload failed"
+        error: result.error || "The storage service was unable to accept this file. Please ensure it is a valid image and try again."
       };
     }
     return {
@@ -15501,29 +15393,7 @@ fs3.mkdir(studyResourcesDir, { recursive: true }).catch(() => {
 });
 fs3.mkdir(homepageDir, { recursive: true }).catch(() => {
 });
-var storage_multer = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const isBranding = req.originalUrl && req.originalUrl.includes("branding") || req.body && (req.body.uploadType === "logo" || req.body.uploadType === "favicon");
-    const uploadType = req.body && req.body.uploadType || "general";
-    let dir = "server/uploads/general";
-    if (uploadType === "gallery") {
-      dir = "server/uploads/gallery";
-    } else if (uploadType === "profile") {
-      dir = "server/uploads/profiles";
-    } else if (uploadType === "study-resource") {
-      dir = "server/uploads/study-resources";
-    } else if (isBranding || uploadType === "homepage" || uploadType === "system_settings" || uploadType === "system-settings") {
-      dir = "server/uploads/homepage";
-    }
-    cb(null, dir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const ext = path2.extname(file.originalname);
-    const name = path2.basename(file.originalname, ext).replace(/[^a-z0-9]/gi, "_").toLowerCase();
-    cb(null, `${name}-${uniqueSuffix}${ext}`);
-  }
-});
+var storage_multer = multer.memoryStorage();
 var upload = multer({
   storage: storage_multer,
   limits: {
@@ -15531,7 +15401,8 @@ var upload = multer({
     // Increased to 10MB to allow uncompressed uploads
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes2 = /jpeg|jpg|png|gif|webp/;
+    const isBranding = req.body.uploadType === "logo" || req.body.uploadType === "favicon" || req.body.uploadType === "branding";
+    const allowedTypes2 = isBranding ? /jpeg|jpg|png|gif|webp|ico|svg/ : /jpeg|jpg|png|gif|webp|pdf|doc|docx|txt/;
     const extname = allowedTypes2.test(path2.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes2.test(file.mimetype);
     if (mimetype && extname) {
@@ -15541,6 +15412,7 @@ var upload = multer({
     }
   }
 });
+var brandingUpload = upload.single("file");
 var uploadDocument = multer({
   storage: storage_multer,
   limits: {
@@ -15548,13 +15420,13 @@ var uploadDocument = multer({
     // 10MB limit for documents
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes2 = /pdf|doc|docx|txt|rtf|odt|ppt|pptx|xls|xlsx/;
+    const allowedTypes2 = /pdf|doc|docx|txt/;
     const extname = allowedTypes2.test(path2.extname(file.originalname).toLowerCase());
-    const mimetype = /application\/(pdf|msword|vnd\.openxmlformats-officedocument|vnd\.oasis\.opendocument|text\/plain|vnd\.ms-powerpoint|vnd\.ms-excel)/.test(file.mimetype);
-    if (mimetype && extname) {
+    const mimetype = allowedTypes2.test(file.mimetype) || file.mimetype === "application/pdf" || file.mimetype.includes("word");
+    if (mimetype || extname) {
       return cb(null, true);
     } else {
-      cb(new Error("Only document files (PDF, DOC, DOCX, TXT, RTF, ODT, PPT, PPTX, XLS, XLSX) are allowed!"));
+      cb(new Error("Only document files (PDF, DOC, DOCX, TXT) are allowed!"));
     }
   }
 });
@@ -15562,27 +15434,10 @@ var csvDir = "server/uploads/csv";
 fs3.mkdir(csvDir, { recursive: true }).catch(() => {
 });
 var uploadCSV = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, csvDir);
-    },
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-      cb(null, "users-" + uniqueSuffix + ".csv");
-    }
-  }),
+  storage: storage_multer,
   limits: {
     fileSize: 2 * 1024 * 1024
     // 2MB limit for CSV
-  },
-  fileFilter: (req, file, cb) => {
-    const isCSV = /csv|txt/.test(path2.extname(file.originalname).toLowerCase());
-    const mimeOk = /text\/(csv|plain)|application\/(vnd\.ms-excel|csv)/.test(file.mimetype);
-    if (isCSV || mimeOk) {
-      return cb(null, true);
-    } else {
-      cb(new Error("Only CSV files are allowed!"));
-    }
   }
 });
 async function autoPublishScheduledExams() {
@@ -16105,46 +15960,94 @@ async function registerRoutes(app2) {
   app2.post("/api/upload", authenticateUser, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) {
+        console.error("\u274C [UPLOAD] No file received in request");
         return res.status(400).json({ message: "No file uploaded" });
       }
-      const uploadType = req.body.uploadType || "general";
+      const uploadType = (req.body.uploadType || req.query.uploadType || "general").toLowerCase();
+      console.log(`\u{1F680} [UPLOAD] Processing upload. Type: ${uploadType}, Name: ${req.file.originalname}, Size: ${req.file.size} bytes`);
       const isImage = req.file.mimetype.startsWith("image/");
       let fileToUpload = req.file;
       if (isImage) {
         try {
-          const originalPath = req.file.path;
-          const compressedPath = `${originalPath}-compressed.webp`;
-          await sharp(originalPath).resize(1200, 1200, { fit: "inside", withoutEnlargement: true }).ensureAlpha().webp({ quality: 80, lossless: false, nearLossless: false, force: true }).toFile(compressedPath);
+          const imageBuffer = req.file.buffer;
+          if (!imageBuffer) {
+            throw new Error("No file buffer available for compression");
+          }
+          console.log(`\u{1F5BC}\uFE0F [UPLOAD] Compressing image: ${req.file.originalname}`);
+          const compressedBuffer = await sharp(imageBuffer).resize(1200, 1200, { fit: "inside", withoutEnlargement: true }).ensureAlpha().webp({ quality: 80, lossless: false, nearLossless: false, force: true }).toBuffer();
+          console.log(`\u2705 [UPLOAD] Compression success. Original: ${req.file.size}, Compressed: ${compressedBuffer.length}`);
           fileToUpload = {
             ...req.file,
-            path: compressedPath,
-            filename: path2.basename(compressedPath),
+            buffer: compressedBuffer,
             originalname: `${path2.parse(req.file.originalname).name}.webp`,
-            mimetype: "image/webp"
+            mimetype: "image/webp",
+            size: compressedBuffer.length
           };
-          await fs3.unlink(originalPath).catch((err) => console.error("Failed to delete original file:", err));
         } catch (sharpError) {
-          console.error("Image compression failed:", sharpError);
+          console.error("\u26A0\uFE0F [UPLOAD] Image compression failed, falling back to original:", sharpError);
           fileToUpload = req.file;
         }
       }
       const options = {
         uploadType,
-        userId: req.user.id
+        userId: req.user.id,
+        categoryId: req.body.categoryId ? parseInt(req.body.categoryId) : void 0
       };
+      console.log(`\u{1F4E6} [UPLOAD] Sending to unified storage service. Type: ${uploadType}`);
       const result = await uploadFileToStorage(fileToUpload, options);
-      if (isImage && fileToUpload.path !== req.file.path) {
-        await fs3.unlink(fileToUpload.path).catch(() => {
+      if (result.success) {
+        console.log(`\u2705 [UPLOAD] Storage success. URL: ${result.url}`);
+        res.json({
+          success: true,
+          url: result.url,
+          isCloudinary: result.isCloudinary
+        });
+      } else {
+        console.error(`\u274C [UPLOAD] Storage failed: ${result.error}`);
+        res.status(500).json({
+          success: false,
+          message: result.error || "The storage service was unable to save your file. Please try a different file or try again later."
         });
       }
-      if (result.success) {
-        res.json({ url: result.url });
-      } else {
-        res.status(500).json({ message: result.error || "Upload failed" });
-      }
     } catch (error) {
-      console.error("Upload error:", error);
-      res.status(500).json({ message: error.message || "Upload failed" });
+      console.error("\u274C [UPLOAD] Route error:", error);
+      res.status(500).json({
+        success: false,
+        message: error.message || "An unexpected error occurred while processing your upload. Please check your connection and try again."
+      });
+    }
+  });
+  app2.post("/api/upload/profile", authenticateUser, upload.single("file"), async (req, res) => {
+    console.warn("\u26A0\uFE0F [UPLOAD] Calling deprecated profile upload endpoint.");
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+      const result = await uploadFileToStorage(req.file, { uploadType: "profile", userId: req.user.id });
+      if (result.success) res.json({ success: true, url: result.url });
+      else res.status(500).json({ success: false, message: result.error || "Upload failed" });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message || "Upload failed" });
+    }
+  });
+  app2.post("/api/upload/gallery", authenticateUser, upload.single("file"), async (req, res) => {
+    console.warn("\u26A0\uFE0F [UPLOAD] Calling deprecated gallery upload endpoint.");
+    try {
+      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+      const result = await uploadFileToStorage(req.file, { uploadType: "gallery", userId: req.user.id });
+      if (result.success) res.json({ success: true, url: result.url });
+      else res.status(500).json({ success: false, message: result.error || "Upload failed" });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message || "Upload failed" });
+    }
+  });
+  app2.post("/api/upload/homepage", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), upload.single("file"), async (req, res) => {
+    console.warn("\u26A0\uFE0F [UPLOAD] Calling deprecated homepage upload endpoint.");
+    try {
+      if (!req.file) return res.status(400).json({ success: false, message: "No file selected for upload." });
+      const result = await uploadFileToStorage(req.file, { uploadType: "homepage", userId: req.user.id });
+      if (result.success) res.json({ success: true, url: result.url });
+      else res.status(500).json({ success: false, message: result.error || "The storage service was unable to save your image." });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message || "An unexpected error occurred during the homepage upload." });
     }
   });
   const ALLOWED_SYNC_TABLES = ["classes", "subjects", "academic_terms", "users", "students", "announcements", "exams", "homepage_content", "notifications"];
@@ -16539,6 +16442,14 @@ async function registerRoutes(app2) {
         });
       }
       console.log(`[STRICT-EXAM-RESULT] Found result ID ${result.id} for student ${studentId}, exam ${examId}`);
+      const responseData = {
+        ...result,
+        correct_answers: result.correctAnswers ?? 0,
+        incorrect_answers: result.incorrectAnswers ?? 0,
+        total_questions: result.totalQuestions ?? 0,
+        time_taken: result.timeTaken ?? 0,
+        submitted_at: result.submittedAt ?? result.createdAt
+      };
       let subjectName = "Unknown Subject";
       let className = "Unknown Class";
       if (exam.subjectId) {
@@ -16553,10 +16464,10 @@ async function registerRoutes(app2) {
       let submissionReason = "manual";
       let violationCount = 0;
       try {
-        const sessions = await storage.getExamSessionsByStudent(studentId);
-        const matchingSession = sessions.find((s) => s.examId === examId && s.status === "completed");
-        if (matchingSession) {
-          const metadata = typeof matchingSession.metadata === "string" ? JSON.parse(matchingSession.metadata) : matchingSession.metadata;
+        const sessions2 = await storage.getExamSessionsByStudent(studentId);
+        const matchingSession2 = sessions2.find((s) => s.examId === examId && s.status === "completed");
+        if (matchingSession2) {
+          const metadata = typeof matchingSession2.metadata === "string" ? JSON.parse(matchingSession2.metadata) : matchingSession2.metadata;
           timeTakenSeconds = metadata?.timeTakenSeconds || 0;
           submissionReason = metadata?.submissionReason || "manual";
           violationCount = metadata?.violationCount || 0;
@@ -16566,6 +16477,54 @@ async function registerRoutes(app2) {
       const score = result.score ?? result.marksObtained ?? 0;
       const maxScore = result.maxScore ?? exam.totalMarks ?? 100;
       const percentage = maxScore > 0 ? Math.round(score / maxScore * 100) : 0;
+      const sessions = await storage.getExamSessionsByStudent(studentId);
+      const matchingSession = sessions.find((s) => s.examId === examId && s.status === "completed") || sessions.find((s) => s.examId === examId);
+      let questionDetails = [];
+      if (matchingSession) {
+        console.log(`[STRICT-EXAM-RESULT] Using session ${matchingSession.id} for question breakdown`);
+        const answers = await storage.getStudentAnswers(matchingSession.id);
+        const questions = await storage.getExamQuestions(examId);
+        questionDetails = await Promise.all(questions.map(async (q) => {
+          const studentAns = answers.find((a) => a.questionId === q.id);
+          const options = q.questionType === "multiple_choice" ? await storage.getQuestionOptions(q.id) : [];
+          const correctOption = options.find((o) => o.isCorrect);
+          let studentAnswerText = "No answer provided";
+          let isCorrect = false;
+          let pointsEarned = 0;
+          if (studentAns) {
+            isCorrect = studentAns.isCorrect || false;
+            pointsEarned = studentAns.pointsEarned || 0;
+            if (q.questionType === "multiple_choice" && studentAns.selectedOptionId) {
+              const studentOption = options.find((o) => o.id === studentAns.selectedOptionId);
+              studentAnswerText = studentOption?.optionText || `Option (ID: ${studentAns.selectedOptionId})`;
+            } else if (studentAns.textAnswer) {
+              studentAnswerText = studentAns.textAnswer;
+            }
+          }
+          let correctAnswerText = "Not available";
+          if (q.questionType === "multiple_choice") {
+            const correctOption2 = options.find((o) => o.isCorrect);
+            correctAnswerText = correctOption2?.optionText || "Not specified";
+          } else {
+            try {
+              const expected = typeof q.expectedAnswers === "string" ? JSON.parse(q.expectedAnswers) : q.expectedAnswers;
+              correctAnswerText = Array.isArray(expected) ? expected.join(", ") : String(expected || "Not specified");
+            } catch (e) {
+              correctAnswerText = String(q.expectedAnswers || "Not specified");
+            }
+          }
+          return {
+            questionId: q.id,
+            questionText: q.questionText,
+            isCorrect,
+            pointsAwarded: pointsEarned,
+            maxPoints: q.points,
+            studentAnswer: studentAnswerText,
+            correctAnswer: correctAnswerText,
+            explanation: q.explanationText
+          };
+        }));
+      }
       const enrichedResult = {
         id: result.id,
         examId: result.examId,
@@ -16575,13 +16534,18 @@ async function registerRoutes(app2) {
         percentage,
         grade: result.grade || null,
         remarks: result.remarks || null,
-        submittedAt: result.createdAt?.toISOString() || null,
-        timeTakenSeconds,
+        submittedAt: result.submittedAt?.toISOString() || result.createdAt?.toISOString() || null,
+        correct_answers: result.correctAnswers ?? 0,
+        incorrect_answers: result.incorrectAnswers ?? 0,
+        total_questions: result.totalQuestions ?? 0,
+        time_taken: result.timeTaken ?? timeTakenSeconds,
+        timeTakenSeconds: result.timeTaken || timeTakenSeconds,
         submissionReason,
         violationCount,
         examTitle: exam.name,
         subjectName,
         className,
+        questionDetails,
         // Include exam details for verification
         exam: {
           id: exam.id,
@@ -17054,32 +17018,61 @@ async function registerRoutes(app2) {
       if (!activeSession) {
         const completedSession = sessions.find((s) => s.examId === examId && s.isCompleted);
         if (completedSession) {
-          const existingResult = await storage.getExamResultByExamAndStudent(examId, studentId);
+          const existingResult2 = await storage.getExamResultByExamAndStudent(examId, studentId);
           const studentAnswers4 = await storage.getStudentAnswers(completedSession.id);
           const examQuestions4 = await storage.getExamQuestions(examId);
-          const questionDetails2 = examQuestions4.map((q) => {
+          const questionDetails2 = await Promise.all(examQuestions4.map(async (q) => {
             const answer = studentAnswers4.find((a) => a.questionId === q.id);
+            const options = q.questionType === "multiple_choice" ? await storage.getQuestionOptions(q.id) : [];
+            let studentAnswerText = "No answer provided";
+            if (answer) {
+              if (q.questionType === "multiple_choice" && answer.selectedOptionId) {
+                const selectedOption = options.find((o) => o.id === answer.selectedOptionId);
+                studentAnswerText = selectedOption?.optionText || "Option not found";
+              } else if (answer.textAnswer) {
+                studentAnswerText = answer.textAnswer;
+              }
+            }
+            let correctAnswerText = "Not available";
+            let isCorrect = answer?.isCorrect || false;
+            let pointsAwarded = answer?.pointsEarned || 0;
+            if (q.questionType === "multiple_choice") {
+              const correctOption = options.find((o) => o.isCorrect);
+              correctAnswerText = correctOption?.optionText || "Not specified";
+              if (answer && answer.selectedOptionId && correctOption) {
+                isCorrect = answer.selectedOptionId === correctOption.id;
+              }
+            } else {
+              try {
+                const expected = typeof q.expectedAnswers === "string" ? JSON.parse(q.expectedAnswers) : q.expectedAnswers;
+                correctAnswerText = Array.isArray(expected) ? expected.join(", ") : String(expected || "Not specified");
+              } catch (e) {
+                correctAnswerText = String(q.expectedAnswers || "Not specified");
+              }
+            }
             return {
               questionId: q.id,
               questionText: q.questionText,
               questionType: q.questionType,
               points: q.points,
-              studentAnswer: answer?.textAnswer || null,
+              studentAnswer: studentAnswerText,
               selectedOptionId: answer?.selectedOptionId || null,
-              isCorrect: answer?.isCorrect || false,
-              pointsAwarded: answer?.pointsEarned || 0,
+              isCorrect,
+              pointsAwarded,
+              correctAnswer: correctAnswerText,
+              explanation: q.explanationText,
               feedback: answer?.feedbackText || null
             };
-          });
+          }));
           return res.json({
             submitted: true,
             alreadySubmitted: true,
             message: "Exam was previously submitted. Returning existing results.",
             result: {
               sessionId: completedSession.id,
-              score: existingResult?.score || completedSession.score || 0,
-              maxScore: existingResult?.maxScore || completedSession.maxScore || exam.totalMarks || 0,
-              percentage: existingResult?.maxScore ? (existingResult.score || 0) / existingResult.maxScore * 100 : completedSession.maxScore ? (completedSession.score || 0) / completedSession.maxScore * 100 : 0,
+              score: existingResult2?.score || completedSession.score || 0,
+              maxScore: existingResult2?.maxScore || completedSession.maxScore || exam.totalMarks || 0,
+              percentage: existingResult2?.maxScore ? (existingResult2.score || 0) / existingResult2.maxScore * 100 : completedSession.maxScore ? (completedSession.score || 0) / completedSession.maxScore * 100 : 0,
               submittedAt: completedSession.submittedAt?.toISOString() || (/* @__PURE__ */ new Date()).toISOString(),
               questionDetails: questionDetails2,
               breakdown: {
@@ -17113,6 +17106,33 @@ async function registerRoutes(app2) {
         status: reason === "manual" ? "submitted" : `auto_${reason}`,
         metadata: JSON.stringify(sessionMetadata)
       });
+      const studentAnswers3 = await storage.getStudentAnswers(activeSession.id);
+      const examQuestions3 = await storage.getExamQuestions(examId);
+      let correctAnswersCount = 0;
+      for (const question of examQuestions3) {
+        const answer = studentAnswers3.find((a) => a.questionId === question.id);
+        if (!answer) continue;
+        if (question.questionType === "multiple_choice") {
+          const options = await storage.getQuestionOptions(question.id);
+          const correctOption = options.find((o) => o.isCorrect);
+          if (correctOption && answer.selectedOptionId === correctOption.id) {
+            correctAnswersCount++;
+          }
+        } else if (question.questionType === "true_false" || question.questionType === "fill_blank") {
+          if (answer.textAnswer?.trim().toLowerCase() === question.expectedAnswers?.trim().toLowerCase()) {
+            correctAnswersCount++;
+          }
+        }
+      }
+      const existingResults = await storage.getExamResultsByStudent(studentId);
+      const existingResult = existingResults.find((r) => r.examId === examId);
+      if (existingResult) {
+        await storage.updateExamResult(existingResult.id, {
+          correct_answers: correctAnswersCount,
+          total_questions: examQuestions3.length,
+          submitted_at: now
+        });
+      }
       const scoringStartTime = Date.now();
       let scoringSuccessful = false;
       let scoringError = null;
@@ -17125,8 +17145,6 @@ async function registerRoutes(app2) {
       }
       const scoringTime = Date.now() - scoringStartTime;
       const updatedSession = await storage.getExamSessionById(activeSession.id);
-      const studentAnswers3 = await storage.getStudentAnswers(activeSession.id);
-      const examQuestions3 = await storage.getExamQuestions(examId);
       let totalScore = updatedSession?.score || 0;
       let maxScore = updatedSession?.maxScore || exam.totalMarks || 0;
       if (totalScore === 0 && studentAnswers3.length > 0) {
@@ -17146,20 +17164,49 @@ async function registerRoutes(app2) {
           console.warn("[SUBMIT] Failed to update session with calculated scores:", updateError);
         }
       }
-      const questionDetails = examQuestions3.map((q) => {
+      const questionDetails = await Promise.all(examQuestions3.map(async (q) => {
         const answer = studentAnswers3.find((a) => a.questionId === q.id);
+        const options = q.questionType === "multiple_choice" ? await storage.getQuestionOptions(q.id) : [];
+        let studentAnswerText = "No answer provided";
+        if (answer) {
+          if (q.questionType === "multiple_choice" && answer.selectedOptionId) {
+            const selectedOption = options.find((o) => o.id === answer.selectedOptionId);
+            studentAnswerText = selectedOption?.optionText || "Option not found";
+          } else if (answer.textAnswer) {
+            studentAnswerText = answer.textAnswer;
+          }
+        }
+        let correctAnswerText = "Not available";
+        let isCorrect = answer?.isCorrect || false;
+        let pointsAwarded = answer?.pointsEarned || 0;
+        if (q.questionType === "multiple_choice") {
+          const correctOption = options.find((o) => o.isCorrect);
+          correctAnswerText = correctOption?.optionText || "Not specified";
+          if (answer && answer.selectedOptionId && correctOption) {
+            isCorrect = answer.selectedOptionId === correctOption.id;
+          }
+        } else {
+          try {
+            const expected = typeof q.expectedAnswers === "string" ? JSON.parse(q.expectedAnswers) : q.expectedAnswers;
+            correctAnswerText = Array.isArray(expected) ? expected.join(", ") : String(expected || "Not specified");
+          } catch (e) {
+            correctAnswerText = String(q.expectedAnswers || "Not specified");
+          }
+        }
         return {
           questionId: q.id,
           questionText: q.questionText,
           questionType: q.questionType,
           points: q.points,
-          studentAnswer: answer?.textAnswer || null,
+          studentAnswer: studentAnswerText,
           selectedOptionId: answer?.selectedOptionId || null,
-          isCorrect: answer?.isCorrect || false,
-          pointsAwarded: answer?.pointsEarned || 0,
+          isCorrect,
+          pointsAwarded,
+          correctAnswer: correctAnswerText,
+          explanation: q.explanationText,
           feedback: answer?.feedbackText || null
         };
-      });
+      }));
       const totalTime = Date.now() - startTime;
       const percentage = maxScore > 0 ? totalScore / maxScore * 100 : 0;
       let reportCardSync = { success: false, message: "" };
@@ -19070,7 +19117,7 @@ async function registerRoutes(app2) {
       res.status(500).json({ message: error.message || "Failed to upload file" });
     }
   });
-  app2.post("/api/upload/homepage", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), upload.single("homePageImage"), async (req, res) => {
+  app2.post("/api/upload/homepage-deprecated", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), upload.single("homePageImage"), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
@@ -20279,7 +20326,10 @@ Treasure-Home School Administration
         status: "healthy",
         database: "connected",
         timestamp: (/* @__PURE__ */ new Date()).toISOString(),
-        uptime: process.uptime()
+        uptime: process.uptime(),
+        environment: process.env.NODE_ENV,
+        vercel: !!process.env.VERCEL,
+        render: !!process.env.RENDER
       });
     } catch (error) {
       res.status(503).json({
@@ -22202,35 +22252,106 @@ Treasure-Home School Administration
   });
   app2.post("/api/superadmin/branding/upload", authenticateUser, authorizeRoles(ROLE_IDS.SUPER_ADMIN), upload.single("file"), async (req, res) => {
     try {
+      console.log("[BRANDING] Received upload request", {
+        uploadType: req.body.uploadType,
+        file: req.file ? {
+          originalname: req.file.originalname,
+          mimetype: req.file.mimetype,
+          size: req.file.size,
+          hasBuffer: !!req.file.buffer
+        } : "null"
+      });
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
       const uploadType = req.body.uploadType || "logo";
-      const fileName = req.file.filename;
-      const filePath = `/uploads/homepage/${fileName}`;
-      console.log(`[BRANDING] File uploaded to: ${req.file.path}`);
-      const settings3 = await storage.getSystemSettings();
-      if (!settings3) {
-        return res.status(404).json({ message: "System settings not found" });
+      const isFavicon = uploadType === "favicon" || req.file.originalname && req.file.originalname.toLowerCase().includes("favicon");
+      let fileToUpload = req.file;
+      try {
+        const imageBuffer = req.file.buffer;
+        if (imageBuffer) {
+          console.log("[BRANDING] Processing image with sharp...");
+          let sharpInstance = sharp(imageBuffer);
+          if (isFavicon) {
+            sharpInstance = sharpInstance.resize(64, 64, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } });
+          } else {
+            sharpInstance = sharpInstance.resize(800, 800, { fit: "inside", withoutEnlargement: true });
+          }
+          const format = isFavicon ? "png" : "webp";
+          const mimetype = isFavicon ? "image/png" : "image/webp";
+          const compressedBuffer = await sharpInstance.ensureAlpha().toFormat(format, { quality: 100 }).toBuffer();
+          fileToUpload = {
+            ...req.file,
+            buffer: compressedBuffer,
+            originalname: `${path2.parse(req.file.originalname || "upload").name}.${isFavicon ? "png" : "webp"}`,
+            mimetype,
+            size: compressedBuffer.length
+          };
+          console.log("[BRANDING] Image processed successfully", { newSize: compressedBuffer.length, format });
+        } else {
+          console.warn("[BRANDING] No buffer available in req.file");
+        }
+      } catch (err) {
+        console.error("[BRANDING] Image compression failed:", err);
+        fileToUpload = req.file;
       }
-      const updateData = { updatedAt: /* @__PURE__ */ new Date() };
-      if (uploadType === "favicon" || fileName.toLowerCase().includes("favicon")) {
-        updateData.favicon = filePath;
+      const options = {
+        uploadType,
+        // Use the actual upload type from request
+        userId: req.user.id
+      };
+      console.log("[BRANDING] Sending to storage service...", options);
+      const result = await uploadFileToStorage(fileToUpload, options);
+      console.log("[BRANDING] Storage result:", JSON.stringify({
+        success: result.success,
+        url: result.url,
+        isCloudinary: result.isCloudinary,
+        error: result.error
+      }));
+      if (result.success && result.url) {
+        console.log("[BRANDING] Upload successful, updating settings...");
+        let finalUrl = result.url;
+        if (!finalUrl.startsWith("http") && !finalUrl.startsWith("/")) {
+          finalUrl = "/" + finalUrl;
+        }
+        const settings3 = await storage.getSystemSettings();
+        if (!settings3) {
+          console.error("[BRANDING] System settings not found in database");
+          return res.status(404).json({ message: "System settings not found" });
+        }
+        const updateData = {
+          updatedAt: /* @__PURE__ */ new Date(),
+          updatedBy: req.user.id
+        };
+        if (isFavicon) {
+          updateData.favicon = finalUrl;
+        } else {
+          updateData.schoolLogo = finalUrl;
+        }
+        console.log("[BRANDING] Updating system settings in database", updateData);
+        await storage.updateSystemSettings(updateData);
+        if (enhancedCache2 && typeof enhancedCache2.invalidate === "function") {
+          enhancedCache2.invalidate(/^public:settings/);
+          enhancedCache2.invalidate(/^superadmin:settings/);
+        }
+        if (performanceCache && typeof performanceCache.invalidate === "function") {
+          performanceCache.invalidate(PerformanceCache.keys.homepageContent());
+        }
+        return res.json({
+          success: true,
+          url: result.url,
+          message: `${uploadType.charAt(0).toUpperCase() + uploadType.slice(1)} updated successfully`
+        });
       } else {
-        updateData.schoolLogo = filePath;
+        console.error("[BRANDING] Upload failed:", result.error);
+        return res.status(500).json({
+          message: result.error || "Failed to upload branding asset",
+          details: result.error
+        });
       }
-      await storage.updateSystemSettings(updateData);
-      if (enhancedCache2 && typeof enhancedCache2.invalidate === "function") {
-        enhancedCache2.invalidate(/^public:settings/);
-        enhancedCache2.invalidate(/^superadmin:settings/);
-      }
-      res.json({
-        message: `${uploadType.charAt(0).toUpperCase() + uploadType.slice(1)} uploaded successfully`,
-        url: filePath
-      });
     } catch (error) {
-      console.error("Branding upload error:", error);
-      res.status(500).json({ message: error.message });
+      console.error("[BRANDING] Error in upload route:", error);
+      return res.status(500).json({ message: error.message || "Internal server error" });
     }
   });
   app2.put("/api/superadmin/settings", authenticateUser, authorizeRoles(ROLE_IDS.SUPER_ADMIN), async (req, res) => {
@@ -25552,20 +25673,6 @@ import path3 from "path";
 var vite_config_default = defineConfig({
   plugins: [
     react()
-    // Replit plugins temporarily commented out due to installation issues
-    // ...(process.env.NODE_ENV !== "production"
-    //   ? [
-    //       (await import("@replit/vite-plugin-runtime-error-modal")).default(),
-    //     ]
-    //   : []),
-    // ...(process.env.NODE_ENV !== "production" &&
-    // process.env.REPL_ID !== undefined
-    //   ? [
-    //       await import("@replit/vite-plugin-cartographer").then((m) =>
-    //         m.cartographer(),
-    //       ),
-    //     ]
-    //   : []),
   ],
   resolve: {
     alias: {
@@ -25892,11 +25999,12 @@ app.use(compression({
   }
 }));
 app.use((req, res, next) => {
-  req.setTimeout(3e4, () => {
-    res.status(408).json({ message: "Request timeout" });
+  const timeout = process.env.NODE_ENV === "production" || !!process.env.REPLIT_DEV_DOMAIN ? 6e4 : 3e4;
+  req.setTimeout(timeout, () => {
+    if (!res.headersSent) res.status(408).json({ message: "Request timeout" });
   });
-  res.setTimeout(3e4, () => {
-    res.status(408).json({ message: "Response timeout" });
+  res.setTimeout(timeout, () => {
+    if (!res.headersSent) res.status(408).json({ message: "Response timeout" });
   });
   next();
 });
@@ -26116,7 +26224,10 @@ function sanitizeLogData(data) {
   }
   app.use((err, req, res, next) => {
     if (err.name === "MulterError" || err.message?.includes("Only image files") || err.message?.includes("Only document files") || err.message?.includes("Only CSV files")) {
-      console.log(`MULTER ERROR: ${req.method} ${req.path} - ${err.message}`);
+      console.log(`MULTER ERROR: ${req.method} ${req.path} - ${err.message}`, {
+        body: req.body,
+        file: req.file ? "File present" : "File missing"
+      });
       let status = 400;
       let message = err.message;
       if (err.code === "LIMIT_FILE_SIZE") {
@@ -26139,7 +26250,7 @@ function sanitizeLogData(data) {
   const isReplit = !!process.env.REPLIT_DEV_DOMAIN;
   if (app.get("env") === "development" || isReplit) {
     await setupVite(app, server);
-  } else if (!process.env.FRONTEND_URL) {
+  } else {
     serveStatic(app);
   }
   const port = parseInt(process.env.PORT || "5000", 10);

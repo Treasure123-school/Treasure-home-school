@@ -47,8 +47,8 @@ export function getPgPool(): pg.Pool | null {
   return pool;
 }
 
-export function getPgClient(): null {
-  return null;
+export function getPgClient(): pg.Pool | null {
+  return pool;
 }
 
 export async function closeDatabase(): Promise<void> {

@@ -1686,11 +1686,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Map new schema fields for the frontend
       const responseData = {
         ...result,
-        correct_answers: result.correct_answers ?? 0,
-        incorrect_answers: result.incorrect_answers ?? 0,
-        total_questions: result.total_questions ?? 0,
-        time_taken: result.time_taken ?? 0,
-        submitted_at: result.submitted_at ?? result.createdAt
+        correct_answers: (result as any).correctAnswers ?? 0,
+        incorrect_answers: (result as any).incorrectAnswers ?? 0,
+        total_questions: (result as any).totalQuestions ?? 0,
+        time_taken: (result as any).timeTaken ?? 0,
+        submitted_at: (result as any).submittedAt ?? (result as any).createdAt
       };
       
       // Get subject and class information for display
@@ -1805,12 +1805,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         percentage: percentage,
         grade: result.grade || null,
         remarks: result.remarks || null,
-        submittedAt: result.submittedAt?.toISOString() || result.createdAt?.toISOString() || null,
-        correct_answers: result.correctAnswers ?? 0,
-        incorrect_answers: result.incorrectAnswers ?? 0,
-        total_questions: result.totalQuestions ?? 0,
-        time_taken: result.timeTaken ?? timeTakenSeconds,
-        timeTakenSeconds: result.timeTaken || timeTakenSeconds,
+        submittedAt: (result as any).submittedAt?.toISOString() || (result as any).createdAt?.toISOString() || null,
+        correct_answers: (result as any).correctAnswers ?? 0,
+        incorrect_answers: (result as any).incorrectAnswers ?? 0,
+        total_questions: (result as any).totalQuestions ?? 0,
+        time_taken: (result as any).timeTaken ?? timeTakenSeconds,
+        timeTakenSeconds: (result as any).timeTaken || timeTakenSeconds,
         submissionReason: submissionReason,
         violationCount: violationCount,
         examTitle: exam.name,

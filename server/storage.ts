@@ -3911,8 +3911,10 @@ export class DatabaseStorage implements IStorage {
         query += ' ORDER BY es.submitted_at DESC';
 
         // Use Neon's unsafe method for dynamic queries with parameters
-        const result = await (pgClient as any).unsafe(query, [teacherId]);
-        return result as any[];
+        const result = await (db as any).execute(sql.raw(query.replace(/\$([0-9]+)/g, (_, n) => `$${n}`)));
+        const rows = (result.rows || result) as any[];
+        // Map snake_case to camelCase if needed, but for now just return as is
+        return rows;
       }
 
       return [];
@@ -3931,7 +3933,7 @@ export class DatabaseStorage implements IStorage {
         if (!pgClient) throw new Error('PostgreSQL client not available');
         
         // Use PostgreSQL upsert syntax
-        const result = await pgClient`
+        const result = await (db as any).execute(sql`
           INSERT INTO manual_scores (answer_id, grader_id, awarded_marks, comment, graded_at)
           VALUES (${taskId}, ${graderId}, ${score}, ${comment}, NOW())
           ON CONFLICT (answer_id)
@@ -3941,14 +3943,14 @@ export class DatabaseStorage implements IStorage {
             graded_at = EXCLUDED.graded_at,
             grader_id = EXCLUDED.grader_id
           RETURNING *
-        `;
+        `);
 
         // Update the student answer with the manual score
-        await pgClient`
+        await (db as any).execute(sql`
           UPDATE student_answers
           SET points_earned = ${score}
           WHERE id = ${taskId}
-        `;
+        `);
 
         // Extract first row from PostgreSQL result
         const rows = result as Record<string, any>[];
@@ -3967,7 +3969,7 @@ export class DatabaseStorage implements IStorage {
         const pgClient = getPgClient();
         if (!pgClient) return [];
         
-        const result = await pgClient`
+        const result = await (db as any).execute(sql`
           SELECT
             es.*,
             e.name as exam_title,
@@ -3987,7 +3989,7 @@ export class DatabaseStorage implements IStorage {
           JOIN exams e ON es.exam_id = e.id
           JOIN users u ON es.student_id = u.id
           ORDER BY es.started_at DESC
-        `;
+        `);
 
         return result as any[];
       }
@@ -4059,8 +4061,10 @@ export class DatabaseStorage implements IStorage {
         `;
 
         // Use Neon's unsafe method for dynamic queries with parameters
-        const result = await (pgClient as any).unsafe(query, params);
-        return result as any[];
+        const result = await (db as any).execute(sql.raw(query.replace(/\$([0-9]+)/g, (_, n) => `$${n}`)));
+        const rows = (result.rows || result) as any[];
+        // Map snake_case to camelCase if needed, but for now just return as is
+        return rows;
       }
 
       return [];
@@ -4076,7 +4080,7 @@ export class DatabaseStorage implements IStorage {
         const pgClient = getPgClient();
         if (!pgClient) return [];
         
-        const result = await pgClient`
+        const result = await (db as any).execute(sql`
           SELECT
             u.id as student_id,
             u.first_name || ' ' || u.last_name as student_name,
@@ -4106,9 +4110,9 @@ export class DatabaseStorage implements IStorage {
           LEFT JOIN exam_results er ON e.id = er.exam_id AND u.id = er.student_id
           WHERE e.id = ${examId} AND es.is_completed = true
           ORDER BY er.marks_obtained DESC
-        `;
+        `);
 
-        return result as any[];
+        return (result.rows || result) as any[];
       }
 
       return [];
