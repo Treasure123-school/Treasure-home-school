@@ -2547,7 +2547,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metadata: JSON.stringify(sessionMetadata)
       });
 
-      // Calculate correct answers count manually
+      // Calculate correct answers count manually - ensure accuracy
       const studentAnswers = await storage.getStudentAnswers(activeSession.id);
       const examQuestions = await storage.getExamQuestions(examId);
       
@@ -2562,8 +2562,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (correctOption && answer.selectedOptionId === correctOption.id) {
             correctAnswersCount++;
           }
-        } else if (question.questionType === 'true_false') {
-          if (answer.textAnswer?.toLowerCase() === question.expectedAnswers?.toLowerCase()) {
+        } else if (question.questionType === 'true_false' || question.questionType === 'fill_blank') {
+          // Basic comparison for text-based auto-gradable questions
+          if (answer.textAnswer?.trim().toLowerCase() === question.expectedAnswers?.trim().toLowerCase()) {
             correctAnswersCount++;
           }
         }
@@ -2575,9 +2576,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (existingResult) {
         await storage.updateExamResult(existingResult.id, {
-          correctAnswers: correctAnswersCount,
-          totalQuestions: examQuestions.length,
-          submittedAt: now
+          correct_answers: correctAnswersCount,
+          total_questions: examQuestions.length,
+          submitted_at: now
         });
       }
 
@@ -2599,10 +2600,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get the updated session with scores
       const updatedSession = await storage.getExamSessionById(activeSession.id);
-
-      // Get detailed results for student
-      const studentAnswers = await storage.getStudentAnswers(activeSession.id);
-      const examQuestions = await storage.getExamQuestions(examId);
 
       // Calculate score from answers if session score is missing
       let totalScore = updatedSession?.score || 0;
