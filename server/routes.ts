@@ -2547,10 +2547,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         metadata: JSON.stringify(sessionMetadata)
       });
 
-      // Recalculate correct answers and score before final saving
-      const scoringData = await storage.getExamScoringData(activeSession.id);
-      const correctCount = scoringData.scoringData.filter((q: any) => q.isCorrect).length;
-      const totalQuestionsCount = scoringData.summary.totalQuestions;
+      // Calculate correct answers count manually
+      const studentAnswers = await storage.getStudentAnswers(activeSession.id);
+      const examQuestions = await storage.getExamQuestions(examId);
+      
+      let correctAnswersCount = 0;
+      for (const question of examQuestions) {
+        const answer = studentAnswers.find(a => a.questionId === question.id);
+        if (!answer) continue;
+
+        if (question.questionType === 'multiple_choice') {
+          const options = await storage.getQuestionOptions(question.id);
+          const correctOption = options.find(o => o.isCorrect);
+          if (correctOption && answer.selectedOptionId === correctOption.id) {
+            correctAnswersCount++;
+          }
+        } else if (question.questionType === 'true_false') {
+          if (answer.textAnswer?.toLowerCase() === question.expectedAnswers?.toLowerCase()) {
+            correctAnswersCount++;
+          }
+        }
+      }
 
       // Update exam result with correct answers count
       const existingResults = await storage.getExamResultsByStudent(studentId);
@@ -2558,8 +2575,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (existingResult) {
         await storage.updateExamResult(existingResult.id, {
-          correctAnswers: correctCount,
-          totalQuestions: totalQuestionsCount,
+          correctAnswers: correctAnswersCount,
+          totalQuestions: examQuestions.length,
           submittedAt: now
         });
       }
