@@ -468,7 +468,7 @@ export default function StudentExamResults() {
                   <span className="font-medium text-orange-700 dark:text-orange-300">Time Taken</span>
                 </div>
                 <span className="text-xl font-bold text-orange-600" data-testid="value-time-taken">
-                  {result.timeTakenFormatted || (result.time_taken ? `${Math.floor(result.time_taken / 60)}m ${result.time_taken % 60}s` : 'N/A')}
+                  {result.timeTakenFormatted || (result.time_taken ? (typeof result.time_taken === 'string' ? result.time_taken : `${Math.floor(result.time_taken / 60)}m ${result.time_taken % 60}s`) : 'N/A')}
                 </span>
               </div>
 
