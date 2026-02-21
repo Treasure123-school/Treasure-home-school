@@ -1683,6 +1683,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[STRICT-EXAM-RESULT] Found result ID ${result.id} for student ${studentId}, exam ${examId}`);
       
+      // Map new schema fields for the frontend
+      const responseData = {
+        ...result,
+        correct_answers: result.correct_answers ?? 0,
+        incorrect_answers: result.incorrect_answers ?? 0,
+        total_questions: result.total_questions ?? 0,
+        time_taken: result.time_taken ?? 0,
+        submitted_at: result.submitted_at ?? result.createdAt
+      };
+      
       // Get subject and class information for display
       let subjectName = 'Unknown Subject';
       let className = 'Unknown Class';
@@ -1795,8 +1805,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         percentage: percentage,
         grade: result.grade || null,
         remarks: result.remarks || null,
-        submittedAt: result.createdAt?.toISOString() || null,
-        timeTakenSeconds: timeTakenSeconds,
+        submittedAt: result.submitted_at?.toISOString() || result.createdAt?.toISOString() || null,
+        correct_answers: result.correct_answers ?? 0,
+        incorrect_answers: result.incorrect_answers ?? 0,
+        total_questions: result.total_questions ?? 0,
+        time_taken: result.time_taken ?? timeTakenSeconds,
+        timeTakenSeconds: result.time_taken || timeTakenSeconds,
         submissionReason: submissionReason,
         violationCount: violationCount,
         examTitle: exam.name,

@@ -39,6 +39,10 @@ interface ExamResult {
   violationCount?: number;
   examTitle?: string;
   subjectName?: string;
+  correct_answers?: number;
+  incorrect_answers?: number;
+  total_questions?: number;
+  time_taken?: number;
   breakdown?: {
     correct: number;
     incorrect: number;
@@ -459,6 +463,59 @@ export default function StudentExamResults() {
                 </>
               )}
 
+              {/* Extended Statistics from new schema fields */}
+              {(result.correct_answers !== undefined || result.incorrect_answers !== undefined || result.total_questions !== undefined || result.time_taken !== undefined) && (
+                <>
+                  <div className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/40 rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-5 h-5 text-emerald-600" />
+                      </div>
+                      <span className="font-medium text-emerald-700 dark:text-emerald-300">Correct Answers</span>
+                    </div>
+                    <span className="text-xl font-bold text-emerald-600" data-testid="value-correct-new">
+                      {result.correct_answers ?? 0}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/40 rounded-full flex items-center justify-center">
+                        <XCircle className="w-5 h-5 text-orange-600" />
+                      </div>
+                      <span className="font-medium text-orange-700 dark:text-orange-300">Incorrect Answers</span>
+                    </div>
+                    <span className="text-xl font-bold text-orange-600" data-testid="value-incorrect-new">
+                      {result.incorrect_answers ?? 0}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-cyan-100 dark:bg-cyan-900/40 rounded-full flex items-center justify-center">
+                        <Target className="w-5 h-5 text-cyan-600" />
+                      </div>
+                      <span className="font-medium text-cyan-700 dark:text-cyan-300">Total Questions</span>
+                    </div>
+                    <span className="text-xl font-bold text-cyan-600" data-testid="value-total-new">
+                      {result.total_questions ?? 0}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 bg-rose-50 dark:bg-rose-900/20 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-rose-100 dark:bg-rose-900/40 rounded-full flex items-center justify-center">
+                        <Clock className="w-5 h-5 text-rose-600" />
+                      </div>
+                      <span className="font-medium text-rose-700 dark:text-rose-300">Time Taken</span>
+                    </div>
+                    <span className="text-xl font-bold text-rose-600" data-testid="value-time-new">
+                      {result.time_taken ? `${result.time_taken}s` : '--'}
+                    </span>
+                  </div>
+                </>
+              )}
+
               {result.timeTakenFormatted && (
                 <div className="flex items-center justify-between p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
                   <div className="flex items-center gap-3">
@@ -471,6 +528,59 @@ export default function StudentExamResults() {
                     {result.timeTakenFormatted}
                   </span>
                 </div>
+              )}
+
+              {/* Extended Statistics from new schema fields */}
+              {(result.correct_answers !== undefined || result.incorrect_answers !== undefined || result.total_questions !== undefined || result.time_taken !== undefined) && (
+                <>
+                  <div className="flex items-center justify-between p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/40 rounded-full flex items-center justify-center">
+                        <CheckCircle className="w-5 h-5 text-emerald-600" />
+                      </div>
+                      <span className="font-medium text-emerald-700 dark:text-emerald-300">Correct Answers</span>
+                    </div>
+                    <span className="text-xl font-bold text-emerald-600" data-testid="value-correct-new">
+                      {result.correct_answers ?? 0}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/40 rounded-full flex items-center justify-center">
+                        <XCircle className="w-5 h-5 text-orange-600" />
+                      </div>
+                      <span className="font-medium text-orange-700 dark:text-orange-300">Incorrect Answers</span>
+                    </div>
+                    <span className="text-xl font-bold text-orange-600" data-testid="value-incorrect-new">
+                      {result.incorrect_answers ?? 0}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-cyan-100 dark:bg-cyan-900/40 rounded-full flex items-center justify-center">
+                        <Target className="w-5 h-5 text-cyan-600" />
+                      </div>
+                      <span className="font-medium text-cyan-700 dark:text-cyan-300">Total Questions</span>
+                    </div>
+                    <span className="text-xl font-bold text-cyan-600" data-testid="value-total-new">
+                      {result.total_questions ?? 0}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 bg-rose-50 dark:bg-rose-900/20 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-rose-100 dark:bg-rose-900/40 rounded-full flex items-center justify-center">
+                        <Clock className="w-5 h-5 text-rose-600" />
+                      </div>
+                      <span className="font-medium text-rose-700 dark:text-rose-300">Time Taken</span>
+                    </div>
+                    <span className="text-xl font-bold text-rose-600" data-testid="value-time-new">
+                      {result.time_taken ? `${result.time_taken}s` : '--'}
+                    </span>
+                  </div>
+                </>
               )}
 
               <div className="flex items-center justify-between p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
