@@ -9,6 +9,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { ROLE_IDS } from "@/lib/roles";
 import { MinimalRouteFallback } from "@/components/ui/skeletons";
 import { SyncIndicator } from "@/components/SyncIndicator";
+import ScrollToTop from "@/components/ScrollToTop";
 import { StudentPortalShell, TeacherPortalShell, AdminPortalShell, ParentPortalShell } from "@/components/layout/PortalShells";
 import SuperAdminLayout from "@/components/SuperAdminLayout";
 
@@ -525,6 +526,7 @@ function App() {
       <TooltipProvider>
         <AuthProvider>
           <RealtimeProvider>
+            <ScrollToTop />
             <SyncIndicator />
             <Toaster />
             <Router />
