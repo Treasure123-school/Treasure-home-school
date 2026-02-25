@@ -17,7 +17,7 @@ export async function seedTestUsers() {
         id: randomUUID(),
         username: 'superadmin',
         email: 'superadmin@treasurehome.com',
-        password: 'SuperAdmin@123',
+        password: 'SuperSecurePassword2026!',
         roleId: 1,
         firstName: 'Super',
         lastName: 'Admin',
