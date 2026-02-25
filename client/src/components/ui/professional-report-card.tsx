@@ -212,8 +212,12 @@ export function ProfessionalReportCard({
 
   const schoolName = settings?.schoolName || "TREASURE HOME SCHOOL";
   const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State, Nigeria";
-  const schoolEmail = settings?.schoolEmail || "info@treasurehomeschool.com";
-  const schoolPhone = settings?.schoolPhone || "080-1734-5676";
+  const schoolEmail = Array.isArray(settings?.schoolEmails) && settings.schoolEmails.length > 0 
+    ? settings.schoolEmails[0] 
+    : (settings?.schoolEmail || "info@treasurehomeschool.com");
+  const schoolPhone = Array.isArray(settings?.schoolPhones) && settings.schoolPhones.length > 0 
+    ? (typeof settings.schoolPhones[0] === 'object' ? `${settings.schoolPhones[0].countryCode}${settings.schoolPhones[0].number}` : settings.schoolPhones[0])
+    : (settings?.schoolPhone || "080-1734-5676");
   const schoolMotto = settings?.schoolMotto || "Honesty and Success";
 
   const [isSubjectsOpen, setIsSubjectsOpen] = useState(true);

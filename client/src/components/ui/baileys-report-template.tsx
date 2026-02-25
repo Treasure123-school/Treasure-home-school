@@ -1,4 +1,5 @@
 import { forwardRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import logoPath from '@assets/school-logo.png';
 
 interface SubjectScore {
@@ -153,13 +154,26 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
   reportCard,
   testWeight = 40,
   examWeight = 60,
-  schoolName = "TREASURE-HOME SCHOOL",
-  schoolAddress = "Seriki-Soyinka, Ifo, Ogun State, Nigeria",
-  schoolPhone = "08012345678",
-  schoolEmail = "info@treasurehomeschool.com",
-  schoolMotto = "Honesty and Success",
+  schoolName: propSchoolName,
+  schoolAddress: propSchoolAddress,
+  schoolPhone: propSchoolPhone,
+  schoolEmail: propSchoolEmail,
+  schoolMotto: propSchoolMotto,
   schoolLogo: customLogo
 }, ref) => {
+  const { data: settings } = useQuery<any>({
+    queryKey: ["/api/superadmin/settings"],
+  });
+
+  const schoolName = propSchoolName || settings?.schoolName || "TREASURE-HOME SCHOOL";
+  const schoolAddress = propSchoolAddress || settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State, Nigeria";
+  const schoolEmail = propSchoolEmail || (Array.isArray(settings?.schoolEmails) && settings.schoolEmails.length > 0 
+    ? settings.schoolEmails[0] 
+    : (settings?.schoolEmail || "info@treasurehomeschool.com"));
+  const schoolPhone = propSchoolPhone || (Array.isArray(settings?.schoolPhones) && settings.schoolPhones.length > 0 
+    ? (typeof settings.schoolPhones[0] === 'object' ? `${settings.schoolPhones[0].countryCode}${settings.schoolPhones[0].number}` : settings.schoolPhones[0])
+    : (settings?.schoolPhone || "08012345678"));
+  const schoolMotto = propSchoolMotto || settings?.schoolMotto || "Honesty and Success";
   const subjects = reportCard.items || reportCard.subjects || [];
   const displayLogo = customLogo || logoPath;
   const totalObtained = subjects.reduce((sum, s) => sum + (s.obtainedMarks || 0), 0);
