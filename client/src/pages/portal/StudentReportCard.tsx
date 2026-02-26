@@ -129,11 +129,29 @@ export default function StudentReportCard() {
     queryKey: ["/api/public/settings"],
   });
 
+  // Helper to parse and format school contacts from potential JSON strings or arrays
+  const parseSetting = (val: any) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    try {
+      const parsed = JSON.parse(val);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch (e) {
+      return [val];
+    }
+  };
+
   const schoolName = settings?.schoolName || "";
   const schoolAddress = settings?.schoolAddress || "";
-  const schoolEmail = settings?.schoolEmail || "";
-  const schoolPhone = settings?.schoolPhone || "";
   const schoolMotto = settings?.schoolMotto || "";
+  
+  const schoolEmails = parseSetting(settings?.schoolEmails);
+  const schoolPhones = parseSetting(settings?.schoolPhones);
+
+  const schoolEmail = schoolEmails.length > 0 ? schoolEmails[0] : "";
+  const schoolPhone = schoolPhones.length > 0
+    ? (typeof schoolPhones[0] === 'object' ? `${schoolPhones[0].countryCode || ''}${schoolPhones[0].number || ''}` : schoolPhones[0])
+    : "";
 
   const { data: terms = [] } = useQuery({
     queryKey: ['/api/terms'],
@@ -417,7 +435,7 @@ export default function StudentReportCard() {
               <div className="text-center">
                 <h1 className="text-xl sm:text-2xl font-bold text-primary">{schoolName || ""}</h1>
                 <p className="text-sm font-medium">{schoolAddress || ""}</p>
-                <p className="text-xs text-muted-foreground mt-1">Contact: {schoolPhone || ""} | Email: {schoolEmail || ""}</p>
+                <p className="text-xs text-muted-foreground mt-1">Contact: {schoolPhone} | Email: {schoolEmail}</p>
                 <p className="text-xs italic mt-2">Motto: "{schoolMotto || ""}"</p>
                 <Separator className="my-3" />
                 <h2 className="text-lg font-semibold">{reportCard.termName?.toUpperCase() || 'FIRST TERM'} STUDENT'S PERFORMANCE REPORT</h2>
@@ -431,7 +449,7 @@ export default function StudentReportCard() {
             <div className="text-center border-b-2 border-primary pb-4">
               <h1 className="text-2xl font-bold">{schoolName || ""}</h1>
               <p className="text-sm font-medium">{schoolAddress || ""}</p>
-              <p className="text-xs text-muted-foreground">Contact: {schoolPhone || ""} | Email: {schoolEmail || ""}</p>
+              <p className="text-xs text-muted-foreground">Contact: {schoolPhone} | Email: {schoolEmail}</p>
               <p className="text-xs italic mt-2">Motto: "{schoolMotto || ""}"</p>
             </div>
             <h2 className="text-center text-lg font-semibold mt-4 mb-2">{reportCard.termName?.toUpperCase() || 'FIRST TERM'} STUDENT'S PERFORMANCE REPORT</h2>

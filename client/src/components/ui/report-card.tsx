@@ -113,7 +113,7 @@ export function ProfessionalReportCard({
               <h1 className="text-xl font-bold uppercase">{settings?.schoolName || ""}</h1>
               <p className="text-blue-100 italic">{settings?.schoolMotto || ""}</p>
               <p className="text-xs text-blue-200">
-                {settings?.schoolAddress || ""} | {schoolPhones.length > 1 ? `Contacts: ${allPhones}` : `Contact: ${primaryPhone}`} {primaryEmail && ` | ${primaryEmail}`}
+                {settings?.schoolAddress || ""} | Contact: {primaryPhone} {primaryEmail && ` | Email: ${primaryEmail}`}
               </p>
             </div>
           </div>

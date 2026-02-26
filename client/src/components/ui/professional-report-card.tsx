@@ -479,8 +479,7 @@ export function ProfessionalReportCard({
           <h1 className="text-xl sm:text-2xl font-bold text-primary">{schoolName}</h1>
           <p className="text-sm font-medium">{schoolAddress}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {schoolPhones.length > 1 ? `Contacts: ${allPhones}` : `Contact: ${primaryPhone}`} 
-            {primaryEmail && ` | Email: ${primaryEmail}`}
+            Contact: {primaryPhone} {primaryEmail && ` | Email: ${primaryEmail}`}
           </p>
           <p className="text-xs italic mt-2">Motto: "{schoolMotto}"</p>
           <Separator className="my-3" />
@@ -503,6 +502,9 @@ export function ProfessionalReportCard({
         <h2 className="text-center text-lg font-semibold mt-4 mb-2">{reportCard.termName?.toUpperCase() || 'FIRST TERM'} STUDENT'S PERFORMANCE REPORT</h2>
         <p className="text-center text-xs text-muted-foreground mb-4">
           Session: {reportCard.academicSession || '2024/2025'}
+        </p>
+        <p className="text-center text-xs text-muted-foreground mb-4">
+          Contact: {primaryPhone} {primaryEmail && ` | Email: ${primaryEmail}`}
         </p>
       </div>
 
