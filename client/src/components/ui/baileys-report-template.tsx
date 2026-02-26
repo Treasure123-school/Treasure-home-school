@@ -167,8 +167,14 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
 
   const schoolName = propSchoolName || settings?.schoolName || "";
   const schoolAddress = propSchoolAddress || settings?.schoolAddress || "";
-  const schoolEmail = propSchoolEmail || settings?.schoolEmail || "";
-  const schoolPhone = propSchoolPhone || settings?.schoolPhone || "";
+  const schoolEmails = settings?.schoolEmails || [];
+  const schoolPhones = settings?.schoolPhones || [];
+  
+  const schoolEmail = propSchoolEmail || (Array.isArray(schoolEmails) && schoolEmails.length > 0 ? schoolEmails[0] : "");
+  const schoolPhone = propSchoolPhone || (Array.isArray(schoolPhones) && schoolPhones.length > 0 
+    ? (typeof schoolPhones[0] === 'object' ? `${schoolPhones[0].countryCode || ''}${schoolPhones[0].number || ''}` : schoolPhones[0])
+    : "");
+    
   const schoolMotto = propSchoolMotto || settings?.schoolMotto || "";
   const subjects = reportCard.items || reportCard.subjects || [];
   const displayLogo = customLogo || logoPath;

@@ -212,9 +212,18 @@ export function ProfessionalReportCard({
 
   const schoolName = settings?.schoolName || "";
   const schoolAddress = settings?.schoolAddress || "";
-  const schoolEmail = settings?.schoolEmail || "";
-  const schoolPhone = settings?.schoolPhone || "";
+  const schoolEmails = settings?.schoolEmails || [];
+  const schoolPhones = settings?.schoolPhones || [];
   const schoolMotto = settings?.schoolMotto || "";
+
+  // Helper to format school contacts from JSON arrays
+  const formattedPhone = Array.isArray(schoolPhones) && schoolPhones.length > 0
+    ? (typeof schoolPhones[0] === 'object' ? `${schoolPhones[0].countryCode || ''}${schoolPhones[0].number || ''}` : schoolPhones[0])
+    : "";
+  
+  const formattedEmail = Array.isArray(schoolEmails) && schoolEmails.length > 0
+    ? schoolEmails[0]
+    : "";
 
   const [isSubjectsOpen, setIsSubjectsOpen] = useState(true);
   const [isAffectiveOpen, setIsAffectiveOpen] = useState(true);
@@ -453,7 +462,7 @@ export function ProfessionalReportCard({
         <div className="text-center">
           <h1 className="text-xl sm:text-2xl font-bold text-primary">{schoolName}</h1>
           <p className="text-sm font-medium">{schoolAddress}</p>
-          <p className="text-xs text-muted-foreground mt-1">Contact: {schoolPhone} | Email: {schoolEmail}</p>
+          <p className="text-xs text-muted-foreground mt-1">Contact: {formattedPhone} | Email: {formattedEmail}</p>
           <p className="text-xs italic mt-2">Motto: "{schoolMotto}"</p>
           <Separator className="my-3" />
           <h2 className="text-lg font-semibold">{reportCard.termName?.toUpperCase() || 'FIRST TERM'} STUDENT'S PERFORMANCE REPORT</h2>
@@ -466,7 +475,7 @@ export function ProfessionalReportCard({
         <div className="text-center border-b-2 border-primary pb-4">
           <h1 className="text-2xl font-bold text-primary">{schoolName}</h1>
           <p className="text-sm font-medium">{schoolAddress}</p>
-          <p className="text-xs text-muted-foreground">Contact: {schoolPhone} | Email: {schoolEmail}</p>
+          <p className="text-xs text-muted-foreground">Contact: {formattedPhone} | Email: {formattedEmail}</p>
           <p className="text-xs italic mt-2">Motto: "{schoolMotto}"</p>
         </div>
         <h2 className="text-center text-lg font-semibold mt-4 mb-2">{reportCard.termName?.toUpperCase() || 'FIRST TERM'} STUDENT'S PERFORMANCE REPORT</h2>

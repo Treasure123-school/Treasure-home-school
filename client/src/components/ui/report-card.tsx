@@ -47,6 +47,17 @@ export function ProfessionalReportCard({
     queryKey: ['/api/public/settings'],
   });
 
+  const schoolEmails = settings?.schoolEmails || [];
+  const schoolPhones = settings?.schoolPhones || [];
+
+  const formattedPhone = Array.isArray(schoolPhones) && schoolPhones.length > 0
+    ? (typeof schoolPhones[0] === 'object' ? `${schoolPhones[0].countryCode || ''}${schoolPhones[0].number || ''}` : schoolPhones[0])
+    : "";
+  
+  const formattedEmail = Array.isArray(schoolEmails) && schoolEmails.length > 0
+    ? schoolEmails[0]
+    : "";
+
   const getGradeColor = (grade: string) => {
     switch (grade) {
       case 'A+':
@@ -88,7 +99,7 @@ export function ProfessionalReportCard({
             <div>
               <h1 className="text-xl font-bold uppercase">{settings?.schoolName || ""}</h1>
               <p className="text-blue-100 italic">{settings?.schoolMotto || ""}</p>
-              <p className="text-xs text-blue-200">{settings?.schoolAddress || ""}</p>
+              <p className="text-xs text-blue-200">{settings?.schoolAddress || ""} | {formattedPhone} | {formattedEmail}</p>
             </div>
           </div>
           <div className="text-right print:hidden">
