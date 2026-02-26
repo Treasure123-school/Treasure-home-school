@@ -74,8 +74,8 @@ export function ProfessionalReportCard({
               <span className="text-blue-900 font-bold text-xl">🦉</span>
             </div>
             <div>
-              <h1 className="text-xl font-bold">TREASURE HOME SCHOOL</h1>
-              <p className="text-blue-100">Excellence in Education</p>
+              <h1 className="text-xl font-bold">{settings?.schoolName || "TREASURE HOME SCHOOL"}</h1>
+              <p className="text-blue-100">{settings?.schoolMotto || "Excellence in Education"}</p>
             </div>
           </div>
           <div className="text-right print:hidden">

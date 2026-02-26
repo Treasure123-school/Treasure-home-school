@@ -39,8 +39,8 @@ export default function Contact() {
     queryKey: ["/api/public/settings"],
   });
 
-  const schoolName = settings?.schoolName || "Treasure-Home School";
-  const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State, Nigeria";
+  const schoolName = settings?.schoolName || "";
+  const schoolAddress = settings?.schoolAddress || "";
   const websiteTitle = settings?.websiteTitle || `${schoolName} - Contact Us`;
 
   let schoolPhones: Array<{ countryCode: string; number: string }> = [];

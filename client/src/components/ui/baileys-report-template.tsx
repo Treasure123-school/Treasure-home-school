@@ -165,15 +165,11 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
     queryKey: ["/api/superadmin/settings"],
   });
 
-  const schoolName = propSchoolName || settings?.schoolName || "TREASURE-HOME SCHOOL";
-  const schoolAddress = propSchoolAddress || settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State, Nigeria";
-  const schoolEmail = propSchoolEmail || (Array.isArray(settings?.schoolEmails) && settings.schoolEmails.length > 0 
-    ? settings.schoolEmails[0] 
-    : (settings?.schoolEmail || "info@treasurehomeschool.com"));
-  const schoolPhone = propSchoolPhone || (Array.isArray(settings?.schoolPhones) && settings.schoolPhones.length > 0 
-    ? (typeof settings.schoolPhones[0] === 'object' ? `${settings.schoolPhones[0].countryCode}${settings.schoolPhones[0].number}` : settings.schoolPhones[0])
-    : (settings?.schoolPhone || "08012345678"));
-  const schoolMotto = propSchoolMotto || settings?.schoolMotto || "Honesty and Success";
+  const schoolName = propSchoolName || settings?.schoolName || "";
+  const schoolAddress = propSchoolAddress || settings?.schoolAddress || "";
+  const schoolEmail = propSchoolEmail || settings?.schoolEmail || "";
+  const schoolPhone = propSchoolPhone || settings?.schoolPhone || "";
+  const schoolMotto = propSchoolMotto || settings?.schoolMotto || "";
   const subjects = reportCard.items || reportCard.subjects || [];
   const displayLogo = customLogo || logoPath;
   const totalObtained = subjects.reduce((sum, s) => sum + (s.obtainedMarks || 0), 0);

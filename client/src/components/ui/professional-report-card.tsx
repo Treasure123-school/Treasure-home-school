@@ -210,15 +210,11 @@ export function ProfessionalReportCard({
     queryKey: ["/api/superadmin/settings"],
   });
 
-  const schoolName = settings?.schoolName || "TREASURE HOME SCHOOL";
-  const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State, Nigeria";
-  const schoolEmail = Array.isArray(settings?.schoolEmails) && settings.schoolEmails.length > 0 
-    ? settings.schoolEmails[0] 
-    : (settings?.schoolEmail || "info@treasurehomeschool.com");
-  const schoolPhone = Array.isArray(settings?.schoolPhones) && settings.schoolPhones.length > 0 
-    ? (typeof settings.schoolPhones[0] === 'object' ? `${settings.schoolPhones[0].countryCode}${settings.schoolPhones[0].number}` : settings.schoolPhones[0])
-    : (settings?.schoolPhone || "080-1734-5676");
-  const schoolMotto = settings?.schoolMotto || "Honesty and Success";
+  const schoolName = settings?.schoolName || "";
+  const schoolAddress = settings?.schoolAddress || "";
+  const schoolEmail = settings?.schoolEmail || "";
+  const schoolPhone = settings?.schoolPhone || "";
+  const schoolMotto = settings?.schoolMotto || "";
 
   const [isSubjectsOpen, setIsSubjectsOpen] = useState(true);
   const [isAffectiveOpen, setIsAffectiveOpen] = useState(true);
@@ -1065,8 +1061,8 @@ export function ProfessionalReportCard({
 
       {/* School Footer for Print */}
       <div className="hidden print:block mt-6 pt-4 border-t-2 text-center text-sm text-muted-foreground">
-        <p className="font-semibold">TREASURE HOME SCHOOL</p>
-        <p>Seriki-Soyinka, Ifo, Ogun State, Nigeria</p>
+        <p className="font-semibold uppercase">{schoolName || ""}</p>
+        <p>{schoolAddress || ""}</p>
         <p className="italic mt-1">This is a computer-generated report card.</p>
       </div>
     </div>

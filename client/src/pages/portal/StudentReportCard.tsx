@@ -129,15 +129,15 @@ export default function StudentReportCard() {
     queryKey: ["/api/superadmin/settings"],
   });
 
-  const schoolName = settings?.schoolName || "TREASURE HOME SCHOOL";
-  const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State, Nigeria";
+  const schoolName = settings?.schoolName || "";
+  const schoolAddress = settings?.schoolAddress || "";
   const schoolEmail = Array.isArray(settings?.schoolEmails) && settings.schoolEmails.length > 0 
     ? settings.schoolEmails[0] 
-    : (settings?.schoolEmail || "info@treasurehomeschool.com");
+    : (settings?.schoolEmail || "");
   const schoolPhone = Array.isArray(settings?.schoolPhones) && settings.schoolPhones.length > 0 
     ? (typeof settings.schoolPhones[0] === 'object' ? `${settings.schoolPhones[0].countryCode}${settings.schoolPhones[0].number}` : settings.schoolPhones[0])
-    : (settings?.schoolPhone || "080-1734-5676");
-  const schoolMotto = settings?.schoolMotto || "Honesty and Success";
+    : (settings?.schoolPhone || "");
+  const schoolMotto = settings?.schoolMotto || "";
 
   const { data: terms = [] } = useQuery({
     queryKey: ['/api/terms'],
@@ -419,10 +419,10 @@ export default function StudentReportCard() {
           <Card className="mb-4 print:shadow-none print:border-2 bg-gradient-to-r from-primary/5 to-primary/10">
             <CardContent className="p-4">
               <div className="text-center">
-                <h1 className="text-xl sm:text-2xl font-bold text-primary">{schoolName}</h1>
-                <p className="text-sm font-medium">{schoolAddress}</p>
-                <p className="text-xs text-muted-foreground mt-1">Tel: {schoolPhone} | Email: {schoolEmail}</p>
-                <p className="text-xs italic mt-2">Motto: "{schoolMotto}"</p>
+                <h1 className="text-xl sm:text-2xl font-bold text-primary">{schoolName || ""}</h1>
+                <p className="text-sm font-medium">{schoolAddress || ""}</p>
+                <p className="text-xs text-muted-foreground mt-1">Contact: {schoolPhone || ""} | Email: {schoolEmail || ""}</p>
+                <p className="text-xs italic mt-2">Motto: "{schoolMotto || ""}"</p>
                 <Separator className="my-3" />
                 <h2 className="text-lg font-semibold">{reportCard.termName?.toUpperCase() || 'FIRST TERM'} STUDENT'S PERFORMANCE REPORT</h2>
                 <p className="text-xs text-muted-foreground">Session: {reportCard.academicSession || '2024/2025'}</p>
@@ -433,10 +433,10 @@ export default function StudentReportCard() {
           {/* Print Header */}
           <div className="hidden print:block mb-6">
             <div className="text-center border-b-2 border-primary pb-4">
-              <h1 className="text-2xl font-bold">{schoolName}</h1>
-              <p className="text-sm font-medium">{schoolAddress}</p>
-              <p className="text-xs text-muted-foreground">Tel: {schoolPhone} | Email: {schoolEmail}</p>
-              <p className="text-xs italic mt-2">Motto: "{schoolMotto}"</p>
+              <h1 className="text-2xl font-bold">{schoolName || ""}</h1>
+              <p className="text-sm font-medium">{schoolAddress || ""}</p>
+              <p className="text-xs text-muted-foreground">Contact: {schoolPhone || ""} | Email: {schoolEmail || ""}</p>
+              <p className="text-xs italic mt-2">Motto: "{schoolMotto || ""}"</p>
             </div>
             <h2 className="text-center text-lg font-semibold mt-4 mb-2">{reportCard.termName?.toUpperCase() || 'FIRST TERM'} STUDENT'S PERFORMANCE REPORT</h2>
             <p className="text-center text-xs text-muted-foreground mb-4">Session: {reportCard.academicSession || '2024/2025'}</p>

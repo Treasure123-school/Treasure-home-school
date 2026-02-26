@@ -32,9 +32,9 @@ export default function About() {
     queryKey: ["/api/public/settings"],
   });
 
-  const schoolName = settings?.schoolName || "Treasure-Home School";
-  const schoolMotto = settings?.schoolMotto || "Honesty and Success";
-  const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State, Nigeria";
+  const schoolName = settings?.schoolName || "";
+  const schoolMotto = settings?.schoolMotto || "";
+  const schoolAddress = settings?.schoolAddress || "";
 
   const values = [
     {

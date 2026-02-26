@@ -310,8 +310,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
     refetchInterval: 10000,
   });
 
-  const schoolName = settings?.schoolName || "Treasure-Home School";
-  const schoolMotto = settings?.schoolMotto || "Qualitative Education & Moral Excellence";
+  const schoolName = settings?.schoolName || "";
+  const schoolMotto = settings?.schoolMotto || "";
   const displayLogo = settings?.schoolLogo || schoolLogo;
 
   useEffect(() => {

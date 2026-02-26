@@ -35,7 +35,7 @@ export function ExamHeader({
   });
 
   const displayLogo = settings?.schoolLogo || schoolLogo;
-  const schoolName = settings?.schoolName || "Treasure-Home School";
+  const schoolName = settings?.schoolName || "";
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);

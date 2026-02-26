@@ -63,10 +63,10 @@ export default function Admissions() {
     refetchInterval: 5000,
   });
 
-  const schoolName = settings?.schoolName || "Treasure-Home School";
-  const schoolEmail = settings?.schoolEmail || "admissions@treasurehomeschool.com";
-  const schoolPhone = settings?.schoolPhone || "08037906249, 08107921359";
-  const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka Ifo, Ogun State";
+  const schoolName = settings?.schoolName || "";
+  const schoolEmail = settings?.schoolEmail || "";
+  const schoolPhone = settings?.schoolPhone || "";
+  const schoolAddress = settings?.schoolAddress || "";
 
   const form = useForm<AdmissionForm>({
     resolver: zodResolver(admissionSchema),

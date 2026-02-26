@@ -21,7 +21,8 @@ export default function Gallery() {
     queryKey: ["/api/public/settings"],
   });
 
-  const schoolName = settings?.schoolName || "Treasure-Home School";
+  const schoolName = settings?.schoolName || "";
+  const schoolAddress = settings?.schoolAddress || "";
 
   const images = [
     { id: 1, src: gallery1, alt: 'School Activity 1' },
@@ -98,16 +99,22 @@ export default function Gallery() {
           <section className="mt-24 py-16 border-t border-gray-100">
             <div className="flex flex-col lg:flex-row items-center gap-12">
               <div className="flex-1 w-full lg:w-1/2 rounded-lg overflow-hidden shadow-md h-[400px]">
-                <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d15848.48911295384!2d3.220197479532822!3d6.75510688632612!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x103b987621c166d1%3A0xcb1b5e5899c7c25c!2sSeriki%20Sotinka%2C%20Ogun%20State%2C%20Nigeria!5e0!3m2!1sen!2sng!4v1706886326120!5m2!1sen!2sng"
-                  width="100%"
-                  height="100%"
-                  style={{ border: 0 }}
-                  allowFullScreen={true}
-                  loading="lazy"
-                  referrerPolicy="no-referrer-when-downgrade"
-                  title="Treasure-Home School Location"
-                ></iframe>
+                {settings?.schoolAddress ? (
+                  <iframe
+                    src={`https://www.google.com/maps/embed/v1/place?key=REPLACE_WITH_API_KEY&q=${encodeURIComponent(settings.schoolAddress)}`}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    allowFullScreen={true}
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    title={`${schoolName} Location`}
+                  ></iframe>
+                ) : (
+                  <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground">
+                    Map location not configured
+                  </div>
+                )}
               </div>
               
               <div className="flex-1 text-left space-y-6">

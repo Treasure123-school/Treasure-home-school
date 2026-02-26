@@ -149,14 +149,14 @@ export function getPasswordResetEmailHTML(userName: string, resetLink: string, r
   <div class="email-wrapper">
     <div class="header">
       <h1>🔐 Password Reset</h1>
-      <p>Treasure-Home School Portal</p>
+      <p>School Management System Portal</p>
     </div>
     
     <div class="content">
       <div class="greeting">Hello ${userName},</div>
       
       <p class="message">
-        We received a request to reset your password for your THS Portal account. 
+        We received a request to reset your password for your account. 
         Use the code or link below to create a new password.
       </p>
       
@@ -205,19 +205,19 @@ export function getPasswordResetEmailHTML(userName: string, resetLink: string, r
       
       <p class="message" style="font-size: 14px; color: #6b7280;">
         Need help? Contact our administrator at 
-        <a href="mailto:treasurehomeschool@gmail.com" style="color: #3b82f6;">treasurehomeschool@gmail.com</a>
+        <a href="mailto:admin@school.com" style="color: #3b82f6;">admin@school.com</a>
       </p>
     </div>
     
     <div class="footer">
       <div class="footer-text">
-        <strong>Treasure-Home School</strong><br>
-        "Honesty and Success"<br>
-        Seriki-Soyinka Ifo, Ogun State, Nigeria<br>
-        <a href="mailto:treasurehomeschool@gmail.com" class="footer-link">treasurehomeschool@gmail.com</a>
+        <strong>School Management System</strong><br>
+        "Excellence in Education"<br>
+        School Address<br>
+        <a href="mailto:admin@school.com" class="footer-link">admin@school.com</a>
       </div>
       <div style="margin-top: 12px; color: #9ca3af; font-size: 12px;">
-        © ${new Date().getFullYear()} Treasure-Home School. All rights reserved.
+        © ${new Date().getFullYear()} School Management System. All rights reserved.
       </div>
     </div>
   </div>
@@ -256,11 +256,11 @@ export function getPasswordChangedEmailHTML(userName: string, ipAddress: string)
       <div class="alert">
         <strong>⚠️ Didn't make this change?</strong><br>
         If you didn't change your password, contact the school administration immediately:<br>
-        Email: admin@treasurehomeschool.edu.ng
+        Email: admin@school.com
       </div>
     </div>
     <div class="footer">
-      <p>© ${new Date().getFullYear()} Treasure-Home School</p>
+      <p>© ${new Date().getFullYear()} School Management System</p>
     </div>
   </div>
 </body>

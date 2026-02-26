@@ -58,8 +58,8 @@ export default function Home() {
     });
   }, [scrollY]);
 
-  const schoolName = settings?.schoolName || "Treasure-Home School";
-  const schoolAddress = settings?.schoolAddress || "Seriki, Ogun State";
+  const schoolName = settings?.schoolName || "";
+  const schoolAddress = settings?.schoolAddress || "";
   const schoolLogo = settings?.schoolLogo || "";
 
   let schoolPhones: Array<{ countryCode: string; number: string }> = [];
@@ -331,7 +331,7 @@ export default function Home() {
 
               <div className="space-y-6">
                 <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed">
-                  At Treasure-Home School, Seriki-Soyinka, we don't just
+                  At {schoolName}, we don't just
                   teach—we inspire academic excellence and deep-rooted moral
                   values. Our vision is to be a sanctuary of brilliance and
                   character development in Ogun State and beyond.
