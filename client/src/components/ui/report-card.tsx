@@ -1,9 +1,10 @@
 
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Download, FileText, Printer } from 'lucide-react';
+import { Download, FileText } from 'lucide-react';
 
 interface ReportCardProps {
   student: {
@@ -33,6 +34,7 @@ interface ReportCardProps {
   principalSignature?: string;
   dateGenerated: string;
 }
+
 export function ProfessionalReportCard({ 
   student, 
   grades, 
@@ -41,6 +43,10 @@ export function ProfessionalReportCard({
   principalSignature, 
   dateGenerated 
 }: ReportCardProps) {
+  const { data: settings } = useQuery<any>({
+    queryKey: ['/api/public/settings'],
+  });
+
   const getGradeColor = (grade: string) => {
     switch (grade) {
       case 'A+':
@@ -71,11 +77,18 @@ export function ProfessionalReportCard({
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
-              <span className="text-blue-900 font-bold text-xl">🦉</span>
+              <span className="text-blue-900 font-bold text-xl">
+                {settings?.schoolLogo ? (
+                  <img src={settings.schoolLogo} alt="Logo" className="w-8 h-8 object-contain" />
+                ) : (
+                  "🦉"
+                )}
+              </span>
             </div>
             <div>
-              <h1 className="text-xl font-bold">{settings?.schoolName || "TREASURE HOME SCHOOL"}</h1>
-              <p className="text-blue-100">{settings?.schoolMotto || "Excellence in Education"}</p>
+              <h1 className="text-xl font-bold uppercase">{settings?.schoolName || ""}</h1>
+              <p className="text-blue-100 italic">{settings?.schoolMotto || ""}</p>
+              <p className="text-xs text-blue-200">{settings?.schoolAddress || ""}</p>
             </div>
           </div>
           <div className="text-right print:hidden">

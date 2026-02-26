@@ -147,6 +147,10 @@ type SortDirection = 'asc' | 'desc';
 export default function TeacherReportCards() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { data: settings } = useQuery<any>({
+    queryKey: ['/api/public/settings'],
+  });
+
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedTerm, setSelectedTerm] = useState<string>('');
   const [selectedReportCard, setSelectedReportCard] = useState<ReportCard | null>(null);
@@ -1577,6 +1581,12 @@ export default function TeacherReportCards() {
                       creativity: 0
                     }
                   }}
+                  schoolName={settings?.schoolName || ""}
+                  schoolMotto={settings?.schoolMotto || ""}
+                  schoolAddress={settings?.schoolAddress || ""}
+                  schoolPhone={settings?.schoolPhone || ""}
+                  schoolEmail={settings?.schoolEmail || ""}
+                  schoolLogo={settings?.schoolLogo || ""}
                   testWeight={testWeight}
                   examWeight={examWeight}
                   onEditSubject={(item) => handleOverrideScore(item as ReportCardItem)}

@@ -162,7 +162,7 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
   schoolLogo: customLogo
 }, ref) => {
   const { data: settings } = useQuery<any>({
-    queryKey: ["/api/superadmin/settings"],
+    queryKey: ["/api/public/settings"],
   });
 
   const schoolName = propSchoolName || settings?.schoolName || "";
@@ -268,7 +268,7 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
               {schoolName}
             </h1>
             <p style={{ fontSize: '9px', color: '#374151', margin: '2px 0' }}>{schoolAddress}</p>
-            <p style={{ fontSize: '9px', color: '#4b5563', margin: 0 }}>TEL: {schoolPhone}; Email: {schoolEmail}</p>
+            <p style={{ fontSize: '9px', color: '#4b5563', margin: 0 }}>Contact: {schoolPhone}; Email: {schoolEmail}</p>
           </div>
         </div>
         <div style={{ marginTop: '6px', backgroundColor: '#f3f4f6', padding: '4px 12px', display: 'inline-block' }}>

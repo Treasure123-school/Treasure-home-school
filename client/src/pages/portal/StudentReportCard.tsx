@@ -126,17 +126,13 @@ export default function StudentReportCard() {
   const printTemplateRef = useRef<HTMLDivElement>(null);
 
   const { data: settings } = useQuery<any>({
-    queryKey: ["/api/superadmin/settings"],
+    queryKey: ["/api/public/settings"],
   });
 
   const schoolName = settings?.schoolName || "";
   const schoolAddress = settings?.schoolAddress || "";
-  const schoolEmail = Array.isArray(settings?.schoolEmails) && settings.schoolEmails.length > 0 
-    ? settings.schoolEmails[0] 
-    : (settings?.schoolEmail || "");
-  const schoolPhone = Array.isArray(settings?.schoolPhones) && settings.schoolPhones.length > 0 
-    ? (typeof settings.schoolPhones[0] === 'object' ? `${settings.schoolPhones[0].countryCode}${settings.schoolPhones[0].number}` : settings.schoolPhones[0])
-    : (settings?.schoolPhone || "");
+  const schoolEmail = settings?.schoolEmail || "";
+  const schoolPhone = settings?.schoolPhone || "";
   const schoolMotto = settings?.schoolMotto || "";
 
   const { data: terms = [] } = useQuery({

@@ -71,6 +71,9 @@ interface Statistics {
 
 export default function AdminResultPublishing() {
   const { toast } = useToast();
+  const { data: settings } = useQuery<any>({
+    queryKey: ['/api/public/settings'],
+  });
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [selectedTerm, setSelectedTerm] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('finalized');
@@ -1377,6 +1380,12 @@ export default function AdminResultPublishing() {
                       affectiveTraits: fullReportCard.affectiveTraits,
                       psychomotorSkills: fullReportCard.psychomotorSkills
                     }}
+                    schoolName={settings?.schoolName || ""}
+                    schoolMotto={settings?.schoolMotto || ""}
+                    schoolAddress={settings?.schoolAddress || ""}
+                    schoolPhone={settings?.schoolPhone || ""}
+                    schoolEmail={settings?.schoolEmail || ""}
+                    schoolLogo={settings?.schoolLogo || ""}
                     testWeight={40}
                     examWeight={60}
                     canEditRemarks={false}
