@@ -39,21 +39,26 @@ export default function Contact() {
     queryKey: ["/api/public/settings"],
   });
 
+  const parseSetting = (val: any) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    try {
+      const parsed = JSON.parse(val);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch (e) {
+      return [val];
+    }
+  };
+
   const schoolName = settings?.schoolName || "";
   const schoolAddress = settings?.schoolAddress || "";
   const websiteTitle = settings?.websiteTitle || `${schoolName} - Contact Us`;
 
-  let schoolPhones: Array<{ countryCode: string; number: string }> = [];
-  let schoolEmails: string[] = [];
-  try {
-    schoolPhones = JSON.parse(settings?.schoolPhones || "[]");
-    schoolEmails = JSON.parse(settings?.schoolEmails || "[]");
-  } catch (e) {
-    console.error("Error parsing settings JSON", e);
-  }
+  const schoolPhones = parseSetting(settings?.schoolPhones);
+  const schoolEmails = parseSetting(settings?.schoolEmails);
 
   const displayPhones = schoolPhones.length > 0 
-    ? schoolPhones.map(p => `${p.countryCode}${p.number}`).join(', ') 
+    ? schoolPhones.map((p: any) => typeof p === 'object' ? `${p.countryCode || ''}${p.number || ''}` : p).join(', ') 
     : "080-1734-5676";
   const displayEmails = schoolEmails.length > 0 
     ? schoolEmails.join(', ') 

@@ -52,32 +52,29 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
     };
   }, [lastScrollY]);
 
+  const parseSetting = (val: any) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    try {
+      const parsed = JSON.parse(val);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch (e) {
+      return [val];
+    }
+  };
+
   const schoolName = settings?.schoolName || "";
   const schoolAddress = settings?.schoolAddress || "";
-  const schoolPhones: Array<{ countryCode: string; number: string }> = (() => {
-    try {
-      const phones = settings?.schoolPhones || "[]";
-      return JSON.parse(typeof phones === 'string' ? phones : JSON.stringify(phones));
-    } catch (e) {
-      return [];
-    }
-  })();
+  
+  const schoolPhones = parseSetting(settings?.schoolPhones);
+  const schoolEmails = parseSetting(settings?.schoolEmails);
 
   const displayPhone = schoolPhones.length > 0 
-    ? `${schoolPhones[0].countryCode}${schoolPhones[0].number}`
+    ? (typeof schoolPhones[0] === 'object' ? `${schoolPhones[0].countryCode || ''}${schoolPhones[0].number || ''}` : schoolPhones[0])
     : "";
 
   const schoolPhone = displayPhone;
-  const schoolEmail = Array.isArray(settings?.schoolEmails) 
-    ? settings.schoolEmails[0] 
-    : (() => {
-        try {
-          const emails = JSON.parse(settings?.schoolEmails || "[]");
-          return Array.isArray(emails) ? emails[0] : "";
-        } catch (e) {
-          return "";
-        }
-      })();
+  const schoolEmail = schoolEmails.length > 0 ? schoolEmails[0] : "";
 
   const navigation = [
     { name: 'Home', href: '/' },
