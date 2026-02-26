@@ -212,18 +212,34 @@ export function ProfessionalReportCard({
 
   const schoolName = settings?.schoolName || "";
   const schoolAddress = settings?.schoolAddress || "";
-  const schoolEmails = settings?.schoolEmails || [];
-  const schoolPhones = settings?.schoolPhones || [];
   const schoolMotto = settings?.schoolMotto || "";
 
-  // Helper to format school contacts from JSON arrays
-  const formattedPhone = Array.isArray(schoolPhones) && schoolPhones.length > 0
+  // Helper to parse and format school contacts from potential JSON strings or arrays
+  const parseSetting = (val: any) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    try {
+      const parsed = JSON.parse(val);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch (e) {
+      return [val];
+    }
+  };
+
+  const schoolEmails = parseSetting(settings?.schoolEmails);
+  const schoolPhones = parseSetting(settings?.schoolPhones);
+
+  // Formatting for single display (requested "one phone including email")
+  const primaryPhone = schoolPhones.length > 0
     ? (typeof schoolPhones[0] === 'object' ? `${schoolPhones[0].countryCode || ''}${schoolPhones[0].number || ''}` : schoolPhones[0])
     : "";
   
-  const formattedEmail = Array.isArray(schoolEmails) && schoolEmails.length > 0
-    ? schoolEmails[0]
-    : "";
+  const primaryEmail = schoolEmails.length > 0 ? schoolEmails[0] : "";
+
+  // Formatting for multiple display (requested "display more than one phone")
+  const allPhones = schoolPhones.map((p: any) => 
+    typeof p === 'object' ? `${p.countryCode || ''}${p.number || ''}` : p
+  ).join(', ');
 
   const [isSubjectsOpen, setIsSubjectsOpen] = useState(true);
   const [isAffectiveOpen, setIsAffectiveOpen] = useState(true);
@@ -462,7 +478,10 @@ export function ProfessionalReportCard({
         <div className="text-center">
           <h1 className="text-xl sm:text-2xl font-bold text-primary">{schoolName}</h1>
           <p className="text-sm font-medium">{schoolAddress}</p>
-          <p className="text-xs text-muted-foreground mt-1">Contact: {formattedPhone} | Email: {formattedEmail}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {schoolPhones.length > 1 ? `Contacts: ${allPhones}` : `Contact: ${primaryPhone}`} 
+            {primaryEmail && ` | Email: ${primaryEmail}`}
+          </p>
           <p className="text-xs italic mt-2">Motto: "{schoolMotto}"</p>
           <Separator className="my-3" />
           <h2 className="text-lg font-semibold">{reportCard.termName?.toUpperCase() || 'FIRST TERM'} STUDENT'S PERFORMANCE REPORT</h2>
@@ -475,7 +494,10 @@ export function ProfessionalReportCard({
         <div className="text-center border-b-2 border-primary pb-4">
           <h1 className="text-2xl font-bold text-primary">{schoolName}</h1>
           <p className="text-sm font-medium">{schoolAddress}</p>
-          <p className="text-xs text-muted-foreground">Contact: {formattedPhone} | Email: {formattedEmail}</p>
+          <p className="text-xs text-muted-foreground">
+            {schoolPhones.length > 1 ? `Contacts: ${allPhones}` : `Contact: ${primaryPhone}`} 
+            {primaryEmail && ` | Email: ${primaryEmail}`}
+          </p>
           <p className="text-xs italic mt-2">Motto: "{schoolMotto}"</p>
         </div>
         <h2 className="text-center text-lg font-semibold mt-4 mb-2">{reportCard.termName?.toUpperCase() || 'FIRST TERM'} STUDENT'S PERFORMANCE REPORT</h2>

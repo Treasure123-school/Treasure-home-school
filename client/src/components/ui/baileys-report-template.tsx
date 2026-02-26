@@ -165,15 +165,33 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
     queryKey: ["/api/public/settings"],
   });
 
+  const parseSetting = (val: any) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    try {
+      const parsed = JSON.parse(val);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch (e) {
+      return [val];
+    }
+  };
+
   const schoolName = propSchoolName || settings?.schoolName || "";
   const schoolAddress = propSchoolAddress || settings?.schoolAddress || "";
-  const schoolEmails = settings?.schoolEmails || [];
-  const schoolPhones = settings?.schoolPhones || [];
+  const schoolEmails = parseSetting(settings?.schoolEmails);
+  const schoolPhones = parseSetting(settings?.schoolPhones);
   
-  const schoolEmail = propSchoolEmail || (Array.isArray(schoolEmails) && schoolEmails.length > 0 ? schoolEmails[0] : "");
-  const schoolPhone = propSchoolPhone || (Array.isArray(schoolPhones) && schoolPhones.length > 0 
+  const schoolEmail = propSchoolEmail || (schoolEmails.length > 0 ? schoolEmails[0] : "");
+  
+  const primaryPhone = schoolPhones.length > 0 
     ? (typeof schoolPhones[0] === 'object' ? `${schoolPhones[0].countryCode || ''}${schoolPhones[0].number || ''}` : schoolPhones[0])
-    : "");
+    : "";
+
+  const allPhones = schoolPhones.map((p: any) => 
+    typeof p === 'object' ? `${p.countryCode || ''}${p.number || ''}` : p
+  ).join(', ');
+
+  const schoolPhone = propSchoolPhone || (schoolPhones.length > 1 ? allPhones : primaryPhone);
     
   const schoolMotto = propSchoolMotto || settings?.schoolMotto || "";
   const subjects = reportCard.items || reportCard.subjects || [];

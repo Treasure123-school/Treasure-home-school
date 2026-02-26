@@ -47,16 +47,29 @@ export function ProfessionalReportCard({
     queryKey: ['/api/public/settings'],
   });
 
-  const schoolEmails = settings?.schoolEmails || [];
-  const schoolPhones = settings?.schoolPhones || [];
+  const parseSetting = (val: any) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val;
+    try {
+      const parsed = JSON.parse(val);
+      return Array.isArray(parsed) ? parsed : [parsed];
+    } catch (e) {
+      return [val];
+    }
+  };
 
-  const formattedPhone = Array.isArray(schoolPhones) && schoolPhones.length > 0
+  const schoolEmails = parseSetting(settings?.schoolEmails);
+  const schoolPhones = parseSetting(settings?.schoolPhones);
+
+  const primaryPhone = schoolPhones.length > 0
     ? (typeof schoolPhones[0] === 'object' ? `${schoolPhones[0].countryCode || ''}${schoolPhones[0].number || ''}` : schoolPhones[0])
     : "";
   
-  const formattedEmail = Array.isArray(schoolEmails) && schoolEmails.length > 0
-    ? schoolEmails[0]
-    : "";
+  const primaryEmail = schoolEmails.length > 0 ? schoolEmails[0] : "";
+
+  const allPhones = schoolPhones.map((p: any) => 
+    typeof p === 'object' ? `${p.countryCode || ''}${p.number || ''}` : p
+  ).join(', ');
 
   const getGradeColor = (grade: string) => {
     switch (grade) {
@@ -99,7 +112,9 @@ export function ProfessionalReportCard({
             <div>
               <h1 className="text-xl font-bold uppercase">{settings?.schoolName || ""}</h1>
               <p className="text-blue-100 italic">{settings?.schoolMotto || ""}</p>
-              <p className="text-xs text-blue-200">{settings?.schoolAddress || ""} | {formattedPhone} | {formattedEmail}</p>
+              <p className="text-xs text-blue-200">
+                {settings?.schoolAddress || ""} | {schoolPhones.length > 1 ? `Contacts: ${allPhones}` : `Contact: ${primaryPhone}`} {primaryEmail && ` | ${primaryEmail}`}
+              </p>
             </div>
           </div>
           <div className="text-right print:hidden">
