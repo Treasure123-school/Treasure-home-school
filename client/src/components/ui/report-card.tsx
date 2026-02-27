@@ -5,34 +5,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Download, FileText } from 'lucide-react';
+import { ContactUtils } from '@shared/contact-utils';
 
 interface ReportCardProps {
-  student: {
-    name: string;
-    admissionNumber: string;
-    className: string;
-    academicSession: string;
-  };
-  grades: Array<{
-    subject: string;
-    testScore: number;
-    testMax: number;
-    examScore: number;
-    examMax: number;
-    total: number;
-    grade: string;
-    remarks: string;
-  }>;
-  summary: {
-    totalMarks: number;
-    maxMarks: number;
-    percentage: number;
-    classRank?: number;
-    totalStudents?: number;
-  };
-  teacherSignature?: string;
-  principalSignature?: string;
-  dateGenerated: string;
+// ... existing interface props ...
 }
 
 export function ProfessionalReportCard({ 
@@ -47,29 +23,8 @@ export function ProfessionalReportCard({
     queryKey: ['/api/public/settings'],
   });
 
-  const parseSetting = (val: any) => {
-    if (!val) return [];
-    if (Array.isArray(val)) return val;
-    try {
-      const parsed = JSON.parse(val);
-      return Array.isArray(parsed) ? parsed : [parsed];
-    } catch (e) {
-      return [val];
-    }
-  };
-
-  const schoolEmails = parseSetting(settings?.schoolEmails);
-  const schoolPhones = parseSetting(settings?.schoolPhones);
-
-  const primaryPhone = schoolPhones.length > 0
-    ? (typeof schoolPhones[0] === 'object' ? `${schoolPhones[0].countryCode || ''}${schoolPhones[0].number || ''}` : schoolPhones[0])
-    : "";
-  
-  const primaryEmail = schoolEmails.length > 0 ? schoolEmails[0] : "";
-
-  const allPhones = schoolPhones.map((p: any) => 
-    typeof p === 'object' ? `${p.countryCode || ''}${p.number || ''}` : p
-  ).join(', ');
+  const primaryPhone = ContactUtils.getFormattedPrimaryPhone(settings);
+  const primaryEmail = ContactUtils.getPrimaryEmail(settings);
 
   const getGradeColor = (grade: string) => {
     switch (grade) {

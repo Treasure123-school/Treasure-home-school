@@ -190,6 +190,10 @@ const formatPosition = (pos: number): string => {
 };
 
 
+import { ContactUtils } from '@shared/contact-utils';
+
+// ... existing imports ...
+
 export function ProfessionalReportCard({
   reportCard,
   testWeight,
@@ -214,32 +218,11 @@ export function ProfessionalReportCard({
   const schoolAddress = settings?.schoolAddress || "";
   const schoolMotto = settings?.schoolMotto || "";
 
-  // Helper to parse and format school contacts from potential JSON strings or arrays
-  const parseSetting = (val: any) => {
-    if (!val) return [];
-    if (Array.isArray(val)) return val;
-    try {
-      const parsed = JSON.parse(val);
-      return Array.isArray(parsed) ? parsed : [parsed];
-    } catch (e) {
-      return [val];
-    }
-  };
-
-  const schoolEmails = parseSetting(settings?.schoolEmails);
-  const schoolPhones = parseSetting(settings?.schoolPhones);
-
-  // Formatting for single display (requested "one phone including email")
-  const primaryPhone = schoolPhones.length > 0
-    ? (typeof schoolPhones[0] === 'object' ? `${schoolPhones[0].countryCode || ''}${schoolPhones[0].number || ''}` : schoolPhones[0])
-    : "";
-  
-  const primaryEmail = schoolEmails.length > 0 ? schoolEmails[0] : "";
-
-  // Formatting for multiple display (requested "display more than one phone")
-  const allPhones = schoolPhones.map((p: any) => 
-    typeof p === 'object' ? `${p.countryCode || ''}${p.number || ''}` : p
-  ).join(', ');
+  const primaryPhone = ContactUtils.getFormattedPrimaryPhone(settings);
+  const primaryEmail = ContactUtils.getPrimaryEmail(settings);
+  const allPhones = ContactUtils.getPhones(settings)
+    .map(p => `${p.countryCode}${p.number}`)
+    .join(', ');
 
   const [isSubjectsOpen, setIsSubjectsOpen] = useState(true);
   const [isAffectiveOpen, setIsAffectiveOpen] = useState(true);

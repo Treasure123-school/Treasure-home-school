@@ -4,6 +4,7 @@
 A comprehensive school management system designed to streamline administrative and academic processes for educational institutions. It features robust JWT authentication, a PostgreSQL database, and cloud-based file storage. The system supports five distinct role-based access levels (Super Admin, Admin, Teacher, Student, Parent) and offers a wide array of features including an exam system with auto-grading, real-time updates, attendance management, report card generation, and various communication tools. The system is fully generic and configurable through the Super Admin portal.
 
 ## Recent Changes
+- **Feb 27, 2026**: Implemented `ContactUtils` in `shared/contact-utils.ts` to provide a flexible and reusable architecture for school contact information (phones and emails). Updated `Contact.tsx` and `ProfessionalReportCard` to use this new utility, ensuring Super Admin settings are the single source of truth.
 - **Feb 26, 2026**: Completed full system de-branding. Removed all hardcoded references to "Treasure-Home School" and replaced them with dynamic settings sourced from the Super Admin configuration. Updated report card templates, public pages, and email services to use generic placeholders and dynamic data.
 - **Feb 19, 2026**: Migrated project to Replit environment. Created PostgreSQL database, pushed schema via drizzle-kit. Application starts successfully on port 5000.
 
