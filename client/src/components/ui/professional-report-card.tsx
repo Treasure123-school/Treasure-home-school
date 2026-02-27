@@ -220,9 +220,10 @@ export function ProfessionalReportCard({
 
   const primaryPhone = ContactUtils.getFormattedPrimaryPhone(settings);
   const primaryEmail = ContactUtils.getPrimaryEmail(settings);
-  const allPhones = ContactUtils.getPhones(settings)
-    .map(p => `${p.countryCode}${p.number}`)
-    .join(', ');
+  const phonesList = ContactUtils.getPhones(settings);
+  const allPhones = phonesList.length > 0 
+    ? phonesList.map(p => `${p.countryCode}${p.number}`).join(', ')
+    : "";
 
   const [isSubjectsOpen, setIsSubjectsOpen] = useState(true);
   const [isAffectiveOpen, setIsAffectiveOpen] = useState(true);
@@ -477,7 +478,7 @@ export function ProfessionalReportCard({
           <h1 className="text-2xl font-bold text-primary">{schoolName}</h1>
           <p className="text-sm font-medium">{schoolAddress}</p>
           <p className="text-xs text-muted-foreground">
-            {schoolPhones.length > 1 ? `Contacts: ${allPhones}` : `Contact: ${primaryPhone}`} 
+            {phonesList.length > 1 ? `Contacts: ${allPhones}` : `Contact: ${primaryPhone}`} 
             {primaryEmail && ` | Email: ${primaryEmail}`}
           </p>
           <p className="text-xs italic mt-2">Motto: "{schoolMotto}"</p>

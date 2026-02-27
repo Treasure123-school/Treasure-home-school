@@ -171,12 +171,13 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
   
   const primaryPhone = ContactUtils.getFormattedPrimaryPhone(settings);
   const primaryEmail = ContactUtils.getPrimaryEmail(settings);
-  const allPhones = ContactUtils.getPhones(settings)
-    .map(p => `${p.countryCode}${p.number}`)
-    .join(', ');
+  const phonesList = ContactUtils.getPhones(settings);
+  const allPhones = phonesList.length > 0 
+    ? phonesList.map(p => `${p.countryCode}${p.number}`).join(', ')
+    : "";
 
   const schoolEmail = propSchoolEmail || primaryEmail;
-  const schoolPhone = propSchoolPhone || (ContactUtils.getPhones(settings).length > 1 ? allPhones : primaryPhone);
+  const schoolPhone = propSchoolPhone || (phonesList.length > 1 ? allPhones : primaryPhone);
     
   const schoolMotto = propSchoolMotto || settings?.schoolMotto || "";
   const subjects = reportCard.items || reportCard.subjects || [];
