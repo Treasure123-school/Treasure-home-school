@@ -259,12 +259,12 @@ export const superAdminProfiles = sqliteTable("super_admin_profiles", {
 // System settings table
 export const systemSettings = sqliteTable("system_settings", {
   id: integer("id").primaryKey({ autoIncrement: true }),
-  schoolName: text("school_name"),
+  schoolName: text("school_name").notNull().default("School Management System"),
   schoolShortName: text("school_short_name"),
-  schoolMotto: text("school_motto"),
+  schoolMotto: text("school_motto").notNull().default("Excellence in Education"),
   schoolLogo: text("school_logo"),
   favicon: text("favicon"),
-  schoolAddress: text("school_address"),
+  schoolAddress: text("school_address").notNull().default("School Address"),
   schoolPhones: text("school_phones").notNull().default('[]'), // JSON array of {countryCode, number}
   schoolEmails: text("school_emails").notNull().default('[]'), // JSON array of strings
   websiteTitle: text("website_title"),

@@ -61,8 +61,8 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
     refetchInterval: 5000,
   });
 
-  const schoolName = settings?.schoolName || "Treasure-Home School";
-  const schoolMotto = settings?.schoolMotto || "Qualitative Education & Moral Excellence";
+  const schoolName = settings?.schoolName || "";
+  const schoolMotto = settings?.schoolMotto || "";
   const schoolLogoUrl = settings?.schoolLogo || schoolLogo;
 
   useEffect(() => {

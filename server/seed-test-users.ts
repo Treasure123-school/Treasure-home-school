@@ -16,8 +16,8 @@ export async function seedTestUsers() {
       {
         id: randomUUID(),
         username: 'superadmin',
-        email: 'superadmin@treasurehome.com',
-        password: 'SuperAdmin@123',
+        email: 'superadmin@school.com',
+        password: 'SuperSecurePassword2026!',
         roleId: 1,
         firstName: 'Super',
         lastName: 'Admin',
@@ -26,7 +26,7 @@ export async function seedTestUsers() {
       {
         id: randomUUID(),
         username: 'admin',
-        email: 'admin@treasurehome.com',
+        email: 'admin@school.com',
         password: 'Admin@123',
         roleId: 2,
         firstName: 'Admin',
@@ -36,7 +36,7 @@ export async function seedTestUsers() {
       {
         id: randomUUID(),
         username: 'teacher',
-        email: 'teacher@treasurehome.com',
+        email: 'teacher@school.com',
         password: 'Teacher@123',
         roleId: 3,
         firstName: 'John',
@@ -46,7 +46,7 @@ export async function seedTestUsers() {
       {
         id: randomUUID(),
         username: 'student',
-        email: 'student@treasurehome.com',
+        email: 'student@school.com',
         password: 'Student@123',
         roleId: 4,
         firstName: 'Jane',
@@ -56,7 +56,7 @@ export async function seedTestUsers() {
       {
         id: randomUUID(),
         username: 'parent',
-        email: 'parent@treasurehome.com',
+        email: 'parent@school.com',
         password: 'Parent@123',
         roleId: 5,
         firstName: 'Peter',

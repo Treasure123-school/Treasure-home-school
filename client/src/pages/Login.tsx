@@ -80,8 +80,8 @@ export default function Login() {
     refetchInterval: 5000,
   });
 
-  const schoolName = settings?.schoolName || "Treasure-Home School";
-  const schoolMotto = settings?.schoolMotto || "Honesty and Success";
+  const schoolName = settings?.schoolName || "";
+  const schoolMotto = settings?.schoolMotto || "";
   const displayLogo = settings?.schoolLogo || "";
 
   const [showPasswordChange, setShowPasswordChange] = useState(false);

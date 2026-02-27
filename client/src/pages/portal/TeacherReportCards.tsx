@@ -68,6 +68,7 @@ import {
 import { format } from 'date-fns';
 import { STANDARD_GRADING_SCALE, GRADING_SCALES, formatPosition, calculateWeightedScore, calculateGradeFromPercentage, getGradingConfig } from '@shared/grading-utils';
 import { ProfessionalReportCard } from '@/components/ui/professional-report-card';
+import { ContactUtils } from '@shared/contact-utils';
 
 interface ReportCardItem {
   id: number;
@@ -147,6 +148,16 @@ type SortDirection = 'asc' | 'desc';
 export default function TeacherReportCards() {
   const { toast } = useToast();
   const { user } = useAuth();
+  const { data: settings } = useQuery<any>({
+    queryKey: ['/api/public/settings'],
+  });
+
+  const schoolName = settings?.schoolName || "";
+  const schoolAddress = settings?.schoolAddress || "";
+  const schoolMotto = settings?.schoolMotto || "";
+  const schoolPhone = ContactUtils.getFormattedPrimaryPhone(settings);
+  const schoolEmail = ContactUtils.getPrimaryEmail(settings);
+
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedTerm, setSelectedTerm] = useState<string>('');
   const [selectedReportCard, setSelectedReportCard] = useState<ReportCard | null>(null);
@@ -1577,6 +1588,12 @@ export default function TeacherReportCards() {
                       creativity: 0
                     }
                   }}
+                  schoolName={settings?.schoolName || ""}
+                  schoolMotto={settings?.schoolMotto || ""}
+                  schoolAddress={settings?.schoolAddress || ""}
+                  schoolPhone={settings?.schoolPhone || ""}
+                  schoolEmail={settings?.schoolEmail || ""}
+                  schoolLogo={settings?.schoolLogo || ""}
                   testWeight={testWeight}
                   examWeight={examWeight}
                   onEditSubject={(item) => handleOverrideScore(item as ReportCardItem)}

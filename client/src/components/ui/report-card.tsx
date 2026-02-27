@@ -1,38 +1,16 @@
 
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Download, FileText, Printer } from 'lucide-react';
+import { Download, FileText } from 'lucide-react';
+import { ContactUtils } from '@shared/contact-utils';
 
 interface ReportCardProps {
-  student: {
-    name: string;
-    admissionNumber: string;
-    className: string;
-    academicSession: string;
-  };
-  grades: Array<{
-    subject: string;
-    testScore: number;
-    testMax: number;
-    examScore: number;
-    examMax: number;
-    total: number;
-    grade: string;
-    remarks: string;
-  }>;
-  summary: {
-    totalMarks: number;
-    maxMarks: number;
-    percentage: number;
-    classRank?: number;
-    totalStudents?: number;
-  };
-  teacherSignature?: string;
-  principalSignature?: string;
-  dateGenerated: string;
+// ... existing interface props ...
 }
+
 export function ProfessionalReportCard({ 
   student, 
   grades, 
@@ -41,6 +19,13 @@ export function ProfessionalReportCard({
   principalSignature, 
   dateGenerated 
 }: ReportCardProps) {
+  const { data: settings } = useQuery<any>({
+    queryKey: ['/api/public/settings'],
+  });
+
+  const primaryPhone = ContactUtils.getFormattedPrimaryPhone(settings);
+  const primaryEmail = ContactUtils.getPrimaryEmail(settings);
+
   const getGradeColor = (grade: string) => {
     switch (grade) {
       case 'A+':
@@ -71,11 +56,20 @@ export function ProfessionalReportCard({
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
-              <span className="text-blue-900 font-bold text-xl">🦉</span>
+              <span className="text-blue-900 font-bold text-xl">
+                {settings?.schoolLogo ? (
+                  <img src={settings.schoolLogo} alt="Logo" className="w-8 h-8 object-contain" />
+                ) : (
+                  "🦉"
+                )}
+              </span>
             </div>
             <div>
-              <h1 className="text-xl font-bold">TREASURE HOME SCHOOL</h1>
-              <p className="text-blue-100">Excellence in Education</p>
+              <h1 className="text-xl font-bold uppercase">{settings?.schoolName || ""}</h1>
+              <p className="text-blue-100 italic">{settings?.schoolMotto || ""}</p>
+              <p className="text-xs text-blue-200">
+                {settings?.schoolAddress || ""} | Contact: {primaryPhone} {primaryEmail && ` | Email: ${primaryEmail}`}
+              </p>
             </div>
           </div>
           <div className="text-right print:hidden">

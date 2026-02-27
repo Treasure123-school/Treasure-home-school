@@ -9,11 +9,11 @@ export async function seedSystemSettings() {
     if (existingSettings.length === 0) {
       // Create default system settings
       await db.insert(systemSettings).values({
-        schoolName: "Treasure-Home School",
-        schoolMotto: "Honesty and Success",
-        schoolEmails: JSON.stringify(["info@treasurehomeschool.edu.ng"]),
-        schoolPhones: JSON.stringify(["+234-XXX-XXX-XXXX"]),
-        schoolAddress: "Lagos, Nigeria",
+        schoolName: "School Management System",
+        schoolMotto: "Excellence in Education",
+        schoolEmails: JSON.stringify(["admin@school.com"]),
+        schoolPhones: JSON.stringify(["000-000-0000"]),
+        schoolAddress: "School Address",
         maintenanceMode: false,
         enableSmsNotifications: false,
         enableEmailNotifications: true,

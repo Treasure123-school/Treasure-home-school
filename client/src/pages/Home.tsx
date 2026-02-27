@@ -23,21 +23,20 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
+import { ContactUtils } from "@shared/contact-utils";
+
 interface SettingsData {
   schoolName: string;
   schoolMotto: string;
-  schoolEmails: string;
-  schoolPhones: string;
+  schoolEmails: any;
+  schoolPhones: any;
   schoolAddress: string;
   schoolLogo?: string;
 }
 
 const fadeIn = {
-  initial: { opacity: 0, y: 20 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: "-100px" },
-  transition: { duration: 0.6, ease: "easeOut" },
-};
+// ... existing fadeIn ...
+}
 
 export default function Home() {
   const { data: settings } = useQuery<SettingsData>({
@@ -49,7 +48,7 @@ export default function Home() {
   const [isAtTop, setIsAtTop] = useState(true);
 
   useEffect(() => {
-    return scrollY.onChange((latest) => {
+    return scrollY.on("change", (latest) => {
       if (latest <= 5) {
         setIsAtTop(true);
       } else {
@@ -58,18 +57,12 @@ export default function Home() {
     });
   }, [scrollY]);
 
-  const schoolName = settings?.schoolName || "Treasure-Home School";
-  const schoolAddress = settings?.schoolAddress || "Seriki, Ogun State";
+  const schoolName = settings?.schoolName || "";
+  const schoolAddress = settings?.schoolAddress || "";
   const schoolLogo = settings?.schoolLogo || "";
 
-  let schoolPhones: Array<{ countryCode: string; number: string }> = [];
-  let schoolEmails: string[] = [];
-  try {
-    schoolPhones = JSON.parse(settings?.schoolPhones || "[]");
-    schoolEmails = JSON.parse(settings?.schoolEmails || "[]");
-  } catch (e) {
-    console.error("Error parsing settings JSON", e);
-  }
+  const schoolPhones = ContactUtils.getPhones(settings);
+  const schoolEmails = ContactUtils.getEmails(settings);
 
   const features = [
     {
@@ -331,7 +324,7 @@ export default function Home() {
 
               <div className="space-y-6">
                 <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed">
-                  At Treasure-Home School, Seriki-Soyinka, we don't just
+                  At {schoolName}, we don't just
                   teach—we inspire academic excellence and deep-rooted moral
                   values. Our vision is to be a sanctuary of brilliance and
                   character development in Ogun State and beyond.

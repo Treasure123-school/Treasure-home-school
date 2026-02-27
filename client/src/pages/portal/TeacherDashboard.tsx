@@ -317,79 +317,91 @@ export default function TeacherDashboard() {
         </Button>
       </div>
 
-      {/* Stats Cards - Modern Gradient Design */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-6 animate-slide-up">
-        <Card className="group relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1" data-testid="stat-total-students">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 opacity-100"></div>
-          <CardContent className="relative p-3 sm:p-4 md:p-6 text-white">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="text-blue-100 text-xs sm:text-sm font-medium truncate">Total Students</p>
-                <AnimatedCounter
-                  value={isLoading ? 0 : totalStudents}
-                  className="text-xl sm:text-2xl md:text-3xl font-bold mt-1 sm:mt-2"
-                />
-                <p className="text-blue-100 text-[10px] sm:text-xs mt-1 sm:mt-2 truncate">Across all classes</p>
+      {/* Stats Cards - Student-style Design */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 animate-slide-up">
+        <Card className="relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105" data-testid="stat-total-students">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-transparent rounded-full -mr-16 -mt-16"></div>
+          <CardContent className="p-6 relative z-10">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Total Students</p>
+                <div className="flex items-baseline gap-2">
+                  <AnimatedCounter
+                    value={isLoading ? 0 : totalStudents}
+                    className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent"
+                  />
+                  <Users className="h-4 w-4 text-blue-600" />
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">Across all classes</p>
               </div>
-              <div className="p-2 sm:p-3 bg-white/20 backdrop-blur-sm rounded-xl sm:rounded-2xl flex-shrink-0">
-                <Users className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8 text-white" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="group relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1" data-testid="stat-classes">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 via-green-600 to-teal-600 opacity-100"></div>
-          <CardContent className="relative p-3 sm:p-4 md:p-6 text-white">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="text-emerald-100 text-xs sm:text-sm font-medium truncate">Classes</p>
-                <AnimatedCounter
-                  value={isLoading ? 0 : totalClasses}
-                  className="text-xl sm:text-2xl md:text-3xl font-bold mt-1 sm:mt-2"
-                />
-                <p className="text-emerald-100 text-[10px] sm:text-xs mt-1 sm:mt-2 truncate">Teaching assignments</p>
-              </div>
-              <div className="p-2 sm:p-3 bg-white/20 backdrop-blur-sm rounded-xl sm:rounded-2xl flex-shrink-0">
-                <BookOpen className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8 text-white" />
+              <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg">
+                <Users className="h-6 w-6" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="group relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1" data-testid="stat-total-exams">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-violet-600 to-purple-600 opacity-100"></div>
-          <CardContent className="relative p-3 sm:p-4 md:p-6 text-white">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="text-purple-100 text-xs sm:text-sm font-medium truncate">Total Exams</p>
-                <AnimatedCounter
-                  value={isLoading ? 0 : (exams as any[]).filter((e: any) => e.createdBy === user.id).length}
-                  className="text-xl sm:text-2xl md:text-3xl font-bold mt-1 sm:mt-2"
-                />
-                <p className="text-purple-100 text-[10px] sm:text-xs mt-1 sm:mt-2 truncate">Exams created</p>
+        <Card className="relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105" data-testid="stat-classes">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-full -mr-16 -mt-16"></div>
+          <CardContent className="p-6 relative z-10">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Classes</p>
+                <div className="flex items-baseline gap-2">
+                  <AnimatedCounter
+                    value={isLoading ? 0 : totalClasses}
+                    className="text-4xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent"
+                  />
+                  <BookOpen className="h-4 w-4 text-emerald-600" />
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">Teaching assignments</p>
               </div>
-              <div className="p-2 sm:p-3 bg-white/20 backdrop-blur-sm rounded-xl sm:rounded-2xl flex-shrink-0">
-                <ClipboardList className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8 text-white" />
+              <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg">
+                <BookOpen className="h-6 w-6" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="group relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-1" data-testid="stat-pending-grades">
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-500 via-orange-600 to-red-500 opacity-100"></div>
-          <CardContent className="relative p-3 sm:p-4 md:p-6 text-white">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0 flex-1">
-                <p className="text-amber-100 text-xs sm:text-sm font-medium truncate">Pending Grades</p>
-                <AnimatedCounter
-                  value={isLoading ? 0 : pendingGradesCount}
-                  className="text-xl sm:text-2xl md:text-3xl font-bold mt-1 sm:mt-2"
-                />
-                <p className="text-amber-100 text-[10px] sm:text-xs mt-1 sm:mt-2 truncate">Awaiting review</p>
+        <Card className="relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105" data-testid="stat-total-exams">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-transparent rounded-full -mr-16 -mt-16"></div>
+          <CardContent className="p-6 relative z-10">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Total Exams</p>
+                <div className="flex items-baseline gap-2">
+                  <AnimatedCounter
+                    value={isLoading ? 0 : (exams as any[]).filter((e: any) => e.createdBy === user.id).length}
+                    className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-transparent"
+                  />
+                  <ClipboardList className="h-4 w-4 text-purple-600" />
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">Exams created</p>
               </div>
-              <div className="p-2 sm:p-3 bg-white/20 backdrop-blur-sm rounded-xl sm:rounded-2xl flex-shrink-0">
-                <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 md:h-8 md:w-8 text-white" />
+              <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 text-white shadow-lg">
+                <ClipboardList className="h-6 w-6" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105" data-testid="stat-pending-grades">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-500/10 to-transparent rounded-full -mr-16 -mt-16"></div>
+          <CardContent className="p-6 relative z-10">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Pending Grades</p>
+                <div className="flex items-baseline gap-2">
+                  <AnimatedCounter
+                    value={isLoading ? 0 : pendingGradesCount}
+                    className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent"
+                  />
+                  <MessageSquare className="h-4 w-4 text-orange-600" />
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">Awaiting review</p>
+              </div>
+              <div className="p-3 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 text-white shadow-lg">
+                <MessageSquare className="h-6 w-6" />
               </div>
             </div>
           </CardContent>

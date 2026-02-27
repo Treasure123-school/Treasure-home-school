@@ -31,26 +31,18 @@ import {
   Info
 } from 'lucide-react';
 
+import { ContactUtils } from '@shared/contact-utils';
+
 interface SettingsData {
   schoolName: string;
   schoolMotto: string;
-  schoolEmail: string;
-  schoolPhone: string;
+  schoolEmails: any;
+  schoolPhones: any;
   schoolAddress: string;
 }
 
 const admissionSchema = z.object({
-  studentName: z.string().min(1, 'Student name is required'),
-  dateOfBirth: z.string().min(1, 'Date of birth is required'),
-  gender: z.string().min(1, 'Gender is required'),
-  classApplying: z.string().min(1, 'Class applying for is required'),
-  parentName: z.string().min(1, 'Parent/Guardian name is required'),
-  parentEmail: z.string().email('Please enter a valid email'),
-  parentPhone: z.string().min(10, 'Please enter a valid phone number'),
-  address: z.string().min(1, 'Address is required'),
-  previousSchool: z.string().optional(),
-  medicalInfo: z.string().optional(),
-  additionalInfo: z.string().optional(),
+// ... existing schema ...
 });
 
 type AdmissionForm = z.infer<typeof admissionSchema>;
@@ -63,10 +55,10 @@ export default function Admissions() {
     refetchInterval: 5000,
   });
 
-  const schoolName = settings?.schoolName || "Treasure-Home School";
-  const schoolEmail = settings?.schoolEmail || "admissions@treasurehomeschool.com";
-  const schoolPhone = settings?.schoolPhone || "08037906249, 08107921359";
-  const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka Ifo, Ogun State";
+  const schoolName = settings?.schoolName || "";
+  const schoolEmail = ContactUtils.getPrimaryEmail(settings);
+  const schoolPhone = ContactUtils.getFormattedPrimaryPhone(settings);
+  const schoolAddress = settings?.schoolAddress || "";
 
   const form = useForm<AdmissionForm>({
     resolver: zodResolver(admissionSchema),

@@ -1,5 +1,7 @@
 import { forwardRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import logoPath from '@assets/school-logo.png';
+import { ContactUtils } from '@shared/contact-utils';
 
 interface SubjectScore {
   subjectName: string;
@@ -153,13 +155,31 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
   reportCard,
   testWeight = 40,
   examWeight = 60,
-  schoolName = "TREASURE-HOME SCHOOL",
-  schoolAddress = "Seriki-Soyinka, Ifo, Ogun State, Nigeria",
-  schoolPhone = "08012345678",
-  schoolEmail = "info@treasurehomeschool.com",
-  schoolMotto = "Honesty and Success",
+  schoolName: propSchoolName,
+  schoolAddress: propSchoolAddress,
+  schoolPhone: propSchoolPhone,
+  schoolEmail: propSchoolEmail,
+  schoolMotto: propSchoolMotto,
   schoolLogo: customLogo
 }, ref) => {
+  const { data: settings } = useQuery<any>({
+    queryKey: ["/api/public/settings"],
+  });
+
+  const schoolName = propSchoolName || settings?.schoolName || "";
+  const schoolAddress = propSchoolAddress || settings?.schoolAddress || "";
+  
+  const primaryPhone = ContactUtils.getFormattedPrimaryPhone(settings);
+  const primaryEmail = ContactUtils.getPrimaryEmail(settings);
+  const phonesList = ContactUtils.getPhones(settings);
+  const allPhones = phonesList.length > 0 
+    ? phonesList.map(p => `${p.countryCode}${p.number}`).join(', ')
+    : "";
+
+  const schoolEmail = propSchoolEmail || primaryEmail;
+  const schoolPhone = propSchoolPhone || (phonesList.length > 1 ? allPhones : primaryPhone);
+    
+  const schoolMotto = propSchoolMotto || settings?.schoolMotto || "";
   const subjects = reportCard.items || reportCard.subjects || [];
   const displayLogo = customLogo || logoPath;
   const totalObtained = subjects.reduce((sum, s) => sum + (s.obtainedMarks || 0), 0);
@@ -258,7 +278,8 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
               {schoolName}
             </h1>
             <p style={{ fontSize: '9px', color: '#374151', margin: '2px 0' }}>{schoolAddress}</p>
-            <p style={{ fontSize: '9px', color: '#4b5563', margin: 0 }}>TEL: {schoolPhone}; Email: {schoolEmail}</p>
+            <p style={{ fontSize: '9px', color: '#4b5563', margin: '2px 0 0 0' }}>Contact: {schoolPhone}</p>
+            {schoolEmail && <p style={{ fontSize: '9px', color: '#4b5563', margin: '0' }}>Email: {schoolEmail}</p>}
           </div>
         </div>
         <div style={{ marginTop: '6px', backgroundColor: '#f3f4f6', padding: '4px 12px', display: 'inline-block' }}>

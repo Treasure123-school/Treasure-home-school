@@ -39,8 +39,8 @@ export default function ResetPassword() {
     refetchInterval: 5000,
   });
 
-  const schoolName = settings?.schoolName || "Treasure-Home School";
-  const schoolMotto = settings?.schoolMotto || "Honesty and Success";
+  const schoolName = settings?.schoolName || "";
+  const schoolMotto = settings?.schoolMotto || "";
 
   const [token, setToken] = useState<string | null>(null);
   const [resetSuccess, setResetSuccess] = useState(false);

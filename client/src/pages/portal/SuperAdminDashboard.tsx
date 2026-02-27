@@ -27,7 +27,7 @@ export default function SuperAdminDashboard() {
     refetchInterval: 5000,
   });
 
-  const schoolName = settings?.schoolName || "Treasure-Home School";
+  const schoolName = settings?.schoolName || "";
 
   const { data: stats, isLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/superadmin/stats"],

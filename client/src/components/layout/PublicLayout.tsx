@@ -3,6 +3,7 @@ import { Menu, X, Phone, Mail, MapPin, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { ContactUtils } from '@shared/contact-utils';
 
 interface PublicLayoutProps {
   children: React.ReactNode;
@@ -52,32 +53,11 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
     };
   }, [lastScrollY]);
 
-  const schoolName = settings?.schoolName || "Treasure-Home School";
-  const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State, Nigeria";
-  const schoolPhones: Array<{ countryCode: string; number: string }> = (() => {
-    try {
-      const phones = settings?.schoolPhones || "[]";
-      return JSON.parse(typeof phones === 'string' ? phones : JSON.stringify(phones));
-    } catch (e) {
-      return [];
-    }
-  })();
-
-  const displayPhone = schoolPhones.length > 0 
-    ? `${schoolPhones[0].countryCode}${schoolPhones[0].number}`
-    : "";
-
-  const schoolPhone = displayPhone;
-  const schoolEmail = Array.isArray(settings?.schoolEmails) 
-    ? settings.schoolEmails[0] 
-    : (() => {
-        try {
-          const emails = JSON.parse(settings?.schoolEmails || "[]");
-          return Array.isArray(emails) ? emails[0] : "";
-        } catch (e) {
-          return "";
-        }
-      })();
+  const schoolName = settings?.schoolName || "";
+  const schoolAddress = settings?.schoolAddress || "";
+  
+  const schoolPhone = ContactUtils.getFormattedPrimaryPhone(settings);
+  const schoolEmail = ContactUtils.getPrimaryEmail(settings);
 
   const navigation = [
     { name: 'Home', href: '/' },
@@ -183,7 +163,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                   className="h-20 w-auto brightness-0 invert object-contain" 
                 />
               ) : null}
-              <p className="text-[13px] text-white font-bold leading-relaxed">{settings?.schoolName || "Treasure-Home School"}, located at Seriki-Soyinka, Ifo Local Government, Ogun State, Nigeria, has a rich history of educational excellence.</p>
+              <p className="text-[13px] text-white font-bold leading-relaxed">{settings?.schoolName || ""} has a rich history of educational excellence.</p>
             </div>
             <div className="space-y-6">
               <h4 className="text-white font-black uppercase tracking-widest text-[11px] border-b border-white/40 pb-2">Useful Links</h4>

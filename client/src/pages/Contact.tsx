@@ -10,19 +10,11 @@ import { z } from 'zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { MapPin, Phone, Mail, Clock, Car, Calendar } from 'lucide-react';
+import { MapPin, Phone, Mail, Clock } from 'lucide-react';
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import heroStudents from "@/assets/hero-students.png";
-
-interface SettingsData {
-  schoolName: string;
-  schoolMotto: string;
-  schoolEmails: string;
-  schoolPhones: string;
-  schoolAddress: string;
-  websiteTitle?: string;
-}
+import { ContactUtils } from '@shared/contact-utils';
 
 const contactSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -35,29 +27,19 @@ type ContactForm = z.infer<typeof contactSchema>;
 export default function Contact() {
   const { toast } = useToast();
   
-  const { data: settings } = useQuery<SettingsData>({
+  const { data: settings } = useQuery<any>({
     queryKey: ["/api/public/settings"],
   });
 
-  const schoolName = settings?.schoolName || "Treasure-Home School";
-  const schoolAddress = settings?.schoolAddress || "Seriki-Soyinka, Ifo, Ogun State, Nigeria";
+  const schoolName = settings?.schoolName || "";
+  const schoolAddress = settings?.schoolAddress || "";
   const websiteTitle = settings?.websiteTitle || `${schoolName} - Contact Us`;
 
-  let schoolPhones: Array<{ countryCode: string; number: string }> = [];
-  let schoolEmails: string[] = [];
-  try {
-    schoolPhones = JSON.parse(settings?.schoolPhones || "[]");
-    schoolEmails = JSON.parse(settings?.schoolEmails || "[]");
-  } catch (e) {
-    console.error("Error parsing settings JSON", e);
-  }
-
-  const displayPhones = schoolPhones.length > 0 
-    ? schoolPhones.map(p => `${p.countryCode}${p.number}`).join(', ') 
-    : "080-1734-5676";
-  const displayEmails = schoolEmails.length > 0 
-    ? schoolEmails.join(', ') 
-    : "info@treasurehomeschool.com";
+  const displayPhones = ContactUtils.getPhones(settings)
+    .map(p => `${p.countryCode}${p.number}`)
+    .join(', ') || "080-1734-5676";
+    
+  const displayEmails = ContactUtils.getEmails(settings).join(', ') || "info@treasurehomeschool.com";
 
   useEffect(() => {
     if (websiteTitle) {

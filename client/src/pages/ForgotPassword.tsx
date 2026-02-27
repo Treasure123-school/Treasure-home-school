@@ -31,8 +31,8 @@ export default function ForgotPassword() {
     queryKey: ["/api/superadmin/settings"],
   });
 
-  const schoolName = settings?.schoolName || "Treasure-Home School";
-  const schoolMotto = settings?.schoolMotto || "Honesty and Success";
+  const schoolName = settings?.schoolName || "";
+  const schoolMotto = settings?.schoolMotto || "";
 
   const {
     register,
