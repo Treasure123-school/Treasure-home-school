@@ -3,6 +3,7 @@ import { Menu, X, Phone, Mail, MapPin, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { ContactUtils } from '@shared/contact-utils';
 
 interface PublicLayoutProps {
   children: React.ReactNode;
@@ -52,29 +53,11 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
     };
   }, [lastScrollY]);
 
-  const parseSetting = (val: any) => {
-    if (!val) return [];
-    if (Array.isArray(val)) return val;
-    try {
-      const parsed = JSON.parse(val);
-      return Array.isArray(parsed) ? parsed : [parsed];
-    } catch (e) {
-      return [val];
-    }
-  };
-
   const schoolName = settings?.schoolName || "";
   const schoolAddress = settings?.schoolAddress || "";
   
-  const schoolPhones = parseSetting(settings?.schoolPhones);
-  const schoolEmails = parseSetting(settings?.schoolEmails);
-
-  const displayPhone = schoolPhones.length > 0 
-    ? (typeof schoolPhones[0] === 'object' ? `${schoolPhones[0].countryCode || ''}${schoolPhones[0].number || ''}` : schoolPhones[0])
-    : "";
-
-  const schoolPhone = displayPhone;
-  const schoolEmail = schoolEmails.length > 0 ? schoolEmails[0] : "";
+  const schoolPhone = ContactUtils.getFormattedPrimaryPhone(settings);
+  const schoolEmail = ContactUtils.getPrimaryEmail(settings);
 
   const navigation = [
     { name: 'Home', href: '/' },

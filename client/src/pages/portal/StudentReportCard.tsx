@@ -12,6 +12,7 @@ import { useAuth } from '@/lib/auth';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { BaileysReportTemplate } from '@/components/ui/baileys-report-template';
 import { exportToPDF, exportToImage, printElement } from '@/lib/report-export-utils';
+import { ContactUtils } from '@shared/contact-utils';
 import { 
   Download, 
   FileText, 
@@ -129,29 +130,12 @@ export default function StudentReportCard() {
     queryKey: ["/api/public/settings"],
   });
 
-  // Helper to parse and format school contacts from potential JSON strings or arrays
-  const parseSetting = (val: any) => {
-    if (!val) return [];
-    if (Array.isArray(val)) return val;
-    try {
-      const parsed = JSON.parse(val);
-      return Array.isArray(parsed) ? parsed : [parsed];
-    } catch (e) {
-      return [val];
-    }
-  };
-
   const schoolName = settings?.schoolName || "";
   const schoolAddress = settings?.schoolAddress || "";
   const schoolMotto = settings?.schoolMotto || "";
   
-  const schoolEmails = parseSetting(settings?.schoolEmails);
-  const schoolPhones = parseSetting(settings?.schoolPhones);
-
-  const schoolEmail = schoolEmails.length > 0 ? schoolEmails[0] : "";
-  const schoolPhone = schoolPhones.length > 0
-    ? (typeof schoolPhones[0] === 'object' ? `${schoolPhones[0].countryCode || ''}${schoolPhones[0].number || ''}` : schoolPhones[0])
-    : "";
+  const schoolEmail = ContactUtils.getPrimaryEmail(settings);
+  const schoolPhone = ContactUtils.getFormattedPrimaryPhone(settings);
 
   const { data: terms = [] } = useQuery({
     queryKey: ['/api/terms'],

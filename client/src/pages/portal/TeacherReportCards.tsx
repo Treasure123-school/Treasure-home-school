@@ -68,6 +68,7 @@ import {
 import { format } from 'date-fns';
 import { STANDARD_GRADING_SCALE, GRADING_SCALES, formatPosition, calculateWeightedScore, calculateGradeFromPercentage, getGradingConfig } from '@shared/grading-utils';
 import { ProfessionalReportCard } from '@/components/ui/professional-report-card';
+import { ContactUtils } from '@shared/contact-utils';
 
 interface ReportCardItem {
   id: number;
@@ -150,6 +151,12 @@ export default function TeacherReportCards() {
   const { data: settings } = useQuery<any>({
     queryKey: ['/api/public/settings'],
   });
+
+  const schoolName = settings?.schoolName || "";
+  const schoolAddress = settings?.schoolAddress || "";
+  const schoolMotto = settings?.schoolMotto || "";
+  const schoolPhone = ContactUtils.getFormattedPrimaryPhone(settings);
+  const schoolEmail = ContactUtils.getPrimaryEmail(settings);
 
   const [selectedClass, setSelectedClass] = useState<string>('');
   const [selectedTerm, setSelectedTerm] = useState<string>('');

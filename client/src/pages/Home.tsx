@@ -23,21 +23,20 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 
+import { ContactUtils } from "@shared/contact-utils";
+
 interface SettingsData {
   schoolName: string;
   schoolMotto: string;
-  schoolEmails: string;
-  schoolPhones: string;
+  schoolEmails: any;
+  schoolPhones: any;
   schoolAddress: string;
   schoolLogo?: string;
 }
 
 const fadeIn = {
-  initial: { opacity: 0, y: 20 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true, margin: "-100px" },
-  transition: { duration: 0.6, ease: "easeOut" },
-};
+// ... existing fadeIn ...
+}
 
 export default function Home() {
   const { data: settings } = useQuery<SettingsData>({
@@ -49,7 +48,7 @@ export default function Home() {
   const [isAtTop, setIsAtTop] = useState(true);
 
   useEffect(() => {
-    return scrollY.onChange((latest) => {
+    return scrollY.on("change", (latest) => {
       if (latest <= 5) {
         setIsAtTop(true);
       } else {
@@ -62,14 +61,8 @@ export default function Home() {
   const schoolAddress = settings?.schoolAddress || "";
   const schoolLogo = settings?.schoolLogo || "";
 
-  let schoolPhones: Array<{ countryCode: string; number: string }> = [];
-  let schoolEmails: string[] = [];
-  try {
-    schoolPhones = JSON.parse(settings?.schoolPhones || "[]");
-    schoolEmails = JSON.parse(settings?.schoolEmails || "[]");
-  } catch (e) {
-    console.error("Error parsing settings JSON", e);
-  }
+  const schoolPhones = ContactUtils.getPhones(settings);
+  const schoolEmails = ContactUtils.getEmails(settings);
 
   const features = [
     {
