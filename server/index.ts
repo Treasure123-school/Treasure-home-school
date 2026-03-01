@@ -23,22 +23,22 @@ app.set('trust proxy', 1);
 // CORS configuration for Vercel frontend, Replit dev, and localhost
 const allowedOrigins = (process.env.NODE_ENV === 'development'
   ? [
-      'http://localhost:5173',
-      'http://localhost:5000',
-      'http://127.0.0.1:5173',
-      'http://127.0.0.1:5000',
-      /^https:\/\/.*\.vercel\.app$/,
-      /^https:\/\/.*\.replit\.dev$/,
-      ...(process.env.REPLIT_DEV_DOMAIN ? [`https://${process.env.REPLIT_DEV_DOMAIN}`] : []),
-      ...(process.env.REPLIT_DOMAINS ? process.env.REPLIT_DOMAINS.split(',').map(d => `https://${d.trim()}`) : [])
-    ]
+    'http://localhost:5173',
+    'http://localhost:5000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:5000',
+    /^https:\/\/.*\.vercel\.app$/,
+    /^https:\/\/.*\.replit\.dev$/,
+    ...(process.env.REPLIT_DEV_DOMAIN ? [`https://${process.env.REPLIT_DEV_DOMAIN}`] : []),
+    ...(process.env.REPLIT_DOMAINS ? process.env.REPLIT_DOMAINS.split(',').map(d => `https://${d.trim()}`) : [])
+  ]
   : [
-      process.env.FRONTEND_URL,
-      /^https:\/\/.*\.vercel\.app$/,  // All Vercel deployments (production + preview)
-      /^https:\/\/.*\.render\.com$/,
-      /^https:\/\/.*\.onrender\.com$/,
-      ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL.replace(/\/$/, '')] : [])
-    ].filter(Boolean)) as (string | RegExp)[];
+    process.env.FRONTEND_URL,
+    /^https:\/\/.*\.vercel\.app$/,  // All Vercel deployments (production + preview)
+    /^https:\/\/.*\.render\.com$/,
+    /^https:\/\/.*\.onrender\.com$/,
+    ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL.replace(/\/$/, '')] : [])
+  ].filter(Boolean)) as (string | RegExp)[];
 
 const corsOptions = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
@@ -53,10 +53,10 @@ const corsOptions = {
     const isAllowed = allowedOrigins.some(allowed => {
       if (typeof allowed === 'string') {
         const allowedWithoutPort = allowed.replace(/:\d+$/, '');
-        return origin === allowed || 
-               origin === allowed.replace(/\/$/, '') ||
-               originWithoutPort === allowedWithoutPort ||
-               originWithoutPort === allowedWithoutPort.replace(/\/$/, '');
+        return origin === allowed ||
+          origin === allowed.replace(/\/$/, '') ||
+          originWithoutPort === allowedWithoutPort ||
+          originWithoutPort === allowedWithoutPort.replace(/\/$/, '');
       }
       return allowed.test(origin) || allowed.test(originWithoutPort);
     });
@@ -137,17 +137,17 @@ app.use((req, res, next) => {
   }
   res.on("finish", () => {
     const duration = Date.now() - start;
-    
+
     // Record request in performance monitor (for API endpoints)
     if (path.startsWith("/api")) {
       performanceMonitor.recordRequest(req.method, req.route?.path || path, duration, res.statusCode);
     }
-    
+
     // ENHANCED: Log ALL 4xx errors to help debug (not just API)
     if (res.statusCode >= 400 && res.statusCode < 500) {
       console.log(`❌ 4xx ERROR: ${req.method} ${req.originalUrl || path} - Status ${res.statusCode} - Referer: ${req.get('referer') || 'none'}`);
     }
-    
+
     if (path.startsWith("/api")) {
       let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
 
@@ -156,7 +156,7 @@ app.use((req, res, next) => {
         const sanitizedResponse = sanitizeLogData(capturedJsonResponse);
         logLine += ` :: ${JSON.stringify(sanitizedResponse)}`;
       }
-      
+
       if (logLine.length > 80) {
         logLine = logLine.slice(0, 79) + "…";
       }
@@ -272,7 +272,7 @@ function sanitizeLogData(data: any): any {
     console.log("Pre-warming cache for classes, subjects, and homepage content...");
     const { performanceCache, PerformanceCache } = await import("./performance-cache");
     const { storage } = await import("./storage");
-    
+
     // Pre-load frequently accessed data into cache
     const [classes, subjects, homepage, announcements] = await Promise.all([
       storage.getAllClasses(true),
@@ -280,13 +280,13 @@ function sanitizeLogData(data: any): any {
       storage.getHomePageContent(),
       storage.getAnnouncements()
     ]);
-    
+
     // Populate cache
     performanceCache.set(PerformanceCache.keys.activeClasses(), classes, PerformanceCache.TTL.MEDIUM);
     performanceCache.set(PerformanceCache.keys.subjects(), subjects, PerformanceCache.TTL.MEDIUM);
     performanceCache.set(PerformanceCache.keys.homepageContent(), homepage, PerformanceCache.TTL.MEDIUM);
     performanceCache.set(PerformanceCache.keys.announcements(), announcements, PerformanceCache.TTL.SHORT);
-    
+
     console.log(`✅ Cache pre-warmed: ${classes.length} classes, ${subjects.length} subjects`);
   } catch (error) {
     console.log(`⚠️ Cache pre-warming failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -307,7 +307,7 @@ function sanitizeLogData(data: any): any {
     console.log("Initializing Performance Monitoring...");
     performanceMonitor.start();
     console.log("✅ Performance monitoring started");
-    
+
     // Create performance indexes in background (non-blocking)
     databaseOptimizer.createPerformanceIndexes().then(result => {
       console.log(`✅ Database indexes: ${result.created.length} created/verified, ${result.errors.length} errors`);
@@ -326,16 +326,16 @@ function sanitizeLogData(data: any): any {
   try {
     const cron = await import('node-cron');
     const { storage } = await import('./storage');
-    
+
     // Run daily at 2:00 AM - cleanup expired deleted users
     cron.default.schedule('0 2 * * *', async () => {
       try {
         console.log('🔄 Running scheduled cleanup of expired deleted users...');
         const settings = await storage.getSystemSettings();
         const retentionDays = settings?.deletedUserRetentionDays ?? 30;
-        
+
         const result = await storage.permanentlyDeleteExpiredUsers(retentionDays);
-        
+
         if (result.deleted > 0) {
           console.log(`✅ Cleanup completed: ${result.deleted} expired deleted users permanently removed`);
           // Log to audit
@@ -349,7 +349,7 @@ function sanitizeLogData(data: any): any {
         } else {
           console.log('✅ No expired deleted users to cleanup');
         }
-        
+
         if (result.errors.length > 0) {
           console.log(`⚠️ Cleanup errors: ${result.errors.join(', ')}`);
         }
@@ -357,9 +357,9 @@ function sanitizeLogData(data: any): any {
         console.error('❌ Scheduled cleanup error:', error.message);
       }
     });
-    
+
     console.log('✅ Scheduled cleanup job initialized (runs daily at 2:00 AM)');
-    
+
     // Run every 5 minutes - retry failed exam-to-report-card syncs
     const { reliableSyncService } = await import('./services/reliable-sync-service');
     cron.default.schedule('*/5 * * * *', async () => {
@@ -385,10 +385,10 @@ function sanitizeLogData(data: any): any {
         body: req.body,
         file: req.file ? "File present" : "File missing"
       });
-      
+
       let status = 400;
       let message = err.message;
-      
+
       if (err.code === 'LIMIT_FILE_SIZE') {
         message = 'File size exceeds the maximum allowed limit';
       } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
@@ -404,20 +404,29 @@ function sanitizeLogData(data: any): any {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    console.log(`ERROR: ${req.method} ${req.path} - ${err.message}`);
+    // Always log the full error server-side
+    console.error(`ERROR: ${req.method} ${req.path} - ${message}`);
+    if (err.stack && process.env.NODE_ENV !== 'production') {
+      console.error(err.stack);
+    }
 
     if (!res.headersSent) {
-      res.status(status).json({ message });
+      // In production, never expose internal error messages for 5xx errors
+      const responseMessage = (process.env.NODE_ENV === 'production' && status >= 500)
+        ? "Internal Server Error"
+        : message;
+
+      res.status(status).json({ message: responseMessage });
     }
   });
 
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
-  
+
   // Check if running on Replit (development environment)
   const isReplit = !!process.env.REPLIT_DEV_DOMAIN;
-  
+
   if (app.get("env") === "development" || isReplit) {
     // Serve Vite dev server on Replit or when NODE_ENV=development
     await setupVite(app, server);

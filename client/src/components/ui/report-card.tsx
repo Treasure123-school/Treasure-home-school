@@ -8,16 +8,41 @@ import { Download, FileText } from 'lucide-react';
 import { ContactUtils } from '@shared/contact-utils';
 
 interface ReportCardProps {
-// ... existing interface props ...
+  student: {
+    name: string;
+    admissionNumber: string;
+    className: string;
+    academicSession: string;
+  };
+  grades: Array<{
+    subject: string;
+    testScore: number;
+    testMax: number;
+    examScore: number;
+    examMax: number;
+    total: number;
+    grade: string;
+    remarks: string;
+  }>;
+  summary: {
+    totalMarks: number;
+    maxMarks: number;
+    percentage: number;
+    classRank?: number;
+    totalStudents?: number;
+  };
+  teacherSignature?: string;
+  principalSignature?: string;
+  dateGenerated: string;
 }
 
-export function ProfessionalReportCard({ 
-  student, 
-  grades, 
-  summary, 
-  teacherSignature, 
-  principalSignature, 
-  dateGenerated 
+export function ProfessionalReportCard({
+  student,
+  grades,
+  summary,
+  teacherSignature,
+  principalSignature,
+  dateGenerated
 }: ReportCardProps) {
   const { data: settings } = useQuery<any>({
     queryKey: ['/api/public/settings'],

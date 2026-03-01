@@ -14,11 +14,25 @@ export default defineConfig({
     },
   },
   root: path.resolve(import.meta.dirname, "client"),
+  optimizeDeps: {
+    include: ['lodash'],
+  },
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
     chunkSizeWarningLimit: 1000,
+    commonjsOptions: {
+      include: [/node_modules/],
+      ignoreDynamicRequires: true,
+    },
     rollupOptions: {
+      onwarn(warning, warn) {
+        // Suppress core-js resolution warnings from canvg/jspdf
+        if (warning.message?.includes('core-js') || warning.message?.includes('internals/function-call')) {
+          return;
+        }
+        warn(warning);
+      },
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom'],

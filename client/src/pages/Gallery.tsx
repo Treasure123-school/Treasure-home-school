@@ -14,6 +14,7 @@ import gallery6 from "@/assets/gallery-6.png";
 
 interface SettingsData {
   schoolName: string;
+  schoolAddress: string;
 }
 
 export default function Gallery() {
@@ -46,7 +47,7 @@ export default function Gallery() {
           <div className="absolute inset-0 bg-black/60" />
         </div>
         <div className="container relative z-10 text-center text-white px-4">
-          <motion.h1 
+          <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             className="text-4xl md:text-6xl font-bold mb-4"
@@ -54,7 +55,7 @@ export default function Gallery() {
           >
             School Gallery
           </motion.h1>
-          <motion.p 
+          <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
@@ -116,7 +117,7 @@ export default function Gallery() {
                   </div>
                 )}
               </div>
-              
+
               <div className="flex-1 text-left space-y-6">
                 <h2 className="text-3xl md:text-4xl font-bold text-gray-900">
                   Need more information<br />about our school?

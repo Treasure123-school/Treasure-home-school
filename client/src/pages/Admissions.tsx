@@ -13,20 +13,20 @@ import { z } from 'zod';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { 
-  FileText, 
-  Search, 
-  UserCheck, 
-  CheckCircle, 
-  ClipboardList, 
-  Check, 
-  Phone, 
-  Mail, 
-  MapPin, 
-  GraduationCap, 
-  Calendar, 
-  User, 
-  Home, 
+import {
+  FileText,
+  Search,
+  UserCheck,
+  CheckCircle,
+  ClipboardList,
+  Check,
+  Phone,
+  Mail,
+  MapPin,
+  GraduationCap,
+  Calendar,
+  User,
+  Home,
   ArrowRight,
   Info
 } from 'lucide-react';
@@ -42,14 +42,24 @@ interface SettingsData {
 }
 
 const admissionSchema = z.object({
-// ... existing schema ...
+  studentName: z.string().min(1, 'Student name is required'),
+  dateOfBirth: z.string().min(1, 'Date of birth is required'),
+  gender: z.string().min(1, 'Gender is required'),
+  classApplying: z.string().min(1, 'Class is required'),
+  parentName: z.string().min(1, 'Parent name is required'),
+  parentEmail: z.string().email('Valid email is required'),
+  parentPhone: z.string().min(1, 'Phone number is required'),
+  address: z.string().min(1, 'Address is required'),
+  previousSchool: z.string().optional().default(''),
+  medicalInfo: z.string().optional().default(''),
+  additionalInfo: z.string().optional().default(''),
 });
 
 type AdmissionForm = z.infer<typeof admissionSchema>;
 
 export default function Admissions() {
   const { toast } = useToast();
-  
+
   const { data: settings } = useQuery<SettingsData>({
     queryKey: ["/api/public/settings"],
     refetchInterval: 5000,
@@ -218,7 +228,7 @@ export default function Admissions() {
                       </li>
                     ))}
                   </ul>
-                  
+
                   <div className="mt-6 rounded-lg bg-secondary/10 p-4">
                     <div className="mb-2 flex items-center gap-2">
                       <Info className="h-4 w-4 text-secondary" />
@@ -430,9 +440,9 @@ export default function Admissions() {
                         </div>
                       </div>
 
-                      <Button 
-                        type="submit" 
-                        className="w-full" 
+                      <Button
+                        type="submit"
+                        className="w-full"
                         disabled={admissionMutation.isPending}
                         data-testid="button-submit-application"
                       >
@@ -456,7 +466,7 @@ export default function Admissions() {
           <p className="mb-8 text-lg text-muted-foreground" data-testid="text-contact-description">
             Our admissions team is here to assist you throughout the process
           </p>
-          
+
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             <div className="text-center" data-testid="contact-phone">
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -465,7 +475,7 @@ export default function Admissions() {
               <h3 className="mb-1 font-semibold">Call Us</h3>
               <p className="text-sm text-muted-foreground">{schoolPhone}</p>
             </div>
-            
+
             <div className="text-center" data-testid="contact-email">
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-secondary/10 text-secondary">
                 <Mail className="h-6 w-6" />
@@ -473,7 +483,7 @@ export default function Admissions() {
               <h3 className="mb-1 font-semibold">Email Us</h3>
               <p className="text-sm text-muted-foreground">{schoolEmail}</p>
             </div>
-            
+
             <div className="text-center" data-testid="contact-visit">
               <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
                 <MapPin className="h-6 w-6" />

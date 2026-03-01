@@ -28,3 +28,6 @@ export { default as termsRoutes } from './terms.routes';
 export { default as classesRoutes } from './classes.routes';
 export { default as subjectsRoutes } from './subjects.routes';
 export { default as notificationsRoutes } from './notifications.routes';
+export { default as jobVacancyRoutes } from './job-vacancy.routes';
+export { default as settingsRoutes } from './settings.routes';
+export { default as reportCardSkillsRoutes } from './report-card-skills.routes';
