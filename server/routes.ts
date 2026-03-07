@@ -27,6 +27,7 @@ import teacherAssignmentRoutes from "./teacher-assignment-routes";
 import jobVacancyRoutes from "./routes/job-vacancy.routes";
 import settingsRoutes from "./routes/settings.routes";
 import reportCardSkillsRoutes from "./routes/report-card-skills.routes";
+import questionBankRoutes from "./routes/question-bank.routes";
 import { validateTeacherCanCreateExam, validateTeacherCanEnterScores, validateTeacherCanViewResults, getTeacherAssignments, validateExamTimeWindow, logExamAccess } from "./teacher-auth-middleware";
 import { getVisibleExamsForStudent, getVisibleExamsForParent, invalidateVisibilityCache, warmVisibilityCache } from "./exam-visibility";
 import { calculateClassTeacherPermissions, getClassTeacherPermissionDeniedMessage } from "@shared/class-teacher-permissions";
@@ -1002,6 +1003,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(jobVacancyRoutes);
   app.use(settingsRoutes);
   app.use(reportCardSkillsRoutes);
+  app.use(questionBankRoutes);
 
   // ==================== FILE UPLOAD ROUTES ====================
 

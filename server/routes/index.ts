@@ -31,3 +31,4 @@ export { default as notificationsRoutes } from './notifications.routes';
 export { default as jobVacancyRoutes } from './job-vacancy.routes';
 export { default as settingsRoutes } from './settings.routes';
 export { default as reportCardSkillsRoutes } from './report-card-skills.routes';
+export { default as questionBankRoutes } from './question-bank.routes';

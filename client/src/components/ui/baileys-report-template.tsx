@@ -1,6 +1,5 @@
 import { forwardRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import logoPath from '@assets/school-logo.png';
 import { ContactUtils } from '@shared/contact-utils';
 
 interface SubjectScore {
@@ -16,6 +15,7 @@ interface SubjectScore {
   grade: string;
   remarks?: string;
   subjectPosition?: number | null;
+  classAverage?: number | null;
 }
 
 interface AttendanceSummary {
@@ -95,6 +95,9 @@ interface ReportCardData {
   height?: string;
   weight?: string;
   club?: string;
+  favouriteColor?: string;
+  teacherSignatureUrl?: string | null;
+  principalSignatureUrl?: string | null;
 }
 
 interface BaileysReportTemplateProps {
@@ -109,6 +112,7 @@ interface BaileysReportTemplateProps {
   schoolLogo?: string;
 }
 
+// ─── Utility functions ───
 const getRemarkFromGrade = (grade: string): string => {
   if (!grade) return '';
   const g = grade.toUpperCase();
@@ -144,11 +148,35 @@ const countGrades = (subjects: SubjectScore[]) => {
   const counts = { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 };
   subjects.forEach(s => {
     const g = s.grade?.toUpperCase()?.charAt(0);
-    if (g && g in counts) {
-      counts[g as keyof typeof counts]++;
-    }
+    if (g && g in counts) counts[g as keyof typeof counts]++;
   });
   return counts;
+};
+
+// ─── Layout constants ───
+const B = '1px solid #000';
+const BL = '1px solid #555';
+const FONT = '"Arial Narrow", Arial, Helvetica, sans-serif';
+const MIN_ROWS = 20;
+const GAP = 5;
+
+// ─── Shared inline styles (no flexbox — html2canvas compatible) ───
+const sectionHeader: React.CSSProperties = {
+  backgroundColor: '#ddd', textAlign: 'center', padding: '4px 0',
+  fontWeight: 'bold', fontSize: 9, borderBottom: B, letterSpacing: 1,
+};
+
+/* Label cell: grey background, bordered */
+const labelCell: React.CSSProperties = {
+  padding: '3px 6px', fontSize: 9, fontWeight: 700,
+  verticalAlign: 'middle', whiteSpace: 'nowrap',
+  backgroundColor: '#f0f0f0', border: BL,
+};
+
+/* Value cell: white background, bordered */
+const valueCell: React.CSSProperties = {
+  padding: '3px 6px', fontSize: 9, fontWeight: 500,
+  verticalAlign: 'middle', border: BL,
 };
 
 export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTemplateProps>(({
@@ -168,37 +196,32 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
 
   const schoolName = propSchoolName || settings?.schoolName || "";
   const schoolAddress = propSchoolAddress || settings?.schoolAddress || "";
-  
   const primaryPhone = ContactUtils.getFormattedPrimaryPhone(settings);
   const primaryEmail = ContactUtils.getPrimaryEmail(settings);
   const phonesList = ContactUtils.getPhones(settings);
-  const allPhones = phonesList.length > 0 
-    ? phonesList.map(p => `${p.countryCode}${p.number}`).join(', ')
-    : "";
-
+  const allPhones = phonesList.length > 0
+    ? phonesList.map(p => `${p.countryCode}${p.number}`).join(', ') : "";
   const schoolEmail = propSchoolEmail || primaryEmail;
   const schoolPhone = propSchoolPhone || (phonesList.length > 1 ? allPhones : primaryPhone);
-    
   const schoolMotto = propSchoolMotto || settings?.schoolMotto || "";
+  const displayLogo = customLogo || settings?.schoolLogo || "";
+
   const subjects = reportCard.items || reportCard.subjects || [];
-  const displayLogo = customLogo || logoPath;
   const totalObtained = subjects.reduce((sum, s) => sum + (s.obtainedMarks || 0), 0);
   const totalMax = subjects.length * 100;
-  const avgPercentage = reportCard.averagePercentage || (totalMax > 0 ? Math.round((totalObtained / totalMax) * 100 * 10) / 10 : 0);
-  const overallGrade = reportCard.overallGrade || getGradeFromScore(avgPercentage);
+  const avgPct = reportCard.averagePercentage ||
+    (totalMax > 0 ? Math.round((totalObtained / totalMax) * 1000) / 10 : 0);
+  const overallGrade = reportCard.overallGrade || getGradeFromScore(avgPct);
   const gradeCounts = countGrades(subjects);
-  
-  const attendance = reportCard.attendance || {
-    timesSchoolOpened: 0,
-    timesPresent: 0,
-    timesAbsent: 0,
-    attendancePercentage: 0
-  };
 
-  const affectiveTraits = reportCard.affectiveTraits || {};
-  const psychomotorSkills = reportCard.psychomotorSkills || {};
+  const att = reportCard.attendance || { timesSchoolOpened: 0, timesPresent: 0, timesAbsent: 0, attendancePercentage: 0 };
+  const attPct = att.attendancePercentage ||
+    (att.timesSchoolOpened > 0 ? Math.round((att.timesPresent / att.timesSchoolOpened) * 1000) / 10 : 0);
 
-  const affectiveLabels = [
+  const aff = reportCard.affectiveTraits || {};
+  const psy = reportCard.psychomotorSkills || {};
+
+  const affLabels = [
     { key: 'attentiveness', label: 'Attentiveness' },
     { key: 'honesty', label: 'Honesty' },
     { key: 'neatness', label: 'Neatness' },
@@ -211,7 +234,7 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
     { key: 'relationshipWithOthers', label: 'Relationship With Others' },
   ];
 
-  const psychomotorLabels = [
+  const psyLabels = [
     { key: 'handlingOfTools', label: 'Handling Of Tools' },
     { key: 'drawingPainting', label: 'Drawing/ Painting' },
     { key: 'handwriting', label: 'Handwriting' },
@@ -220,417 +243,489 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
     { key: 'sports', label: 'Sports & Games' },
   ];
 
-  const RatingCell = ({ value }: { value: number | undefined }) => {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', gap: '1px' }}>
-        {[5, 4, 3, 2, 1].map((n) => (
-          <div
-            key={n}
-            style={{
-              width: '14px',
-              height: '14px',
-              border: '1px solid #6b7280',
-              fontSize: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: value && value >= n ? '#1f2937' : '#ffffff',
-              color: value && value >= n ? '#ffffff' : '#000000',
-            }}
-          >
-            {n}
-          </div>
-        ))}
-      </div>
-    );
-  };
+  const emptyRows = Array.from({ length: Math.max(0, MIN_ROWS - subjects.length) });
+
+  /* ── Rating cell — inline-block boxes (NO flexbox) ── */
+  const ratingBoxes = (value: number | undefined) => (
+    <td style={{ border: BL, padding: '1px 2px', textAlign: 'center', verticalAlign: 'middle' }}>
+      {[5, 4, 3, 2, 1].map(n => (
+        <span key={n} style={{
+          display: 'inline-block', width: 12, height: 12, border: '1px solid #333',
+          fontSize: 7, textAlign: 'center', lineHeight: '12px',
+          backgroundColor: value && value >= n ? '#222' : '#fff',
+          color: value && value >= n ? '#fff' : '#333',
+          fontWeight: 700, verticalAlign: 'middle',
+        }}>
+          {n}
+        </span>
+      ))}
+    </td>
+  );
 
   return (
-    <div 
-      ref={ref}
-      style={{ 
-        width: '210mm', 
-        minHeight: '297mm',
-        maxWidth: '210mm',
-        margin: '0 auto',
-        boxSizing: 'border-box',
-        backgroundColor: '#ffffff',
-        color: '#000000',
-        padding: '8mm',
-        fontFamily: 'Arial, Helvetica, sans-serif',
-        fontSize: '10px',
-        lineHeight: '1.3',
-        WebkitPrintColorAdjust: 'exact',
-        printColorAdjust: 'exact',
-      } as React.CSSProperties}
-    >
-      {/* School Header */}
-      <div style={{ textAlign: 'center', borderBottom: '2px solid #1f2937', paddingBottom: '8px', marginBottom: '6px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-          <img 
-            src={displayLogo} 
-            alt="School Logo" 
-            style={{ height: '50px', width: '50px', objectFit: 'contain' }}
-            crossOrigin="anonymous"
-          />
-          <div>
-            <h1 style={{ fontSize: '18px', fontWeight: 'bold', letterSpacing: '1px', color: '#111827', fontFamily: 'Times New Roman, serif', margin: 0 }}>
+    <div ref={ref} style={{
+      width: '210mm', minHeight: '297mm', maxWidth: '210mm',
+      margin: '0 auto', boxSizing: 'border-box',
+      backgroundColor: '#fff', color: '#000',
+      padding: '5mm 7mm',
+      fontFamily: FONT, fontSize: 9, lineHeight: 1.3,
+      WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact',
+    } as React.CSSProperties}>
+
+      {/* ═══════════ HEADER ═══════════ */}
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 6 }}>
+        <tbody><tr>
+          <td style={{ verticalAlign: 'middle', paddingRight: 10 }}>
+            <div style={{ fontFamily: '"Times New Roman", Georgia, serif', fontSize: 24, fontWeight: 900, letterSpacing: 2, textTransform: 'uppercase', lineHeight: 1.15, marginBottom: 4 }}>
               {schoolName}
-            </h1>
-            <p style={{ fontSize: '9px', color: '#374151', margin: '2px 0' }}>{schoolAddress}</p>
-            <p style={{ fontSize: '9px', color: '#4b5563', margin: '2px 0 0 0' }}>Contact: {schoolPhone}</p>
-            {schoolEmail && <p style={{ fontSize: '9px', color: '#4b5563', margin: '0' }}>Email: {schoolEmail}</p>}
-          </div>
-        </div>
-        <div style={{ marginTop: '6px', backgroundColor: '#f3f4f6', padding: '4px 12px', display: 'inline-block' }}>
-          <span style={{ fontWeight: 'bold', fontSize: '11px', letterSpacing: '0.5px' }}>
-            {reportCard.termName?.toUpperCase() || 'FIRST TERM'} STUDENT'S PERFORMANCE REPORT
-          </span>
-        </div>
+            </div>
+            <div style={{ fontSize: 10, marginBottom: 3, fontStyle: 'italic', color: '#222' }}>{schoolAddress}</div>
+            <div style={{ fontSize: 9, color: '#333' }}>
+              TEL: {schoolPhone}{schoolEmail ? `  |  Email: ${schoolEmail}` : ''}
+            </div>
+          </td>
+          <td style={{ width: 70, verticalAlign: 'middle', textAlign: 'right' }}>
+            {displayLogo && (
+              <img src={displayLogo} alt="Logo" style={{ height: 65, width: 65, objectFit: 'contain' }} crossOrigin="anonymous" />
+            )}
+          </td>
+        </tr></tbody>
+      </table>
+      <div style={{ borderBottom: '2.5px solid #000', marginBottom: 6 }} />
+
+      {/* Term title */}
+      <div style={{ textAlign: 'center', fontWeight: 'bold', fontSize: 12, letterSpacing: 0.5, marginBottom: 8 }}>
+        {(reportCard.termName || 'FIRST TERM').toUpperCase()} STUDENT'S PERFORMANCE REPORT
       </div>
 
-      {/* Student Information Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '8px', fontSize: '9px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'baseline' }}>
-            <span style={{ fontWeight: 600, minWidth: '50px' }}>NAME:</span>
-            <span style={{ textTransform: 'uppercase', borderBottom: '1px solid #9ca3af', flex: 1, paddingBottom: '1px' }}>{reportCard.studentName}</span>
-          </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <div style={{ display: 'flex', gap: '4px', flex: 1, alignItems: 'baseline' }}>
-              <span style={{ fontWeight: 600 }}>CLASS:</span>
-              <span style={{ borderBottom: '1px solid #9ca3af', flex: 1, paddingBottom: '1px' }}>{reportCard.className}{reportCard.classArm ? ` ${reportCard.classArm}` : ''}</span>
+      {/* ═══════════ STUDENT INFO — bordered grid ═══════════ */}
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: GAP, border: B }}>
+        <tbody><tr>
+          {/* Student fields (left) */}
+          <td style={{ padding: 0, verticalAlign: 'top' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '35%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '35%' }} />
+              </colgroup>
+              <tbody>
+                {/* Row 1: NAME | value | GENDER | value */}
+                <tr>
+                  <td style={labelCell}>NAME:</td>
+                  <td style={{ ...valueCell, textTransform: 'uppercase', fontWeight: 600 }} colSpan={1}>
+                    {reportCard.studentName.toUpperCase()}
+                  </td>
+                  <td style={labelCell}>GENDER:</td>
+                  <td style={valueCell}>{(reportCard.gender || '-').toUpperCase()}</td>
+                </tr>
+                {/* Row 2: CLASS | value | SESSION | value */}
+                <tr>
+                  <td style={labelCell}>CLASS:</td>
+                  <td style={valueCell}>{reportCard.className}{reportCard.classArm ? ' ' + reportCard.classArm : ''}</td>
+                  <td style={labelCell}>SESSION:</td>
+                  <td style={valueCell}>{reportCard.academicSession || reportCard.termYear || '2024/2025'}</td>
+                </tr>
+                {/* Row 3: ADMISSION NO | value (spans 3 cols) */}
+                <tr>
+                  <td style={labelCell}>ADMISSION NO:</td>
+                  <td style={valueCell} colSpan={3}>{reportCard.admissionNumber}</td>
+                </tr>
+              </tbody>
+            </table>
+            {/* Row 4: D.O.B | AGE | HT | WT — 8 columns */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '20%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '6%' }} />
+                <col style={{ width: '16%' }} />
+                <col style={{ width: '6%' }} />
+                <col style={{ width: '22%' }} />
+              </colgroup>
+              <tbody><tr>
+                <td style={labelCell}>D.O.B.:</td>
+                <td style={valueCell}>{reportCard.dateOfBirth || '-'}</td>
+                <td style={labelCell}>AGE:</td>
+                <td style={valueCell}>-</td>
+                <td style={labelCell}>HT:</td>
+                <td style={valueCell}>{reportCard.height || '-'}</td>
+                <td style={labelCell}>WT:</td>
+                <td style={valueCell}>{reportCard.weight || '-'}</td>
+              </tr></tbody>
+            </table>
+            {/* Row 5: CLUB/SOCIETY | FAV. COL */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '35%' }} />
+                <col style={{ width: '15%' }} />
+                <col style={{ width: '35%' }} />
+              </colgroup>
+              <tbody><tr>
+                <td style={labelCell}>CLUB/SOCIETY:</td>
+                <td style={valueCell}>{reportCard.club || '-'}</td>
+                <td style={labelCell}>FAV. COL:</td>
+                <td style={valueCell}>{reportCard.favouriteColor || '-'}</td>
+              </tr></tbody>
+            </table>
+          </td>
+          {/* Photo (right) */}
+          <td style={{ width: 75, verticalAlign: 'top', padding: 5, borderLeft: B }}>
+            <div style={{ width: 64, height: 76, border: B, overflow: 'hidden', backgroundColor: '#f8f8f8', textAlign: 'center', lineHeight: '76px' }}>
+              {reportCard.studentPhoto ? (
+                <img src={reportCard.studentPhoto} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover', verticalAlign: 'middle' }} crossOrigin="anonymous" />
+              ) : (
+                <span style={{ color: '#aaa', fontSize: 8, lineHeight: '76px' }}>Photo</span>
+              )}
             </div>
-            <div style={{ display: 'flex', gap: '4px', flex: 1, alignItems: 'baseline' }}>
-              <span style={{ fontWeight: 600 }}>SESSION:</span>
-              <span style={{ borderBottom: '1px solid #9ca3af', flex: 1, paddingBottom: '1px' }}>{reportCard.academicSession || reportCard.termYear || '2024/2025'}</span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <div style={{ display: 'flex', gap: '4px', flex: 1, alignItems: 'baseline' }}>
-              <span style={{ fontWeight: 600 }}>D.O.B:</span>
-              <span style={{ borderBottom: '1px solid #9ca3af', flex: 1, paddingBottom: '1px' }}>{reportCard.dateOfBirth || '-'}</span>
-            </div>
-            <div style={{ display: 'flex', gap: '4px', flex: 1, alignItems: 'baseline' }}>
-              <span style={{ fontWeight: 600 }}>AGE:</span>
-              <span style={{ borderBottom: '1px solid #9ca3af', flex: 1, paddingBottom: '1px' }}>{'-'}</span>
-            </div>
-          </div>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <div style={{ display: 'flex', gap: '4px', flex: 1, alignItems: 'baseline' }}>
-              <span style={{ fontWeight: 600 }}>GENDER:</span>
-              <span style={{ borderBottom: '1px solid #9ca3af', flex: 1, paddingBottom: '1px' }}>{reportCard.gender || '-'}</span>
-            </div>
-            <div style={{ display: 'flex', gap: '4px', flex: 1, alignItems: 'baseline' }}>
-              <span style={{ fontWeight: 600 }}>ADMISSION NO:</span>
-              <span style={{ borderBottom: '1px solid #9ca3af', flex: 1, paddingBottom: '1px' }}>{reportCard.admissionNumber}</span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <div style={{ display: 'flex', gap: '4px', flex: 1, alignItems: 'baseline' }}>
-              <span style={{ fontWeight: 600 }}>HT:</span>
-              <span style={{ borderBottom: '1px solid #9ca3af', paddingBottom: '1px' }}>{reportCard.height || '-'} cm</span>
-            </div>
-            <div style={{ display: 'flex', gap: '4px', flex: 1, alignItems: 'baseline' }}>
-              <span style={{ fontWeight: 600 }}>WT:</span>
-              <span style={{ borderBottom: '1px solid #9ca3af', paddingBottom: '1px' }}>{reportCard.weight || '-'} kg</span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: '4px', alignItems: 'baseline' }}>
-            <span style={{ fontWeight: 600 }}>CLUB/SOCIETY:</span>
-            <span style={{ borderBottom: '1px solid #9ca3af', flex: 1, paddingBottom: '1px' }}>{reportCard.club || '-'}</span>
-          </div>
-        </div>
-      </div>
+          </td>
+        </tr></tbody>
+      </table>
 
-      {/* Main Content Grid */}
-      <div style={{ display: 'flex', gap: '8px' }}>
-        {/* Left Column - Cognitive Domain */}
-        <div style={{ flex: 1 }}>
-          <div style={{ border: '1px solid #1f2937' }}>
-            <div style={{ backgroundColor: '#e5e7eb', textAlign: 'center', padding: '3px', fontWeight: 'bold', borderBottom: '1px solid #1f2937', fontSize: '9px' }}>
-              COGNITIVE DOMAIN
-            </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '8px' }}>
+      {/* ═══════════ MAIN 2‑COLUMN LAYOUT ═══════════ */}
+      <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+        <colgroup>
+          <col style={{ width: '73%' }} />
+          <col style={{ width: '27%' }} />
+        </colgroup>
+        <tbody><tr>
+          {/* ────── LEFT: Cognitive Domain ────── */}
+          <td style={{ verticalAlign: 'top', paddingRight: 5 }}>
+
+            <table style={{ width: '100%', borderCollapse: 'collapse', border: B, tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '27%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '16%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '9%' }} />
+              </colgroup>
               <thead>
-                <tr style={{ backgroundColor: '#f3f4f6' }}>
-                  <th style={{ border: '1px solid #9ca3af', padding: '3px', textAlign: 'left', fontWeight: 600 }}>SUBJECTS</th>
-                  <th style={{ border: '1px solid #9ca3af', padding: '3px', textAlign: 'center', fontWeight: 600, width: '28px' }}>C.A</th>
-                  <th style={{ border: '1px solid #9ca3af', padding: '3px', textAlign: 'center', fontWeight: 600, width: '28px' }}>EXAM</th>
-                  <th style={{ border: '1px solid #9ca3af', padding: '3px', textAlign: 'center', fontWeight: 600, width: '32px' }}>TOTAL</th>
-                  <th style={{ border: '1px solid #9ca3af', padding: '3px', textAlign: 'center', fontWeight: 600, width: '32px' }}>GRADE</th>
-                  <th style={{ border: '1px solid #9ca3af', padding: '3px', textAlign: 'center', fontWeight: 600, width: '28px' }}>POS</th>
-                  <th style={{ border: '1px solid #9ca3af', padding: '3px', textAlign: 'center', fontWeight: 600 }}>REMARKS</th>
+                <tr><th colSpan={9} style={sectionHeader}>COGNITIVE DOMAIN</th></tr>
+                <tr style={{ backgroundColor: '#eee' }}>
+                  <th rowSpan={2} style={{ border: B, padding: '3px 4px', textAlign: 'left', fontWeight: 700, fontSize: 8 }}>SUBJECTS</th>
+                  <th style={{ border: B, padding: '2px', textAlign: 'center', fontWeight: 700, fontSize: 8, borderBottom: 'none' }}>C.A</th>
+                  <th style={{ border: B, padding: '2px', textAlign: 'center', fontWeight: 700, fontSize: 8, borderBottom: 'none' }}>EXAM</th>
+                  <th style={{ border: B, padding: '2px', textAlign: 'center', fontWeight: 700, fontSize: 8, borderBottom: 'none' }}>TOTAL</th>
+                  <th rowSpan={2} style={{ border: B, padding: '2px', textAlign: 'center', fontWeight: 700, fontSize: 8 }}>GRADE</th>
+                  <th rowSpan={2} style={{ border: B, padding: '2px', textAlign: 'center', fontWeight: 700, fontSize: 7 }}>POSITION</th>
+                  <th rowSpan={2} style={{ border: B, padding: '2px', textAlign: 'center', fontWeight: 700, fontSize: 7 }}>REMARKS</th>
+                  <th rowSpan={2} style={{ border: B, padding: '2px', textAlign: 'center', fontWeight: 700, fontSize: 7 }}>CLASS AVG</th>
+                  <th rowSpan={2} style={{ border: B, padding: '2px', textAlign: 'center', fontWeight: 700, fontSize: 7 }}>1st Term</th>
+                </tr>
+                <tr style={{ backgroundColor: '#eee' }}>
+                  <th style={{ border: B, padding: '1px', textAlign: 'center', fontWeight: 600, fontSize: 7, borderTop: 'none' }}>{testWeight}</th>
+                  <th style={{ border: B, padding: '1px', textAlign: 'center', fontWeight: 600, fontSize: 7, borderTop: 'none' }}>100</th>
+                  <th style={{ border: B, padding: '1px', textAlign: 'center', fontWeight: 600, fontSize: 7, borderTop: 'none' }}>100</th>
                 </tr>
               </thead>
               <tbody>
-                {subjects.map((subject, idx) => {
-                  const testScore = subject.testScore ?? subject.testWeightedScore ?? 0;
-                  const examScore = subject.examScore ?? subject.examWeightedScore ?? 0;
-                  const total = subject.obtainedMarks || (Number(testScore) + Number(examScore));
+                {subjects.map((s, i) => {
+                  const t = s.testScore ?? s.testWeightedScore ?? null;
+                  const e = s.examScore ?? s.examWeightedScore ?? null;
+                  const tot = s.obtainedMarks || ((Number(t) || 0) + (Number(e) || 0));
                   return (
-                    <tr key={idx} style={{ backgroundColor: idx % 2 === 0 ? '#ffffff' : '#f9fafb' }}>
-                      <td style={{ border: '1px solid #9ca3af', padding: '3px', fontWeight: 500, textTransform: 'uppercase' }}>{subject.subjectName}</td>
-                      <td style={{ border: '1px solid #9ca3af', padding: '3px', textAlign: 'center' }}>{testScore}</td>
-                      <td style={{ border: '1px solid #9ca3af', padding: '3px', textAlign: 'center' }}>{examScore}</td>
-                      <td style={{ border: '1px solid #9ca3af', padding: '3px', textAlign: 'center', fontWeight: 600 }}>{total}</td>
-                      <td style={{ border: '1px solid #9ca3af', padding: '3px', textAlign: 'center', fontWeight: 600 }}>{subject.grade || '-'}</td>
-                      <td style={{ border: '1px solid #9ca3af', padding: '3px', textAlign: 'center' }}>{subject.subjectPosition || '-'}</td>
-                      <td style={{ border: '1px solid #9ca3af', padding: '3px', textAlign: 'center', fontSize: '7px' }}>{subject.remarks || getRemarkFromGrade(subject.grade)}</td>
+                    <tr key={i}>
+                      <td style={{ border: BL, padding: '3px 4px', fontSize: 8, fontWeight: 500, textTransform: 'uppercase', height: 18, verticalAlign: 'middle', wordBreak: 'break-word', lineHeight: 1.1 }}>{s.subjectName}</td>
+                      <td style={{ border: BL, padding: '2px', fontSize: 8, textAlign: 'center', verticalAlign: 'middle' }}>{t !== null ? t : ''}</td>
+                      <td style={{ border: BL, padding: '2px', fontSize: 8, textAlign: 'center', verticalAlign: 'middle' }}>{e !== null ? e : ''}</td>
+                      <td style={{ border: BL, padding: '2px', fontSize: 8, textAlign: 'center', fontWeight: 700, verticalAlign: 'middle' }}>{tot || ''}</td>
+                      <td style={{ border: BL, padding: '2px', fontSize: 8, textAlign: 'center', fontWeight: 700, verticalAlign: 'middle' }}>{s.grade || ''}</td>
+                      <td style={{ border: BL, padding: '2px', fontSize: 8, textAlign: 'center', verticalAlign: 'middle' }}>{s.subjectPosition || ''}</td>
+                      <td style={{ border: BL, padding: '2px', fontSize: 7, textAlign: 'center', fontStyle: 'italic', verticalAlign: 'middle', wordBreak: 'break-word', lineHeight: 1.1 }}>{s.remarks || getRemarkFromGrade(s.grade)}</td>
+                      <td style={{ border: BL, padding: '2px', fontSize: 8, textAlign: 'center', verticalAlign: 'middle' }}>{s.classAverage != null ? s.classAverage : ''}</td>
+                      <td style={{ border: BL, padding: '2px', fontSize: 8, textAlign: 'center', verticalAlign: 'middle' }}></td>
                     </tr>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Performance Summary */}
-          <div style={{ border: '1px solid #1f2937', marginTop: '6px' }}>
-            <div style={{ backgroundColor: '#e5e7eb', textAlign: 'center', padding: '3px', fontWeight: 'bold', borderBottom: '1px solid #1f2937', fontSize: '9px' }}>
-              PERFORMANCE SUMMARY
-            </div>
-            <div style={{ padding: '6px', fontSize: '9px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Total Obtained:</span>
-                <span style={{ fontWeight: 'bold' }}>{totalObtained}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>%AGE:</span>
-                <span style={{ fontWeight: 'bold' }}>{avgPercentage}%</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>Total Obtainable:</span>
-                <span style={{ fontWeight: 'bold' }}>{totalMax}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>GRADE:</span>
-                <span style={{ fontWeight: 'bold', fontSize: '14px' }}>{overallGrade}</span>
-              </div>
-            </div>
-            <div style={{ borderTop: '1px solid #9ca3af', padding: '4px', textAlign: 'center' }}>
-              <span style={{ fontWeight: 'bold', fontSize: '10px' }}>{getRemarkFromGrade(overallGrade)}</span>
-            </div>
-          </div>
-
-          {/* Grade Scale */}
-          <div style={{ border: '1px solid #1f2937', marginTop: '6px' }}>
-            <div style={{ backgroundColor: '#e5e7eb', textAlign: 'center', padding: '3px', fontWeight: 'bold', borderBottom: '1px solid #1f2937', fontSize: '8px' }}>
-              GRADE SCALE
-            </div>
-            <div style={{ padding: '4px', fontSize: '7px', textAlign: 'center' }}>
-              70-100%=A(EXCELLENT) 60-69%=B(VERY GOOD) 50-59%=C(GOOD) 40-49%=D(PASS) 30-39%=E(FAIR) 0-29%=F(WEAK)
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column */}
-        <div style={{ width: '170px', flexShrink: 0 }}>
-          {/* Student Photo Placeholder */}
-          <div style={{ border: '1px solid #1f2937', height: '70px', marginBottom: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f9fafb' }}>
-            {reportCard.studentPhoto ? (
-              <img 
-                src={reportCard.studentPhoto} 
-                alt={reportCard.studentName}
-                style={{ height: '100%', width: '100%', objectFit: 'cover' }}
-                crossOrigin="anonymous"
-              />
-            ) : (
-              <span style={{ color: '#9ca3af', fontSize: '9px' }}>Photo</span>
-            )}
-          </div>
-
-          {/* Attendance Summary */}
-          <div style={{ border: '1px solid #1f2937', marginBottom: '6px' }}>
-            <div style={{ backgroundColor: '#e5e7eb', textAlign: 'center', padding: '3px', fontWeight: 'bold', borderBottom: '1px solid #1f2937', fontSize: '8px' }}>
-              ATTENDANCE SUMMARY
-            </div>
-            <div style={{ fontSize: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px', borderBottom: '1px solid #d1d5db' }}>
-                <span>No of Times School Opened</span>
-                <span style={{ fontWeight: 'bold' }}>{attendance.timesSchoolOpened}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px', borderBottom: '1px solid #d1d5db' }}>
-                <span>No of Times Present</span>
-                <span style={{ fontWeight: 'bold' }}>{attendance.timesPresent}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px', borderBottom: '1px solid #d1d5db' }}>
-                <span>No of Times Absent</span>
-                <span style={{ fontWeight: 'bold' }}>{attendance.timesAbsent}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '3px' }}>
-                <span>Attendance %</span>
-                <span style={{ fontWeight: 'bold' }}>{attendance.attendancePercentage || (attendance.timesSchoolOpened > 0 ? Math.round((attendance.timesPresent / attendance.timesSchoolOpened) * 100) : 0)}%</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Affective Domain */}
-          <div style={{ border: '1px solid #1f2937', marginBottom: '6px' }}>
-            <div style={{ backgroundColor: '#e5e7eb', textAlign: 'center', padding: '3px', fontWeight: 'bold', borderBottom: '1px solid #1f2937', fontSize: '8px' }}>
-              AFFECTIVE DOMAIN
-            </div>
-            <table style={{ width: '100%', fontSize: '7px', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th style={{ borderBottom: '1px solid #d1d5db', padding: '2px', textAlign: 'left' }}></th>
-                  <th style={{ borderBottom: '1px solid #d1d5db', padding: '2px', textAlign: 'center' }}>5 4 3 2 1</th>
-                </tr>
-              </thead>
-              <tbody>
-                {affectiveLabels.map(({ key, label }) => (
-                  <tr key={key}>
-                    <td style={{ padding: '2px', borderBottom: '1px solid #e5e7eb', fontSize: '7px' }}>{label}</td>
-                    <td style={{ padding: '2px', borderBottom: '1px solid #e5e7eb' }}>
-                      <RatingCell value={affectiveTraits[key as keyof AffectiveTraits]} />
-                    </td>
+                {emptyRows.map((_, i) => (
+                  <tr key={`e${i}`}>
+                    <td style={{ border: BL, height: 18 }}>&nbsp;</td>
+                    <td style={{ border: BL }}>&nbsp;</td>
+                    <td style={{ border: BL }}>&nbsp;</td>
+                    <td style={{ border: BL }}>&nbsp;</td>
+                    <td style={{ border: BL }}>&nbsp;</td>
+                    <td style={{ border: BL }}>&nbsp;</td>
+                    <td style={{ border: BL }}>&nbsp;</td>
+                    <td style={{ border: BL }}>&nbsp;</td>
+                    <td style={{ border: BL }}>&nbsp;</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
 
-          {/* Psychomotor Domain */}
-          <div style={{ border: '1px solid #1f2937', marginBottom: '6px' }}>
-            <div style={{ backgroundColor: '#e5e7eb', textAlign: 'center', padding: '3px', fontWeight: 'bold', borderBottom: '1px solid #1f2937', fontSize: '8px' }}>
-              PSYCHOMOTOR DOMAIN
-            </div>
-            <table style={{ width: '100%', fontSize: '7px', borderCollapse: 'collapse' }}>
+            {/* ── PERFORMANCE SUMMARY ── */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', border: B, marginTop: GAP, tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '28%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '14%' }} />
+                <col style={{ width: '44%' }} />
+              </colgroup>
               <thead>
+                <tr><th colSpan={4} style={sectionHeader}>PERFORMANCE SUMMARY</th></tr>
+              </thead>
+              <tbody>
                 <tr>
-                  <th style={{ borderBottom: '1px solid #d1d5db', padding: '2px', textAlign: 'left' }}></th>
-                  <th style={{ borderBottom: '1px solid #d1d5db', padding: '2px', textAlign: 'center' }}>5 4 3 2 1</th>
+                  <td style={{ padding: '4px 6px', fontSize: 9, borderRight: BL, verticalAlign: 'middle' }}>Total Obtained:</td>
+                  <td style={{ padding: '4px 4px', fontSize: 10, fontWeight: 700, borderRight: BL, verticalAlign: 'middle' }}>{totalObtained}</td>
+                  <td style={{ padding: '4px 4px', fontSize: 9, borderRight: BL, verticalAlign: 'middle' }}>%TAGE:</td>
+                  <td rowSpan={2} style={{ padding: '4px', fontSize: 22, fontWeight: 900, textAlign: 'center', verticalAlign: 'middle', lineHeight: 1 }}>
+                    {avgPct}%
+                  </td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '4px 6px', fontSize: 9, borderRight: BL, borderTop: BL, verticalAlign: 'middle' }}>Total Obtainable:</td>
+                  <td style={{ padding: '4px 4px', fontSize: 10, fontWeight: 700, borderRight: BL, borderTop: BL, verticalAlign: 'middle' }}>{totalMax}</td>
+                  <td style={{ padding: '4px 4px', fontSize: 9, borderRight: BL, borderTop: BL, verticalAlign: 'middle' }}>GRADE:</td>
+                </tr>
+                <tr>
+                  <td colSpan={3} style={{ borderTop: B }}></td>
+                  <td style={{ padding: '3px 4px', fontSize: 22, fontWeight: 900, textAlign: 'center', borderTop: B, lineHeight: 1, verticalAlign: 'middle' }}>
+                    {overallGrade}
+                  </td>
+                </tr>
+                <tr>
+                  <td colSpan={4} style={{ textAlign: 'center', padding: '5px 0', borderTop: B, fontWeight: 700, fontSize: 10, letterSpacing: 0.5, verticalAlign: 'middle' }}>
+                    {getRemarkFromGrade(overallGrade)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+
+            {/* ── GRADE SCALE ── */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', border: B, marginTop: GAP }}>
+              <thead><tr><th style={sectionHeader}>GRADE SCALE</th></tr></thead>
+              <tbody><tr>
+                <td style={{ padding: '4px 6px', fontSize: 7, textAlign: 'center', lineHeight: 1.5 }}>
+                  70-100%=A(EXCELLENT)&ensp;60-69.9%=B(VERY GOOD)&ensp;50-59.9%=C(GOOD)&ensp;40-49.9%=D(PASS)&ensp;30-39.9%=E(FAIR)&ensp;0-29.9%=F(WEAK)
+                </td>
+              </tr></tbody>
+            </table>
+          </td>
+
+          {/* ────── RIGHT COLUMN ────── */}
+          <td style={{ verticalAlign: 'top' }}>
+            {/* ── ATTENDANCE SUMMARY ── */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', border: B, marginBottom: GAP, tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '68%' }} />
+                <col style={{ width: '32%' }} />
+              </colgroup>
+              <thead><tr><th colSpan={2} style={sectionHeader}>ATTENDANCE SUMMARY</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td style={{ padding: '3px 4px', fontSize: 8, borderBottom: BL, verticalAlign: 'middle' }}>No of Times School Opened</td>
+                  <td style={{ padding: '3px 4px', fontSize: 8, textAlign: 'right', fontWeight: 700, borderBottom: BL, verticalAlign: 'middle' }}>{att.timesSchoolOpened}</td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '3px 4px', fontSize: 8, borderBottom: BL, verticalAlign: 'middle' }}>No of Times Present</td>
+                  <td style={{ padding: '3px 4px', fontSize: 8, textAlign: 'right', fontWeight: 700, borderBottom: BL, verticalAlign: 'middle' }}>
+                    {att.timesPresent}&ensp;<span style={{ fontSize: 7, fontWeight: 400 }}>({attPct}%)</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style={{ padding: '3px 4px', fontSize: 8, verticalAlign: 'middle' }}>No of Times Absent</td>
+                  <td style={{ padding: '3px 4px', fontSize: 8, textAlign: 'right', fontWeight: 700, verticalAlign: 'middle' }}>{att.timesAbsent}</td>
+                </tr>
+              </tbody>
+            </table>
+
+            {/* ── AFFECTIVE DOMAIN ── */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', border: B, marginBottom: GAP, tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '53%' }} />
+                <col style={{ width: '47%' }} />
+              </colgroup>
+              <thead>
+                <tr><th colSpan={2} style={sectionHeader}>AFFECTIVE DOMAIN</th></tr>
+                <tr style={{ backgroundColor: '#f5f5f5' }}>
+                  <th style={{ border: BL, padding: 2, textAlign: 'left', fontSize: 7 }}></th>
+                  <th style={{ border: BL, padding: 2, fontSize: 7, textAlign: 'center' }}>
+                    {[5, 4, 3, 2, 1].map(n =>
+                      <span key={n} style={{ display: 'inline-block', width: 12, textAlign: 'center', fontWeight: 700 }}>{n}</span>
+                    )}
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {psychomotorLabels.map(({ key, label }) => (
+                {affLabels.map(({ key, label }) => (
                   <tr key={key}>
-                    <td style={{ padding: '2px', borderBottom: '1px solid #e5e7eb', fontSize: '7px' }}>{label}</td>
-                    <td style={{ padding: '2px', borderBottom: '1px solid #e5e7eb' }}>
-                      <RatingCell value={psychomotorSkills[key as keyof PsychomotorSkills]} />
-                    </td>
+                    <td style={{ border: BL, padding: '2px 4px', fontSize: 7, verticalAlign: 'middle', lineHeight: 1.2 }}>{label}</td>
+                    {ratingBoxes(aff[key as keyof AffectiveTraits])}
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
 
-          {/* Rating Indices */}
-          <div style={{ border: '1px solid #1f2937', marginBottom: '6px', fontSize: '6px', padding: '4px' }}>
-            <div style={{ fontWeight: 'bold', textAlign: 'center', borderBottom: '1px solid #d1d5db', paddingBottom: '2px', marginBottom: '2px' }}>Rating Indices</div>
-            <div>5 - Maintains an Excellent degree of Observable traits.</div>
-            <div>4 - Maintains a High level of Observable traits.</div>
-            <div>3 - Acceptable level of Observable traits.</div>
-            <div>2 - Shows Minimal regard for Observable traits.</div>
-            <div>1 - Has No regard for Observable traits.</div>
-          </div>
-
-          {/* Grade Analysis */}
-          <div style={{ border: '1px solid #1f2937' }}>
-            <div style={{ backgroundColor: '#e5e7eb', textAlign: 'center', padding: '3px', fontWeight: 'bold', borderBottom: '1px solid #1f2937', fontSize: '8px' }}>
-              GRADE ANALYSIS
-            </div>
-            <table style={{ width: '100%', fontSize: '8px', borderCollapse: 'collapse' }}>
+            {/* ── PSYCHOMOTOR DOMAIN ── */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', border: B, marginBottom: GAP, tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: '53%' }} />
+                <col style={{ width: '47%' }} />
+              </colgroup>
               <thead>
-                <tr style={{ backgroundColor: '#f3f4f6' }}>
-                  <th style={{ border: '1px solid #d1d5db', padding: '2px' }}>GRADE</th>
-                  <th style={{ border: '1px solid #d1d5db', padding: '2px' }}>A</th>
-                  <th style={{ border: '1px solid #d1d5db', padding: '2px' }}>B</th>
-                  <th style={{ border: '1px solid #d1d5db', padding: '2px' }}>C</th>
-                  <th style={{ border: '1px solid #d1d5db', padding: '2px' }}>D</th>
-                  <th style={{ border: '1px solid #d1d5db', padding: '2px' }}>E</th>
-                  <th style={{ border: '1px solid #d1d5db', padding: '2px' }}>F</th>
+                <tr><th colSpan={2} style={sectionHeader}>PSYCHOMOTOR DOMAIN</th></tr>
+                <tr style={{ backgroundColor: '#f5f5f5' }}>
+                  <th style={{ border: BL, padding: 2, textAlign: 'left', fontSize: 7 }}></th>
+                  <th style={{ border: BL, padding: 2, fontSize: 7, textAlign: 'center' }}>
+                    {[5, 4, 3, 2, 1].map(n =>
+                      <span key={n} style={{ display: 'inline-block', width: 12, textAlign: 'center', fontWeight: 700 }}>{n}</span>
+                    )}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {psyLabels.map(({ key, label }) => (
+                  <tr key={key}>
+                    <td style={{ border: BL, padding: '2px 4px', fontSize: 7, verticalAlign: 'middle', lineHeight: 1.2 }}>{label}</td>
+                    {ratingBoxes(psy[key as keyof PsychomotorSkills])}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* ── RATING INDICES ── */}
+            <div style={{ border: B, padding: '4px 5px', marginBottom: GAP, fontSize: 7, lineHeight: 1.6 }}>
+              <div style={{ fontWeight: 700, textAlign: 'center', borderBottom: BL, paddingBottom: 2, marginBottom: 2, fontSize: 8 }}>Rating Indices</div>
+              <div>5 - Maintains an Excellent degree of Observable traits.</div>
+              <div>4 - Maintains a High level of Observable traits.</div>
+              <div>3 - Acceptable level of Observable traits.</div>
+              <div>2 - Shows Minimal regard for Observable traits.</div>
+              <div>1 - Has No regard for Observable traits.</div>
+            </div>
+
+            {/* ── GRADE ANALYSIS ── */}
+            <table style={{ width: '100%', borderCollapse: 'collapse', border: B, tableLayout: 'fixed' }}>
+              <thead>
+                <tr><th colSpan={7} style={sectionHeader}>GRADE ANALYSIS</th></tr>
+                <tr style={{ backgroundColor: '#eee' }}>
+                  {['GRADE', 'A', 'B', 'C', 'D', 'E', 'F'].map(g => (
+                    <th key={g} style={{ border: B, padding: 2, fontSize: 8, fontWeight: 700, textAlign: 'center', verticalAlign: 'middle' }}>{g}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td style={{ border: '1px solid #d1d5db', padding: '2px', textAlign: 'center', fontWeight: 600 }}>No.</td>
-                  <td style={{ border: '1px solid #d1d5db', padding: '2px', textAlign: 'center' }}>{gradeCounts.A}</td>
-                  <td style={{ border: '1px solid #d1d5db', padding: '2px', textAlign: 'center' }}>{gradeCounts.B}</td>
-                  <td style={{ border: '1px solid #d1d5db', padding: '2px', textAlign: 'center' }}>{gradeCounts.C}</td>
-                  <td style={{ border: '1px solid #d1d5db', padding: '2px', textAlign: 'center' }}>{gradeCounts.D}</td>
-                  <td style={{ border: '1px solid #d1d5db', padding: '2px', textAlign: 'center' }}>{gradeCounts.E}</td>
-                  <td style={{ border: '1px solid #d1d5db', padding: '2px', textAlign: 'center' }}>{gradeCounts.F}</td>
+                  <td style={{ border: B, padding: 2, fontSize: 8, textAlign: 'center', fontWeight: 600, verticalAlign: 'middle' }}>No.</td>
+                  {(['A', 'B', 'C', 'D', 'E', 'F'] as const).map(g => (
+                    <td key={g} style={{ border: B, padding: 2, fontSize: 8, textAlign: 'center', verticalAlign: 'middle' }}>{gradeCounts[g]}</td>
+                  ))}
                 </tr>
               </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '3px 0', borderTop: B, fontWeight: 700, fontSize: 8, letterSpacing: 0.3 }}>
+                    TOTAL SUBJECTS OFFERED: {subjects.length}
+                  </td>
+                </tr>
+              </tfoot>
             </table>
-            <div style={{ textAlign: 'center', padding: '3px', borderTop: '1px solid #d1d5db', fontWeight: 600, fontSize: '8px' }}>
-              TOTAL SUBJECTS OFFERED: {subjects.length}
-            </div>
-          </div>
-        </div>
-      </div>
+          </td>
+        </tr></tbody>
+      </table>
 
-      {/* Bottom Section - Remarks and Signatures */}
-      <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      {/* ═══════════ BOTTOM — pure tables, NO flexbox ═══════════ */}
+      <div style={{ marginTop: 6 }}>
         {/* Teacher's Remark */}
-        <div style={{ border: '1px solid #1f2937' }}>
-          <div style={{ display: 'flex' }}>
-            <div style={{ backgroundColor: '#e5e7eb', padding: '4px', fontWeight: 'bold', fontSize: '9px', width: '80px', borderRight: '1px solid #1f2937', flexShrink: 0 }}>Teacher's Remark:</div>
-            <div style={{ padding: '4px', flex: 1, minHeight: '20px', fontSize: '9px', fontStyle: 'italic' }}>
-              {reportCard.teacherRemarks || 'A bright, diligent and studious student. Always inquisitive and ready to learn.'}
-            </div>
-          </div>
-        </div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', border: B, marginBottom: GAP, tableLayout: 'fixed' }}>
+          <colgroup><col style={{ width: '18%' }} /><col /></colgroup>
+          <tbody><tr>
+            <td style={labelCell}>Teacher's Remark:</td>
+            <td style={{ ...valueCell, fontStyle: 'italic', minHeight: 24, lineHeight: 1.5, wordBreak: 'break-word' as const }}>
+              {reportCard.teacherRemarks || ''}
+            </td>
+          </tr></tbody>
+        </table>
 
-        {/* Teacher's Signature */}
-        <div style={{ display: 'flex', gap: '12px', fontSize: '9px', alignItems: 'baseline' }}>
-          <div style={{ display: 'flex', gap: '4px', flex: 1 }}>
-            <span style={{ fontWeight: 600 }}>Teacher's Name:</span>
-            <span style={{ borderBottom: '1px solid #9ca3af', flex: 1, textTransform: 'uppercase' }}>{reportCard.teacherName || ''}</span>
-          </div>
-          <div style={{ display: 'flex', gap: '4px', width: '100px' }}>
-            <span style={{ fontWeight: 600 }}>Sign:</span>
-            <span style={{ borderBottom: '1px solid #9ca3af', flex: 1 }}></span>
-          </div>
-        </div>
+        {/* Teacher Name + Sign — bordered grid */}
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: GAP, tableLayout: 'fixed', border: B }}>
+          <colgroup>
+            <col style={{ width: '18%' }} />
+            <col style={{ width: '47%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '27%' }} />
+          </colgroup>
+          <tbody><tr>
+            <td style={labelCell}>Teacher's Name:</td>
+            <td style={{ ...valueCell, textTransform: 'uppercase', fontWeight: 600 }}>
+              {reportCard.teacherName || ''}
+            </td>
+            <td style={labelCell}>Sign:</td>
+            <td style={{ ...valueCell, minHeight: 20 }}>
+              {reportCard.teacherSignatureUrl ? (
+                <img src={reportCard.teacherSignatureUrl} alt="" style={{ height: 20, objectFit: 'contain' }} crossOrigin="anonymous" />
+              ) : ''}
+            </td>
+          </tr></tbody>
+        </table>
 
         {/* Principal's Remark */}
-        <div style={{ border: '1px solid #1f2937' }}>
-          <div style={{ display: 'flex' }}>
-            <div style={{ backgroundColor: '#e5e7eb', padding: '4px', fontWeight: 'bold', fontSize: '9px', width: '80px', borderRight: '1px solid #1f2937', flexShrink: 0 }}>Principal's Remark:</div>
-            <div style={{ padding: '4px', flex: 1, minHeight: '20px', fontSize: '9px', fontStyle: 'italic' }}>
-              {reportCard.principalRemarks || 'An outstanding result!! You should keep it up'}
-            </div>
-          </div>
-        </div>
+        <table style={{ width: '100%', borderCollapse: 'collapse', border: B, marginBottom: GAP, tableLayout: 'fixed' }}>
+          <colgroup><col style={{ width: '18%' }} /><col /></colgroup>
+          <tbody><tr>
+            <td style={labelCell}>Principal's Remark:</td>
+            <td style={{ ...valueCell, fontStyle: 'italic', minHeight: 24, lineHeight: 1.5, wordBreak: 'break-word' as const }}>
+              {reportCard.principalRemarks || ''}
+            </td>
+          </tr></tbody>
+        </table>
 
-        {/* Principal's Signature */}
-        <div style={{ display: 'flex', gap: '12px', fontSize: '9px', alignItems: 'baseline' }}>
-          <div style={{ display: 'flex', gap: '4px', flex: 1 }}>
-            <span style={{ fontWeight: 600 }}>Principal's Name:</span>
-            <span style={{ borderBottom: '1px solid #9ca3af', flex: 1, textTransform: 'uppercase' }}>{reportCard.principalName || ''}</span>
-          </div>
-          <div style={{ display: 'flex', gap: '4px', width: '100px' }}>
-            <span style={{ fontWeight: 600 }}>Sign:</span>
-            <span style={{ borderBottom: '1px solid #9ca3af', flex: 1 }}></span>
-          </div>
-        </div>
+        {/* Principal Name + Sign — bordered grid */}
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: GAP, tableLayout: 'fixed', border: B }}>
+          <colgroup>
+            <col style={{ width: '18%' }} />
+            <col style={{ width: '47%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '27%' }} />
+          </colgroup>
+          <tbody><tr>
+            <td style={labelCell}>Principal's Name:</td>
+            <td style={{ ...valueCell, textTransform: 'uppercase', fontWeight: 600 }}>
+              {reportCard.principalName || ''}
+            </td>
+            <td style={labelCell}>Sign:</td>
+            <td style={{ ...valueCell, minHeight: 20 }}>
+              {reportCard.principalSignatureUrl ? (
+                <img src={reportCard.principalSignatureUrl} alt="" style={{ height: 20, objectFit: 'contain' }} crossOrigin="anonymous" />
+              ) : ''}
+            </td>
+          </tr></tbody>
+        </table>
 
-        {/* Next Term and Date */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', borderTop: '1px solid #9ca3af', paddingTop: '6px', marginTop: '4px' }}>
-          <div style={{ display: 'flex', gap: '4px', alignItems: 'baseline' }}>
-            <span style={{ fontWeight: 600 }}>Next Term Begins:</span>
-            <span style={{ borderBottom: '1px solid #9ca3af', minWidth: '80px' }}>{reportCard.nextTermBegins || ''}</span>
-          </div>
-          <div style={{ display: 'flex', gap: '4px', alignItems: 'baseline' }}>
-            <span style={{ fontWeight: 600 }}>Date:</span>
-            <span style={{ borderBottom: '1px solid #9ca3af', minWidth: '80px' }}>{reportCard.dateIssued || new Date().toLocaleDateString()}</span>
-          </div>
-        </div>
+        {/* Next Term + Date — bordered grid */}
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: GAP, tableLayout: 'fixed', border: B }}>
+          <colgroup>
+            <col style={{ width: '18%' }} />
+            <col style={{ width: '37%' }} />
+            <col style={{ width: '8%' }} />
+            <col style={{ width: '37%' }} />
+          </colgroup>
+          <tbody><tr>
+            <td style={labelCell}>Next Term Begins:</td>
+            <td style={valueCell}>{reportCard.nextTermBegins || ''}</td>
+            <td style={labelCell}>Date:</td>
+            <td style={valueCell}>{reportCard.dateIssued || new Date().toLocaleDateString()}</td>
+          </tr></tbody>
+        </table>
 
-        {/* Position Summary */}
-        <div style={{ textAlign: 'center', border: '1px solid #1f2937', padding: '6px', backgroundColor: '#f9fafb', marginTop: '4px' }}>
-          <span style={{ fontWeight: 'bold', fontSize: '11px' }}>
-            CLASS POSITION: {formatPosition(reportCard.position)} out of {reportCard.totalStudentsInClass} Students
-          </span>
+        {/* Class Position */}
+        <div style={{ textAlign: 'center', border: B, padding: '7px 0', backgroundColor: '#f5f5f5', fontWeight: 900, fontSize: 12, letterSpacing: 0.5 }}>
+          CLASS POSITION: {formatPosition(reportCard.position)} out of {reportCard.totalStudentsInClass} Students
         </div>
 
         {/* Footer */}
-        <div style={{ textAlign: 'center', fontSize: '7px', color: '#6b7280', marginTop: '4px', paddingTop: '4px', borderTop: '1px solid #d1d5db' }}>
-          <p style={{ fontStyle: 'italic', margin: 0 }}>"{schoolMotto}"</p>
-          <p style={{ margin: '2px 0 0 0' }}>{schoolName} - {schoolAddress}</p>
+        <div style={{ textAlign: 'center', fontSize: 7, color: '#666', marginTop: 5, paddingTop: 3, borderTop: '1px solid #ccc' }}>
+          <div>{schoolName} &bull; {schoolAddress}</div>
+          {schoolMotto && <div style={{ fontStyle: 'italic' }}>"{schoolMotto}"</div>}
         </div>
       </div>
     </div>

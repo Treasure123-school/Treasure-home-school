@@ -1,4 +1,4 @@
-import html2canvas from 'html2canvas';
+import { toCanvas, toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 
 export interface ExportOptions {
@@ -9,43 +9,59 @@ export interface ExportOptions {
   orientation?: 'portrait' | 'landscape';
 }
 
+/**
+ * Capture a DOM element as a canvas using html-to-image.
+ * html-to-image uses the browser's native SVG foreignObject rendering,
+ * which produces pixel-perfect output (unlike html2canvas which
+ * re-parses CSS with its own engine and breaks table layouts).
+ */
+async function captureToCanvas(
+  element: HTMLElement,
+  scale: number,
+  backgroundColor: string
+): Promise<HTMLCanvasElement> {
+  // html-to-image renders via the browser's own engine
+  const canvas = await toCanvas(element, {
+    pixelRatio: scale,
+    backgroundColor,
+    cacheBust: true,
+    // Include all styles in the snapshot
+    includeQueryParams: true,
+    // Skip non-visible elements
+    filter: (node: HTMLElement) => {
+      // Skip script tags and hidden elements
+      if (node.tagName === 'SCRIPT') return false;
+      return true;
+    },
+  });
+  return canvas;
+}
+
 export async function exportToImage(
-  element: HTMLElement, 
+  element: HTMLElement,
   options: ExportOptions = {}
 ): Promise<void> {
-  const { 
-    filename = 'report-card', 
-    scale = 2, 
-    backgroundColor = '#ffffff' 
+  const {
+    filename = 'report-card',
+    scale = 2,
+    backgroundColor = '#ffffff',
   } = options;
 
   try {
-    const clonedElement = element.cloneNode(true) as HTMLElement;
-    clonedElement.style.position = 'absolute';
-    clonedElement.style.left = '-9999px';
-    clonedElement.style.top = '0';
-    clonedElement.style.width = '210mm';
-    clonedElement.style.backgroundColor = backgroundColor;
-    document.body.appendChild(clonedElement);
-
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    const canvas = await html2canvas(clonedElement, {
-      scale,
-      useCORS: true,
-      logging: false,
+    // Use toPng directly for best quality
+    const dataUrl = await toPng(element, {
+      pixelRatio: scale,
       backgroundColor,
-      allowTaint: true,
-      foreignObjectRendering: false,
-      windowWidth: 794,
-      windowHeight: 1123,
+      cacheBust: true,
+      filter: (node: HTMLElement) => {
+        if (node.tagName === 'SCRIPT') return false;
+        return true;
+      },
     });
-
-    document.body.removeChild(clonedElement);
 
     const link = document.createElement('a');
     link.download = `${filename}.png`;
-    link.href = canvas.toDataURL('image/png', 1.0);
+    link.href = dataUrl;
     link.click();
   } catch (error) {
     console.error('Failed to export as image:', error);
@@ -57,70 +73,42 @@ export async function exportToPDF(
   element: HTMLElement,
   options: ExportOptions = {}
 ): Promise<void> {
-  const { 
-    filename = 'report-card', 
-    scale = 2, 
+  const {
+    filename = 'report-card',
+    scale = 2,
     backgroundColor = '#ffffff',
     format = 'a4',
-    orientation = 'portrait'
+    orientation = 'portrait',
   } = options;
 
   try {
-    const clonedElement = element.cloneNode(true) as HTMLElement;
-    clonedElement.style.position = 'absolute';
-    clonedElement.style.left = '-9999px';
-    clonedElement.style.top = '0';
-    clonedElement.style.width = '210mm';
-    clonedElement.style.backgroundColor = backgroundColor;
-    clonedElement.style.padding = '0';
-    clonedElement.style.margin = '0';
-    document.body.appendChild(clonedElement);
-
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    const canvas = await html2canvas(clonedElement, {
-      scale,
-      useCORS: true,
-      logging: false,
-      backgroundColor,
-      allowTaint: true,
-      foreignObjectRendering: false,
-      windowWidth: 794,
-      windowHeight: 1123,
-    });
-
-    document.body.removeChild(clonedElement);
+    const canvas = await captureToCanvas(element, scale, backgroundColor);
 
     const imgData = canvas.toDataURL('image/png', 1.0);
-    
+
     const pageWidth = format === 'a4' ? 210 : 216;
     const pageHeight = format === 'a4' ? 297 : 279;
-    
+
     const imgWidth = pageWidth;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    
+
     const pdf = new jsPDF({
-      orientation: orientation,
+      orientation,
       unit: 'mm',
-      format: format
+      format,
     });
-    
+
     let heightLeft = imgHeight;
-    let position = 0;
     let pageNum = 0;
-    
+
     while (heightLeft > 0) {
-      if (pageNum > 0) {
-        pdf.addPage();
-      }
-      
+      if (pageNum > 0) pdf.addPage();
       const yPosition = pageNum === 0 ? 0 : -(pageHeight * pageNum);
       pdf.addImage(imgData, 'PNG', 0, yPosition, imgWidth, imgHeight);
-      
       heightLeft -= pageHeight;
       pageNum++;
     }
-    
+
     pdf.save(`${filename}.pdf`);
   } catch (error) {
     console.error('Failed to export as PDF:', error);
@@ -166,13 +154,13 @@ export function printElement(element: HTMLElement): void {
     `;
 
     const printWindow = window.open('', '_blank', 'width=800,height=600');
-    
+
     if (!printWindow) {
       const printContainer = document.createElement('div');
       printContainer.className = 'print-only-container';
       printContainer.innerHTML = element.outerHTML;
       document.body.appendChild(printContainer);
-      
+
       const style = document.createElement('style');
       style.textContent = `
         @media print {
@@ -184,9 +172,9 @@ export function printElement(element: HTMLElement): void {
         }
       `;
       document.head.appendChild(style);
-      
+
       window.print();
-      
+
       setTimeout(() => {
         document.body.removeChild(printContainer);
         document.head.removeChild(style);
@@ -230,7 +218,7 @@ export function printElement(element: HTMLElement): void {
         </body>
       </html>
     `);
-    
+
     printWindow.document.close();
 
     const images = printWindow.document.querySelectorAll('img');
@@ -264,21 +252,6 @@ export async function captureReportCardCanvas(
   element: HTMLElement,
   options: ExportOptions = {}
 ): Promise<HTMLCanvasElement> {
-  const { 
-    scale = 2, 
-    backgroundColor = '#ffffff' 
-  } = options;
-
-  const canvas = await html2canvas(element, {
-    scale,
-    useCORS: true,
-    logging: false,
-    backgroundColor,
-    allowTaint: true,
-    foreignObjectRendering: false,
-    windowWidth: 794,
-    windowHeight: 1123,
-  });
-
-  return canvas;
+  const { scale = 2, backgroundColor = '#ffffff' } = options;
+  return captureToCanvas(element, scale, backgroundColor);
 }

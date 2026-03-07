@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, MutableRefObject } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
-import html2canvas from 'html2canvas';
+import { toCanvas } from 'html-to-image';
 import { BaileysReportTemplate } from '@/components/ui/baileys-report-template';
 import { exportToPDF, exportToImage, printElement } from '@/lib/report-export-utils';
 

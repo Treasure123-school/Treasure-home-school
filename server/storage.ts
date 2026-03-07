@@ -23,7 +23,8 @@ import type {
   SuperAdminProfile, InsertSuperAdminProfile, SystemSettings, InsertSystemSettings, Vacancy, InsertVacancy,
   TeacherApplication, InsertTeacherApplication, ApprovedTeacher,
   Timetable, InsertTimetable,
-  StudentSubjectAssignment, InsertStudentSubjectAssignment, ClassSubjectMapping, InsertClassSubjectMapping
+  StudentSubjectAssignment, InsertStudentSubjectAssignment, ClassSubjectMapping, InsertClassSubjectMapping,
+  SyllabusTopic, InsertSyllabusTopic, ExamQuestionBankLink, InsertExamQuestionBankLink
 } from "@shared/schema";
 
 // Get centralized database instance and schema from db.ts
@@ -182,8 +183,8 @@ export interface IStorage {
 
   // Exam questions management
   createExamQuestion(question: InsertExamQuestion): Promise<ExamQuestion>;
-  createExamQuestionWithOptions(question: InsertExamQuestion, options?: Array<{optionText: string; isCorrect: boolean}>): Promise<ExamQuestion>;
-  createExamQuestionsBulk(questionsData: Array<{question: InsertExamQuestion; options?: Array<{optionText: string; isCorrect: boolean}>}>): Promise<{ created: number; questions: ExamQuestion[]; errors: string[] }>;
+  createExamQuestionWithOptions(question: InsertExamQuestion, options?: Array<{ optionText: string; isCorrect: boolean }>): Promise<ExamQuestion>;
+  createExamQuestionsBulk(questionsData: Array<{ question: InsertExamQuestion; options?: Array<{ optionText: string; isCorrect: boolean }> }>): Promise<{ created: number; questions: ExamQuestion[]; errors: string[] }>;
   getExamQuestions(examId: number): Promise<ExamQuestion[]>;
   getExamQuestionById(id: number): Promise<ExamQuestion | undefined>;
   updateExamQuestion(id: number, question: Partial<InsertExamQuestion>): Promise<ExamQuestion | undefined>;
@@ -204,17 +205,39 @@ export interface IStorage {
   getQuestionBanksBySubject(subjectId: number): Promise<QuestionBank[]>;
   updateQuestionBank(id: number, bank: Partial<InsertQuestionBank>): Promise<QuestionBank | undefined>;
   deleteQuestionBank(id: number): Promise<boolean>;
-  
+
   // Question Bank Items management
   createQuestionBankItem(item: InsertQuestionBankItem, options?: Omit<InsertQuestionBankOption, 'questionItemId'>[]): Promise<QuestionBankItem>;
-  getQuestionBankItems(bankId: number, filters?: {questionType?: string; difficulty?: string; tags?: string[]}): Promise<QuestionBankItem[]>;
+  getQuestionBankItems(bankId: number, filters?: { questionType?: string; difficulty?: string; tags?: string[] }): Promise<QuestionBankItem[]>;
   getQuestionBankItemById(id: number): Promise<QuestionBankItem | undefined>;
   updateQuestionBankItem(id: number, item: Partial<InsertQuestionBankItem>): Promise<QuestionBankItem | undefined>;
   deleteQuestionBankItem(id: number): Promise<boolean>;
-  
+
   // Question Bank Item Options management
   getQuestionBankItemOptions(questionItemId: number): Promise<QuestionBankOption[]>;
-  importQuestionsFromBank(examId: number, questionItemIds: number[], randomize?: boolean, maxQuestions?: number): Promise<{imported: number; questions: ExamQuestion[]}>;
+  importQuestionsFromBank(examId: number, questionItemIds: number[], randomize?: boolean, maxQuestions?: number): Promise<{ imported: number; questions: ExamQuestion[] }>;
+
+  // Enhanced Question Bank (Container) management
+  getQuestionBanks(filters?: { subjectId?: number }): Promise<QuestionBank[]>;
+  createQuestionBankRecord(data: InsertQuestionBank): Promise<QuestionBank>;
+  updateQuestionBankRecord(id: number, data: Partial<InsertQuestionBank>): Promise<QuestionBank>;
+  deleteQuestionBankRecord(id: number): Promise<boolean>;
+
+  // Syllabus Topics management
+  getSyllabusTopics(filters: { classId?: number; subjectId?: number; termId?: number; isActive?: boolean }): Promise<SyllabusTopic[]>;
+  getSyllabusTopicById(id: number): Promise<SyllabusTopic | undefined>;
+  createSyllabusTopic(topic: InsertSyllabusTopic): Promise<SyllabusTopic>;
+  createSyllabusTopicsBulk(topics: InsertSyllabusTopic[]): Promise<{ created: number; topics: SyllabusTopic[]; errors: string[] }>;
+  updateSyllabusTopic(id: number, topic: Partial<InsertSyllabusTopic>): Promise<SyllabusTopic | undefined>;
+  deleteSyllabusTopic(id: number): Promise<boolean>;
+
+  // Enhanced Question Bank Queries
+  getQuestionBankItemsFiltered(filters: { bankId?: number; classId?: number; subjectId?: number; termId?: number; topicId?: number; difficulty?: string; questionType?: string; status?: string }): Promise<QuestionBankItem[]>;
+  generateQuestionsFromBank(criteria: { bankId?: number; classId?: number; subjectId?: number; termId?: number; distribution: Array<{ topicId?: number; difficulty?: string; count: number }> }): Promise<{ questions: QuestionBankItem[]; shortfalls: string[] }>;
+
+  // Exam-Question Bank Links
+  createExamQuestionBankLink(link: InsertExamQuestionBankLink): Promise<ExamQuestionBankLink>;
+  getExamQuestionBankLinks(examId: number): Promise<ExamQuestionBankLink[]>;
 
   // Exam sessions management
   createExamSession(session: InsertExamSession): Promise<ExamSession>;
@@ -227,7 +250,7 @@ export interface IStorage {
   getActiveExamSessions(): Promise<ExamSession[]>; // For background cleanup service
   getExpiredExamSessions(now: Date, limit?: number): Promise<ExamSession[]>; // Optimized cleanup query
   createOrGetActiveExamSession(examId: number, studentId: string, sessionData: InsertExamSession): Promise<ExamSession & { wasCreated?: boolean }>; // Idempotent session creation
-  
+
   // Exam retake management
   allowExamRetake(examId: number, studentId: string, archivedBy: string): Promise<{ success: boolean; message: string; archivedSubmissionId?: number }>;
   getExamResultById(id: number): Promise<ExamResult | undefined>;
@@ -362,13 +385,13 @@ export interface IStorage {
 
   // Auto-sync exam score to report card (called after exam submission)
   syncExamScoreToReportCard(studentId: string, examId: number, score: number, maxScore: number): Promise<{ success: boolean; reportCardId?: number; message: string; isNewReportCard?: boolean }>;
-  
+
   // Bulk sync all missing exam scores to existing report card items
   syncAllMissingExamScores(termId?: number): Promise<{ synced: number; failed: number; errors: string[] }>;
-  
+
   // Bulk sync exam results for a specific exam to all students' report cards
   syncExamResultsToReportCards(examId: number): Promise<{ synced: number; failed: number; errors: string[] }>;
-  
+
   // Get report cards accessible by a specific teacher (only subjects where they created exams)
   getTeacherAccessibleReportCards(teacherId: string, termId?: number, classId?: number): Promise<any[]>;
 
@@ -481,7 +504,7 @@ export interface IStorage {
   getAllVacancies(status?: string): Promise<Vacancy[]>;
   updateVacancy(id: string, updates: Partial<InsertVacancy>): Promise<Vacancy | undefined>;
   deleteVacancy(id: string): Promise<boolean>;
-  
+
   // Teacher Applications
   createTeacherApplication(application: InsertTeacherApplication): Promise<TeacherApplication>;
   getTeacherApplication(id: string): Promise<TeacherApplication | undefined>;
@@ -489,7 +512,7 @@ export interface IStorage {
   updateTeacherApplication(id: string, updates: Partial<TeacherApplication>): Promise<TeacherApplication | undefined>;
   approveTeacherApplication(applicationId: string, approvedBy: string): Promise<{ application: TeacherApplication; approvedTeacher: ApprovedTeacher }>;
   rejectTeacherApplication(applicationId: string, reviewedBy: string, reason: string): Promise<TeacherApplication | undefined>;
-  
+
   // Approved Teachers
   getApprovedTeacherByEmail(email: string): Promise<ApprovedTeacher | undefined>;
   getAllApprovedTeachers(): Promise<ApprovedTeacher[]>;
@@ -520,7 +543,7 @@ export interface IStorage {
   deleteStudentSubjectAssignment(id: number): Promise<boolean>;
   deleteStudentSubjectAssignmentsByStudent(studentId: string): Promise<boolean>;
   assignSubjectsToStudent(studentId: string, classId: number, subjectIds: number[], termId?: number, assignedBy?: string): Promise<StudentSubjectAssignment[]>;
-  
+
   // Class subject mappings
   createClassSubjectMapping(mapping: InsertClassSubjectMapping): Promise<ClassSubjectMapping>;
   getClassSubjectMappingById(id: number): Promise<ClassSubjectMapping | undefined>;
@@ -529,28 +552,28 @@ export interface IStorage {
   getSubjectsByClassAndDepartment(classId: number, department?: string): Promise<Subject[]>;
   deleteClassSubjectMapping(id: number): Promise<boolean>;
   deleteClassSubjectMappingsByClass(classId: number): Promise<boolean>;
-  bulkUpdateClassSubjectMappings(additions: Array<{classId: number; subjectId: number; department: string | null; isCompulsory?: boolean}>, removals: Array<{classId: number; subjectId: number; department: string | null}>): Promise<{added: number; removed: number; affectedClassIds: number[]}>;
+  bulkUpdateClassSubjectMappings(additions: Array<{ classId: number; subjectId: number; department: string | null; isCompulsory?: boolean }>, removals: Array<{ classId: number; subjectId: number; department: string | null }>): Promise<{ added: number; removed: number; affectedClassIds: number[] }>;
 
   // Department-based subject logic
   getSubjectsByCategory(category: string): Promise<Subject[]>;
   getSubjectsForClassLevel(classLevel: string, department?: string): Promise<Subject[]>;
   autoAssignSubjectsToStudent(studentId: string, classId: number, department?: string): Promise<StudentSubjectAssignment[]>;
-  
+
   // Sync students with class_subject_mappings (single source of truth)
-  syncStudentsWithClassMappings(classId: number, department?: string): Promise<{synced: number; errors: string[]}>;
-  syncAllStudentsWithMappings(): Promise<{synced: number; errors: string[]}>;
-  
+  syncStudentsWithClassMappings(classId: number, department?: string): Promise<{ synced: number; errors: string[] }>;
+  syncAllStudentsWithMappings(): Promise<{ synced: number; errors: string[] }>;
+
   // Cleanup and sync report cards with class_subject_mappings
-  cleanupReportCardItems(studentId: string): Promise<{removed: number; kept: number}>;
-  cleanupReportCardsForClasses(classIds: number[]): Promise<{studentsProcessed: number; itemsRemoved: number; errors: string[]}>;
-  cleanupAllReportCards(): Promise<{studentsProcessed: number; itemsRemoved: number; errors: string[]}>;
-  
+  cleanupReportCardItems(studentId: string): Promise<{ removed: number; kept: number }>;
+  cleanupReportCardsForClasses(classIds: number[]): Promise<{ studentsProcessed: number; itemsRemoved: number; errors: string[] }>;
+  cleanupAllReportCards(): Promise<{ studentsProcessed: number; itemsRemoved: number; errors: string[] }>;
+
   // FIX: Add missing subjects to existing report cards when new mappings are added
-  addMissingSubjectsToReportCards(classIds: number[]): Promise<{studentsProcessed: number; itemsAdded: number; examScoresSynced: number; errors: string[]}>;
-  repairAllReportCards(): Promise<{studentsProcessed: number; itemsAdded: number; examScoresSynced: number; errors: string[]}>;
-  
+  addMissingSubjectsToReportCards(classIds: number[]): Promise<{ studentsProcessed: number; itemsAdded: number; examScoresSynced: number; errors: string[] }>;
+  repairAllReportCards(): Promise<{ studentsProcessed: number; itemsAdded: number; examScoresSynced: number; errors: string[] }>;
+
   // Sync report card items when exam subject changes
-  syncReportCardItemsOnExamSubjectChange(examId: number, oldSubjectId: number, newSubjectId: number): Promise<{updated: number; errors: string[]}>;
+  syncReportCardItemsOnExamSubjectChange(examId: number, oldSubjectId: number, newSubjectId: number): Promise<{ updated: number; errors: string[] }>;
 
   // Smart deletion methods
   validateDeletion(userId: string): Promise<{
@@ -594,7 +617,7 @@ function normalizeUuid(raw: any): string | undefined {
   // Convert bytes to UUID format
   if (bytes) {
     const hex = bytes.map(b => b.toString(16).padStart(2, '0')).join('');
-    return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`;
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
   }
   return undefined;
 }
@@ -731,7 +754,7 @@ export class DatabaseStorage implements IStorage {
       ...user,
       id: (user as any).id || randomUUID(),
     };
-    
+
     const result = await this.db.insert(schema.users).values(userWithId).returning();
     const createdUser = result[0];
     if (createdUser && createdUser.id) {
@@ -810,23 +833,23 @@ export class DatabaseStorage implements IStorage {
   async deleteUserLegacy(id: string): Promise<boolean> {
     const deletionService = new DeletionService();
     deletionService.reset();
-    
+
     try {
       const user = await this.getUser(id);
       if (!user) {
         return false;
       }
 
-      const userRole = user.roleId === 1 ? 'Super Admin' : 
-                       user.roleId === 2 ? 'Admin' : 
-                       user.roleId === 3 ? 'Teacher' : 
-                       user.roleId === 4 ? 'Student' : 
-                       user.roleId === 5 ? 'Parent' : 'Unknown';
+      const userRole = user.roleId === 1 ? 'Super Admin' :
+        user.roleId === 2 ? 'Admin' :
+          user.roleId === 3 ? 'Teacher' :
+            user.roleId === 4 ? 'Student' :
+              user.roleId === 5 ? 'Parent' : 'Unknown';
 
       console.log(`\n[Legacy Deletion] Starting permanent deletion for ${userRole}: ${user.email || user.username}`);
 
       const filesToDelete: (string | null | undefined)[] = [];
-      
+
       if (user.profileImageUrl) {
         filesToDelete.push(user.profileImageUrl);
       }
@@ -835,7 +858,7 @@ export class DatabaseStorage implements IStorage {
         .from(schema.teacherProfiles)
         .where(eq(schema.teacherProfiles.userId, id))
         .limit(1);
-      
+
       if (teacherProfile[0]?.signatureUrl) {
         filesToDelete.push(teacherProfile[0].signatureUrl);
       }
@@ -843,7 +866,7 @@ export class DatabaseStorage implements IStorage {
       const teacherExams = await this.db.select({ id: schema.exams.id })
         .from(schema.exams)
         .where(eq(schema.exams.createdBy, id));
-      
+
       for (const exam of teacherExams) {
         try {
           await this.deleteExam(exam.id);
@@ -856,23 +879,23 @@ export class DatabaseStorage implements IStorage {
       const questionBanks = await this.db.select({ id: schema.questionBanks.id })
         .from(schema.questionBanks)
         .where(eq(schema.questionBanks.createdBy, id));
-      
+
       for (const qb of questionBanks) {
         try {
           const qbItems = await this.db.select({ id: schema.questionBankItems.id, imageUrl: schema.questionBankItems.imageUrl })
             .from(schema.questionBankItems)
             .where(eq(schema.questionBankItems.questionBankId, qb.id));
-          
+
           for (const item of qbItems) {
             if (item.imageUrl) filesToDelete.push(item.imageUrl);
           }
-          
+
           const qbItemIds = qbItems.map((item: { id: number }) => item.id);
           if (qbItemIds.length > 0) {
             await this.db.delete(schema.questionBankOptions)
               .where(inArray(schema.questionBankOptions.questionId, qbItemIds));
             deletionService.recordDeletion('question_bank_options', qbItemIds.length);
-            
+
             await this.db.delete(schema.questionBankItems)
               .where(eq(schema.questionBankItems.questionBankId, qb.id));
             deletionService.recordDeletion('question_bank_items', qbItemIds.length);
@@ -888,7 +911,7 @@ export class DatabaseStorage implements IStorage {
       const homePageContent = await this.db.select({ id: schema.homePageContent.id, imageUrl: schema.homePageContent.imageUrl })
         .from(schema.homePageContent)
         .where(eq(schema.homePageContent.uploadedBy, id));
-      
+
       for (const content of homePageContent) {
         if (content.imageUrl) filesToDelete.push(content.imageUrl);
       }
@@ -897,40 +920,40 @@ export class DatabaseStorage implements IStorage {
         .where(eq(schema.teacherProfiles.userId, id))
         .returning();
       deletionService.recordDeletion('teacher_profiles', teacherProfileResult.length);
-      
+
       try {
         const teacherAssignmentsResult = await this.db.delete(schema.teacherClassAssignments)
           .where(eq(schema.teacherClassAssignments.teacherId, id))
           .returning();
         deletionService.recordDeletion('teacher_class_assignments', teacherAssignmentsResult.length);
-      } catch (e) {}
-      
+      } catch (e) { }
+
       try {
         const historyResult = await this.db.delete(schema.teacherAssignmentHistory)
           .where(eq(schema.teacherAssignmentHistory.teacherId, id))
           .returning();
         deletionService.recordDeletion('teacher_assignment_history', historyResult.length);
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         const timetableResult = await this.db.delete(schema.timetable)
           .where(eq(schema.timetable.teacherId, id))
           .returning();
         deletionService.recordDeletion('timetable', timetableResult.length);
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         const gradingResult = await this.db.delete(schema.gradingTasks)
           .where(eq(schema.gradingTasks.assignedTeacherId, id))
           .returning();
         deletionService.recordDeletion('grading_tasks', gradingResult.length);
-      } catch (e) {}
+      } catch (e) { }
 
       const adminResult = await this.db.delete(schema.adminProfiles)
         .where(eq(schema.adminProfiles.userId, id))
         .returning();
       deletionService.recordDeletion('admin_profiles', adminResult.length);
-      
+
       const parentResult = await this.db.delete(schema.parentProfiles)
         .where(eq(schema.parentProfiles.userId, id))
         .returning();
@@ -941,13 +964,13 @@ export class DatabaseStorage implements IStorage {
           .where(eq(schema.superAdminProfiles.userId, id))
           .returning();
         deletionService.recordDeletion('super_admin_profiles', superAdminResult.length);
-      } catch (e) {}
-      
+      } catch (e) { }
+
       const tokensResult = await this.db.delete(schema.passwordResetTokens)
         .where(eq(schema.passwordResetTokens.userId, id))
         .returning();
       deletionService.recordDeletion('password_reset_tokens', tokensResult.length);
-      
+
       const invitesAcceptedResult = await this.db.delete(schema.invites)
         .where(eq(schema.invites.acceptedBy, id))
         .returning();
@@ -955,7 +978,7 @@ export class DatabaseStorage implements IStorage {
         .where(eq(schema.invites.createdBy, id))
         .returning();
       deletionService.recordDeletion('invites', invitesAcceptedResult.length + invitesCreatedResult.length);
-      
+
       const notificationsResult = await this.db.delete(schema.notifications)
         .where(eq(schema.notifications.userId, id))
         .returning();
@@ -979,48 +1002,48 @@ export class DatabaseStorage implements IStorage {
           .where(eq(schema.performanceEvents.userId, id))
           .returning();
         deletionService.recordDeletion('performance_events', perfEventsResult.length);
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         const auditResult = await this.db.delete(schema.auditLogs)
           .where(eq(schema.auditLogs.userId, id))
           .returning();
         deletionService.recordDeletion('audit_logs', auditResult.length);
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         const accessLogsResult = await this.db.delete(schema.unauthorizedAccessLogs)
           .where(eq(schema.unauthorizedAccessLogs.userId, id))
           .returning();
         deletionService.recordDeletion('unauthorized_access_logs', accessLogsResult.length);
-      } catch (e) {}
-      
+      } catch (e) { }
+
       const examSessions = await this.db.select({ id: schema.examSessions.id })
         .from(schema.examSessions)
         .where(eq(schema.examSessions.studentId, id));
-      
+
       const sessionIds = examSessions.map((s: { id: number }) => s.id);
-      
+
       if (sessionIds.length > 0) {
         try {
           const sessionGradingResult = await this.db.delete(schema.gradingTasks)
             .where(inArray(schema.gradingTasks.sessionId, sessionIds))
             .returning();
           deletionService.recordDeletion('grading_tasks', sessionGradingResult.length);
-        } catch (e) {}
+        } catch (e) { }
 
         try {
           const sessionPerfResult = await this.db.delete(schema.performanceEvents)
             .where(inArray(schema.performanceEvents.sessionId, sessionIds))
             .returning();
           deletionService.recordDeletion('performance_events', sessionPerfResult.length);
-        } catch (e) {}
+        } catch (e) { }
 
         const answersResult = await this.db.delete(schema.studentAnswers)
           .where(inArray(schema.studentAnswers.sessionId, sessionIds))
           .returning();
         deletionService.recordDeletion('student_answers', answersResult.length);
-        
+
         const sessionsResult = await this.db.delete(schema.examSessions)
           .where(inArray(schema.examSessions.id, sessionIds))
           .returning();
@@ -1031,7 +1054,7 @@ export class DatabaseStorage implements IStorage {
         .where(eq(schema.examResults.studentId, id))
         .returning();
       deletionService.recordDeletion('exam_results', examResultsResult.length);
-      
+
       const attendanceResult = await this.db.delete(schema.attendance)
         .where(eq(schema.attendance.studentId, id))
         .returning();
@@ -1042,40 +1065,40 @@ export class DatabaseStorage implements IStorage {
           .where(eq(schema.continuousAssessment.studentId, id))
           .returning();
         deletionService.recordDeletion('continuous_assessment', caResult.length);
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         const subjectAssignResult = await this.db.delete(schema.studentSubjectAssignments)
           .where(eq(schema.studentSubjectAssignments.studentId, id))
           .returning();
         deletionService.recordDeletion('student_subject_assignments', subjectAssignResult.length);
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         const reportCardItems = await this.db.select({ id: schema.reportCardItems.id })
           .from(schema.reportCardItems)
           .innerJoin(schema.reportCards, eq(schema.reportCardItems.reportCardId, schema.reportCards.id))
           .where(eq(schema.reportCards.studentId, id));
-        
+
         if (reportCardItems.length > 0) {
           const reportCardItemIds = reportCardItems.map((r: any) => r.report_card_items?.id || r.id);
           await this.db.delete(schema.reportCardItems)
             .where(inArray(schema.reportCardItems.id, reportCardItemIds));
           deletionService.recordDeletion('report_card_items', reportCardItemIds.length);
         }
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         const reportCardsResult = await this.db.delete(schema.reportCards)
           .where(eq(schema.reportCards.studentId, id))
           .returning();
         deletionService.recordDeletion('report_cards', reportCardsResult.length);
-      } catch (e) {}
-      
+      } catch (e) { }
+
       await this.db.update(schema.students)
         .set({ parentId: null })
         .where(eq(schema.students.parentId, id));
-      
+
       const studentResult = await this.db.delete(schema.students)
         .where(eq(schema.students.id, id))
         .returning();
@@ -1085,122 +1108,122 @@ export class DatabaseStorage implements IStorage {
         await this.db.update(schema.classes)
           .set({ classTeacherId: null })
           .where(eq(schema.classes.classTeacherId, id));
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await this.db.update(schema.contactMessages)
           .set({ respondedBy: null })
           .where(eq(schema.contactMessages.respondedBy, id));
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await this.db.update(schema.systemSettings)
           .set({ updatedBy: null })
           .where(eq(schema.systemSettings.updatedBy, id));
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await this.db.update(schema.settings)
           .set({ updatedBy: null })
           .where(eq(schema.settings.updatedBy, id));
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await this.db.update(schema.reportCardItems)
           .set({ teacherId: null })
           .where(eq(schema.reportCardItems.teacherId, id));
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await this.db.update(schema.reportCardItems)
           .set({ testExamCreatedBy: null })
           .where(eq(schema.reportCardItems.testExamCreatedBy, id));
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await this.db.update(schema.reportCardItems)
           .set({ examExamCreatedBy: null })
           .where(eq(schema.reportCardItems.examExamCreatedBy, id));
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await this.db.update(schema.exams)
           .set({ createdBy: null })
           .where(eq(schema.exams.createdBy, id));
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await this.db.update(schema.exams)
           .set({ teacherInChargeId: null })
           .where(eq(schema.exams.teacherInChargeId, id));
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         const vacanciesResult = await this.db.delete(schema.vacancies)
           .where(eq(schema.vacancies.createdBy, id))
           .returning();
         deletionService.recordDeletion('vacancies', vacanciesResult.length);
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await this.db.update(schema.teacherApplications)
           .set({ reviewedBy: null })
           .where(eq(schema.teacherApplications.reviewedBy, id));
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await this.db.update(schema.approvedTeachers)
           .set({ approvedBy: null })
           .where(eq(schema.approvedTeachers.approvedBy, id));
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await this.db.update(schema.attendance)
           .set({ recordedBy: null })
           .where(eq(schema.attendance.recordedBy, id));
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await this.db.update(schema.questionBanks)
           .set({ createdBy: null })
           .where(eq(schema.questionBanks.createdBy, id));
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await this.db.update(schema.homePageContent)
           .set({ uploadedBy: null })
           .where(eq(schema.homePageContent.uploadedBy, id));
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await this.db.update(schema.gallery)
           .set({ uploadedBy: null })
           .where(eq(schema.gallery.uploadedBy, id));
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await this.db.update(schema.studyResources)
           .set({ uploadedBy: null })
           .where(eq(schema.studyResources.uploadedBy, id));
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await this.db.update(schema.studentSubjectAssignments)
           .set({ assignedBy: null })
           .where(eq(schema.studentSubjectAssignments.assignedBy, id));
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await this.db.update(schema.teacherClassAssignments)
           .set({ assignedBy: null })
           .where(eq(schema.teacherClassAssignments.assignedBy, id));
-      } catch (e) {}
+      } catch (e) { }
 
       try {
         await this.db.update(schema.teacherAssignmentHistory)
           .set({ performedBy: null })
           .where(eq(schema.teacherAssignmentHistory.performedBy, id));
-      } catch (e) {}
+      } catch (e) { }
 
       if (filesToDelete.length > 0) {
         console.log(`[Smart Deletion] Deleting ${filesToDelete.length} files from storage...`);
@@ -1211,7 +1234,7 @@ export class DatabaseStorage implements IStorage {
         .where(eq(schema.users.id, id))
         .returning();
       deletionService.recordDeletion('users', result.length);
-      
+
       const deletionResult = deletionService.getResult();
       const logOutput = formatDeletionLog(deletionResult, id, userRole);
       console.log(logOutput);
@@ -1232,8 +1255,8 @@ export class DatabaseStorage implements IStorage {
         reason: `Permanent deletion of ${userRole} account: ${user.email || user.username}`,
         ipAddress: 'system',
         userAgent: 'Smart Deletion Service'
-      }).catch(() => {});
-      
+      }).catch(() => { });
+
       return result.length > 0;
     } catch (error: any) {
       deletionService.recordError(`Fatal error in deleteUser: ${error.message}`);
@@ -1598,7 +1621,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(schema.classes, eq(schema.students.classId, schema.classes.id))
       .where(eq(schema.students.id, id))
       .limit(1);
-    
+
     const student = result[0];
     if (student && student.id) {
       const normalizedId = normalizeUuid(student.id);
@@ -1608,11 +1631,11 @@ export class DatabaseStorage implements IStorage {
     }
     return student as any;
   }
-  
+
   async getStudentByUserId(userId: string): Promise<Student | undefined> {
     return this.getStudent(userId);
   }
-  
+
   async getLinkedStudents(parentId: string): Promise<Student[]> {
     const result = await this.db
       .select({
@@ -1641,7 +1664,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(schema.users, eq(schema.students.id, schema.users.id))
       .leftJoin(schema.classes, eq(schema.students.classId, schema.classes.id))
       .where(eq(schema.students.parentId, parentId));
-    
+
     return result.map((student: any) => {
       if (student && student.id) {
         const normalizedId = normalizeUuid(student.id);
@@ -1652,7 +1675,7 @@ export class DatabaseStorage implements IStorage {
       return student;
     }) as any[];
   }
-  
+
   async getAllUsernames(): Promise<string[]> {
     const result = await this.db.select({ username: schema.users.username }).from(schema.users).where(sql`${schema.users.username} IS NOT NULL`);
     return result.map((r: { username: string | null }) => r.username).filter((u: string | null): u is string => u !== null);
@@ -1712,8 +1735,8 @@ export class DatabaseStorage implements IStorage {
     // This preserves referential integrity for attendance, exams, etc.
     // User can be recovered within retention period
     const result = await this.db.update(schema.users)
-      .set({ 
-        isActive: false, 
+      .set({
+        isActive: false,
         deletedAt: new Date(),
         deletedBy: deletedBy || null
       })
@@ -1891,21 +1914,21 @@ export class DatabaseStorage implements IStorage {
 
   async deleteAcademicTerm(id: number): Promise<boolean> {
     try {
-      
+
       // First check if the term exists
       const existingTerm = await db.select().from(schema.academicTerms)
         .where(eq(schema.academicTerms.id, id))
         .limit(1);
-      
+
       if (!existingTerm || existingTerm.length === 0) {
         return false;
       }
-      
+
       // Check for foreign key constraints - exams using this term
       const examsUsingTerm = await db.select({ id: schema.exams.id })
         .from(schema.exams)
         .where(eq(schema.exams.termId, id));
-      
+
       if (examsUsingTerm && examsUsingTerm.length > 0) {
         throw new Error(`Cannot delete this term. ${examsUsingTerm.length} exam(s) are linked to it. Please reassign or delete those exams first.`);
       }
@@ -1913,15 +1936,15 @@ export class DatabaseStorage implements IStorage {
       const result = await db.delete(schema.academicTerms)
         .where(eq(schema.academicTerms.id, id))
         .returning();
-      
+
       const success = result && result.length > 0;
-      
+
       if (success) {
       } else {
       }
       return success;
     } catch (error: any) {
-      
+
       // Handle specific PostgreSQL errors
       if (error?.code === '23503') {
         throw new Error('Cannot delete this term because it is being used by other records (exams, classes, etc.). Please remove those associations first.');
@@ -2055,13 +2078,13 @@ export class DatabaseStorage implements IStorage {
       console.log(`[SmartDeletion] Starting comprehensive exam deletion for exam ID: ${id}`);
 
       // First get all question IDs and image URLs for this exam
-      const examQuestions = await db.select({ 
+      const examQuestions = await db.select({
         id: schema.examQuestions.id,
-        imageUrl: schema.examQuestions.imageUrl 
+        imageUrl: schema.examQuestions.imageUrl
       })
         .from(schema.examQuestions)
         .where(eq(schema.examQuestions.examId, id));
-      
+
       const questionIds = examQuestions.map((q: { id: number }) => q.id);
       deletedCounts.questions = questionIds.length;
 
@@ -2087,9 +2110,9 @@ export class DatabaseStorage implements IStorage {
           })
             .from(schema.questionOptions)
             .where(inArray(schema.questionOptions.questionId, questionIds));
-          
+
           optionCount = questionOptions.length;
-          
+
           // Delete question option images from Cloudinary/local storage
           for (const option of questionOptions) {
             if (option.imageUrl) {
@@ -2115,7 +2138,7 @@ export class DatabaseStorage implements IStorage {
       const examSessions = await db.select({ id: schema.examSessions.id })
         .from(schema.examSessions)
         .where(eq(schema.examSessions.examId, id));
-      
+
       const sessionIds = examSessions.map((s: { id: number }) => s.id);
       deletedCounts.sessions = sessionIds.length;
 
@@ -2126,7 +2149,7 @@ export class DatabaseStorage implements IStorage {
           .where(inArray(schema.gradingTasks.sessionId, sessionIds))
           .returning();
         deletedCounts.gradingTasks = gradingTasksResult.length;
-        
+
         // Delete performance events for these sessions  
         const perfEventsResult = await db.delete(schema.performanceEvents)
           .where(inArray(schema.performanceEvents.sessionId, sessionIds))
@@ -2172,12 +2195,12 @@ export class DatabaseStorage implements IStorage {
         .set({ testExamId: null })
         .where(eq(schema.reportCardItems.testExamId, id))
         .returning();
-      
+
       const examExamRefs = await db.update(schema.reportCardItems)
         .set({ examExamId: null })
         .where(eq(schema.reportCardItems.examExamId, id))
         .returning();
-      
+
       deletedCounts.reportCardRefsCleared = testExamRefs.length + examExamRefs.length;
 
       // Finally delete the exam itself
@@ -2255,9 +2278,9 @@ export class DatabaseStorage implements IStorage {
 
   async getExamResultsByStudent(studentId: string): Promise<ExamResult[]> {
     const SYSTEM_AUTO_SCORING_UUID = '00000000-0000-0000-0000-000000000001';
-    
+
     console.log(`[getExamResultsByStudent] Fetching results for student: ${studentId}`);
-    
+
     // CRITICAL FIX: Use simple, reliable query without complex SQL that might fail
     // This mirrors the approach used by getExamResultByExamAndStudent which works correctly
     // for report cards. We fetch exam_results directly without complex JOINs or casts.
@@ -2278,15 +2301,15 @@ export class DatabaseStorage implements IStorage {
       }).from(schema.examResults)
         .where(eq(schema.examResults.studentId, studentId))
         .orderBy(desc(schema.examResults.createdAt));
-      
+
       console.log(`[getExamResultsByStudent] Primary query returned ${results.length} results`);
-      
+
       // Enrich results with exam's totalMarks if maxScore is null
       const enrichedResults = await Promise.all(results.map(async (result: any) => {
         // Ensure score field is populated from marksObtained if needed
         const finalScore = result.score ?? result.marksObtained ?? 0;
         let finalMaxScore = result.maxScore;
-        
+
         // If maxScore is null, try to get it from the exam
         if (finalMaxScore === null || finalMaxScore === undefined) {
           try {
@@ -2300,10 +2323,10 @@ export class DatabaseStorage implements IStorage {
             finalMaxScore = 100;
           }
         }
-        
+
         // Determine autoScored from recordedBy if autoScored column is null
         const isAutoScored = result.autoScored ?? (result.recordedBy === SYSTEM_AUTO_SCORING_UUID);
-        
+
         return {
           ...result,
           score: finalScore,
@@ -2311,11 +2334,11 @@ export class DatabaseStorage implements IStorage {
           autoScored: isAutoScored
         };
       }));
-      
+
       return enrichedResults;
     } catch (primaryError: any) {
       console.error(`[getExamResultsByStudent] Primary query failed for student ${studentId}:`, primaryError?.message || primaryError);
-      
+
       // Fallback: Even simpler query without any computed fields
       try {
         console.log(`[getExamResultsByStudent] Attempting fallback query...`);
@@ -2323,9 +2346,9 @@ export class DatabaseStorage implements IStorage {
           .from(schema.examResults)
           .where(eq(schema.examResults.studentId, studentId))
           .orderBy(desc(schema.examResults.createdAt));
-        
+
         console.log(`[getExamResultsByStudent] Fallback query returned ${fallbackResults.length} results`);
-        
+
         // Normalize the fallback results
         return fallbackResults.map((result: any) => ({
           id: result.id,
@@ -2485,7 +2508,7 @@ export class DatabaseStorage implements IStorage {
   }
   async createExamQuestionWithOptions(
     question: InsertExamQuestion,
-    options?: Array<{optionText: string; isCorrect: boolean}>
+    options?: Array<{ optionText: string; isCorrect: boolean }>
   ): Promise<ExamQuestion> {
     // NOTE: Neon HTTP driver does NOT support transactions
     // Using direct inserts instead of db.transaction()
@@ -2534,7 +2557,7 @@ export class DatabaseStorage implements IStorage {
   async createExamQuestionsBulk(
     questionsData: Array<{
       question: InsertExamQuestion;
-      options?: Array<{optionText: string; isCorrect: boolean}>;
+      options?: Array<{ optionText: string; isCorrect: boolean }>;
     }>
   ): Promise<{ created: number; questions: ExamQuestion[]; errors: string[] }> {
     const createdQuestions: ExamQuestion[] = [];
@@ -2647,7 +2670,7 @@ export class DatabaseStorage implements IStorage {
         .from(schema.examQuestions)
         .where(eq(schema.examQuestions.id, id))
         .limit(1);
-      
+
       // Delete question image from Cloudinary/local storage if exists
       if (question[0]?.imageUrl) {
         try {
@@ -2665,7 +2688,7 @@ export class DatabaseStorage implements IStorage {
         })
           .from(schema.questionOptions)
           .where(eq(schema.questionOptions.questionId, id));
-        
+
         for (const option of options) {
           if (option.imageUrl) {
             try {
@@ -2741,20 +2764,20 @@ export class DatabaseStorage implements IStorage {
       const options = await db.select({ id: schema.questionOptions.id })
         .from(schema.questionOptions)
         .where(eq(schema.questionOptions.questionId, questionId));
-      
+
       const optionIds = options.map((o: { id: number }) => o.id).filter((id: number | null | undefined): id is number => id != null);
-      
+
       // Clear selectedOptionId in student_answers that reference these options
       if (optionIds.length > 0) {
         await db.update(schema.studentAnswers)
           .set({ selectedOptionId: null })
           .where(inArray(schema.studentAnswers.selectedOptionId, optionIds));
       }
-      
+
       // Delete the options
       await db.delete(schema.questionOptions)
         .where(eq(schema.questionOptions.questionId, questionId));
-      
+
       return true;
     } catch (error) {
       console.error('Error deleting question options:', error);
@@ -2803,9 +2826,9 @@ export class DatabaseStorage implements IStorage {
     }
     return questionItem;
   }
-  async getQuestionBankItems(bankId: number, filters?: {questionType?: string; difficulty?: string; tags?: string[]}): Promise<QuestionBankItem[]> {
+  async getQuestionBankItems(bankId: number, filters?: { questionType?: string; difficulty?: string; tags?: string[] }): Promise<QuestionBankItem[]> {
     let query = db.select().from(schema.questionBankItems).where(eq(schema.questionBankItems.bankId, bankId));
-    
+
     if (filters?.questionType) {
       query = query.where(eq(schema.questionBankItems.questionType, filters.questionType));
     }
@@ -2834,9 +2857,9 @@ export class DatabaseStorage implements IStorage {
       .where(eq(schema.questionBankOptions.questionItemId, questionItemId))
       .orderBy(asc(schema.questionBankOptions.orderNumber));
   }
-  async importQuestionsFromBank(examId: number, questionItemIds: number[], randomize: boolean = false, maxQuestions?: number): Promise<{imported: number; questions: ExamQuestion[]}> {
+  async importQuestionsFromBank(examId: number, questionItemIds: number[], randomize: boolean = false, maxQuestions?: number): Promise<{ imported: number; questions: ExamQuestion[] }> {
     let selectedItemIds = [...questionItemIds];
-    
+
     if (randomize && maxQuestions && maxQuestions < questionItemIds.length) {
       selectedItemIds = questionItemIds.sort(() => Math.random() - 0.5).slice(0, maxQuestions);
     }
@@ -2849,9 +2872,9 @@ export class DatabaseStorage implements IStorage {
       if (!bankItem) continue;
 
       // Validate questionType to ensure data integrity
-      const validTypes: Array<"multiple_choice" | "text" | "essay" | "true_false" | "fill_blank"> = 
+      const validTypes: Array<"multiple_choice" | "text" | "essay" | "true_false" | "fill_blank"> =
         ["multiple_choice", "text", "essay", "true_false", "fill_blank"];
-      const questionType = validTypes.includes(bankItem.questionType as any) 
+      const questionType = validTypes.includes(bankItem.questionType as any)
         ? bankItem.questionType as "multiple_choice" | "text" | "essay" | "true_false" | "fill_blank"
         : "text"; // Default to text if invalid
 
@@ -2903,7 +2926,176 @@ export class DatabaseStorage implements IStorage {
     }
     return { imported: questions.length, questions };
   }
-  // Get AI-suggested grading tasks for teacher review
+
+  // ═══════════ QUESTION BANKS (Container CRUD) ═══════════
+  async getQuestionBanks(filters?: { subjectId?: number }): Promise<QuestionBank[]> {
+    const conditions: any[] = [];
+    if (filters?.subjectId) conditions.push(eq(schema.questionBanks.subjectId, filters.subjectId));
+    if (conditions.length > 0) {
+      return await db.select().from(schema.questionBanks).where(and(...conditions)).orderBy(desc(schema.questionBanks.createdAt));
+    }
+    return await db.select().from(schema.questionBanks).orderBy(desc(schema.questionBanks.createdAt));
+  }
+  // getQuestionBankById already defined above (line ~2773)
+  async createQuestionBankRecord(data: InsertQuestionBank): Promise<QuestionBank> {
+    const result = await db.insert(schema.questionBanks).values(data).returning();
+    return result[0];
+  }
+  async updateQuestionBankRecord(id: number, data: Partial<InsertQuestionBank>): Promise<QuestionBank> {
+    const result = await db.update(schema.questionBanks).set({ ...data, updatedAt: new Date() }).where(eq(schema.questionBanks.id, id)).returning();
+    return result[0];
+  }
+  async deleteQuestionBankRecord(id: number): Promise<boolean> {
+    await db.delete(schema.questionBanks).where(eq(schema.questionBanks.id, id));
+    return true;
+  }
+
+  // ═══════════ SYLLABUS TOPICS ═══════════
+  async createSyllabusTopic(topic: InsertSyllabusTopic): Promise<SyllabusTopic> {
+    const result = await db.insert(schema.syllabusTopics).values(topic).returning();
+    return result[0];
+  }
+  async createSyllabusTopicsBulk(topics: InsertSyllabusTopic[]): Promise<{ created: number; topics: SyllabusTopic[]; errors: string[] }> {
+    const created: SyllabusTopic[] = [];
+    const errors: string[] = [];
+    for (let i = 0; i < topics.length; i++) {
+      try {
+        const result = await db.insert(schema.syllabusTopics).values(topics[i]).returning();
+        created.push(result[0]);
+      } catch (error) {
+        errors.push(`Topic ${i + 1} ("${topics[i].name}"): ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+    return { created: created.length, topics: created, errors };
+  }
+  async getSyllabusTopics(filters: { classId?: number; subjectId?: number; termId?: number; isActive?: boolean }): Promise<SyllabusTopic[]> {
+    const conditions: any[] = [];
+    if (filters.classId) conditions.push(eq(schema.syllabusTopics.classId, filters.classId));
+    if (filters.subjectId) conditions.push(eq(schema.syllabusTopics.subjectId, filters.subjectId));
+    if (filters.termId) conditions.push(eq(schema.syllabusTopics.termId, filters.termId));
+    if (filters.isActive !== undefined) conditions.push(eq(schema.syllabusTopics.isActive, filters.isActive));
+
+    if (conditions.length === 0) {
+      return await db.select().from(schema.syllabusTopics).orderBy(asc(schema.syllabusTopics.orderNumber));
+    }
+    return await db.select().from(schema.syllabusTopics)
+      .where(and(...conditions))
+      .orderBy(asc(schema.syllabusTopics.orderNumber));
+  }
+  async getSyllabusTopicById(id: number): Promise<SyllabusTopic | undefined> {
+    const result = await db.select().from(schema.syllabusTopics).where(eq(schema.syllabusTopics.id, id));
+    return result[0];
+  }
+  async updateSyllabusTopic(id: number, topic: Partial<InsertSyllabusTopic>): Promise<SyllabusTopic | undefined> {
+    const result = await db.update(schema.syllabusTopics)
+      .set({ ...topic, updatedAt: new Date() })
+      .where(eq(schema.syllabusTopics.id, id))
+      .returning();
+    return result[0];
+  }
+  async deleteSyllabusTopic(id: number): Promise<boolean> {
+    await db.delete(schema.syllabusTopics).where(eq(schema.syllabusTopics.id, id));
+    return true;
+  }
+
+  // ═══════════ ENHANCED QUESTION BANK QUERIES ═══════════
+  async getQuestionBankItemsFiltered(filters: {
+    bankId?: number; classId?: number; subjectId?: number; termId?: number;
+    topicId?: number; difficulty?: string; questionType?: string; status?: string;
+  }): Promise<QuestionBankItem[]> {
+    const conditions: any[] = [];
+    if (filters.bankId) conditions.push(eq(schema.questionBankItems.bankId, filters.bankId));
+    if (filters.classId) conditions.push(eq(schema.questionBankItems.classId, filters.classId));
+    if (filters.termId) conditions.push(eq(schema.questionBankItems.termId, filters.termId));
+    if (filters.topicId) conditions.push(eq(schema.questionBankItems.topicId, filters.topicId));
+    if (filters.difficulty) conditions.push(eq(schema.questionBankItems.difficulty, filters.difficulty));
+    if (filters.questionType) conditions.push(eq(schema.questionBankItems.questionType, filters.questionType));
+    if (filters.status) conditions.push(eq(schema.questionBankItems.status, filters.status));
+
+    // If subjectId is specified, join via the bank to filter by subject
+    if (filters.subjectId) {
+      const bankIds = await db.select({ id: schema.questionBanks.id })
+        .from(schema.questionBanks)
+        .where(eq(schema.questionBanks.subjectId, filters.subjectId));
+      if (bankIds.length > 0) {
+        conditions.push(inArray(schema.questionBankItems.bankId, bankIds.map((b: { id: number }) => b.id)));
+      } else {
+        return []; // No banks for this subject
+      }
+    }
+
+    if (conditions.length === 0) {
+      return await db.select().from(schema.questionBankItems)
+        .orderBy(desc(schema.questionBankItems.createdAt));
+    }
+    return await db.select().from(schema.questionBankItems)
+      .where(and(...conditions))
+      .orderBy(desc(schema.questionBankItems.createdAt));
+  }
+
+  // Smart random generation: Pull questions based on distribution criteria
+  async generateQuestionsFromBank(criteria: {
+    bankId?: number; classId?: number; subjectId?: number; termId?: number;
+    distribution: Array<{ topicId?: number; difficulty?: string; count: number }>;
+  }): Promise<{ questions: QuestionBankItem[]; shortfalls: string[] }> {
+    const questions: QuestionBankItem[] = [];
+    const shortfalls: string[] = [];
+    const usedIds = new Set<number>();
+
+    for (const dist of criteria.distribution) {
+      const conditions: any[] = [eq(schema.questionBankItems.status, 'active')];
+      if (criteria.bankId) conditions.push(eq(schema.questionBankItems.bankId, criteria.bankId));
+      if (criteria.classId) conditions.push(eq(schema.questionBankItems.classId, criteria.classId));
+      if (criteria.termId) conditions.push(eq(schema.questionBankItems.termId, criteria.termId));
+      if (dist.topicId) conditions.push(eq(schema.questionBankItems.topicId, dist.topicId));
+      if (dist.difficulty) conditions.push(eq(schema.questionBankItems.difficulty, dist.difficulty));
+
+      // Subject filter via bank
+      if (criteria.subjectId) {
+        const bankIds = await db.select({ id: schema.questionBanks.id })
+          .from(schema.questionBanks)
+          .where(eq(schema.questionBanks.subjectId, criteria.subjectId));
+        if (bankIds.length > 0) {
+          conditions.push(inArray(schema.questionBankItems.bankId, bankIds.map((b: { id: number }) => b.id)));
+        }
+      }
+
+      const pool = await db.select().from(schema.questionBankItems)
+        .where(and(...conditions));
+
+      // Filter out already-used questions
+      const available = pool.filter((q: QuestionBankItem) => !usedIds.has(q.id));
+
+      // Shuffle and pick
+      const shuffled = available.sort(() => Math.random() - 0.5);
+      const picked = shuffled.slice(0, dist.count);
+
+      if (picked.length < dist.count) {
+        shortfalls.push(`Needed ${dist.count} questions (topic=${dist.topicId || 'any'}, difficulty=${dist.difficulty || 'any'}), found ${picked.length}`);
+      }
+
+      for (const q of picked) {
+        usedIds.add(q.id);
+        questions.push(q);
+      }
+    }
+
+    return { questions, shortfalls };
+  }
+
+  // Track exam-bank links
+  async createExamQuestionBankLink(link: InsertExamQuestionBankLink): Promise<ExamQuestionBankLink> {
+    const result = await db.insert(schema.examQuestionBankLinks).values(link).returning();
+    // Increment usage count
+    await db.update(schema.questionBankItems)
+      .set({ usageCount: sql`${schema.questionBankItems.usageCount} + 1` })
+      .where(eq(schema.questionBankItems.id, link.bankItemId));
+    return result[0];
+  }
+  async getExamQuestionBankLinks(examId: number): Promise<ExamQuestionBankLink[]> {
+    return await db.select().from(schema.examQuestionBankLinks)
+      .where(eq(schema.examQuestionBankLinks.examId, examId));
+  }
   async getAISuggestedGradingTasks(teacherId: string, status?: string): Promise<any[]> {
     try {
       // Get teacher's assigned classes and subjects
@@ -3222,7 +3414,7 @@ export class DatabaseStorage implements IStorage {
   async allowExamRetake(examId: number, studentId: string, archivedBy: string): Promise<{ success: boolean; message: string; archivedSubmissionId?: number }> {
     try {
       console.log(`[allowExamRetake] Starting retake process for exam ${examId}, student ${studentId}`);
-      
+
       // 1. Get the existing exam result (outside transaction for validation)
       const existingResult = await this.getExamResultByExamAndStudent(examId, studentId);
       if (!existingResult) {
@@ -3378,7 +3570,7 @@ export class DatabaseStorage implements IStorage {
   }
   async upsertStudentAnswer(sessionId: number, questionId: number, answer: Partial<InsertStudentAnswer>): Promise<StudentAnswer> {
     const existing = await this.getStudentAnswerBySessionAndQuestion(sessionId, questionId);
-    
+
     if (existing) {
       const updated = await this.updateStudentAnswer(existing.id, answer);
       return updated!;
@@ -3698,7 +3890,7 @@ export class DatabaseStorage implements IStorage {
   }
   async getAnnouncements(targetRole?: string, includeDrafts: boolean = false): Promise<Announcement[]> {
     let query = db.select().from(schema.announcements);
-    
+
     // Filter by published status unless includeDrafts is true
     if (!includeDrafts) {
       query = query.where(eq(schema.announcements.isPublished, true));
@@ -3713,7 +3905,7 @@ export class DatabaseStorage implements IStorage {
         eq(schema.announcements.targetRoles, `["${targetRole}"]`)
       ));
     }
-    
+
     return await query.orderBy(desc(schema.announcements.publishedAt), desc(schema.announcements.createdAt));
   }
   async getAnnouncementById(id: number): Promise<Announcement | undefined> {
@@ -3729,7 +3921,7 @@ export class DatabaseStorage implements IStorage {
     if (!announcement) return false;
 
     await db.delete(schema.announcements).where(eq(schema.announcements.id, id));
-    
+
     // Broadcast deletion using standardized emitter
     realtimeService.emitAnnouncementEvent('deleted', { id });
 
@@ -3780,7 +3972,7 @@ export class DatabaseStorage implements IStorage {
       .from(schema.gallery)
       .where(eq(schema.gallery.id, parseInt(id)))
       .limit(1);
-    
+
     // Delete the image file from Cloudinary/local storage
     if (image[0]?.imageUrl) {
       try {
@@ -3840,7 +4032,7 @@ export class DatabaseStorage implements IStorage {
       .from(schema.studyResources)
       .where(eq(schema.studyResources.id, id))
       .limit(1);
-    
+
     // Delete the file from Cloudinary/local storage
     if (resource[0]?.fileUrl) {
       try {
@@ -3869,7 +4061,7 @@ export class DatabaseStorage implements IStorage {
       if (isPostgres) {
         const pgClient = getPgClient();
         if (!pgClient) return [];
-        
+
         let query = `
           SELECT
             sa.id,
@@ -3931,7 +4123,7 @@ export class DatabaseStorage implements IStorage {
       if (isPostgres) {
         const pgClient = getPgClient();
         if (!pgClient) throw new Error('PostgreSQL client not available');
-        
+
         // Use PostgreSQL upsert syntax
         const result = await (db as any).execute(sql`
           INSERT INTO manual_scores (answer_id, grader_id, awarded_marks, comment, graded_at)
@@ -3968,7 +4160,7 @@ export class DatabaseStorage implements IStorage {
       if (isPostgres) {
         const pgClient = getPgClient();
         if (!pgClient) return [];
-        
+
         const result = await (db as any).execute(sql`
           SELECT
             es.*,
@@ -4006,7 +4198,7 @@ export class DatabaseStorage implements IStorage {
       if (isPostgres) {
         const pgClient = getPgClient();
         if (!pgClient) return [];
-        
+
         let query = `
           SELECT
             e.id as exam_id,
@@ -4079,7 +4271,7 @@ export class DatabaseStorage implements IStorage {
       if (isPostgres) {
         const pgClient = getPgClient();
         if (!pgClient) return [];
-        
+
         const result = await (db as any).execute(sql`
           SELECT
             u.id as student_id,
@@ -4153,7 +4345,7 @@ export class DatabaseStorage implements IStorage {
       .from(schema.homePageContent)
       .where(eq(schema.homePageContent.id, id))
       .limit(1);
-    
+
     // Delete the image file from Cloudinary/local storage
     if (content[0]?.imageUrl) {
       try {
@@ -4336,20 +4528,20 @@ export class DatabaseStorage implements IStorage {
         .from(schema.reportCards)
         .where(eq(schema.reportCards.id, id))
         .limit(1);
-      
+
       if (!result[0]) return undefined;
-      
+
       const reportCard = result[0];
-      
+
       // Dynamically fetch signatures from profiles if not stored on report card
       let teacherSignatureUrl = reportCard.teacherSignatureUrl;
       let teacherSignedBy = reportCard.teacherSignedBy;
       let principalSignatureUrl = reportCard.principalSignatureUrl;
       let principalSignedBy = reportCard.principalSignedBy;
-      
+
       // Get class info to fetch class teacher's signature
       const classInfo = await this.getClass(reportCard.classId);
-      
+
       // If no teacher signature stored, fetch from class teacher's profile
       if (!teacherSignatureUrl && classInfo?.classTeacherId) {
         const teacherProfile = await this.getTeacherProfile(classInfo.classTeacherId);
@@ -4360,7 +4552,7 @@ export class DatabaseStorage implements IStorage {
           teacherSignedBy = teacherUser ? `${teacherUser.firstName} ${teacherUser.lastName}` : null;
         }
       }
-      
+
       // If no principal signature stored, fetch from an admin with signature
       if (!principalSignatureUrl) {
         // First, check superAdminProfiles for signatures (super admins have higher authority)
@@ -4378,7 +4570,7 @@ export class DatabaseStorage implements IStorage {
             ne(schema.superAdminProfiles.signatureUrl, '')
           ))
           .limit(1);
-        
+
         if (superAdminsWithSignature.length > 0) {
           principalSignatureUrl = superAdminsWithSignature[0].signatureUrl;
           principalSignedBy = `${superAdminsWithSignature[0].firstName} ${superAdminsWithSignature[0].lastName}`;
@@ -4398,14 +4590,14 @@ export class DatabaseStorage implements IStorage {
               ne(schema.adminProfiles.signatureUrl, '')
             ))
             .limit(1);
-          
+
           if (adminsWithSignature.length > 0) {
             principalSignatureUrl = adminsWithSignature[0].signatureUrl;
             principalSignedBy = `${adminsWithSignature[0].firstName} ${adminsWithSignature[0].lastName}`;
           }
         }
       }
-      
+
       return {
         ...reportCard,
         teacherSignatureUrl,
@@ -4500,7 +4692,7 @@ export class DatabaseStorage implements IStorage {
           eq(schema.reportCards.termId, termId)
         ))
         .orderBy(schema.reportCards.position);
-      
+
       return results.map((r: any) => {
         const isSSS = r.className?.startsWith('SS') || r.classLevel?.includes('Senior Secondary');
         return {
@@ -4558,7 +4750,7 @@ export class DatabaseStorage implements IStorage {
         .limit(1);
 
       if (reportCard.length === 0) return null;
-      
+
       // Add computed fields
       const isSSS = reportCard[0].className?.startsWith('SS') || reportCard[0].classLevel?.includes('Senior Secondary');
       // Use term year directly as it's stored in YYYY/YYYY format (e.g., "2024/2025")
@@ -4599,22 +4791,22 @@ export class DatabaseStorage implements IStorage {
       let teacherSignedBy = reportCard[0].teacherSignedBy;
       let principalSignatureUrl = reportCard[0].principalSignatureUrl;
       let principalSignedBy = reportCard[0].principalSignedBy;
-      
-      console.log('[SIGNATURE-DEBUG] Initial state:', { 
-        hasStoredTeacherSig: !!teacherSignatureUrl, 
+
+      console.log('[SIGNATURE-DEBUG] Initial state:', {
+        hasStoredTeacherSig: !!teacherSignatureUrl,
         hasStoredPrincipalSig: !!principalSignatureUrl,
         classId: reportCard[0].classId
       });
-      
+
       // Get class info to fetch class teacher's signature
       const classInfo = await this.getClass(reportCard[0].classId);
       console.log('[SIGNATURE-DEBUG] Class info:', { classTeacherId: classInfo?.classTeacherId });
-      
+
       // If no teacher signature stored, fetch from class teacher's profile
       if (!teacherSignatureUrl && classInfo?.classTeacherId) {
         const teacherProfile = await this.getTeacherProfile(classInfo.classTeacherId);
-        console.log('[SIGNATURE-DEBUG] Teacher profile:', { 
-          hasProfile: !!teacherProfile, 
+        console.log('[SIGNATURE-DEBUG] Teacher profile:', {
+          hasProfile: !!teacherProfile,
           hasSignature: !!teacherProfile?.signatureUrl,
           signatureLength: teacherProfile?.signatureUrl?.length || 0
         });
@@ -4625,7 +4817,7 @@ export class DatabaseStorage implements IStorage {
           teacherSignedBy = teacherUser ? `${teacherUser.firstName} ${teacherUser.lastName}` : null;
         }
       }
-      
+
       // If no principal signature stored, fetch from an admin with signature
       if (!principalSignatureUrl) {
         // First, check superAdminProfiles for signatures (super admins have higher authority)
@@ -4643,9 +4835,9 @@ export class DatabaseStorage implements IStorage {
             ne(schema.superAdminProfiles.signatureUrl, '')
           ))
           .limit(1);
-        
+
         console.log('[SIGNATURE-DEBUG] Super admins with signature found:', superAdminsWithSignature.length);
-        
+
         if (superAdminsWithSignature.length > 0) {
           console.log('[SIGNATURE-DEBUG] Using super admin signature from:', superAdminsWithSignature[0].firstName, superAdminsWithSignature[0].lastName);
           principalSignatureUrl = superAdminsWithSignature[0].signatureUrl;
@@ -4666,9 +4858,9 @@ export class DatabaseStorage implements IStorage {
               ne(schema.adminProfiles.signatureUrl, '')
             ))
             .limit(1);
-          
+
           console.log('[SIGNATURE-DEBUG] Admins with signature found:', adminsWithSignature.length);
-          
+
           if (adminsWithSignature.length > 0) {
             console.log('[SIGNATURE-DEBUG] Using admin signature from:', adminsWithSignature[0].firstName, adminsWithSignature[0].lastName);
             principalSignatureUrl = adminsWithSignature[0].signatureUrl;
@@ -4680,8 +4872,8 @@ export class DatabaseStorage implements IStorage {
       // Load skills from database
       const skills = await this.getReportCardSkills(reportCardId);
 
-      return { 
-        ...reportCard[0], 
+      return {
+        ...reportCard[0],
         isSSS: isSSS,
         academicSession: academicSession,
         department: isSSS ? reportCard[0].department : null,
@@ -4725,8 +4917,8 @@ export class DatabaseStorage implements IStorage {
 
       // Get class info to determine if this is a Senior Secondary class
       const classInfo = await this.getClass(classId);
-      const isSeniorSecondary = classInfo && 
-        ['SS1', 'SS2', 'SS3', 'Senior Secondary'].some(level => 
+      const isSeniorSecondary = classInfo &&
+        ['SS1', 'SS2', 'SS3', 'Senior Secondary'].some(level =>
           classInfo.level?.toLowerCase().includes(level.toLowerCase())
         );
 
@@ -4754,7 +4946,7 @@ export class DatabaseStorage implements IStorage {
             // Get student name for generating default comments
             const studentUser = await this.getUser(student.userId);
             const studentFirstName = studentUser?.firstName || 'Student';
-            
+
             // Create new report card with pre-populated teacher signature and default comments
             const newReportCard = await db.insert(schema.reportCards)
               .values({
@@ -4782,12 +4974,12 @@ export class DatabaseStorage implements IStorage {
 
           // Get student's department for SS students
           const studentDepartment = (student as any).department;
-          
+
           // SINGLE SOURCE OF TRUTH: Use class_subject_mappings
           // For SS students with department, get department-specific subjects
           // For JSS/other students, get all class subjects (no department filter)
           let subjects: any[];
-          
+
           if (isSeniorSecondary && studentDepartment) {
             // SS students with department - get department-specific mappings
             subjects = await this.getSubjectsByClassAndDepartment(classId, studentDepartment);
@@ -4795,7 +4987,7 @@ export class DatabaseStorage implements IStorage {
             // JSS/other students - get all class mappings (no department filter)
             subjects = await this.getSubjectsByClassAndDepartment(classId);
           }
-          
+
           // If no subjects assigned for this class/department, log warning and skip
           if (subjects.length === 0) {
             console.log(`[REPORT-CARD] No class_subject_mappings found for class ${classId}, department: ${studentDepartment || 'none'}. Admin must assign subjects via Subject Manager.`);
@@ -4811,7 +5003,7 @@ export class DatabaseStorage implements IStorage {
           const existingItems = await db.select()
             .from(schema.reportCardItems)
             .where(eq(schema.reportCardItems.reportCardId, reportCardId));
-          
+
           for (const item of existingItems) {
             if (!validSubjectIds.has(item.subjectId)) {
               await db.delete(schema.reportCardItems)
@@ -4873,7 +5065,7 @@ export class DatabaseStorage implements IStorage {
 
       const gradingScale = (reportCard as any).gradingScale || 'standard';
       let config = getGradingConfig(gradingScale);
-      
+
       // Get system settings for test/exam weights
       const systemSettings = await this.getSystemSettings();
       if (systemSettings) {
@@ -5133,9 +5325,9 @@ export class DatabaseStorage implements IStorage {
       }
 
       // Single efficient query to get just the current status
-      const current = await db.select({ 
-        id: schema.reportCards.id, 
-        status: schema.reportCards.status 
+      const current = await db.select({
+        id: schema.reportCards.id,
+        status: schema.reportCards.status
       })
         .from(schema.reportCards)
         .where(eq(schema.reportCards.id, reportCardId))
@@ -5199,21 +5391,21 @@ export class DatabaseStorage implements IStorage {
       // This ensures admin/parent/student views show correct class statistics
       if (status === 'finalized' && updatedReportCard) {
         console.log(`[REPORT-CARD-STATUS] Recalculating totals for finalized report card ${reportCardId}`);
-        
+
         // Recalculate this report card's totals (averagePercentage, totalScore, etc.)
         await this.recalculateReportCard(reportCardId, updatedReportCard.gradingScale || 'standard');
-        
+
         // Recalculate class positions for all students in this class/term
         if (updatedReportCard.classId && updatedReportCard.termId) {
           await this.recalculateClassPositions(updatedReportCard.classId, updatedReportCard.termId);
         }
-        
+
         // Fetch the updated report card with recalculated values
         const finalResult = await db.select()
           .from(schema.reportCards)
           .where(eq(schema.reportCards.id, reportCardId))
           .limit(1);
-        
+
         return { reportCard: finalResult[0], previousStatus: currentStatus };
       }
 
@@ -5404,12 +5596,12 @@ export class DatabaseStorage implements IStorage {
   private async recalculateClassPositions(classId: number, termId: number): Promise<void> {
     try {
       console.log(`[REPORT-CARD] Calculating class positions for class ${classId}, term ${termId}`);
-      
+
       // Get positioning method from system settings (default to 'average' for fairness)
       const settings = await db.select().from(schema.systemSettings).limit(1);
       const positioningMethod = settings[0]?.positioningMethod || 'average';
       console.log(`[REPORT-CARD] Using positioning method: ${positioningMethod}`);
-      
+
       // Step 1: Get all report cards for this class and term with their total scores
       const reportCards = await db.select({
         id: schema.reportCards.id,
@@ -5422,21 +5614,21 @@ export class DatabaseStorage implements IStorage {
           eq(schema.reportCards.classId, classId),
           eq(schema.reportCards.termId, termId)
         ));
-      
+
       if (reportCards.length === 0) {
         console.log(`[REPORT-CARD] No report cards found for class ${classId}, term ${termId}`);
         return;
       }
-      
+
       const totalStudentsInClass = reportCards.length;
-      
+
       // Step 2: Sort based on positioning method
       // 'average' = use averageScore (fair for different subject counts)
       // 'total' = use totalScore (original behavior)
       const sortedCards = [...reportCards].sort((a, b) => {
         let scoreA: number;
         let scoreB: number;
-        
+
         if (positioningMethod === 'average') {
           // Use average score for fair comparison across departments
           scoreA = a.averageScore ?? 0;
@@ -5446,24 +5638,24 @@ export class DatabaseStorage implements IStorage {
           scoreA = a.totalScore ?? a.averageScore ?? 0;
           scoreB = b.totalScore ?? b.averageScore ?? 0;
         }
-        
+
         return scoreB - scoreA; // Descending order
       });
-      
+
       // Step 3: Calculate positions with proper tie handling
       // Students with same score share same position, next position skips appropriately
       // e.g., if two students are 1st, the next student is 3rd (not 2nd)
       const positionMap = new Map<number, number>(); // reportCardId -> position
-      
+
       let lastAssignedPosition = 1;
       let previousScore: number | null = null;
-      
+
       for (let i = 0; i < sortedCards.length; i++) {
         const card = sortedCards[i];
-        const score = positioningMethod === 'average' 
-          ? (card.averageScore ?? 0) 
+        const score = positioningMethod === 'average'
+          ? (card.averageScore ?? 0)
           : (card.totalScore ?? card.averageScore ?? 0);
-        
+
         if (i === 0) {
           // First student always gets position 1
           lastAssignedPosition = 1;
@@ -5473,15 +5665,15 @@ export class DatabaseStorage implements IStorage {
           lastAssignedPosition = i + 1;
         }
         // If score equals previousScore, keep lastAssignedPosition (ties share same position)
-        
+
         positionMap.set(card.id, lastAssignedPosition);
         previousScore = score;
       }
-      
+
       // Step 4: Update all report cards with calculated positions
       for (const card of reportCards) {
         const position = positionMap.get(card.id) ?? reportCards.length;
-        
+
         await db.update(schema.reportCards)
           .set({
             position: position,
@@ -5490,9 +5682,9 @@ export class DatabaseStorage implements IStorage {
           })
           .where(eq(schema.reportCards.id, card.id));
       }
-      
+
       console.log(`[REPORT-CARD] Successfully calculated positions for ${totalStudentsInClass} students in class ${classId}, term ${termId}`);
-      
+
       // Emit WebSocket event for real-time position updates
       try {
         realtimeService.emitTableChange('report_cards', 'UPDATE', {
@@ -5506,7 +5698,7 @@ export class DatabaseStorage implements IStorage {
       } catch (emitError) {
         console.warn(`[REPORT-CARD] Failed to emit position update WebSocket event:`, emitError);
       }
-      
+
     } catch (error) {
       console.error(`[REPORT-CARD] Error calculating class positions for class ${classId}, term ${termId}:`, error);
     }
@@ -5550,8 +5742,8 @@ export class DatabaseStorage implements IStorage {
         .where(eq(schema.academicTerms.id, termId))
         .limit(1);
 
-      const sessionYear = academicTerm.length > 0 
-        ? `${academicTerm[0].year}/${academicTerm[0].year + 1}` 
+      const sessionYear = academicTerm.length > 0
+        ? `${academicTerm[0].year}/${academicTerm[0].year + 1}`
         : null;
 
       // 3. Find or create report card for this student/term
@@ -5592,8 +5784,8 @@ export class DatabaseStorage implements IStorage {
           .from(schema.classes)
           .where(eq(schema.classes.id, classId))
           .limit(1);
-        
-        const isSeniorSecondary = studentClass.length > 0 && 
+
+        const isSeniorSecondary = studentClass.length > 0 &&
           (studentClass[0].level || '').trim().toLowerCase() === 'senior secondary';
         // Normalize department - treat empty/whitespace-only as undefined
         const rawDepartment = (student[0].department || '').trim().toLowerCase();
@@ -5608,9 +5800,9 @@ export class DatabaseStorage implements IStorage {
             eq(schema.studentSubjectAssignments.classId, classId),
             eq(schema.studentSubjectAssignments.isActive, true)
           ));
-        
+
         let relevantSubjects: any[] = [];
-        
+
         if (studentSubjectAssignments.length > 0) {
           // Use student's personal subject assignments - respects department selection
           const studentSubjectIds = studentSubjectAssignments.map((a: { subjectId: number }) => a.subjectId);
@@ -5625,7 +5817,7 @@ export class DatabaseStorage implements IStorage {
           // PRIORITY 2: Use class_subject_mappings as SINGLE SOURCE OF TRUTH
           // NO FALLBACK - Admin must configure subjects via Subject Manager
           relevantSubjects = await this.getSubjectsByClassAndDepartment(classId, studentDepartment);
-          
+
           if (relevantSubjects.length > 0) {
             console.log(`[REPORT-CARD-SYNC] Using ${relevantSubjects.length} subjects from class_subject_mappings (department: ${studentDepartment || 'none'})`);
           } else {
@@ -5649,26 +5841,26 @@ export class DatabaseStorage implements IStorage {
         }
       } else {
         reportCardId = reportCard[0].id;
-        
+
         // ALSO check existing report cards for missing subjects and add them
         // This ensures students get all their assigned subjects even if report card was created before assignments
         const existingItems = await db.select({ subjectId: schema.reportCardItems.subjectId })
           .from(schema.reportCardItems)
           .where(eq(schema.reportCardItems.reportCardId, reportCardId));
-        
+
         const existingSubjectIds = new Set(existingItems.map((item: { subjectId: number }) => item.subjectId));
-        
+
         // Get student's class and department info
         const studentClass = await db.select()
           .from(schema.classes)
           .where(eq(schema.classes.id, classId))
           .limit(1);
-        
-        const isSeniorSecondary = studentClass.length > 0 && 
+
+        const isSeniorSecondary = studentClass.length > 0 &&
           (studentClass[0].level || '').trim().toLowerCase() === 'senior secondary';
         const rawDepartment = (student[0].department || '').trim().toLowerCase();
         const studentDepartment = rawDepartment.length > 0 ? rawDepartment : undefined;
-        
+
         // Get all subjects that should be assigned
         const studentSubjectAssignments = await db.select({ subjectId: schema.studentSubjectAssignments.subjectId })
           .from(schema.studentSubjectAssignments)
@@ -5677,22 +5869,22 @@ export class DatabaseStorage implements IStorage {
             eq(schema.studentSubjectAssignments.classId, classId),
             eq(schema.studentSubjectAssignments.isActive, true)
           ));
-        
+
         let assignedSubjectIds: number[] = [];
-        
+
         if (studentSubjectAssignments.length > 0) {
           assignedSubjectIds = studentSubjectAssignments.map((a: { subjectId: number }) => a.subjectId);
         } else {
           const relevantSubjects = await this.getSubjectsByClassAndDepartment(classId, studentDepartment);
           assignedSubjectIds = relevantSubjects.map(s => s.id);
         }
-        
+
         // Find and add missing subjects
         const missingSubjectIds = assignedSubjectIds.filter(id => !existingSubjectIds.has(id));
-        
+
         if (missingSubjectIds.length > 0) {
           console.log(`[REPORT-CARD-SYNC] Adding ${missingSubjectIds.length} missing subjects to existing report card ${reportCardId} for student ${studentId}`);
-          
+
           for (const missingSubjectId of missingSubjectIds) {
             await db.insert(schema.reportCardItems)
               .values({
@@ -5743,7 +5935,7 @@ export class DatabaseStorage implements IStorage {
       const safeScore = typeof score === 'number' ? score : parseInt(String(score), 10) || 0;
       const safeMaxScore = typeof maxScore === 'number' ? maxScore : parseInt(String(maxScore), 10) || 0;
       const safeExamId = typeof examId === 'number' ? examId : parseInt(String(examId), 10);
-      
+
       console.log(`[REPORT-CARD-SYNC] Type-safe values: score=${safeScore}, maxScore=${safeMaxScore}, examId=${safeExamId}, examType=${examType}`);
 
       const updateData: any = {
@@ -5792,7 +5984,7 @@ export class DatabaseStorage implements IStorage {
       updateData.percentage = safePercentage;
       updateData.grade = gradeInfo.grade;
       updateData.remarks = gradeInfo.remarks;
-      
+
       console.log(`[REPORT-CARD-SYNC] Update data: testWeighted=${safeTestWeighted}, examWeighted=${safeExamWeighted}, obtained=${safeObtainedMarks}, pct=${safePercentage}, grade=${gradeInfo.grade}`);
 
       // 8. Update the report card item
@@ -5810,13 +6002,13 @@ export class DatabaseStorage implements IStorage {
 
       console.log(`[REPORT-CARD-SYNC] Successfully synced exam ${examId} to report card ${reportCardId} (new: ${isNewReportCard})`);
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         reportCardId,
         isNewReportCard,
-        message: isNewReportCard 
+        message: isNewReportCard
           ? `New report card auto-created. Grade: ${gradeInfo.grade} (${Math.round(weighted.percentage)}%)`
-          : `Score synced to report card. Grade: ${gradeInfo.grade} (${Math.round(weighted.percentage)}%)` 
+          : `Score synced to report card. Grade: ${gradeInfo.grade} (${Math.round(weighted.percentage)}%)`
       };
     } catch (error: any) {
       console.error('[REPORT-CARD-SYNC] Error syncing exam score to report card:', error);
@@ -5887,7 +6079,7 @@ export class DatabaseStorage implements IStorage {
 
       // Group items by report card for easier frontend consumption
       const reportCardMap = new Map<number, any>();
-      
+
       for (const item of items) {
         if (!reportCardMap.has(item.reportCardId)) {
           reportCardMap.set(item.reportCardId, {
@@ -5903,7 +6095,7 @@ export class DatabaseStorage implements IStorage {
             items: []
           });
         }
-        
+
         reportCardMap.get(item.reportCardId)!.items.push({
           itemId: item.itemId,
           subjectId: item.subjectId,
@@ -6094,7 +6286,7 @@ export class DatabaseStorage implements IStorage {
         attendance = attendance.filter(a => {
           const attendanceDate = new Date(a.date);
           return attendanceDate >= new Date(filters.startDate) &&
-                 attendanceDate <= new Date(filters.endDate);
+            attendanceDate <= new Date(filters.endDate);
         });
       }
       // Calculate attendance metrics
@@ -6935,7 +7127,7 @@ export class DatabaseStorage implements IStorage {
         }
       })
       .returning();
-    
+
     return result[0].sequence;
   }
   async getCounter(classCode: string, year: string): Promise<any | undefined> {
@@ -7108,7 +7300,7 @@ export class DatabaseStorage implements IStorage {
     delete updateData.id;
     delete updateData.createdAt;
     delete updateData.updatedAt;
-    
+
     // Safety check: ensure we don't accidentally overwrite absolute URLs with relative paths if they contain http
     for (const key in updateData) {
       if (typeof updateData[key] === 'string' && (updateData[key].startsWith('http') || updateData[key].includes('cloudinary.com'))) {
@@ -7123,7 +7315,7 @@ export class DatabaseStorage implements IStorage {
         .set({ ...updateData, updatedAt: new Date() })
         .where(eq(schema.systemSettings.id, existing.id))
         .returning();
-      
+
       const rows = result as any[];
       if (!rows || !rows.length) throw new Error("Update failed");
       return rows[0];
@@ -7132,7 +7324,7 @@ export class DatabaseStorage implements IStorage {
         .insert(schema.systemSettings)
         .values({ ...updateData, createdAt: new Date(), updatedAt: new Date() })
         .returning();
-      
+
       const rows = result as any[];
       if (!rows || !rows.length) throw new Error("Insert failed");
       return rows[0];
@@ -7160,8 +7352,8 @@ export class DatabaseStorage implements IStorage {
   async restoreUser(userId: string, restoredBy: string): Promise<User | undefined> {
     // Restore a soft-deleted user by clearing deletedAt and setting isActive to true
     const result = await this.db.update(schema.users)
-      .set({ 
-        isActive: true, 
+      .set({
+        isActive: true,
         deletedAt: null,
         deletedBy: null,
         updatedAt: new Date()
@@ -7174,8 +7366,8 @@ export class DatabaseStorage implements IStorage {
   async softDeleteUser(userId: string, deletedBy: string): Promise<boolean> {
     // Soft delete a user by setting deletedAt and isActive to false
     const result = await this.db.update(schema.users)
-      .set({ 
-        isActive: false, 
+      .set({
+        isActive: false,
         deletedAt: new Date(),
         deletedBy: deletedBy
       })
@@ -7192,12 +7384,12 @@ export class DatabaseStorage implements IStorage {
 
       // Use hard delete based on role
       const roleId = user.roleId;
-      
+
       // Role 4 = Student
       if (roleId === 4) {
         return await this.hardDeleteStudent(userId);
       }
-      
+
       // For other roles, use the smart deletion manager
       const deletionManager = new SmartDeletionManager();
       const result = await deletionManager.deleteUser(userId);
@@ -7212,7 +7404,7 @@ export class DatabaseStorage implements IStorage {
     // Get users whose deletion date has exceeded the retention period
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - retentionDays);
-    
+
     return await this.db.select()
       .from(schema.users)
       .where(and(
@@ -7290,7 +7482,7 @@ export class DatabaseStorage implements IStorage {
     assignedBy?: string
   ): Promise<StudentSubjectAssignment[]> {
     const assignments: StudentSubjectAssignment[] = [];
-    
+
     for (const subjectId of subjectIds) {
       try {
         const result = await this.db
@@ -7312,7 +7504,7 @@ export class DatabaseStorage implements IStorage {
         // Skip duplicates
       }
     }
-    
+
     return assignments;
   }
 
@@ -7324,7 +7516,7 @@ export class DatabaseStorage implements IStorage {
       .values(mapping)
       .onConflictDoNothing()
       .returning();
-    
+
     // If conflict occurred (no result), fetch the existing mapping
     if (!result[0]) {
       const existing = await this.db
@@ -7381,7 +7573,7 @@ export class DatabaseStorage implements IStorage {
   async getSubjectsByClassAndDepartment(classId: number, department?: string): Promise<Subject[]> {
     const mappings = await this.getClassSubjectMappings(classId, department);
     if (mappings.length === 0) return [];
-    
+
     const subjectIds = mappings.map(m => m.subjectId);
     return await this.db
       .select()
@@ -7410,9 +7602,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async bulkUpdateClassSubjectMappings(
-    additions: Array<{classId: number; subjectId: number; department: string | null; isCompulsory?: boolean}>,
-    removals: Array<{classId: number; subjectId: number; department: string | null}>
-  ): Promise<{added: number; removed: number; affectedClassIds: number[]}> {
+    additions: Array<{ classId: number; subjectId: number; department: string | null; isCompulsory?: boolean }>,
+    removals: Array<{ classId: number; subjectId: number; department: string | null }>
+  ): Promise<{ added: number; removed: number; affectedClassIds: number[] }> {
     // Use transaction for atomic updates - all changes commit or rollback together
     return await this.db.transaction(async (tx: any) => {
       const affectedClassIds = new Set<number>();
@@ -7423,9 +7615,9 @@ export class DatabaseStorage implements IStorage {
       for (const removal of removals) {
         const { classId, subjectId, department } = removal;
         if (!classId || !subjectId) continue;
-        
+
         affectedClassIds.add(classId);
-        
+
         // Delete matching mapping
         if (department === null) {
           const result = await tx
@@ -7458,9 +7650,9 @@ export class DatabaseStorage implements IStorage {
       for (const addition of additions) {
         const { classId, subjectId, department, isCompulsory } = addition;
         if (!classId || !subjectId) continue;
-        
+
         affectedClassIds.add(classId);
-        
+
         // Use upsert to handle potential conflicts
         const result = await tx
           .insert(schema.classSubjectMappings)
@@ -7472,7 +7664,7 @@ export class DatabaseStorage implements IStorage {
           })
           .onConflictDoNothing()
           .returning();
-        
+
         if (result.length > 0) {
           addedCount++;
         }
@@ -7508,17 +7700,17 @@ export class DatabaseStorage implements IStorage {
       .from(schema.classes)
       .where(eq(schema.classes.level, classLevel))
       .limit(1);
-    
+
     if (classesAtLevel.length > 0) {
       const classId = classesAtLevel[0].id;
       // Use class_subject_mappings through getSubjectsByClassAndDepartment
       const mappedSubjects = await this.getSubjectsByClassAndDepartment(classId, department);
-      
+
       if (mappedSubjects.length > 0) {
         return mappedSubjects;
       }
     }
-    
+
     // No fallback - return empty array if no mappings exist
     // Admin must configure subjects via Subject Manager > Class-Level & Department Assignment
     console.log(`[SUBJECT-ASSIGNMENT] No class_subject_mappings found for level ${classLevel}, department: ${department || 'none'}. Admin must assign subjects.`);
@@ -7535,61 +7727,61 @@ export class DatabaseStorage implements IStorage {
     if (!classInfo) {
       throw new Error('Class not found');
     }
-    
+
     // Get current term
     const currentTerm = await this.getCurrentTerm();
     const termId = currentTerm?.id;
-    
+
     // Get subjects based on class level and department
     // SINGLE SOURCE OF TRUTH: Only use class_subject_mappings - no fallback
     const subjects = await this.getSubjectsForClassLevel(classInfo.level, department);
-    
+
     if (subjects.length === 0) {
       // No fallback - admin must configure subjects via Subject Manager
       console.log(`[AUTO-ASSIGN] No subjects found for class ${classId}, department: ${department || 'none'}. Admin must assign subjects.`);
       return [];
     }
-    
+
     const subjectIds = subjects.map(s => s.id);
     return await this.assignSubjectsToStudent(studentId, classId, subjectIds, termId);
   }
 
-  async syncStudentsWithClassMappings(classId: number, department?: string): Promise<{synced: number; errors: string[]}> {
+  async syncStudentsWithClassMappings(classId: number, department?: string): Promise<{ synced: number; errors: string[] }> {
     const errors: string[] = [];
     let synced = 0;
-    
+
     try {
       const classInfo = await this.getClass(classId);
       if (!classInfo) {
         return { synced: 0, errors: ['Class not found'] };
       }
-      
-      const isSeniorSecondary = classInfo.level && 
-        ['SS1', 'SS2', 'SS3', 'Senior Secondary'].some(level => 
+
+      const isSeniorSecondary = classInfo.level &&
+        ['SS1', 'SS2', 'SS3', 'Senior Secondary'].some(level =>
           classInfo.level?.toLowerCase().includes(level.toLowerCase())
         );
-      
+
       const students = await this.getStudentsByClass(classId);
-      
+
       for (const student of students) {
         try {
           const studentDept = (student as any).department?.toLowerCase()?.trim() || undefined;
-          
+
           if (department && studentDept !== department.toLowerCase().trim()) {
             continue;
           }
-          
+
           const effectiveDept = isSeniorSecondary ? studentDept : undefined;
           const mappedSubjects = await this.getSubjectsByClassAndDepartment(classId, effectiveDept);
-          
+
           if (mappedSubjects.length === 0) {
             errors.push(`No subjects mapped for student ${student.id} (class ${classId}, dept: ${effectiveDept || 'none'})`);
             continue;
           }
-          
+
           await db.delete(schema.studentSubjectAssignments)
             .where(eq(schema.studentSubjectAssignments.studentId, student.id));
-          
+
           const currentTerm = await this.getCurrentTerm();
           for (const subject of mappedSubjects) {
             await db.insert(schema.studentSubjectAssignments)
@@ -7602,13 +7794,13 @@ export class DatabaseStorage implements IStorage {
               })
               .onConflictDoNothing();
           }
-          
+
           synced++;
         } catch (studentError: any) {
           errors.push(`Failed to sync student ${student.id}: ${studentError.message}`);
         }
       }
-      
+
       console.log(`[SYNC] Synced ${synced} students in class ${classId}${department ? ` (${department})` : ''}`);
       return { synced, errors };
     } catch (error: any) {
@@ -7617,19 +7809,19 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async syncAllStudentsWithMappings(): Promise<{synced: number; errors: string[]}> {
+  async syncAllStudentsWithMappings(): Promise<{ synced: number; errors: string[] }> {
     let totalSynced = 0;
     const allErrors: string[] = [];
-    
+
     try {
       const classes = await this.getClasses();
-      
+
       for (const classInfo of classes) {
         const result = await this.syncStudentsWithClassMappings(classInfo.id);
         totalSynced += result.synced;
         allErrors.push(...result.errors);
       }
-      
+
       console.log(`[SYNC] Total synced: ${totalSynced} students across ${classes.length} classes`);
       return { synced: totalSynced, errors: allErrors };
     } catch (error: any) {
@@ -7638,7 +7830,7 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async cleanupReportCardItems(studentId: string): Promise<{removed: number; kept: number}> {
+  async cleanupReportCardItems(studentId: string): Promise<{ removed: number; kept: number }> {
     try {
       const student = await this.getStudent(studentId);
       if (!student || !student.classId) {
@@ -7650,25 +7842,25 @@ export class DatabaseStorage implements IStorage {
         return { removed: 0, kept: 0 };
       }
 
-      const isSeniorSecondary = classInfo.level && 
-        ['SS1', 'SS2', 'SS3', 'Senior Secondary'].some(level => 
+      const isSeniorSecondary = classInfo.level &&
+        ['SS1', 'SS2', 'SS3', 'Senior Secondary'].some(level =>
           classInfo.level?.toLowerCase().includes(level.toLowerCase()) ||
           classInfo.name?.toLowerCase().includes(level.toLowerCase())
         );
-      
+
       const studentDept = (student as any).department?.toLowerCase()?.trim() || undefined;
       const effectiveDept = isSeniorSecondary ? studentDept : undefined;
-      
+
       const allowedSubjects = await this.getSubjectsByClassAndDepartment(student.classId, effectiveDept);
       const allowedSubjectIds = new Set(allowedSubjects.map(s => s.id));
-      
+
       // If no allowed subjects, we should delete ALL report card items for this student
       // This handles the case where a class lost all its subject mappings
 
       const reportCards = await db.select()
         .from(schema.reportCards)
         .where(eq(schema.reportCards.studentId, studentId));
-      
+
       let totalRemoved = 0;
       let totalKept = 0;
 
@@ -7676,7 +7868,7 @@ export class DatabaseStorage implements IStorage {
         const items = await db.select()
           .from(schema.reportCardItems)
           .where(eq(schema.reportCardItems.reportCardId, reportCard.id));
-        
+
         for (const item of items) {
           if (!allowedSubjectIds.has(item.subjectId)) {
             await db.delete(schema.reportCardItems)
@@ -7696,23 +7888,23 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async cleanupReportCardsForClasses(classIds: number[]): Promise<{studentsProcessed: number; itemsRemoved: number; errors: string[]}> {
+  async cleanupReportCardsForClasses(classIds: number[]): Promise<{ studentsProcessed: number; itemsRemoved: number; errors: string[] }> {
     let studentsProcessed = 0;
     let totalItemsRemoved = 0;
     const errors: string[] = [];
-    
+
     if (!classIds || classIds.length === 0) {
       return { studentsProcessed: 0, itemsRemoved: 0, errors: [] };
     }
-    
+
     try {
       // Get only students in the affected classes
       const students = await db.select({ id: schema.students.id })
         .from(schema.students)
         .where(inArray(schema.students.classId, classIds));
-      
+
       console.log(`[CLEANUP] Processing ${students.length} students from ${classIds.length} affected classes`);
-      
+
       for (const student of students) {
         try {
           const result = await this.cleanupReportCardItems(student.id);
@@ -7722,7 +7914,7 @@ export class DatabaseStorage implements IStorage {
           errors.push(`Failed to cleanup student ${student.id}: ${error.message}`);
         }
       }
-      
+
       console.log(`[CLEANUP] Processed ${studentsProcessed} students in affected classes, removed ${totalItemsRemoved} report card items`);
       return { studentsProcessed, itemsRemoved: totalItemsRemoved, errors };
     } catch (error: any) {
@@ -7731,15 +7923,15 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async cleanupAllReportCards(): Promise<{studentsProcessed: number; itemsRemoved: number; errors: string[]}> {
+  async cleanupAllReportCards(): Promise<{ studentsProcessed: number; itemsRemoved: number; errors: string[] }> {
     let studentsProcessed = 0;
     let totalItemsRemoved = 0;
     const errors: string[] = [];
-    
+
     try {
       const students = await db.select({ id: schema.students.id })
         .from(schema.students);
-      
+
       for (const student of students) {
         try {
           const result = await this.cleanupReportCardItems(student.id);
@@ -7749,7 +7941,7 @@ export class DatabaseStorage implements IStorage {
           errors.push(`Failed to cleanup student ${student.id}: ${error.message}`);
         }
       }
-      
+
       console.log(`[CLEANUP] Processed ${studentsProcessed} students, removed ${totalItemsRemoved} report card items`);
       return { studentsProcessed, itemsRemoved: totalItemsRemoved, errors };
     } catch (error: any) {
@@ -7762,16 +7954,16 @@ export class DatabaseStorage implements IStorage {
    * FIX: Add missing subjects to existing report cards when new mappings are added
    * This ensures report cards are updated when admin adds new subjects to class/department mappings
    */
-  async addMissingSubjectsToReportCards(classIds: number[]): Promise<{studentsProcessed: number; itemsAdded: number; examScoresSynced: number; errors: string[]}> {
+  async addMissingSubjectsToReportCards(classIds: number[]): Promise<{ studentsProcessed: number; itemsAdded: number; examScoresSynced: number; errors: string[] }> {
     let studentsProcessed = 0;
     let totalItemsAdded = 0;
     let examScoresSynced = 0;
     const errors: string[] = [];
-    
+
     if (!classIds || classIds.length === 0) {
       return { studentsProcessed: 0, itemsAdded: 0, examScoresSynced: 0, errors: [] };
     }
-    
+
     try {
       // Get current term for exam lookup
       const currentTerm = await this.getCurrentTerm();
@@ -7793,32 +7985,32 @@ export class DatabaseStorage implements IStorage {
           inArray(schema.students.classId, classIds),
           eq(schema.users.isActive, true)
         ));
-      
+
       console.log(`[ADD-MISSING-SUBJECTS] Processing ${students.length} students from ${classIds.length} classes`);
-      
+
       for (const student of students) {
         try {
           if (!student.classId) continue;
-          
+
           // Get class info to determine if senior secondary
           const classInfo = await this.getClass(student.classId);
           if (!classInfo) continue;
-          
-          const isSeniorSecondary = classInfo.level && 
-            ['SS1', 'SS2', 'SS3', 'Senior Secondary'].some(level => 
+
+          const isSeniorSecondary = classInfo.level &&
+            ['SS1', 'SS2', 'SS3', 'Senior Secondary'].some(level =>
               classInfo.level?.toLowerCase().includes(level.toLowerCase()) ||
               classInfo.name?.toLowerCase().includes(level.toLowerCase())
             );
-          
+
           const studentDept = (student as any).department?.toLowerCase()?.trim() || undefined;
           const effectiveDept = isSeniorSecondary ? studentDept : undefined;
-          
+
           // Get all subjects that SHOULD be assigned to this student
           const allowedSubjects = await this.getSubjectsByClassAndDepartment(student.classId, effectiveDept);
           const allowedSubjectIds = new Set(allowedSubjects.map(s => s.id));
-          
+
           if (allowedSubjects.length === 0) continue;
-          
+
           // Get student's report cards for current term
           const reportCards = await db.select()
             .from(schema.reportCards)
@@ -7826,21 +8018,21 @@ export class DatabaseStorage implements IStorage {
               eq(schema.reportCards.studentId, student.id),
               eq(schema.reportCards.termId, currentTerm.id)
             ));
-          
+
           for (const reportCard of reportCards) {
             // Get existing items in this report card
             const existingItems = await db.select()
               .from(schema.reportCardItems)
               .where(eq(schema.reportCardItems.reportCardId, reportCard.id));
-            
+
             const existingSubjectIds = new Set(existingItems.map((item: { subjectId: number }) => item.subjectId));
-            
+
             // Find missing subjects (subjects that should be there but aren't)
             const missingSubjectIds = [...allowedSubjectIds].filter(id => !existingSubjectIds.has(id));
-            
+
             if (missingSubjectIds.length > 0) {
               console.log(`[ADD-MISSING-SUBJECTS] Student ${student.id}: adding ${missingSubjectIds.length} missing subjects to report card ${reportCard.id}`);
-              
+
               for (const subjectId of missingSubjectIds) {
                 // Create the report card item
                 const newItem = await db.insert(schema.reportCardItems)
@@ -7852,9 +8044,9 @@ export class DatabaseStorage implements IStorage {
                     percentage: 0
                   })
                   .returning();
-                
+
                 totalItemsAdded++;
-                
+
                 // Check if there are any exam results for this subject that need to be synced
                 const examResults = await db.select({
                   examId: schema.examResults.examId,
@@ -7871,18 +8063,18 @@ export class DatabaseStorage implements IStorage {
                     eq(schema.exams.subjectId, subjectId),
                     eq(schema.exams.termId, currentTerm.id)
                   ));
-                
+
                 if (examResults.length > 0 && newItem.length > 0) {
                   // Sync exam scores to the new report card item
                   for (const examResult of examResults) {
                     const isTest = ['test', 'quiz', 'assignment'].includes(examResult.examType);
                     const isMainExam = ['exam', 'final', 'midterm'].includes(examResult.examType);
-                    
+
                     const safeScore = typeof examResult.score === 'number' ? examResult.score : parseInt(String(examResult.score), 10) || 0;
                     const safeMaxScore = typeof examResult.maxScore === 'number' ? examResult.maxScore : parseInt(String(examResult.maxScore), 10) || 0;
-                    
+
                     const updateData: any = { updatedAt: new Date() };
-                    
+
                     if (isTest) {
                       updateData.testExamId = examResult.examId;
                       updateData.testExamCreatedBy = examResult.createdBy;
@@ -7894,28 +8086,28 @@ export class DatabaseStorage implements IStorage {
                       updateData.examScore = safeScore;
                       updateData.examMaxScore = safeMaxScore;
                     }
-                    
+
                     await db.update(schema.reportCardItems)
                       .set(updateData)
                       .where(eq(schema.reportCardItems.id, newItem[0].id));
-                    
+
                     examScoresSynced++;
                     console.log(`[ADD-MISSING-SUBJECTS] Synced exam ${examResult.examId} score (${safeScore}/${safeMaxScore}) to new item`);
                   }
-                  
+
                   // Recalculate the item's weighted score after syncing
                   await this.recalculateReportCard(reportCard.id, reportCard.gradingScale || 'standard');
                 }
               }
             }
           }
-          
+
           studentsProcessed++;
         } catch (studentError: any) {
           errors.push(`Failed to process student ${student.id}: ${studentError.message}`);
         }
       }
-      
+
       console.log(`[ADD-MISSING-SUBJECTS] Completed: ${studentsProcessed} students, ${totalItemsAdded} items added, ${examScoresSynced} exam scores synced`);
       return { studentsProcessed, itemsAdded: totalItemsAdded, examScoresSynced, errors };
     } catch (error: any) {
@@ -7928,16 +8120,16 @@ export class DatabaseStorage implements IStorage {
    * FIX: Repair all report cards by adding missing subjects and syncing exam scores
    * This is a comprehensive data repair function for existing affected students
    */
-  async repairAllReportCards(): Promise<{studentsProcessed: number; itemsAdded: number; examScoresSynced: number; errors: string[]}> {
+  async repairAllReportCards(): Promise<{ studentsProcessed: number; itemsAdded: number; examScoresSynced: number; errors: string[] }> {
     try {
       // Get all active classes
       const classes = await db.select({ id: schema.classes.id })
         .from(schema.classes)
         .where(eq(schema.classes.isActive, true));
-      
+
       const classIds = classes.map((c: { id: number }) => c.id);
       console.log(`[REPAIR-REPORT-CARDS] Starting repair for ${classIds.length} classes`);
-      
+
       return await this.addMissingSubjectsToReportCards(classIds);
     } catch (error: any) {
       console.error('[REPAIR-REPORT-CARDS] Error:', error);
@@ -7945,24 +8137,24 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async syncReportCardItemsOnExamSubjectChange(examId: number, oldSubjectId: number, newSubjectId: number): Promise<{updated: number; errors: string[]}> {
+  async syncReportCardItemsOnExamSubjectChange(examId: number, oldSubjectId: number, newSubjectId: number): Promise<{ updated: number; errors: string[] }> {
     const errors: string[] = [];
-    
+
     try {
       console.log(`[SYNC] Syncing report card items for exam ${examId}: subject ${oldSubjectId} -> ${newSubjectId}`);
-      
+
       const testExamResult = await db.update(schema.reportCardItems)
         .set({ subjectId: newSubjectId })
         .where(eq(schema.reportCardItems.testExamId, examId));
-      
+
       const examExamResult = await db.update(schema.reportCardItems)
         .set({ subjectId: newSubjectId })
         .where(eq(schema.reportCardItems.examExamId, examId));
-      
+
       const testExamCount = (testExamResult as any)?.rowCount || (testExamResult as any)?.changes || 0;
       const examExamCount = (examExamResult as any)?.rowCount || (examExamResult as any)?.changes || 0;
       const updated = testExamCount + examExamCount;
-      
+
       console.log(`[SYNC] Updated ${updated} report card items for exam ${examId} (testExamId: ${testExamCount}, examExamId: ${examExamCount})`);
       return { updated, errors };
     } catch (error: any) {
@@ -7980,10 +8172,10 @@ export class DatabaseStorage implements IStorage {
     let synced = 0;
     let failed = 0;
     const errors: string[] = [];
-    
+
     try {
       console.log(`[SYNC-ALL-MISSING] Starting comprehensive sync of missing exam scores...`);
-      
+
       // Get current term if not specified
       let targetTermId = termId;
       if (!targetTermId) {
@@ -7992,7 +8184,7 @@ export class DatabaseStorage implements IStorage {
           targetTermId = currentTerm.id;
         }
       }
-      
+
       // Find all exam results where:
       // 1. The exam is of type 'exam' (main exam)
       // 2. There's a report card for that student/term
@@ -8047,28 +8239,28 @@ export class DatabaseStorage implements IStorage {
             )
           )
         ));
-      
+
       console.log(`[SYNC-ALL-MISSING] Found ${missingExamScores.length} exam results to sync`);
-      
+
       // Group by report card to batch recalculations
       const reportCardIdsToRecalculate = new Set<number>();
-      
+
       for (const record of missingExamScores) {
         try {
           const isTest = ['test', 'quiz', 'assignment'].includes(record.examType);
           const isMainExam = ['exam', 'final', 'midterm'].includes(record.examType);
-          
+
           // Skip if the score already exists for this type
           if (isMainExam && record.currentExamScore !== null) continue;
           if (isTest && record.currentTestScore !== null) continue;
-          
+
           const safeScore = typeof record.score === 'number' ? record.score : parseInt(String(record.score), 10) || 0;
           const safeMaxScore = typeof record.maxScore === 'number' ? record.maxScore : parseInt(String(record.maxScore), 10) || 0;
-          
+
           if (record.reportCardItemId) {
             // Update existing report card item
             const updateData: any = { updatedAt: new Date() };
-            
+
             if (isTest) {
               updateData.testExamId = record.examId;
               updateData.testExamCreatedBy = record.createdBy;
@@ -8080,11 +8272,11 @@ export class DatabaseStorage implements IStorage {
               updateData.examScore = safeScore;
               updateData.examMaxScore = safeMaxScore;
             }
-            
+
             await db.update(schema.reportCardItems)
               .set(updateData)
               .where(eq(schema.reportCardItems.id, record.reportCardItemId));
-            
+
             reportCardIdsToRecalculate.add(record.reportCardId);
             synced++;
             console.log(`[SYNC-ALL-MISSING] Updated item ${record.reportCardItemId}: ${isTest ? 'test' : 'exam'} score ${safeScore}/${safeMaxScore}`);
@@ -8107,7 +8299,7 @@ export class DatabaseStorage implements IStorage {
                 examMaxScore: isMainExam ? safeMaxScore : null
               })
               .returning();
-            
+
             reportCardIdsToRecalculate.add(record.reportCardId);
             synced++;
             console.log(`[SYNC-ALL-MISSING] Created new item for report card ${record.reportCardId}, subject ${record.subjectId}`);
@@ -8117,7 +8309,7 @@ export class DatabaseStorage implements IStorage {
           errors.push(`Failed to sync exam result ${record.examResultId}: ${recordError.message}`);
         }
       }
-      
+
       // Recalculate all affected report cards
       console.log(`[SYNC-ALL-MISSING] Recalculating ${reportCardIdsToRecalculate.size} report cards...`);
       for (const reportCardId of reportCardIdsToRecalculate) {
@@ -8127,7 +8319,7 @@ export class DatabaseStorage implements IStorage {
           errors.push(`Failed to recalculate report card ${reportCardId}: ${calcError.message}`);
         }
       }
-      
+
       console.log(`[SYNC-ALL-MISSING] Completed: ${synced} synced, ${failed} failed`);
       return { synced, failed, errors };
     } catch (error: any) {
@@ -8144,10 +8336,10 @@ export class DatabaseStorage implements IStorage {
     let synced = 0;
     let failed = 0;
     const errors: string[] = [];
-    
+
     try {
       console.log(`[SYNC-EXAM-RESULTS] Starting bulk sync for exam ${examId}...`);
-      
+
       // Get all results for this exam
       const examResults = await db.select({
         id: schema.examResults.id,
@@ -8160,15 +8352,15 @@ export class DatabaseStorage implements IStorage {
           eq(schema.examResults.examId, examId),
           sql`${schema.examResults.score} IS NOT NULL`
         ));
-      
+
       console.log(`[SYNC-EXAM-RESULTS] Found ${examResults.length} results to sync for exam ${examId}`);
-      
+
       // Get exam details
       const exam = await this.getExamById(examId);
       if (!exam) {
         return { synced: 0, failed: 0, errors: ['Exam not found'] };
       }
-      
+
       for (const result of examResults) {
         try {
           const syncResult = await this.syncExamScoreToReportCard(
@@ -8177,7 +8369,7 @@ export class DatabaseStorage implements IStorage {
             result.score || 0,
             result.maxScore || exam.totalMarks || 100
           );
-          
+
           if (syncResult.success) {
             synced++;
           } else {
@@ -8189,7 +8381,7 @@ export class DatabaseStorage implements IStorage {
           errors.push(`Student ${result.studentId}: ${studentError.message}`);
         }
       }
-      
+
       console.log(`[SYNC-EXAM-RESULTS] Completed: ${synced} synced, ${failed} failed`);
       return { synced, failed, errors };
     } catch (error: any) {
@@ -8215,7 +8407,7 @@ export class DatabaseStorage implements IStorage {
   async saveReportCardSkills(reportCardId: number, skills: any): Promise<any> {
     try {
       const existing = await this.getReportCardSkills(reportCardId);
-      
+
       if (existing) {
         // Only update fields that are explicitly provided in the payload
         // Use incoming value if provided (including 0 for intentional clears), otherwise keep existing
@@ -8224,7 +8416,7 @@ export class DatabaseStorage implements IStorage {
           // If field is present in payload, use it (allows intentional 0s); otherwise keep existing
           return (newVal !== undefined) ? newVal : (existingVal ?? 0);
         };
-        
+
         const result = await db.update(schema.reportCardSkills)
           .set({
             punctuality: mergeSkill('punctuality', existing.punctuality),

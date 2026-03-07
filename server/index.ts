@@ -91,9 +91,10 @@ app.use(compression({
   }
 }));
 
-// Request timeout middleware (60 seconds for production/replit)
+// Request timeout middleware (60 seconds for production/replit, 5 mins for local dev to allow Vite pre-bundling)
 app.use((req, res, next) => {
-  const timeout = (process.env.NODE_ENV === 'production' || !!process.env.REPLIT_DEV_DOMAIN) ? 60000 : 30000;
+  const isDev = process.env.NODE_ENV !== 'production' && !process.env.REPLIT_DEV_DOMAIN;
+  const timeout = isDev ? 300000 : 60000; // 5 mins in dev, 60s in prod
   req.setTimeout(timeout, () => {
     if (!res.headersSent) res.status(408).json({ message: 'Request timeout' });
   });
@@ -443,7 +444,6 @@ function sanitizeLogData(data: any): any {
   server.listen({
     port,
     host: "0.0.0.0",
-    reusePort: true,
   }, () => {
     console.log(`serving on port ${port}`);
   });

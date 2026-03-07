@@ -9334,12 +9334,12 @@ var init_schema = __esm({
     });
     systemSettings2 = sqliteTable("system_settings", {
       id: integer2("id").primaryKey({ autoIncrement: true }),
-      schoolName: text2("school_name"),
+      schoolName: text2("school_name").notNull().default("School Management System"),
       schoolShortName: text2("school_short_name"),
-      schoolMotto: text2("school_motto"),
+      schoolMotto: text2("school_motto").notNull().default("Excellence in Education"),
       schoolLogo: text2("school_logo"),
       favicon: text2("favicon"),
-      schoolAddress: text2("school_address"),
+      schoolAddress: text2("school_address").notNull().default("School Address"),
       schoolPhones: text2("school_phones").notNull().default("[]"),
       // JSON array of {countryCode, number}
       schoolEmails: text2("school_emails").notNull().default("[]"),
@@ -13011,14 +13011,14 @@ function getPasswordResetEmailHTML(userName, resetLink, resetCode) {
   <div class="email-wrapper">
     <div class="header">
       <h1>\u{1F510} Password Reset</h1>
-      <p>Treasure-Home School Portal</p>
+      <p>School Management System Portal</p>
     </div>
     
     <div class="content">
       <div class="greeting">Hello ${userName},</div>
       
       <p class="message">
-        We received a request to reset your password for your THS Portal account. 
+        We received a request to reset your password for your account. 
         Use the code or link below to create a new password.
       </p>
       
@@ -13067,19 +13067,19 @@ function getPasswordResetEmailHTML(userName, resetLink, resetCode) {
       
       <p class="message" style="font-size: 14px; color: #6b7280;">
         Need help? Contact our administrator at 
-        <a href="mailto:treasurehomeschool@gmail.com" style="color: #3b82f6;">treasurehomeschool@gmail.com</a>
+        <a href="mailto:admin@school.com" style="color: #3b82f6;">admin@school.com</a>
       </p>
     </div>
     
     <div class="footer">
       <div class="footer-text">
-        <strong>Treasure-Home School</strong><br>
-        "Honesty and Success"<br>
-        Seriki-Soyinka Ifo, Ogun State, Nigeria<br>
-        <a href="mailto:treasurehomeschool@gmail.com" class="footer-link">treasurehomeschool@gmail.com</a>
+        <strong>School Management System</strong><br>
+        "Excellence in Education"<br>
+        School Address<br>
+        <a href="mailto:admin@school.com" class="footer-link">admin@school.com</a>
       </div>
       <div style="margin-top: 12px; color: #9ca3af; font-size: 12px;">
-        \xA9 ${(/* @__PURE__ */ new Date()).getFullYear()} Treasure-Home School. All rights reserved.
+        \xA9 ${(/* @__PURE__ */ new Date()).getFullYear()} School Management System. All rights reserved.
       </div>
     </div>
   </div>
@@ -13118,11 +13118,11 @@ function getPasswordChangedEmailHTML(userName, ipAddress) {
       <div class="alert">
         <strong>\u26A0\uFE0F Didn't make this change?</strong><br>
         If you didn't change your password, contact the school administration immediately:<br>
-        Email: admin@treasurehomeschool.edu.ng
+        Email: admin@school.com
       </div>
     </div>
     <div class="footer">
-      <p>\xA9 ${(/* @__PURE__ */ new Date()).getFullYear()} Treasure-Home School</p>
+      <p>\xA9 ${(/* @__PURE__ */ new Date()).getFullYear()} School Management System</p>
     </div>
   </div>
 </body>
@@ -13462,11 +13462,11 @@ async function seedSystemSettings() {
     const existingSettings = await db2.select().from(systemSettings).limit(1);
     if (existingSettings.length === 0) {
       await db2.insert(systemSettings).values({
-        schoolName: "Treasure-Home School",
-        schoolMotto: "Honesty and Success",
-        schoolEmails: JSON.stringify(["info@treasurehomeschool.edu.ng"]),
-        schoolPhones: JSON.stringify(["+234-XXX-XXX-XXXX"]),
-        schoolAddress: "Lagos, Nigeria",
+        schoolName: "School Management System",
+        schoolMotto: "Excellence in Education",
+        schoolEmails: JSON.stringify(["admin@school.com"]),
+        schoolPhones: JSON.stringify(["000-000-0000"]),
+        schoolAddress: "School Address",
         maintenanceMode: false,
         enableSmsNotifications: false,
         enableEmailNotifications: true,
@@ -13572,8 +13572,8 @@ async function seedTestUsers() {
       {
         id: randomUUID3(),
         username: "superadmin",
-        email: "superadmin@treasurehome.com",
-        password: "SuperAdmin@123",
+        email: "superadmin@school.com",
+        password: "SuperSecurePassword2026!",
         roleId: 1,
         firstName: "Super",
         lastName: "Admin",
@@ -13582,7 +13582,7 @@ async function seedTestUsers() {
       {
         id: randomUUID3(),
         username: "admin",
-        email: "admin@treasurehome.com",
+        email: "admin@school.com",
         password: "Admin@123",
         roleId: 2,
         firstName: "Admin",
@@ -13592,7 +13592,7 @@ async function seedTestUsers() {
       {
         id: randomUUID3(),
         username: "teacher",
-        email: "teacher@treasurehome.com",
+        email: "teacher@school.com",
         password: "Teacher@123",
         roleId: 3,
         firstName: "John",
@@ -13602,7 +13602,7 @@ async function seedTestUsers() {
       {
         id: randomUUID3(),
         username: "student",
-        email: "student@treasurehome.com",
+        email: "student@school.com",
         password: "Student@123",
         roleId: 4,
         firstName: "Jane",
@@ -13612,7 +13612,7 @@ async function seedTestUsers() {
       {
         id: randomUUID3(),
         username: "parent",
-        email: "parent@treasurehome.com",
+        email: "parent@school.com",
         password: "Parent@123",
         roleId: 5,
         firstName: "Peter",
@@ -13798,7 +13798,7 @@ init_schema_pg();
 init_auth_utils();
 init_username_generator();
 init_realtime_service();
-import { z as z3, ZodError } from "zod";
+import { z as z4, ZodError as ZodError2 } from "zod";
 import multer from "multer";
 import path2 from "path";
 import fs3 from "fs/promises";
@@ -14894,6 +14894,342 @@ router.get("/api/teacher/my-all-students", requireAuth, async (req, res) => {
 });
 var teacher_assignment_routes_default = router;
 
+// server/routes/job-vacancy.routes.ts
+init_storage();
+import { Router as Router2 } from "express";
+init_enhanced_cache();
+init_realtime_service();
+import { z as z3, ZodError } from "zod";
+var router2 = Router2();
+router2.get("/api/vacancies", async (req, res) => {
+  try {
+    const status = req.query.status;
+    const cacheKey = `vacancies:list:${status || "all"}`;
+    const vacancies3 = await enhancedCache.getOrSet(
+      cacheKey,
+      () => storage.getAllVacancies(status),
+      EnhancedCache.TTL.MEDIUM,
+      // 5 minutes TTL
+      "L1"
+      // Hot data - public endpoint
+    );
+    res.json(vacancies3);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch vacancies" });
+  }
+});
+router2.get("/api/vacancies/:id", async (req, res) => {
+  try {
+    const vacancy = await storage.getVacancy(req.params.id);
+    if (!vacancy) {
+      return res.status(404).json({ message: "Vacancy not found" });
+    }
+    res.json(vacancy);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch vacancy" });
+  }
+});
+var teacherApplicationSchema = z3.object({
+  vacancyId: z3.string().optional().nullable(),
+  fullName: z3.string().min(1),
+  googleEmail: z3.string().email().regex(/@gmail\.com$/, "Must be a Gmail address"),
+  phone: z3.string().min(1),
+  subjectSpecialty: z3.string().min(1),
+  qualification: z3.string().min(1),
+  experienceYears: z3.number().min(0),
+  bio: z3.string().min(1),
+  resumeUrl: z3.string().optional().nullable()
+});
+router2.post("/api/teacher-applications", async (req, res) => {
+  try {
+    const validatedData = teacherApplicationSchema.parse(req.body);
+    const existingApplications = await storage.getAllTeacherApplications();
+    const existingApp = existingApplications.find(
+      (app2) => app2.googleEmail === validatedData.googleEmail && (app2.status === "pending" || app2.status === "approved")
+    );
+    if (existingApp) {
+      return res.status(400).json({
+        message: existingApp.status === "approved" ? "This email has already been approved" : "You already have a pending application"
+      });
+    }
+    const application = await storage.createTeacherApplication(validatedData);
+    const admins = await storage.getUsersByRole(ROLE_IDS.ADMIN);
+    for (const admin of admins) {
+      await storage.createNotification({
+        userId: admin.id,
+        type: "teacher_application",
+        title: "New Teacher Application",
+        message: `${validatedData.fullName} has applied for a teaching position`,
+        relatedEntityType: "teacher_application",
+        relatedEntityId: application.id
+      });
+      realtimeService.emitNotification(admin.id, {
+        title: "New Teacher Application",
+        message: `${validatedData.fullName} has applied for a teaching position`,
+        type: "teacher_application"
+      });
+    }
+    realtimeService.emitTableChange("teacher_applications", "INSERT", application);
+    realtimeService.emitToRole("admin", "application.created", application);
+    res.status(201).json({
+      message: "Application submitted successfully. You will be notified once reviewed.",
+      application
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(400).json({ message: error.errors[0].message });
+    }
+    res.status(500).json({ message: "Failed to submit application" });
+  }
+});
+router2.post("/api/admin/vacancies", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
+  try {
+    const vacancy = await storage.createVacancy({
+      ...req.body,
+      createdBy: req.user.id
+    });
+    enhancedCache.invalidate(/^vacancies:/);
+    realtimeService.emitTableChange("vacancies", "INSERT", vacancy, void 0, req.user.id);
+    realtimeService.emitEvent("vacancy.created", vacancy);
+    res.status(201).json(vacancy);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to create vacancy" });
+  }
+});
+router2.patch("/api/admin/vacancies/:id/close", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
+  try {
+    const existingVacancy = await storage.getVacancy(req.params.id);
+    const vacancy = await storage.updateVacancy(req.params.id, { status: "closed" });
+    if (!vacancy) {
+      return res.status(404).json({ message: "Vacancy not found" });
+    }
+    enhancedCache.invalidate(/^vacancies:/);
+    realtimeService.emitTableChange("vacancies", "UPDATE", vacancy, existingVacancy, req.user.id);
+    realtimeService.emitEvent("vacancy.closed", vacancy);
+    res.json(vacancy);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to close vacancy" });
+  }
+});
+router2.get("/api/admin/applications", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
+  try {
+    const status = req.query.status;
+    const applications = await storage.getAllTeacherApplications(status);
+    res.json(applications);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch applications" });
+  }
+});
+router2.patch("/api/admin/applications/:id/status", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (status === "approved") {
+      const result = await storage.approveTeacherApplication(req.params.id, req.user.id);
+      const applicantUser = await storage.getUserByEmail(result.application.googleEmail);
+      if (applicantUser) {
+        await storage.createNotification({
+          userId: applicantUser.id,
+          type: "application_approved",
+          title: "Application Approved",
+          message: "Your teacher application has been approved. You can now sign in with Google.",
+          relatedEntityType: "teacher_application",
+          relatedEntityId: result.application.id
+        });
+        realtimeService.emitNotification(applicantUser.id, {
+          title: "Application Approved",
+          message: "Your teacher application has been approved. You can now sign in with Google.",
+          type: "application_approved"
+        });
+      }
+      realtimeService.emitTableChange("teacher_applications", "UPDATE", result.application, void 0, req.user.id);
+      realtimeService.emitToRole("admin", "application.approved", result);
+      res.json({
+        message: "Application approved successfully",
+        ...result
+      });
+    } else if (status === "rejected") {
+      const { reason } = req.body;
+      const application = await storage.rejectTeacherApplication(req.params.id, req.user.id, reason || "No reason provided");
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+      realtimeService.emitTableChange("teacher_applications", "UPDATE", application, void 0, req.user.id);
+      realtimeService.emitToRole("admin", "application.rejected", application);
+      res.json({
+        message: "Application rejected",
+        application
+      });
+    } else {
+      res.status(400).json({ message: "Invalid status" });
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Failed to update application" });
+  }
+});
+router2.get("/api/admin/approved-teachers", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
+  try {
+    const approvedTeachers3 = await storage.getAllApprovedTeachers();
+    res.json(approvedTeachers3);
+  } catch (error) {
+    res.status(500).json({ message: "Failed to fetch approved teachers" });
+  }
+});
+var job_vacancy_routes_default = router2;
+
+// server/routes/settings.routes.ts
+init_storage();
+import { Router as Router3 } from "express";
+var router3 = Router3();
+router3.get("/api/settings", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+  try {
+    const { key } = req.query;
+    if (key) {
+      const setting = await storage.getSetting(key);
+      if (!setting) {
+        return res.status(404).json({ message: "Setting not found" });
+      }
+      return res.json(setting);
+    }
+    const settings3 = await storage.getAllSettings();
+    res.json(settings3);
+  } catch (error) {
+    console.error("Error fetching settings:", error);
+    res.status(500).json({ message: "Failed to fetch settings" });
+  }
+});
+router3.put("/api/settings", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+  try {
+    const { key, value, description, dataType } = req.body;
+    if (!key || typeof key !== "string" || key.trim().length === 0) {
+      return res.status(400).json({ message: "Setting key is required and must be a non-empty string" });
+    }
+    if (value === void 0 || value === null) {
+      return res.status(400).json({ message: "Setting value is required" });
+    }
+    const userId = req.user.id;
+    const trimmedKey = key.trim();
+    const stringValue = typeof value === "string" ? value : JSON.stringify(value);
+    const existing = await storage.getSetting(trimmedKey);
+    if (existing) {
+      const updated = await storage.updateSetting(trimmedKey, stringValue, userId);
+      return res.json(updated);
+    } else {
+      const created = await storage.createSetting({
+        key: trimmedKey,
+        value: stringValue,
+        description: description || "",
+        dataType: dataType || "string",
+        updatedBy: userId
+      });
+      return res.json(created);
+    }
+  } catch (error) {
+    console.error("Error saving setting:", error);
+    res.status(500).json({ message: "Failed to save setting" });
+  }
+});
+var settings_routes_default = router3;
+
+// server/routes/report-card-skills.routes.ts
+init_storage();
+import { Router as Router4 } from "express";
+
+// shared/class-teacher-permissions.ts
+var ADMIN_ROLE_IDS = [1, 2];
+function calculateClassTeacherPermissions(context) {
+  const { loggedInUserId, loggedInRoleId, classTeacherId } = context;
+  const isAdmin = ADMIN_ROLE_IDS.includes(loggedInRoleId);
+  if (isAdmin) {
+    return {
+      canRateSkills: true,
+      canWriteClassTeacherComment: true,
+      canManageClassRecords: true,
+      isAdmin: true,
+      isClassTeacher: false,
+      reason: "Administrator access"
+    };
+  }
+  const isClassTeacher = classTeacherId === loggedInUserId;
+  if (isClassTeacher) {
+    return {
+      canRateSkills: true,
+      canWriteClassTeacherComment: true,
+      canManageClassRecords: true,
+      isAdmin: false,
+      isClassTeacher: true,
+      reason: "Authorized as class teacher"
+    };
+  }
+  return {
+    canRateSkills: false,
+    canWriteClassTeacherComment: false,
+    canManageClassRecords: false,
+    isAdmin: false,
+    isClassTeacher: false,
+    reason: "Only the assigned class teacher or administrators can perform this action"
+  };
+}
+function getClassTeacherPermissionDeniedMessage(action) {
+  switch (action) {
+    case "skills":
+      return "Only the assigned class teacher or an administrator can rate student skills. If you believe you should have access, please contact an administrator.";
+    case "comment":
+      return "Only the assigned class teacher or an administrator can write class teacher comments. If you believe you should have access, please contact an administrator.";
+    case "records":
+      return "Only the assigned class teacher or an administrator can manage class records. If you believe you should have access, please contact an administrator.";
+    default:
+      return "Permission denied. This action requires class teacher authorization.";
+  }
+}
+
+// server/routes/report-card-skills.routes.ts
+var router4 = Router4();
+router4.get("/api/reports/:reportCardId/skills", authenticateUser, async (req, res) => {
+  try {
+    const { reportCardId } = req.params;
+    const reportCard = await storage.getReportCard(Number(reportCardId));
+    if (!reportCard) {
+      return res.status(404).json({ message: "Report card not found" });
+    }
+    const skills = await storage.getReportCardSkills(Number(reportCardId));
+    res.json(skills || {});
+  } catch (error) {
+    console.error("Error getting skills:", error);
+    res.status(500).json({ message: error.message || "Failed to get skills" });
+  }
+});
+router4.post("/api/reports/:reportCardId/skills", authenticateUser, authorizeRoles(ROLE_IDS.TEACHER, ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+  try {
+    const { reportCardId } = req.params;
+    const userId = req.user.id;
+    const roleId = req.user.roleId;
+    const skillsData = req.body;
+    const reportCard = await storage.getReportCard(Number(reportCardId));
+    if (!reportCard) {
+      return res.status(404).json({ message: "Report card not found" });
+    }
+    const classInfo = reportCard.classId ? await storage.getClass(reportCard.classId) : null;
+    const classTeacherId = classInfo?.classTeacherId || null;
+    const permissions = calculateClassTeacherPermissions({
+      loggedInUserId: userId,
+      loggedInRoleId: roleId,
+      classTeacherId
+    });
+    if (!permissions.canRateSkills) {
+      return res.status(403).json({
+        message: getClassTeacherPermissionDeniedMessage("skills"),
+        isClassTeacher: false
+      });
+    }
+    const result = await storage.saveReportCardSkills(Number(reportCardId), { ...skillsData, recordedBy: userId });
+    res.json(result);
+  } catch (error) {
+    console.error("Error saving skills:", error);
+    res.status(500).json({ message: error.message || "Failed to save skills" });
+  }
+});
+var report_card_skills_routes_default = router4;
+
 // server/exam-visibility.ts
 init_storage();
 init_enhanced_cache();
@@ -15095,54 +15431,6 @@ function invalidateVisibilityCache(options) {
   return invalidated;
 }
 
-// shared/class-teacher-permissions.ts
-var ADMIN_ROLE_IDS = [1, 2];
-function calculateClassTeacherPermissions(context) {
-  const { loggedInUserId, loggedInRoleId, classTeacherId } = context;
-  const isAdmin = ADMIN_ROLE_IDS.includes(loggedInRoleId);
-  if (isAdmin) {
-    return {
-      canRateSkills: true,
-      canWriteClassTeacherComment: true,
-      canManageClassRecords: true,
-      isAdmin: true,
-      isClassTeacher: false,
-      reason: "Administrator access"
-    };
-  }
-  const isClassTeacher = classTeacherId === loggedInUserId;
-  if (isClassTeacher) {
-    return {
-      canRateSkills: true,
-      canWriteClassTeacherComment: true,
-      canManageClassRecords: true,
-      isAdmin: false,
-      isClassTeacher: true,
-      reason: "Authorized as class teacher"
-    };
-  }
-  return {
-    canRateSkills: false,
-    canWriteClassTeacherComment: false,
-    canManageClassRecords: false,
-    isAdmin: false,
-    isClassTeacher: false,
-    reason: "Only the assigned class teacher or administrators can perform this action"
-  };
-}
-function getClassTeacherPermissionDeniedMessage(action) {
-  switch (action) {
-    case "skills":
-      return "Only the assigned class teacher or an administrator can rate student skills. If you believe you should have access, please contact an administrator.";
-    case "comment":
-      return "Only the assigned class teacher or an administrator can write class teacher comments. If you believe you should have access, please contact an administrator.";
-    case "records":
-      return "Only the assigned class teacher or an administrator can manage class records. If you believe you should have access, please contact an administrator.";
-    default:
-      return "Permission denied. This action requires class teacher authorization.";
-  }
-}
-
 // server/services/subject-assignment-service.ts
 init_storage();
 init_enhanced_cache();
@@ -15340,19 +15628,19 @@ async function invalidateSubjectMappingsAndSync(affectedClassIds, options = {}) 
   console.log(`[SUBJECT-MAPPING-SYNC] Classes: ${affectedClassIds.length}, Students synced: ${totalSynced}, Cache invalidated: ${cacheKeysInvalidated}, Report items removed: ${reportCardItemsRemoved}, Report items added: ${reportCardItemsAdded}, Exam scores synced: ${examScoresSynced}, Errors: ${syncErrors.length}`);
   return { studentsSynced: totalSynced, reportCardItemsRemoved, reportCardItemsAdded, examScoresSynced, cacheKeysInvalidated, syncErrors };
 }
-var loginSchema = z3.object({
-  identifier: z3.string().min(1),
+var loginSchema = z4.object({
+  identifier: z4.string().min(1),
   // Can be username or email
-  password: z3.string().min(1)
+  password: z4.string().min(1)
 });
-var changePasswordSchema = z3.object({
-  currentPassword: z3.string().min(1),
-  newPassword: z3.string().min(6).max(100)
+var changePasswordSchema = z4.object({
+  currentPassword: z4.string().min(1),
+  newPassword: z4.string().min(6).max(100)
 });
-var contactSchema = z3.object({
-  name: z3.string().min(1),
-  email: z3.string().email(),
-  message: z3.string().min(1)
+var contactSchema = z4.object({
+  name: z4.string().min(1),
+  email: z4.string().email(),
+  message: z4.string().min(1)
 });
 var loginAttempts = /* @__PURE__ */ new Map();
 var lockoutViolations = /* @__PURE__ */ new Map();
@@ -15957,6 +16245,9 @@ async function registerRoutes(app2) {
     res.json({ ...stats, roomCounts });
   });
   app2.use(teacher_assignment_routes_default);
+  app2.use(job_vacancy_routes_default);
+  app2.use(settings_routes_default);
+  app2.use(report_card_skills_routes_default);
   app2.post("/api/upload", authenticateUser, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) {
@@ -16623,9 +16914,9 @@ async function registerRoutes(app2) {
       if (isNaN(resultId) || resultId <= 0) {
         return res.status(400).json({ message: "Invalid result ID" });
       }
-      const updateExamResultSchema = z3.object({
-        testScore: z3.number().min(0).nullable().optional(),
-        remarks: z3.string().max(500).optional()
+      const updateExamResultSchema = z4.object({
+        testScore: z4.number().min(0).nullable().optional(),
+        remarks: z4.string().max(500).optional()
       });
       const parseResult = updateExamResultSchema.safeParse(req.body);
       if (!parseResult.success) {
@@ -17126,6 +17417,9 @@ async function registerRoutes(app2) {
       }
       const existingResults = await storage.getExamResultsByStudent(studentId);
       const existingResult = existingResults.find((r) => r.examId === examId);
+      const minsTaken = Math.floor(timeTakenSeconds / 60);
+      const secsTaken = timeTakenSeconds % 60;
+      const timeTakenStr = `${minsTaken} min${minsTaken !== 1 ? "s" : ""} ${secsTaken} sec${secsTaken !== 1 ? "s" : ""}`;
       if (existingResult) {
         await storage.updateExamResult(existingResult.id, {
           correct_answers: correctAnswersCount,
@@ -19764,7 +20058,7 @@ async function registerRoutes(app2) {
         }
       });
     } catch (error) {
-      if (error instanceof z3.ZodError) {
+      if (error instanceof z4.ZodError) {
         return res.status(400).json({ message: "Invalid identifier or password format" });
       }
       res.status(500).json({ message: "Login failed. Please try again." });
@@ -19789,7 +20083,7 @@ async function registerRoutes(app2) {
       });
       res.json({ message: "Password changed successfully" });
     } catch (error) {
-      if (error instanceof z3.ZodError) {
+      if (error instanceof z4.ZodError) {
         return res.status(400).json({ message: "Invalid password format" });
       }
       res.status(500).json({ message: "Password change failed. Please try again." });
@@ -19798,7 +20092,7 @@ async function registerRoutes(app2) {
   app2.post("/api/auth/forgot-password", async (req, res) => {
     const ipAddress = req.ip || req.connection.remoteAddress || "unknown";
     try {
-      const { identifier } = z3.object({ identifier: z3.string().min(1) }).parse(req.body);
+      const { identifier } = z4.object({ identifier: z4.string().min(1) }).parse(req.body);
       const recentAttempts = await storage.getRecentPasswordResetAttempts(identifier, 60);
       if (recentAttempts.length >= 3) {
         console.log(`\u{1F6A8} Rate limit exceeded for password reset: ${identifier} from IP ${ipAddress}`);
@@ -19903,9 +20197,9 @@ async function registerRoutes(app2) {
   app2.post("/api/auth/reset-password", async (req, res) => {
     const ipAddress = req.ip || req.connection.remoteAddress || "unknown";
     try {
-      const { token, newPassword } = z3.object({
-        token: z3.string().min(1),
-        newPassword: z3.string().min(8).max(100).refine((pwd) => /[A-Z]/.test(pwd), "Must contain at least one uppercase letter").refine((pwd) => /[a-z]/.test(pwd), "Must contain at least one lowercase letter").refine((pwd) => /[0-9]/.test(pwd), "Must contain at least one number").refine((pwd) => /[!@#$%^&*]/.test(pwd), "Must contain at least one special character (!@#$%^&*)")
+      const { token, newPassword } = z4.object({
+        token: z4.string().min(1),
+        newPassword: z4.string().min(8).max(100).refine((pwd) => /[A-Z]/.test(pwd), "Must contain at least one uppercase letter").refine((pwd) => /[a-z]/.test(pwd), "Must contain at least one lowercase letter").refine((pwd) => /[0-9]/.test(pwd), "Must contain at least one number").refine((pwd) => /[!@#$%^&*]/.test(pwd), "Must contain at least one special character (!@#$%^&*)")
       }).parse(req.body);
       const resetToken = await storage.getPasswordResetToken(token);
       if (!resetToken) {
@@ -19941,7 +20235,7 @@ async function registerRoutes(app2) {
       console.log(`\u2705 Password reset successfully for user ${resetToken.userId} from IP ${ipAddress}`);
       res.json({ message: "Password reset successfully" });
     } catch (error) {
-      if (error instanceof z3.ZodError) {
+      if (error instanceof z4.ZodError) {
         return res.status(400).json({
           message: "Password must be at least 8 characters with uppercase, lowercase, number, and special character"
         });
@@ -19952,10 +20246,10 @@ async function registerRoutes(app2) {
   app2.post("/api/admin/reset-user-password", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
     const ipAddress = req.ip || req.connection.remoteAddress || "unknown";
     try {
-      const { userId, newPassword, forceChange } = z3.object({
-        userId: z3.string().uuid(),
-        newPassword: z3.string().min(6, "Password must be at least 6 characters").optional(),
-        forceChange: z3.boolean().optional().default(true)
+      const { userId, newPassword, forceChange } = z4.object({
+        userId: z4.string().uuid(),
+        newPassword: z4.string().min(6, "Password must be at least 6 characters").optional(),
+        forceChange: z4.boolean().optional().default(true)
       }).parse(req.body);
       const user = await storage.getUser(userId);
       if (!user) {
@@ -19984,7 +20278,7 @@ Please login and ${forceChange ? "change your password immediately" : "update yo
 If you did not request this password reset, please contact the school administration immediately.
 
 Thank you,
-Treasure-Home School Administration
+School Management System Administration
 `;
       if (process.env.NODE_ENV === "development") {
       }
@@ -20001,9 +20295,9 @@ Treasure-Home School Administration
   });
   app2.post("/api/admin/update-recovery-email", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
     try {
-      const { userId, recoveryEmail } = z3.object({
-        userId: z3.string().uuid(),
-        recoveryEmail: z3.string().email()
+      const { userId, recoveryEmail } = z4.object({
+        userId: z4.string().uuid(),
+        recoveryEmail: z4.string().email()
       }).parse(req.body);
       const user = await storage.getUser(userId);
       if (!user) {
@@ -20019,7 +20313,7 @@ Treasure-Home School Administration
         newEmail: recoveryEmail
       });
     } catch (error) {
-      if (error instanceof z3.ZodError) {
+      if (error instanceof z4.ZodError) {
         return res.status(400).json({ message: "Invalid email format" });
       }
       res.status(500).json({ message: "Failed to update recovery email" });
@@ -20028,8 +20322,8 @@ Treasure-Home School Administration
   app2.post("/api/users/:id/recovery-email", authenticateUser, async (req, res) => {
     try {
       const { id } = req.params;
-      const { recoveryEmail } = z3.object({
-        recoveryEmail: z3.string().email()
+      const { recoveryEmail } = z4.object({
+        recoveryEmail: z4.string().email()
       }).parse(req.body);
       const userId = req.user.id;
       if (id !== userId && req.user.roleId !== ROLE_IDS.ADMIN) {
@@ -20063,7 +20357,7 @@ Treasure-Home School Administration
         // Explicitly return updated recoveryEmail
       });
     } catch (error) {
-      if (error instanceof z3.ZodError) {
+      if (error instanceof z4.ZodError) {
         return res.status(400).json({
           message: "Invalid request data",
           errors: error.errors.map((e) => `${e.path.join(".")}: ${e.message}`)
@@ -20074,8 +20368,8 @@ Treasure-Home School Administration
   });
   app2.post("/api/admin/unlock-account", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
     try {
-      const { userId } = z3.object({
-        userId: z3.string().uuid()
+      const { userId } = z4.object({
+        userId: z4.string().uuid()
       }).parse(req.body);
       const user = await storage.getUser(userId);
       if (!user) {
@@ -20147,9 +20441,9 @@ Treasure-Home School Administration
   });
   app2.post("/api/invites", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
     try {
-      const { email, roleId } = z3.object({
-        email: z3.string().email(),
-        roleId: z3.number()
+      const { email, roleId } = z4.object({
+        email: z4.string().email(),
+        roleId: z4.number()
       }).parse(req.body);
       const role = await storage.getRole(roleId);
       if (!role) {
@@ -20201,7 +20495,7 @@ Treasure-Home School Administration
         }
       });
     } catch (error) {
-      if (error instanceof z3.ZodError) {
+      if (error instanceof z4.ZodError) {
         return res.status(400).json({ message: "Invalid request format" });
       }
       res.status(500).json({ message: "Failed to create invite" });
@@ -20242,10 +20536,10 @@ Treasure-Home School Administration
   app2.post("/api/invites/:token/accept", async (req, res) => {
     try {
       const { token } = req.params;
-      const { firstName, lastName, password } = z3.object({
-        firstName: z3.string().min(1),
-        lastName: z3.string().min(1),
-        password: z3.string().min(6).max(100)
+      const { firstName, lastName, password } = z4.object({
+        firstName: z4.string().min(1),
+        lastName: z4.string().min(1),
+        password: z4.string().min(6).max(100)
       }).parse(req.body);
       const invite = await storage.getInviteByToken(token);
       if (!invite) {
@@ -20301,7 +20595,7 @@ Treasure-Home School Administration
         token: token_jwt
       });
     } catch (error) {
-      if (error instanceof z3.ZodError) {
+      if (error instanceof z4.ZodError) {
         return res.status(400).json({ message: "Invalid request format" });
       }
       res.status(500).json({ message: "Failed to accept invite" });
@@ -20356,7 +20650,7 @@ Treasure-Home School Administration
         id: savedMessage.id
       });
     } catch (error) {
-      if (error instanceof z3.ZodError) {
+      if (error instanceof z4.ZodError) {
         return res.status(400).json({ message: "Invalid request data" });
       }
       res.status(500).json({ message: "Failed to send message. Please try again." });
@@ -20682,11 +20976,11 @@ Treasure-Home School Administration
       if (!adminUser) {
         return res.status(401).json({ message: "Not authenticated" });
       }
-      const updateSchema = z3.object({
-        firstName: z3.string().min(1).optional(),
-        lastName: z3.string().min(1).optional(),
-        email: z3.string().email().optional(),
-        password: z3.string().min(6).optional()
+      const updateSchema = z4.object({
+        firstName: z4.string().min(1).optional(),
+        lastName: z4.string().min(1).optional(),
+        email: z4.string().email().optional(),
+        password: z4.string().min(6).optional()
       });
       const validatedData = updateSchema.parse(req.body);
       const user = await storage.getUser(id);
@@ -20737,7 +21031,7 @@ Treasure-Home School Administration
         user: safeUser
       });
     } catch (error) {
-      if (error instanceof ZodError) {
+      if (error instanceof ZodError2) {
         return res.status(400).json({ message: "Invalid request data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update user" });
@@ -20997,8 +21291,8 @@ Treasure-Home School Administration
   });
   app2.post("/api/users/bulk-delete", authenticateUser, authorizeRoles(ROLE_IDS.SUPER_ADMIN), async (req, res) => {
     try {
-      const { userIds } = z3.object({
-        userIds: z3.array(z3.string().uuid()).min(1).max(50)
+      const { userIds } = z4.object({
+        userIds: z4.array(z4.string().uuid()).min(1).max(50)
       }).parse(req.body);
       const adminUser = req.user;
       if (!adminUser) {
@@ -21017,7 +21311,7 @@ Treasure-Home School Administration
         failed: result.failed
       });
     } catch (error) {
-      if (error instanceof z3.ZodError) {
+      if (error instanceof z4.ZodError) {
         return res.status(400).json({ message: "Invalid request", errors: error.errors });
       }
       res.status(500).json({ message: "Bulk deletion failed", error: error.message });
@@ -21054,9 +21348,9 @@ Treasure-Home School Administration
   app2.post("/api/users/:id/reset-password", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
     try {
       const { id } = req.params;
-      const { newPassword, forceChange } = z3.object({
-        newPassword: z3.string().min(6, "Password must be at least 6 characters").optional(),
-        forceChange: z3.boolean().optional().default(true)
+      const { newPassword, forceChange } = z4.object({
+        newPassword: z4.string().min(6, "Password must be at least 6 characters").optional(),
+        forceChange: z4.boolean().optional().default(true)
       }).parse(req.body);
       const adminUser = req.user;
       if (!adminUser) {
@@ -21097,7 +21391,7 @@ Treasure-Home School Administration
         // Include generated password if auto-generated
       });
     } catch (error) {
-      if (error instanceof z3.ZodError) {
+      if (error instanceof z4.ZodError) {
         return res.status(400).json({
           message: "Invalid request data",
           errors: error.errors.map((e) => `${e.path.join(".")}: ${e.message}`)
@@ -21109,8 +21403,8 @@ Treasure-Home School Administration
   app2.post("/api/users/:id/role", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
     try {
       const { id } = req.params;
-      const { roleId } = z3.object({
-        roleId: z3.number().int().positive()
+      const { roleId } = z4.object({
+        roleId: z4.number().int().positive()
       }).parse(req.body);
       const adminUser = req.user;
       if (!adminUser) {
@@ -21150,7 +21444,7 @@ Treasure-Home School Administration
         user: safeUser
       });
     } catch (error) {
-      if (error instanceof z3.ZodError) {
+      if (error instanceof z4.ZodError) {
         return res.status(400).json({
           message: "Invalid request data",
           errors: error.errors.map((e) => `${e.path.join(".")}: ${e.message}`)
@@ -21161,10 +21455,10 @@ Treasure-Home School Administration
   });
   app2.get("/api/audit-logs", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
     try {
-      const { limit, action, entityType } = z3.object({
-        limit: z3.coerce.number().int().positive().max(1e3).optional().default(100),
-        action: z3.string().optional(),
-        entityType: z3.string().optional()
+      const { limit, action, entityType } = z4.object({
+        limit: z4.coerce.number().int().positive().max(1e3).optional().default(100),
+        action: z4.string().optional(),
+        entityType: z4.string().optional()
       }).parse(req.query);
       const logs = await storage.getAuditLogs({
         limit,
@@ -21181,7 +21475,7 @@ Treasure-Home School Administration
       }));
       res.json(enrichedLogs);
     } catch (error) {
-      if (error instanceof z3.ZodError) {
+      if (error instanceof z4.ZodError) {
         return res.status(400).json({
           message: "Invalid query parameters",
           errors: error.errors.map((e) => `${e.path.join(".")}: ${e.message}`)
@@ -21258,7 +21552,7 @@ Treasure-Home School Administration
         temporaryPassword: password
       });
     } catch (error) {
-      if (error instanceof z3.ZodError) {
+      if (error instanceof z4.ZodError) {
         return res.status(400).json({
           message: "Invalid user data",
           errors: error.errors.map((e) => `${e.path.join(".")}: ${e.message}`)
@@ -21295,7 +21589,7 @@ Treasure-Home School Administration
       realtimeService.emitUserEvent(user.id, "updated", userResponse, user.roleId?.toString());
       res.json(userResponse);
     } catch (error) {
-      if (error instanceof z3.ZodError) {
+      if (error instanceof z4.ZodError) {
         return res.status(400).json({
           message: "Invalid user data",
           errors: error.errors.map((e) => `${e.path.join(".")}: ${e.message}`)
@@ -21724,7 +22018,7 @@ Treasure-Home School Administration
         parentCreated: result.parentCredentials !== null
       });
     } catch (error) {
-      if (error instanceof ZodError) {
+      if (error instanceof ZodError2) {
         return res.status(400).json({
           message: "Validation error",
           errors: error.errors
@@ -21958,179 +22252,6 @@ Treasure-Home School Administration
       res.status(500).json({ message: "Failed to skip profile setup" });
     }
   });
-  app2.get("/api/vacancies", async (req, res) => {
-    try {
-      const status = req.query.status;
-      const cacheKey = `vacancies:list:${status || "all"}`;
-      const vacancies3 = await enhancedCache2.getOrSet(
-        cacheKey,
-        () => storage.getAllVacancies(status),
-        EnhancedCache.TTL.MEDIUM,
-        // 5 minutes TTL
-        "L1"
-        // Hot data - public endpoint
-      );
-      res.json(vacancies3);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch vacancies" });
-    }
-  });
-  app2.get("/api/vacancies/:id", async (req, res) => {
-    try {
-      const vacancy = await storage.getVacancy(req.params.id);
-      if (!vacancy) {
-        return res.status(404).json({ message: "Vacancy not found" });
-      }
-      res.json(vacancy);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch vacancy" });
-    }
-  });
-  const teacherApplicationSchema = z3.object({
-    vacancyId: z3.string().optional().nullable(),
-    fullName: z3.string().min(1),
-    googleEmail: z3.string().email().regex(/@gmail\.com$/, "Must be a Gmail address"),
-    phone: z3.string().min(1),
-    subjectSpecialty: z3.string().min(1),
-    qualification: z3.string().min(1),
-    experienceYears: z3.number().min(0),
-    bio: z3.string().min(1),
-    resumeUrl: z3.string().optional().nullable()
-  });
-  app2.post("/api/teacher-applications", async (req, res) => {
-    try {
-      const validatedData = teacherApplicationSchema.parse(req.body);
-      const existingApplications = await storage.getAllTeacherApplications();
-      const existingApp = existingApplications.find(
-        (app3) => app3.googleEmail === validatedData.googleEmail && (app3.status === "pending" || app3.status === "approved")
-      );
-      if (existingApp) {
-        return res.status(400).json({
-          message: existingApp.status === "approved" ? "This email has already been approved" : "You already have a pending application"
-        });
-      }
-      const application = await storage.createTeacherApplication(validatedData);
-      const admins = await storage.getUsersByRole(ROLE_IDS.ADMIN);
-      for (const admin of admins) {
-        await storage.createNotification({
-          userId: admin.id,
-          type: "teacher_application",
-          title: "New Teacher Application",
-          message: `${validatedData.fullName} has applied for a teaching position`,
-          relatedEntityType: "teacher_application",
-          relatedEntityId: application.id
-        });
-        realtimeService.emitNotification(admin.id, {
-          title: "New Teacher Application",
-          message: `${validatedData.fullName} has applied for a teaching position`,
-          type: "teacher_application"
-        });
-      }
-      realtimeService.emitTableChange("teacher_applications", "INSERT", application);
-      realtimeService.emitToRole("admin", "application.created", application);
-      res.status(201).json({
-        message: "Application submitted successfully. You will be notified once reviewed.",
-        application
-      });
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return res.status(400).json({ message: error.errors[0].message });
-      }
-      res.status(500).json({ message: "Failed to submit application" });
-    }
-  });
-  app2.post("/api/admin/vacancies", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
-    try {
-      const vacancy = await storage.createVacancy({
-        ...req.body,
-        createdBy: req.user.id
-      });
-      enhancedCache2.invalidate(/^vacancies:/);
-      realtimeService.emitTableChange("vacancies", "INSERT", vacancy, void 0, req.user.id);
-      realtimeService.emitEvent("vacancy.created", vacancy);
-      res.status(201).json(vacancy);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to create vacancy" });
-    }
-  });
-  app2.patch("/api/admin/vacancies/:id/close", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
-    try {
-      const existingVacancy = await storage.getVacancy(req.params.id);
-      const vacancy = await storage.updateVacancy(req.params.id, { status: "closed" });
-      if (!vacancy) {
-        return res.status(404).json({ message: "Vacancy not found" });
-      }
-      enhancedCache2.invalidate(/^vacancies:/);
-      realtimeService.emitTableChange("vacancies", "UPDATE", vacancy, existingVacancy, req.user.id);
-      realtimeService.emitEvent("vacancy.closed", vacancy);
-      res.json(vacancy);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to close vacancy" });
-    }
-  });
-  app2.get("/api/admin/applications", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
-    try {
-      const status = req.query.status;
-      const applications = await storage.getAllTeacherApplications(status);
-      res.json(applications);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch applications" });
-    }
-  });
-  app2.patch("/api/admin/applications/:id/status", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
-    try {
-      const { status } = req.body;
-      if (status === "approved") {
-        const result = await storage.approveTeacherApplication(req.params.id, req.user.id);
-        const applicantUser = await storage.getUserByEmail(result.application.googleEmail);
-        if (applicantUser) {
-          await storage.createNotification({
-            userId: applicantUser.id,
-            type: "application_approved",
-            title: "Application Approved",
-            message: "Your teacher application has been approved. You can now sign in with Google.",
-            relatedEntityType: "teacher_application",
-            relatedEntityId: result.application.id
-          });
-          realtimeService.emitNotification(applicantUser.id, {
-            title: "Application Approved",
-            message: "Your teacher application has been approved. You can now sign in with Google.",
-            type: "application_approved"
-          });
-        }
-        realtimeService.emitTableChange("teacher_applications", "UPDATE", result.application, void 0, req.user.id);
-        realtimeService.emitToRole("admin", "application.approved", result);
-        res.json({
-          message: "Application approved successfully",
-          ...result
-        });
-      } else if (status === "rejected") {
-        const { reason } = req.body;
-        const application = await storage.rejectTeacherApplication(req.params.id, req.user.id, reason || "No reason provided");
-        if (!application) {
-          return res.status(404).json({ message: "Application not found" });
-        }
-        realtimeService.emitTableChange("teacher_applications", "UPDATE", application, void 0, req.user.id);
-        realtimeService.emitToRole("admin", "application.rejected", application);
-        res.json({
-          message: "Application rejected",
-          application
-        });
-      } else {
-        res.status(400).json({ message: "Invalid status" });
-      }
-    } catch (error) {
-      res.status(500).json({ message: "Failed to update application" });
-    }
-  });
-  app2.get("/api/admin/approved-teachers", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
-    try {
-      const approvedTeachers3 = await storage.getAllApprovedTeachers();
-      res.json(approvedTeachers3);
-    } catch (error) {
-      res.status(500).json({ message: "Failed to fetch approved teachers" });
-    }
-  });
   app2.get("/api/superadmin/stats", authenticateUser, authorizeRoles(ROLE_IDS.SUPER_ADMIN), async (req, res) => {
     try {
       const stats = await storage.getSuperAdminStats();
@@ -22149,10 +22270,10 @@ Treasure-Home School Administration
   });
   app2.post("/api/superadmin/admins", authenticateUser, authorizeRoles(ROLE_IDS.SUPER_ADMIN), async (req, res) => {
     try {
-      const createAdminSchema = z3.object({
-        firstName: z3.string().min(1, "First name is required").trim(),
-        lastName: z3.string().min(1, "Last name is required").trim(),
-        email: z3.string().email("Invalid email address").toLowerCase().trim()
+      const createAdminSchema = z4.object({
+        firstName: z4.string().min(1, "First name is required").trim(),
+        lastName: z4.string().min(1, "Last name is required").trim(),
+        email: z4.string().email("Invalid email address").toLowerCase().trim()
       });
       const validatedData = createAdminSchema.parse(req.body);
       const { firstName, lastName, email } = validatedData;
@@ -22211,7 +22332,7 @@ Treasure-Home School Administration
         }
       });
     } catch (error) {
-      if (error instanceof z3.ZodError) {
+      if (error instanceof z4.ZodError) {
         return res.status(400).json({
           message: error.errors[0].message || "Validation error",
           errors: error.errors
@@ -25564,98 +25685,6 @@ Treasure-Home School Administration
       res.status(500).json({ message: error.message || "Failed to fetch active exams" });
     }
   });
-  app2.get("/api/settings", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
-    try {
-      const { key } = req.query;
-      if (key) {
-        const setting = await storage.getSetting(key);
-        if (!setting) {
-          return res.status(404).json({ message: "Setting not found" });
-        }
-        return res.json(setting);
-      }
-      const settings3 = await storage.getAllSettings();
-      res.json(settings3);
-    } catch (error) {
-      console.error("Error fetching settings:", error);
-      res.status(500).json({ message: "Failed to fetch settings" });
-    }
-  });
-  app2.put("/api/settings", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
-    try {
-      const { key, value, description, dataType } = req.body;
-      if (!key || typeof key !== "string" || key.trim().length === 0) {
-        return res.status(400).json({ message: "Setting key is required and must be a non-empty string" });
-      }
-      if (value === void 0 || value === null) {
-        return res.status(400).json({ message: "Setting value is required" });
-      }
-      const userId = req.user.id;
-      const trimmedKey = key.trim();
-      const stringValue = typeof value === "string" ? value : JSON.stringify(value);
-      const existing = await storage.getSetting(trimmedKey);
-      if (existing) {
-        const updated = await storage.updateSetting(trimmedKey, stringValue, userId);
-        return res.json(updated);
-      } else {
-        const created = await storage.createSetting({
-          key: trimmedKey,
-          value: stringValue,
-          description: description || "",
-          dataType: dataType || "string",
-          updatedBy: userId
-        });
-        return res.json(created);
-      }
-    } catch (error) {
-      console.error("Error saving setting:", error);
-      res.status(500).json({ message: "Failed to save setting" });
-    }
-  });
-  app2.get("/api/reports/:reportCardId/skills", authenticateUser, async (req, res) => {
-    try {
-      const { reportCardId } = req.params;
-      const reportCard = await storage.getReportCard(Number(reportCardId));
-      if (!reportCard) {
-        return res.status(404).json({ message: "Report card not found" });
-      }
-      const skills = await storage.getReportCardSkills(Number(reportCardId));
-      res.json(skills || {});
-    } catch (error) {
-      console.error("Error getting skills:", error);
-      res.status(500).json({ message: error.message || "Failed to get skills" });
-    }
-  });
-  app2.post("/api/reports/:reportCardId/skills", authenticateUser, authorizeRoles(ROLE_IDS.TEACHER, ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
-    try {
-      const { reportCardId } = req.params;
-      const userId = req.user.id;
-      const roleId = req.user.roleId;
-      const skillsData = req.body;
-      const reportCard = await storage.getReportCard(Number(reportCardId));
-      if (!reportCard) {
-        return res.status(404).json({ message: "Report card not found" });
-      }
-      const classInfo = reportCard.classId ? await storage.getClass(reportCard.classId) : null;
-      const classTeacherId = classInfo?.classTeacherId || null;
-      const permissions = calculateClassTeacherPermissions({
-        loggedInUserId: userId,
-        loggedInRoleId: roleId,
-        classTeacherId
-      });
-      if (!permissions.canRateSkills) {
-        return res.status(403).json({
-          message: getClassTeacherPermissionDeniedMessage("skills"),
-          isClassTeacher: false
-        });
-      }
-      const result = await storage.saveReportCardSkills(Number(reportCardId), { ...skillsData, recordedBy: userId });
-      res.json(result);
-    } catch (error) {
-      console.error("Error saving skills:", error);
-      res.status(500).json({ message: error.message || "Failed to save skills" });
-    }
-  });
   const httpServer = createServer(app2);
   return httpServer;
 }
@@ -25682,11 +25711,24 @@ var vite_config_default = defineConfig({
     }
   },
   root: path3.resolve(import.meta.dirname, "client"),
+  optimizeDeps: {
+    include: ["lodash"]
+  },
   build: {
     outDir: path3.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
     chunkSizeWarningLimit: 1e3,
+    commonjsOptions: {
+      include: [/node_modules/],
+      ignoreDynamicRequires: true
+    },
     rollupOptions: {
+      onwarn(warning, warn) {
+        if (warning.message?.includes("core-js") || warning.message?.includes("internals/function-call")) {
+          return;
+        }
+        warn(warning);
+      },
       output: {
         manualChunks: {
           "react-vendor": ["react", "react-dom"],
@@ -26242,9 +26284,13 @@ function sanitizeLogData(data) {
   app.use((err, req, res, _next) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
-    console.log(`ERROR: ${req.method} ${req.path} - ${err.message}`);
+    console.error(`ERROR: ${req.method} ${req.path} - ${message}`);
+    if (err.stack && process.env.NODE_ENV !== "production") {
+      console.error(err.stack);
+    }
     if (!res.headersSent) {
-      res.status(status).json({ message });
+      const responseMessage = process.env.NODE_ENV === "production" && status >= 500 ? "Internal Server Error" : message;
+      res.status(status).json({ message: responseMessage });
     }
   });
   const isReplit = !!process.env.REPLIT_DEV_DOMAIN;
