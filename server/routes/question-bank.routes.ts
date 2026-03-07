@@ -100,6 +100,46 @@ router.post('/api/syllabus-topics/bulk', authenticateUser, authorizeRoles(ROLES.
     }
 });
 
+// POST /api/syllabus-topics/bulk-csv — Bulk create topics from CSV (pre-resolved IDs)
+router.post('/api/syllabus-topics/bulk-csv', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+    try {
+        const { topics } = req.body;
+        if (!Array.isArray(topics) || topics.length === 0) {
+            return sendBadRequest(res, 'topics array is required');
+        }
+
+        let created = 0;
+        const errors: string[] = [];
+
+        for (let i = 0; i < topics.length; i++) {
+            const t = topics[i];
+            if (!t.classId || !t.subjectId || !t.termId || !t.name || t.name.length < 2) {
+                errors.push(`Item ${i + 1}: Missing required fields (classId, subjectId, termId, name)`);
+                continue;
+            }
+            try {
+                await storage.createSyllabusTopic({
+                    classId: t.classId,
+                    subjectId: t.subjectId,
+                    termId: t.termId,
+                    name: t.name,
+                    description: t.description || null,
+                    orderNumber: t.orderNumber || 0,
+                    isActive: true,
+                    createdBy: req.user!.id,
+                });
+                created++;
+            } catch (err: any) {
+                errors.push(`"${t.name}": ${err.message || 'Creation failed'}`);
+            }
+        }
+
+        sendSuccess(res, { created, errors: errors.length > 0 ? errors : undefined, total: topics.length });
+    } catch (error) {
+        handleRouteError(res, error, 'syllabusTopics.bulkCsv');
+    }
+});
+
 // PUT /api/syllabus-topics/:id — Update topic
 router.put('/api/syllabus-topics/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
     try {
