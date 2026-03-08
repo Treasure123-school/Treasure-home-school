@@ -26,6 +26,7 @@ export default function QuestionBankManager() {
     const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
     const [editingQuestion, setEditingQuestion] = useState<any>(null);
     const [questionToDelete, setQuestionToDelete] = useState<any>(null);
+    const [bankToDelete, setBankToDelete] = useState<any>(null);
     const [isBankDialogOpen, setIsBankDialogOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('browse');
     const [isCsvDialogOpen, setIsCsvDialogOpen] = useState(false);
@@ -191,6 +192,28 @@ export default function QuestionBankManager() {
             toast({ title: 'Success', description: 'Question deleted' });
             queryClient.invalidateQueries({ queryKey: ['/api/question-bank/items'] });
             setQuestionToDelete(null);
+        },
+        onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    });
+
+    // Delete entire question bank
+    const deleteBankMutation = useMutation({
+        mutationFn: async (id: number) => {
+            const r = await apiRequest('DELETE', `/api/question-banks/${id}`);
+            if (!r.ok) {
+                const err = await r.json().catch(() => ({ error: 'Failed to delete bank' }));
+                throw new Error(err.error || err.message || 'Failed to delete bank');
+            }
+            return r.json();
+        },
+        onSuccess: () => {
+            toast({ title: 'Success', description: 'Question bank deleted successfully' });
+            queryClient.invalidateQueries({ queryKey: ['/api/question-banks'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/question-bank/items'] });
+            if (bankToDelete && String(bankToDelete.id) === selectedBankId) {
+                setSelectedBankId('');
+            }
+            setBankToDelete(null);
         },
         onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
     });
@@ -409,14 +432,27 @@ export default function QuestionBankManager() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <Label>Question Bank</Label>
-                            <Select value={selectedBankId} onValueChange={setSelectedBankId}>
-                                <SelectTrigger><SelectValue placeholder="Select a bank..." /></SelectTrigger>
-                                <SelectContent>
-                                    {banks.map((b: any) => (
-                                        <SelectItem key={b.id} value={String(b.id)}>{b.name} ({subjects.find((s: any) => s.id === b.subjectId)?.name || '—'})</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <div className="flex gap-2">
+                                <Select value={selectedBankId} onValueChange={setSelectedBankId}>
+                                    <SelectTrigger><SelectValue placeholder="Select a bank..." /></SelectTrigger>
+                                    <SelectContent>
+                                        {banks.map((b: any) => (
+                                            <SelectItem key={b.id} value={String(b.id)}>{b.name} ({subjects.find((s: any) => s.id === b.subjectId)?.name || '—'})</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                {selectedBankId && (
+                                    <Button
+                                        variant="destructive"
+                                        size="icon"
+                                        className="shrink-0"
+                                        title="Delete this bank"
+                                        onClick={() => setBankToDelete(banks.find((b: any) => String(b.id) === selectedBankId))}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -690,17 +726,38 @@ export default function QuestionBankManager() {
                 </DialogContent>
             </Dialog>
 
-            {/* Delete Confirmation */}
+            {/* Delete Question Confirmation */}
             {questionToDelete && (
                 <Dialog open={!!questionToDelete} onOpenChange={() => setQuestionToDelete(null)}>
                     <DialogContent>
                         <DialogHeader><DialogTitle>Delete Question</DialogTitle></DialogHeader>
                         <p className="text-sm">Are you sure you want to delete this question?</p>
                         <p className="text-sm text-muted-foreground italic line-clamp-2 mt-1">"{questionToDelete.questionText}"</p>
-                        <div className="flex justify-end gap-2 pt-4">
+                        <div className="flex justify-end gap-2 mt-4">
                             <Button variant="outline" onClick={() => setQuestionToDelete(null)}>Cancel</Button>
                             <Button variant="destructive" onClick={() => deleteQuestionMutation.mutate(questionToDelete.id)} disabled={deleteQuestionMutation.isPending}>
                                 {deleteQuestionMutation.isPending ? 'Deleting...' : 'Delete'}
+                            </Button>
+                        </div>
+                    </DialogContent>
+                </Dialog>
+            )}
+
+            {/* Delete Bank Confirmation */}
+            {bankToDelete && (
+                <Dialog open={!!bankToDelete} onOpenChange={() => setBankToDelete(null)}>
+                    <DialogContent>
+                        <DialogHeader><DialogTitle className="flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-destructive" /> Delete Question Bank</DialogTitle></DialogHeader>
+                        <div className="space-y-3">
+                            <p className="text-sm">Are you sure you want to delete the bank <strong>"{bankToDelete.name}"</strong>?</p>
+                            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-3">
+                                <p className="text-sm text-destructive font-medium">⚠ This will permanently delete the bank and all questions inside it. This action cannot be undone.</p>
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-2 mt-4">
+                            <Button variant="outline" onClick={() => setBankToDelete(null)}>Cancel</Button>
+                            <Button variant="destructive" onClick={() => deleteBankMutation.mutate(bankToDelete.id)} disabled={deleteBankMutation.isPending}>
+                                {deleteBankMutation.isPending ? 'Deleting...' : 'Delete Bank'}
                             </Button>
                         </div>
                     </DialogContent>
