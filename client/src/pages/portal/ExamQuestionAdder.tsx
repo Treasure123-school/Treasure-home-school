@@ -77,8 +77,8 @@ export default function ExamQuestionAdder({
         queryFn: async () => { const r = await apiRequest('GET', '/api/subjects'); return r.json(); },
     });
     const { data: terms = [] } = useQuery({
-        queryKey: ['/api/academic-terms'],
-        queryFn: async () => { const r = await apiRequest('GET', '/api/academic-terms'); return r.json(); },
+        queryKey: ['/api/terms'],
+        queryFn: async () => { const r = await apiRequest('GET', '/api/terms'); return r.json(); },
     });
     const { data: bankTopics = [] } = useQuery({
         queryKey: ['/api/syllabus-topics', 'bank-import', bankFilterClassId, bankFilterSubjectId, bankFilterTermId],
@@ -90,7 +90,7 @@ export default function ExamQuestionAdder({
             const r = await apiRequest('GET', `/api/syllabus-topics?${params.toString()}`);
             return r.ok ? r.json() : [];
         },
-        enabled: !!(bankFilterClassId && bankFilterTermId),
+        enabled: !!(bankFilterClassId && bankFilterSubjectId && bankFilterTermId),
     });
 
     // ═══ BANK ITEMS QUERY ═══
@@ -462,8 +462,8 @@ export default function ExamQuestionAdder({
                                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Term" /></SelectTrigger>
                                     <SelectContent>{terms.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
                                 </Select>
-                                <Select value={bankFilterTopicId} onValueChange={setBankFilterTopicId} disabled={!bankFilterClassId || !bankFilterTermId}>
-                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={!bankFilterTermId ? 'Set term' : 'Topic'} /></SelectTrigger>
+                                <Select value={bankFilterTopicId} onValueChange={setBankFilterTopicId} disabled={!bankFilterClassId || !bankFilterSubjectId || !bankFilterTermId}>
+                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={!bankFilterClassId || !bankFilterSubjectId || !bankFilterTermId ? 'Set class, subject & term' : 'Topic'} /></SelectTrigger>
                                     <SelectContent>{bankTopics.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
                                 </Select>
                                 <Select value={bankFilterDifficulty} onValueChange={setBankFilterDifficulty}>

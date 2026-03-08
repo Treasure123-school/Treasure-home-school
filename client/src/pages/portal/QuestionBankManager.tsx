@@ -64,8 +64,8 @@ export default function QuestionBankManager() {
         queryFn: async () => { const r = await apiRequest('GET', '/api/subjects'); return r.json(); },
     });
     const { data: terms = [] } = useQuery({
-        queryKey: ['/api/academic-terms'],
-        queryFn: async () => { const r = await apiRequest('GET', '/api/academic-terms'); return r.json(); },
+        queryKey: ['/api/terms'],
+        queryFn: async () => { const r = await apiRequest('GET', '/api/terms'); return r.json(); },
     });
     const { data: banks = [] } = useQuery({
         queryKey: ['/api/question-banks'],
@@ -93,7 +93,7 @@ export default function QuestionBankManager() {
             const r = await apiRequest('GET', `/api/syllabus-topics?${params.toString()}`);
             return r.ok ? r.json() : [];
         },
-        enabled: !!(filterClassId && filterTermId),
+        enabled: !!(filterClassId && filterSubjectId && filterTermId),
     });
 
     // ── FORM DIALOG topics (add/edit question) ──
@@ -108,7 +108,7 @@ export default function QuestionBankManager() {
             const r = await apiRequest('GET', `/api/syllabus-topics?${params.toString()}`);
             return r.ok ? r.json() : [];
         },
-        enabled: !!(formClassId && formTermId),
+        enabled: !!(formClassId && formSubjectId && formTermId),
     });
 
     // Combined topics for display labels (used by question table)
@@ -439,8 +439,8 @@ export default function QuestionBankManager() {
                                 <SelectTrigger className="h-9"><SelectValue placeholder="Term" /></SelectTrigger>
                                 <SelectContent>{terms.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
                             </Select>
-                            <Select value={filterTopicId} onValueChange={setFilterTopicId} disabled={!filterClassId || !filterTermId}>
-                                <SelectTrigger className="h-9"><SelectValue placeholder={!filterClassId || !filterTermId ? 'Set class & term first' : 'Topic'} /></SelectTrigger>
+                            <Select value={filterTopicId} onValueChange={setFilterTopicId} disabled={!filterClassId || !filterSubjectId || !filterTermId}>
+                                <SelectTrigger className="h-9"><SelectValue placeholder={!filterClassId || !filterSubjectId || !filterTermId ? 'Set class, subject & term' : 'Topic'} /></SelectTrigger>
                                 <SelectContent>{filterTopics.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
                             </Select>
                             <Select value={filterDifficulty} onValueChange={setFilterDifficulty}>

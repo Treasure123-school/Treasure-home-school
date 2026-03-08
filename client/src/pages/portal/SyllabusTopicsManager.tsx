@@ -44,8 +44,8 @@ export default function SyllabusTopicsManager() {
         queryFn: async () => { const r = await apiRequest('GET', '/api/subjects'); return r.json(); },
     });
     const { data: terms = [] } = useQuery({
-        queryKey: ['/api/academic-terms'],
-        queryFn: async () => { const r = await apiRequest('GET', '/api/academic-terms'); return r.json(); },
+        queryKey: ['/api/terms'],
+        queryFn: async () => { const r = await apiRequest('GET', '/api/terms'); return r.json(); },
     });
 
     // ═══ SUBJECT CASCADING — filter by class-subject mappings ═══
@@ -175,6 +175,13 @@ export default function SyllabusTopicsManager() {
     };
 
     const handleSubmit = () => {
+        // Validate filters are set for single/bulk modes (not CSV — CSV carries its own IDs)
+        if (addMode !== 'csv' && !editingTopic) {
+            if (!selectedClassId || !selectedSubjectId || !selectedTermId) {
+                return toast({ title: 'Error', description: 'Please select Class, Subject, and Term from the filters first', variant: 'destructive' });
+            }
+        }
+
         if (addMode === 'bulk') {
             const topicNames = bulkTopics.split('\n').map(t => t.trim()).filter(Boolean);
             if (topicNames.length === 0) return toast({ title: 'Error', description: 'Enter at least one topic', variant: 'destructive' });
@@ -186,6 +193,7 @@ export default function SyllabusTopicsManager() {
             if (csvPreview.length === 0) return toast({ title: 'Error', description: 'No valid topics to upload', variant: 'destructive' });
             csvUploadMutation.mutate({ topics: csvPreview });
         } else if (editingTopic) {
+            if (!topicName.trim()) return toast({ title: 'Error', description: 'Topic name is required', variant: 'destructive' });
             updateMutation.mutate({ id: editingTopic.id, data: { name: topicName, description: topicDescription || null, orderNumber: topicOrder ? parseInt(topicOrder) : 0 } });
         } else {
             if (!topicName.trim()) return toast({ title: 'Error', description: 'Topic name is required', variant: 'destructive' });
@@ -463,15 +471,25 @@ export default function SyllabusTopicsManager() {
                         {/* Mode selector */}
                         {!editingTopic && (
                             <div className="flex gap-2 border-b pb-3">
-                                <Button variant={addMode === 'single' ? 'default' : 'outline'} size="sm" onClick={() => setAddMode('single')}>
+                                <Button variant={addMode === 'single' ? 'default' : 'outline'} size="sm" onClick={() => setAddMode('single')} disabled={!filtersSet}>
                                     Single Topic
                                 </Button>
-                                <Button variant={addMode === 'bulk' ? 'default' : 'outline'} size="sm" onClick={() => setAddMode('bulk')}>
+                                <Button variant={addMode === 'bulk' ? 'default' : 'outline'} size="sm" onClick={() => setAddMode('bulk')} disabled={!filtersSet}>
                                     Bulk Add
                                 </Button>
                                 <Button variant={addMode === 'csv' ? 'default' : 'outline'} size="sm" onClick={() => setAddMode('csv')}>
                                     <Upload className="w-3 h-3 mr-1" /> CSV Upload
                                 </Button>
+                            </div>
+                        )}
+
+                        {/* Warning when filters not set for single/bulk */}
+                        {!editingTopic && addMode !== 'csv' && !filtersSet && (
+                            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex items-start gap-2">
+                                <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 shrink-0" />
+                                <div className="text-sm text-amber-800 dark:text-amber-300">
+                                    <strong>Select filters first:</strong> Close this dialog and select a Class, Subject, and Term from the filters above before adding topics. Or use <strong>CSV Upload</strong> to add topics with class/subject/term specified in the file.
+                                </div>
                             </div>
                         )}
 
@@ -548,6 +566,11 @@ export default function SyllabusTopicsManager() {
                         {/* ═══ SINGLE MODE ═══ */}
                         {addMode === 'single' && (
                             <>
+                                {filtersSet && !editingTopic && (
+                                    <p className="text-xs text-muted-foreground bg-muted/50 rounded px-2 py-1">
+                                        Adding to: <strong>{getClassName(parseInt(selectedClassId))} → {getSubjectName(parseInt(selectedSubjectId))} → {getTermName(parseInt(selectedTermId))}</strong>
+                                    </p>
+                                )}
                                 <div>
                                     <Label>Topic Name *</Label>
                                     <Input value={topicName} onChange={(e) => setTopicName(e.target.value)} placeholder="e.g., Nouns" />
@@ -567,7 +590,10 @@ export default function SyllabusTopicsManager() {
                             <Button variant="outline" onClick={resetForm}>Cancel</Button>
                             <Button
                                 onClick={handleSubmit}
-                                disabled={createMutation.isPending || bulkCreateMutation.isPending || updateMutation.isPending || csvUploadMutation.isPending}
+                                disabled={
+                                    createMutation.isPending || bulkCreateMutation.isPending || updateMutation.isPending || csvUploadMutation.isPending ||
+                                    (addMode !== 'csv' && !editingTopic && !filtersSet)
+                                }
                             >
                                 {(createMutation.isPending || bulkCreateMutation.isPending || updateMutation.isPending || csvUploadMutation.isPending) ? 'Saving...' :
                                     editingTopic ? 'Update Topic' :
