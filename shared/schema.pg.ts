@@ -476,7 +476,7 @@ export const questionBanks = pgTable("question_banks", {
   questionBanksCreatedByIdx: index("question_banks_created_by_idx").on(table.createdBy),
 }));
 
-// Question bank items
+// Question bank items — enhanced with class/term/topic hierarchy
 export const questionBankItems = pgTable("question_bank_items", {
   id: serial("id").primaryKey(),
   bankId: integer("bank_id").notNull().references(() => questionBanks.id, { onDelete: 'cascade' }),
@@ -493,12 +493,22 @@ export const questionBankItems = pgTable("question_bank_items", {
   hintText: text("hint_text"),
   practicalInstructions: text("practical_instructions"),
   practicalFileUrl: text("practical_file_url"),
+  // ── Syllabus hierarchy (enhanced) ──
+  classId: integer("class_id").references(() => classes.id),
+  termId: integer("term_id").references(() => academicTerms.id),
+  topicId: integer("topic_id"), // references syllabusTopics.id (defined below)
+  usageCount: integer("usage_count").notNull().default(0),
+  status: varchar("status", { length: 20 }).notNull().default('active'), // 'active', 'archived', 'draft'
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
   questionBankItemsBankIdIdx: index("question_bank_items_bank_id_idx").on(table.bankId),
   questionBankItemsTypeIdx: index("question_bank_items_type_idx").on(table.questionType),
   questionBankItemsDifficultyIdx: index("question_bank_items_difficulty_idx").on(table.difficulty),
+  questionBankItemsClassIdx: index("question_bank_items_class_idx").on(table.classId),
+  questionBankItemsTermIdx: index("question_bank_items_term_idx").on(table.termId),
+  questionBankItemsTopicIdx: index("question_bank_items_topic_idx").on(table.topicId),
+  questionBankItemsStatusIdx: index("question_bank_items_status_idx").on(table.status),
 }));
 
 // Question bank item options
@@ -512,6 +522,40 @@ export const questionBankOptions = pgTable("question_bank_options", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => ({
   questionBankOptionsItemIdIdx: index("question_bank_options_item_id_idx").on(table.questionItemId),
+}));
+
+// Syllabus topics — Maps topics to Class × Subject × Term
+export const syllabusTopics = pgTable("syllabus_topics", {
+  id: serial("id").primaryKey(),
+  classId: integer("class_id").notNull().references(() => classes.id),
+  subjectId: integer("subject_id").notNull().references(() => subjects.id),
+  termId: integer("term_id").notNull().references(() => academicTerms.id),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  orderNumber: integer("order_number").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  syllabusTopicsClassIdx: index("syllabus_topics_class_idx").on(table.classId),
+  syllabusTopicsSubjectIdx: index("syllabus_topics_subject_idx").on(table.subjectId),
+  syllabusTopicsTermIdx: index("syllabus_topics_term_idx").on(table.termId),
+  syllabusTopicsFilterIdx: index("syllabus_topics_filter_idx").on(table.classId, table.subjectId, table.termId),
+  syllabusTopicsUniqueIdx: uniqueIndex("syllabus_topics_unique_idx").on(table.classId, table.subjectId, table.termId, table.name),
+}));
+
+// Exam ↔ Question Bank link — tracks which bank items were used in which exams
+export const examQuestionBankLinks = pgTable("exam_question_bank_links", {
+  id: serial("id").primaryKey(),
+  examId: integer("exam_id").notNull().references(() => exams.id, { onDelete: 'cascade' }),
+  examQuestionId: integer("exam_question_id").notNull().references(() => examQuestions.id, { onDelete: 'cascade' }),
+  bankItemId: integer("bank_item_id").notNull().references(() => questionBankItems.id, { onDelete: 'cascade' }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  examQBLinksExamIdx: index("exam_qb_links_exam_idx").on(table.examId),
+  examQBLinksBankItemIdx: index("exam_qb_links_bank_item_idx").on(table.bankItemId),
+  examQBLinksUniqueIdx: uniqueIndex("exam_qb_links_unique_idx").on(table.examQuestionId, table.bankItemId),
 }));
 
 // Announcements table
@@ -1178,3 +1222,7 @@ export type ClassSubjectMapping = typeof classSubjectMappings.$inferSelect;
 export type InsertClassSubjectMapping = typeof classSubjectMappings.$inferInsert;
 export type SyncAuditLog = typeof syncAuditLogs.$inferSelect;
 export type InsertSyncAuditLog = typeof syncAuditLogs.$inferInsert;
+export type SyllabusTopic = typeof syllabusTopics.$inferSelect;
+export type InsertSyllabusTopic = typeof syllabusTopics.$inferInsert;
+export type ExamQuestionBankLink = typeof examQuestionBankLinks.$inferSelect;
+export type InsertExamQuestionBankLink = typeof examQuestionBankLinks.$inferInsert;

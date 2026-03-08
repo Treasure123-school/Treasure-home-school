@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, MutableRefObject } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
-import html2canvas from 'html2canvas';
+import { toCanvas } from 'html-to-image';
 import { BaileysReportTemplate } from '@/components/ui/baileys-report-template';
 import { exportToPDF, exportToImage, printElement } from '@/lib/report-export-utils';
 
@@ -25,12 +25,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { 
-  FileText, 
-  CheckCircle, 
-  Clock, 
-  Send, 
-  Eye, 
+import {
+  FileText,
+  CheckCircle,
+  Clock,
+  Send,
+  Eye,
   XCircle,
   Loader2,
   RefreshCw,
@@ -89,14 +89,14 @@ export default function AdminResultPublishing() {
 
   const handleDownloadAsImage = async () => {
     if (!baileysTemplateRef.current || !viewingReportCard) return;
-    
+
     setIsDownloading(true);
     try {
       await exportToImage(baileysTemplateRef.current, {
         filename: `report-card-${viewingReportCard.studentName?.replace(/\s+/g, '-')}`,
         scale: 2,
       });
-      
+
       toast({ title: "Success", description: "Report card downloaded as image" });
     } catch (error) {
       toast({ title: "Error", description: "Failed to download report card", variant: "destructive" });
@@ -107,14 +107,14 @@ export default function AdminResultPublishing() {
 
   const handleDownloadAsPDF = async () => {
     if (!baileysTemplateRef.current || !viewingReportCard) return;
-    
+
     setIsDownloading(true);
     try {
       await exportToPDF(baileysTemplateRef.current, {
         filename: `report-card-${viewingReportCard.studentName?.replace(/\s+/g, '-')}`,
         scale: 2,
       });
-      
+
       toast({ title: "Success", description: "Report card PDF downloaded" });
     } catch (error) {
       toast({ title: "Error", description: "Failed to download PDF", variant: "destructive" });
@@ -154,7 +154,7 @@ export default function AdminResultPublishing() {
       if (selectedClass !== 'all') params.append('classId', selectedClass);
       if (selectedTerm !== 'all') params.append('termId', selectedTerm);
       params.append('status', statusFilter === 'all' ? 'all' : statusFilter);
-      
+
       const response = await apiRequest('GET', `/api/admin/report-cards/finalized?${params}`);
       if (!response.ok) throw new Error('Failed to fetch report cards');
       return await response.json();
@@ -181,7 +181,7 @@ export default function AdminResultPublishing() {
   const unpublishingIdsRef = useRef<Set<number>>(new Set());
   const rejectingIdsRef = useRef<Set<number>>(new Set());
   const [, forceUpdate] = useState(0);
-  
+
   // Helper to update the ref and trigger re-render
   const addToSet = (ref: MutableRefObject<Set<number>>, id: number) => {
     ref.current = new Set(ref.current).add(id);
@@ -193,7 +193,7 @@ export default function AdminResultPublishing() {
     ref.current = next;
     forceUpdate(n => n + 1);
   };
-  
+
   // Real-time updates for report card status changes (publish/unpublish/reject)
   // This ensures the UI updates instantly when any admin changes a report card status
   // Real-time stays enabled - optimistic state takes precedence via query cache
@@ -203,7 +203,7 @@ export default function AdminResultPublishing() {
     enabled: true,
     fallbackPollingInterval: 30000,
   });
-  
+
   // Helper to get base stats from any available filter cache
   const getBaseStats = (previousDataMap: Record<string, any>) => {
     // Try each filter in order of preference
@@ -236,20 +236,20 @@ export default function AdminResultPublishing() {
       }
       // Mark as in-progress
       addToSet(publishingIdsRef, reportCardId);
-      
+
       // Cancel any outgoing refetches to prevent race conditions
       await queryClient.cancelQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
-      
+
       // Snapshot ALL filter views for complete rollback
       const filterViews = ['finalized', 'published', 'all'];
       const previousDataMap: Record<string, any> = {};
       filterViews.forEach(filter => {
         previousDataMap[filter] = queryClient.getQueryData(['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter]);
       });
-      
+
       // Get the report card being published for cross-filter updates
       const reportCardToPublish = reportCards.find(rc => rc.id === reportCardId);
-      
+
       // Calculate new statistics ONCE using helper to get from any available cache
       const baseStats = getBaseStats(previousDataMap);
       const newStats = {
@@ -257,14 +257,14 @@ export default function AdminResultPublishing() {
         finalized: Math.max(0, baseStats.finalized - 1),
         published: baseStats.published + 1
       };
-      
+
       // Optimistically update ALL filter views for instant UI feedback across filter switches
       filterViews.forEach(filter => {
         queryClient.setQueryData(
           ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter],
           (old: any) => {
             if (!old) return old;
-            
+
             if (filter === 'finalized') {
               return {
                 ...old,
@@ -302,7 +302,7 @@ export default function AdminResultPublishing() {
           }
         );
       });
-      
+
       return { previousDataMap, reportCardId };
     },
     onSuccess: (_data, reportCardId) => {
@@ -341,17 +341,17 @@ export default function AdminResultPublishing() {
     onMutate: async (reportCardIds: number[]) => {
       // Cancel any outgoing refetches to prevent race conditions
       await queryClient.cancelQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
-      
+
       // Snapshot ALL filter views for complete rollback
       const filterViews = ['finalized', 'published', 'all'];
       const previousDataMap: Record<string, any> = {};
       filterViews.forEach(filter => {
         previousDataMap[filter] = queryClient.getQueryData(['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter]);
       });
-      
+
       // Get the report cards being published for cross-filter updates
       const reportCardsToPublish = reportCards.filter(rc => reportCardIds.includes(rc.id));
-      
+
       // Calculate new statistics ONCE using helper
       const baseStats = getBaseStats(previousDataMap);
       const publishedCount = reportCardIds.length;
@@ -360,14 +360,14 @@ export default function AdminResultPublishing() {
         finalized: Math.max(0, baseStats.finalized - publishedCount),
         published: baseStats.published + publishedCount
       };
-      
+
       // Optimistically update ALL filter views
       filterViews.forEach(filter => {
         queryClient.setQueryData(
           ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter],
           (old: any) => {
             if (!old) return old;
-            
+
             if (filter === 'finalized') {
               return {
                 ...old,
@@ -401,10 +401,10 @@ export default function AdminResultPublishing() {
           }
         );
       });
-      
+
       // Clear selection immediately for instant feedback
       setSelectedReportCards([]);
-      
+
       return { previousDataMap };
     },
     onSuccess: (data) => {
@@ -443,20 +443,20 @@ export default function AdminResultPublishing() {
       }
       // Mark as in-progress
       addToSet(unpublishingIdsRef, reportCardId);
-      
+
       // Cancel any outgoing refetches to prevent race conditions
       await queryClient.cancelQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
-      
+
       // Snapshot ALL filter views for complete rollback
       const filterViews = ['finalized', 'published', 'all'];
       const previousDataMap: Record<string, any> = {};
       filterViews.forEach(filter => {
         previousDataMap[filter] = queryClient.getQueryData(['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter]);
       });
-      
+
       // Get the report card being unpublished for cross-filter updates
       const reportCardToUnpublish = reportCards.find(rc => rc.id === reportCardId);
-      
+
       // Calculate new statistics ONCE using helper to get from any available cache
       const baseStats = getBaseStats(previousDataMap);
       const newStats = {
@@ -464,14 +464,14 @@ export default function AdminResultPublishing() {
         published: Math.max(0, baseStats.published - 1),
         finalized: baseStats.finalized + 1
       };
-      
+
       // Optimistically update ALL filter views for instant UI feedback across filter switches
       filterViews.forEach(filter => {
         queryClient.setQueryData(
           ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter],
           (old: any) => {
             if (!old) return old;
-            
+
             if (filter === 'published') {
               return {
                 ...old,
@@ -509,7 +509,7 @@ export default function AdminResultPublishing() {
           }
         );
       });
-      
+
       return { previousDataMap, reportCardId };
     },
     onSuccess: (_data, reportCardId) => {
@@ -553,17 +553,17 @@ export default function AdminResultPublishing() {
     onMutate: async (reportCardIds: number[]) => {
       // Cancel any outgoing refetches to prevent race conditions
       await queryClient.cancelQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
-      
+
       // Snapshot ALL filter views for complete rollback
       const filterViews = ['finalized', 'published', 'all'];
       const previousDataMap: Record<string, any> = {};
       filterViews.forEach(filter => {
         previousDataMap[filter] = queryClient.getQueryData(['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter]);
       });
-      
+
       // Get the report cards being unpublished for cross-filter updates
       const reportCardsToUnpublish = reportCards.filter(rc => reportCardIds.includes(rc.id));
-      
+
       // Calculate new statistics ONCE using helper
       const baseStats = getBaseStats(previousDataMap);
       const unpublishedCount = reportCardIds.length;
@@ -572,14 +572,14 @@ export default function AdminResultPublishing() {
         published: Math.max(0, baseStats.published - unpublishedCount),
         finalized: baseStats.finalized + unpublishedCount
       };
-      
+
       // Optimistically update ALL filter views
       filterViews.forEach(filter => {
         queryClient.setQueryData(
           ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter],
           (old: any) => {
             if (!old) return old;
-            
+
             if (filter === 'published') {
               return {
                 ...old,
@@ -613,10 +613,10 @@ export default function AdminResultPublishing() {
           }
         );
       });
-      
+
       // Clear selection immediately for instant feedback
       setSelectedReportCards([]);
-      
+
       return { previousDataMap };
     },
     onSuccess: () => {
@@ -655,17 +655,17 @@ export default function AdminResultPublishing() {
       }
       // Mark as in-progress
       addToSet(rejectingIdsRef, id);
-      
+
       // Cancel any outgoing refetches to prevent race conditions
       await queryClient.cancelQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
-      
+
       // Snapshot ALL filter views for complete rollback
       const filterViews = ['finalized', 'published', 'all'];
       const previousDataMap: Record<string, any> = {};
       filterViews.forEach(filter => {
         previousDataMap[filter] = queryClient.getQueryData(['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter]);
       });
-      
+
       // Calculate new statistics ONCE using helper to get from any available cache
       const baseStats = getBaseStats(previousDataMap);
       const newStats = {
@@ -673,7 +673,7 @@ export default function AdminResultPublishing() {
         finalized: Math.max(0, baseStats.finalized - 1),
         draft: baseStats.draft + 1
       };
-      
+
       // Optimistically update ALL filter views - remove from all since it goes to draft
       filterViews.forEach(filter => {
         queryClient.setQueryData(
@@ -688,12 +688,12 @@ export default function AdminResultPublishing() {
           }
         );
       });
-      
+
       // Close dialog immediately for instant feedback
       setIsRejectDialogOpen(false);
       setRejectingId(null);
       setRejectReason('');
-      
+
       return { previousDataMap, id };
     },
     onSuccess: (_data, { id }) => {
@@ -723,7 +723,7 @@ export default function AdminResultPublishing() {
   // Backfill default comments mutation
   const [isBackfillDialogOpen, setIsBackfillDialogOpen] = useState(false);
   const [backfillOverwrite, setBackfillOverwrite] = useState(false);
-  
+
   const backfillCommentsMutation = useMutation({
     mutationFn: async ({ termId, classId, overwrite }: { termId?: number; classId?: number; overwrite: boolean }) => {
       const response = await apiRequest('POST', '/api/reports/backfill-comments', { termId, classId, overwrite });
@@ -787,14 +787,14 @@ export default function AdminResultPublishing() {
 
   const getStatusBadge = useCallback((status: string, reportCardId?: number) => {
     const isPending = reportCardId && (
-      publishingIdsRef.current.has(reportCardId) || 
-      unpublishingIdsRef.current.has(reportCardId) || 
+      publishingIdsRef.current.has(reportCardId) ||
+      unpublishingIdsRef.current.has(reportCardId) ||
       rejectingIdsRef.current.has(reportCardId)
     );
-    
+
     const baseClasses = `text-xs ${STATUS_BADGE_TRANSITION}`;
     const pendingOpacity = isPending ? 'opacity-70' : '';
-    
+
     switch (status) {
       case 'draft':
         return <Badge variant="secondary" className={`${baseClasses} ${pendingOpacity}`}><Clock className="w-3 h-3 mr-1" /> Draft</Badge>;
@@ -814,7 +814,7 @@ export default function AdminResultPublishing() {
   const isPublishedView = statusFilter === 'published';
 
   const pendingCount = publishingIdsRef.current.size + unpublishingIdsRef.current.size + rejectingIdsRef.current.size;
-  
+
   return (
     <div className="space-y-4 p-3 sm:p-4 md:p-6" data-testid="page-admin-result-publishing">
       <div className="sr-only" aria-live="polite" aria-atomic="true" data-testid="aria-live-status">
@@ -875,14 +875,14 @@ export default function AdminResultPublishing() {
               <div className="min-w-0">
                 <CardTitle className="text-base sm:text-lg">Report Cards</CardTitle>
                 <CardDescription className="text-xs sm:text-sm truncate">
-                  {statusFilter === 'finalized' ? 'Awaiting your approval' : 
-                   statusFilter === 'published' ? 'Published report cards' : 'All report cards'}
+                  {statusFilter === 'finalized' ? 'Awaiting your approval' :
+                    statusFilter === 'published' ? 'Published report cards' : 'All report cards'}
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <Button 
-                  variant="outline" 
-                  size="icon" 
+                <Button
+                  variant="outline"
+                  size="icon"
                   onClick={() => setIsBackfillDialogOpen(true)}
                   className="sm:hidden"
                   aria-label="Generate comments"
@@ -890,9 +890,9 @@ export default function AdminResultPublishing() {
                 >
                   <FileText className="w-4 h-4" />
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => setIsBackfillDialogOpen(true)}
                   className="hidden sm:flex"
                   data-testid="button-generate-comments"
@@ -900,9 +900,9 @@ export default function AdminResultPublishing() {
                   <FileText className="w-4 h-4 mr-2" />
                   Generate Comments
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
+                <Button
+                  variant="outline"
+                  size="icon"
                   onClick={() => refetch()}
                   aria-label="Refresh report cards"
                   data-testid="button-refresh"
@@ -953,8 +953,8 @@ export default function AdminResultPublishing() {
               <span className="text-xs sm:text-sm font-medium">{selectedReportCards.length} selected</span>
               <div className="flex gap-2 ml-auto">
                 {isPublishedView ? (
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="outline"
                     onClick={() => bulkUnpublishMutation.mutate(selectedReportCards)}
                     className="text-xs sm:text-sm"
@@ -965,8 +965,8 @@ export default function AdminResultPublishing() {
                     <span className="sm:hidden">Unpublish</span>
                   </Button>
                 ) : (
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     onClick={() => bulkPublishMutation.mutate(selectedReportCards)}
                     className="text-xs sm:text-sm"
                     data-testid="button-bulk-publish"
@@ -976,8 +976,8 @@ export default function AdminResultPublishing() {
                     <span className="sm:hidden">Publish</span>
                   </Button>
                 )}
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   variant="outline"
                   onClick={() => setSelectedReportCards([])}
                   className="text-xs sm:text-sm"
@@ -997,8 +997,8 @@ export default function AdminResultPublishing() {
             <div className="text-center py-12">
               <GraduationCap className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground text-sm">
-                {statusFilter === 'finalized' 
-                  ? 'No report cards awaiting approval' 
+                {statusFilter === 'finalized'
+                  ? 'No report cards awaiting approval'
                   : 'No report cards found'}
               </p>
             </div>
@@ -1011,7 +1011,7 @@ export default function AdminResultPublishing() {
                     <TableRow>
                       {(statusFilter === 'finalized' || statusFilter === 'published') && (
                         <TableHead className="w-12">
-                          <Checkbox 
+                          <Checkbox
                             checked={isPublishedView ? allPublishedSelected : allFinalizedSelected}
                             onCheckedChange={handleSelectAll}
                             data-testid="checkbox-select-all"
@@ -1034,7 +1034,7 @@ export default function AdminResultPublishing() {
                         {(statusFilter === 'finalized' || statusFilter === 'published') && (
                           <TableCell>
                             {(rc.status === 'finalized' || rc.status === 'published') && (
-                              <Checkbox 
+                              <Checkbox
                                 checked={selectedReportCards.includes(rc.id)}
                                 onCheckedChange={(checked) => handleSelectOne(rc.id, !!checked)}
                                 data-testid={`checkbox-select-${rc.id}`}
@@ -1081,14 +1081,14 @@ export default function AdminResultPublishing() {
                               </DropdownMenuItem>
                               {rc.status === 'finalized' && !publishingIdsRef.current.has(rc.id) && !rejectingIdsRef.current.has(rc.id) && (
                                 <>
-                                  <DropdownMenuItem 
+                                  <DropdownMenuItem
                                     onClick={() => publishMutation.mutate(rc.id)}
                                   >
                                     <Send className="w-4 h-4 mr-2" />
                                     Approve & Publish
                                   </DropdownMenuItem>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
+                                  <DropdownMenuItem
                                     onClick={() => handleReject(rc.id)}
                                     className="text-red-600"
                                   >
@@ -1100,7 +1100,7 @@ export default function AdminResultPublishing() {
                               {rc.status === 'published' && !unpublishingIdsRef.current.has(rc.id) && (
                                 <>
                                   <DropdownMenuSeparator />
-                                  <DropdownMenuItem 
+                                  <DropdownMenuItem
                                     onClick={() => unpublishMutation.mutate(rc.id)}
                                     className="text-amber-600"
                                   >
@@ -1122,7 +1122,7 @@ export default function AdminResultPublishing() {
               <div className="md:hidden space-y-3">
                 {((statusFilter === 'finalized' && finalizedCount > 0) || (statusFilter === 'published' && publishedCount > 0)) && (
                   <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-md">
-                    <Checkbox 
+                    <Checkbox
                       checked={isPublishedView ? allPublishedSelected : allFinalizedSelected}
                       onCheckedChange={handleSelectAll}
                       data-testid="checkbox-select-all-mobile"
@@ -1135,7 +1135,7 @@ export default function AdminResultPublishing() {
                     <CardContent className="p-3">
                       <div className="flex items-start gap-3">
                         {((statusFilter === 'finalized' && rc.status === 'finalized') || (statusFilter === 'published' && rc.status === 'published')) && (
-                          <Checkbox 
+                          <Checkbox
                             checked={selectedReportCards.includes(rc.id)}
                             onCheckedChange={(checked) => handleSelectOne(rc.id, !!checked)}
                             className="mt-1"
@@ -1161,14 +1161,14 @@ export default function AdminResultPublishing() {
                                 </DropdownMenuItem>
                                 {rc.status === 'finalized' && !publishingIdsRef.current.has(rc.id) && !rejectingIdsRef.current.has(rc.id) && (
                                   <>
-                                    <DropdownMenuItem 
+                                    <DropdownMenuItem
                                       onClick={() => publishMutation.mutate(rc.id)}
                                     >
                                       <Send className="w-4 h-4 mr-2" />
                                       Approve & Publish
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem 
+                                    <DropdownMenuItem
                                       onClick={() => handleReject(rc.id)}
                                       className="text-red-600"
                                     >
@@ -1180,7 +1180,7 @@ export default function AdminResultPublishing() {
                                 {rc.status === 'published' && !unpublishingIdsRef.current.has(rc.id) && (
                                   <>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem 
+                                    <DropdownMenuItem
                                       onClick={() => unpublishMutation.mutate(rc.id)}
                                       className="text-amber-600"
                                     >
@@ -1218,7 +1218,7 @@ export default function AdminResultPublishing() {
 
       {/* Preview Dialog - Fully Responsive for all screen sizes */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent 
+        <DialogContent
           className="w-[98vw] sm:w-[95vw] md:w-[90vw] lg:w-[85vw] max-w-5xl max-h-[85dvh] sm:max-h-[88dvh] md:max-h-[90dvh] p-0 flex flex-col overflow-hidden"
           style={{ margin: 'auto' }}
         >
@@ -1248,14 +1248,14 @@ export default function AdminResultPublishing() {
                   <div className="flex items-center gap-1.5 sm:gap-2">
                     {getStatusBadge(fullReportCard.status)}
                     <span className="text-xs text-muted-foreground hidden md:inline">
-                      {fullReportCard.status === 'finalized' ? 'Ready for publishing' : 
-                       fullReportCard.status === 'published' ? 'Visible to students and parents' : ''}
+                      {fullReportCard.status === 'finalized' ? 'Ready for publishing' :
+                        fullReportCard.status === 'published' ? 'Visible to students and parents' : ''}
                     </span>
                   </div>
                   <div className="flex items-center gap-1 sm:gap-1.5">
                     {/* Print/Download icons */}
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="icon"
                       onClick={handlePrintReport}
                       aria-label="Print report card"
@@ -1265,8 +1265,8 @@ export default function AdminResultPublishing() {
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="icon"
                           disabled={isDownloading}
                           aria-label="Export report card"
@@ -1288,7 +1288,7 @@ export default function AdminResultPublishing() {
                     </DropdownMenu>
                     {fullReportCard.status === 'finalized' && (
                       <>
-                        <Button 
+                        <Button
                           onClick={() => {
                             publishMutation.mutate(fullReportCard.id);
                             setIsViewDialogOpen(false);
@@ -1300,7 +1300,7 @@ export default function AdminResultPublishing() {
                           <Send className="w-4 h-4 sm:mr-1.5" />
                           <span className="hidden sm:inline">Publish</span>
                         </Button>
-                        <Button 
+                        <Button
                           variant="outline"
                           size="icon"
                           onClick={() => {
@@ -1316,7 +1316,7 @@ export default function AdminResultPublishing() {
                       </>
                     )}
                     {fullReportCard.status === 'published' && (
-                      <Button 
+                      <Button
                         variant="outline"
                         size="sm"
                         onClick={() => {
@@ -1380,12 +1380,6 @@ export default function AdminResultPublishing() {
                       affectiveTraits: fullReportCard.affectiveTraits,
                       psychomotorSkills: fullReportCard.psychomotorSkills
                     }}
-                    schoolName={settings?.schoolName || ""}
-                    schoolMotto={settings?.schoolMotto || ""}
-                    schoolAddress={settings?.schoolAddress || ""}
-                    schoolPhone={settings?.schoolPhone || ""}
-                    schoolEmail={settings?.schoolEmail || ""}
-                    schoolLogo={settings?.schoolLogo || ""}
                     testWeight={40}
                     examWeight={60}
                     canEditRemarks={false}
@@ -1417,7 +1411,7 @@ export default function AdminResultPublishing() {
               This will revert the report card back to draft status so the teacher can make corrections.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div>
               <Label htmlFor="reject-reason" className="text-sm">Reason for Rejection (Optional)</Label>
@@ -1433,8 +1427,8 @@ export default function AdminResultPublishing() {
           </div>
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setIsRejectDialogOpen(false);
                 setRejectingId(null);
@@ -1444,7 +1438,7 @@ export default function AdminResultPublishing() {
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               variant="destructive"
               onClick={confirmReject}
               className="w-full sm:w-auto"
@@ -1469,7 +1463,7 @@ export default function AdminResultPublishing() {
               Automatically generate encouraging teacher and principal comments based on each student's academic performance.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="p-3 bg-muted rounded-md text-sm">
               <p className="font-medium mb-2">This will generate comments for:</p>
@@ -1478,10 +1472,10 @@ export default function AdminResultPublishing() {
                 <li>{selectedTerm === 'all' ? 'All terms' : `Term: ${terms.find((t: any) => t.id.toString() === selectedTerm)?.name || selectedTerm}`}</li>
               </ul>
             </div>
-            
+
             <div className="flex items-center space-x-2">
-              <Checkbox 
-                id="overwrite-comments" 
+              <Checkbox
+                id="overwrite-comments"
                 checked={backfillOverwrite}
                 onCheckedChange={(checked) => setBackfillOverwrite(Boolean(checked))}
                 data-testid="checkbox-overwrite-comments"
@@ -1493,8 +1487,8 @@ export default function AdminResultPublishing() {
           </div>
 
           <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => {
                 setIsBackfillDialogOpen(false);
                 setBackfillOverwrite(false);
@@ -1503,7 +1497,7 @@ export default function AdminResultPublishing() {
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={() => backfillCommentsMutation.mutate({
                 termId: selectedTerm !== 'all' ? parseInt(selectedTerm) : undefined,
                 classId: selectedClass !== 'all' ? parseInt(selectedClass) : undefined,

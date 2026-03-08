@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import ExamQuestionAdder from './ExamQuestionAdder';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { optimisticToggle, optimisticDelete, optimisticCreate, optimisticUpdateItem, rollbackOnError } from '@/lib/optimisticUpdates';
@@ -49,27 +50,27 @@ const questionFormSchema = insertExamQuestionSchema
       }, z.coerce.number().min(0).default(0)).optional(),
       explanationText: z.string().optional(),
     })).optional(),
-}).refine((data) => {
-  if (data.questionType === 'multiple_choice') {
-    if (!data.options || data.options.length < 2) {
+  }).refine((data) => {
+    if (data.questionType === 'multiple_choice') {
+      if (!data.options || data.options.length < 2) {
+        return false;
+      }
+      const nonEmptyOptions = data.options.filter(opt => opt.optionText.trim() !== '');
+      if (nonEmptyOptions.length < 2) {
+        return false;
+      }
+      const hasCorrectAnswer = nonEmptyOptions.some(opt => opt.isCorrect);
+      return hasCorrectAnswer;
+    }
+    // Enhanced validation for theory questions
+    if (data.questionType === 'essay' && data.questionText && data.questionText.length < 20) {
       return false;
     }
-    const nonEmptyOptions = data.options.filter(opt => opt.optionText.trim() !== '');
-    if (nonEmptyOptions.length < 2) {
-      return false;
-    }
-    const hasCorrectAnswer = nonEmptyOptions.some(opt => opt.isCorrect);
-    return hasCorrectAnswer;
-  }
-  // Enhanced validation for theory questions
-  if (data.questionType === 'essay' && data.questionText && data.questionText.length < 20) {
-    return false;
-  }
-  return true;
-}, {
-  message: "Multiple choice questions require at least 2 non-empty options with one marked as correct. Essay questions need detailed question text (20+ characters).",
-  path: ["options"]
-});
+    return true;
+  }, {
+    message: "Multiple choice questions require at least 2 non-empty options with one marked as correct. Essay questions need detailed question text (20+ characters).",
+    path: ["options"]
+  });
 
 type ExamForm = z.infer<typeof examFormSchema>;
 type QuestionForm = z.infer<typeof questionFormSchema>;
@@ -113,16 +114,17 @@ export default function ExamManagement() {
   const { user } = useAuth();
   const [isExamDialogOpen, setIsExamDialogOpen] = useState(false);
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
+  const [isQuestionAdderOpen, setIsQuestionAdderOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<ExamQuestion | null>(null);
   const [previewExam, setPreviewExam] = useState<Exam | null>(null);
-  
+
   // Track pending deletions to prevent race conditions with Realtime
   const pendingDeletionsRef = useRef<Set<number>>(new Set());
   const pendingQuestionDeletionsRef = useRef<Set<number>>(new Set());
-  
+
   // Track which specific exam is currently being toggled (for button loading state)
   const [togglingExamId, setTogglingExamId] = useState<number | null>(null);
   // Keep a ref in sync for use in real-time event handlers (avoids stale closure)
@@ -187,8 +189,8 @@ export default function ExamManagement() {
   const exams = rawExams.filter((exam: Exam) => !pendingDeletionsRef.current.has(exam.id));
 
   // Enable real-time updates for exams with specific event handlers
-  useSocketIORealtime({ 
-    table: 'exams', 
+  useSocketIORealtime({
+    table: 'exams',
     queryKey: ['/api/exams'],
     onEvent: (event) => {
       // Handle exam.deleted event - immediately remove from cache
@@ -197,8 +199,8 @@ export default function ExamManagement() {
         if (deletedExamId) {
           // Clear pending deletion flag - the delete is now confirmed by backend
           pendingDeletionsRef.current.delete(deletedExamId);
-          
-          queryClient.setQueryData(['/api/exams'], (old: Exam[] | undefined) => 
+
+          queryClient.setQueryData(['/api/exams'], (old: Exam[] | undefined) =>
             old?.filter((e) => e.id !== deletedExamId) || []
           );
           // Clear selected exam if it was deleted
@@ -217,7 +219,7 @@ export default function ExamManagement() {
           if (togglingExamIdRef.current === updatedExam.id) {
             setTogglingExamId(null);
           }
-          queryClient.setQueryData(['/api/exams'], (old: Exam[] | undefined) => 
+          queryClient.setQueryData(['/api/exams'], (old: Exam[] | undefined) =>
             old?.map((e) => e.id === updatedExam.id ? updatedExam : e) || []
           );
         }
@@ -237,8 +239,8 @@ export default function ExamManagement() {
 
   // Enable real-time updates for exam questions when viewing/editing an exam
   // Note: queryKey must match exactly with the useQuery queryKey for cache invalidation to work
-  useSocketIORealtime({ 
-    table: 'exam_questions', 
+  useSocketIORealtime({
+    table: 'exam_questions',
     queryKey: ['/api/exam-questions', selectedExam?.id],
     examId: selectedExam?.id,
     enabled: !!selectedExam?.id,
@@ -250,9 +252,9 @@ export default function ExamManagement() {
         if (deletedQuestionId) {
           // Clear pending deletion flag - the delete is now confirmed by backend
           pendingQuestionDeletionsRef.current.delete(deletedQuestionId);
-          
+
           if (selectedExam?.id === eventExamId) {
-            queryClient.setQueryData(['/api/exam-questions', selectedExam?.id], (old: ExamQuestion[] | undefined) => 
+            queryClient.setQueryData(['/api/exam-questions', selectedExam?.id], (old: ExamQuestion[] | undefined) =>
               old?.filter((q) => q.id !== deletedQuestionId) || []
             );
             // Clear editing question if it was deleted
@@ -320,21 +322,21 @@ export default function ExamManagement() {
   // Filter subjects based on selected class - use class_subject_mappings as source of truth for admins
   const availableSubjects = (() => {
     if (!myAssignments || !selectedClassId) return [];
-    
+
     // For admins, use class-subject-mappings as the source of truth
     if (myAssignments.isAdmin) {
       if (mappingsLoading) return [];
-      
+
       // If no mappings configured, show empty list with clear message
       if (classSubjectMappings.length === 0) return [];
-      
+
       // Return subjects from mappings - filter allSubjects to mapped subjects only
       const mappedSubjectIds = classSubjectMappings.map(m => m.subjectId);
       return allSubjects.filter((s: Subject) => mappedSubjectIds.includes(s.id));
     }
-    
+
     // For teachers, only show subjects they are assigned to for the selected class
-    return myAssignments.subjects.filter((s: any) => 
+    return myAssignments.subjects.filter((s: any) =>
       myAssignments.assignments.some(a => a.classId === selectedClassId && a.subjectId === s.id && a.isActive)
     );
   })();
@@ -440,24 +442,24 @@ export default function ExamManagement() {
     onMutate: async ({ examId, examData }) => {
       await queryClient.cancelQueries({ queryKey: ['/api/exams'] });
       const previousExams = queryClient.getQueryData(['/api/exams']);
-      
+
       queryClient.setQueryData(['/api/exams'], (old: Exam[] | undefined) => {
         if (!old) return old;
-        return old.map((exam) => 
+        return old.map((exam) =>
           exam.id === examId ? { ...exam, ...examData } : exam
         );
       });
-      
+
       return { previousExams };
     },
     onSuccess: (updatedExam) => {
       queryClient.setQueryData(['/api/exams'], (old: Exam[] | undefined) => {
         if (!old) return old;
-        return old.map((exam) => 
+        return old.map((exam) =>
           exam.id === updatedExam.id ? updatedExam : exam
         );
       });
-      
+
       toast({
         title: "Success",
         description: "Exam updated successfully",
@@ -488,34 +490,34 @@ export default function ExamManagement() {
     onMutate: async ({ examId, isPublished }) => {
       // Track which exam is being toggled for button loading state
       setTogglingExamId(examId);
-      
+
       await queryClient.cancelQueries({ queryKey: ['/api/exams'] });
       const previousExams = queryClient.getQueryData(['/api/exams']);
-      
+
       // Optimistically update the exam's published status for instant feedback
       queryClient.setQueryData(['/api/exams'], (old: any) => {
         if (!old) return old;
-        return old.map((exam: any) => 
+        return old.map((exam: any) =>
           exam.id === examId ? { ...exam, isPublished } : exam
         );
       });
-      
+
       return { previousExams };
     },
     onSuccess: (data, { isPublished }) => {
       // Update cache with confirmed backend data
       queryClient.setQueryData(['/api/exams'], (old: any) => {
         if (!old) return old;
-        return old.map((exam: any) => 
+        return old.map((exam: any) =>
           exam.id === data.id ? data : exam
         );
       });
-      
+
       toast({
         title: "Success",
         description: `Exam ${isPublished ? 'published' : 'unpublished'} successfully`,
       });
-      
+
       // Clear the toggling state
       setTogglingExamId(null);
     },
@@ -528,7 +530,7 @@ export default function ExamManagement() {
         description: error.message || "Failed to update exam publish status",
         variant: "destructive",
       });
-      
+
       // Clear the toggling state on error
       setTogglingExamId(null);
     },
@@ -551,22 +553,22 @@ export default function ExamManagement() {
     onMutate: async (examId) => {
       // Mark this deletion as pending to prevent Realtime from overriding
       pendingDeletionsRef.current.add(examId);
-      
+
       const queryKey = ['/api/exams'];
       const context = await optimisticDelete<Exam[]>({ queryKey, idToDelete: examId });
-      
+
       if (selectedExam?.id === examId) {
         setSelectedExam(null);
         setEditingExam(null);
         setEditingQuestion(null);
       }
-      
+
       return context;
     },
     onSuccess: (data, examId) => {
       // Clear pending flag immediately
       pendingDeletionsRef.current.delete(examId);
-      
+
       // Build detailed success message with deletion stats
       let description = "Exam deleted successfully";
       if (data?.deletedCounts) {
@@ -580,12 +582,12 @@ export default function ExamManagement() {
           description = `Exam and ${parts.join(', ')} permanently deleted`;
         }
       }
-      
+
       toast({
         title: "Success",
         description,
       });
-      
+
       // Invalidate related caches since exam and its data were deleted
       queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/exam-results'] });
@@ -594,7 +596,7 @@ export default function ExamManagement() {
     onError: (error: any, examId, context) => {
       // Remove from pending deletions on error
       pendingDeletionsRef.current.delete(examId);
-      
+
       if (context?.previousData) {
         rollbackOnError(['/api/exams'], context.previousData);
       }
@@ -623,22 +625,22 @@ export default function ExamManagement() {
       const currentExamId = selectedExam?.id;
       const queryKey = ['/api/exam-questions', currentExamId];
       const context = await optimisticDelete<ExamQuestion[]>({ queryKey, idToDelete: questionId });
-      
+
       // Mark question as pending deletion to prevent race conditions with Realtime
       pendingQuestionDeletionsRef.current.add(questionId);
-      
+
       // Return context with captured examId for use in onSuccess/onError
       return { ...context, examId: currentExamId };
     },
     onSuccess: (_, questionId, context) => {
       // Clear pending flag immediately
       pendingQuestionDeletionsRef.current.delete(questionId);
-      
+
       toast({
         title: "Success",
         description: "Question deleted successfully",
       });
-      
+
       // Invalidate question counts and options caches
       queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/question-options', questionId] });
@@ -646,10 +648,10 @@ export default function ExamManagement() {
     onError: (error: any, questionId, context) => {
       // Remove from pending deletions on error
       pendingQuestionDeletionsRef.current.delete(questionId);
-      
+
       // Use examId from context to ensure we target the correct cache
       const examId = context?.examId;
-      
+
       if (context?.previousData && examId) {
         rollbackOnError(['/api/exam-questions', examId], context.previousData);
       }
@@ -781,16 +783,16 @@ export default function ExamManagement() {
     onMutate: async ({ questionId, questionData }) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['/api/exam-questions', selectedExam?.id] });
-      
+
       // Snapshot previous value
       const previousQuestions = queryClient.getQueryData<ExamQuestion[]>(['/api/exam-questions', selectedExam?.id]);
-      
+
       // Optimistically update the question with only compatible fields
       const { options, ...safeData } = questionData as any;
-      queryClient.setQueryData<ExamQuestion[]>(['/api/exam-questions', selectedExam?.id], (old = []) => 
+      queryClient.setQueryData<ExamQuestion[]>(['/api/exam-questions', selectedExam?.id], (old = []) =>
         old.map(q => q.id === questionId ? { ...q, ...safeData } : q)
       );
-      
+
       return { previousQuestions };
     },
     onSuccess: (updatedQuestion) => {
@@ -799,7 +801,7 @@ export default function ExamManagement() {
         description: "Question updated successfully",
       });
       // Update cache with confirmed backend data
-      queryClient.setQueryData<ExamQuestion[]>(['/api/exam-questions', selectedExam?.id], (old = []) => 
+      queryClient.setQueryData<ExamQuestion[]>(['/api/exam-questions', selectedExam?.id], (old = []) =>
         old.map(q => q.id === updatedQuestion.id ? updatedQuestion : q)
       );
       // Invalidate question options in case they changed
@@ -839,7 +841,7 @@ export default function ExamManagement() {
   // Function to open edit dialog with question data
   const handleEditQuestion = async (question: ExamQuestion) => {
     setEditingQuestion(question);
-    
+
     // Fetch options if it's a multiple choice question
     let questionOptions: any[] = [];
     if (question.questionType === 'multiple_choice') {
@@ -852,7 +854,7 @@ export default function ExamManagement() {
         console.error('Failed to fetch question options:', error);
       }
     }
-    
+
     // Populate form with question data
     resetQuestion({
       questionText: question.questionText || '',
@@ -860,19 +862,19 @@ export default function ExamManagement() {
       points: question.points || 1,
       instructions: (question as any).instructions || '',
       sampleAnswer: (question as any).sampleAnswer || '',
-      options: questionOptions.length > 0 
+      options: questionOptions.length > 0
         ? questionOptions.map((opt: any) => ({
-            optionText: opt.optionText || '',
-            isCorrect: opt.isCorrect || false,
-          }))
+          optionText: opt.optionText || '',
+          isCorrect: opt.isCorrect || false,
+        }))
         : [
-            { optionText: '', isCorrect: false },
-            { optionText: '', isCorrect: false },
-            { optionText: '', isCorrect: false },
-            { optionText: '', isCorrect: false },
-          ],
+          { optionText: '', isCorrect: false },
+          { optionText: '', isCorrect: false },
+          { optionText: '', isCorrect: false },
+          { optionText: '', isCorrect: false },
+        ],
     });
-    
+
     setIsQuestionDialogOpen(true);
   };
 
@@ -887,7 +889,7 @@ export default function ExamManagement() {
   // Function to open edit dialog with exam data
   const handleEditExam = (exam: Exam) => {
     setEditingExam(exam);
-    
+
     // Format date for the input field (YYYY-MM-DD format)
     const formatDate = (dateValue: string | Date | null | undefined): string => {
       if (!dateValue) return '';
@@ -911,7 +913,7 @@ export default function ExamManagement() {
       if (isNaN(date.getTime())) return undefined;
       return date;
     };
-    
+
     // Populate form with exam data
     resetExam({
       name: exam.name || '',
@@ -942,7 +944,7 @@ export default function ExamManagement() {
       requireFullscreen: exam.requireFullscreen || false,
       maxTabSwitches: exam.maxTabSwitches || 3,
     });
-    
+
     setIsExamDialogOpen(true);
   };
 
@@ -959,7 +961,7 @@ export default function ExamManagement() {
     const errorFields = Object.keys(errors);
     const friendlyFieldNames = {
       classId: 'Class',
-      subjectId: 'Subject', 
+      subjectId: 'Subject',
       termId: 'Academic Term',
       totalMarks: 'Total Marks',
       date: 'Exam Date',
@@ -1085,9 +1087,9 @@ export default function ExamManagement() {
   const csvUploadMutation = useMutation({
     retry: false,
     mutationFn: async (questions: any[]) => {
-      const response = await apiRequest('POST', '/api/exam-questions/bulk', { 
+      const response = await apiRequest('POST', '/api/exam-questions/bulk', {
         examId: selectedExam?.id,
-        questions 
+        questions
       });
 
       const result = await response.json();
@@ -1101,13 +1103,13 @@ export default function ExamManagement() {
       });
 
       const queryKey = ['/api/exam-questions', selectedExam?.id];
-      
+
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey });
-      
+
       // Snapshot previous value
       const previousQuestions = queryClient.getQueryData<ExamQuestion[]>(queryKey);
-      
+
       // Optimistically add new questions with temporary IDs
       const optimisticQuestions = newQuestions.map((q, index) => ({
         id: -(Date.now() + index), // Negative temp ID
@@ -1129,15 +1131,15 @@ export default function ExamManagement() {
         allowPartialCredit: false,
         options: q.options || []
       })) as any;
-      
+
       // Immediately update UI with optimistic data
       queryClient.setQueryData<ExamQuestion[]>(queryKey, (old: ExamQuestion[] | undefined = []) => [...(old || []), ...optimisticQuestions]);
-      
-      
+
+
       return { previousQuestions, queryKey };
     },
     onSuccess: async (data, variables, context) => {
-      const successMessage = data.errors && data.errors.length > 0 
+      const successMessage = data.errors && data.errors.length > 0
         ? `${data.created} question${data.created !== 1 ? 's' : ''} uploaded successfully. ${data.errors.length} failed.`
         : `${data.created} question${data.created !== 1 ? 's' : ''} uploaded successfully.`;
 
@@ -1151,13 +1153,13 @@ export default function ExamManagement() {
       // This ensures instant update even if Socket.IO doesn't fire for bulk inserts
       if (data.questions && Array.isArray(data.questions)) {
         const queryKey = ['/api/exam-questions', selectedExam?.id];
-        
+
         queryClient.setQueryData<ExamQuestion[]>(queryKey, (old = []) => {
           // Remove optimistic questions (negative IDs) and add real questions from backend
           const nonOptimistic = old.filter(q => q.id > 0);
           return [...nonOptimistic, ...data.questions];
         });
-        
+
       }
       // Invalidate question counts
       queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'], exact: false });
@@ -1260,7 +1262,7 @@ export default function ExamManagement() {
   // Handle CSV file upload
   const handleCSVUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    
+
     if (!file || !selectedExam) {
       if (!selectedExam) {
         toast({
@@ -1296,7 +1298,7 @@ export default function ExamManagement() {
     reader.onload = (e) => {
       try {
         const csv = e.target?.result as string;
-        
+
         if (!csv || csv.trim().length === 0) {
           throw new Error('CSV file is empty');
         }
@@ -1329,7 +1331,7 @@ export default function ExamManagement() {
 
   // Parse CSV content into questions array
   const parseCSV = (csvContent: string) => {
-    
+
     if (!csvContent || csvContent.trim().length === 0) {
       throw new Error('CSV file is empty. Please provide a valid CSV file with question data.');
     }
@@ -1346,7 +1348,7 @@ export default function ExamManagement() {
 
     // Validate required headers with case-insensitive matching
     const normalizedHeaders = headers.map(h => h.trim());
-    const missingRequiredHeaders = requiredHeaders.filter(expected => 
+    const missingRequiredHeaders = requiredHeaders.filter(expected =>
       !normalizedHeaders.some(found => found.toLowerCase() === expected.toLowerCase())
     );
 
@@ -1507,7 +1509,7 @@ export default function ExamManagement() {
     return result;
   };
 
-  const filteredExams = exams.filter((exam: Exam) => 
+  const filteredExams = exams.filter((exam: Exam) =>
     exam.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -1540,1501 +1542,1527 @@ export default function ExamManagement() {
 
   return (
     <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Exam Management</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">Create and manage exams for your classes</p>
-          </div>
-          <Dialog open={isExamDialogOpen} onOpenChange={handleExamDialogClose}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-create-exam" className="w-full sm:w-auto">
-                <Plus className="w-4 h-4 mr-2" />
-                Create New Exam
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>{editingExam ? 'Edit Exam' : 'Create New Exam'}</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleExamSubmit(onSubmitExam, onInvalidExam)} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="name">Exam Name</Label>
-                    <Input 
-                      id="name" 
-                      {...registerExam('name')} 
-                      data-testid="input-exam-name"
-                      placeholder="e.g., Mid-term Mathematics Test"
-                    />
-                    {examErrors.name && <p className="text-sm text-red-500">{examErrors.name.message}</p>}
-                  </div>
-                  <div>
-                    <Label htmlFor="date">Exam Date</Label>
-                    <Input 
-                      id="date" 
-                      type="date" 
-                      {...registerExam('date')} 
-                      data-testid="input-exam-date"
-                    />
-                    {examErrors.date && <p className="text-sm text-red-500">{examErrors.date.message}</p>}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="class">Class</Label>
-                    <Controller
-                      name="classId"
-                      control={examControl}
-                      render={({ field }) => (
-                        <Select 
-                          onValueChange={(value) => {
-                            const numValue = Number(value);
-                            if (!isNaN(numValue)) {
-                              field.onChange(numValue);
-                            }
-                          }} 
-                          value={field.value !== undefined && field.value !== null ? field.value.toString() : ''}
-                        >
-                          <SelectTrigger data-testid="select-exam-class">
-                            <SelectValue placeholder="Select class" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {classes.map((classItem: any) => (
-                              <SelectItem key={classItem.id} value={classItem.id.toString()}>
-                                {classItem.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {examErrors.classId && <p className="text-sm text-red-500">{examErrors.classId.message}</p>}
-                  </div>
-                  <div>
-                    <Label htmlFor="subject">Subject</Label>
-                    <Controller
-                      name="subjectId"
-                      control={examControl}
-                      render={({ field }) => (
-                        <Select 
-                          onValueChange={(value) => {
-                            const numValue = Number(value);
-                            if (!isNaN(numValue)) {
-                              field.onChange(numValue);
-                            }
-                          }} 
-                          value={field.value !== undefined && field.value !== null ? field.value.toString() : ''}
-                          disabled={subjectsLoading || !selectedClassId}
-                        >
-                          <SelectTrigger data-testid="select-exam-subject">
-                            <SelectValue placeholder={
-                              subjectsLoading ? "Loading subjects..." : 
-                              !selectedClassId ? "Select a class first" :
-                              subjects.length === 0 ? (
-                                myAssignments?.isAdmin 
-                                  ? "No subjects configured for this class" 
-                                  : "No subjects assigned for this class"
-                              ) :
-                              "Select subject"
-                            } />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {subjects.map((subject: any) => (
-                              <SelectItem key={subject.id} value={subject.id.toString()}>
-                                {subject.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {examErrors.subjectId && <p className="text-sm text-red-500">{examErrors.subjectId.message}</p>}
-                    {myAssignments?.isAdmin && selectedClassId && !subjectsLoading && subjects.length === 0 && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Configure subjects for this class in Subject Manager &gt; Class Level Assignment
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="examType">Assessment Type</Label>
-                    <Controller
-                      name="examType"
-                      control={examControl}
-                      render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger data-testid="select-exam-type">
-                            <SelectValue placeholder="Select type" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="test">Test (40 marks weight)</SelectItem>
-                            <SelectItem value="exam">Exam (60 marks weight)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {examErrors.examType && <p className="text-sm text-red-500">{examErrors.examType.message}</p>}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Final grades are calculated as: Test (40%) + Exam (60%) = Total (100%)
-                    </p>
-                  </div>
-                  <div>
-                    <Label htmlFor="teacherInChargeId">Teacher In-Charge</Label>
-                    <Controller
-                      name="teacherInChargeId"
-                      control={examControl}
-                      render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value?.toString()}>
-                          <SelectTrigger data-testid="select-teacher-in-charge">
-                            <SelectValue placeholder="Select teacher (optional)" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {teachers && teachers.length > 0 ? (
-                              teachers.map((teacher: any) => (
-                                <SelectItem key={teacher.id} value={teacher.id}>
-                                  {teacher.firstName} {teacher.lastName} - {teacher.department || 'No Department'}
-                                </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="no-teachers" disabled>
-                                No teachers available
-                              </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Assigns grading responsibility
-                    </p>
-                    {examErrors.teacherInChargeId && <p className="text-sm text-red-500">{examErrors.teacherInChargeId.message}</p>}
-                  </div>
-                </div>
-
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold">Exam Management</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Create and manage exams for your classes</p>
+        </div>
+        <Dialog open={isExamDialogOpen} onOpenChange={handleExamDialogClose}>
+          <DialogTrigger asChild>
+            <Button data-testid="button-create-exam" className="w-full sm:w-auto">
+              <Plus className="w-4 h-4 mr-2" />
+              Create New Exam
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>{editingExam ? 'Edit Exam' : 'Create New Exam'}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleExamSubmit(onSubmitExam, onInvalidExam)} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="instructions">Instructions</Label>
-                  <Textarea 
-                    id="instructions" 
-                    {...registerExam('instructions')} 
-                    data-testid="textarea-exam-instructions"
-                    placeholder="Enter exam instructions for students..."
-                    rows={3}
+                  <Label htmlFor="name">Exam Name</Label>
+                  <Input
+                    id="name"
+                    {...registerExam('name')}
+                    data-testid="input-exam-name"
+                    placeholder="e.g., Mid-term Mathematics Test"
                   />
+                  {examErrors.name && <p className="text-sm text-red-500">{examErrors.name.message}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="date">Exam Date</Label>
+                  <Input
+                    id="date"
+                    type="date"
+                    {...registerExam('date')}
+                    data-testid="input-exam-date"
+                  />
+                  {examErrors.date && <p className="text-sm text-red-500">{examErrors.date.message}</p>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="class">Class</Label>
+                  <Controller
+                    name="classId"
+                    control={examControl}
+                    render={({ field }) => (
+                      <Select
+                        onValueChange={(value) => {
+                          const numValue = Number(value);
+                          if (!isNaN(numValue)) {
+                            field.onChange(numValue);
+                          }
+                        }}
+                        value={field.value !== undefined && field.value !== null ? field.value.toString() : ''}
+                      >
+                        <SelectTrigger data-testid="select-exam-class">
+                          <SelectValue placeholder="Select class" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {classes.map((classItem: any) => (
+                            <SelectItem key={classItem.id} value={classItem.id.toString()}>
+                              {classItem.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {examErrors.classId && <p className="text-sm text-red-500">{examErrors.classId.message}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="subject">Subject</Label>
+                  <Controller
+                    name="subjectId"
+                    control={examControl}
+                    render={({ field }) => (
+                      <Select
+                        onValueChange={(value) => {
+                          const numValue = Number(value);
+                          if (!isNaN(numValue)) {
+                            field.onChange(numValue);
+                          }
+                        }}
+                        value={field.value !== undefined && field.value !== null ? field.value.toString() : ''}
+                        disabled={subjectsLoading || !selectedClassId}
+                      >
+                        <SelectTrigger data-testid="select-exam-subject">
+                          <SelectValue placeholder={
+                            subjectsLoading ? "Loading subjects..." :
+                              !selectedClassId ? "Select a class first" :
+                                subjects.length === 0 ? (
+                                  myAssignments?.isAdmin
+                                    ? "No subjects configured for this class"
+                                    : "No subjects assigned for this class"
+                                ) :
+                                  "Select subject"
+                          } />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {subjects.map((subject: any) => (
+                            <SelectItem key={subject.id} value={subject.id.toString()}>
+                              {subject.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {examErrors.subjectId && <p className="text-sm text-red-500">{examErrors.subjectId.message}</p>}
+                  {myAssignments?.isAdmin && selectedClassId && !subjectsLoading && subjects.length === 0 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Configure subjects for this class in Subject Manager &gt; Class Level Assignment
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="examType">Assessment Type</Label>
+                  <Controller
+                    name="examType"
+                    control={examControl}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger data-testid="select-exam-type">
+                          <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="test">Test (40 marks weight)</SelectItem>
+                          <SelectItem value="exam">Exam (60 marks weight)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {examErrors.examType && <p className="text-sm text-red-500">{examErrors.examType.message}</p>}
                   <p className="text-xs text-muted-foreground mt-1">
-                    These will be shown to students before they start the exam
+                    Final grades are calculated as: Test (40%) + Exam (60%) = Total (100%)
                   </p>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="termId">Academic Term</Label>
-                    <Controller
-                      name="termId"
-                      control={examControl}
-                      render={({ field }) => (
-                        <Select 
-                          onValueChange={(value) => {
-                            const numValue = parseInt(value);
-                            if (!isNaN(numValue)) {
-                              field.onChange(numValue);
-                            }
-                          }} 
-                          value={field.value !== undefined && field.value !== null ? field.value.toString() : ''}
-                        >
-                          <SelectTrigger data-testid="select-term">
-                            <SelectValue placeholder="Select term" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {terms && terms.length > 0 ? (
-                              terms.map((term: any) => (
-                                <SelectItem key={term.id} value={term.id.toString()}>
-                                  {term.name} - {term.year}
-                                </SelectItem>
-                              ))
-                            ) : (
-                              <SelectItem value="no-terms" disabled>
-                                No academic terms available
+                <div>
+                  <Label htmlFor="teacherInChargeId">Teacher In-Charge</Label>
+                  <Controller
+                    name="teacherInChargeId"
+                    control={examControl}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value?.toString()}>
+                        <SelectTrigger data-testid="select-teacher-in-charge">
+                          <SelectValue placeholder="Select teacher (optional)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {teachers && teachers.length > 0 ? (
+                            teachers.map((teacher: any) => (
+                              <SelectItem key={teacher.id} value={teacher.id}>
+                                {teacher.firstName} {teacher.lastName} - {teacher.department || 'No Department'}
                               </SelectItem>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {examErrors.termId && <p className="text-sm text-red-500">{examErrors.termId.message}</p>}
-                  </div>
-                </div>
-
-                {/* Timer Mode Selection Section */}
-                <div className="space-y-4 p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
-                  <h4 className="font-medium text-sm flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    Timer Mode Selection
-                  </h4>
-
-                  <div>
-                    <Label htmlFor="timerMode">Choose Timer Mode</Label>
-                    <Controller
-                      name="timerMode"
-                      control={examControl}
-                      render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value || 'individual'}>
-                          <SelectTrigger data-testid="select-timer-mode">
-                            <SelectValue placeholder="Select timer mode" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="individual">
-                              <div className="flex flex-col">
-                                <span className="font-medium">Individual Timer</span>
-                                <span className="text-xs text-muted-foreground">Each student starts their own countdown</span>
-                              </div>
+                            ))
+                          ) : (
+                            <SelectItem value="no-teachers" disabled>
+                              No teachers available
                             </SelectItem>
-                            <SelectItem value="global">
-                              <div className="flex flex-col">
-                                <span className="font-medium">Global Timer</span>
-                                <span className="text-xs text-muted-foreground">All students start and end at the same time</span>
-                              </div>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Assigns grading responsibility
+                  </p>
+                  {examErrors.teacherInChargeId && <p className="text-sm text-red-500">{examErrors.teacherInChargeId.message}</p>}
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="instructions">Instructions</Label>
+                <Textarea
+                  id="instructions"
+                  {...registerExam('instructions')}
+                  data-testid="textarea-exam-instructions"
+                  placeholder="Enter exam instructions for students..."
+                  rows={3}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  These will be shown to students before they start the exam
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="termId">Academic Term</Label>
+                  <Controller
+                    name="termId"
+                    control={examControl}
+                    render={({ field }) => (
+                      <Select
+                        onValueChange={(value) => {
+                          const numValue = parseInt(value);
+                          if (!isNaN(numValue)) {
+                            field.onChange(numValue);
+                          }
+                        }}
+                        value={field.value !== undefined && field.value !== null ? field.value.toString() : ''}
+                      >
+                        <SelectTrigger data-testid="select-term">
+                          <SelectValue placeholder="Select term" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {terms && terms.length > 0 ? (
+                            terms.map((term: any) => (
+                              <SelectItem key={term.id} value={term.id.toString()}>
+                                {term.name} - {term.year}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="no-terms" disabled>
+                              No academic terms available
                             </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                  </div>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {examErrors.termId && <p className="text-sm text-red-500">{examErrors.termId.message}</p>}
+                </div>
+              </div>
 
-                  {watchTimerMode === 'individual' && (
-                    <div className="bg-white dark:bg-gray-900 p-3 rounded border">
-                      <p className="text-sm font-medium mb-2">Individual Timer Mode</p>
-                      <ul className="text-xs text-muted-foreground space-y-1">
-                        <li>• Students can start the exam at any time within the availability window</li>
-                        <li>• Each student gets the full duration from when they click "Start"</li>
-                        <li>• Best for flexible scheduling and different time zones</li>
-                      </ul>
-                    </div>
-                  )}
+              {/* Timer Mode Selection Section */}
+              <div className="space-y-4 p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Timer Mode Selection
+                </h4>
 
-                  {watchTimerMode === 'global' && (
-                    <div className="bg-white dark:bg-gray-900 p-3 rounded border">
-                      <p className="text-sm font-medium mb-2">Global Timer Mode</p>
-                      <ul className="text-xs text-muted-foreground space-y-1">
-                        <li>• All students start the exam at the exact same date/time</li>
-                        <li>• The exam automatically ends at a fixed time for everyone</li>
-                        <li>• Best for proctored exams and uniform conditions</li>
-                      </ul>
-                    </div>
-                  )}
+                <div>
+                  <Label htmlFor="timerMode">Choose Timer Mode</Label>
+                  <Controller
+                    name="timerMode"
+                    control={examControl}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value || 'individual'}>
+                        <SelectTrigger data-testid="select-timer-mode">
+                          <SelectValue placeholder="Select timer mode" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="individual">
+                            <div className="flex flex-col">
+                              <span className="font-medium">Individual Timer</span>
+                              <span className="text-xs text-muted-foreground">Each student starts their own countdown</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="global">
+                            <div className="flex flex-col">
+                              <span className="font-medium">Global Timer</span>
+                              <span className="text-xs text-muted-foreground">All students start and end at the same time</span>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="totalMarks">Total Marks</Label>
-                    <Input 
-                      id="totalMarks" 
-                      type="number" 
-                      {...registerExam('totalMarks', { valueAsNumber: true })} 
-                      data-testid="input-exam-total-marks"
-                      placeholder="100"
-                    />
-                    {examErrors.totalMarks && <p className="text-sm text-red-500">{examErrors.totalMarks.message}</p>}
-                  </div>
-                  <div>
-                    <Label htmlFor="timeLimit">
-                      {watchTimerMode === 'individual' ? 'Duration per Student' : 'Exam Duration'} (minutes)
-                    </Label>
-                    <Input 
-                      id="timeLimit" 
-                      type="number" 
-                      {...registerExam('timeLimit', { valueAsNumber: true })} 
-                      data-testid="input-exam-time-limit"
-                      placeholder="60"
-                    />
-                    {examErrors.timeLimit && <p className="text-sm text-red-500">{examErrors.timeLimit.message}</p>}
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {watchTimerMode === 'individual' 
-                        ? 'Each student gets this many minutes from when they start' 
-                        : 'Total duration of the exam window for all students'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Scheduling Section for Global Timer */}
-                {watchTimerMode === 'global' && (
-                  <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-950/20">
-                    <h4 className="font-medium mb-3 flex items-center gap-2">
-                      <Clock className="w-4 h-4" />
-                      Global Timer Configuration
-                    </h4>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="startTime">Start Time</Label>
-                          <Input
-                            id="startTime"
-                            type="datetime-local"
-                            {...registerExam('startTime')} 
-                            data-testid="input-exam-start-time"
-                            min={new Date().toISOString().slice(0, 16)}
-                          />
-                          {examErrors.startTime && (
-                            <p className="text-sm text-red-500 mt-1">{examErrors.startTime.message}</p>
-                          )}
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Exam becomes available
-                          </p>
-                        </div>
-
-                        <div>
-                          <Label htmlFor="endTime">End Time</Label>
-                          <Input
-                            id="endTime"
-                            type="datetime-local"
-                            {...registerExam('endTime')} 
-                            data-testid="input-exam-end-time"
-                            min={watchGlobalStartTime ? (typeof watchGlobalStartTime === 'string' ? watchGlobalStartTime : new Date(watchGlobalStartTime).toISOString().slice(0, 16)) : new Date().toISOString().slice(0, 16)}
-                          />
-                          {examErrors.endTime && (
-                            <p className="text-sm text-red-500 mt-1">{examErrors.endTime.message}</p>
-                          )}
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Exam auto-submits at this time
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-2 p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                        <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                        <p className="text-sm text-blue-800 dark:text-blue-200">
-                          All students must complete the exam between these times. The exam will automatically submit at the end time, regardless of when students start.
-                        </p>
-                      </div>
-                    </div>
+                {watchTimerMode === 'individual' && (
+                  <div className="bg-white dark:bg-gray-900 p-3 rounded border">
+                    <p className="text-sm font-medium mb-2">Individual Timer Mode</p>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li>• Students can start the exam at any time within the availability window</li>
+                      <li>• Each student gets the full duration from when they click "Start"</li>
+                      <li>• Best for flexible scheduling and different time zones</li>
+                    </ul>
                   </div>
                 )}
 
-                {/* Publishing & Options Section */}
-                <div className="space-y-4 p-4 border rounded-lg bg-green-50 dark:bg-green-950/20">
-                  <h4 className="font-medium text-sm flex items-center gap-2">
-                    <Play className="w-4 h-4" />
-                    Publishing & Options
-                  </h4>
+                {watchTimerMode === 'global' && (
+                  <div className="bg-white dark:bg-gray-900 p-3 rounded border">
+                    <p className="text-sm font-medium mb-2">Global Timer Mode</p>
+                    <ul className="text-xs text-muted-foreground space-y-1">
+                      <li>• All students start the exam at the exact same date/time</li>
+                      <li>• The exam automatically ends at a fixed time for everyone</li>
+                      <li>• Best for proctored exams and uniform conditions</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center space-x-2">
-                      <Controller
-                        name="isPublished"
-                        control={examControl}
-                        render={({ field }) => (
-                          <Switch 
-                            checked={field.value || false} 
-                            onCheckedChange={field.onChange}
-                            data-testid="switch-exam-published"
-                          />
-                        )}
-                      />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="totalMarks">Total Marks</Label>
+                  <Input
+                    id="totalMarks"
+                    type="number"
+                    {...registerExam('totalMarks', { valueAsNumber: true })}
+                    data-testid="input-exam-total-marks"
+                    placeholder="100"
+                  />
+                  {examErrors.totalMarks && <p className="text-sm text-red-500">{examErrors.totalMarks.message}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="timeLimit">
+                    {watchTimerMode === 'individual' ? 'Duration per Student' : 'Exam Duration'} (minutes)
+                  </Label>
+                  <Input
+                    id="timeLimit"
+                    type="number"
+                    {...registerExam('timeLimit', { valueAsNumber: true })}
+                    data-testid="input-exam-time-limit"
+                    placeholder="60"
+                  />
+                  {examErrors.timeLimit && <p className="text-sm text-red-500">{examErrors.timeLimit.message}</p>}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {watchTimerMode === 'individual'
+                      ? 'Each student gets this many minutes from when they start'
+                      : 'Total duration of the exam window for all students'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Scheduling Section for Global Timer */}
+              {watchTimerMode === 'global' && (
+                <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-950/20">
+                  <h4 className="font-medium mb-3 flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    Global Timer Configuration
+                  </h4>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label>Publish Immediately</Label>
-                        <p className="text-xs text-muted-foreground">
-                          {watchTimerMode === 'global' 
-                            ? 'Will be published at scheduled start time' 
-                            : 'Make exam visible to students now'}
+                        <Label htmlFor="startTime">Start Time</Label>
+                        <Input
+                          id="startTime"
+                          type="datetime-local"
+                          {...registerExam('startTime')}
+                          data-testid="input-exam-start-time"
+                          min={new Date().toISOString().slice(0, 16)}
+                        />
+                        {examErrors.startTime && (
+                          <p className="text-sm text-red-500 mt-1">{examErrors.startTime.message}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Exam becomes available
+                        </p>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="endTime">End Time</Label>
+                        <Input
+                          id="endTime"
+                          type="datetime-local"
+                          {...registerExam('endTime')}
+                          data-testid="input-exam-end-time"
+                          min={watchGlobalStartTime ? (typeof watchGlobalStartTime === 'string' ? watchGlobalStartTime : new Date(watchGlobalStartTime).toISOString().slice(0, 16)) : new Date().toISOString().slice(0, 16)}
+                        />
+                        {examErrors.endTime && (
+                          <p className="text-sm text-red-500 mt-1">{examErrors.endTime.message}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Exam auto-submits at this time
                         </p>
                       </div>
                     </div>
+                    <div className="flex items-start gap-2 p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                      <p className="text-sm text-blue-800 dark:text-blue-200">
+                        All students must complete the exam between these times. The exam will automatically submit at the end time, regardless of when students start.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-                    <div className="flex items-center space-x-2">
-                      <Controller
-                        name="allowRetakes"
-                        control={examControl}
-                        render={({ field }) => (
-                          <Switch 
-                            checked={field.value || false} 
-                            onCheckedChange={field.onChange}
-                            data-testid="switch-exam-retakes"
-                          />
-                        )}
-                      />
-                      <div>
-                        <Label>Allow Retakes</Label>
-                        <p className="text-xs text-muted-foreground">Students can attempt multiple times</p>
-                      </div>
+              {/* Publishing & Options Section */}
+              <div className="space-y-4 p-4 border rounded-lg bg-green-50 dark:bg-green-950/20">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <Play className="w-4 h-4" />
+                  Publishing & Options
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Controller
+                      name="isPublished"
+                      control={examControl}
+                      render={({ field }) => (
+                        <Switch
+                          checked={field.value || false}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-exam-published"
+                        />
+                      )}
+                    />
+                    <div>
+                      <Label>Publish Immediately</Label>
+                      <p className="text-xs text-muted-foreground">
+                        {watchTimerMode === 'global'
+                          ? 'Will be published at scheduled start time'
+                          : 'Make exam visible to students now'}
+                      </p>
                     </div>
                   </div>
 
                   <div className="flex items-center space-x-2">
                     <Controller
-                      name="shuffleQuestions"
+                      name="allowRetakes"
                       control={examControl}
                       render={({ field }) => (
-                        <Switch 
-                          checked={field.value || false} 
+                        <Switch
+                          checked={field.value || false}
                           onCheckedChange={field.onChange}
-                          data-testid="switch-exam-shuffle"
+                          data-testid="switch-exam-retakes"
                         />
                       )}
                     />
                     <div>
-                      <Label>Shuffle Questions</Label>
-                      <p className="text-xs text-muted-foreground">Randomize question order for each student</p>
+                      <Label>Allow Retakes</Label>
+                      <p className="text-xs text-muted-foreground">Students can attempt multiple times</p>
                     </div>
                   </div>
-
-                  {!watchExam('isPublished') && (
-                    <div className="bg-white dark:bg-gray-900 p-3 rounded border">
-                      <p className="text-sm font-medium mb-1">💾 Saved as Draft</p>
-                      <p className="text-xs text-muted-foreground">
-                        This exam will be saved as a draft. You can add questions and publish it later.
-                      </p>
-                    </div>
-                  )}
                 </div>
 
-                {/* Enhanced Auto-Grading Controls */}
-                <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
-                  <h4 className="font-medium text-sm">Auto-Grading Settings</h4>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center space-x-2">
-                      <Controller
-                        name="autoGradingEnabled"
-                        control={examControl}
-                        render={({ field }) => (
-                          <Switch 
-                            checked={field.value || false} 
-                            onCheckedChange={field.onChange}
-                            data-testid="switch-auto-grading"
-                          />
-                        )}
+                <div className="flex items-center space-x-2">
+                  <Controller
+                    name="shuffleQuestions"
+                    control={examControl}
+                    render={({ field }) => (
+                      <Switch
+                        checked={field.value || false}
+                        onCheckedChange={field.onChange}
+                        data-testid="switch-exam-shuffle"
                       />
-                      <Label>Enable Auto-Grading</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Controller
-                        name="instantFeedback"
-                        control={examControl}
-                        render={({ field }) => (
-                          <Switch 
-                            checked={field.value || false} 
-                            onCheckedChange={field.onChange}
-                            data-testid="switch-instant-feedback"
-                          />
-                        )}
-                      />
-                      <Label>Instant Feedback</Label>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center space-x-2">
-                      <Controller
-                        name="showCorrectAnswers"
-                        control={examControl}
-                        render={({ field }) => (
-                          <Switch 
-                            checked={field.value || false} 
-                            onCheckedChange={field.onChange}
-                            data-testid="switch-show-answers"
-                          />
-                        )}
-                      />
-                      <Label>Show Correct Answers</Label>
-                    </div>
-                    <div>
-                      <Label htmlFor="passingScore">Passing Score (%)</Label>
-                      <Input 
-                        id="passingScore" 
-                        type="number" 
-                        min="0" 
-                        max="100" 
-                        {...registerExam('passingScore', { valueAsNumber: true })} 
-                        data-testid="input-passing-score"
-                        placeholder="60"
-                      />
-                      {examErrors.passingScore && <p className="text-sm text-red-500">{examErrors.passingScore.message}</p>}
-                    </div>
-                  </div>
-
+                    )}
+                  />
                   <div>
-                    <Label htmlFor="gradingScale">Grading Scale</Label>
+                    <Label>Shuffle Questions</Label>
+                    <p className="text-xs text-muted-foreground">Randomize question order for each student</p>
+                  </div>
+                </div>
+
+                {!watchExam('isPublished') && (
+                  <div className="bg-white dark:bg-gray-900 p-3 rounded border">
+                    <p className="text-sm font-medium mb-1">💾 Saved as Draft</p>
+                    <p className="text-xs text-muted-foreground">
+                      This exam will be saved as a draft. You can add questions and publish it later.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Enhanced Auto-Grading Controls */}
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+                <h4 className="font-medium text-sm">Auto-Grading Settings</h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
                     <Controller
-                      name="gradingScale"
+                      name="autoGradingEnabled"
                       control={examControl}
                       render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value || 'standard'} data-testid="select-grading-scale">
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select grading scale" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="standard">Standard (A-F)</SelectItem>
-                            <SelectItem value="percentage">Percentage Only</SelectItem>
-                            <SelectItem value="points">Points Only</SelectItem>
-                            <SelectItem value="custom">Custom Scale</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <Switch
+                          checked={field.value || false}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-auto-grading"
+                        />
                       )}
                     />
+                    <Label>Enable Auto-Grading</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Controller
+                      name="instantFeedback"
+                      control={examControl}
+                      render={({ field }) => (
+                        <Switch
+                          checked={field.value || false}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-instant-feedback"
+                        />
+                      )}
+                    />
+                    <Label>Instant Feedback</Label>
                   </div>
                 </div>
 
-                {/* Proctoring & Security Settings */}
-                <div className="space-y-4 p-4 border rounded-lg bg-red-50 dark:bg-red-950/20">
-                  <h4 className="font-medium text-sm flex items-center gap-2">
-                    <Shield className="w-4 h-4" />
-                    Proctoring & Security Settings
-                  </h4>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center space-x-2">
-                      <Controller
-                        name="enableProctoring"
-                        control={examControl}
-                        render={({ field }) => (
-                          <Switch 
-                            checked={field.value || false} 
-                            onCheckedChange={field.onChange}
-                            data-testid="switch-enable-proctoring"
-                          />
-                        )}
-                      />
-                      <div>
-                        <Label>Enable Proctoring</Label>
-                        <p className="text-xs text-muted-foreground">Monitor students during exam</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Controller
-                        name="lockdownMode"
-                        control={examControl}
-                        render={({ field }) => (
-                          <Switch 
-                            checked={field.value || false} 
-                            onCheckedChange={field.onChange}
-                            data-testid="switch-lockdown-mode"
-                          />
-                        )}
-                      />
-                      <div>
-                        <Label>Lockdown Mode</Label>
-                        <p className="text-xs text-muted-foreground">Prevent tab switching & copy-paste</p>
-                      </div>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Controller
+                      name="showCorrectAnswers"
+                      control={examControl}
+                      render={({ field }) => (
+                        <Switch
+                          checked={field.value || false}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-show-answers"
+                        />
+                      )}
+                    />
+                    <Label>Show Correct Answers</Label>
                   </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="flex items-center space-x-2">
-                      <Controller
-                        name="requireWebcam"
-                        control={examControl}
-                        render={({ field }) => (
-                          <Switch 
-                            checked={field.value || false} 
-                            onCheckedChange={field.onChange}
-                            data-testid="switch-require-webcam"
-                          />
-                        )}
-                      />
-                      <div>
-                        <Label>Require Webcam</Label>
-                        <p className="text-xs text-muted-foreground">Students must enable camera</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center space-x-2">
-                      <Controller
-                        name="requireFullscreen"
-                        control={examControl}
-                        render={({ field }) => (
-                          <Switch 
-                            checked={field.value || false} 
-                            onCheckedChange={field.onChange}
-                            data-testid="switch-require-fullscreen"
-                          />
-                        )}
-                      />
-                      <div>
-                        <Label>Require Fullscreen</Label>
-                        <p className="text-xs text-muted-foreground">Force fullscreen mode</p>
-                      </div>
-                    </div>
+                  <div>
+                    <Label htmlFor="passingScore">Passing Score (%)</Label>
+                    <Input
+                      id="passingScore"
+                      type="number"
+                      min="0"
+                      max="100"
+                      {...registerExam('passingScore', { valueAsNumber: true })}
+                      data-testid="input-passing-score"
+                      placeholder="60"
+                    />
+                    {examErrors.passingScore && <p className="text-sm text-red-500">{examErrors.passingScore.message}</p>}
                   </div>
+                </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="gradingScale">Grading Scale</Label>
+                  <Controller
+                    name="gradingScale"
+                    control={examControl}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value || 'standard'} data-testid="select-grading-scale">
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select grading scale" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="standard">Standard (A-F)</SelectItem>
+                          <SelectItem value="percentage">Percentage Only</SelectItem>
+                          <SelectItem value="points">Points Only</SelectItem>
+                          <SelectItem value="custom">Custom Scale</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+              </div>
+
+              {/* Proctoring & Security Settings */}
+              <div className="space-y-4 p-4 border rounded-lg bg-red-50 dark:bg-red-950/20">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  Proctoring & Security Settings
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Controller
+                      name="enableProctoring"
+                      control={examControl}
+                      render={({ field }) => (
+                        <Switch
+                          checked={field.value || false}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-enable-proctoring"
+                        />
+                      )}
+                    />
                     <div>
-                      <Label htmlFor="maxTabSwitches">Max Tab Switches</Label>
-                      <Input 
-                        id="maxTabSwitches" 
-                        type="number" 
-                        min="0" 
-                        max="10" 
-                        {...registerExam('maxTabSwitches', { valueAsNumber: true })} 
-                        data-testid="input-max-tab-switches"
-                        placeholder="3"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Auto-submit after this many violations (0 = unlimited)
-                      </p>
-                      {examErrors.maxTabSwitches && <p className="text-sm text-red-500">{examErrors.maxTabSwitches.message}</p>}
+                      <Label>Enable Proctoring</Label>
+                      <p className="text-xs text-muted-foreground">Monitor students during exam</p>
                     </div>
+                  </div>
 
-                    <div className="flex items-center space-x-2">
-                      <Controller
-                        name="shuffleOptions"
-                        control={examControl}
-                        render={({ field }) => (
-                          <Switch 
-                            checked={field.value || false} 
-                            onCheckedChange={field.onChange}
-                            data-testid="switch-shuffle-options"
-                          />
-                        )}
-                      />
-                      <div>
-                        <Label>Shuffle Options</Label>
-                        <p className="text-xs text-muted-foreground">Randomize option order (A, B, C, D)</p>
+                  <div className="flex items-center space-x-2">
+                    <Controller
+                      name="lockdownMode"
+                      control={examControl}
+                      render={({ field }) => (
+                        <Switch
+                          checked={field.value || false}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-lockdown-mode"
+                        />
+                      )}
+                    />
+                    <div>
+                      <Label>Lockdown Mode</Label>
+                      <p className="text-xs text-muted-foreground">Prevent tab switching & copy-paste</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex items-center space-x-2">
+                    <Controller
+                      name="requireWebcam"
+                      control={examControl}
+                      render={({ field }) => (
+                        <Switch
+                          checked={field.value || false}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-require-webcam"
+                        />
+                      )}
+                    />
+                    <div>
+                      <Label>Require Webcam</Label>
+                      <p className="text-xs text-muted-foreground">Students must enable camera</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Controller
+                      name="requireFullscreen"
+                      control={examControl}
+                      render={({ field }) => (
+                        <Switch
+                          checked={field.value || false}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-require-fullscreen"
+                        />
+                      )}
+                    />
+                    <div>
+                      <Label>Require Fullscreen</Label>
+                      <p className="text-xs text-muted-foreground">Force fullscreen mode</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="maxTabSwitches">Max Tab Switches</Label>
+                    <Input
+                      id="maxTabSwitches"
+                      type="number"
+                      min="0"
+                      max="10"
+                      {...registerExam('maxTabSwitches', { valueAsNumber: true })}
+                      data-testid="input-max-tab-switches"
+                      placeholder="3"
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Auto-submit after this many violations (0 = unlimited)
+                    </p>
+                    {examErrors.maxTabSwitches && <p className="text-sm text-red-500">{examErrors.maxTabSwitches.message}</p>}
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Controller
+                      name="shuffleOptions"
+                      control={examControl}
+                      render={({ field }) => (
+                        <Switch
+                          checked={field.value || false}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-shuffle-options"
+                        />
+                      )}
+                    />
+                    <div>
+                      <Label>Shuffle Options</Label>
+                      <p className="text-xs text-muted-foreground">Randomize option order (A, B, C, D)</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white dark:bg-gray-900 p-3 rounded border">
+                  <p className="text-sm font-medium mb-1">🔒 Security Features</p>
+                  <ul className="text-xs text-muted-foreground space-y-1">
+                    <li>• Proctoring monitors student activity during exams</li>
+                    <li>• Lockdown mode prevents cheating via external resources</li>
+                    <li>• Tab switching limits help maintain exam integrity</li>
+                    <li>• Shuffled options reduce answer sharing</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button type="button" variant="outline" onClick={() => handleExamDialogClose(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={editingExam ? updateExamMutation.isPending : createExamMutation.isPending}
+                  data-testid="button-submit-exam"
+                >
+                  {editingExam
+                    ? (updateExamMutation.isPending ? 'Updating...' : 'Update Exam')
+                    : (createExamMutation.isPending ? 'Creating...' : 'Create Exam')
+                  }
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Search */}
+      <div className="flex items-center space-x-2">
+        <Search className="w-4 h-4 text-muted-foreground" />
+        <Input
+          placeholder="Search exams..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="max-w-sm"
+          data-testid="input-search-exams"
+        />
+      </div>
+
+      {/* Exams Table/Cards */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Exams</CardTitle>
+        </CardHeader>
+        <CardContent className="p-3 sm:p-6">
+          {loadingExams ? (
+            <div className="text-center py-8">Loading exams...</div>
+          ) : (
+            <>
+              {/* Mobile Card View */}
+              <div className="sm:hidden space-y-3">
+                {filteredExams.map((exam: any) => (
+                  <div
+                    key={exam.id}
+                    className="border border-border rounded-lg p-3 bg-muted/30"
+                    data-testid={`card-exam-${exam.id}`}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-medium text-sm truncate">{exam.name}</h3>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {getClassNameById(exam.classId)} • {getSubjectNameById(exam.subjectId)}
+                          </p>
+                        </div>
+                        <Badge variant={exam.isPublished ? 'default' : 'secondary'} className="ml-2 flex-shrink-0">
+                          {exam.isPublished ? 'Published' : 'Draft'}
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <div className="flex items-center space-x-3">
+                          <span>{new Date(exam.date).toLocaleDateString()}</span>
+                          {exam.timeLimit && (
+                            <div className="flex items-center">
+                              <Clock className="w-3 h-3 mr-1" />
+                              {exam.timeLimit}m
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center">
+                          <FileText className="w-3 h-3 mr-1" />
+                          {questionCounts[exam.id] || 0}
+                        </div>
+                      </div>
+
+                      {(() => {
+                        const now = new Date();
+                        const startTime = exam.startTime ? new Date(exam.startTime) : null;
+                        const endTime = exam.endTime ? new Date(exam.endTime) : null;
+
+                        if (exam.timerMode === 'global' && startTime && endTime) {
+                          if (now < startTime) {
+                            return (
+                              <Badge variant="outline" className="bg-yellow-50 w-fit">
+                                <Clock className="w-3 h-3 mr-1" />
+                                Scheduled
+                              </Badge>
+                            );
+                          } else if (now >= startTime && now <= endTime) {
+                            return (
+                              <Badge variant="default" className="bg-green-600 w-fit">
+                                <Play className="w-3 h-3 mr-1" />
+                                Live Now
+                              </Badge>
+                            );
+                          } else {
+                            return (
+                              <Badge variant="secondary" className="w-fit">
+                                Ended
+                              </Badge>
+                            );
+                          }
+                        }
+                        return null;
+                      })()}
+
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSelectedExam(exam)}
+                          data-testid={`button-manage-questions-${exam.id}`}
+                          className="flex-1"
+                        >
+                          <Edit className="w-4 h-4 mr-1" />
+                          Questions
+                        </Button>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              data-testid={`button-exam-actions-${exam.id}`}
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem
+                              onClick={() => togglePublishMutation.mutate({
+                                examId: exam.id,
+                                isPublished: !exam.isPublished
+                              })}
+                              disabled={togglingExamId === exam.id}
+                              data-testid={`dropdown-toggle-publish-${exam.id}`}
+                            >
+                              <Play className="w-4 h-4 mr-2" />
+                              {togglingExamId === exam.id
+                                ? (exam.isPublished ? 'Unpublishing...' : 'Publishing...')
+                                : (exam.isPublished ? 'Unpublish' : 'Publish')
+                              }
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => setPreviewExam(exam)}
+                              data-testid={`dropdown-preview-exam-${exam.id}`}
+                            >
+                              <Eye className="w-4 h-4 mr-2" />
+                              Preview
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleEditExam(exam)}
+                              data-testid={`dropdown-edit-exam-${exam.id}`}
+                            >
+                              <Edit className="w-4 h-4 mr-2" />
+                              Edit Exam
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <DropdownMenuItem
+                                  onSelect={(e) => e.preventDefault()}
+                                  className="text-destructive focus:text-destructive"
+                                  disabled={deleteExamMutation.isPending}
+                                  data-testid={`dropdown-delete-exam-${exam.id}`}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-2" />
+                                  {deleteExamMutation.isPending ? 'Deleting...' : 'Delete Exam'}
+                                </DropdownMenuItem>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Exam</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete the exam "{exam.name}"? This action cannot be undone and will permanently remove all exam questions and student results.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel disabled={deleteExamMutation.isPending}>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => deleteExamMutation.mutate(exam.id)}
+                                    disabled={deleteExamMutation.isPending}
+                                    className="bg-destructive hover:bg-destructive/90"
+                                  >
+                                    {deleteExamMutation.isPending ? 'Deleting...' : 'Delete Exam'}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   </div>
-
-                  <div className="bg-white dark:bg-gray-900 p-3 rounded border">
-                    <p className="text-sm font-medium mb-1">🔒 Security Features</p>
-                    <ul className="text-xs text-muted-foreground space-y-1">
-                      <li>• Proctoring monitors student activity during exams</li>
-                      <li>• Lockdown mode prevents cheating via external resources</li>
-                      <li>• Tab switching limits help maintain exam integrity</li>
-                      <li>• Shuffled options reduce answer sharing</li>
-                    </ul>
+                ))}
+                {filteredExams.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No exams found. Create your first exam to get started.
                   </div>
-                </div>
+                )}
+              </div>
 
-                <div className="flex justify-end space-x-2">
-                  <Button type="button" variant="outline" onClick={() => handleExamDialogClose(false)}>
-                    Cancel
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    disabled={editingExam ? updateExamMutation.isPending : createExamMutation.isPending} 
-                    data-testid="button-submit-exam"
-                  >
-                    {editingExam 
-                      ? (updateExamMutation.isPending ? 'Updating...' : 'Update Exam')
-                      : (createExamMutation.isPending ? 'Creating...' : 'Create Exam')
-                    }
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        {/* Search */}
-        <div className="flex items-center space-x-2">
-          <Search className="w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search exams..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-sm"
-            data-testid="input-search-exams"
-          />
-        </div>
-
-        {/* Exams Table/Cards */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Exams</CardTitle>
-          </CardHeader>
-          <CardContent className="p-3 sm:p-6">
-            {loadingExams ? (
-              <div className="text-center py-8">Loading exams...</div>
-            ) : (
-              <>
-                {/* Mobile Card View */}
-                <div className="sm:hidden space-y-3">
-                  {filteredExams.map((exam: any) => (
-                    <div 
-                      key={exam.id} 
-                      className="border border-border rounded-lg p-3 bg-muted/30"
-                      data-testid={`card-exam-${exam.id}`}
-                    >
-                      <div className="space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-medium text-sm truncate">{exam.name}</h3>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {getClassNameById(exam.classId)} • {getSubjectNameById(exam.subjectId)}
-                            </p>
-                          </div>
-                          <Badge variant={exam.isPublished ? 'default' : 'secondary'} className="ml-2 flex-shrink-0">
+              {/* Desktop Table View */}
+              <div className="hidden sm:block overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Class</TableHead>
+                      <TableHead>Subject</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Duration</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Schedule</TableHead>
+                      <TableHead>Questions</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredExams.map((exam: any) => (
+                      <TableRow key={exam.id} data-testid={`row-exam-${exam.id}`}>
+                        <TableCell className="font-medium">{exam.name}</TableCell>
+                        <TableCell>{getClassNameById(exam.classId)}</TableCell>
+                        <TableCell>{getSubjectNameById(exam.subjectId)}</TableCell>
+                        <TableCell>{new Date(exam.date).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          {exam.timeLimit ? (
+                            <div className="flex items-center">
+                              <Clock className="w-4 h-4 mr-1" />
+                              {exam.timeLimit}m
+                            </div>
+                          ) : 'No limit'}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={exam.isPublished ? 'default' : 'secondary'}>
                             {exam.isPublished ? 'Published' : 'Draft'}
                           </Badge>
-                        </div>
+                        </TableCell>
+                        <TableCell>
+                          {(() => {
+                            const now = new Date();
+                            const startTime = exam.startTime ? new Date(exam.startTime) : null;
+                            const endTime = exam.endTime ? new Date(exam.endTime) : null;
 
-                        <div className="flex items-center justify-between text-xs text-muted-foreground">
-                          <div className="flex items-center space-x-3">
-                            <span>{new Date(exam.date).toLocaleDateString()}</span>
-                            {exam.timeLimit && (
-                              <div className="flex items-center">
-                                <Clock className="w-3 h-3 mr-1" />
-                                {exam.timeLimit}m
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex items-center">
-                            <FileText className="w-3 h-3 mr-1" />
-                            {questionCounts[exam.id] || 0}
-                          </div>
-                        </div>
-
-                        {(() => {
-                          const now = new Date();
-                          const startTime = exam.startTime ? new Date(exam.startTime) : null;
-                          const endTime = exam.endTime ? new Date(exam.endTime) : null;
-
-                          if (exam.timerMode === 'global' && startTime && endTime) {
-                            if (now < startTime) {
-                              return (
-                                <Badge variant="outline" className="bg-yellow-50 w-fit">
-                                  <Clock className="w-3 h-3 mr-1" />
-                                  Scheduled
-                                </Badge>
-                              );
-                            } else if (now >= startTime && now <= endTime) {
-                              return (
-                                <Badge variant="default" className="bg-green-600 w-fit">
-                                  <Play className="w-3 h-3 mr-1" />
-                                  Live Now
-                                </Badge>
-                              );
-                            } else {
-                              return (
-                                <Badge variant="secondary" className="w-fit">
-                                  Ended
-                                </Badge>
-                              );
-                            }
-                          }
-                          return null;
-                        })()}
-
-                        <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedExam(exam)}
-                            data-testid={`button-manage-questions-${exam.id}`}
-                            className="flex-1"
-                          >
-                            <Edit className="w-4 h-4 mr-1" />
-                            Questions
-                          </Button>
-                          
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                data-testid={`button-exam-actions-${exam.id}`}
-                              >
-                                <MoreVertical className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem
-                                onClick={() => togglePublishMutation.mutate({ 
-                                  examId: exam.id, 
-                                  isPublished: !exam.isPublished 
-                                })}
-                                disabled={togglingExamId === exam.id}
-                                data-testid={`dropdown-toggle-publish-${exam.id}`}
-                              >
-                                <Play className="w-4 h-4 mr-2" />
-                                {togglingExamId === exam.id 
-                                  ? (exam.isPublished ? 'Unpublishing...' : 'Publishing...') 
-                                  : (exam.isPublished ? 'Unpublish' : 'Publish')
-                                }
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => setPreviewExam(exam)}
-                                data-testid={`dropdown-preview-exam-${exam.id}`}
-                              >
-                                <Eye className="w-4 h-4 mr-2" />
-                                Preview
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleEditExam(exam)}
-                                data-testid={`dropdown-edit-exam-${exam.id}`}
-                              >
-                                <Edit className="w-4 h-4 mr-2" />
-                                Edit Exam
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <DropdownMenuItem
-                                    onSelect={(e) => e.preventDefault()}
-                                    className="text-destructive focus:text-destructive"
-                                    disabled={deleteExamMutation.isPending}
-                                    data-testid={`dropdown-delete-exam-${exam.id}`}
-                                  >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    {deleteExamMutation.isPending ? 'Deleting...' : 'Delete Exam'}
-                                  </DropdownMenuItem>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete Exam</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Are you sure you want to delete the exam "{exam.name}"? This action cannot be undone and will permanently remove all exam questions and student results.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel disabled={deleteExamMutation.isPending}>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => deleteExamMutation.mutate(exam.id)}
-                                      disabled={deleteExamMutation.isPending}
-                                      className="bg-destructive hover:bg-destructive/90"
-                                    >
-                                      {deleteExamMutation.isPending ? 'Deleting...' : 'Delete Exam'}
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {filteredExams.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No exams found. Create your first exam to get started.
-                    </div>
-                  )}
-                </div>
-
-                {/* Desktop Table View */}
-                <div className="hidden sm:block overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Class</TableHead>
-                        <TableHead>Subject</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Duration</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Schedule</TableHead>
-                        <TableHead>Questions</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredExams.map((exam: any) => (
-                        <TableRow key={exam.id} data-testid={`row-exam-${exam.id}`}>
-                          <TableCell className="font-medium">{exam.name}</TableCell>
-                          <TableCell>{getClassNameById(exam.classId)}</TableCell>
-                          <TableCell>{getSubjectNameById(exam.subjectId)}</TableCell>
-                          <TableCell>{new Date(exam.date).toLocaleDateString()}</TableCell>
-                          <TableCell>
-                            {exam.timeLimit ? (
-                              <div className="flex items-center">
-                                <Clock className="w-4 h-4 mr-1" />
-                                {exam.timeLimit}m
-                              </div>
-                            ) : 'No limit'}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={exam.isPublished ? 'default' : 'secondary'}>
-                              {exam.isPublished ? 'Published' : 'Draft'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {(() => {
-                              const now = new Date();
-                              const startTime = exam.startTime ? new Date(exam.startTime) : null;
-                              const endTime = exam.endTime ? new Date(exam.endTime) : null;
-
-                              if (exam.timerMode === 'global' && startTime && endTime) {
-                                if (now < startTime) {
-                                  return (
-                                    <Badge variant="outline" className="bg-yellow-50">
-                                      <Clock className="w-3 h-3 mr-1" />
-                                      Scheduled
-                                    </Badge>
-                                  );
-                                } else if (now >= startTime && now <= endTime) {
-                                  return (
-                                    <Badge variant="default" className="bg-green-600">
-                                      <Play className="w-3 h-3 mr-1" />
-                                      Live Now
-                                    </Badge>
-                                  );
-                                } else {
-                                  return (
-                                    <Badge variant="secondary">
-                                      Ended
-                                    </Badge>
-                                  );
-                                }
+                            if (exam.timerMode === 'global' && startTime && endTime) {
+                              if (now < startTime) {
+                                return (
+                                  <Badge variant="outline" className="bg-yellow-50">
+                                    <Clock className="w-3 h-3 mr-1" />
+                                    Scheduled
+                                  </Badge>
+                                );
+                              } else if (now >= startTime && now <= endTime) {
+                                return (
+                                  <Badge variant="default" className="bg-green-600">
+                                    <Play className="w-3 h-3 mr-1" />
+                                    Live Now
+                                  </Badge>
+                                );
+                              } else {
+                                return (
+                                  <Badge variant="secondary">
+                                    Ended
+                                  </Badge>
+                                );
                               }
-                              return (
-                                <span className="text-sm text-muted-foreground">
-                                  Individual Timer
-                                </span>
-                              );
-                            })()}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center">
-                              <FileText className="w-4 h-4 mr-1" />
-                              {questionCounts[exam.id] || 0} question{(questionCounts[exam.id] || 0) !== 1 ? 's' : ''}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setSelectedExam(exam)}
-                                data-testid={`button-manage-questions-${exam.id}`}
-                              >
-                                <Edit className="w-4 h-4 mr-1" />
-                                Questions
-                              </Button>
-                              <Button
-                                variant={exam.isPublished ? "default" : "secondary"}
-                                size="sm"
-                                onClick={() => togglePublishMutation.mutate({ 
-                                  examId: exam.id, 
-                                  isPublished: !exam.isPublished 
-                                })}
-                                disabled={togglingExamId === exam.id}
-                                data-testid={`button-toggle-publish-${exam.id}`}
-                              >
-                                <Play className="w-4 h-4 mr-1" />
-                                {togglingExamId === exam.id 
-                                  ? (exam.isPublished ? 'Unpublishing...' : 'Publishing...') 
-                                  : (exam.isPublished ? 'Unpublish' : 'Publish')
-                                }
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setPreviewExam(exam)}
-                                data-testid={`button-preview-exam-${exam.id}`}
-                                title="Preview exam as student"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleEditExam(exam)}
-                                data-testid={`button-edit-exam-${exam.id}`}
-                                title="Edit exam settings"
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
+                            }
+                            return (
+                              <span className="text-sm text-muted-foreground">
+                                Individual Timer
+                              </span>
+                            );
+                          })()}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <FileText className="w-4 h-4 mr-1" />
+                            {questionCounts[exam.id] || 0} question{(questionCounts[exam.id] || 0) !== 1 ? 's' : ''}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedExam(exam)}
+                              data-testid={`button-manage-questions-${exam.id}`}
+                            >
+                              <Edit className="w-4 h-4 mr-1" />
+                              Questions
+                            </Button>
+                            <Button
+                              variant={exam.isPublished ? "default" : "secondary"}
+                              size="sm"
+                              onClick={() => togglePublishMutation.mutate({
+                                examId: exam.id,
+                                isPublished: !exam.isPublished
+                              })}
+                              disabled={togglingExamId === exam.id}
+                              data-testid={`button-toggle-publish-${exam.id}`}
+                            >
+                              <Play className="w-4 h-4 mr-1" />
+                              {togglingExamId === exam.id
+                                ? (exam.isPublished ? 'Unpublishing...' : 'Publishing...')
+                                : (exam.isPublished ? 'Unpublish' : 'Publish')
+                              }
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setPreviewExam(exam)}
+                              data-testid={`button-preview-exam-${exam.id}`}
+                              title="Preview exam as student"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditExam(exam)}
+                              data-testid={`button-edit-exam-${exam.id}`}
+                              title="Edit exam settings"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  disabled={deleteExamMutation.isPending}
+                                  data-testid={`button-delete-exam-${exam.id}`}
+                                  aria-label={`Delete exam ${exam.name}`}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Exam</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete the exam "{exam.name}"? This action cannot be undone and will permanently remove all exam questions and student results.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel disabled={deleteExamMutation.isPending}>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => deleteExamMutation.mutate(exam.id)}
                                     disabled={deleteExamMutation.isPending}
-                                    data-testid={`button-delete-exam-${exam.id}`}
-                                    aria-label={`Delete exam ${exam.name}`}
+                                    className="bg-destructive hover:bg-destructive/90"
                                   >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete Exam</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Are you sure you want to delete the exam "{exam.name}"? This action cannot be undone and will permanently remove all exam questions and student results.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel disabled={deleteExamMutation.isPending}>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => deleteExamMutation.mutate(exam.id)}
-                                      disabled={deleteExamMutation.isPending}
-                                      className="bg-destructive hover:bg-destructive/90"
-                                    >
-                                      {deleteExamMutation.isPending ? 'Deleting...' : 'Delete Exam'}
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {filteredExams.length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                            No exams found. Create your first exam to get started.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </>
-            )}
+                                    {deleteExamMutation.isPending ? 'Deleting...' : 'Delete Exam'}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {filteredExams.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                          No exams found. Create your first exam to get started.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Empty state guidance when no exam is selected */}
+      {!selectedExam && (
+        <Card className="mt-6">
+          <CardContent className="pt-6">
+            <div className="text-center py-8 text-muted-foreground">
+              <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <h3 className="text-lg font-semibold mb-2">Select an Exam to Manage Questions</h3>
+              <p className="text-sm">
+                To add questions or upload CSV files, please select an exam from the list above by clicking the "Manage Questions" button.
+              </p>
+            </div>
           </CardContent>
         </Card>
+      )}
 
-        {/* Empty state guidance when no exam is selected */}
-        {!selectedExam && (
-          <Card className="mt-6">
-            <CardContent className="pt-6">
-              <div className="text-center py-8 text-muted-foreground">
-                <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <h3 className="text-lg font-semibold mb-2">Select an Exam to Manage Questions</h3>
-                <p className="text-sm">
-                  To add questions or upload CSV files, please select an exam from the list above by clicking the "Manage Questions" button.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+      {/* Question Management Modal */}
+      {selectedExam && (
+        <Dialog open={!!selectedExam} onOpenChange={(open) => { if (!open) setSelectedExam(null); }}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Manage Questions - {selectedExam.name}</DialogTitle>
+            </DialogHeader>
 
-        {/* Question Management Modal */}
-        {selectedExam && (
-          <Dialog open={!!selectedExam} onOpenChange={(open) => { if (!open) setSelectedExam(null); }}>
-            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Manage Questions - {selectedExam.name}</DialogTitle>
-              </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                <div className="text-sm text-muted-foreground">
+                  {examQuestions.length} questions • {selectedExam.totalMarks} total marks
+                </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  {/* 3-Way Question Adder button */}
+                  <Button
+                    variant="default"
+                    onClick={() => setIsQuestionAdderOpen(true)}
+                    data-testid="button-add-questions"
+                    className="w-full sm:w-auto"
+                    size="sm"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Questions
+                  </Button>
+                  {/* CSV Template Download */}
+                  <Button
+                    variant="outline"
+                    onClick={downloadCSVTemplate}
+                    data-testid="button-download-template"
+                    title="Download CSV template for bulk question upload"
+                    className="w-full sm:w-auto"
+                    size="sm"
+                  >
+                    <FileText className="w-4 h-4 mr-2" />
+                    <span className="hidden sm:inline">Download Template</span>
+                    <span className="sm:hidden">Template</span>
+                  </Button>
 
-              <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                  <div className="text-sm text-muted-foreground">
-                    {examQuestions.length} questions • {selectedExam.totalMarks} total marks
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    {/* CSV Template Download */}
+                  {/* CSV Upload Button */}
+                  <div className="relative w-full sm:w-auto">
+                    <input
+                      type="file"
+                      id="csv-upload"
+                      accept=".csv"
+                      onChange={handleCSVUpload}
+                      className="hidden"
+                      data-testid="input-csv-upload"
+                    />
                     <Button
                       variant="outline"
-                      onClick={downloadCSVTemplate}
-                      data-testid="button-download-template"
-                      title="Download CSV template for bulk question upload"
+                      onClick={() => document.getElementById('csv-upload')?.click()}
+                      data-testid="button-upload-csv"
+                      disabled={!selectedExam || csvUploadMutation.isPending}
+                      title={!selectedExam ? "Please select an exam first" : "Upload questions from CSV file"}
                       className="w-full sm:w-auto"
                       size="sm"
                     >
-                      <FileText className="w-4 h-4 mr-2" />
-                      <span className="hidden sm:inline">Download Template</span>
-                      <span className="sm:hidden">Template</span>
+                      <Upload className="w-4 h-4 mr-2" />
+                      {csvUploadMutation.isPending ? 'Uploading...' : 'Upload CSV'}
                     </Button>
+                  </div>
 
-                    {/* CSV Upload Button */}
-                    <div className="relative w-full sm:w-auto">
-                      <input
-                        type="file"
-                        id="csv-upload"
-                        accept=".csv"
-                        onChange={handleCSVUpload}
-                        className="hidden"
-                        data-testid="input-csv-upload"
-                      />
-                      <Button
-                        variant="outline"
-                        onClick={() => document.getElementById('csv-upload')?.click()}
-                        data-testid="button-upload-csv"
-                        disabled={!selectedExam || csvUploadMutation.isPending}
-                        title={!selectedExam ? "Please select an exam first" : "Upload questions from CSV file"}
-                        className="w-full sm:w-auto"
-                        size="sm"
-                      >
-                        <Upload className="w-4 h-4 mr-2" />
-                        {csvUploadMutation.isPending ? 'Uploading...' : 'Upload CSV'}
-                      </Button>
-                    </div>
+                  {/* Manual Add Question */}
+                  <Dialog
+                    open={isQuestionDialogOpen}
+                    onOpenChange={(open) => {
+                      if (!open) {
+                        setEditingQuestion(null);
+                        resetQuestion({
+                          questionType: 'multiple_choice',
+                          points: 1,
+                          questionText: '',
+                          instructions: '',
+                          sampleAnswer: '',
+                          options: [
+                            { optionText: '', isCorrect: false },
+                            { optionText: '', isCorrect: false },
+                            { optionText: '', isCorrect: false },
+                            { optionText: '', isCorrect: false },
+                          ]
+                        });
+                      }
+                      setIsQuestionDialogOpen(open);
+                    }}
+                  >
+                    <DialogTrigger asChild>
+                      <div title={!selectedExam ? "Select an exam from the list above to add questions" : ""} className="w-full sm:w-auto">
+                        <Button
+                          data-testid="button-add-question"
+                          disabled={!selectedExam}
+                          style={!selectedExam ? { pointerEvents: 'none' } : {}}
+                          className="w-full sm:w-auto"
+                          size="sm"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Question
+                        </Button>
+                      </div>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>{editingQuestion ? 'Edit Question' : 'Add New Question'}</DialogTitle>
+                      </DialogHeader>
+                      <form onSubmit={handleQuestionSubmit(onSubmitQuestion, onInvalidQuestion)} className="space-y-4">
+                        <div>
+                          <Label htmlFor="questionText">Question Text</Label>
+                          <Textarea
+                            id="questionText"
+                            {...registerQuestion('questionText')}
+                            data-testid="textarea-question-text"
+                            placeholder="Enter your question here..."
+                            rows={3}
+                          />
+                          {questionErrors.questionText && <p className="text-sm text-red-500">{questionErrors.questionText.message}</p>}
+                        </div>
 
-                    {/* Manual Add Question */}
-                    <Dialog 
-                      open={isQuestionDialogOpen} 
-                      onOpenChange={(open) => {
-                        if (!open) {
-                          setEditingQuestion(null);
-                          resetQuestion({
-                            questionType: 'multiple_choice',
-                            points: 1,
-                            questionText: '',
-                            instructions: '',
-                            sampleAnswer: '',
-                            options: [
-                              { optionText: '', isCorrect: false },
-                              { optionText: '', isCorrect: false },
-                              { optionText: '', isCorrect: false },
-                              { optionText: '', isCorrect: false },
-                            ]
-                          });
-                        }
-                        setIsQuestionDialogOpen(open);
-                      }}
-                    >
-                      <DialogTrigger asChild>
-                        <div title={!selectedExam ? "Select an exam from the list above to add questions" : ""} className="w-full sm:w-auto">
-                          <Button 
-                            data-testid="button-add-question" 
-                            disabled={!selectedExam}
-                            style={!selectedExam ? { pointerEvents: 'none' } : {}}
-                            className="w-full sm:w-auto"
-                            size="sm"
+                        {(questionType === 'text' || questionType === 'essay') && (
+                          <>
+                            <div>
+                              <Label htmlFor="instructions">Instructions (Optional)</Label>
+                              <Textarea
+                                id="instructions"
+                                {...registerQuestion('instructions')}
+                                data-testid="textarea-question-instructions"
+                                placeholder="e.g., Write a detailed explanation (minimum 200 words), Show your working..."
+                                rows={2}
+                              />
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Provide specific guidance for students on how to answer this question
+                              </p>
+                            </div>
+
+                            <div>
+                              <Label htmlFor="sampleAnswer">Sample Answer (Optional)</Label>
+                              <Textarea
+                                id="sampleAnswer"
+                                {...registerQuestion('sampleAnswer')}
+                                data-testid="textarea-question-sample"
+                                placeholder="Provide a sample or model answer for grading reference..."
+                                rows={3}
+                              />
+                              <p className="text-xs text-muted-foreground mt-1">
+                                This will help with consistent grading and is not shown to students
+                              </p>
+                            </div>
+                          </>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="questionType">Question Type</Label>
+                            <Controller
+                              name="questionType"
+                              control={questionControl}
+                              render={({ field }) => (
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <SelectTrigger data-testid="select-question-type">
+                                    <SelectValue placeholder="Select type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
+                                    <SelectItem value="text">Short Answer</SelectItem>
+                                    <SelectItem value="essay">Essay</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="points">Points</Label>
+                            <Input
+                              id="points"
+                              type="number"
+                              {...registerQuestion('points', { valueAsNumber: true })}
+                              data-testid="input-question-points"
+                              min="1"
+                            />
+                          </div>
+                        </div>
+
+                        {questionType === 'multiple_choice' && (
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <Label>Answer Options</Label>
+                              <Button type="button" variant="outline" size="sm" onClick={addOption}>
+                                <Plus className="w-4 h-4 mr-1" />
+                                Add Option
+                              </Button>
+                            </div>
+                            <div className="space-y-2">
+                              {options?.map((option, index) => (
+                                <div key={index} className="flex items-center space-x-2">
+                                  <input
+                                    type="radio"
+                                    name="correctOption"
+                                    checked={option.isCorrect}
+                                    onChange={() => {
+                                      // Uncheck all other options
+                                      const newOptions = options.map((opt, i) => ({
+                                        ...opt,
+                                        isCorrect: i === index
+                                      }));
+                                      setQuestionValue('options', newOptions);
+                                    }}
+                                    data-testid={`radio-option-${index}`}
+                                  />
+                                  <Input
+                                    value={option.optionText}
+                                    onChange={(e) => updateOption(index, 'optionText', e.target.value)}
+                                    placeholder={`Option ${String.fromCharCode(65 + index)}`}
+                                    className="flex-1"
+                                    data-testid={`input-option-${index}`}
+                                  />
+                                  {options.length > 2 && (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => removeOption(index)}
+                                      data-testid={`button-remove-option-${index}`}
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                            {questionErrors.options && (
+                              <p className="text-sm text-red-500 mt-2">{questionErrors.options.message}</p>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="flex justify-end space-x-2">
+                          <Button type="button" variant="outline" onClick={() => setIsQuestionDialogOpen(false)}>
+                            Cancel
+                          </Button>
+                          <Button
+                            type="submit"
+                            disabled={createQuestionMutation.isPending || updateQuestionMutation.isPending}
+                            data-testid="button-submit-question"
                           >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Question
+                            {editingQuestion
+                              ? (updateQuestionMutation.isPending ? 'Saving...' : 'Save Changes')
+                              : (createQuestionMutation.isPending ? 'Adding...' : 'Add Question')
+                            }
                           </Button>
                         </div>
-                      </DialogTrigger>
-                      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>{editingQuestion ? 'Edit Question' : 'Add New Question'}</DialogTitle>
-                        </DialogHeader>
-                        <form onSubmit={handleQuestionSubmit(onSubmitQuestion, onInvalidQuestion)} className="space-y-4">
-                          <div>
-                            <Label htmlFor="questionText">Question Text</Label>
-                            <Textarea 
-                              id="questionText" 
-                              {...registerQuestion('questionText')} 
-                              data-testid="textarea-question-text"
-                              placeholder="Enter your question here..."
-                              rows={3}
-                            />
-                            {questionErrors.questionText && <p className="text-sm text-red-500">{questionErrors.questionText.message}</p>}
-                          </div>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </div>
 
-                          {(questionType === 'text' || questionType === 'essay') && (
-                            <>
-                              <div>
-                                <Label htmlFor="instructions">Instructions (Optional)</Label>
-                                <Textarea 
-                                  id="instructions" 
-                                  {...registerQuestion('instructions')} 
-                                  data-testid="textarea-question-instructions"
-                                  placeholder="e.g., Write a detailed explanation (minimum 200 words), Show your working..."
-                                  rows={2}
-                                />
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  Provide specific guidance for students on how to answer this question
-                                </p>
-                              </div>
-
-                              <div>
-                                <Label htmlFor="sampleAnswer">Sample Answer (Optional)</Label>
-                                <Textarea 
-                                  id="sampleAnswer" 
-                                  {...registerQuestion('sampleAnswer')} 
-                                  data-testid="textarea-question-sample"
-                                  placeholder="Provide a sample or model answer for grading reference..."
-                                  rows={3}
-                                />
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  This will help with consistent grading and is not shown to students
-                                </p>
-                              </div>
-                            </>
-                          )}
-
-                          <div className="grid grid-cols-2 gap-4">
-                            <div>
-                              <Label htmlFor="questionType">Question Type</Label>
-                              <Controller
-                                name="questionType"
-                                control={questionControl}
-                                render={({ field }) => (
-                                  <Select onValueChange={field.onChange} value={field.value}>
-                                    <SelectTrigger data-testid="select-question-type">
-                                      <SelectValue placeholder="Select type" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
-                                      <SelectItem value="text">Short Answer</SelectItem>
-                                      <SelectItem value="essay">Essay</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                )}
-                              />
-                            </div>
-                            <div>
-                              <Label htmlFor="points">Points</Label>
-                              <Input 
-                                id="points" 
-                                type="number" 
-                                {...registerQuestion('points', { valueAsNumber: true })} 
-                                data-testid="input-question-points"
-                                min="1"
-                              />
-                            </div>
-                          </div>
-
-                          {questionType === 'multiple_choice' && (
-                            <div>
-                              <div className="flex justify-between items-center mb-2">
-                                <Label>Answer Options</Label>
-                                <Button type="button" variant="outline" size="sm" onClick={addOption}>
-                                  <Plus className="w-4 h-4 mr-1" />
-                                  Add Option
-                                </Button>
-                              </div>
-                              <div className="space-y-2">
-                                {options?.map((option, index) => (
-                                  <div key={index} className="flex items-center space-x-2">
-                                    <input
-                                      type="radio"
-                                      name="correctOption"
-                                      checked={option.isCorrect}
-                                      onChange={() => {
-                                        // Uncheck all other options
-                                        const newOptions = options.map((opt, i) => ({
-                                          ...opt,
-                                          isCorrect: i === index
-                                        }));
-                                        setQuestionValue('options', newOptions);
-                                      }}
-                                      data-testid={`radio-option-${index}`}
-                                    />
-                                    <Input
-                                      value={option.optionText}
-                                      onChange={(e) => updateOption(index, 'optionText', e.target.value)}
-                                      placeholder={`Option ${String.fromCharCode(65 + index)}`}
-                                      className="flex-1"
-                                      data-testid={`input-option-${index}`}
-                                    />
-                                    {options.length > 2 && (
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => removeOption(index)}
-                                        data-testid={`button-remove-option-${index}`}
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </Button>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                              {questionErrors.options && (
-                                <p className="text-sm text-red-500 mt-2">{questionErrors.options.message}</p>
-                              )}
-                            </div>
-                          )}
-
-                          <div className="flex justify-end space-x-2">
-                            <Button type="button" variant="outline" onClick={() => setIsQuestionDialogOpen(false)}>
-                              Cancel
-                            </Button>
-                            <Button 
-                              type="submit" 
-                              disabled={createQuestionMutation.isPending || updateQuestionMutation.isPending} 
-                              data-testid="button-submit-question"
-                            >
-                              {editingQuestion 
-                                ? (updateQuestionMutation.isPending ? 'Saving...' : 'Save Changes')
-                                : (createQuestionMutation.isPending ? 'Adding...' : 'Add Question')
-                              }
-                            </Button>
-                          </div>
-                        </form>
-                      </DialogContent>
-                    </Dialog>
+              {/* Questions List */}
+              <div className="space-y-3">
+                {loadingQuestions ? (
+                  <div className="text-center py-8">Loading questions...</div>
+                ) : examQuestions.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No questions added yet. Add your first question to get started.
                   </div>
-                </div>
+                ) : (
+                  examQuestions.map((question: any, index: number) => (
+                    <Card key={question.id} data-testid={`card-question-${question.id}`}>
+                      <CardContent className="pt-4">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <Badge variant="outline">Q{index + 1}</Badge>
+                              <Badge variant={question.questionType === 'multiple_choice' ? 'secondary' : question.questionType === 'essay' ? 'default' : 'outline'}>
+                                {question.questionType === 'multiple_choice' ? 'Multiple Choice' :
+                                  question.questionType === 'essay' ? 'Essay' : 'Short Answer'}
+                              </Badge>
+                              <span className="text-sm text-muted-foreground">{question.points} points</span>
+                            </div>
+                            <p className="mb-2 font-medium">{question.questionText}</p>
 
-                {/* Questions List */}
-                <div className="space-y-3">
-                  {loadingQuestions ? (
-                    <div className="text-center py-8">Loading questions...</div>
-                  ) : examQuestions.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No questions added yet. Add your first question to get started.
-                    </div>
-                  ) : (
-                    examQuestions.map((question: any, index: number) => (
-                      <Card key={question.id} data-testid={`card-question-${question.id}`}>
-                        <CardContent className="pt-4">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <div className="flex items-center space-x-2 mb-2">
-                                <Badge variant="outline">Q{index + 1}</Badge>
-                                <Badge variant={question.questionType === 'multiple_choice' ? 'secondary' : question.questionType === 'essay' ? 'default' : 'outline'}>
-                                  {question.questionType === 'multiple_choice' ? 'Multiple Choice' : 
-                                   question.questionType === 'essay' ? 'Essay' : 'Short Answer'}
-                                </Badge>
-                                <span className="text-sm text-muted-foreground">{question.points} points</span>
+                            {question.instructions && (
+                              <div className="mb-2 p-2 bg-blue-50 rounded text-sm">
+                                <span className="font-medium text-blue-800">Instructions: </span>
+                                <span className="text-blue-700">{question.instructions}</span>
                               </div>
-                              <p className="mb-2 font-medium">{question.questionText}</p>
+                            )}
 
-                              {question.instructions && (
-                                <div className="mb-2 p-2 bg-blue-50 rounded text-sm">
-                                  <span className="font-medium text-blue-800">Instructions: </span>
-                                  <span className="text-blue-700">{question.instructions}</span>
-                                </div>
-                              )}
+                            {question.questionType === 'multiple_choice' && (
+                              <div className="ml-4 space-y-1">
+                                <QuestionOptions questionId={question.id} />
+                              </div>
+                            )}
 
-                              {question.questionType === 'multiple_choice' && (
-                                <div className="ml-4 space-y-1">
-                                  <QuestionOptions questionId={question.id} />
+                            {(question.questionType === 'text' || question.questionType === 'essay') && (
+                              <div className="ml-4 text-sm text-muted-foreground">
+                                <div className="flex items-center space-x-4">
+                                  <span>
+                                    {question.questionType === 'essay' ? '📝 Essay question' : '📝 Short answer question'}
+                                  </span>
+                                  {question.sampleAnswer && (
+                                    <span className="text-green-600">✓ Sample answer provided</span>
+                                  )}
                                 </div>
-                              )}
-
-                              {(question.questionType === 'text' || question.questionType === 'essay') && (
-                                <div className="ml-4 text-sm text-muted-foreground">
-                                  <div className="flex items-center space-x-4">
-                                    <span>
-                                      {question.questionType === 'essay' ? '📝 Essay question' : '📝 Short answer question'}
-                                    </span>
-                                    {question.sampleAnswer && (
-                                      <span className="text-green-600">✓ Sample answer provided</span>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex space-x-1">
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => handleEditQuestion(question)}
-                                disabled={updateQuestionMutation.isPending}
-                                data-testid={`button-edit-question-${question.id}`}
-                              >
-                                <Edit className="w-4 h-4" />
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button 
-                                    variant="destructive" 
-                                    size="sm" 
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex space-x-1">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEditQuestion(question)}
+                              disabled={updateQuestionMutation.isPending}
+                              data-testid={`button-edit-question-${question.id}`}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  disabled={deleteQuestionMutation.isPending}
+                                  data-testid={`button-delete-question-${question.id}`}
+                                  aria-label={`Delete question ${index + 1}`}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Question</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete this question? This action cannot be undone and will permanently remove the question and all associated answer options.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel disabled={deleteQuestionMutation.isPending}>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => deleteQuestionMutation.mutate(question.id)}
                                     disabled={deleteQuestionMutation.isPending}
-                                    data-testid={`button-delete-question-${question.id}`}
-                                    aria-label={`Delete question ${index + 1}`}
+                                    className="bg-destructive hover:bg-destructive/90"
                                   >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete Question</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Are you sure you want to delete this question? This action cannot be undone and will permanently remove the question and all associated answer options.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel disabled={deleteQuestionMutation.isPending}>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => deleteQuestionMutation.mutate(question.id)}
-                                      disabled={deleteQuestionMutation.isPending}
-                                      className="bg-destructive hover:bg-destructive/90"
-                                    >
-                                      {deleteQuestionMutation.isPending ? 'Deleting...' : 'Delete Question'}
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
+                                    {deleteQuestionMutation.isPending ? 'Deleting...' : 'Delete Question'}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
               </div>
-            </DialogContent>
-          </Dialog>
-        )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
-        {/* Preview Exam Dialog */}
-        {previewExam && (
-          <Dialog open={!!previewExam} onOpenChange={(open) => { if (!open) setPreviewExam(null); }}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Preview: {previewExam.name}</DialogTitle>
-                <p className="text-sm text-muted-foreground">Student view of the exam</p>
-              </DialogHeader>
+      {/* Preview Exam Dialog */}
+      {previewExam && (
+        <Dialog open={!!previewExam} onOpenChange={(open) => { if (!open) setPreviewExam(null); }}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Preview: {previewExam.name}</DialogTitle>
+              <p className="text-sm text-muted-foreground">Student view of the exam</p>
+            </DialogHeader>
 
-              <div className="space-y-6">
-                {/* Exam Info */}
-                <Card className="bg-blue-50 dark:bg-blue-950/20">
-                  <CardContent className="pt-4">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="font-medium">Class:</span> {getClassNameById(previewExam.classId)}
-                      </div>
-                      <div>
-                        <span className="font-medium">Subject:</span> {getSubjectNameById(previewExam.subjectId)}
-                      </div>
-                      <div>
-                        <span className="font-medium">Total Marks:</span> {previewExam.totalMarks}
-                      </div>
-                      <div>
-                        <span className="font-medium">Duration:</span> {previewExam.timeLimit} minutes
-                      </div>
+            <div className="space-y-6">
+              {/* Exam Info */}
+              <Card className="bg-blue-50 dark:bg-blue-950/20">
+                <CardContent className="pt-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">Class:</span> {getClassNameById(previewExam.classId)}
                     </div>
-                    {previewExam.instructions && (
-                      <div className="mt-4 p-3 bg-white dark:bg-gray-900 rounded">
-                        <p className="text-sm font-medium mb-1">Instructions:</p>
-                        <p className="text-sm">{previewExam.instructions}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Questions */}
-                <div className="space-y-4">
-                  <h3 className="font-semibold">Questions ({previewQuestions.length})</h3>
-                  {loadingPreviewQuestions ? (
-                    <div className="text-center py-8">Loading questions...</div>
-                  ) : previewQuestions.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No questions added to this exam yet.
+                    <div>
+                      <span className="font-medium">Subject:</span> {getSubjectNameById(previewExam.subjectId)}
                     </div>
-                  ) : (
-                    previewQuestions.map((question: any, index: number) => (
-                      <Card key={question.id}>
-                        <CardContent className="pt-4">
-                          <div className="flex items-start gap-4">
-                            <Badge variant="outline">Q{index + 1}</Badge>
-                            <div className="flex-1">
-                              <p className="font-medium mb-2">{question.questionText}</p>
-                              <p className="text-xs text-muted-foreground mb-3">
-                                {question.points} {question.points === 1 ? 'point' : 'points'}
-                              </p>
-                              {question.questionType === 'multiple_choice' && (
-                                <div className="space-y-2">
-                                  <QuestionOptions questionId={question.id} />
-                                </div>
-                              )}
-                              {question.questionType === 'essay' && (
-                                <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded text-sm text-muted-foreground">
-                                  Essay answer box would appear here
-                                </div>
-                              )}
-                              {question.questionType === 'text' && (
-                                <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded text-sm text-muted-foreground">
-                                  Short answer text box would appear here
-                                </div>
-                              )}
-                            </div>
+                    <div>
+                      <span className="font-medium">Total Marks:</span> {previewExam.totalMarks}
+                    </div>
+                    <div>
+                      <span className="font-medium">Duration:</span> {previewExam.timeLimit} minutes
+                    </div>
+                  </div>
+                  {previewExam.instructions && (
+                    <div className="mt-4 p-3 bg-white dark:bg-gray-900 rounded">
+                      <p className="text-sm font-medium mb-1">Instructions:</p>
+                      <p className="text-sm">{previewExam.instructions}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Questions */}
+              <div className="space-y-4">
+                <h3 className="font-semibold">Questions ({previewQuestions.length})</h3>
+                {loadingPreviewQuestions ? (
+                  <div className="text-center py-8">Loading questions...</div>
+                ) : previewQuestions.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No questions added to this exam yet.
+                  </div>
+                ) : (
+                  previewQuestions.map((question: any, index: number) => (
+                    <Card key={question.id}>
+                      <CardContent className="pt-4">
+                        <div className="flex items-start gap-4">
+                          <Badge variant="outline">Q{index + 1}</Badge>
+                          <div className="flex-1">
+                            <p className="font-medium mb-2">{question.questionText}</p>
+                            <p className="text-xs text-muted-foreground mb-3">
+                              {question.points} {question.points === 1 ? 'point' : 'points'}
+                            </p>
+                            {question.questionType === 'multiple_choice' && (
+                              <div className="space-y-2">
+                                <QuestionOptions questionId={question.id} />
+                              </div>
+                            )}
+                            {question.questionType === 'essay' && (
+                              <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded text-sm text-muted-foreground">
+                                Essay answer box would appear here
+                              </div>
+                            )}
+                            {question.questionType === 'text' && (
+                              <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded text-sm text-muted-foreground">
+                                Short answer text box would appear here
+                              </div>
+                            )}
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </div>
-
-                <div className="flex justify-end">
-                  <Button variant="outline" onClick={() => setPreviewExam(null)}>
-                    Close Preview
-                  </Button>
-                </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
               </div>
-            </DialogContent>
-          </Dialog>
-        )}
+
+              <div className="flex justify-end">
+                <Button variant="outline" onClick={() => setPreviewExam(null)}>
+                  Close Preview
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {/* 3-Way Question Adder Dialog */}
+      {selectedExam && (
+        <ExamQuestionAdder
+          open={isQuestionAdderOpen}
+          onOpenChange={setIsQuestionAdderOpen}
+          examId={selectedExam.id}
+          examClassId={selectedExam.classId}
+          examSubjectId={selectedExam.subjectId}
+          onQuestionsAdded={() => {
+            queryClient.invalidateQueries({ queryKey: ['/api/exam-questions', selectedExam.id] });
+            queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'] });
+          }}
+        />
+      )}
     </div>
   );
 }

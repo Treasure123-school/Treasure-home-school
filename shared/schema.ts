@@ -521,14 +521,14 @@ export const questionBanks = sqliteTable("question_banks", {
   questionBanksCreatedByIdx: index("question_banks_created_by_idx").on(table.createdBy),
 }));
 
-// Question bank items
+// Question bank items — enhanced with class/term/topic hierarchy
 export const questionBankItems = sqliteTable("question_bank_items", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   bankId: integer("bank_id").notNull().references(() => questionBanks.id, { onDelete: 'cascade' }),
   questionText: text("question_text").notNull(),
   questionType: text("question_type").notNull(),
   points: integer("points").notNull().default(1),
-  difficulty: text("difficulty").notNull().default('medium'),
+  difficulty: text("difficulty").notNull().default('medium'), // 'easy', 'medium', 'hard'
   tags: text("tags").notNull().default('[]'), // JSON array
   imageUrl: text("image_url"),
   autoGradable: integer("auto_gradable", { mode: "boolean" }).notNull().default(true),
@@ -538,12 +538,22 @@ export const questionBankItems = sqliteTable("question_bank_items", {
   hintText: text("hint_text"),
   practicalInstructions: text("practical_instructions"),
   practicalFileUrl: text("practical_file_url"),
+  // ── Syllabus hierarchy (NEW) ──
+  classId: integer("class_id").references(() => classes.id),
+  termId: integer("term_id").references(() => academicTerms.id),
+  topicId: integer("topic_id"), // references syllabusTopics.id (defined below)
+  usageCount: integer("usage_count").notNull().default(0),
+  status: text("status").notNull().default('active'), // 'active', 'archived', 'draft'
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 }, (table) => ({
   questionBankItemsBankIdIdx: index("question_bank_items_bank_id_idx").on(table.bankId),
   questionBankItemsTypeIdx: index("question_bank_items_type_idx").on(table.questionType),
   questionBankItemsDifficultyIdx: index("question_bank_items_difficulty_idx").on(table.difficulty),
+  questionBankItemsClassIdx: index("question_bank_items_class_idx").on(table.classId),
+  questionBankItemsTermIdx: index("question_bank_items_term_idx").on(table.termId),
+  questionBankItemsTopicIdx: index("question_bank_items_topic_idx").on(table.topicId),
+  questionBankItemsStatusIdx: index("question_bank_items_status_idx").on(table.status),
 }));
 
 // Question bank item options
@@ -559,6 +569,40 @@ export const questionBankOptions = sqliteTable("question_bank_options", {
   questionBankOptionsItemIdIdx: index("question_bank_options_item_id_idx").on(table.questionItemId),
 }));
 
+// Syllabus topics — Maps topics to Class × Subject × Term
+export const syllabusTopics = sqliteTable("syllabus_topics", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  classId: integer("class_id").notNull().references(() => classes.id),
+  subjectId: integer("subject_id").notNull().references(() => subjects.id),
+  termId: integer("term_id").notNull().references(() => academicTerms.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  orderNumber: integer("order_number").notNull().default(0),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  createdBy: text("created_by").references(() => users.id, { onDelete: 'set null' }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+}, (table) => ({
+  syllabusTopicsClassIdx: index("syllabus_topics_class_idx").on(table.classId),
+  syllabusTopicsSubjectIdx: index("syllabus_topics_subject_idx").on(table.subjectId),
+  syllabusTopicsTermIdx: index("syllabus_topics_term_idx").on(table.termId),
+  syllabusTopicsFilterIdx: index("syllabus_topics_filter_idx").on(table.classId, table.subjectId, table.termId),
+  syllabusTopicsUniqueIdx: uniqueIndex("syllabus_topics_unique_idx").on(table.classId, table.subjectId, table.termId, table.name),
+}));
+
+// Exam ↔ Question Bank link — tracks which bank items were used in which exams
+export const examQuestionBankLinks = sqliteTable("exam_question_bank_links", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  examId: integer("exam_id").notNull().references(() => exams.id, { onDelete: 'cascade' }),
+  examQuestionId: integer("exam_question_id").notNull().references(() => examQuestions.id, { onDelete: 'cascade' }),
+  bankItemId: integer("bank_item_id").notNull().references(() => questionBankItems.id, { onDelete: 'cascade' }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+}, (table) => ({
+  examQBLinksExamIdx: index("exam_qb_links_exam_idx").on(table.examId),
+  examQBLinksBankItemIdx: index("exam_qb_links_bank_item_idx").on(table.bankItemId),
+  examQBLinksUniqueIdx: uniqueIndex("exam_qb_links_unique_idx").on(table.examQuestionId, table.bankItemId),
+}));
+
 // Announcements table
 export const announcements = sqliteTable("announcements", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -570,28 +614,28 @@ export const announcements = sqliteTable("announcements", {
   isPublished: integer("is_published", { mode: "boolean" }).notNull().default(false),
   publishedAt: integer("published_at", { mode: "timestamp" }),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
-  
+
   // Priority & Type
   priority: text("priority").notNull().default('normal'), // 'normal', 'important', 'urgent'
   announcementType: text("announcement_type").notNull().default('general'), // 'general', 'academic', 'examination', 'event', 'emergency'
-  
+
   // Scheduling & Expiry
   scheduledAt: integer("scheduled_at", { mode: "timestamp" }),
   expiryDate: integer("expiry_date", { mode: "timestamp" }),
-  
+
   // Attachments (JSON array of file URLs)
   attachments: text("attachments").notNull().default('[]'),
   coverImageUrl: text("cover_image_url"),
-  
+
   // Notification Settings (JSON object)
   notificationSettings: text("notification_settings").notNull().default('{"inApp": true, "email": false, "sms": false}'),
-  
+
   // Status & Analytics
   status: text("status").notNull().default('draft'), // 'draft', 'scheduled', 'published', 'expired', 'archived'
   viewCount: integer("view_count").notNull().default(0),
   allowComments: integer("allow_comments", { mode: "boolean" }).notNull().default(false),
   allowEdit: integer("allow_edit", { mode: "boolean" }).notNull().default(true),
-  
+
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 
@@ -1254,12 +1298,12 @@ export const createQuestionOptionSchema = insertQuestionOptionSchema.omit({ ques
   explanationText: z.preprocess((val) => val === '' ? undefined : val, z.string().optional()),
 });
 
-export const insertExamSessionSchema = createInsertSchema(examSessions).omit({ 
-  id: true, 
-  createdAt: true, 
+export const insertExamSessionSchema = createInsertSchema(examSessions).omit({
+  id: true,
+  createdAt: true,
   startedAt: true,
   studentId: true
-}).partial().required({ 
+}).partial().required({
   examId: true
 }).extend({
   submittedAt: z.union([z.date(), z.string()]).optional().transform((val) => {
@@ -1288,13 +1332,13 @@ export const insertStudentSubjectAssignmentSchema = createInsertSchema(studentSu
 export const insertClassSubjectMappingSchema = createInsertSchema(classSubjectMappings).omit({ id: true, createdAt: true });
 
 // Vacancy schemas
-export const insertVacancySchema = createInsertSchema(vacancies).omit({ 
+export const insertVacancySchema = createInsertSchema(vacancies).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
 
-export const insertTeacherApplicationSchema = createInsertSchema(teacherApplications).omit({ 
+export const insertTeacherApplicationSchema = createInsertSchema(teacherApplications).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
@@ -1304,7 +1348,7 @@ export const insertTeacherApplicationSchema = createInsertSchema(teacherApplicat
   status: true,
 });
 
-export const insertApprovedTeacherSchema = createInsertSchema(approvedTeachers).omit({ 
+export const insertApprovedTeacherSchema = createInsertSchema(approvedTeachers).omit({
   id: true,
   createdAt: true,
   dateApproved: true,
@@ -1325,6 +1369,8 @@ export const insertSystemSettingsSchema = createInsertSchema(systemSettings).omi
 export const insertQuestionBankSchema = createInsertSchema(questionBanks).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertQuestionBankItemSchema = createInsertSchema(questionBankItems).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertQuestionBankOptionSchema = createInsertSchema(questionBankOptions).omit({ id: true, createdAt: true });
+export const insertSyllabusTopicSchema = createInsertSchema(syllabusTopics).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertExamQuestionBankLinkSchema = createInsertSchema(examQuestionBankLinks).omit({ id: true, createdAt: true });
 
 // Types
 export type Role = typeof roles.$inferSelect;
@@ -1383,6 +1429,8 @@ export type StudentAnswer = typeof studentAnswers.$inferSelect;
 export type QuestionBank = typeof questionBanks.$inferSelect;
 export type QuestionBankItem = typeof questionBankItems.$inferSelect;
 export type QuestionBankOption = typeof questionBankOptions.$inferSelect;
+export type SyllabusTopic = typeof syllabusTopics.$inferSelect;
+export type ExamQuestionBankLink = typeof examQuestionBankLinks.$inferSelect;
 
 export type InsertRole = z.infer<typeof insertRoleSchema>;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -1439,6 +1487,8 @@ export type InsertStudentAnswer = z.infer<typeof insertStudentAnswerSchema>;
 export type InsertQuestionBank = z.infer<typeof insertQuestionBankSchema>;
 export type InsertQuestionBankItem = z.infer<typeof insertQuestionBankItemSchema>;
 export type InsertQuestionBankOption = z.infer<typeof insertQuestionBankOptionSchema>;
+export type InsertSyllabusTopic = z.infer<typeof insertSyllabusTopicSchema>;
+export type InsertExamQuestionBankLink = z.infer<typeof insertExamQuestionBankLinkSchema>;
 
 export type Vacancy = typeof vacancies.$inferSelect;
 export type TeacherApplication = typeof teacherApplications.$inferSelect;

@@ -58,6 +58,8 @@ const AdminResultPublishing = lazy(() => import('@/pages/portal/AdminResultPubli
 const AdminRecoveryTools = lazy(() => import('@/pages/portal/AdminRecoveryTools'));
 const AdminProfile = lazy(() => import('@/pages/portal/AdminProfile'));
 const ReportCommentTemplates = lazy(() => import('@/pages/portal/ReportCommentTemplates'));
+const SyllabusTopicsManager = lazy(() => import('@/pages/portal/SyllabusTopicsManager'));
+const QuestionBankManager = lazy(() => import('@/pages/portal/QuestionBankManager'));
 
 const ParentDashboard = lazy(() => import('@/pages/portal/ParentDashboard'));
 const ParentReportCards = lazy(() => import('@/pages/portal/ParentReportCards'));
@@ -80,12 +82,12 @@ export function ParentPortalShell() {
 
 function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent' }) {
   const { user, isLoading } = useAuth();
-  
+
   if (isLoading || !user) return <PortalLayoutSkeleton />;
-  
+
   const userName = user.lastName;
   const userInitials = `${user.firstName[0]}${user.lastName[0]}`;
-  
+
   return (
     <PortalLayout userRole={role} userName={userName} userInitials={userInitials}>
       <Suspense fallback={<MinimalLoadingFallback />}>
@@ -120,6 +122,8 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/teacher/exam-analytics" component={TeacherExamAnalytics} />
             <Route path="/portal/teacher/report-cards" component={TeacherReportCards} />
             <Route path="/portal/teacher/recent-exam-results" component={TeacherRecentExamResults} />
+            <Route path="/portal/teacher/syllabus-topics" component={SyllabusTopicsManager} />
+            <Route path="/portal/teacher/question-bank" component={QuestionBankManager} />
             <Route path="/portal/teacher/*" component={PortalComingSoon} />
           </Switch>
         )}
@@ -160,6 +164,8 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/academics/curriculum" component={PortalComingSoon} />
             <Route path="/portal/admin/profile" component={AdminProfile} />
             <Route path="/portal/admin/comment-templates" component={ReportCommentTemplates} />
+            <Route path="/portal/admin/syllabus-topics" component={SyllabusTopicsManager} />
+            <Route path="/portal/admin/question-bank" component={QuestionBankManager} />
             <Route path="/portal/admin/*" component={PortalComingSoon} />
           </Switch>
         )}

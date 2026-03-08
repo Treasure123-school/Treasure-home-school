@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import html2canvas from 'html2canvas';
+import { toCanvas } from 'html-to-image';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { BaileysReportTemplate } from '@/components/ui/baileys-report-template';
 import { exportToPDF, exportToImage, printElement } from '@/lib/report-export-utils';
@@ -20,10 +20,10 @@ import { useAuth } from '@/lib/auth';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { 
-  FileText, 
-  Users, 
-  GraduationCap, 
+import {
+  FileText,
+  Users,
+  GraduationCap,
   RefreshCw,
   Eye,
   Edit,
@@ -183,7 +183,7 @@ export default function TeacherReportCards() {
 
   const handleDownloadAsImage = async () => {
     if (!baileysTemplateRef.current || !selectedReportCard) return;
-    
+
     setIsDownloading(true);
     try {
       const studentName = (fullReportCard as { studentName?: string })?.studentName || 'student';
@@ -191,7 +191,7 @@ export default function TeacherReportCards() {
         filename: `report-card-${studentName.replace(/\s+/g, '-')}`,
         scale: 2,
       });
-      
+
       toast({ title: "Success", description: "Report card downloaded as image" });
     } catch (error) {
       toast({ title: "Error", description: "Failed to download report card", variant: "destructive" });
@@ -202,7 +202,7 @@ export default function TeacherReportCards() {
 
   const handleDownloadAsPDF = async () => {
     if (!baileysTemplateRef.current || !selectedReportCard) return;
-    
+
     setIsDownloading(true);
     try {
       const studentName = (fullReportCard as { studentName?: string })?.studentName || 'student';
@@ -210,7 +210,7 @@ export default function TeacherReportCards() {
         filename: `report-card-${studentName.replace(/\s+/g, '-')}`,
         scale: 2,
       });
-      
+
       toast({ title: "Success", description: "Report card PDF downloaded" });
     } catch (error) {
       toast({ title: "Error", description: "Failed to download PDF", variant: "destructive" });
@@ -271,7 +271,7 @@ export default function TeacherReportCards() {
       return await response.json();
     },
   });
-  
+
   // Extract classes from assignment data - teachers only see their assigned classes
   const classes = assignmentData?.classes || [];
   const isAdmin = assignmentData?.isAdmin || false;
@@ -322,8 +322,8 @@ export default function TeacherReportCards() {
       return results;
     },
     onSuccess: (_, { status }) => {
-      const statusLabel = status === 'published' ? 'published' : 
-                         status === 'finalized' ? 'finalized' : 'reverted to draft';
+      const statusLabel = status === 'published' ? 'published' :
+        status === 'finalized' ? 'finalized' : 'reverted to draft';
       toast({
         title: "Success",
         description: `Report cards ${statusLabel} successfully`,
@@ -377,52 +377,52 @@ export default function TeacherReportCards() {
     onMutate: async (data) => {
       // Capture report card ID before any async operations
       const reportCardId = data.reportCardId || selectedReportCard?.id;
-      
+
       // Cancel outgoing refetches to avoid overwriting optimistic update
       await queryClient.cancelQueries({ queryKey: ['/api/reports', reportCardId, 'full'] });
-      
+
       // Snapshot previous data for rollback
       const previousFullReport = queryClient.getQueryData(['/api/reports', reportCardId, 'full']);
-      
+
       // Optimistically update the cache immediately with calculated derived values
       queryClient.setQueryData(['/api/reports', reportCardId, 'full'], (old: any) => {
         if (!old || !old.items) return old;
-        
+
         const gradingScale = old.gradingScale || 'standard';
         const gradingConfig = getGradingConfig(gradingScale);
-        
+
         return {
           ...old,
           items: old.items.map((item: any) => {
             if (item.id === data.itemId) {
               const updatedItem = { ...item };
-              
+
               // Update raw scores - ONLY update what was explicitly provided
               // Preserve existing max scores when not explicitly provided to avoid miscalculations
               const newTestScore = data.testScore !== undefined ? data.testScore : item.testScore;
               const newTestMaxScore = data.testMaxScore !== undefined ? data.testMaxScore : item.testMaxScore;
               const newExamScore = data.examScore !== undefined ? data.examScore : item.examScore;
               const newExamMaxScore = data.examMaxScore !== undefined ? data.examMaxScore : item.examMaxScore;
-              
+
               updatedItem.testScore = newTestScore;
               if (data.testMaxScore !== undefined) updatedItem.testMaxScore = newTestMaxScore;
               updatedItem.examScore = newExamScore;
               if (data.examMaxScore !== undefined) updatedItem.examMaxScore = newExamMaxScore;
-              
+
               // Calculate derived values locally for instant feedback
               // Use actual max scores from the item (fallback to config weights only for calculation)
               const calcTestMax = newTestMaxScore ?? gradingConfig.testWeight;
               const calcExamMax = newExamMaxScore ?? gradingConfig.examWeight;
               const weighted = calculateWeightedScore(newTestScore, calcTestMax, newExamScore, calcExamMax, gradingConfig);
               const gradeInfo = calculateGradeFromPercentage(weighted.percentage, gradingScale);
-              
+
               updatedItem.testWeightedScore = Math.round(weighted.testWeighted);
               updatedItem.examWeightedScore = Math.round(weighted.examWeighted);
               updatedItem.obtainedMarks = Math.round(weighted.weightedScore);
               updatedItem.percentage = Math.round(weighted.percentage);
               updatedItem.grade = gradeInfo.grade;
               updatedItem.remarks = gradeInfo.remarks;
-              
+
               if (data.teacherRemarks !== undefined) updatedItem.teacherRemarks = data.teacherRemarks;
               updatedItem.isOverridden = true;
               updatedItem.overriddenAt = new Date().toISOString();
@@ -432,20 +432,20 @@ export default function TeacherReportCards() {
           })
         };
       });
-      
+
       // Close dialog immediately for instant feedback
       setIsOverrideDialogOpen(false);
-      
+
       return { previousFullReport, reportCardId };
     },
     onSuccess: (serverData, _variables, context) => {
       const reportCardId = context?.reportCardId || selectedReportCard?.id;
-      
+
       // Reconcile item with authoritative server data (includes recalculated totals)
       // DO NOT call invalidateQueries here - it causes flicker by triggering refetch with potentially stale data
       queryClient.setQueryData(['/api/reports', reportCardId, 'full'], (old: any) => {
         if (!old || !old.items) return old;
-        
+
         // Also update report card level aggregates if server returned them
         const updatedReportCard = {
           ...old,
@@ -456,9 +456,9 @@ export default function TeacherReportCards() {
             averagePercentage: serverData.reportCardTotals.averagePercentage,
             overallGrade: serverData.reportCardTotals.overallGrade
           } : {}),
-          items: old.items.map((item: any) => 
-            item.id === serverData.id ? { 
-              ...item, 
+          items: old.items.map((item: any) =>
+            item.id === serverData.id ? {
+              ...item,
               ...serverData,
               // Preserve permission flags from the old item
               canEditTest: item.canEditTest,
@@ -469,15 +469,15 @@ export default function TeacherReportCards() {
         };
         return updatedReportCard;
       });
-      
+
       // Update the class-term list cache with new position if available
       // Use setQueryData instead of invalidate to prevent flicker
       if (serverData.reportCardTotals?.position !== undefined) {
         queryClient.setQueryData(['/api/reports/class-term', selectedClass, selectedTerm], (old: any) => {
           if (!old || !Array.isArray(old)) return old;
-          return old.map((rc: any) => 
-            rc.id === reportCardId ? { 
-              ...rc, 
+          return old.map((rc: any) =>
+            rc.id === reportCardId ? {
+              ...rc,
               averagePercentage: serverData.reportCardTotals?.averagePercentage ?? rc.averagePercentage,
               overallGrade: serverData.reportCardTotals?.overallGrade ?? rc.overallGrade,
               position: serverData.reportCardTotals?.position ?? rc.position
@@ -485,7 +485,7 @@ export default function TeacherReportCards() {
           );
         });
       }
-      
+
       toast({
         title: "Success",
         description: "Score overridden successfully",
@@ -518,39 +518,39 @@ export default function TeacherReportCards() {
       // Cancel any outgoing refetches immediately
       queryClient.cancelQueries({ queryKey: ['/api/reports', reportCardId, 'full'] });
       queryClient.cancelQueries({ queryKey: ['/api/reports/class-term', classId, termId] });
-      
+
       // Snapshot previous values for rollback (full objects to restore all fields)
       const previousFullReport = queryClient.getQueryData(['/api/reports', reportCardId, 'full']);
       const previousReportCards = queryClient.getQueryData(['/api/reports/class-term', classId, termId]);
       const previousSelectedReportCard = selectedReportCard;
-      
+
       // Determine locked state based on new status
       const locked = status !== 'draft';
-      
+
       // Optimistically update the full report (instant UI update)
       queryClient.setQueryData(['/api/reports', reportCardId, 'full'], (old: any) => {
         if (!old || typeof old !== 'object') return old;
         return { ...old, status, locked };
       });
-      
+
       // Optimistically update the report cards list (instant UI update)
       queryClient.setQueryData(['/api/reports/class-term', classId, termId], (old: any) => {
         if (!old || !Array.isArray(old)) return old;
-        return old.map((rc: any) => 
+        return old.map((rc: any) =>
           rc.id === reportCardId ? { ...rc, status, locked } : rc
         );
       });
-      
+
       // Update the selected report card state immediately for instant visual feedback
       setSelectedReportCard(prev => prev?.id === reportCardId ? { ...prev, status, locked } : prev);
-      
+
       return { previousFullReport, previousReportCards, previousSelectedReportCard, classId, termId };
     },
     onSuccess: (data, { reportCardId, status, classId, termId }) => {
       // Extract the server response data
       const reportCard = data.reportCard;
       const message = data.message;
-      
+
       // Reconcile caches with authoritative server data (updates timestamps like finalizedAt, publishedAt)
       if (reportCard && typeof reportCard === 'object') {
         // Update full report cache with server data
@@ -558,19 +558,19 @@ export default function TeacherReportCards() {
           if (!old || typeof old !== 'object') return { ...reportCard };
           return { ...old, ...reportCard };
         });
-        
+
         // Update the list cache with server data
         queryClient.setQueryData(['/api/reports/class-term', classId, termId], (old: any) => {
           if (!old || !Array.isArray(old)) return old;
           return old.map((rc: any) => rc.id === reportCardId ? { ...rc, ...reportCard } : rc);
         });
-        
+
         // Update selected report card state with server data
         setSelectedReportCard(prev => prev?.id === reportCardId ? { ...prev, ...reportCard } : prev);
       }
-      
-      const statusLabel = status === 'published' ? 'Published' : 
-                         status === 'finalized' ? 'Finalized' : 'Reverted to Draft';
+
+      const statusLabel = status === 'published' ? 'Published' :
+        status === 'finalized' ? 'Finalized' : 'Reverted to Draft';
       toast({
         title: "Success",
         description: message || `Report card ${statusLabel.toLowerCase()} successfully`,
@@ -634,23 +634,23 @@ export default function TeacherReportCards() {
     onMutate: async ({ reportCardId, skills }) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['/api/reports', reportCardId, 'full'] });
-      
+
       // Snapshot previous data
       const previousFullReport = queryClient.getQueryData<any>(['/api/reports', reportCardId, 'full']);
-      
+
       // Merge new skills with existing values
       // Only update fields that are provided in the payload (allows 0s for clears)
       const mergeSkill = (key: string, existingVal: number) => {
         const newVal = skills[key];
         return (newVal !== undefined) ? newVal : (existingVal ?? 0);
       };
-      
+
       queryClient.setQueryData(['/api/reports', reportCardId, 'full'], (old: any) => {
         if (!old) return old;
-        
+
         const existingAffective = old.affectiveTraits || {};
         const existingPsychomotor = old.psychomotorSkills || {};
-        
+
         return {
           ...old,
           affectiveTraits: {
@@ -670,7 +670,7 @@ export default function TeacherReportCards() {
           }
         };
       });
-      
+
       return { previousFullReport, reportCardId };
     },
     onSuccess: (_data, { reportCardId }) => {
@@ -714,17 +714,17 @@ export default function TeacherReportCards() {
 
   const handleSaveOverride = () => {
     if (!selectedItem) return;
-    
+
     // Only send fields the teacher is allowed to edit
     const canEditTest = selectedItem.canEditTest !== false;
     const canEditExam = selectedItem.canEditExam !== false;
-    
+
     // Build payload with only permitted fields - include reportCardId for cache consistency
-    const payload: any = { 
+    const payload: any = {
       itemId: selectedItem.id,
       reportCardId: selectedReportCard?.id
     };
-    
+
     // Only include test scores if teacher can edit them
     if (canEditTest && overrideData.testScore) {
       payload.testScore = Number(overrideData.testScore);
@@ -732,7 +732,7 @@ export default function TeacherReportCards() {
     if (canEditTest && overrideData.testMaxScore) {
       payload.testMaxScore = Number(overrideData.testMaxScore);
     }
-    
+
     // Only include exam scores if teacher can edit them
     if (canEditExam && overrideData.examScore) {
       payload.examScore = Number(overrideData.examScore);
@@ -740,19 +740,19 @@ export default function TeacherReportCards() {
     if (canEditExam && overrideData.examMaxScore) {
       payload.examMaxScore = Number(overrideData.examMaxScore);
     }
-    
+
     // Teacher can add remarks if they can edit at least one score type
     if ((canEditTest || canEditExam) && overrideData.teacherRemarks) {
       payload.teacherRemarks = overrideData.teacherRemarks;
     }
-    
+
     overrideScoreMutation.mutate(payload);
   };
 
   // Handle bulk status updates
   const handleBulkStatusUpdate = (status: string) => {
     let targetIds: number[] = [];
-    
+
     if (status === 'finalized') {
       // Finalize all draft report cards
       targetIds = reportCards.filter((rc: any) => rc.status === 'draft').map((rc: any) => rc.id);
@@ -760,18 +760,18 @@ export default function TeacherReportCards() {
       // Publish all finalized report cards
       targetIds = reportCards.filter((rc: any) => rc.status === 'finalized').map((rc: any) => rc.id);
     }
-    
+
     if (targetIds.length === 0) {
       toast({
         title: "No Report Cards to Update",
-        description: status === 'finalized' 
-          ? "No draft report cards found to finalize." 
+        description: status === 'finalized'
+          ? "No draft report cards found to finalize."
           : "No finalized report cards found to publish.",
         variant: "destructive",
       });
       return;
     }
-    
+
     bulkStatusMutation.mutate({ reportCardIds: targetIds, status });
   };
 
@@ -809,8 +809,8 @@ export default function TeacherReportCards() {
 
   const getSortIcon = (field: SortField) => {
     if (sortField !== field) return <ArrowUpDown className="w-3 h-3 ml-1 opacity-50" />;
-    return sortDirection === 'asc' 
-      ? <ArrowUp className="w-3 h-3 ml-1" /> 
+    return sortDirection === 'asc'
+      ? <ArrowUp className="w-3 h-3 ml-1" />
       : <ArrowDown className="w-3 h-3 ml-1" />;
   };
 
@@ -857,23 +857,23 @@ export default function TeacherReportCards() {
 
   // Pagination logic with clamping to prevent empty results
   const totalPages = Math.max(1, Math.ceil(filteredReportCards.length / itemsPerPage));
-  
+
   // Clamp currentPage to valid range when filtered results change
   useEffect(() => {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages);
     }
   }, [filteredReportCards.length, totalPages, currentPage]);
-  
+
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedReportCards = filteredReportCards.slice(startIndex, startIndex + itemsPerPage);
-  
+
   // Reset to page 1 when filters change
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
     setCurrentPage(1);
   };
-  
+
   const handleStatusFilterChange = (value: string) => {
     setStatusFilter(value);
     setCurrentPage(1);
@@ -893,188 +893,188 @@ export default function TeacherReportCards() {
 
   return (
     <div className="space-y-4" data-testid="teacher-report-cards">
-        {/* Compact Header */}
-        <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Report Cards</h1>
-            <p className="text-sm text-muted-foreground">View and manage auto-generated student report cards</p>
-          </div>
+      {/* Compact Header */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Report Cards</h1>
+          <p className="text-sm text-muted-foreground">View and manage auto-generated student report cards</p>
         </div>
+      </div>
 
-        {/* Streamlined Filters Card */}
-        <Card className="border-0 shadow-sm bg-card/50">
-          <CardContent className="p-3 sm:p-4">
-            {/* Primary Filters - Always Visible */}
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="flex flex-col gap-1 min-w-[120px] flex-1 sm:flex-none sm:w-40">
-                <Label className="text-xs text-muted-foreground">Class</Label>
-                <Select value={selectedClass} onValueChange={setSelectedClass}>
-                  <SelectTrigger className="h-9" data-testid="select-class">
-                    <SelectValue placeholder="Select Class" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {classes.length === 0 ? (
-                      <SelectItem value="no-classes" disabled>
-                        No classes found
+      {/* Streamlined Filters Card */}
+      <Card className="border-0 shadow-sm bg-card/50">
+        <CardContent className="p-3 sm:p-4">
+          {/* Primary Filters - Always Visible */}
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-1 min-w-[120px] flex-1 sm:flex-none sm:w-40">
+              <Label className="text-xs text-muted-foreground">Class</Label>
+              <Select value={selectedClass} onValueChange={setSelectedClass}>
+                <SelectTrigger className="h-9" data-testid="select-class">
+                  <SelectValue placeholder="Select Class" />
+                </SelectTrigger>
+                <SelectContent>
+                  {classes.length === 0 ? (
+                    <SelectItem value="no-classes" disabled>
+                      No classes found
+                    </SelectItem>
+                  ) : (
+                    classes.map((cls: any) => (
+                      <SelectItem key={cls.id} value={cls.id.toString()}>
+                        {cls.name}
                       </SelectItem>
-                    ) : (
-                      classes.map((cls: any) => (
-                        <SelectItem key={cls.id} value={cls.id.toString()}>
-                          {cls.name}
-                        </SelectItem>
-                      ))
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="flex flex-col gap-1 min-w-[120px] flex-1 sm:flex-none sm:w-44">
-                <Label className="text-xs text-muted-foreground">Term</Label>
-                <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-                  <SelectTrigger className="h-9" data-testid="select-term">
-                    <SelectValue placeholder="Select Term" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {terms.map((term: any) => (
-                      <SelectItem key={term.id} value={term.id.toString()}>
-                        {term.name} ({term.year})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Status Filter - Always visible for quick filtering */}
-              <div className="flex flex-col gap-1 min-w-[100px] flex-1 sm:flex-none sm:w-32">
-                <Label className="text-xs text-muted-foreground">Status</Label>
-                <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-                  <SelectTrigger className="h-9" data-testid="select-status-filter">
-                    <SelectValue placeholder="All" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="finalized">Finalized</SelectItem>
-                    <SelectItem value="published">Published</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* More Filters Toggle Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                className="h-9 gap-1.5"
-                data-testid="button-toggle-filters"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">More</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`} />
-              </Button>
-
-              {/* Test/Exam Weight Info */}
-              <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground ml-auto">
-                <BarChart3 className="w-3 h-3" />
-                <span>Test {testWeight}% | Exam {examWeight}%</span>
-              </div>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
 
-            {/* Collapsible Advanced Filters - Only grading scale */}
-            <Collapsible open={showAdvancedFilters}>
-              <CollapsibleContent className="mt-3 pt-3 border-t">
-                <div className="flex flex-wrap gap-3">
-                  <div className="flex flex-col gap-1 min-w-[140px]">
-                    <Label className="text-xs text-muted-foreground">Grading Scale</Label>
-                    <Select value={selectedGradingScale} onValueChange={setSelectedGradingScale}>
-                      <SelectTrigger className="h-9" data-testid="select-grading-scale">
-                        <SelectValue placeholder="Grading Scale" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="standard">Standard (A-F)</SelectItem>
-                        <SelectItem value="waec">WAEC (A1-F9)</SelectItem>
-                        <SelectItem value="percentage">Percentage</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          </CardContent>
-        </Card>
+            <div className="flex flex-col gap-1 min-w-[120px] flex-1 sm:flex-none sm:w-44">
+              <Label className="text-xs text-muted-foreground">Term</Label>
+              <Select value={selectedTerm} onValueChange={setSelectedTerm}>
+                <SelectTrigger className="h-9" data-testid="select-term">
+                  <SelectValue placeholder="Select Term" />
+                </SelectTrigger>
+                <SelectContent>
+                  {terms.map((term: any) => (
+                    <SelectItem key={term.id} value={term.id.toString()}>
+                      {term.name} ({term.year})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-        {!selectedClass || !selectedTerm ? (
-          <Card>
-            <CardContent className="text-center py-12">
-              <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">Select Class and Term</h3>
-              <p className="text-muted-foreground">
-                Please select a class and academic term to view or generate report cards.
-              </p>
-            </CardContent>
-          </Card>
-        ) : loadingReportCards ? (
-          <Card>
-            <CardContent className="text-center py-12">
-              <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-              <p>Loading report cards...</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <>
-            {/* Compact Stats Bar - Only visible when report cards exist */}
-            {statistics && reportCards.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3 py-2 px-1" data-testid="compact-stats-bar">
-                {/* Primary Stats - Horizontal Scrollable Pills */}
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin flex-1">
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 whitespace-nowrap">
-                    <Users className="w-3.5 h-3.5 text-muted-foreground" />
-                    <span className="text-xs text-muted-foreground">Total:</span>
-                    <span className="text-sm font-semibold">{statistics.totalStudents}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-100 dark:bg-green-900/30 whitespace-nowrap">
-                    <CheckCircle className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-                    <span className="text-xs text-green-700 dark:text-green-300">Passed:</span>
-                    <span className="text-sm font-semibold text-green-700 dark:text-green-300">{statistics.passedStudents}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-100 dark:bg-red-900/30 whitespace-nowrap">
-                    <AlertCircle className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
-                    <span className="text-xs text-red-700 dark:text-red-300">Failed:</span>
-                    <span className="text-sm font-semibold text-red-700 dark:text-red-300">{statistics.failedStudents}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-100 dark:bg-blue-900/30 whitespace-nowrap">
-                    <TrendingUp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                    <span className="text-xs text-blue-700 dark:text-blue-300">Avg:</span>
-                    <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">{statistics.classAverage}%</span>
-                  </div>
-                </div>
-                
-                {/* Status Progress Indicator - Compact on mobile */}
-                <div className="hidden sm:flex items-center gap-3 px-3 py-1.5 rounded-md bg-muted/40">
-                  <div className="flex items-center gap-1" title="Draft">
-                    <Clock className="w-3 h-3 text-yellow-500" />
-                    <span className="text-xs font-medium">{statistics.draftCount}</span>
-                  </div>
-                  <div className="w-px h-3 bg-border" />
-                  <div className="flex items-center gap-1" title="Finalized">
-                    <FileCheck className="w-3 h-3 text-blue-500" />
-                    <span className="text-xs font-medium">{statistics.finalizedCount}</span>
-                  </div>
-                  <div className="w-px h-3 bg-border" />
-                  <div className="flex items-center gap-1" title="Published">
-                    <Send className="w-3 h-3 text-green-500" />
-                    <span className="text-xs font-medium">{statistics.publishedCount}</span>
-                  </div>
+            {/* Status Filter - Always visible for quick filtering */}
+            <div className="flex flex-col gap-1 min-w-[100px] flex-1 sm:flex-none sm:w-32">
+              <Label className="text-xs text-muted-foreground">Status</Label>
+              <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+                <SelectTrigger className="h-9" data-testid="select-status-filter">
+                  <SelectValue placeholder="All" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="finalized">Finalized</SelectItem>
+                  <SelectItem value="published">Published</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* More Filters Toggle Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className="h-9 gap-1.5"
+              data-testid="button-toggle-filters"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">More</span>
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`} />
+            </Button>
+
+            {/* Test/Exam Weight Info */}
+            <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground ml-auto">
+              <BarChart3 className="w-3 h-3" />
+              <span>Test {testWeight}% | Exam {examWeight}%</span>
+            </div>
+          </div>
+
+          {/* Collapsible Advanced Filters - Only grading scale */}
+          <Collapsible open={showAdvancedFilters}>
+            <CollapsibleContent className="mt-3 pt-3 border-t">
+              <div className="flex flex-wrap gap-3">
+                <div className="flex flex-col gap-1 min-w-[140px]">
+                  <Label className="text-xs text-muted-foreground">Grading Scale</Label>
+                  <Select value={selectedGradingScale} onValueChange={setSelectedGradingScale}>
+                    <SelectTrigger className="h-9" data-testid="select-grading-scale">
+                      <SelectValue placeholder="Grading Scale" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="standard">Standard (A-F)</SelectItem>
+                      <SelectItem value="waec">WAEC (A1-F9)</SelectItem>
+                      <SelectItem value="percentage">Percentage</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
-            )}
+            </CollapsibleContent>
+          </Collapsible>
+        </CardContent>
+      </Card>
 
-            {/* Two tabs only: Students and Analytics */}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-              <TabsList className="grid w-full grid-cols-2 max-w-xs">
-                <TabsTrigger value="students">Students</TabsTrigger>
-                <TabsTrigger value="analytics">Analytics</TabsTrigger>
-              </TabsList>
+      {!selectedClass || !selectedTerm ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <FileText className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-medium mb-2">Select Class and Term</h3>
+            <p className="text-muted-foreground">
+              Please select a class and academic term to view or generate report cards.
+            </p>
+          </CardContent>
+        </Card>
+      ) : loadingReportCards ? (
+        <Card>
+          <CardContent className="text-center py-12">
+            <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+            <p>Loading report cards...</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          {/* Compact Stats Bar - Only visible when report cards exist */}
+          {statistics && reportCards.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 py-2 px-1" data-testid="compact-stats-bar">
+              {/* Primary Stats - Horizontal Scrollable Pills */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin flex-1">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 whitespace-nowrap">
+                  <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Total:</span>
+                  <span className="text-sm font-semibold">{statistics.totalStudents}</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-100 dark:bg-green-900/30 whitespace-nowrap">
+                  <CheckCircle className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                  <span className="text-xs text-green-700 dark:text-green-300">Passed:</span>
+                  <span className="text-sm font-semibold text-green-700 dark:text-green-300">{statistics.passedStudents}</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-100 dark:bg-red-900/30 whitespace-nowrap">
+                  <AlertCircle className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
+                  <span className="text-xs text-red-700 dark:text-red-300">Failed:</span>
+                  <span className="text-sm font-semibold text-red-700 dark:text-red-300">{statistics.failedStudents}</span>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-100 dark:bg-blue-900/30 whitespace-nowrap">
+                  <TrendingUp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                  <span className="text-xs text-blue-700 dark:text-blue-300">Avg:</span>
+                  <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">{statistics.classAverage}%</span>
+                </div>
+              </div>
+
+              {/* Status Progress Indicator - Compact on mobile */}
+              <div className="hidden sm:flex items-center gap-3 px-3 py-1.5 rounded-md bg-muted/40">
+                <div className="flex items-center gap-1" title="Draft">
+                  <Clock className="w-3 h-3 text-yellow-500" />
+                  <span className="text-xs font-medium">{statistics.draftCount}</span>
+                </div>
+                <div className="w-px h-3 bg-border" />
+                <div className="flex items-center gap-1" title="Finalized">
+                  <FileCheck className="w-3 h-3 text-blue-500" />
+                  <span className="text-xs font-medium">{statistics.finalizedCount}</span>
+                </div>
+                <div className="w-px h-3 bg-border" />
+                <div className="flex items-center gap-1" title="Published">
+                  <Send className="w-3 h-3 text-green-500" />
+                  <span className="text-xs font-medium">{statistics.publishedCount}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Two tabs only: Students and Analytics */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+            <TabsList className="grid w-full grid-cols-2 max-w-xs">
+              <TabsTrigger value="students">Students</TabsTrigger>
+              <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            </TabsList>
 
             <TabsContent value="students" className="space-y-4">
               <Card>
@@ -1111,12 +1111,12 @@ export default function TeacherReportCards() {
                           data-testid="input-search-students"
                         />
                       </div>
-                      
+
                       {/* Simplified Mobile Card View */}
                       <div className="block sm:hidden space-y-2">
                         {paginatedReportCards.map((rc: any) => (
-                          <div 
-                            key={rc.id} 
+                          <div
+                            key={rc.id}
                             className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 hover-elevate cursor-pointer"
                             onClick={() => handleViewReportCard(rc)}
                             data-testid={`mobile-row-${rc.id}`}
@@ -1125,13 +1125,13 @@ export default function TeacherReportCards() {
                             <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold" aria-label={`Position ${rc.position || 'unknown'}`}>
                               {rc.position || '-'}
                             </div>
-                            
+
                             {/* Student Info */}
                             <div className="flex-1 min-w-0">
                               <div className="font-medium text-sm truncate">{rc.studentName}</div>
                               <div className="text-xs text-muted-foreground">{rc.averagePercentage || 0}% avg</div>
                             </div>
-                            
+
                             {/* Grade & Status with accessible labels */}
                             <div className="flex items-center gap-1.5 flex-shrink-0">
                               <Badge className={`text-xs px-2 ${getGradeColor(rc.overallGrade)}`}>
@@ -1159,13 +1159,13 @@ export default function TeacherReportCards() {
                           </div>
                         ))}
                       </div>
-                      
+
                       {/* Desktop Table View */}
                       <div className="hidden sm:block">
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead 
+                              <TableHead
                                 className="cursor-pointer select-none"
                                 onClick={() => handleSort('position')}
                                 data-testid="sort-position"
@@ -1175,7 +1175,7 @@ export default function TeacherReportCards() {
                                   {getSortIcon('position')}
                                 </div>
                               </TableHead>
-                              <TableHead 
+                              <TableHead
                                 className="cursor-pointer select-none"
                                 onClick={() => handleSort('studentName')}
                                 data-testid="sort-name"
@@ -1186,7 +1186,7 @@ export default function TeacherReportCards() {
                                 </div>
                               </TableHead>
                               <TableHead>Username</TableHead>
-                              <TableHead 
+                              <TableHead
                                 className="cursor-pointer select-none"
                                 onClick={() => handleSort('averagePercentage')}
                                 data-testid="sort-average"
@@ -1196,7 +1196,7 @@ export default function TeacherReportCards() {
                                   {getSortIcon('averagePercentage')}
                                 </div>
                               </TableHead>
-                              <TableHead 
+                              <TableHead
                                 className="cursor-pointer select-none"
                                 onClick={() => handleSort('overallGrade')}
                                 data-testid="sort-grade"
@@ -1206,7 +1206,7 @@ export default function TeacherReportCards() {
                                   {getSortIcon('overallGrade')}
                                 </div>
                               </TableHead>
-                              <TableHead 
+                              <TableHead
                                 className="cursor-pointer select-none"
                                 onClick={() => handleSort('status')}
                                 data-testid="sort-status"
@@ -1271,7 +1271,7 @@ export default function TeacherReportCards() {
                           </TableBody>
                         </Table>
                       </div>
-                      
+
                       {/* Pagination Controls */}
                       {totalPages > 1 && (
                         <div className="flex items-center justify-between pt-4 border-t">
@@ -1321,17 +1321,17 @@ export default function TeacherReportCards() {
                     {reportCards.length > 0 && (
                       <div className="space-y-3">
                         {['A', 'B', 'C', 'D', 'E', 'F'].map((gradePrefix) => {
-                          const count = reportCards.filter((rc: any) => 
+                          const count = reportCards.filter((rc: any) =>
                             rc.overallGrade?.toUpperCase().startsWith(gradePrefix)
                           ).length;
-                          const percentage = reportCards.length > 0 
-                            ? Math.round((count / reportCards.length) * 100) 
+                          const percentage = reportCards.length > 0
+                            ? Math.round((count / reportCards.length) * 100)
                             : 0;
                           return (
                             <div key={gradePrefix} className="flex items-center gap-3">
                               <Badge className={`w-12 justify-center ${getGradeColor(gradePrefix)}`}>{gradePrefix}</Badge>
                               <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-4">
-                                <div 
+                                <div
                                   className={`h-4 rounded-full ${gradePrefix === 'A' ? 'bg-green-500' : gradePrefix === 'B' ? 'bg-blue-500' : gradePrefix === 'C' ? 'bg-yellow-500' : gradePrefix === 'D' || gradePrefix === 'E' ? 'bg-orange-500' : 'bg-red-500'}`}
                                   style={{ width: `${percentage}%` }}
                                 ></div>
@@ -1380,12 +1380,12 @@ export default function TeacherReportCards() {
               </div>
             </TabsContent>
           </Tabs>
-          </>
-        )}
+        </>
+      )}
 
       {/* View Report Card Dialog - Fully Responsive for all screen sizes */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-        <DialogContent 
+        <DialogContent
           className="w-[98vw] sm:w-[95vw] md:w-[90vw] lg:w-[85vw] max-w-5xl max-h-[85dvh] sm:max-h-[88dvh] md:max-h-[90dvh] p-0 flex flex-col overflow-hidden"
           style={{ margin: 'auto' }}
         >
@@ -1402,7 +1402,7 @@ export default function TeacherReportCards() {
               </div>
             </div>
           </DialogHeader>
-          
+
           {loadingFullReport ? (
             <div className="flex-1 flex items-center justify-center min-h-[200px]">
               <Loader2 className="w-6 h-6 sm:w-8 sm:h-8 animate-spin" />
@@ -1433,15 +1433,15 @@ export default function TeacherReportCards() {
                       </Badge>
                     )}
                     <span className="text-xs text-muted-foreground hidden md:inline">
-                      {fullReportCard.status === 'draft' ? 'Editing enabled' : 
-                       fullReportCard.status === 'finalized' ? 'Awaiting admin approval' : 
-                       'Visible to students and parents'}
+                      {fullReportCard.status === 'draft' ? 'Editing enabled' :
+                        fullReportCard.status === 'finalized' ? 'Awaiting admin approval' :
+                          'Visible to students and parents'}
                     </span>
                   </div>
                   <div className="flex items-center gap-1 sm:gap-1.5">
                     {/* Print/Download icons */}
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="icon"
                       onClick={handlePrintReport}
                       aria-label="Print report card"
@@ -1451,8 +1451,8 @@ export default function TeacherReportCards() {
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="icon"
                           disabled={isDownloading}
                           aria-label="Export report card"
@@ -1487,12 +1487,12 @@ export default function TeacherReportCards() {
                         <RefreshCw className="w-4 h-4" />
                       )}
                     </Button>
-                    
+
                     {/* Status Change Actions */}
                     {fullReportCard.status === 'draft' && (
-                      <Button 
-                        onClick={() => updateStatusMutation.mutate({ 
-                          reportCardId: fullReportCard.id, 
+                      <Button
+                        onClick={() => updateStatusMutation.mutate({
+                          reportCardId: fullReportCard.id,
                           status: 'finalized',
                           classId: selectedClass,
                           termId: selectedTerm
@@ -1507,11 +1507,11 @@ export default function TeacherReportCards() {
                       </Button>
                     )}
                     {fullReportCard.status === 'finalized' && (
-                      <Button 
+                      <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => updateStatusMutation.mutate({ 
-                          reportCardId: fullReportCard.id, 
+                        onClick={() => updateStatusMutation.mutate({
+                          reportCardId: fullReportCard.id,
                           status: 'draft',
                           classId: selectedClass,
                           termId: selectedTerm
@@ -1533,115 +1533,109 @@ export default function TeacherReportCards() {
                 <div ref={reportCardRef} className="p-2 sm:p-3 md:p-4 bg-background">
                   {/* Professional Report Card Component */}
                   <ProfessionalReportCard
-                  reportCard={{
-                    id: fullReportCard.id,
-                    studentId: fullReportCard.studentId,
-                    studentName: fullReportCard.studentName,
-                    studentPhoto: fullReportCard.studentPhoto,
-                    admissionNumber: fullReportCard.studentUsername || fullReportCard.admissionNumber,
-                    className: fullReportCard.className,
-                    department: fullReportCard.department,
-                    isSSS: fullReportCard.isSSS,
-                    termName: fullReportCard.termName,
-                    academicSession: fullReportCard.academicSession || fullReportCard.sessionYear || '2024/2025',
-                    averagePercentage: fullReportCard.averagePercentage || 0,
-                    overallGrade: fullReportCard.overallGrade || '-',
-                    position: fullReportCard.position || 0,
-                    totalStudentsInClass: fullReportCard.totalStudentsInClass || 0,
-                    totalScore: fullReportCard.totalScore,
-                    items: fullReportCard.items || [],
-                    teacherRemarks: fullReportCard.teacherRemarks,
-                    principalRemarks: fullReportCard.principalRemarks,
-                    status: fullReportCard.status,
-                    generatedAt: fullReportCard.generatedAt,
-                    teacherSignatureUrl: fullReportCard.teacherSignatureUrl,
-                    teacherSignedAt: fullReportCard.teacherSignedAt,
-                    teacherSignedBy: fullReportCard.teacherSignedBy,
-                    principalSignatureUrl: fullReportCard.principalSignatureUrl,
-                    principalSignedAt: fullReportCard.principalSignedAt,
-                    principalSignedBy: fullReportCard.principalSignedBy,
-                    classStatistics: {
-                      highestScore: statistics?.classHighest || 0,
-                      lowestScore: statistics?.classLowest || 0,
-                      classAverage: statistics?.classAverage || 0,
-                      totalStudents: fullReportCard.totalStudentsInClass || 0
-                    },
-                    attendance: {
-                      timesSchoolOpened: 0,
-                      timesPresent: 0,
-                      timesAbsent: 0,
-                      attendancePercentage: 0
-                    },
-                    affectiveTraits: fullReportCard.affectiveTraits || {
-                      punctuality: 0,
-                      neatness: 0,
-                      attentiveness: 0,
-                      teamwork: 0,
-                      leadership: 0,
-                      assignments: 0,
-                      classParticipation: 0
-                    },
-                    psychomotorSkills: fullReportCard.psychomotorSkills || {
-                      sports: 0,
-                      handwriting: 0,
-                      musicalSkills: 0,
-                      creativity: 0
+                    reportCard={{
+                      id: fullReportCard.id,
+                      studentId: fullReportCard.studentId,
+                      studentName: fullReportCard.studentName,
+                      studentPhoto: fullReportCard.studentPhoto,
+                      admissionNumber: fullReportCard.studentUsername || fullReportCard.admissionNumber,
+                      className: fullReportCard.className,
+                      department: fullReportCard.department,
+                      isSSS: fullReportCard.isSSS,
+                      termName: fullReportCard.termName,
+                      academicSession: fullReportCard.academicSession || fullReportCard.sessionYear || '2024/2025',
+                      averagePercentage: fullReportCard.averagePercentage || 0,
+                      overallGrade: fullReportCard.overallGrade || '-',
+                      position: fullReportCard.position || 0,
+                      totalStudentsInClass: fullReportCard.totalStudentsInClass || 0,
+                      totalScore: fullReportCard.totalScore,
+                      items: fullReportCard.items || [],
+                      teacherRemarks: fullReportCard.teacherRemarks,
+                      principalRemarks: fullReportCard.principalRemarks,
+                      status: fullReportCard.status,
+                      generatedAt: fullReportCard.generatedAt,
+                      teacherSignatureUrl: fullReportCard.teacherSignatureUrl,
+                      teacherSignedAt: fullReportCard.teacherSignedAt,
+                      teacherSignedBy: fullReportCard.teacherSignedBy,
+                      principalSignatureUrl: fullReportCard.principalSignatureUrl,
+                      principalSignedAt: fullReportCard.principalSignedAt,
+                      principalSignedBy: fullReportCard.principalSignedBy,
+                      classStatistics: {
+                        highestScore: statistics?.classHighest || 0,
+                        lowestScore: statistics?.classLowest || 0,
+                        classAverage: statistics?.classAverage || 0,
+                        totalStudents: fullReportCard.totalStudentsInClass || 0
+                      },
+                      attendance: {
+                        timesSchoolOpened: 0,
+                        timesPresent: 0,
+                        timesAbsent: 0,
+                        attendancePercentage: 0
+                      },
+                      affectiveTraits: fullReportCard.affectiveTraits || {
+                        punctuality: 0,
+                        neatness: 0,
+                        attentiveness: 0,
+                        teamwork: 0,
+                        leadership: 0,
+                        assignments: 0,
+                        classParticipation: 0
+                      },
+                      psychomotorSkills: fullReportCard.psychomotorSkills || {
+                        sports: 0,
+                        handwriting: 0,
+                        musicalSkills: 0,
+                        creativity: 0
+                      }
+                    }}
+                    testWeight={testWeight}
+                    examWeight={examWeight}
+                    onEditSubject={(item) => handleOverrideScore(item as ReportCardItem)}
+                    onSaveRemarks={(teacher, principal) => {
+                      // Determine edit permissions based on role
+                      // Admin and SuperAdmin can edit teacher remarks
+                      // ONLY Admin (not SuperAdmin) can edit principal remarks
+                      const classInfo = classes.find((c: any) => c.id === Number(selectedClass));
+                      const isPrincipal = user?.role?.toLowerCase() === 'admin';
+                      const canEditTeacher = isAdmin || classInfo?.classTeacherId === user?.id;
+                      const canEditPrincipal = isPrincipal;
+
+                      // Only send the fields the user is authorized to edit
+                      const payload: { reportCardId: number; teacherRemarks?: string; principalRemarks?: string } = {
+                        reportCardId: fullReportCard.id,
+                      };
+                      if (canEditTeacher) {
+                        payload.teacherRemarks = teacher;
+                      }
+                      if (canEditPrincipal) {
+                        payload.principalRemarks = principal;
+                      }
+
+                      updateRemarksMutation.mutate(payload);
+                    }}
+                    onSaveSkills={async (skills: any) => {
+                      await saveSkillsMutation.mutateAsync({
+                        reportCardId: fullReportCard.id,
+                        skills
+                      });
+                    }}
+                    canEditTeacherRemarks={
+                      fullReportCard.status === 'draft' &&
+                      (isAdmin || classes.find((c: any) => c.id === Number(selectedClass))?.classTeacherId === user?.id)
                     }
-                  }}
-                  schoolName={settings?.schoolName || ""}
-                  schoolMotto={settings?.schoolMotto || ""}
-                  schoolAddress={settings?.schoolAddress || ""}
-                  schoolPhone={settings?.schoolPhone || ""}
-                  schoolEmail={settings?.schoolEmail || ""}
-                  schoolLogo={settings?.schoolLogo || ""}
-                  testWeight={testWeight}
-                  examWeight={examWeight}
-                  onEditSubject={(item) => handleOverrideScore(item as ReportCardItem)}
-                  onSaveRemarks={(teacher, principal) => {
-                    // Determine edit permissions based on role
-                    // Admin and SuperAdmin can edit teacher remarks
-                    // ONLY Admin (not SuperAdmin) can edit principal remarks
-                    const classInfo = classes.find((c: any) => c.id === Number(selectedClass));
-                    const isPrincipal = user?.role?.toLowerCase() === 'admin';
-                    const canEditTeacher = isAdmin || classInfo?.classTeacherId === user?.id;
-                    const canEditPrincipal = isPrincipal;
-                    
-                    // Only send the fields the user is authorized to edit
-                    const payload: { reportCardId: number; teacherRemarks?: string; principalRemarks?: string } = {
-                      reportCardId: fullReportCard.id,
-                    };
-                    if (canEditTeacher) {
-                      payload.teacherRemarks = teacher;
+                    canEditPrincipalRemarks={fullReportCard.status === 'draft' && user?.role?.toLowerCase() === 'admin'}
+                    canEditSkills={
+                      (fullReportCard.status === 'draft' || fullReportCard.status === 'teacher_signed') &&
+                      (isAdmin || classes.find((c: any) => c.id === Number(selectedClass))?.classTeacherId === user?.id)
                     }
-                    if (canEditPrincipal) {
-                      payload.principalRemarks = principal;
-                    }
-                    
-                    updateRemarksMutation.mutate(payload);
-                  }}
-                  onSaveSkills={async (skills: any) => {
-                    await saveSkillsMutation.mutateAsync({ 
-                      reportCardId: fullReportCard.id, 
-                      skills 
-                    });
-                  }}
-                  canEditTeacherRemarks={
-                    fullReportCard.status === 'draft' && 
-                    (isAdmin || classes.find((c: any) => c.id === Number(selectedClass))?.classTeacherId === user?.id)
-                  }
-                  canEditPrincipalRemarks={fullReportCard.status === 'draft' && user?.role?.toLowerCase() === 'admin'}
-                  canEditSkills={
-                    (fullReportCard.status === 'draft' || fullReportCard.status === 'teacher_signed') && 
-                    (isAdmin || classes.find((c: any) => c.id === Number(selectedClass))?.classTeacherId === user?.id)
-                  }
-                  onGenerateDefaultComments={async () => {
-                    const response = await apiRequest('GET', `/api/reports/${fullReportCard.id}/default-comments`);
-                    if (!response.ok) throw new Error('Failed to generate comments');
-                    return await response.json();
-                  }}
-                  isLoading={updateRemarksMutation.isPending}
-                  isFullReportReady={!loadingFullReport && !fetchingFullReport && !!fullReportCard}
-                  hideActionButtons={true}
+                    onGenerateDefaultComments={async () => {
+                      const response = await apiRequest('GET', `/api/reports/${fullReportCard.id}/default-comments`);
+                      if (!response.ok) throw new Error('Failed to generate comments');
+                      return await response.json();
+                    }}
+                    isLoading={updateRemarksMutation.isPending}
+                    isFullReportReady={!loadingFullReport && !fetchingFullReport && !!fullReportCard}
+                    hideActionButtons={true}
                   />
                 </div>
               </div>
@@ -1669,7 +1663,7 @@ export default function TeacherReportCards() {
               )}
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className={selectedItem?.canEditTest === false ? "opacity-50" : ""}>
@@ -1701,7 +1695,7 @@ export default function TeacherReportCards() {
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className={selectedItem?.canEditExam === false ? "opacity-50" : ""}>
                 <Label className="flex items-center gap-2">
@@ -1732,7 +1726,7 @@ export default function TeacherReportCards() {
                 />
               </div>
             </div>
-            
+
             <div>
               <Label>Teacher Remarks</Label>
               <Textarea
@@ -1743,7 +1737,7 @@ export default function TeacherReportCards() {
               />
             </div>
           </div>
-          
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsOverrideDialogOpen(false)}>
               Cancel

@@ -35,8 +35,11 @@ interface SettingsData {
 }
 
 const fadeIn = {
-// ... existing fadeIn ...
-}
+  initial: { opacity: 0, y: 20 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true },
+  transition: { duration: 0.6 },
+};
 
 export default function Home() {
   const { data: settings } = useQuery<SettingsData>({
@@ -143,7 +146,7 @@ export default function Home() {
       <section className="relative h-[70vh] flex items-center justify-center overflow-hidden">
         <AnimatePresence>
           {isAtTop && (
-            <motion.div 
+            <motion.div
               key="hero-bg"
               initial={{ opacity: 0, scale: 1.1 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -161,7 +164,7 @@ export default function Home() {
             </motion.div>
           )}
           {!isAtTop && (
-            <motion.div 
+            <motion.div
               key="hero-bg-scrolled"
               style={{ y }}
               className="absolute inset-0 z-0"
@@ -339,8 +342,8 @@ export default function Home() {
               </div>
 
               <div className="pt-4 flex justify-start">
-                <Button 
-                  asChild 
+                <Button
+                  asChild
                   className="enroll-button-custom h-12 md:h-14 px-8 md:px-10 transition-all duration-300 rounded-lg flex items-center gap-3 w-full sm:w-auto shadow-lg hover:shadow-blue-500/25"
                 >
                   <Link href="/login">
@@ -466,9 +469,8 @@ export default function Home() {
               <button
                 key={i}
                 onClick={() => setCurrentTestimonial(i)}
-                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                  currentTestimonial === i ? "bg-[#0000FF] w-6" : "bg-gray-300"
-                }`}
+                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${currentTestimonial === i ? "bg-[#0000FF] w-6" : "bg-gray-300"
+                  }`}
                 aria-label={`Go to testimonial ${i + 1}`}
               />
             ))}
@@ -515,7 +517,7 @@ export default function Home() {
         <div className="container px-4 max-w-4xl mx-auto">
           <h2 className="section-title text-center">Frequently Asked Questions</h2>
           <p className="section-subtitle text-center">Find answers to common questions about Treasure-Home School.</p>
-          
+
           <Accordion type="single" collapsible className="w-full space-y-4">
             <AccordionItem value="item-1" className="border border-gray-200 rounded-lg bg-white px-6">
               <AccordionTrigger className="text-left font-bold py-6 hover:no-underline">What is the school curriculum?</AccordionTrigger>

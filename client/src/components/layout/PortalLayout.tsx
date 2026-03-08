@@ -4,7 +4,8 @@ import {
   Bell, LogOut, ImageIcon, FileText, Menu, ChevronLeft, ChevronRight, ClipboardCheck, 
   ClipboardList, ChevronDown, History, UserCheck, Eye, Briefcase, Shield, Activity,
   Clock, PenTool, CheckSquare, Award, Star, Library, DollarSign, Trophy, HelpCircle,
-  Inbox, Megaphone, MessagesSquare, ClipboardPen, BarChart3, FolderOpen, RotateCcw
+  Inbox, Megaphone, MessagesSquare, ClipboardPen, BarChart3, FolderOpen, RotateCcw,
+  Layers, Database
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
@@ -145,6 +146,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: '/portal/teacher/exams', icon: PenTool, label: 'Exam System' },
               { href: '/portal/teacher/grading-queue', icon: CheckSquare, label: 'Grading Queue' },
               { href: '/portal/teacher/exam-analytics', icon: Award, label: 'Exam Analytics' },
+              { href: '/portal/teacher/question-bank', icon: Database, label: 'Question Bank' },
             ]
           },
           { name: 'Report Cards', href: `/portal/${userRole}/report-cards`, icon: FileText },
@@ -194,6 +196,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: `/portal/${userRole}/subject-manager/unified-assignment`, icon: ClipboardList, label: 'Class Level Assignment' },
               { href: `/portal/${userRole}/subject-assignment`, icon: Users, label: 'Teacher Assignments' },
               { href: `/portal/${userRole}/academic-terms`, icon: Calendar, label: 'Academic Terms' },
+              { href: `/portal/${userRole}/syllabus-topics`, icon: Layers, label: 'Syllabus Topics' },
               { href: `/portal/${userRole}/coming-soon?page=timetable`, icon: Clock, label: 'Timetable' },
             ]
           },
@@ -205,6 +208,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-exams' : null),
             items: [
               { href: '/portal/admin/exams', icon: PenTool, label: 'Exam Management' },
+              { href: '/portal/admin/question-bank', icon: Database, label: 'Question Bank' },
               { href: '/portal/admin/results/publishing', icon: Eye, label: 'Result Publishing' },
               { href: `/portal/${userRole}/coming-soon?page=ca`, icon: ClipboardList, label: 'Continuous Assessment' },
               { href: `/portal/${userRole}/coming-soon?page=processing`, icon: Activity, label: 'Result Processing' },
