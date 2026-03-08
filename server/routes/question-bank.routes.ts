@@ -382,7 +382,7 @@ router.post('/api/question-bank/items/bulk-csv', authenticateUser, async (req: a
                         orderNumber: idx + 1,
                         explanationText: null,
                     }));
-                    if (!options.some((o: any) => o.isCorrect)) {
+                    if (!options || !options.some((o: any) => o.isCorrect)) {
                         errors.push(`Row ${i + 1}: MCQ must have at least one correct option`);
                         continue;
                     }
