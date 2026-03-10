@@ -73,7 +73,7 @@ export default function StudentProfile() {
       title: "Profile image updated",
       description: "Your profile image has been uploaded successfully.",
     });
-    
+
     // Refresh user data to show new profile image
     queryClient.invalidateQueries({ queryKey: ['student', user.id] });
     setShowImageUpload(false);
@@ -82,20 +82,20 @@ export default function StudentProfile() {
   const handleSave = async () => {
     try {
       const response = await apiRequest('PATCH', `/api/students/${user.id}`, profileData);
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || 'Failed to update profile');
       }
       const result = await response.json();
-      
+
       toast({
         title: "Profile Updated",
         description: "Your profile has been updated successfully.",
       });
-      
+
       setIsEditing(false);
-      
+
       // Refresh student data
       queryClient.invalidateQueries({ queryKey: ['student', user.id] });
     } catch (error) {
@@ -183,7 +183,7 @@ export default function StudentProfile() {
                     {user.firstName} {user.lastName}
                   </h3>
                   <p className="text-muted-foreground">Student</p>
-                  
+
                   {user.roleId === ROLE_IDS.STUDENT && showImageUpload && (
                     <div className="mt-4">
                       <FileUpload
@@ -202,7 +202,7 @@ export default function StudentProfile() {
                     <div>
                       <p className="text-sm font-medium">Student ID</p>
                       <p className="text-sm text-muted-foreground">
-                        {student?.admissionNumber || 'N/A'}
+                        {user.username || 'N/A'}
                       </p>
                     </div>
                   </div>
@@ -211,7 +211,7 @@ export default function StudentProfile() {
                     <div>
                       <p className="text-sm font-medium">Date of Birth</p>
                       <p className="text-sm text-muted-foreground">
-                        {student?.dateOfBirth 
+                        {student?.dateOfBirth
                           ? new Date(student.dateOfBirth).toLocaleDateString()
                           : 'Not provided'
                         }
@@ -271,13 +271,14 @@ export default function StudentProfile() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
+                    <Label htmlFor="email">Email (Optional)</Label>
                     <Input
                       id="email"
                       type="email"
                       value={profileData.email}
                       onChange={(e) => handleChange('email', e.target.value)}
                       disabled={!isEditing}
+                      placeholder="Enter your email address"
                     />
                   </div>
                   <div className="space-y-2">
