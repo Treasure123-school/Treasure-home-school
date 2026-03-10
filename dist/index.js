@@ -28,6 +28,7 @@ __export(schema_pg_exports, {
   contactMessages: () => contactMessages,
   continuousAssessment: () => continuousAssessment,
   counters: () => counters,
+  examQuestionBankLinks: () => examQuestionBankLinks,
   examQuestions: () => examQuestions,
   examResults: () => examResults,
   examSessions: () => examSessions,
@@ -61,6 +62,7 @@ __export(schema_pg_exports, {
   studyResources: () => studyResources,
   subjects: () => subjects,
   superAdminProfiles: () => superAdminProfiles,
+  syllabusTopics: () => syllabusTopics,
   syncAuditLogs: () => syncAuditLogs,
   systemSettings: () => systemSettings,
   teacherApplications: () => teacherApplications,
@@ -73,7 +75,7 @@ __export(schema_pg_exports, {
   vacancies: () => vacancies
 });
 import { pgTable, text, integer, boolean, timestamp, index, uniqueIndex, serial, varchar } from "drizzle-orm/pg-core";
-var roles, users, passwordResetTokens, passwordResetAttempts, invites, notifications, academicTerms, classes, subjects, students, teacherProfiles, adminProfiles, parentProfiles, superAdminProfiles, systemSettings, attendance, exams, examQuestions, questionOptions, examSessions, studentAnswers, examResults, examSubmissionsArchive, questionBanks, questionBankItems, questionBankOptions, announcements, messages, galleryCategories, gallery, homePageContent, contactMessages, reportCommentTemplates, reportCards, reportCardItems, reportCardSkills, studyResources, teacherClassAssignments, teacherAssignmentHistory, gradingBoundaries, continuousAssessment, unauthorizedAccessLogs, studentSubjectAssignments, classSubjectMappings, timetable, gradingTasks, auditLogs, performanceEvents, settings, counters, vacancies, teacherApplications, approvedTeachers, syncAuditLogs;
+var roles, users, passwordResetTokens, passwordResetAttempts, invites, notifications, academicTerms, classes, subjects, students, teacherProfiles, adminProfiles, parentProfiles, superAdminProfiles, systemSettings, attendance, exams, examQuestions, questionOptions, examSessions, studentAnswers, examResults, examSubmissionsArchive, questionBanks, questionBankItems, questionBankOptions, syllabusTopics, examQuestionBankLinks, announcements, messages, galleryCategories, gallery, homePageContent, contactMessages, reportCommentTemplates, reportCards, reportCardItems, reportCardSkills, studyResources, teacherClassAssignments, teacherAssignmentHistory, gradingBoundaries, continuousAssessment, unauthorizedAccessLogs, studentSubjectAssignments, classSubjectMappings, timetable, gradingTasks, auditLogs, performanceEvents, settings, counters, vacancies, teacherApplications, approvedTeachers, syncAuditLogs;
 var init_schema_pg = __esm({
   "shared/schema.pg.ts"() {
     "use strict";
@@ -515,12 +517,24 @@ var init_schema_pg = __esm({
       hintText: text("hint_text"),
       practicalInstructions: text("practical_instructions"),
       practicalFileUrl: text("practical_file_url"),
+      // ── Syllabus hierarchy (enhanced) ──
+      classId: integer("class_id").references(() => classes.id),
+      termId: integer("term_id").references(() => academicTerms.id),
+      topicId: integer("topic_id"),
+      // references syllabusTopics.id (defined below)
+      usageCount: integer("usage_count").notNull().default(0),
+      status: varchar("status", { length: 20 }).notNull().default("active"),
+      // 'active', 'archived', 'draft'
       createdAt: timestamp("created_at").notNull().defaultNow(),
       updatedAt: timestamp("updated_at").notNull().defaultNow()
     }, (table) => ({
       questionBankItemsBankIdIdx: index("question_bank_items_bank_id_idx").on(table.bankId),
       questionBankItemsTypeIdx: index("question_bank_items_type_idx").on(table.questionType),
-      questionBankItemsDifficultyIdx: index("question_bank_items_difficulty_idx").on(table.difficulty)
+      questionBankItemsDifficultyIdx: index("question_bank_items_difficulty_idx").on(table.difficulty),
+      questionBankItemsClassIdx: index("question_bank_items_class_idx").on(table.classId),
+      questionBankItemsTermIdx: index("question_bank_items_term_idx").on(table.termId),
+      questionBankItemsTopicIdx: index("question_bank_items_topic_idx").on(table.topicId),
+      questionBankItemsStatusIdx: index("question_bank_items_status_idx").on(table.status)
     }));
     questionBankOptions = pgTable("question_bank_options", {
       id: serial("id").primaryKey(),
@@ -532,6 +546,36 @@ var init_schema_pg = __esm({
       createdAt: timestamp("created_at").notNull().defaultNow()
     }, (table) => ({
       questionBankOptionsItemIdIdx: index("question_bank_options_item_id_idx").on(table.questionItemId)
+    }));
+    syllabusTopics = pgTable("syllabus_topics", {
+      id: serial("id").primaryKey(),
+      classId: integer("class_id").notNull().references(() => classes.id),
+      subjectId: integer("subject_id").notNull().references(() => subjects.id),
+      termId: integer("term_id").notNull().references(() => academicTerms.id),
+      name: varchar("name", { length: 255 }).notNull(),
+      description: text("description"),
+      orderNumber: integer("order_number").notNull().default(0),
+      isActive: boolean("is_active").notNull().default(true),
+      createdBy: varchar("created_by", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+      createdAt: timestamp("created_at").notNull().defaultNow(),
+      updatedAt: timestamp("updated_at").notNull().defaultNow()
+    }, (table) => ({
+      syllabusTopicsClassIdx: index("syllabus_topics_class_idx").on(table.classId),
+      syllabusTopicsSubjectIdx: index("syllabus_topics_subject_idx").on(table.subjectId),
+      syllabusTopicsTermIdx: index("syllabus_topics_term_idx").on(table.termId),
+      syllabusTopicsFilterIdx: index("syllabus_topics_filter_idx").on(table.classId, table.subjectId, table.termId),
+      syllabusTopicsUniqueIdx: uniqueIndex("syllabus_topics_unique_idx").on(table.classId, table.subjectId, table.termId, table.name)
+    }));
+    examQuestionBankLinks = pgTable("exam_question_bank_links", {
+      id: serial("id").primaryKey(),
+      examId: integer("exam_id").notNull().references(() => exams.id, { onDelete: "cascade" }),
+      examQuestionId: integer("exam_question_id").notNull().references(() => examQuestions.id, { onDelete: "cascade" }),
+      bankItemId: integer("bank_item_id").notNull().references(() => questionBankItems.id, { onDelete: "cascade" }),
+      createdAt: timestamp("created_at").notNull().defaultNow()
+    }, (table) => ({
+      examQBLinksExamIdx: index("exam_qb_links_exam_idx").on(table.examId),
+      examQBLinksBankItemIdx: index("exam_qb_links_bank_item_idx").on(table.bankItemId),
+      examQBLinksUniqueIdx: uniqueIndex("exam_qb_links_unique_idx").on(table.examQuestionId, table.bankItemId)
     }));
     announcements = pgTable("announcements", {
       id: serial("id").primaryKey(),
@@ -5228,7 +5272,133 @@ var init_storage = __esm({
         }
         return { imported: questions.length, questions };
       }
-      // Get AI-suggested grading tasks for teacher review
+      // ═══════════ QUESTION BANKS (Container CRUD) ═══════════
+      async getQuestionBanks(filters) {
+        const conditions = [];
+        if (filters?.subjectId) conditions.push(eq2(schema.questionBanks.subjectId, filters.subjectId));
+        if (conditions.length > 0) {
+          return await db2.select().from(schema.questionBanks).where(and2(...conditions)).orderBy(desc(schema.questionBanks.createdAt));
+        }
+        return await db2.select().from(schema.questionBanks).orderBy(desc(schema.questionBanks.createdAt));
+      }
+      // getQuestionBankById already defined above (line ~2773)
+      async createQuestionBankRecord(data) {
+        const result = await db2.insert(schema.questionBanks).values(data).returning();
+        return result[0];
+      }
+      async updateQuestionBankRecord(id, data) {
+        const result = await db2.update(schema.questionBanks).set({ ...data, updatedAt: /* @__PURE__ */ new Date() }).where(eq2(schema.questionBanks.id, id)).returning();
+        return result[0];
+      }
+      async deleteQuestionBankRecord(id) {
+        await db2.delete(schema.questionBanks).where(eq2(schema.questionBanks.id, id));
+        return true;
+      }
+      // ═══════════ SYLLABUS TOPICS ═══════════
+      async createSyllabusTopic(topic) {
+        const result = await db2.insert(schema.syllabusTopics).values(topic).returning();
+        return result[0];
+      }
+      async createSyllabusTopicsBulk(topics) {
+        const created = [];
+        const errors = [];
+        for (let i = 0; i < topics.length; i++) {
+          try {
+            const result = await db2.insert(schema.syllabusTopics).values(topics[i]).returning();
+            created.push(result[0]);
+          } catch (error) {
+            errors.push(`Topic ${i + 1} ("${topics[i].name}"): ${error instanceof Error ? error.message : "Unknown error"}`);
+          }
+        }
+        return { created: created.length, topics: created, errors };
+      }
+      async getSyllabusTopics(filters) {
+        const conditions = [];
+        if (filters.classId) conditions.push(eq2(schema.syllabusTopics.classId, filters.classId));
+        if (filters.subjectId) conditions.push(eq2(schema.syllabusTopics.subjectId, filters.subjectId));
+        if (filters.termId) conditions.push(eq2(schema.syllabusTopics.termId, filters.termId));
+        if (filters.isActive !== void 0) conditions.push(eq2(schema.syllabusTopics.isActive, filters.isActive));
+        if (conditions.length === 0) {
+          return await db2.select().from(schema.syllabusTopics).orderBy(asc(schema.syllabusTopics.orderNumber));
+        }
+        return await db2.select().from(schema.syllabusTopics).where(and2(...conditions)).orderBy(asc(schema.syllabusTopics.orderNumber));
+      }
+      async getSyllabusTopicById(id) {
+        const result = await db2.select().from(schema.syllabusTopics).where(eq2(schema.syllabusTopics.id, id));
+        return result[0];
+      }
+      async updateSyllabusTopic(id, topic) {
+        const result = await db2.update(schema.syllabusTopics).set({ ...topic, updatedAt: /* @__PURE__ */ new Date() }).where(eq2(schema.syllabusTopics.id, id)).returning();
+        return result[0];
+      }
+      async deleteSyllabusTopic(id) {
+        await db2.delete(schema.syllabusTopics).where(eq2(schema.syllabusTopics.id, id));
+        return true;
+      }
+      // ═══════════ ENHANCED QUESTION BANK QUERIES ═══════════
+      async getQuestionBankItemsFiltered(filters) {
+        const conditions = [];
+        if (filters.bankId) conditions.push(eq2(schema.questionBankItems.bankId, filters.bankId));
+        if (filters.classId) conditions.push(eq2(schema.questionBankItems.classId, filters.classId));
+        if (filters.termId) conditions.push(eq2(schema.questionBankItems.termId, filters.termId));
+        if (filters.topicId) conditions.push(eq2(schema.questionBankItems.topicId, filters.topicId));
+        if (filters.difficulty) conditions.push(eq2(schema.questionBankItems.difficulty, filters.difficulty));
+        if (filters.questionType) conditions.push(eq2(schema.questionBankItems.questionType, filters.questionType));
+        if (filters.status) conditions.push(eq2(schema.questionBankItems.status, filters.status));
+        if (filters.subjectId) {
+          const bankIds = await db2.select({ id: schema.questionBanks.id }).from(schema.questionBanks).where(eq2(schema.questionBanks.subjectId, filters.subjectId));
+          if (bankIds.length > 0) {
+            conditions.push(inArray2(schema.questionBankItems.bankId, bankIds.map((b) => b.id)));
+          } else {
+            return [];
+          }
+        }
+        if (conditions.length === 0) {
+          return await db2.select().from(schema.questionBankItems).orderBy(desc(schema.questionBankItems.createdAt));
+        }
+        return await db2.select().from(schema.questionBankItems).where(and2(...conditions)).orderBy(desc(schema.questionBankItems.createdAt));
+      }
+      // Smart random generation: Pull questions based on distribution criteria
+      async generateQuestionsFromBank(criteria) {
+        const questions = [];
+        const shortfalls = [];
+        const usedIds = /* @__PURE__ */ new Set();
+        for (const dist of criteria.distribution) {
+          const conditions = [eq2(schema.questionBankItems.status, "active")];
+          if (criteria.bankId) conditions.push(eq2(schema.questionBankItems.bankId, criteria.bankId));
+          if (criteria.classId) conditions.push(eq2(schema.questionBankItems.classId, criteria.classId));
+          if (criteria.termId) conditions.push(eq2(schema.questionBankItems.termId, criteria.termId));
+          if (dist.topicId) conditions.push(eq2(schema.questionBankItems.topicId, dist.topicId));
+          if (dist.difficulty) conditions.push(eq2(schema.questionBankItems.difficulty, dist.difficulty));
+          if (criteria.subjectId) {
+            const bankIds = await db2.select({ id: schema.questionBanks.id }).from(schema.questionBanks).where(eq2(schema.questionBanks.subjectId, criteria.subjectId));
+            if (bankIds.length > 0) {
+              conditions.push(inArray2(schema.questionBankItems.bankId, bankIds.map((b) => b.id)));
+            }
+          }
+          const pool2 = await db2.select().from(schema.questionBankItems).where(and2(...conditions));
+          const available = pool2.filter((q) => !usedIds.has(q.id));
+          const shuffled = available.sort(() => Math.random() - 0.5);
+          const picked = shuffled.slice(0, dist.count);
+          if (picked.length < dist.count) {
+            shortfalls.push(`Needed ${dist.count} questions (topic=${dist.topicId || "any"}, difficulty=${dist.difficulty || "any"}), found ${picked.length}`);
+          }
+          for (const q of picked) {
+            usedIds.add(q.id);
+            questions.push(q);
+          }
+        }
+        return { questions, shortfalls };
+      }
+      // Track exam-bank links
+      async createExamQuestionBankLink(link) {
+        const result = await db2.insert(schema.examQuestionBankLinks).values(link).returning();
+        await db2.update(schema.questionBankItems).set({ usageCount: sql`${schema.questionBankItems.usageCount} + 1` }).where(eq2(schema.questionBankItems.id, link.bankItemId));
+        return result[0];
+      }
+      async getExamQuestionBankLinks(examId) {
+        return await db2.select().from(schema.examQuestionBankLinks).where(eq2(schema.examQuestionBankLinks.examId, examId));
+      }
       async getAISuggestedGradingTasks(teacherId, status) {
         try {
           const assignments = await this.db.select().from(schema.teacherClassAssignments).where(and2(
@@ -9105,7 +9275,7 @@ import { sql as sql2 } from "drizzle-orm";
 import { sqliteTable, text as text2, integer as integer2, index as index2, uniqueIndex as uniqueIndex2 } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-var roles2, users2, passwordResetTokens2, passwordResetAttempts2, invites2, notifications2, academicTerms2, classes2, subjects2, students2, teacherProfiles2, adminProfiles2, parentProfiles2, superAdminProfiles2, systemSettings2, attendance2, exams2, examQuestions2, questionOptions2, examSessions2, studentAnswers2, examResults2, examSubmissionsArchive2, questionBanks2, questionBankItems2, questionBankOptions2, announcements2, messages2, galleryCategories2, gallery2, homePageContent2, contactMessages2, reportCommentTemplates2, reportCards2, reportCardItems2, reportCardSkills2, studyResources2, performanceEvents2, teacherClassAssignments2, teacherAssignmentHistory2, gradingBoundaries2, continuousAssessment2, unauthorizedAccessLogs2, studentSubjectAssignments2, classSubjectMappings2, timetable2, gradingTasks2, auditLogs2, settings2, counters2, vacancies2, teacherApplications2, approvedTeachers2, insertRoleSchema, insertUserSchema, insertPasswordResetTokenSchema, insertPasswordResetAttemptSchema, insertInviteSchema, insertStudentSchema, insertClassSchema, insertSubjectSchema, insertAcademicTermSchema, insertAttendanceSchema, insertExamSchema, insertExamResultSchema, insertExamSubmissionsArchiveSchema, insertAnnouncementSchema, insertMessageSchema, insertGalleryCategorySchema, insertGallerySchema, insertHomePageContentSchema, insertContactMessageSchema, insertReportCommentTemplateSchema, insertReportCardSchema, insertReportCardSkillsSchema, insertReportCardItemSchema, insertStudyResourceSchema, insertPerformanceEventSchema, insertTeacherClassAssignmentSchema, insertTeacherAssignmentHistorySchema, insertGradingBoundarySchema, insertContinuousAssessmentSchema, insertUnauthorizedAccessLogSchema, insertTimetableSchema, insertGradingTaskSchema, insertAuditLogSchema, insertSettingSchema, insertCounterSchema, createStudentWithAutoCredsSchema, createStudentSchema, quickCreateStudentSchema, csvStudentSchema, insertExamQuestionSchema, insertQuestionOptionSchema, createQuestionOptionSchema, insertExamSessionSchema, updateExamSessionSchema, insertStudentAnswerSchema, insertNotificationSchema, insertTeacherProfileSchema, insertAdminProfileSchema, insertParentProfileSchema, insertStudentSubjectAssignmentSchema, insertClassSubjectMappingSchema, insertVacancySchema, insertTeacherApplicationSchema, insertApprovedTeacherSchema, insertSuperAdminProfileSchema, insertSystemSettingsSchema, insertQuestionBankSchema, insertQuestionBankItemSchema, insertQuestionBankOptionSchema;
+var roles2, users2, passwordResetTokens2, passwordResetAttempts2, invites2, notifications2, academicTerms2, classes2, subjects2, students2, teacherProfiles2, adminProfiles2, parentProfiles2, superAdminProfiles2, systemSettings2, attendance2, exams2, examQuestions2, questionOptions2, examSessions2, studentAnswers2, examResults2, examSubmissionsArchive2, questionBanks2, questionBankItems2, questionBankOptions2, syllabusTopics2, examQuestionBankLinks2, announcements2, messages2, galleryCategories2, gallery2, homePageContent2, contactMessages2, reportCommentTemplates2, reportCards2, reportCardItems2, reportCardSkills2, studyResources2, performanceEvents2, teacherClassAssignments2, teacherAssignmentHistory2, gradingBoundaries2, continuousAssessment2, unauthorizedAccessLogs2, studentSubjectAssignments2, classSubjectMappings2, timetable2, gradingTasks2, auditLogs2, settings2, counters2, vacancies2, teacherApplications2, approvedTeachers2, insertRoleSchema, insertUserSchema, insertPasswordResetTokenSchema, insertPasswordResetAttemptSchema, insertInviteSchema, insertStudentSchema, insertClassSchema, insertSubjectSchema, insertAcademicTermSchema, insertAttendanceSchema, insertExamSchema, insertExamResultSchema, insertExamSubmissionsArchiveSchema, insertAnnouncementSchema, insertMessageSchema, insertGalleryCategorySchema, insertGallerySchema, insertHomePageContentSchema, insertContactMessageSchema, insertReportCommentTemplateSchema, insertReportCardSchema, insertReportCardSkillsSchema, insertReportCardItemSchema, insertStudyResourceSchema, insertPerformanceEventSchema, insertTeacherClassAssignmentSchema, insertTeacherAssignmentHistorySchema, insertGradingBoundarySchema, insertContinuousAssessmentSchema, insertUnauthorizedAccessLogSchema, insertTimetableSchema, insertGradingTaskSchema, insertAuditLogSchema, insertSettingSchema, insertCounterSchema, createStudentWithAutoCredsSchema, createStudentSchema, quickCreateStudentSchema, csvStudentSchema, insertExamQuestionSchema, insertQuestionOptionSchema, createQuestionOptionSchema, insertExamSessionSchema, updateExamSessionSchema, insertStudentAnswerSchema, insertNotificationSchema, insertTeacherProfileSchema, insertAdminProfileSchema, insertParentProfileSchema, insertStudentSubjectAssignmentSchema, insertClassSubjectMappingSchema, insertVacancySchema, insertTeacherApplicationSchema, insertApprovedTeacherSchema, insertSuperAdminProfileSchema, insertSystemSettingsSchema, insertQuestionBankSchema, insertQuestionBankItemSchema, insertQuestionBankOptionSchema, insertSyllabusTopicSchema, insertExamQuestionBankLinkSchema;
 var init_schema = __esm({
   "shared/schema.ts"() {
     "use strict";
@@ -9606,6 +9776,7 @@ var init_schema = __esm({
       questionType: text2("question_type").notNull(),
       points: integer2("points").notNull().default(1),
       difficulty: text2("difficulty").notNull().default("medium"),
+      // 'easy', 'medium', 'hard'
       tags: text2("tags").notNull().default("[]"),
       // JSON array
       imageUrl: text2("image_url"),
@@ -9617,12 +9788,24 @@ var init_schema = __esm({
       hintText: text2("hint_text"),
       practicalInstructions: text2("practical_instructions"),
       practicalFileUrl: text2("practical_file_url"),
+      // ── Syllabus hierarchy (NEW) ──
+      classId: integer2("class_id").references(() => classes2.id),
+      termId: integer2("term_id").references(() => academicTerms2.id),
+      topicId: integer2("topic_id"),
+      // references syllabusTopics.id (defined below)
+      usageCount: integer2("usage_count").notNull().default(0),
+      status: text2("status").notNull().default("active"),
+      // 'active', 'archived', 'draft'
       createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
       updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
     }, (table) => ({
       questionBankItemsBankIdIdx: index2("question_bank_items_bank_id_idx").on(table.bankId),
       questionBankItemsTypeIdx: index2("question_bank_items_type_idx").on(table.questionType),
-      questionBankItemsDifficultyIdx: index2("question_bank_items_difficulty_idx").on(table.difficulty)
+      questionBankItemsDifficultyIdx: index2("question_bank_items_difficulty_idx").on(table.difficulty),
+      questionBankItemsClassIdx: index2("question_bank_items_class_idx").on(table.classId),
+      questionBankItemsTermIdx: index2("question_bank_items_term_idx").on(table.termId),
+      questionBankItemsTopicIdx: index2("question_bank_items_topic_idx").on(table.topicId),
+      questionBankItemsStatusIdx: index2("question_bank_items_status_idx").on(table.status)
     }));
     questionBankOptions2 = sqliteTable("question_bank_options", {
       id: integer2("id").primaryKey({ autoIncrement: true }),
@@ -9634,6 +9817,36 @@ var init_schema = __esm({
       createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
     }, (table) => ({
       questionBankOptionsItemIdIdx: index2("question_bank_options_item_id_idx").on(table.questionItemId)
+    }));
+    syllabusTopics2 = sqliteTable("syllabus_topics", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      classId: integer2("class_id").notNull().references(() => classes2.id),
+      subjectId: integer2("subject_id").notNull().references(() => subjects2.id),
+      termId: integer2("term_id").notNull().references(() => academicTerms2.id),
+      name: text2("name").notNull(),
+      description: text2("description"),
+      orderNumber: integer2("order_number").notNull().default(0),
+      isActive: integer2("is_active", { mode: "boolean" }).notNull().default(true),
+      createdBy: text2("created_by").references(() => users2.id, { onDelete: "set null" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`),
+      updatedAt: integer2("updated_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      syllabusTopicsClassIdx: index2("syllabus_topics_class_idx").on(table.classId),
+      syllabusTopicsSubjectIdx: index2("syllabus_topics_subject_idx").on(table.subjectId),
+      syllabusTopicsTermIdx: index2("syllabus_topics_term_idx").on(table.termId),
+      syllabusTopicsFilterIdx: index2("syllabus_topics_filter_idx").on(table.classId, table.subjectId, table.termId),
+      syllabusTopicsUniqueIdx: uniqueIndex2("syllabus_topics_unique_idx").on(table.classId, table.subjectId, table.termId, table.name)
+    }));
+    examQuestionBankLinks2 = sqliteTable("exam_question_bank_links", {
+      id: integer2("id").primaryKey({ autoIncrement: true }),
+      examId: integer2("exam_id").notNull().references(() => exams2.id, { onDelete: "cascade" }),
+      examQuestionId: integer2("exam_question_id").notNull().references(() => examQuestions2.id, { onDelete: "cascade" }),
+      bankItemId: integer2("bank_item_id").notNull().references(() => questionBankItems2.id, { onDelete: "cascade" }),
+      createdAt: integer2("created_at", { mode: "timestamp" }).notNull().default(sql2`(unixepoch())`)
+    }, (table) => ({
+      examQBLinksExamIdx: index2("exam_qb_links_exam_idx").on(table.examId),
+      examQBLinksBankItemIdx: index2("exam_qb_links_bank_item_idx").on(table.bankItemId),
+      examQBLinksUniqueIdx: uniqueIndex2("exam_qb_links_unique_idx").on(table.examQuestionId, table.bankItemId)
     }));
     announcements2 = sqliteTable("announcements", {
       id: integer2("id").primaryKey({ autoIncrement: true }),
@@ -10340,6 +10553,8 @@ var init_schema = __esm({
     insertQuestionBankSchema = createInsertSchema(questionBanks2).omit({ id: true, createdAt: true, updatedAt: true });
     insertQuestionBankItemSchema = createInsertSchema(questionBankItems2).omit({ id: true, createdAt: true, updatedAt: true });
     insertQuestionBankOptionSchema = createInsertSchema(questionBankOptions2).omit({ id: true, createdAt: true });
+    insertSyllabusTopicSchema = createInsertSchema(syllabusTopics2).omit({ id: true, createdAt: true, updatedAt: true });
+    insertExamQuestionBankLinkSchema = createInsertSchema(examQuestionBankLinks2).omit({ id: true, createdAt: true });
   }
 });
 
@@ -13798,7 +14013,7 @@ init_schema_pg();
 init_auth_utils();
 init_username_generator();
 init_realtime_service();
-import { z as z4, ZodError as ZodError2 } from "zod";
+import { z as z4, ZodError as ZodError3 } from "zod";
 import multer from "multer";
 import path2 from "path";
 import fs3 from "fs/promises";
@@ -15230,6 +15445,609 @@ router4.post("/api/reports/:reportCardId/skills", authenticateUser, authorizeRol
 });
 var report_card_skills_routes_default = router4;
 
+// server/routes/question-bank.routes.ts
+init_storage();
+import { Router as Router5 } from "express";
+
+// server/utils/response-helpers.ts
+import { ZodError as ZodError2 } from "zod";
+function sendSuccess(res, data, statusCode = 200) {
+  res.status(statusCode).json(data);
+}
+function sendCreated(res, data) {
+  res.status(201).json(data);
+}
+function sendError(res, message, statusCode = 500, details) {
+  const response = { error: message };
+  if (details !== void 0) {
+    response.details = details;
+  }
+  res.status(statusCode).json(response);
+}
+function sendBadRequest(res, message, details) {
+  sendError(res, message, 400, details);
+}
+function sendNotFound(res, message = "Resource not found") {
+  sendError(res, message, 404);
+}
+function sendServerError(res, message = "Internal server error") {
+  sendError(res, message, 500);
+}
+function handleRouteError(res, error, context) {
+  console.error(`[${context}] Error:`, error);
+  if (error instanceof ZodError2) {
+    sendBadRequest(res, "Validation failed", error.errors);
+    return;
+  }
+  const message = error instanceof Error ? error.message : "An unexpected error occurred";
+  sendServerError(res, message);
+}
+function parseIntParam(value, defaultValue) {
+  if (!value) return defaultValue;
+  const parsed = parseInt(value, 10);
+  return isNaN(parsed) ? defaultValue : parsed;
+}
+function parseBoolParam(value) {
+  if (value === void 0) return void 0;
+  return value === "true" || value === "1";
+}
+
+// server/routes/question-bank.routes.ts
+var router5 = Router5();
+router5.get("/api/syllabus-topics", authenticateUser, async (req, res) => {
+  try {
+    const classId = parseIntParam(req.query.classId);
+    const subjectId = parseIntParam(req.query.subjectId);
+    const termId = parseIntParam(req.query.termId);
+    const isActive = parseBoolParam(req.query.isActive);
+    const topics = await storage.getSyllabusTopics({ classId, subjectId, termId, isActive });
+    sendSuccess(res, topics);
+  } catch (error) {
+    handleRouteError(res, error, "syllabusTopics.list");
+  }
+});
+router5.get("/api/syllabus-topics/:id", authenticateUser, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return sendBadRequest(res, "Invalid ID");
+    const topic = await storage.getSyllabusTopicById(id);
+    if (!topic) return sendNotFound(res, "Syllabus topic not found");
+    sendSuccess(res, topic);
+  } catch (error) {
+    handleRouteError(res, error, "syllabusTopics.getById");
+  }
+});
+router5.post("/api/syllabus-topics", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
+  try {
+    const { classId, subjectId, termId, name, description, orderNumber } = req.body;
+    if (!classId || !subjectId || !termId || !name) {
+      return sendBadRequest(res, "classId, subjectId, termId, and name are required");
+    }
+    const topic = await storage.createSyllabusTopic({
+      classId,
+      subjectId,
+      termId,
+      name,
+      description: description || null,
+      orderNumber: orderNumber || 0,
+      isActive: true,
+      createdBy: req.user.id
+    });
+    sendCreated(res, topic);
+  } catch (error) {
+    if (error.message?.includes("UNIQUE") || error.code === "23505") {
+      return sendBadRequest(res, "A topic with this name already exists for this class/subject/term combination");
+    }
+    handleRouteError(res, error, "syllabusTopics.create");
+  }
+});
+router5.post("/api/syllabus-topics/bulk", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
+  try {
+    const { classId, subjectId, termId, topics } = req.body;
+    if (!classId || !subjectId || !termId || !Array.isArray(topics) || topics.length === 0) {
+      return sendBadRequest(res, "classId, subjectId, termId, and topics array are required");
+    }
+    const topicsToCreate = topics.map((t, i) => ({
+      classId,
+      subjectId,
+      termId,
+      name: typeof t === "string" ? t : t.name,
+      description: typeof t === "string" ? null : t.description || null,
+      orderNumber: typeof t === "string" ? i + 1 : t.orderNumber || i + 1,
+      isActive: true,
+      createdBy: req.user.id
+    }));
+    const result = await storage.createSyllabusTopicsBulk(topicsToCreate);
+    sendSuccess(res, result);
+  } catch (error) {
+    handleRouteError(res, error, "syllabusTopics.bulkCreate");
+  }
+});
+router5.post("/api/syllabus-topics/bulk-csv", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
+  try {
+    const { topics } = req.body;
+    if (!Array.isArray(topics) || topics.length === 0) {
+      return sendBadRequest(res, "topics array is required");
+    }
+    let created = 0;
+    const errors = [];
+    for (let i = 0; i < topics.length; i++) {
+      const t = topics[i];
+      if (!t.classId || !t.subjectId || !t.termId || !t.name || t.name.length < 2) {
+        errors.push(`Item ${i + 1}: Missing required fields (classId, subjectId, termId, name)`);
+        continue;
+      }
+      try {
+        await storage.createSyllabusTopic({
+          classId: t.classId,
+          subjectId: t.subjectId,
+          termId: t.termId,
+          name: t.name,
+          description: t.description || null,
+          orderNumber: t.orderNumber || 0,
+          isActive: true,
+          createdBy: req.user.id
+        });
+        created++;
+      } catch (err) {
+        errors.push(`"${t.name}": ${err.message || "Creation failed"}`);
+      }
+    }
+    sendSuccess(res, { created, errors: errors.length > 0 ? errors : void 0, total: topics.length });
+  } catch (error) {
+    handleRouteError(res, error, "syllabusTopics.bulkCsv");
+  }
+});
+router5.put("/api/syllabus-topics/:id", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return sendBadRequest(res, "Invalid ID");
+    const existing = await storage.getSyllabusTopicById(id);
+    if (!existing) return sendNotFound(res, "Syllabus topic not found");
+    const updated = await storage.updateSyllabusTopic(id, req.body);
+    sendSuccess(res, updated);
+  } catch (error) {
+    handleRouteError(res, error, "syllabusTopics.update");
+  }
+});
+router5.delete("/api/syllabus-topics/:id", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return sendBadRequest(res, "Invalid ID");
+    const existing = await storage.getSyllabusTopicById(id);
+    if (!existing) return sendNotFound(res, "Syllabus topic not found");
+    await storage.deleteSyllabusTopic(id);
+    sendSuccess(res, { message: "Syllabus topic deleted", id });
+  } catch (error) {
+    handleRouteError(res, error, "syllabusTopics.delete");
+  }
+});
+router5.get("/api/question-banks", authenticateUser, async (req, res) => {
+  try {
+    const subjectId = parseIntParam(req.query.subjectId);
+    const banks = await storage.getQuestionBanks(subjectId ? { subjectId } : void 0);
+    sendSuccess(res, banks);
+  } catch (error) {
+    handleRouteError(res, error, "questionBanks.list");
+  }
+});
+router5.get("/api/question-banks/:id", authenticateUser, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return sendBadRequest(res, "Invalid ID");
+    const bank = await storage.getQuestionBankById(id);
+    if (!bank) return sendNotFound(res, "Question bank not found");
+    sendSuccess(res, bank);
+  } catch (error) {
+    handleRouteError(res, error, "questionBanks.getById");
+  }
+});
+router5.post("/api/question-banks", authenticateUser, async (req, res) => {
+  try {
+    const { name, description, subjectId } = req.body;
+    if (!name || !subjectId) {
+      return sendBadRequest(res, "name and subjectId are required");
+    }
+    const bank = await storage.createQuestionBankRecord({
+      name: name.trim(),
+      description: description || null,
+      subjectId: parseInt(subjectId),
+      createdBy: req.user.id
+    });
+    sendCreated(res, bank);
+  } catch (error) {
+    if (error.message?.includes("UNIQUE") || error.code === "23505") {
+      return sendBadRequest(res, "A question bank with this name already exists");
+    }
+    handleRouteError(res, error, "questionBanks.create");
+  }
+});
+router5.put("/api/question-banks/:id", authenticateUser, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return sendBadRequest(res, "Invalid ID");
+    const existing = await storage.getQuestionBankById(id);
+    if (!existing) return sendNotFound(res, "Question bank not found");
+    const updated = await storage.updateQuestionBankRecord(id, req.body);
+    sendSuccess(res, updated);
+  } catch (error) {
+    handleRouteError(res, error, "questionBanks.update");
+  }
+});
+router5.delete("/api/question-banks/:id", authenticateUser, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return sendBadRequest(res, "Invalid ID");
+    const existing = await storage.getQuestionBankById(id);
+    if (!existing) return sendNotFound(res, "Question bank not found");
+    await storage.deleteQuestionBankRecord(id);
+    sendSuccess(res, { message: "Question bank deleted", id });
+  } catch (error) {
+    handleRouteError(res, error, "questionBanks.delete");
+  }
+});
+router5.get("/api/question-bank/items", authenticateUser, async (req, res) => {
+  try {
+    const filters = {
+      bankId: parseIntParam(req.query.bankId),
+      classId: parseIntParam(req.query.classId),
+      subjectId: parseIntParam(req.query.subjectId),
+      termId: parseIntParam(req.query.termId),
+      topicId: parseIntParam(req.query.topicId),
+      difficulty: req.query.difficulty,
+      questionType: req.query.questionType,
+      status: req.query.status
+    };
+    const items = await storage.getQuestionBankItemsFiltered(filters);
+    const itemsWithOptions = await Promise.all(items.map(async (item) => {
+      const options = await storage.getQuestionBankItemOptions(item.id);
+      return { ...item, options };
+    }));
+    sendSuccess(res, itemsWithOptions);
+  } catch (error) {
+    handleRouteError(res, error, "questionBank.items.list");
+  }
+});
+router5.post("/api/question-bank/items", authenticateUser, async (req, res) => {
+  try {
+    const { bankId, questionText, questionType, points, difficulty, classId, termId, topicId, options, ...rest } = req.body;
+    if (!bankId || !questionText || !questionType) {
+      return sendBadRequest(res, "bankId, questionText, and questionType are required");
+    }
+    const item = await storage.createQuestionBankItem({
+      bankId,
+      questionText,
+      questionType,
+      points: points || 1,
+      difficulty: difficulty || "medium",
+      classId: classId || null,
+      termId: termId || null,
+      topicId: topicId || null,
+      status: "active",
+      ...rest
+    }, options?.map((o, i) => ({
+      optionText: o.optionText || o.text,
+      isCorrect: o.isCorrect || false,
+      orderNumber: o.orderNumber || i + 1,
+      explanationText: o.explanationText || null
+    })));
+    const savedOptions = await storage.getQuestionBankItemOptions(item.id);
+    sendCreated(res, { ...item, options: savedOptions });
+  } catch (error) {
+    handleRouteError(res, error, "questionBank.items.create");
+  }
+});
+router5.put("/api/question-bank/items/:id", authenticateUser, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return sendBadRequest(res, "Invalid ID");
+    const existing = await storage.getQuestionBankItemById(id);
+    if (!existing) return sendNotFound(res, "Question not found");
+    const updated = await storage.updateQuestionBankItem(id, req.body);
+    sendSuccess(res, updated);
+  } catch (error) {
+    handleRouteError(res, error, "questionBank.items.update");
+  }
+});
+router5.delete("/api/question-bank/items/:id", authenticateUser, async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return sendBadRequest(res, "Invalid ID");
+    await storage.deleteQuestionBankItem(id);
+    sendSuccess(res, { message: "Question deleted", id });
+  } catch (error) {
+    handleRouteError(res, error, "questionBank.items.delete");
+  }
+});
+router5.post("/api/question-bank/items/bulk-csv", authenticateUser, async (req, res) => {
+  try {
+    const { bankId, classId, termId, topicId, questions } = req.body;
+    if (!bankId) return sendBadRequest(res, "bankId is required");
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return sendBadRequest(res, "questions array is required and must not be empty");
+    }
+    if (questions.length > 200) {
+      return sendBadRequest(res, "Maximum 200 questions per upload");
+    }
+    const created = [];
+    const errors = [];
+    for (let i = 0; i < questions.length; i++) {
+      try {
+        const q = questions[i];
+        if (!q.questionText || q.questionText.trim().length < 5) {
+          errors.push(`Row ${i + 1}: Question text must be at least 5 characters`);
+          continue;
+        }
+        const questionType = q.questionType || "text";
+        if (!["multiple_choice", "text", "essay", "true_false", "fill_blank"].includes(questionType)) {
+          errors.push(`Row ${i + 1}: Invalid question type "${questionType}"`);
+          continue;
+        }
+        let options;
+        if (questionType === "multiple_choice" && q.options?.length >= 2) {
+          options = q.options.map((o, idx) => ({
+            optionText: o.optionText || o.text || "",
+            isCorrect: o.isCorrect || false,
+            orderNumber: idx + 1,
+            explanationText: null
+          }));
+          if (!options || !options.some((o) => o.isCorrect)) {
+            errors.push(`Row ${i + 1}: MCQ must have at least one correct option`);
+            continue;
+          }
+        }
+        const item = await storage.createQuestionBankItem({
+          bankId: parseInt(String(bankId)),
+          questionText: q.questionText.trim(),
+          questionType,
+          points: parseInt(q.points) || 1,
+          difficulty: q.difficulty || "medium",
+          classId: classId ? parseInt(String(classId)) : null,
+          termId: termId ? parseInt(String(termId)) : null,
+          topicId: topicId ? parseInt(String(topicId)) : null,
+          status: "active",
+          expectedAnswers: q.expectedAnswer ? JSON.stringify([q.expectedAnswer]) : "[]",
+          explanationText: q.explanationText || null
+        }, options);
+        created.push(item);
+      } catch (error) {
+        errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : "Unknown error"}`);
+      }
+    }
+    sendSuccess(res, { created: created.length, questions: created, errors });
+  } catch (error) {
+    handleRouteError(res, error, "questionBank.items.bulkCSV");
+  }
+});
+router5.post("/api/question-bank/generate", authenticateUser, async (req, res) => {
+  try {
+    const { bankId, classId, subjectId, termId, distribution } = req.body;
+    if (!Array.isArray(distribution) || distribution.length === 0) {
+      return sendBadRequest(res, "distribution array is required (each entry: { topicId?, difficulty?, count })");
+    }
+    const result = await storage.generateQuestionsFromBank({
+      bankId,
+      classId,
+      subjectId,
+      termId,
+      distribution
+    });
+    const questionsWithOptions = await Promise.all(result.questions.map(async (q) => {
+      const options = await storage.getQuestionBankItemOptions(q.id);
+      return { ...q, options };
+    }));
+    sendSuccess(res, {
+      questions: questionsWithOptions,
+      count: questionsWithOptions.length,
+      shortfalls: result.shortfalls
+    });
+  } catch (error) {
+    handleRouteError(res, error, "questionBank.generate");
+  }
+});
+router5.post("/api/question-bank/import-to-exam", authenticateUser, async (req, res) => {
+  try {
+    const { examId, questionItemIds, randomize, maxQuestions } = req.body;
+    if (!examId || !Array.isArray(questionItemIds) || questionItemIds.length === 0) {
+      return sendBadRequest(res, "examId and questionItemIds array are required");
+    }
+    const result = await storage.importQuestionsFromBank(examId, questionItemIds, randomize, maxQuestions);
+    for (let i = 0; i < result.questions.length; i++) {
+      try {
+        await storage.createExamQuestionBankLink({
+          examId,
+          examQuestionId: result.questions[i].id,
+          bankItemId: questionItemIds[i]
+        });
+      } catch {
+      }
+    }
+    sendSuccess(res, result);
+  } catch (error) {
+    handleRouteError(res, error, "questionBank.importToExam");
+  }
+});
+var question_bank_routes_default = router5;
+
+// server/routes/terms.routes.ts
+init_storage();
+import { Router as Router6 } from "express";
+init_realtime_service();
+var router6 = Router6();
+var YEAR_PATTERN = /^\d{4}\/\d{4}$/;
+function validateYearFormat(year) {
+  if (!YEAR_PATTERN.test(year)) {
+    return { valid: false, error: "Academic year must be in YYYY/YYYY format (e.g., 2024/2025)" };
+  }
+  const [startYear, endYear] = year.split("/").map(Number);
+  if (endYear !== startYear + 1) {
+    return { valid: false, error: "Academic year must span consecutive years (e.g., 2024/2025)" };
+  }
+  return { valid: true };
+}
+router6.get("/", authenticateUser, async (req, res) => {
+  try {
+    const terms = await storage.getAcademicTerms();
+    sendSuccess(res, terms);
+  } catch (error) {
+    handleRouteError(res, error, "terms.list");
+  }
+});
+router6.get("/grouped", authenticateUser, async (req, res) => {
+  try {
+    const terms = await storage.getAcademicTerms();
+    const grouped = {};
+    for (const term of terms) {
+      if (!grouped[term.year]) {
+        grouped[term.year] = [];
+      }
+      grouped[term.year].push(term);
+    }
+    const termOrder = ["First Term", "Second Term", "Third Term"];
+    for (const year of Object.keys(grouped)) {
+      grouped[year].sort((a, b) => {
+        const aIndex = termOrder.findIndex((t) => a.name.includes(t.replace(" Term", "")));
+        const bIndex = termOrder.findIndex((t) => b.name.includes(t.replace(" Term", "")));
+        return aIndex - bIndex;
+      });
+    }
+    const result = Object.entries(grouped).sort((a, b) => b[0].localeCompare(a[0])).map(([year, terms2]) => ({ year, terms: terms2 }));
+    sendSuccess(res, result);
+  } catch (error) {
+    handleRouteError(res, error, "terms.grouped");
+  }
+});
+router6.post("/", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
+  try {
+    if (!req.body.name || !req.body.year || !req.body.startDate || !req.body.endDate) {
+      return sendBadRequest(res, "Missing required fields: name, year, startDate, endDate");
+    }
+    const yearValidation = validateYearFormat(req.body.year);
+    if (!yearValidation.valid) {
+      return sendBadRequest(res, yearValidation.error);
+    }
+    const term = await storage.createAcademicTerm(req.body);
+    realtimeService.emitTableChange("academic_terms", "INSERT", term, void 0, req.user.id);
+    realtimeService.emitToRole("admin", "term.created", term);
+    realtimeService.emitToRole("teacher", "term.created", term);
+    sendSuccess(res, term);
+  } catch (error) {
+    handleRouteError(res, error, "terms.create");
+  }
+});
+router6.put("/:id", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
+  try {
+    const termId = parseInt(req.params.id);
+    if (isNaN(termId)) {
+      return sendBadRequest(res, "Invalid term ID");
+    }
+    const existingTerm = await storage.getAcademicTerm(termId);
+    if (!existingTerm) {
+      return sendNotFound(res, "Academic term not found");
+    }
+    if (existingTerm.isLocked && req.body.isLocked !== false) {
+      return res.status(403).json({ message: "This term is locked and cannot be edited. Unlock it first." });
+    }
+    if (req.body.year) {
+      const yearValidation = validateYearFormat(req.body.year);
+      if (!yearValidation.valid) {
+        return sendBadRequest(res, yearValidation.error);
+      }
+    }
+    const term = await storage.updateAcademicTerm(termId, req.body);
+    realtimeService.emitTableChange("academic_terms", "UPDATE", term, existingTerm, req.user.id);
+    realtimeService.emitToRole("admin", "term.updated", term);
+    realtimeService.emitToRole("teacher", "term.updated", term);
+    sendSuccess(res, term);
+  } catch (error) {
+    handleRouteError(res, error, "terms.update");
+  }
+});
+router6.delete("/:id", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
+  try {
+    const termId = parseInt(req.params.id);
+    if (isNaN(termId)) {
+      return sendBadRequest(res, "Invalid term ID");
+    }
+    const existingTerm = await storage.getAcademicTerm(termId);
+    const success = await storage.deleteAcademicTerm(termId);
+    if (!success) {
+      return res.status(500).json({
+        message: "Failed to delete academic term. The term may not exist or could not be removed."
+      });
+    }
+    realtimeService.emitTableChange("academic_terms", "DELETE", { id: termId }, existingTerm, req.user.id);
+    realtimeService.emitToRole("admin", "term.deleted", { id: termId, ...existingTerm });
+    realtimeService.emitToRole("teacher", "term.deleted", { id: termId, ...existingTerm });
+    sendSuccess(res, { message: "Academic term deleted successfully", id: termId, success: true });
+  } catch (error) {
+    if (error.code === "23503" || error.message?.includes("linked to it")) {
+      return sendBadRequest(res, error.message || "Cannot delete this term because it is being used by other records.");
+    }
+    handleRouteError(res, error, "terms.delete");
+  }
+});
+router6.put("/:id/mark-current", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
+  try {
+    const termId = parseInt(req.params.id);
+    if (isNaN(termId)) {
+      return sendBadRequest(res, "Invalid term ID");
+    }
+    const existingTerm = await storage.getAcademicTerm(termId);
+    if (!existingTerm) {
+      return sendNotFound(res, "Academic term not found");
+    }
+    const term = await storage.markTermAsCurrent(termId);
+    realtimeService.emitTableChange("academic_terms", "UPDATE", term, existingTerm, req.user.id);
+    realtimeService.emitToRole("admin", "term.current-changed", term);
+    realtimeService.emitToRole("teacher", "term.current-changed", term);
+    sendSuccess(res, term);
+  } catch (error) {
+    handleRouteError(res, error, "terms.markCurrent");
+  }
+});
+router6.put("/:id/toggle-lock", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
+  try {
+    const termId = parseInt(req.params.id);
+    if (isNaN(termId)) {
+      return sendBadRequest(res, "Invalid term ID");
+    }
+    const existingTerm = await storage.getAcademicTerm(termId);
+    if (!existingTerm) {
+      return sendNotFound(res, "Academic term not found");
+    }
+    const newLockState = !existingTerm.isLocked;
+    const term = await storage.updateAcademicTerm(termId, { isLocked: newLockState });
+    realtimeService.emitTableChange("academic_terms", "UPDATE", term, existingTerm, req.user.id);
+    realtimeService.emitToRole("admin", "term.lock-toggled", term);
+    sendSuccess(res, term);
+  } catch (error) {
+    handleRouteError(res, error, "terms.toggleLock");
+  }
+});
+router6.put("/:id/status", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), async (req, res) => {
+  try {
+    const termId = parseInt(req.params.id);
+    if (isNaN(termId)) {
+      return sendBadRequest(res, "Invalid term ID");
+    }
+    const existingTerm = await storage.getAcademicTerm(termId);
+    if (!existingTerm) {
+      return sendNotFound(res, "Academic term not found");
+    }
+    if (!req.body.status) {
+      return sendBadRequest(res, "Status is required");
+    }
+    const term = await storage.updateAcademicTerm(termId, { status: req.body.status });
+    realtimeService.emitTableChange("academic_terms", "UPDATE", term, existingTerm, req.user.id);
+    realtimeService.emitToRole("admin", "term.status-changed", term);
+    sendSuccess(res, term);
+  } catch (error) {
+    handleRouteError(res, error, "terms.updateStatus");
+  }
+});
+var terms_routes_default = router6;
+
 // server/exam-visibility.ts
 init_storage();
 init_enhanced_cache();
@@ -16248,6 +17066,8 @@ async function registerRoutes(app2) {
   app2.use(job_vacancy_routes_default);
   app2.use(settings_routes_default);
   app2.use(report_card_skills_routes_default);
+  app2.use(question_bank_routes_default);
+  app2.use("/api/terms", terms_routes_default);
   app2.post("/api/upload", authenticateUser, upload.single("file"), async (req, res) => {
     try {
       if (!req.file) {
@@ -21031,7 +21851,7 @@ School Management System Administration
         user: safeUser
       });
     } catch (error) {
-      if (error instanceof ZodError2) {
+      if (error instanceof ZodError3) {
         return res.status(400).json({ message: "Invalid request data", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to update user" });
@@ -22018,7 +22838,7 @@ School Management System Administration
         parentCreated: result.parentCredentials !== null
       });
     } catch (error) {
-      if (error instanceof ZodError2) {
+      if (error instanceof ZodError3) {
         return res.status(400).json({
           message: "Validation error",
           errors: error.errors
@@ -26041,7 +26861,8 @@ app.use(compression({
   }
 }));
 app.use((req, res, next) => {
-  const timeout = process.env.NODE_ENV === "production" || !!process.env.REPLIT_DEV_DOMAIN ? 6e4 : 3e4;
+  const isDev = process.env.NODE_ENV !== "production" && !process.env.REPLIT_DEV_DOMAIN;
+  const timeout = isDev ? 3e5 : 6e4;
   req.setTimeout(timeout, () => {
     if (!res.headersSent) res.status(408).json({ message: "Request timeout" });
   });
@@ -26302,8 +27123,7 @@ function sanitizeLogData(data) {
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen({
     port,
-    host: "0.0.0.0",
-    reusePort: true
+    host: "0.0.0.0"
   }, () => {
     console.log(`serving on port ${port}`);
   });

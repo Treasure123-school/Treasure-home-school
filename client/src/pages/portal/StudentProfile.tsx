@@ -12,7 +12,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { FileUpload } from '@/components/ui/file-upload';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ROLE_IDS } from '@/lib/roles';
 
 export default function StudentProfile() {
   const { user } = useAuth();
@@ -76,6 +75,7 @@ export default function StudentProfile() {
 
     // Refresh user data to show new profile image
     queryClient.invalidateQueries({ queryKey: ['student', user.id] });
+    queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
     setShowImageUpload(false);
   };
 
@@ -167,24 +167,22 @@ export default function StudentProfile() {
                         {user.firstName[0]}{user.lastName[0]}
                       </AvatarFallback>
                     </Avatar>
-                    {user.roleId === ROLE_IDS.STUDENT && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
-                        onClick={() => setShowImageUpload(!showImageUpload)}
-                        data-testid="profile-image-upload-button"
-                      >
-                        <Camera className="h-4 w-4" />
-                      </Button>
-                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
+                      onClick={() => setShowImageUpload(!showImageUpload)}
+                      data-testid="profile-image-upload-button"
+                    >
+                      <Camera className="h-4 w-4" />
+                    </Button>
                   </div>
                   <h3 className="text-lg font-semibold">
                     {user.firstName} {user.lastName}
                   </h3>
                   <p className="text-muted-foreground">Student</p>
 
-                  {user.roleId === ROLE_IDS.STUDENT && showImageUpload && (
+                  {showImageUpload && (
                     <div className="mt-4">
                       <FileUpload
                         type="profile"
