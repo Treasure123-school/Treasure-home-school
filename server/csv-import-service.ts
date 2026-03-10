@@ -86,7 +86,7 @@ export async function previewCSVImport(csvContent: string): Promise<ImportPrevie
           eq(users.roleId, 5) // Parent role
         ))
         .limit(1);
-      
+
       parentExists = existingParent.length > 0;
       if (parentExists) {
         existingParentCount++;
@@ -155,7 +155,7 @@ export async function commitCSVImport(
     try {
       const year = new Date().getFullYear();
       const classInfo = classes.find((c: any) => c.name === item.data.classCode);
-      
+
       if (!classInfo) {
         throw new Error(`Class not found: ${item.data.classCode}`);
       }
@@ -173,7 +173,7 @@ export async function commitCSVImport(
       // Role IDs: 1=Super Admin, 2=Admin, 3=Teacher, 4=Student, 5=Parent
       const [studentUser] = await db.insert(users).values({
         username: studentUsername,
-        email: `${studentUsername}@ths.edu`, // Auto-generate email
+        email: '', // No auto-generated email
         passwordHash,
         roleId: 4, // Student
         firstName,
@@ -214,10 +214,10 @@ export async function commitCSVImport(
               eq(users.roleId, 5) // Parent
             ))
             .limit(1);
-          
+
           if (existingParent) {
             parentUserId = existingParent.id;
-            
+
             // Update student with parent link
             await db.update(students)
               .set({ parentId: parentUserId })
@@ -232,7 +232,7 @@ export async function commitCSVImport(
           // Role IDs: 1=Super Admin, 2=Admin, 3=Teacher, 4=Student, 5=Parent
           const [parentUser] = await db.insert(users).values({
             username: parentUsername,
-            email: item.data.parentEmail || `${parentUsername}@ths.edu`,
+            email: item.data.parentEmail || '',
             passwordHash: parentHash,
             roleId: 5, // Parent
             firstName: `Parent of ${firstName}`,
@@ -246,7 +246,7 @@ export async function commitCSVImport(
           }).returning();
 
           parentUserId = parentUser.id;
-          
+
           // Update student with parent link
           await db.update(students)
             .set({ parentId: parentUserId })

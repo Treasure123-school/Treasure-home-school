@@ -7,19 +7,26 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Save, Key, Pen, User, Shield } from "lucide-react";
+import { Save, Key, Pen, User, Shield, Camera } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { FileUpload } from "@/components/ui/file-upload";
 import { SignatureDialog } from "@/components/ui/signature-pad";
 
 interface ProfileData {
-  username: string;
-  email: string;
   firstName: string;
   lastName: string;
+  email: string;
+}
+
+interface PasswordData {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
 }
 
 function PrincipalSignatureCard() {
   const { toast } = useToast();
-  
+
   const { data: signatureData, isLoading } = useQuery<{ signatureUrl: string | null; hasSignature: boolean }>({
     queryKey: ['/api/user/signature'],
   });
@@ -101,21 +108,15 @@ function PrincipalSignatureCard() {
   );
 }
 
-interface PasswordData {
-  currentPassword: string;
-  newPassword: string;
-  confirmPassword: string;
-}
-
 export default function AdminProfile() {
   const { toast } = useToast();
   const { user } = useAuth();
-  
+  const [showImageUpload, setShowImageUpload] = useState(false);
+
   const [profileData, setProfileData] = useState<ProfileData>({
-    username: user?.username || "",
-    email: user?.email || "",
     firstName: user?.firstName || "",
     lastName: user?.lastName || "",
+    email: user?.email || "",
   });
 
   const [passwordData, setPasswordData] = useState<PasswordData>({
@@ -182,6 +183,15 @@ export default function AdminProfile() {
     changePasswordMutation.mutate(passwordData);
   };
 
+  const handleProfileImageUpload = () => {
+    toast({
+      title: "Profile image updated",
+      description: "Your profile image has been uploaded successfully.",
+    });
+    queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    setShowImageUpload(false);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -194,9 +204,65 @@ export default function AdminProfile() {
         </p>
       </div>
 
-      <div className="grid gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Profile Overview Card */}
+        <Card className="lg:col-span-1 dark:bg-slate-800 dark:border-slate-700">
+          <CardHeader>
+            <CardTitle className="dark:text-white flex items-center gap-2">
+              <User className="h-5 w-5" />
+              Profile Overview
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="text-center">
+              <div className="relative inline-block">
+                <Avatar className="h-24 w-24 mx-auto mb-4">
+                  <AvatarImage src={user?.profileImageUrl} />
+                  <AvatarFallback className="text-lg">
+                    {(user?.firstName || 'A')[0]}{(user?.lastName || 'D')[0]}
+                  </AvatarFallback>
+                </Avatar>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
+                  onClick={() => setShowImageUpload(!showImageUpload)}
+                  data-testid="profile-image-upload-button"
+                >
+                  <Camera className="h-4 w-4" />
+                </Button>
+              </div>
+              <h3 className="text-lg font-semibold dark:text-white">
+                {user?.firstName} {user?.lastName}
+              </h3>
+              <p className="text-muted-foreground">Admin</p>
+
+              {showImageUpload && user && (
+                <div className="mt-4">
+                  <FileUpload
+                    type="profile"
+                    userId={user.id}
+                    onUploadSuccess={handleProfileImageUpload}
+                    className="max-w-sm mx-auto"
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center space-x-3">
+                <Shield className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium dark:text-slate-200">Admin ID</p>
+                  <p className="text-sm text-muted-foreground">{user?.username || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Profile Information */}
-        <Card className="dark:bg-slate-800 dark:border-slate-700">
+        <Card className="lg:col-span-2 dark:bg-slate-800 dark:border-slate-700">
           <CardHeader>
             <CardTitle className="dark:text-white flex items-center gap-2">
               <Shield className="h-5 w-5" />
@@ -209,17 +275,18 @@ export default function AdminProfile() {
           <CardContent className="space-y-4">
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="username" className="dark:text-slate-200">Username</Label>
+                <Label htmlFor="username" className="dark:text-slate-200">Username (Login ID)</Label>
                 <Input
                   id="username"
                   data-testid="input-username"
-                  value={profileData.username}
-                  onChange={(e) => setProfileData({ ...profileData, username: e.target.value })}
-                  className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                  value={user?.username || ""}
+                  disabled
+                  className="dark:bg-slate-900 dark:border-slate-700 dark:text-white bg-muted"
                 />
+                <p className="text-xs text-muted-foreground">Your login username cannot be changed</p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="email" className="dark:text-slate-200">Email</Label>
+                <Label htmlFor="email" className="dark:text-slate-200">Email (Optional)</Label>
                 <Input
                   id="email"
                   type="email"
@@ -227,6 +294,7 @@ export default function AdminProfile() {
                   value={profileData.email}
                   onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
                   className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                  placeholder="Enter your email address"
                 />
               </div>
               <div className="space-y-2">
@@ -264,11 +332,13 @@ export default function AdminProfile() {
           </CardContent>
         </Card>
 
-        {/* Principal Signature - Admin can set the signature used on report cards */}
-        <PrincipalSignatureCard />
+        {/* Principal Signature */}
+        <div className="lg:col-span-3">
+          <PrincipalSignatureCard />
+        </div>
 
         {/* Change Password */}
-        <Card className="dark:bg-slate-800 dark:border-slate-700">
+        <Card className="lg:col-span-3 dark:bg-slate-800 dark:border-slate-700">
           <CardHeader>
             <CardTitle className="dark:text-white flex items-center gap-2">
               <Key className="h-5 w-5" />
@@ -279,7 +349,7 @@ export default function AdminProfile() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-4">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="currentPassword" className="dark:text-slate-200">Current Password</Label>
                 <Input

@@ -8058,8 +8058,8 @@ School Management System Administration
 
           const studentUser = await storage.createUser({
             id: csvStudentId, // PostgreSQL requires explicit UUID
-            username: studentUsername, // Auto-generated email
-            email: `${studentUsername.toLowerCase()}@ths.edu`, // Auto-generated email
+            username: studentUsername,
+            email: '', // No auto-generated email; user can add real email via profile
             passwordHash: studentPasswordHash,
             roleId: studentRoleData.id,
             firstName: studentFirstName,
@@ -8256,7 +8256,7 @@ School Management System Administration
         const studentUsername = await generateStudentUsername();
         const studentPassword = generateStudentPassword();
         const passwordHash = await bcrypt.hash(studentPassword, BCRYPT_ROUNDS);
-        const studentEmail = `${studentUsername}@ths.edu`;
+        const studentEmail = ''; // No auto-generated email
 
         // Generate UUID for student (required for PostgreSQL)
         const studentId = randomUUID();
@@ -8349,7 +8349,7 @@ School Management System Administration
             const parentUsername = await generateParentUsername();
             const parentPassword = generatePassword();
             const parentHash = await bcrypt.hash(parentPassword, BCRYPT_ROUNDS);
-            const parentEmail = `${parentUsername}@ths.edu`;
+            const parentEmail = ''; // No auto-generated email
 
             // Generate UUID for parent (required for PostgreSQL)
             const parentId = randomUUID();
