@@ -1066,6 +1066,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (result.success) {
         console.log(`✅ [UPLOAD] Storage success. URL: ${result.url}`);
+
+        // Save profileImageUrl to the users table when uploading a profile image
+        if (uploadType === 'profile' && result.url && req.user.id) {
+          try {
+            await storage.updateUser(req.user.id, { profileImageUrl: result.url });
+            console.log(`✅ [UPLOAD] Profile image URL saved to user record: ${req.user.id}`);
+          } catch (dbError) {
+            console.error(`⚠️ [UPLOAD] Failed to save profile image URL to user record:`, dbError);
+          }
+        }
+
         res.json({
           success: true,
           url: result.url,
@@ -5126,29 +5137,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Profile image upload endpoint (using organized storage system)
-  app.post('/api/upload', authenticateUser, upload.single('profileImage'), async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: 'No file uploaded' });
-      }
-
-      // Use new organized upload system
-      const result = await uploadFileToStorage(req.file, {
-        uploadType: 'profile',
-        userId: req.user!.id,
-        maxSizeMB: 5,
-      });
-
-      if (!result.success) {
-        return res.status(500).json({ message: result.error || 'Failed to upload file to cloud storage' });
-      }
-
-      res.json({ url: result.url });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message || 'Failed to upload file' });
-    }
-  });
+  // NOTE: Profile image upload is handled by the centralized /api/upload route (line ~1013)
+  // which uses upload.single('file') and saves profileImageUrl to the user record.
 
   // ==================== HOMEPAGE CONTENT MANAGEMENT ROUTES ====================
 

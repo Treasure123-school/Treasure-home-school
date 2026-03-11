@@ -532,14 +532,29 @@ export function ProfessionalReportCard({
           <div className="flex flex-col sm:flex-row gap-4">
             {/* Student Photo */}
             <div className="flex justify-center sm:justify-start">
-              <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-2 border-primary/20 print:border-primary">
+              <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-2 border-primary/20 print:border-primary print:hidden">
                 {reportCard.studentPhoto ? (
-                  <AvatarImage src={reportCard.studentPhoto} alt={reportCard.studentName} />
+                  <AvatarImage src={reportCard.studentPhoto} alt={reportCard.studentName} crossOrigin="anonymous" />
                 ) : null}
                 <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-bold text-xl">
                   {reportCard.studentName?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || <User className="w-8 h-8" />}
                 </AvatarFallback>
               </Avatar>
+              {/* Print-safe image fallback — AvatarImage uses JS load detection that may fail in print window contexts */}
+              {reportCard.studentPhoto ? (
+                <img
+                  src={reportCard.studentPhoto}
+                  alt={reportCard.studentName}
+                  crossOrigin="anonymous"
+                  className="hidden print:block h-20 w-20 sm:h-24 sm:w-24 rounded-full object-cover border-2 border-primary"
+                />
+              ) : (
+                <div className="hidden print:flex h-20 w-20 sm:h-24 sm:w-24 rounded-full border-2 border-primary bg-gray-100 items-center justify-center">
+                  <span className="text-primary font-bold text-xl">
+                    {reportCard.studentName?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                  </span>
+                </div>
+              )}
             </div>
             
             {/* Student Details - Responsive Grid */}

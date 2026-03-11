@@ -110,7 +110,7 @@ function PrincipalSignatureCard() {
 
 export default function AdminProfile() {
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const [showImageUpload, setShowImageUpload] = useState(false);
 
   const [profileData, setProfileData] = useState<ProfileData>({
@@ -183,7 +183,10 @@ export default function AdminProfile() {
     changePasswordMutation.mutate(passwordData);
   };
 
-  const handleProfileImageUpload = () => {
+  const handleProfileImageUpload = (result: any) => {
+    if (result?.url) {
+      updateUser({ profileImageUrl: result.url });
+    }
     toast({
       title: "Profile image updated",
       description: "Your profile image has been uploaded successfully.",
