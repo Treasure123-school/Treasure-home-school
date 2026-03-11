@@ -14,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function StudentProfile() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
@@ -68,14 +68,18 @@ export default function StudentProfile() {
   }, [student, user]);
 
   const handleProfileImageUpload = (result: any) => {
+    // Update auth context so avatar displays immediately
+    if (result?.url) {
+      updateUser({ profileImageUrl: result.url });
+    }
+
     toast({
       title: "Profile image updated",
       description: "Your profile image has been uploaded successfully.",
     });
 
-    // Refresh user data to show new profile image
+    // Refresh server data
     queryClient.invalidateQueries({ queryKey: ['student', user.id] });
-    queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
     setShowImageUpload(false);
   };
 

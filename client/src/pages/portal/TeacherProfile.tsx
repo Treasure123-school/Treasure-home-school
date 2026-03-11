@@ -21,7 +21,7 @@ import { apiRequest } from '@/lib/queryClient';
 import type { TeacherProfileWithUser, Class } from '@shared/schema';
 
 export default function TeacherProfile() {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
@@ -205,6 +205,11 @@ export default function TeacherProfile() {
   }, [teacherProfile]);
 
   const handleProfileImageUpload = (result: any) => {
+    // Update auth context so avatar displays immediately
+    if (result?.url) {
+      updateUser({ profileImageUrl: result.url });
+    }
+
     toast({
       title: "Profile image updated",
       description: "Your profile image has been uploaded successfully.",
