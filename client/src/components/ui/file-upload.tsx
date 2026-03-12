@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Upload, X, Image, Loader2 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
+import { getApiUrl } from '@/config/api';
 
 interface FileUploadProps {
   type: 'profile' | 'gallery';
@@ -91,7 +92,7 @@ export function FileUpload({
       const token = localStorage.getItem('token');
       console.log(`📤 [UPLOAD] Starting ${type} upload...`);
       
-      const response = await fetch('/api/upload', {
+      const response = await fetch(getApiUrl('/api/upload'), {
         method: 'POST',
         body: formData,
         headers: {
