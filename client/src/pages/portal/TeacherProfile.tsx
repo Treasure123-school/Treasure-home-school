@@ -308,7 +308,7 @@ export default function TeacherProfile() {
         formData.append('signatureUrl', professionalData.signatureUrl);
       }
       // Send update request
-      const response = await fetch('/api/teacher/profile/me', {
+      const response = await fetch(getApiUrl('/api/teacher/profile/me'), {
         method: 'PUT',
         credentials: 'include',
         headers: {

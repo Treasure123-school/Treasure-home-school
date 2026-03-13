@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/lib/auth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getApiUrl } from '@/config/api';
 import { apiRequest } from '@/lib/queryClient';
 import { User, Mail, Phone, MapPin, Calendar, School, Save, Edit, Camera, BookOpen, X } from 'lucide-react';
 import { Link } from 'wouter';
@@ -121,9 +122,10 @@ export default function StudentProfile() {
         formData.append('userId', user?.id || '');
 
         const token = localStorage.getItem('token');
-        const uploadResponse = await fetch('/api/upload', {
+        const uploadResponse = await fetch(getApiUrl('/api/upload'), {
           method: 'POST',
           body: formData,
+          credentials: 'include',
           headers: {
             ...(token ? { 'Authorization': `Bearer ${token}` } : {})
           }
