@@ -8,7 +8,7 @@ import SuperAdminLayout from "@/components/SuperAdminLayout";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Save, Key, User, Shield, Camera, X } from "lucide-react";
+import { Save, Key, User, Shield, Camera, X, Pen } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { FileUpload } from "@/components/ui/file-upload";
 
@@ -28,6 +28,7 @@ export default function SuperAdminProfile() {
   const { toast } = useToast();
   const { user, updateUser } = useAuth();
   const [showImageUpload, setShowImageUpload] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const [profileData, setProfileData] = useState<ProfileData>({
     firstName: user?.firstName || "",
@@ -48,6 +49,7 @@ export default function SuperAdminProfile() {
     onSuccess: () => {
       toast({ title: "Success", description: "Profile updated successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      setIsEditing(false);
     },
   });
 
@@ -140,6 +142,7 @@ export default function SuperAdminProfile() {
   return (
     <SuperAdminLayout>
       <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold dark:text-white flex items-center gap-2" data-testid="text-page-title">
             <User className="h-7 w-7" />
@@ -149,6 +152,25 @@ export default function SuperAdminProfile() {
             Manage your account information
           </p>
         </div>
+        <div className="flex gap-2">
+          {isEditing ? (
+            <>
+              <Button variant="outline" onClick={() => setIsEditing(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleProfileUpdate} disabled={updateProfileMutation.isPending}>
+                <Save className="h-4 w-4 mr-2" />
+                {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+              </Button>
+            </>
+          ) : (
+            <Button onClick={() => setIsEditing(true)}>
+              <Pen className="h-4 w-4 mr-2" />
+              Edit Profile
+            </Button>
+          )}
+        </div>
+      </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Profile Overview Card */}
@@ -168,26 +190,30 @@ export default function SuperAdminProfile() {
                       {(user?.firstName || 'S')[0]}{(user?.lastName || 'A')[0]}
                     </AvatarFallback>
                   </Avatar>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
-                    onClick={() => setShowImageUpload(!showImageUpload)}
-                    data-testid="profile-image-upload-button"
-                  >
-                    <Camera className="h-4 w-4" />
-                  </Button>
-                  {user?.profileImageUrl && (
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      className="absolute -top-2 -right-2 h-8 w-8 rounded-full p-0 shadow-lg"
-                      onClick={handleRemoveImage}
-                      data-testid="profile-image-remove-button"
-                      title="Remove Profile Image"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                  {isEditing && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
+                        onClick={() => setShowImageUpload(!showImageUpload)}
+                        data-testid="profile-image-upload-button"
+                      >
+                        <Camera className="h-4 w-4" />
+                      </Button>
+                      {user?.profileImageUrl && (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="absolute -top-2 -right-2 h-8 w-8 rounded-full p-0 shadow-lg"
+                          onClick={handleRemoveImage}
+                          data-testid="profile-image-remove-button"
+                          title="Remove Profile Image"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </>
                   )}
                 </div>
                 <h3 className="text-lg font-semibold dark:text-white">
@@ -253,6 +279,7 @@ export default function SuperAdminProfile() {
                     onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
                     className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
                     placeholder="Enter your email address"
+                    disabled={!isEditing}
                   />
                 </div>
                 <div className="space-y-2">
@@ -263,6 +290,7 @@ export default function SuperAdminProfile() {
                     value={profileData.firstName}
                     onChange={(e) => setProfileData({ ...profileData, firstName: e.target.value })}
                     className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                    disabled={!isEditing}
                   />
                 </div>
                 <div className="space-y-2">
@@ -273,20 +301,23 @@ export default function SuperAdminProfile() {
                     value={profileData.lastName}
                     onChange={(e) => setProfileData({ ...profileData, lastName: e.target.value })}
                     className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                    disabled={!isEditing}
                   />
                 </div>
               </div>
-              <div className="flex justify-end">
-                <Button
-                  onClick={handleProfileUpdate}
-                  disabled={updateProfileMutation.isPending}
-                  data-testid="button-save-profile"
-                  className="w-full sm:w-auto"
-                >
-                  <Save className="mr-2 h-4 w-4" />
-                  {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
-                </Button>
-              </div>
+              {isEditing && (
+                <div className="flex justify-end">
+                  <Button
+                    onClick={handleProfileUpdate}
+                    disabled={updateProfileMutation.isPending}
+                    data-testid="button-save-profile"
+                    className="w-full sm:w-auto"
+                  >
+                    <Save className="mr-2 h-4 w-4" />
+                    {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 

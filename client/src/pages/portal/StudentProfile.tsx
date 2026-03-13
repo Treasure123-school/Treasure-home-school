@@ -205,26 +205,30 @@ export default function StudentProfile() {
                         {user.firstName[0]}{user.lastName[0]}
                       </AvatarFallback>
                     </Avatar>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
-                      onClick={() => setShowImageUpload(!showImageUpload)}
-                      data-testid="profile-image-upload-button"
-                    >
-                      <Camera className="h-4 w-4" />
-                    </Button>
-                    {(user?.profileImageUrl || student?.profileImage) && (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        className="absolute -top-2 -right-2 h-8 w-8 rounded-full p-0 shadow-lg"
-                        onClick={handleRemoveImage}
-                        data-testid="profile-image-remove-button"
-                        title="Remove Profile Image"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                    {isEditing && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
+                          onClick={() => setShowImageUpload(!showImageUpload)}
+                          data-testid="profile-image-upload-button"
+                        >
+                          <Camera className="h-4 w-4" />
+                        </Button>
+                        {(user?.profileImageUrl || student?.profileImage) && (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            className="absolute -top-2 -right-2 h-8 w-8 rounded-full p-0 shadow-lg"
+                            onClick={handleRemoveImage}
+                            data-testid="profile-image-remove-button"
+                            title="Remove Profile Image"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </>
                     )}
                   </div>
                   <h3 className="text-lg font-semibold">
