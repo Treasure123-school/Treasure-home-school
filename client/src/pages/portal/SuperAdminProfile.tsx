@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import SuperAdminLayout from "@/components/SuperAdminLayout";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
+import { getApiUrl } from '@/config/api';
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Save, Key, User, Shield, Camera, X, Pen } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -95,9 +96,10 @@ export default function SuperAdminProfile() {
         formData.append('userId', user?.id || '');
 
         const token = localStorage.getItem('token');
-        const uploadResponse = await fetch('/api/upload', {
+        const uploadResponse = await fetch(getApiUrl('/api/upload'), {
           method: 'POST',
           body: formData,
+          credentials: 'include',
           headers: {
             ...(token ? { 'Authorization': `Bearer ${token}` } : {})
           }

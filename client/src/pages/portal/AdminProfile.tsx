@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
+import { getApiUrl } from '@/config/api';
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Save, Key, Pen, User, Shield, Camera, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -186,9 +187,10 @@ export default function AdminProfile() {
         formData.append('userId', user?.id || '');
 
         const token = localStorage.getItem('token');
-        const uploadResponse = await fetch('/api/upload', {
+        const uploadResponse = await fetch(getApiUrl('/api/upload'), {
           method: 'POST',
           body: formData,
+          credentials: 'include',
           headers: {
             ...(token ? { 'Authorization': `Bearer ${token}` } : {})
           }
