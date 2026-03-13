@@ -183,6 +183,39 @@ export default function AdminProfile() {
     changePasswordMutation.mutate(passwordData);
   };
 
+  const handleRemoveImage = async () => {
+    if (!window.confirm('Are you sure you want to remove your profile image?')) return;
+
+    try {
+      const response = await fetch('/api/upload/profile', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to remove image');
+      }
+
+      toast({
+        title: "Profile image removed",
+        description: "Your profile image has been removed successfully.",
+      });
+
+      // Update auth context
+      updateUser({ profileImageUrl: null });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to remove profile image. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleProfileImageUpload = (result: any) => {
     if (result?.url) {
       updateUser({ profileImageUrl: result.url });
@@ -234,6 +267,18 @@ export default function AdminProfile() {
                 >
                   <Camera className="h-4 w-4" />
                 </Button>
+                {user?.profileImageUrl && (
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    className="absolute -top-2 -right-2 h-8 w-8 rounded-full p-0 shadow-lg"
+                    onClick={handleRemoveImage}
+                    data-testid="profile-image-remove-button"
+                    title="Remove Profile Image"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
               <h3 className="text-lg font-semibold dark:text-white">
                 {user?.firstName} {user?.lastName}
