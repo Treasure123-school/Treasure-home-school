@@ -29,6 +29,7 @@ import settingsRoutes from "./routes/settings.routes";
 import reportCardSkillsRoutes from "./routes/report-card-skills.routes";
 import questionBankRoutes from "./routes/question-bank.routes";
 import termsRoutes from "./routes/terms.routes";
+import uploadRoutes from "./routes/upload.routes";
 import { validateTeacherCanCreateExam, validateTeacherCanEnterScores, validateTeacherCanViewResults, getTeacherAssignments, validateExamTimeWindow, logExamAccess } from "./teacher-auth-middleware";
 import { getVisibleExamsForStudent, getVisibleExamsForParent, invalidateVisibilityCache, warmVisibilityCache } from "./exam-visibility";
 import { calculateClassTeacherPermissions, getClassTeacherPermissionDeniedMessage } from "@shared/class-teacher-permissions";
@@ -1006,134 +1007,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(reportCardSkillsRoutes);
   app.use(questionBankRoutes);
   app.use('/api/terms', termsRoutes);
+  app.use("/api/upload", uploadRoutes);
 
-  // ==================== FILE UPLOAD ROUTES ====================
-
-  // Centralized file upload route
-  app.post("/api/upload", authenticateUser, upload.single("file"), async (req: any, res) => {
-    try {
-      if (!req.file) {
-        console.error("❌ [UPLOAD] No file received in request");
-        return res.status(400).json({ message: "No file uploaded" });
-      }
-
-      const uploadType = (req.body.uploadType || req.query.uploadType || "general").toLowerCase();
-      console.log(`🚀 [UPLOAD] Processing upload. Type: ${uploadType}, Name: ${req.file.originalname}, Size: ${req.file.size} bytes`);
-
-      const isImage = req.file.mimetype.startsWith('image/');
-      let fileToUpload = req.file;
-
-      // Handle image compression if it's an image
-      if (isImage) {
-        try {
-          const imageBuffer = req.file.buffer;
-          if (!imageBuffer) {
-            throw new Error("No file buffer available for compression");
-          }
-
-          console.log(`🖼️ [UPLOAD] Compressing image: ${req.file.originalname}`);
-
-          // Professional compression using sharp
-          const compressedBuffer = await sharp(imageBuffer)
-            .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true })
-            .ensureAlpha()
-            .webp({ quality: 80, lossless: false, nearLossless: false, force: true })
-            .toBuffer();
-
-          console.log(`✅ [UPLOAD] Compression success. Original: ${req.file.size}, Compressed: ${compressedBuffer.length}`);
-
-          fileToUpload = {
-            ...req.file,
-            buffer: compressedBuffer,
-            originalname: `${path.parse(req.file.originalname).name}.webp`,
-            mimetype: 'image/webp',
-            size: compressedBuffer.length
-          };
-        } catch (sharpError) {
-          console.error("⚠️ [UPLOAD] Image compression failed, falling back to original:", sharpError);
-          fileToUpload = req.file;
-        }
-      }
-
-      const options = {
-        uploadType,
-        userId: req.user.id,
-        categoryId: req.body.categoryId ? parseInt(req.body.categoryId) : undefined
-      };
-
-      console.log(`📦 [UPLOAD] Sending to unified storage service. Type: ${uploadType}`);
-      const result = await uploadFileToStorage(fileToUpload, options);
-
-      if (result.success) {
-        console.log(`✅ [UPLOAD] Storage success. URL: ${result.url}`);
-
-        // Save profileImageUrl to the users table when uploading a profile image
-        if (uploadType === 'profile' && result.url && req.user.id) {
-          try {
-            await storage.updateUser(req.user.id, { profileImageUrl: result.url });
-            console.log(`✅ [UPLOAD] Profile image URL saved to user record: ${req.user.id}`);
-          } catch (dbError) {
-            console.error(`⚠️ [UPLOAD] Failed to save profile image URL to user record:`, dbError);
-          }
-        }
-
-        res.json({
-          success: true,
-          url: result.url,
-          isCloudinary: result.isCloudinary
-        });
-      } else {
-        console.error(`❌ [UPLOAD] Storage failed: ${result.error}`);
-        res.status(500).json({
-          success: false,
-          message: result.error || "The storage service was unable to save your file. Please try a different file or try again later."
-        });
-      }
-    } catch (error: any) {
-      console.error("❌ [UPLOAD] Route error:", error);
-      res.status(500).json({
-        success: false,
-        message: error.message || "An unexpected error occurred while processing your upload. Please check your connection and try again."
-      });
-    }
-  });
-
-  // DEPRECATED: Use /api/upload instead
-  app.post("/api/upload/profile", authenticateUser, upload.single("file"), async (req: any, res) => {
-    console.warn("⚠️ [UPLOAD] Calling deprecated profile upload endpoint.");
-    try {
-      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
-      const result = await uploadFileToStorage(req.file, { uploadType: 'profile', userId: req.user.id });
-      if (result.success) res.json({ success: true, url: result.url });
-      else res.status(500).json({ success: false, message: result.error || "Upload failed" });
-    } catch (error: any) {
-      res.status(500).json({ success: false, message: error.message || "Upload failed" });
-    }
-  });
-
-  app.post("/api/upload/gallery", authenticateUser, upload.single("file"), async (req: any, res) => {
-    console.warn("⚠️ [UPLOAD] Calling deprecated gallery upload endpoint.");
-    try {
-      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
-      const result = await uploadFileToStorage(req.file, { uploadType: 'gallery', userId: req.user.id });
-      if (result.success) res.json({ success: true, url: result.url });
-      else res.status(500).json({ success: false, message: result.error || "Upload failed" });
-    } catch (error: any) {
-      res.status(500).json({ success: false, message: error.message || "Upload failed" });
-    }
-  });
-
-  app.post('/api/upload/homepage', authenticateUser, authorizeRoles(ROLES.ADMIN), upload.single('file'), async (req: any, res) => {
-    console.warn("⚠️ [UPLOAD] Calling deprecated homepage upload endpoint.");
-    try {
-      if (!req.file) return res.status(400).json({ success: false, message: "No file selected for upload." });
-      const result = await uploadFileToStorage(req.file, { uploadType: 'homepage', userId: req.user.id });
-      if (result.success) res.json({ success: true, url: result.url });
-      else res.status(500).json({ success: false, message: result.error || "The storage service was unable to save your image." });
-    } catch (error: any) {
-      res.status(500).json({ success: false, message: error.message || "An unexpected error occurred during the homepage upload." });
-    }
-  });
+  // ==================== END FILE UPLOAD ROUTES ====================
 
   // ==================== REALTIME SYNC ENDPOINT ====================
   // This endpoint allows frontend to get initial data for tables they want to subscribe to
