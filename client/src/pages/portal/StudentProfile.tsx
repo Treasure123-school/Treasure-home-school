@@ -12,6 +12,16 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { FileUpload } from '@/components/ui/file-upload';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function StudentProfile() {
   const { user, updateUser } = useAuth();
@@ -19,6 +29,7 @@ export default function StudentProfile() {
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [showImageUpload, setShowImageUpload] = useState(false);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [profileData, setProfileData] = useState({
     firstName: '',
     lastName: '',
@@ -84,16 +95,8 @@ export default function StudentProfile() {
   };
 
   const handleRemoveImage = async () => {
-    if (!window.confirm('Are you sure you want to remove your profile image?')) return;
-
     try {
-      const response = await fetch('/api/upload/profile', {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await apiRequest('DELETE', '/api/upload/profile');
 
       if (!response.ok) {
         throw new Error('Failed to remove image');
@@ -105,7 +108,7 @@ export default function StudentProfile() {
       });
 
       // Update auth context
-      updateUser({ profileImageUrl: null });
+      updateUser({ profileImageUrl: undefined });
       queryClient.invalidateQueries({ queryKey: ['student', user.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     } catch (error) {
@@ -114,6 +117,8 @@ export default function StudentProfile() {
         description: "Failed to remove profile image. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setShowRemoveConfirm(false);
     }
   };
 
@@ -221,7 +226,7 @@ export default function StudentProfile() {
                             size="sm"
                             variant="destructive"
                             className="absolute -top-2 -right-2 h-8 w-8 rounded-full p-0 shadow-lg"
-                            onClick={handleRemoveImage}
+                            onClick={() => setShowRemoveConfirm(true)}
                             data-testid="profile-image-remove-button"
                             title="Remove Profile Image"
                           >
@@ -231,6 +236,23 @@ export default function StudentProfile() {
                       </>
                     )}
                   </div>
+
+                  <AlertDialog open={showRemoveConfirm} onOpenChange={setShowRemoveConfirm}>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action will permanently remove your profile image. You can always upload a new one later.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleRemoveImage} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Remove Image
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                   <h3 className="text-lg font-semibold">
                     {user.firstName} {user.lastName}
                   </h3>

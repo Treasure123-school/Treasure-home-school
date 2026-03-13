@@ -11,6 +11,16 @@ import { Save, Key, Pen, User, Shield, Camera, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { FileUpload } from "@/components/ui/file-upload";
 import { SignatureDialog } from "@/components/ui/signature-pad";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ProfileData {
   firstName: string;
@@ -113,6 +123,7 @@ export default function AdminProfile() {
   const { user, updateUser } = useAuth();
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
 
   const [profileData, setProfileData] = useState<ProfileData>({
     firstName: user?.firstName || "",
@@ -186,16 +197,8 @@ export default function AdminProfile() {
   };
 
   const handleRemoveImage = async () => {
-    if (!window.confirm('Are you sure you want to remove your profile image?')) return;
-
     try {
-      const response = await fetch('/api/upload/profile', {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await apiRequest('DELETE', '/api/upload/profile');
 
       if (!response.ok) {
         throw new Error('Failed to remove image');
@@ -207,7 +210,7 @@ export default function AdminProfile() {
       });
 
       // Update auth context
-      updateUser({ profileImageUrl: null });
+      updateUser({ profileImageUrl: undefined });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     } catch (error) {
       toast({
@@ -215,6 +218,8 @@ export default function AdminProfile() {
         description: "Failed to remove profile image. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setShowRemoveConfirm(false);
     }
   };
 
@@ -296,7 +301,7 @@ export default function AdminProfile() {
                         size="sm"
                         variant="destructive"
                         className="absolute -top-2 -right-2 h-8 w-8 rounded-full p-0 shadow-lg"
-                        onClick={handleRemoveImage}
+                        onClick={() => setShowRemoveConfirm(true)}
                         data-testid="profile-image-remove-button"
                         title="Remove Profile Image"
                       >
@@ -306,6 +311,23 @@ export default function AdminProfile() {
                   </>
                 )}
               </div>
+
+              <AlertDialog open={showRemoveConfirm} onOpenChange={setShowRemoveConfirm}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This action will permanently remove your profile image. You can always upload a new one later.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleRemoveImage} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Remove Image
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
               <h3 className="text-lg font-semibold dark:text-white">
                 {user?.firstName} {user?.lastName}
               </h3>

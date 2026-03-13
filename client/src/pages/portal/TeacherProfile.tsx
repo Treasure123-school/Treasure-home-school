@@ -17,6 +17,16 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { apiRequest } from '@/lib/queryClient';
 import type { TeacherProfileWithUser, Class } from '@shared/schema';
 
@@ -28,6 +38,7 @@ export default function TeacherProfile() {
   const [isSaving, setIsSaving] = useState(false);
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [signatureFile, setSignatureFile] = useState<File | null>(null);
   const [profileData, setProfileData] = useState({
     firstName: '',
@@ -205,16 +216,8 @@ export default function TeacherProfile() {
   }, [teacherProfile]);
 
   const handleRemoveImage = async () => {
-    if (!window.confirm('Are you sure you want to remove your profile image?')) return;
-
     try {
-      const response = await fetch('/api/upload/profile', {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await apiRequest('DELETE', '/api/upload/profile');
 
       if (!response.ok) {
         throw new Error('Failed to remove image');
@@ -228,7 +231,7 @@ export default function TeacherProfile() {
       // Update local state
       setProfileData(prev => ({ ...prev, profileImageUrl: '' }));
       // Update auth context
-      updateUser({ profileImageUrl: null });
+      updateUser({ profileImageUrl: undefined });
       // Invalidate queries
       queryClient.invalidateQueries({ queryKey: ['/api/teacher/profile/me'] });
     } catch (error) {
@@ -237,6 +240,8 @@ export default function TeacherProfile() {
         description: "Failed to remove profile image. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setShowRemoveConfirm(false);
     }
   };
 
@@ -507,14 +512,33 @@ export default function TeacherProfile() {
             <CardContent className="space-y-6">
               <div className="text-center">
                 {isEditing ? (
-                  <ImageCapture
-                    value={profileImageFile}
-                    onChange={setProfileImageFile}
-                    label="Profile Photo"
-                    shape="circle"
-                    existingImageUrl={profileData.profileImageUrl}
-                    onRemove={handleRemoveImage}
-                  />
+                  <>
+                    <ImageCapture
+                      value={profileImageFile}
+                      onChange={setProfileImageFile}
+                      label="Profile Photo"
+                      shape="circle"
+                      existingImageUrl={profileData.profileImageUrl}
+                      onRemove={() => setShowRemoveConfirm(true)}
+                    />
+
+                    <AlertDialog open={showRemoveConfirm} onOpenChange={setShowRemoveConfirm}>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This action will permanently remove your profile image. You can always upload a new one later.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleRemoveImage} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Remove Image
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </>
                 ) : (
                   <>
                     <Avatar className="h-24 w-24 mx-auto mb-4">
