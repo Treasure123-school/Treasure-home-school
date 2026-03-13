@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Save, Key, Pen, User, Shield, Camera, X } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { FileUpload } from "@/components/ui/file-upload";
+import { ImageCapture } from "@/components/ui/image-capture";
 import { SignatureDialog } from "@/components/ui/signature-pad";
 import {
   AlertDialog,
@@ -121,9 +121,10 @@ function PrincipalSignatureCard() {
 export default function AdminProfile() {
   const { toast } = useToast();
   const { user, updateUser } = useAuth();
-  const [showImageUpload, setShowImageUpload] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [profileData, setProfileData] = useState<ProfileData>({
     firstName: user?.firstName || "",
@@ -172,8 +173,55 @@ export default function AdminProfile() {
     },
   });
 
-  const handleProfileUpdate = () => {
-    updateProfileMutation.mutate(profileData);
+  const handleProfileUpdate = async () => {
+    try {
+      setIsSaving(true);
+      let updatedProfileImageUrl = user?.profileImageUrl;
+
+      // Handle image upload if a new file was selected/captured
+      if (profileImageFile) {
+        const formData = new FormData();
+        formData.append('file', profileImageFile);
+        formData.append('uploadType', 'profile');
+        formData.append('userId', user?.id || '');
+
+        const token = localStorage.getItem('token');
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          }
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload profile image');
+        }
+
+        const uploadResult = await uploadResponse.json();
+        updatedProfileImageUrl = uploadResult.url;
+        
+        // Update auth context so avatar displays immediately
+        updateUser({ profileImageUrl: updatedProfileImageUrl });
+      }
+
+      // Update profile data in backend
+      await updateProfileMutation.mutateAsync({
+        ...profileData,
+        profileImageUrl: updatedProfileImageUrl
+      });
+
+      setProfileImageFile(null);
+      setIsEditing(false);
+    } catch (error: any) {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update profile",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handlePasswordChange = () => {
@@ -253,9 +301,9 @@ export default function AdminProfile() {
               <Button variant="outline" onClick={() => setIsEditing(false)}>
                 Cancel
               </Button>
-              <Button onClick={handleProfileUpdate} disabled={updateProfileMutation.isPending}>
+              <Button onClick={handleProfileUpdate} disabled={isSaving}>
                 <Save className="h-4 w-4 mr-2" />
-                {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+                {isSaving ? "Saving..." : "Save Changes"}
               </Button>
             </>
           ) : (
@@ -278,71 +326,48 @@ export default function AdminProfile() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="text-center">
-              <div className="relative inline-block">
-                <Avatar className="h-24 w-24 mx-auto mb-4">
-                  <AvatarImage src={user?.profileImageUrl} />
-                  <AvatarFallback className="text-lg">
-                    {(user?.firstName || 'A')[0]}{(user?.lastName || 'D')[0]}
-                  </AvatarFallback>
-                </Avatar>
-                {isEditing && (
-                  <>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
-                      onClick={() => setShowImageUpload(!showImageUpload)}
-                      data-testid="profile-image-upload-button"
-                    >
-                      <Camera className="h-4 w-4" />
-                    </Button>
-                    {user?.profileImageUrl && (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        className="absolute -top-2 -right-2 h-8 w-8 rounded-full p-0 shadow-lg"
-                        onClick={() => setShowRemoveConfirm(true)}
-                        data-testid="profile-image-remove-button"
-                        title="Remove Profile Image"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </>
-                )}
-              </div>
+              {isEditing ? (
+                <>
+                  <ImageCapture
+                    value={profileImageFile}
+                    onChange={setProfileImageFile}
+                    label="Profile Photo"
+                    shape="circle"
+                    existingImageUrl={user?.profileImageUrl}
+                    onRemove={() => setShowRemoveConfirm(true)}
+                  />
 
-              <AlertDialog open={showRemoveConfirm} onOpenChange={setShowRemoveConfirm}>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      This action will permanently remove your profile image. You can always upload a new one later.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleRemoveImage} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                      Remove Image
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+                  <AlertDialog open={showRemoveConfirm} onOpenChange={setShowRemoveConfirm}>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This action will permanently remove your profile image. You can always upload a new one later.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleRemoveImage} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                          Remove Image
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </>
+              ) : (
+                <>
+                  <Avatar className="h-24 w-24 mx-auto mb-4">
+                    <AvatarImage src={user?.profileImageUrl} />
+                    <AvatarFallback className="text-lg">
+                      {(user?.firstName || 'A')[0]}{(user?.lastName || 'D')[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                </>
+              )}
               <h3 className="text-lg font-semibold dark:text-white">
                 {user?.firstName} {user?.lastName}
               </h3>
               <p className="text-muted-foreground">Admin</p>
-
-              {showImageUpload && user && (
-                <div className="mt-4">
-                  <FileUpload
-                    type="profile"
-                    userId={user.id}
-                    onUploadSuccess={handleProfileImageUpload}
-                    className="max-w-sm mx-auto"
-                  />
-                </div>
-              )}
             </div>
 
             <div className="space-y-3">

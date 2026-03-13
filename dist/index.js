@@ -1582,6 +1582,23 @@ async function replaceFile(file, oldPublicIdOrUrl, options) {
   }
   return uploadResult;
 }
+function getOptimizedUrl(url, options) {
+  if (!url.includes("cloudinary.com")) {
+    return url;
+  }
+  const transformations = [];
+  if (options?.width) transformations.push(`w_${options.width}`);
+  if (options?.height) transformations.push(`h_${options.height}`);
+  if (options?.quality) transformations.push(`q_${options.quality}`);
+  if (options?.format) transformations.push(`f_${options.format}`);
+  if (transformations.length === 0) {
+    return url;
+  }
+  return url.replace("/upload/", `/upload/${transformations.join(",")}/`);
+}
+function isCloudinaryReady() {
+  return hasCloudinaryConfig;
+}
 var isProduction2, hasCloudinaryConfig, useCloudinary, storageInitialized, folderMap, imageTypes, documentTypes, allowedTypes, MAX_IMAGE_SIZE, MAX_DOCUMENT_SIZE;
 var init_cloudinary_service = __esm({
   "server/cloudinary-service.ts"() {
@@ -10803,6 +10820,119 @@ var init_username_generator = __esm({
   }
 });
 
+// server/upload-service.ts
+var upload_service_exports = {};
+__export(upload_service_exports, {
+  deleteFileFromStorage: () => deleteFileFromStorage,
+  getOptimizedImageUrl: () => getOptimizedImageUrl,
+  isStorageReady: () => isStorageReady,
+  replaceFile: () => replaceFile2,
+  uploadFileToStorage: () => uploadFileToStorage
+});
+async function uploadFileToStorage(file, options) {
+  try {
+    const cloudinaryType = uploadTypeMap[options.uploadType] || "general";
+    const result = await uploadFile(file, {
+      uploadType: cloudinaryType,
+      userId: options.userId,
+      category: options.category,
+      maxSizeMB: options.maxSizeMB || 5
+    });
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error || "The storage service was unable to accept this file. Please ensure it is a valid image and try again."
+      };
+    }
+    return {
+      success: true,
+      url: result.url,
+      isCloudinary: result.isCloudinary
+    };
+  } catch (error) {
+    console.error("Upload service error:", error);
+    return {
+      success: false,
+      error: error.message || "Upload failed"
+    };
+  }
+}
+async function replaceFile2(file, oldUrl, options) {
+  try {
+    const cloudinaryType = uploadTypeMap[options.uploadType] || "general";
+    const result = await replaceFile(file, oldUrl, {
+      uploadType: cloudinaryType,
+      userId: options.userId,
+      category: options.category,
+      maxSizeMB: options.maxSizeMB || 5
+    });
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error || "File replacement failed"
+      };
+    }
+    return {
+      success: true,
+      url: result.url,
+      isCloudinary: result.isCloudinary
+    };
+  } catch (error) {
+    console.error("File replacement error:", error);
+    return {
+      success: false,
+      error: error.message || "File replacement failed"
+    };
+  }
+}
+async function deleteFileFromStorage(url) {
+  if (!url) {
+    return true;
+  }
+  try {
+    return await deleteFile(url);
+  } catch (error) {
+    console.error("File deletion error:", error);
+    return false;
+  }
+}
+function getOptimizedImageUrl(url, options) {
+  return getOptimizedUrl(url, options);
+}
+function isStorageReady() {
+  const isProduction4 = process.env.NODE_ENV === "production";
+  if (isProduction4) {
+    return isCloudinaryReady();
+  }
+  return true;
+}
+var uploadTypeMap;
+var init_upload_service = __esm({
+  "server/upload-service.ts"() {
+    "use strict";
+    init_cloudinary_service();
+    uploadTypeMap = {
+      "profile": "profile",
+      "homepage": "homepage",
+      "gallery": "gallery",
+      "study-resource": "study-resource",
+      "general": "general",
+      "student": "student",
+      "teacher": "teacher",
+      "admin": "admin",
+      "assignment": "assignment",
+      "result": "result",
+      "system_settings": "homepage",
+      "system-settings": "homepage",
+      "favicon": "homepage",
+      "logo": "homepage",
+      "branding": "homepage",
+      "branding_upload": "homepage",
+      "schoolLogo": "homepage"
+    };
+  }
+});
+
 // server/enhanced-cache.ts
 var enhanced_cache_exports = {};
 __export(enhanced_cache_exports, {
@@ -12631,8 +12761,8 @@ var init_performance_monitor = __esm({
       /**
        * Record an API request
        */
-      recordRequest(method, path5, durationMs, statusCode) {
-        const key = `${method}:${path5}`;
+      recordRequest(method, path6, durationMs, statusCode) {
+        const key = `${method}:${path6}`;
         const isError = statusCode >= 400;
         this.totalRequests++;
         if (isError) this.totalErrors++;
@@ -12648,7 +12778,7 @@ var init_performance_monitor = __esm({
         let metrics = this.endpointMetrics.get(key);
         if (!metrics) {
           metrics = {
-            path: path5,
+            path: path6,
             method,
             totalCalls: 0,
             totalDurationMs: 0,
@@ -12678,10 +12808,10 @@ var init_performance_monitor = __esm({
         const sorted = [...metrics.responseTimes].sort((a, b) => a - b);
         metrics.p95DurationMs = this.percentile(sorted, 95);
         if (durationMs > 500) {
-          this.emit("slowRequest", { method, path: path5, durationMs, statusCode });
+          this.emit("slowRequest", { method, path: path6, durationMs, statusCode });
         }
         if (isError) {
-          this.emit("requestError", { method, path: path5, statusCode, durationMs });
+          this.emit("requestError", { method, path: path6, statusCode, durationMs });
         }
       }
       /**
@@ -13465,8 +13595,8 @@ async function commitCSVImport(validRows, adminUserId) {
       const passwordHash = await bcrypt.hash(studentPassword, 10);
       const [studentUser] = await db2.insert(users2).values({
         username: studentUsername,
-        email: `${studentUsername}@ths.edu`,
-        // Auto-generate email
+        email: "",
+        // No auto-generated email
         passwordHash,
         roleId: 4,
         // Student
@@ -13507,7 +13637,7 @@ async function commitCSVImport(validRows, adminUserId) {
           const parentHash = await bcrypt.hash(parentPassword, 10);
           const [parentUser] = await db2.insert(users2).values({
             username: parentUsername,
-            email: item.data.parentEmail || `${parentUsername}@ths.edu`,
+            email: item.data.parentEmail || "",
             passwordHash: parentHash,
             roleId: 5,
             // Parent
@@ -14013,11 +14143,12 @@ init_schema_pg();
 init_auth_utils();
 init_username_generator();
 init_realtime_service();
+init_upload_service();
 import { z as z4, ZodError as ZodError3 } from "zod";
-import multer from "multer";
-import path2 from "path";
+import multer2 from "multer";
+import path3 from "path";
 import fs3 from "fs/promises";
-import sharp from "sharp";
+import sharp2 from "sharp";
 import jwt4 from "jsonwebtoken";
 import bcrypt2 from "bcrypt";
 import { randomUUID as randomUUID2 } from "crypto";
@@ -14025,84 +14156,6 @@ import passport from "passport";
 import session from "express-session";
 import memorystore from "memorystore";
 import { and as and7, eq as eq7, sql as sql7, desc as desc4 } from "drizzle-orm";
-
-// server/upload-service.ts
-init_cloudinary_service();
-var uploadTypeMap = {
-  "profile": "profile",
-  "homepage": "homepage",
-  "gallery": "gallery",
-  "study-resource": "study-resource",
-  "general": "general",
-  "student": "student",
-  "teacher": "teacher",
-  "admin": "admin",
-  "assignment": "assignment",
-  "result": "result",
-  "system_settings": "homepage",
-  "system-settings": "homepage",
-  "favicon": "homepage",
-  "logo": "homepage",
-  "branding": "homepage",
-  "branding_upload": "homepage",
-  "schoolLogo": "homepage"
-};
-async function uploadFileToStorage(file, options) {
-  try {
-    const cloudinaryType = uploadTypeMap[options.uploadType] || "general";
-    const result = await uploadFile(file, {
-      uploadType: cloudinaryType,
-      userId: options.userId,
-      category: options.category,
-      maxSizeMB: options.maxSizeMB || 5
-    });
-    if (!result.success) {
-      return {
-        success: false,
-        error: result.error || "The storage service was unable to accept this file. Please ensure it is a valid image and try again."
-      };
-    }
-    return {
-      success: true,
-      url: result.url,
-      isCloudinary: result.isCloudinary
-    };
-  } catch (error) {
-    console.error("Upload service error:", error);
-    return {
-      success: false,
-      error: error.message || "Upload failed"
-    };
-  }
-}
-async function replaceFile2(file, oldUrl, options) {
-  try {
-    const cloudinaryType = uploadTypeMap[options.uploadType] || "general";
-    const result = await replaceFile(file, oldUrl, {
-      uploadType: cloudinaryType,
-      userId: options.userId,
-      category: options.category,
-      maxSizeMB: options.maxSizeMB || 5
-    });
-    if (!result.success) {
-      return {
-        success: false,
-        error: result.error || "File replacement failed"
-      };
-    }
-    return {
-      success: true,
-      url: result.url,
-      isCloudinary: result.isCloudinary
-    };
-  } catch (error) {
-    console.error("File replacement error:", error);
-    return {
-      success: false,
-      error: error.message || "File replacement failed"
-    };
-  }
-}
 
 // server/teacher-assignment-routes.ts
 init_db();
@@ -16048,6 +16101,124 @@ router6.put("/:id/status", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), asy
 });
 var terms_routes_default = router6;
 
+// server/routes/upload.routes.ts
+import { Router as Router7 } from "express";
+import multer from "multer";
+init_upload_service();
+init_storage();
+import sharp from "sharp";
+import path2 from "path";
+var router7 = Router7();
+var upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024
+    // 5MB limit
+  }
+});
+router7.post("/", authenticateUser, upload.single("file"), async (req, res) => {
+  const startTime = Date.now();
+  if (!req.file) {
+    console.error("\u274C [UPLOAD] No file received in request");
+    return res.status(400).json({ message: "No file uploaded" });
+  }
+  const uploadType = (req.body.uploadType || req.query.uploadType || "general").toLowerCase();
+  const { userId, caption, categoryId } = req.body;
+  console.log(`\u{1F680} [UPLOAD] Processing upload. Type: ${uploadType}, Name: ${req.file.originalname}, Size: ${req.file.size} bytes`);
+  if (!uploadType) {
+    return res.status(400).json({ message: "Upload type is required" });
+  }
+  try {
+    const targetUserId = userId || req.user.id;
+    if (uploadType === "profile" && targetUserId !== req.user.id && req.user.roleId > 2) {
+      return res.status(403).json({ message: "Not authorized to update this profile" });
+    }
+    const isImage = req.file.mimetype.startsWith("image/");
+    let fileToUpload = req.file;
+    if (isImage) {
+      try {
+        const imageBuffer = req.file.buffer;
+        if (!imageBuffer) {
+          throw new Error("No file buffer available for compression");
+        }
+        console.log(`\u{1F5BC}\uFE0F [UPLOAD] Compressing image: ${req.file.originalname}`);
+        const compressedBuffer = await sharp(imageBuffer).resize(1200, 1200, { fit: "inside", withoutEnlargement: true }).ensureAlpha().webp({ quality: 80, lossless: false, nearLossless: false, force: true }).toBuffer();
+        console.log(`\u2705 [UPLOAD] Compression success. Original: ${req.file.size}, Compressed: ${compressedBuffer.length}`);
+        fileToUpload = {
+          ...req.file,
+          buffer: compressedBuffer,
+          originalname: `${path2.parse(req.file.originalname).name}.webp`,
+          mimetype: "image/webp",
+          size: compressedBuffer.length
+        };
+      } catch (sharpError) {
+        console.error("\u26A0\uFE0F [UPLOAD] Image compression failed, falling back to original:", sharpError);
+        fileToUpload = req.file;
+      }
+    }
+    const result = await uploadFileToStorage(fileToUpload, {
+      uploadType,
+      userId: targetUserId,
+      category: categoryId
+    });
+    if (!result.success || !result.url) {
+      return res.status(500).json({ message: result.error || "Upload failed" });
+    }
+    if (uploadType === "profile") {
+      await storage.updateUser(targetUserId, {
+        profileImageUrl: result.url
+      });
+      console.log(`\u2705 [UPLOAD] Profile image URL saved to user record: ${targetUserId}`);
+    } else if (uploadType === "gallery") {
+      await storage.uploadGalleryImage({
+        imageUrl: result.url,
+        caption: caption || "",
+        categoryId: categoryId ? parseInt(categoryId) : void 0,
+        uploadedBy: req.user.id
+      });
+      console.log(`\u2705 [UPLOAD] Gallery image record created`);
+    } else if (uploadType === "homepage" || uploadType === "logo" || uploadType === "favicon") {
+      console.log(`\u2705 [UPLOAD] ${uploadType} uploaded to storage. URL: ${result.url}`);
+    }
+    res.json({
+      success: true,
+      url: result.url,
+      message: "File uploaded successfully"
+    });
+  } catch (error) {
+    console.error("Upload route error:", error);
+    res.status(500).json({ message: error.message || "Internal server error during upload" });
+  }
+});
+router7.delete("/profile", authenticateUser, async (req, res) => {
+  try {
+    const userId = req.body.userId || req.user.id;
+    if (userId !== req.user.id && req.user.roleId > 2) {
+      return res.status(403).json({ message: "Not authorized to update this profile" });
+    }
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (user.profileImageUrl) {
+      const { deleteFileFromStorage: deleteFileFromStorage3 } = await Promise.resolve().then(() => (init_upload_service(), upload_service_exports));
+      await deleteFileFromStorage3(user.profileImageUrl);
+      await storage.updateUser(userId, {
+        profileImageUrl: null
+      });
+      console.log(`\u2705 [UPLOAD] Profile image removed for user: ${userId}`);
+    }
+    res.json({
+      success: true,
+      message: "Profile image removed successfully"
+    });
+  } catch (error) {
+    console.error("Profile image deletion error:", error);
+    res.status(500).json({ message: error.message || "Internal server error during deletion" });
+  }
+});
+var upload_routes_default = router7;
+
 // server/exam-visibility.ts
 init_storage();
 init_enhanced_cache();
@@ -16499,8 +16670,8 @@ fs3.mkdir(studyResourcesDir, { recursive: true }).catch(() => {
 });
 fs3.mkdir(homepageDir, { recursive: true }).catch(() => {
 });
-var storage_multer = multer.memoryStorage();
-var upload = multer({
+var storage_multer = multer2.memoryStorage();
+var upload2 = multer2({
   storage: storage_multer,
   limits: {
     fileSize: 10 * 1024 * 1024
@@ -16509,7 +16680,7 @@ var upload = multer({
   fileFilter: (req, file, cb) => {
     const isBranding = req.body.uploadType === "logo" || req.body.uploadType === "favicon" || req.body.uploadType === "branding";
     const allowedTypes2 = isBranding ? /jpeg|jpg|png|gif|webp|ico|svg/ : /jpeg|jpg|png|gif|webp|pdf|doc|docx|txt/;
-    const extname = allowedTypes2.test(path2.extname(file.originalname).toLowerCase());
+    const extname = allowedTypes2.test(path3.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes2.test(file.mimetype);
     if (mimetype && extname) {
       return cb(null, true);
@@ -16518,8 +16689,8 @@ var upload = multer({
     }
   }
 });
-var brandingUpload = upload.single("file");
-var uploadDocument = multer({
+var brandingUpload = upload2.single("file");
+var uploadDocument = multer2({
   storage: storage_multer,
   limits: {
     fileSize: 10 * 1024 * 1024
@@ -16527,7 +16698,7 @@ var uploadDocument = multer({
   },
   fileFilter: (req, file, cb) => {
     const allowedTypes2 = /pdf|doc|docx|txt/;
-    const extname = allowedTypes2.test(path2.extname(file.originalname).toLowerCase());
+    const extname = allowedTypes2.test(path3.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes2.test(file.mimetype) || file.mimetype === "application/pdf" || file.mimetype.includes("word");
     if (mimetype || extname) {
       return cb(null, true);
@@ -16539,7 +16710,7 @@ var uploadDocument = multer({
 var csvDir = "server/uploads/csv";
 fs3.mkdir(csvDir, { recursive: true }).catch(() => {
 });
-var uploadCSV = multer({
+var uploadCSV = multer2({
   storage: storage_multer,
   limits: {
     fileSize: 2 * 1024 * 1024
@@ -17068,99 +17239,7 @@ async function registerRoutes(app2) {
   app2.use(report_card_skills_routes_default);
   app2.use(question_bank_routes_default);
   app2.use("/api/terms", terms_routes_default);
-  app2.post("/api/upload", authenticateUser, upload.single("file"), async (req, res) => {
-    try {
-      if (!req.file) {
-        console.error("\u274C [UPLOAD] No file received in request");
-        return res.status(400).json({ message: "No file uploaded" });
-      }
-      const uploadType = (req.body.uploadType || req.query.uploadType || "general").toLowerCase();
-      console.log(`\u{1F680} [UPLOAD] Processing upload. Type: ${uploadType}, Name: ${req.file.originalname}, Size: ${req.file.size} bytes`);
-      const isImage = req.file.mimetype.startsWith("image/");
-      let fileToUpload = req.file;
-      if (isImage) {
-        try {
-          const imageBuffer = req.file.buffer;
-          if (!imageBuffer) {
-            throw new Error("No file buffer available for compression");
-          }
-          console.log(`\u{1F5BC}\uFE0F [UPLOAD] Compressing image: ${req.file.originalname}`);
-          const compressedBuffer = await sharp(imageBuffer).resize(1200, 1200, { fit: "inside", withoutEnlargement: true }).ensureAlpha().webp({ quality: 80, lossless: false, nearLossless: false, force: true }).toBuffer();
-          console.log(`\u2705 [UPLOAD] Compression success. Original: ${req.file.size}, Compressed: ${compressedBuffer.length}`);
-          fileToUpload = {
-            ...req.file,
-            buffer: compressedBuffer,
-            originalname: `${path2.parse(req.file.originalname).name}.webp`,
-            mimetype: "image/webp",
-            size: compressedBuffer.length
-          };
-        } catch (sharpError) {
-          console.error("\u26A0\uFE0F [UPLOAD] Image compression failed, falling back to original:", sharpError);
-          fileToUpload = req.file;
-        }
-      }
-      const options = {
-        uploadType,
-        userId: req.user.id,
-        categoryId: req.body.categoryId ? parseInt(req.body.categoryId) : void 0
-      };
-      console.log(`\u{1F4E6} [UPLOAD] Sending to unified storage service. Type: ${uploadType}`);
-      const result = await uploadFileToStorage(fileToUpload, options);
-      if (result.success) {
-        console.log(`\u2705 [UPLOAD] Storage success. URL: ${result.url}`);
-        res.json({
-          success: true,
-          url: result.url,
-          isCloudinary: result.isCloudinary
-        });
-      } else {
-        console.error(`\u274C [UPLOAD] Storage failed: ${result.error}`);
-        res.status(500).json({
-          success: false,
-          message: result.error || "The storage service was unable to save your file. Please try a different file or try again later."
-        });
-      }
-    } catch (error) {
-      console.error("\u274C [UPLOAD] Route error:", error);
-      res.status(500).json({
-        success: false,
-        message: error.message || "An unexpected error occurred while processing your upload. Please check your connection and try again."
-      });
-    }
-  });
-  app2.post("/api/upload/profile", authenticateUser, upload.single("file"), async (req, res) => {
-    console.warn("\u26A0\uFE0F [UPLOAD] Calling deprecated profile upload endpoint.");
-    try {
-      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
-      const result = await uploadFileToStorage(req.file, { uploadType: "profile", userId: req.user.id });
-      if (result.success) res.json({ success: true, url: result.url });
-      else res.status(500).json({ success: false, message: result.error || "Upload failed" });
-    } catch (error) {
-      res.status(500).json({ success: false, message: error.message || "Upload failed" });
-    }
-  });
-  app2.post("/api/upload/gallery", authenticateUser, upload.single("file"), async (req, res) => {
-    console.warn("\u26A0\uFE0F [UPLOAD] Calling deprecated gallery upload endpoint.");
-    try {
-      if (!req.file) return res.status(400).json({ message: "No file uploaded" });
-      const result = await uploadFileToStorage(req.file, { uploadType: "gallery", userId: req.user.id });
-      if (result.success) res.json({ success: true, url: result.url });
-      else res.status(500).json({ success: false, message: result.error || "Upload failed" });
-    } catch (error) {
-      res.status(500).json({ success: false, message: error.message || "Upload failed" });
-    }
-  });
-  app2.post("/api/upload/homepage", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), upload.single("file"), async (req, res) => {
-    console.warn("\u26A0\uFE0F [UPLOAD] Calling deprecated homepage upload endpoint.");
-    try {
-      if (!req.file) return res.status(400).json({ success: false, message: "No file selected for upload." });
-      const result = await uploadFileToStorage(req.file, { uploadType: "homepage", userId: req.user.id });
-      if (result.success) res.json({ success: true, url: result.url });
-      else res.status(500).json({ success: false, message: result.error || "The storage service was unable to save your image." });
-    } catch (error) {
-      res.status(500).json({ success: false, message: error.message || "An unexpected error occurred during the homepage upload." });
-    }
-  });
+  app2.use("/api/upload", upload_routes_default);
   const ALLOWED_SYNC_TABLES = ["classes", "subjects", "academic_terms", "users", "students", "announcements", "exams", "homepage_content", "notifications"];
   const TABLE_PERMISSIONS = {
     "classes": { [ROLE_IDS.SUPER_ADMIN]: true, [ROLE_IDS.ADMIN]: true, [ROLE_IDS.TEACHER]: true, [ROLE_IDS.STUDENT]: true, [ROLE_IDS.PARENT]: true },
@@ -19031,7 +19110,7 @@ async function registerRoutes(app2) {
       res.status(500).json({ message: "Failed to fetch student answers" });
     }
   });
-  app2.post("/api/teacher/profile/setup", authenticateUser, authorizeRoles(ROLE_IDS.TEACHER), upload.fields([
+  app2.post("/api/teacher/profile/setup", authenticateUser, authorizeRoles(ROLE_IDS.TEACHER), upload2.fields([
     { name: "profileImage", maxCount: 1 },
     { name: "signature", maxCount: 1 }
   ]), async (req, res) => {
@@ -19446,7 +19525,7 @@ async function registerRoutes(app2) {
       res.status(500).json({ message: "Failed to fetch dashboard data", error: error.message });
     }
   });
-  app2.put("/api/teacher/profile/me", authenticateUser, authorizeRoles(ROLE_IDS.TEACHER), upload.fields([
+  app2.put("/api/teacher/profile/me", authenticateUser, authorizeRoles(ROLE_IDS.TEACHER), upload2.fields([
     { name: "profileImage", maxCount: 1 },
     { name: "signature", maxCount: 1 }
   ]), async (req, res) => {
@@ -20213,25 +20292,7 @@ async function registerRoutes(app2) {
       });
     }
   });
-  app2.post("/api/upload", authenticateUser, upload.single("profileImage"), async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: "No file uploaded" });
-      }
-      const result = await uploadFileToStorage(req.file, {
-        uploadType: "profile",
-        userId: req.user.id,
-        maxSizeMB: 5
-      });
-      if (!result.success) {
-        return res.status(500).json({ message: result.error || "Failed to upload file to cloud storage" });
-      }
-      res.json({ url: result.url });
-    } catch (error) {
-      res.status(500).json({ message: error.message || "Failed to upload file" });
-    }
-  });
-  app2.post("/api/upload/homepage-deprecated", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), upload.single("homePageImage"), async (req, res) => {
+  app2.post("/api/upload/homepage-deprecated", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN), upload2.single("homePageImage"), async (req, res) => {
     try {
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
@@ -20542,8 +20603,8 @@ async function registerRoutes(app2) {
   });
   app2.get("/uploads/homepage/:filename", (req, res) => {
     const { filename } = req.params;
-    const filePath = path2.resolve("uploads", "homepage", filename);
-    if (!filePath.startsWith(path2.resolve("uploads", "homepage"))) {
+    const filePath = path3.resolve("uploads", "homepage", filename);
+    if (!filePath.startsWith(path3.resolve("uploads", "homepage"))) {
       return res.status(403).json({ message: "Access denied" });
     }
     res.sendFile(filePath, (err) => {
@@ -20554,8 +20615,8 @@ async function registerRoutes(app2) {
   });
   app2.get("/uploads/:filename", authenticateUser, authorizeRoles(ROLE_IDS.TEACHER, ROLE_IDS.ADMIN), (req, res) => {
     const { filename } = req.params;
-    const filePath = path2.resolve("uploads", filename);
-    if (!filePath.startsWith(path2.resolve("uploads"))) {
+    const filePath = path3.resolve("uploads", filename);
+    if (!filePath.startsWith(path3.resolve("uploads"))) {
       return res.status(403).json({ message: "Access denied" });
     }
     res.sendFile(filePath, (err) => {
@@ -20868,6 +20929,7 @@ async function registerRoutes(app2) {
         // Include password change flag
         user: {
           id: user.id,
+          username: user.username,
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
@@ -22512,9 +22574,8 @@ School Management System Administration
             id: csvStudentId,
             // PostgreSQL requires explicit UUID
             username: studentUsername,
-            // Auto-generated email
-            email: `${studentUsername.toLowerCase()}@ths.edu`,
-            // Auto-generated email
+            email: "",
+            // No auto-generated email; user can add real email via profile
             passwordHash: studentPasswordHash,
             roleId: studentRoleData.id,
             firstName: studentFirstName,
@@ -22673,7 +22734,7 @@ School Management System Administration
         const studentUsername = await generateStudentUsername2();
         const studentPassword = generateStudentPassword();
         const passwordHash = await bcrypt2.hash(studentPassword, BCRYPT_ROUNDS);
-        const studentEmail = `${studentUsername}@ths.edu`;
+        const studentEmail = "";
         const studentId = randomUUID2();
         const [studentUser] = await tx.insert(users).values({
           id: studentId,
@@ -22737,7 +22798,7 @@ School Management System Administration
             const parentUsername = await generateParentUsername();
             const parentPassword = generatePassword();
             const parentHash = await bcrypt2.hash(parentPassword, BCRYPT_ROUNDS);
-            const parentEmail = `${parentUsername}@ths.edu`;
+            const parentEmail = "";
             const parentId = randomUUID2();
             const [parentUser] = await tx.insert(users).values({
               id: parentId,
@@ -23191,7 +23252,7 @@ School Management System Administration
       res.status(500).json({ message: "Failed to fetch system settings" });
     }
   });
-  app2.post("/api/superadmin/branding/upload", authenticateUser, authorizeRoles(ROLE_IDS.SUPER_ADMIN), upload.single("file"), async (req, res) => {
+  app2.post("/api/superadmin/branding/upload", authenticateUser, authorizeRoles(ROLE_IDS.SUPER_ADMIN), upload2.single("file"), async (req, res) => {
     try {
       console.log("[BRANDING] Received upload request", {
         uploadType: req.body.uploadType,
@@ -23212,7 +23273,7 @@ School Management System Administration
         const imageBuffer = req.file.buffer;
         if (imageBuffer) {
           console.log("[BRANDING] Processing image with sharp...");
-          let sharpInstance = sharp(imageBuffer);
+          let sharpInstance = sharp2(imageBuffer);
           if (isFavicon) {
             sharpInstance = sharpInstance.resize(64, 64, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } });
           } else {
@@ -23224,7 +23285,7 @@ School Management System Administration
           fileToUpload = {
             ...req.file,
             buffer: compressedBuffer,
-            originalname: `${path2.parse(req.file.originalname || "upload").name}.${isFavicon ? "png" : "webp"}`,
+            originalname: `${path3.parse(req.file.originalname || "upload").name}.${isFavicon ? "png" : "webp"}`,
             mimetype,
             size: compressedBuffer.length
           };
@@ -26512,30 +26573,30 @@ School Management System Administration
 // server/vite.ts
 import express from "express";
 import fs4 from "fs";
-import path4 from "path";
+import path5 from "path";
 import { createServer as createViteServer, createLogger } from "vite";
 
 // vite.config.ts
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import path3 from "path";
+import path4 from "path";
 var vite_config_default = defineConfig({
   plugins: [
     react()
   ],
   resolve: {
     alias: {
-      "@": path3.resolve(import.meta.dirname, "client", "src"),
-      "@shared": path3.resolve(import.meta.dirname, "shared"),
-      "@assets": path3.resolve(import.meta.dirname, "attached_assets")
+      "@": path4.resolve(import.meta.dirname, "client", "src"),
+      "@shared": path4.resolve(import.meta.dirname, "shared"),
+      "@assets": path4.resolve(import.meta.dirname, "attached_assets")
     }
   },
-  root: path3.resolve(import.meta.dirname, "client"),
+  root: path4.resolve(import.meta.dirname, "client"),
   optimizeDeps: {
     include: ["lodash"]
   },
   build: {
-    outDir: path3.resolve(import.meta.dirname, "dist/public"),
+    outDir: path4.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
     chunkSizeWarningLimit: 1e3,
     commonjsOptions: {
@@ -26632,7 +26693,7 @@ async function setupVite(app2, server) {
   app2.use("*", async (req, res, next) => {
     const url = req.originalUrl;
     try {
-      const clientTemplate = path4.resolve(
+      const clientTemplate = path5.resolve(
         import.meta.dirname,
         "..",
         "client",
@@ -26652,7 +26713,7 @@ async function setupVite(app2, server) {
   });
 }
 function serveStatic(app2) {
-  const distPath = path4.resolve(import.meta.dirname, "public");
+  const distPath = path5.resolve(import.meta.dirname, "public");
   if (!fs4.existsSync(distPath)) {
     throw new Error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`
@@ -26676,7 +26737,7 @@ function serveStatic(app2) {
   }));
   app2.use("*", (_req, res) => {
     res.setHeader("Cache-Control", "no-cache, must-revalidate");
-    res.sendFile(path4.resolve(distPath, "index.html"));
+    res.sendFile(path5.resolve(distPath, "index.html"));
   });
 }
 
@@ -26876,13 +26937,13 @@ app.use(express2.urlencoded({ extended: false, limit: "10mb" }));
 app.use("/uploads", express2.static("server/uploads"));
 app.use((req, res, next) => {
   const start = Date.now();
-  const path5 = req.path;
+  const path6 = req.path;
   const isProduction4 = process.env.NODE_ENV === "production";
   let capturedJsonResponse = void 0;
-  if (req.method === "GET" && path5.startsWith("/api/")) {
-    if (path5.includes("/homepage-content") || path5.includes("/announcements")) {
+  if (req.method === "GET" && path6.startsWith("/api/")) {
+    if (path6.includes("/homepage-content") || path6.includes("/announcements")) {
       res.setHeader("Cache-Control", "public, max-age=60, s-maxage=120");
-    } else if (!path5.includes("/auth")) {
+    } else if (!path6.includes("/auth")) {
       res.setHeader("Cache-Control", "private, max-age=30");
     }
   }
@@ -26895,14 +26956,14 @@ app.use((req, res, next) => {
   }
   res.on("finish", () => {
     const duration = Date.now() - start;
-    if (path5.startsWith("/api")) {
-      performanceMonitor.recordRequest(req.method, req.route?.path || path5, duration, res.statusCode);
+    if (path6.startsWith("/api")) {
+      performanceMonitor.recordRequest(req.method, req.route?.path || path6, duration, res.statusCode);
     }
     if (res.statusCode >= 400 && res.statusCode < 500) {
-      console.log(`\u274C 4xx ERROR: ${req.method} ${req.originalUrl || path5} - Status ${res.statusCode} - Referer: ${req.get("referer") || "none"}`);
+      console.log(`\u274C 4xx ERROR: ${req.method} ${req.originalUrl || path6} - Status ${res.statusCode} - Referer: ${req.get("referer") || "none"}`);
     }
-    if (path5.startsWith("/api")) {
-      let logLine = `${req.method} ${path5} ${res.statusCode} in ${duration}ms`;
+    if (path6.startsWith("/api")) {
+      let logLine = `${req.method} ${path6} ${res.statusCode} in ${duration}ms`;
       if (!isProduction4 && capturedJsonResponse) {
         const sanitizedResponse = sanitizeLogData(capturedJsonResponse);
         logLine += ` :: ${JSON.stringify(sanitizedResponse)}`;

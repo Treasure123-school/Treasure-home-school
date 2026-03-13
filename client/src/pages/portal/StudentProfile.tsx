@@ -9,7 +9,7 @@ import { User, Mail, Phone, MapPin, Calendar, School, Save, Edit, Camera, BookOp
 import { Link } from 'wouter';
 import React, { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { FileUpload } from '@/components/ui/file-upload';
+import { ImageCapture } from '@/components/ui/image-capture';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -28,8 +28,9 @@ export default function StudentProfile() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
-  const [showImageUpload, setShowImageUpload] = useState(false);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [profileData, setProfileData] = useState({
     firstName: '',
     lastName: '',
@@ -78,21 +79,6 @@ export default function StudentProfile() {
     }
   }, [student, user]);
 
-  const handleProfileImageUpload = (result: any) => {
-    // Update auth context so avatar displays immediately
-    if (result?.url) {
-      updateUser({ profileImageUrl: result.url });
-    }
-
-    toast({
-      title: "Profile image updated",
-      description: "Your profile image has been uploaded successfully.",
-    });
-
-    // Refresh server data
-    queryClient.invalidateQueries({ queryKey: ['student', user.id] });
-    setShowImageUpload(false);
-  };
 
   const handleRemoveImage = async () => {
     try {
@@ -124,7 +110,40 @@ export default function StudentProfile() {
 
   const handleSave = async () => {
     try {
-      const response = await apiRequest('PATCH', `/api/students/${user.id}`, profileData);
+      setIsSaving(true);
+      let updatedProfileImageUrl = user?.profileImageUrl;
+
+      // Handle image upload if a new file was selected/captured
+      if (profileImageFile) {
+        const formData = new FormData();
+        formData.append('file', profileImageFile);
+        formData.append('uploadType', 'profile');
+        formData.append('userId', user?.id || '');
+
+        const token = localStorage.getItem('token');
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+          headers: {
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          }
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload profile image');
+        }
+
+        const uploadResult = await uploadResponse.json();
+        updatedProfileImageUrl = uploadResult.url;
+        
+        // Update auth context so avatar displays immediately
+        updateUser({ profileImageUrl: updatedProfileImageUrl });
+      }
+
+      const response = await apiRequest('PATCH', `/api/students/${user.id}`, {
+        ...profileData,
+        profileImageUrl: updatedProfileImageUrl
+      });
 
       if (!response.ok) {
         const error = await response.json();
@@ -137,16 +156,20 @@ export default function StudentProfile() {
         description: "Your profile has been updated successfully.",
       });
 
+      setProfileImageFile(null);
       setIsEditing(false);
 
       // Refresh student data
       queryClient.invalidateQueries({ queryKey: ['student', user.id] });
-    } catch (error) {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    } catch (error: any) {
       toast({
         title: "Update Failed",
         description: error instanceof Error ? error.message : "Failed to update profile. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -171,9 +194,9 @@ export default function StudentProfile() {
                 <Button variant="outline" onClick={() => setIsEditing(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleSave}>
+                <Button onClick={handleSave} disabled={isSaving}>
                   <Save className="h-4 w-4 mr-2" />
-                  Save Changes
+                  {isSaving ? "Saving..." : "Save Changes"}
                 </Button>
               </>
             ) : (
@@ -203,71 +226,48 @@ export default function StudentProfile() {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="text-center">
-                  <div className="relative inline-block">
-                    <Avatar className="h-24 w-24 mx-auto mb-4">
-                      <AvatarImage src={user?.profileImageUrl || student?.profileImage} />
-                      <AvatarFallback className="text-lg">
-                        {user.firstName[0]}{user.lastName[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    {isEditing && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full p-0"
-                          onClick={() => setShowImageUpload(!showImageUpload)}
-                          data-testid="profile-image-upload-button"
-                        >
-                          <Camera className="h-4 w-4" />
-                        </Button>
-                        {(user?.profileImageUrl || student?.profileImage) && (
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            className="absolute -top-2 -right-2 h-8 w-8 rounded-full p-0 shadow-lg"
-                            onClick={() => setShowRemoveConfirm(true)}
-                            data-testid="profile-image-remove-button"
-                            title="Remove Profile Image"
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </>
-                    )}
-                  </div>
+                  {isEditing ? (
+                    <>
+                      <ImageCapture
+                        value={profileImageFile}
+                        onChange={setProfileImageFile}
+                        label="Profile Photo"
+                        shape="circle"
+                        existingImageUrl={user?.profileImageUrl || student?.profileImage}
+                        onRemove={() => setShowRemoveConfirm(true)}
+                      />
 
-                  <AlertDialog open={showRemoveConfirm} onOpenChange={setShowRemoveConfirm}>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action will permanently remove your profile image. You can always upload a new one later.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleRemoveImage} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                          Remove Image
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                      <AlertDialog open={showRemoveConfirm} onOpenChange={setShowRemoveConfirm}>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action will permanently remove your profile image. You can always upload a new one later.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleRemoveImage} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                              Remove Image
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </>
+                  ) : (
+                    <>
+                      <Avatar className="h-24 w-24 mx-auto mb-4">
+                        <AvatarImage src={user?.profileImageUrl || student?.profileImage} />
+                        <AvatarFallback className="text-lg">
+                          {user.firstName[0]}{user.lastName[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                    </>
+                  )}
                   <h3 className="text-lg font-semibold">
                     {user.firstName} {user.lastName}
                   </h3>
                   <p className="text-muted-foreground">Student</p>
-
-                  {showImageUpload && (
-                    <div className="mt-4">
-                      <FileUpload
-                        type="profile"
-                        userId={user.id}
-                        onUploadSuccess={handleProfileImageUpload}
-                        className="max-w-sm mx-auto"
-                      />
-                    </div>
-                  )}
                 </div>
 
                 <div className="space-y-3">
