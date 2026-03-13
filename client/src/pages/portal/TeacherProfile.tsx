@@ -204,6 +204,42 @@ export default function TeacherProfile() {
     }
   }, [teacherProfile]);
 
+  const handleRemoveImage = async () => {
+    if (!window.confirm('Are you sure you want to remove your profile image?')) return;
+
+    try {
+      const response = await fetch('/api/upload/profile', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to remove image');
+      }
+
+      toast({
+        title: "Profile image removed",
+        description: "Your profile image has been removed successfully.",
+      });
+
+      // Update local state
+      setProfileData(prev => ({ ...prev, profileImageUrl: '' }));
+      // Update auth context
+      updateUser({ profileImageUrl: null });
+      // Invalidate queries
+      queryClient.invalidateQueries({ queryKey: ['/api/teacher/profile/me'] });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to remove profile image. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleProfileImageUpload = (result: any) => {
     // Update auth context so avatar displays immediately
     if (result?.url) {
@@ -476,6 +512,8 @@ export default function TeacherProfile() {
                     onChange={setProfileImageFile}
                     label="Profile Photo"
                     shape="circle"
+                    existingImageUrl={profileData.profileImageUrl}
+                    onRemove={handleRemoveImage}
                   />
                 ) : (
                   <>

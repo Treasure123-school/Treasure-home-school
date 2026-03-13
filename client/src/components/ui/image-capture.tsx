@@ -12,6 +12,8 @@ interface ImageCaptureProps {
   required?: boolean;
   className?: string;
   shape?: 'circle' | 'square';
+  existingImageUrl?: string | null;
+  onRemove?: () => void;
 }
 export function ImageCapture({
   value,
@@ -19,7 +21,9 @@ export function ImageCapture({
   label = 'Upload Image',
   required = false,
   className = '',
-  shape = 'circle'
+  shape = 'circle',
+  existingImageUrl = null,
+  onRemove
 }: ImageCaptureProps) {
   const { toast } = useToast();
   const [showDialog, setShowDialog] = useState(false);
@@ -194,6 +198,17 @@ export function ImageCapture({
               onClick={() => onChange(null)}
               className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full shadow-lg transition-colors"
               data-testid="button-remove-image"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+
+          {!value && existingImageUrl && (
+            <button
+              onClick={() => onRemove?.()}
+              className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full shadow-lg transition-colors"
+              data-testid="button-remove-existing-image"
+              title="Remove Profile Image"
             >
               <X className="h-4 w-4" />
             </button>

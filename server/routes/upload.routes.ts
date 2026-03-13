@@ -124,4 +124,39 @@ router.post("/", authenticateUser, upload.single("file"), async (req, res) => {
   }
 });
 
+router.delete("/profile", authenticateUser, async (req, res) => {
+  try {
+    const userId = req.body.userId || req.user!.id;
+    
+    // Authorization check
+    if (userId !== req.user!.id && req.user!.roleId > 2) {
+      return res.status(403).json({ message: "Not authorized to update this profile" });
+    }
+
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (user.profileImageUrl) {
+      const { deleteFileFromStorage } = await import("../upload-service");
+      await deleteFileFromStorage(user.profileImageUrl);
+      
+      await storage.updateUser(userId, {
+        profileImageUrl: null,
+      });
+      
+      console.log(`✅ [UPLOAD] Profile image removed for user: ${userId}`);
+    }
+
+    res.json({
+      success: true,
+      message: "Profile image removed successfully",
+    });
+  } catch (error: any) {
+    console.error("Profile image deletion error:", error);
+    res.status(500).json({ message: error.message || "Internal server error during deletion" });
+  }
+});
+
 export default router;
