@@ -281,9 +281,8 @@ export default function AdminProfile() {
       title: "Profile image updated",
       description: "Your profile image has been uploaded successfully.",
     });
-    queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-    setShowImageUpload(false);
-  };
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    };
 
   return (
     <div className="space-y-6">

@@ -965,7 +965,9 @@ export default function StudentReportCard() {
               attendance: attendance,
               affectiveTraits: affectiveTraits,
               psychomotorSkills: psychomotorSkills,
-              studentPhoto: reportCard.studentPhoto,
+              studentPhoto: reportCard.studentPhoto || user?.profileImageUrl,
+              gender: user?.gender || studentDetails?.gender || '',
+              dateOfBirth: studentDetails?.dateOfBirth ? format(new Date(studentDetails?.dateOfBirth), 'dd-MMM-yyyy') : '',
               dateIssued: format(new Date(), 'dd-MMM-yyyy'),
             }}
             testWeight={40}

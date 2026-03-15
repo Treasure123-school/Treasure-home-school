@@ -110,6 +110,8 @@ interface ReportCardData {
   isSSS?: boolean;
   termName: string;
   academicSession?: string;
+  dateOfBirth?: string;
+  gender?: string;
   averagePercentage: number;
   overallGrade: string;
   position: number;
@@ -579,6 +581,19 @@ export function ProfessionalReportCard({
                   <span className="text-muted-foreground text-xs">Session</span>
                   <span className="font-medium" data-testid="text-session">{reportCard.academicSession || '2024/2025'}</span>
                 </div>
+                {/* Dynamically added properties */}
+                {reportCard.dateOfBirth && (
+                  <div className="flex flex-col">
+                    <span className="text-muted-foreground text-xs">Date of Birth</span>
+                    <span className="font-medium" data-testid="text-dob">{reportCard.dateOfBirth}</span>
+                  </div>
+                )}
+                {reportCard.gender && (
+                  <div className="flex flex-col">
+                    <span className="text-muted-foreground text-xs">Gender</span>
+                    <span className="font-medium" data-testid="text-gender">{reportCard.gender}</span>
+                  </div>
+                )}
                 {/* Display department for SSS classes */}
                 {reportCard.isSSS && reportCard.department && (
                   <div className="flex flex-col col-span-2">

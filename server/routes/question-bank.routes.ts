@@ -418,6 +418,69 @@ router.post('/api/question-bank/items/bulk-csv', authenticateUser, async (req: a
 //  EXAM GENERATION FROM BANK
 // ═══════════════════════════════════════════
 
+// POST /api/question-bank/auto-generate — Simplified auto-generation with flat filters (preview only)
+router.post('/api/question-bank/auto-generate', authenticateUser, async (req: any, res: Response) => {
+    try {
+        const { classId, subjectId, termId, topicId, count, questionType, difficulty, excludeIds } = req.body;
+
+        if (!classId || !subjectId || !termId) {
+            return sendBadRequest(res, 'classId, subjectId, and termId are required');
+        }
+        const numQuestions = parseInt(count) || 10;
+        if (numQuestions < 1 || numQuestions > 100) {
+            return sendBadRequest(res, 'count must be between 1 and 100');
+        }
+
+        // Build filters for the existing getQuestionBankItemsFiltered method
+        const filters: any = {
+            classId: parseInt(classId),
+            subjectId: parseInt(subjectId),
+            termId: parseInt(termId),
+            status: 'active',
+        };
+        if (topicId) filters.topicId = parseInt(topicId);
+        if (difficulty && difficulty !== 'mixed') filters.difficulty = difficulty;
+        if (questionType && questionType !== 'all' && questionType !== 'both') filters.questionType = questionType;
+
+        // Get all matching questions from the bank
+        let pool = await storage.getQuestionBankItemsFiltered(filters);
+
+        // If questionType is 'both', filter for MCQ + theory types only
+        if (questionType === 'both') {
+            pool = pool.filter((q: any) =>
+                q.questionType === 'multiple_choice' || q.questionType === 'text' || q.questionType === 'essay'
+            );
+        }
+
+        // Exclude already-selected question IDs (for replace functionality)
+        const excludeSet = new Set((excludeIds || []).map((id: any) => parseInt(id)));
+        if (excludeSet.size > 0) {
+            pool = pool.filter((q: any) => !excludeSet.has(q.id));
+        }
+
+        // Randomly shuffle and pick the requested count
+        const shuffled = pool.sort(() => Math.random() - 0.5);
+        const selected = shuffled.slice(0, numQuestions);
+
+        // Fetch options for each selected question
+        const questionsWithOptions = await Promise.all(selected.map(async (q: any) => {
+            const options = await storage.getQuestionBankItemOptions(q.id);
+            return { ...q, options };
+        }));
+
+        sendSuccess(res, {
+            questions: questionsWithOptions,
+            count: questionsWithOptions.length,
+            totalAvailable: pool.length,
+            shortfall: pool.length < numQuestions
+                ? `Requested ${numQuestions} questions but only ${pool.length} available in the bank matching your filters`
+                : null,
+        });
+    } catch (error) {
+        handleRouteError(res, error, 'questionBank.autoGenerate');
+    }
+});
+
 // POST /api/question-bank/generate — Smart random generation
 router.post('/api/question-bank/generate', authenticateUser, async (req: any, res: Response) => {
     try {

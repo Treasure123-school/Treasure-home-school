@@ -3622,6 +3622,7 @@ export class DatabaseStorage implements IStorage {
         score: schema.examSessions.score,
         maxScore: schema.examSessions.maxScore,
         status: schema.examSessions.status,
+        metadata: schema.examSessions.metadata,
         createdAt: schema.examSessions.createdAt
       })
         .from(schema.examSessions)
