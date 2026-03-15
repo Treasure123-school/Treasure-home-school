@@ -1,4 +1,8 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode, useCallback } from 'react';
+import { useLocation } from 'wouter';
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { apiRequest } from './queryClient';
+import { useToast } from '@/hooks/use-toast';
 
 interface AuthUser {
   id: string;
@@ -25,68 +29,134 @@ interface AuthContextType {
   updateUser: (updates: Partial<AuthUser>) => void;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isSessionExpiring: boolean;
+  stayLoggedIn: () => void;
 }
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Constants for session management
+const TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes of inactivity before logout
+const WARNING_MS = 1 * 60 * 1000;  // Show warning 1 minute before logout
+const ACTIVITY_EVENTS = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart', 'mousedown', 'wheel'] as const;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSessionExpiring, setIsSessionExpiring] = useState(false);
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
 
+  // Use refs to avoid stale closures in event handlers and intervals
+  const sessionExpiringRef = useRef(false);
+  const logoutRef = useRef<(msg?: string) => void>(() => {});
+
+  // Keep the ref in sync with state
   useEffect(() => {
-    // Check for stored auth data on mount
+    sessionExpiringRef.current = isSessionExpiring;
+  }, [isSessionExpiring]);
+
+  const logout = useCallback(async (forcedMsg?: string) => {
+    try {
+      await apiRequest('POST', '/api/auth/logout', {}).catch(() => {});
+    } catch {}
+
+    setUser(null);
+    localStorage.removeItem('auth-user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('last-activity');
+    setIsSessionExpiring(false);
+
+    if (forcedMsg) {
+      toast({
+        title: "Session Expired",
+        description: forcedMsg,
+        variant: "destructive",
+      });
+      setLocation('/login');
+    }
+  }, [setLocation, toast]);
+
+  // Keep logoutRef in sync so the interval always calls the latest version
+  useEffect(() => {
+    logoutRef.current = logout;
+  }, [logout]);
+
+  const stayLoggedIn = useCallback(() => {
+    localStorage.setItem('last-activity', Date.now().toString());
+    setIsSessionExpiring(false);
+  }, []);
+
+  // ── Mount-time: check stored session & attach listeners ──
+  useEffect(() => {
     const storedUser = localStorage.getItem('auth-user');
     const lastActivity = localStorage.getItem('last-activity');
     const now = Date.now();
-    const TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
-    
+
     if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
-        // 30 minute inactivity check
         if (lastActivity && (now - parseInt(lastActivity) > TIMEOUT_MS)) {
-          logout();
+          logoutRef.current("You have been signed out due to inactivity.");
         } else {
           setUser(parsedUser);
           localStorage.setItem('last-activity', now.toString());
         }
       } catch {
-        logout();
+        logoutRef.current();
       }
     }
-    
+
     setIsLoading(false);
 
-    // Inactivity tracking (Throttled to max once every 5 seconds)
-    let lastUpdate = Date.now();
+    // Only attach activity listeners if user is signed in
+    if (!storedUser) return;
+
+    // ── Activity tracking ──
+    // Every user interaction (mouse, keyboard, scroll, touch) resets the idle clock.
+    // Throttled to once every 3 seconds to avoid excessive localStorage writes.
+    let lastUpdate = 0;
     const activityHandler = () => {
-      const currentTime = Date.now();
-      if (currentTime - lastUpdate > 5000) {
-        localStorage.setItem('last-activity', currentTime.toString());
-        lastUpdate = currentTime;
+      // While the warning modal is visible, don't silently dismiss it —
+      // the user must explicitly click "Stay Logged In"
+      if (sessionExpiringRef.current) return;
+
+      const now = Date.now();
+      if (now - lastUpdate > 3000) {
+        localStorage.setItem('last-activity', now.toString());
+        lastUpdate = now;
       }
     };
-    
-    window.addEventListener('mousemove', activityHandler, { passive: true });
-    window.addEventListener('keydown', activityHandler, { passive: true });
-    window.addEventListener('click', activityHandler, { passive: true });
-    window.addEventListener('scroll', activityHandler, { passive: true });
 
-    // Auto-logout timer
+    // Attach on the capture phase so we never miss events even if
+    // a child component calls stopPropagation()
+    for (const evt of ACTIVITY_EVENTS) {
+      window.addEventListener(evt, activityHandler, { passive: true, capture: true });
+    }
+
+    // ── Idle check interval (every 5 s) ──
     const interval = setInterval(() => {
-      const last = localStorage.getItem('last-activity');
-      if (last && (Date.now() - parseInt(last) > TIMEOUT_MS)) {
-        logout();
+      const lastStr = localStorage.getItem('last-activity');
+      if (!lastStr) return;
+
+      const idleMs = Date.now() - parseInt(lastStr, 10);
+
+      if (idleMs > TIMEOUT_MS) {
+        logoutRef.current("You have been securely logged out due to inactivity.");
+      } else if (idleMs > TIMEOUT_MS - WARNING_MS) {
+        setIsSessionExpiring(true);
+      } else {
+        setIsSessionExpiring(false);
       }
-    }, 60000); // Check every minute
+    }, 5000);
 
     return () => {
-      window.removeEventListener('mousemove', activityHandler);
-      window.removeEventListener('keydown', activityHandler);
-      window.removeEventListener('click', activityHandler);
-      window.removeEventListener('scroll', activityHandler);
+      for (const evt of ACTIVITY_EVENTS) {
+        window.removeEventListener(evt, activityHandler, { capture: true } as EventListenerOptions);
+      }
       clearInterval(interval);
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run ONCE on mount — refs handle changing values
 
   const login = (userData: AuthUser, token: string) => {
     setUser(userData);
@@ -95,11 +165,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('last-activity', Date.now().toString());
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('auth-user');
-    localStorage.removeItem('token');
-    localStorage.removeItem('last-activity');
+  const manualLogout = () => {
+    logout();
   };
 
   const updateUser = (updates: Partial<AuthUser>) => {
@@ -113,8 +180,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAuthenticated = user !== null;
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, updateUser, isAuthenticated, isLoading }}>
+    <AuthContext.Provider value={{ user, login, logout: manualLogout, updateUser, isAuthenticated, isLoading, isSessionExpiring, stayLoggedIn }}>
       {children}
+
+      {/* Session Expiry Warning Modal */}
+      <AlertDialog open={isSessionExpiring} onOpenChange={(open) => {
+        if (!open) stayLoggedIn();
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Session Expiring</AlertDialogTitle>
+            <AlertDialogDescription>
+              You've been inactive for a while. Your session will expire in about 1 minute.
+              Click the button below to stay logged in.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={(e) => {
+              e.preventDefault();
+              stayLoggedIn();
+            }}>
+              Stay Logged In
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AuthContext.Provider>
   );
 }

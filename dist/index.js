@@ -5807,6 +5807,7 @@ var init_storage = __esm({
             score: schema.examSessions.score,
             maxScore: schema.examSessions.maxScore,
             status: schema.examSessions.status,
+            metadata: schema.examSessions.metadata,
             createdAt: schema.examSessions.createdAt
           }).from(schema.examSessions).where(eq2(schema.examSessions.id, sessionId)).limit(1);
           if (!sessionResult[0]) {
@@ -9744,6 +9745,7 @@ var init_schema = __esm({
       correct_answers: integer2("correct_answers"),
       incorrect_answers: integer2("incorrect_answers"),
       total_questions: integer2("total_questions"),
+      timeTaken: integer2("time_taken").default(0),
       submitted_at: integer2("submitted_at", { mode: "timestamp" }),
       autoScored: integer2("auto_scored", { mode: "boolean" }).notNull().default(false),
       recordedBy: text2("recorded_by").notNull().references(() => users2.id),
@@ -15872,6 +15874,51 @@ router5.post("/api/question-bank/items/bulk-csv", authenticateUser, async (req, 
     handleRouteError(res, error, "questionBank.items.bulkCSV");
   }
 });
+router5.post("/api/question-bank/auto-generate", authenticateUser, async (req, res) => {
+  try {
+    const { classId, subjectId, termId, topicId, count, questionType, difficulty, excludeIds } = req.body;
+    if (!classId || !subjectId || !termId) {
+      return sendBadRequest(res, "classId, subjectId, and termId are required");
+    }
+    const numQuestions = parseInt(count) || 10;
+    if (numQuestions < 1 || numQuestions > 100) {
+      return sendBadRequest(res, "count must be between 1 and 100");
+    }
+    const filters = {
+      classId: parseInt(classId),
+      subjectId: parseInt(subjectId),
+      termId: parseInt(termId),
+      status: "active"
+    };
+    if (topicId) filters.topicId = parseInt(topicId);
+    if (difficulty && difficulty !== "mixed") filters.difficulty = difficulty;
+    if (questionType && questionType !== "all" && questionType !== "both") filters.questionType = questionType;
+    let pool2 = await storage.getQuestionBankItemsFiltered(filters);
+    if (questionType === "both") {
+      pool2 = pool2.filter(
+        (q) => q.questionType === "multiple_choice" || q.questionType === "text" || q.questionType === "essay"
+      );
+    }
+    const excludeSet = new Set((excludeIds || []).map((id) => parseInt(id)));
+    if (excludeSet.size > 0) {
+      pool2 = pool2.filter((q) => !excludeSet.has(q.id));
+    }
+    const shuffled = pool2.sort(() => Math.random() - 0.5);
+    const selected = shuffled.slice(0, numQuestions);
+    const questionsWithOptions = await Promise.all(selected.map(async (q) => {
+      const options = await storage.getQuestionBankItemOptions(q.id);
+      return { ...q, options };
+    }));
+    sendSuccess(res, {
+      questions: questionsWithOptions,
+      count: questionsWithOptions.length,
+      totalAvailable: pool2.length,
+      shortfall: pool2.length < numQuestions ? `Requested ${numQuestions} questions but only ${pool2.length} available in the bank matching your filters` : null
+    });
+  } catch (error) {
+    handleRouteError(res, error, "questionBank.autoGenerate");
+  }
+});
 router5.post("/api/question-bank/generate", authenticateUser, async (req, res) => {
   try {
     const { bankId, classId, subjectId, termId, distribution } = req.body;
@@ -16956,6 +17003,15 @@ async function autoScoreExamSession(sessionId, storage2) {
     if (!SYSTEM_AUTO_SCORING_UUID || typeof SYSTEM_AUTO_SCORING_UUID !== "string") {
       throw new Error(`CRITICAL: Invalid recordedBy UUID: ${SYSTEM_AUTO_SCORING_UUID}`);
     }
+    let timeTaken = 0;
+    if (session2.metadata) {
+      try {
+        const metadata = typeof session2.metadata === "string" ? JSON.parse(session2.metadata) : session2.metadata;
+        timeTaken = metadata.timeTakenSeconds || 0;
+      } catch (e) {
+        console.warn("[AUTO-SCORE] Failed to parse session metadata for timeTaken", e);
+      }
+    }
     const resultData = {
       examId: session2.examId,
       studentId: session2.studentId,
@@ -16963,7 +17019,8 @@ async function autoScoreExamSession(sessionId, storage2) {
       maxScore: maxPossibleScore,
       marksObtained: totalAutoScore,
       autoScored: breakdown.pendingManualReview === 0,
-      recordedBy: SYSTEM_AUTO_SCORING_UUID
+      recordedBy: SYSTEM_AUTO_SCORING_UUID,
+      timeTaken
     };
     let savedResultId = null;
     try {
@@ -17083,13 +17140,22 @@ async function mergeExamScores(answerId, storage2) {
         autoScored: false
         // Now includes manual scores
       });
-    } else {
+      let timeTaken = 0;
+      if (session2.metadata) {
+        try {
+          const metadata = typeof session2.metadata === "string" ? JSON.parse(session2.metadata) : session2.metadata;
+          timeTaken = metadata.timeTakenSeconds || 0;
+        } catch (e) {
+          console.warn("[MERGE-SCORES] Failed to parse session metadata for timeTaken", e);
+        }
+      }
       await storage2.recordExamResult({
         examId: session2.examId,
         studentId: session2.studentId,
         score: totalScore,
         maxScore,
         marksObtained: totalScore,
+        timeTaken,
         autoScored: false,
         recordedBy: session2.studentId
         // System recorded
@@ -17591,6 +17657,21 @@ async function registerRoutes(app2) {
               } catch (e) {
               }
             }
+            if (baseResult.timeTakenSeconds === 0 && session2.startedAt && session2.submittedAt) {
+              try {
+                const start = new Date(session2.startedAt).getTime();
+                const end = new Date(session2.submittedAt).getTime();
+                if (start > 0 && end > start) {
+                  baseResult.timeTakenSeconds = Math.floor((end - start) / 1e3);
+                }
+              } catch (e) {
+              }
+            }
+          }
+          if (baseResult.timeTakenSeconds > 0) {
+            const mins = Math.floor(baseResult.timeTakenSeconds / 60);
+            const secs = baseResult.timeTakenSeconds % 60;
+            baseResult.timeTakenFormatted = mins === 0 ? `${secs} seconds` : `${mins} minute${mins !== 1 ? "s" : ""} ${secs} second${secs !== 1 ? "s" : ""}`;
           }
           return baseResult;
         } catch (enrichError) {
@@ -17654,21 +17735,31 @@ async function registerRoutes(app2) {
       let submissionReason = "manual";
       let violationCount = 0;
       try {
-        const sessions2 = await storage.getExamSessionsByStudent(studentId);
-        const matchingSession2 = sessions2.find((s) => s.examId === examId && s.status === "completed");
+        const sessions = await storage.getExamSessionsByStudent(studentId);
+        const matchingSession2 = sessions.find((s) => s.examId === examId && s.isCompleted);
         if (matchingSession2) {
           const metadata = typeof matchingSession2.metadata === "string" ? JSON.parse(matchingSession2.metadata) : matchingSession2.metadata;
           timeTakenSeconds = metadata?.timeTakenSeconds || 0;
           submissionReason = metadata?.submissionReason || "manual";
           violationCount = metadata?.violationCount || 0;
+          if (timeTakenSeconds === 0 && matchingSession2.startedAt && matchingSession2.submittedAt) {
+            try {
+              const start = new Date(matchingSession2.startedAt).getTime();
+              const end = new Date(matchingSession2.submittedAt).getTime();
+              if (start > 0 && end > start) {
+                timeTakenSeconds = Math.floor((end - start) / 1e3);
+              }
+            } catch (e) {
+            }
+          }
         }
       } catch (sessionError) {
       }
       const score = result.score ?? result.marksObtained ?? 0;
       const maxScore = result.maxScore ?? exam.totalMarks ?? 100;
       const percentage = maxScore > 0 ? Math.round(score / maxScore * 100) : 0;
-      const sessions = await storage.getExamSessionsByStudent(studentId);
-      const matchingSession = sessions.find((s) => s.examId === examId && s.status === "completed") || sessions.find((s) => s.examId === examId);
+      const allSessions = await storage.getExamSessionsByStudent(studentId);
+      const matchingSession = allSessions.find((s) => s.examId === examId && s.isCompleted) || allSessions.find((s) => s.examId === examId);
       let questionDetails = [];
       if (matchingSession) {
         console.log(`[STRICT-EXAM-RESULT] Using session ${matchingSession.id} for question breakdown`);
@@ -17715,6 +17806,13 @@ async function registerRoutes(app2) {
           };
         }));
       }
+      const finalTimeTaken = result.timeTaken || timeTakenSeconds;
+      const formatTimeTaken = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        if (mins === 0) return `${secs} seconds`;
+        return `${mins} minute${mins !== 1 ? "s" : ""} ${secs} second${secs !== 1 ? "s" : ""}`;
+      };
       const enrichedResult = {
         id: result.id,
         examId: result.examId,
@@ -17728,8 +17826,9 @@ async function registerRoutes(app2) {
         correct_answers: result.correctAnswers ?? 0,
         incorrect_answers: result.incorrectAnswers ?? 0,
         total_questions: result.totalQuestions ?? 0,
-        time_taken: result.timeTaken ?? timeTakenSeconds,
-        timeTakenSeconds: result.timeTaken || timeTakenSeconds,
+        time_taken: finalTimeTaken,
+        timeTakenSeconds: finalTimeTaken,
+        timeTakenFormatted: finalTimeTaken > 0 ? formatTimeTaken(finalTimeTaken) : null,
         submissionReason,
         violationCount,
         examTitle: exam.name,
@@ -18323,6 +18422,7 @@ async function registerRoutes(app2) {
         await storage.updateExamResult(existingResult.id, {
           correct_answers: correctAnswersCount,
           total_questions: examQuestions3.length,
+          timeTaken: timeTakenSeconds,
           submitted_at: now
         });
       }

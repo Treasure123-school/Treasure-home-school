@@ -25,7 +25,7 @@ if (!JWT_SECRET) {
   process.exit(1);
 }
 export const SECRET_KEY = JWT_SECRET as string;
-export const JWT_EXPIRES_IN = '15m';
+export const JWT_EXPIRES_IN = '24h';
 
 export function normalizeUuid(raw: any): string | undefined {
   if (!raw) return undefined;
