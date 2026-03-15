@@ -37,16 +37,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storedUser = localStorage.getItem('auth-user');
     const lastActivity = localStorage.getItem('last-activity');
     const now = Date.now();
+    const TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
     
-    // Auto-logout on reload (since sessionStorage or similar would be better, but user specifically asked for reload logout)
-    // We can use a session flag to detect reloads
-    const isReload = sessionStorage.getItem('is-reload') === 'true';
-    
-    if (storedUser && !isReload) {
+    if (storedUser) {
       try {
         const parsedUser = JSON.parse(storedUser);
-        // 5 minute inactivity check
-        if (lastActivity && (now - parseInt(lastActivity) > 5 * 60 * 1000)) {
+        // 30 minute inactivity check
+        if (lastActivity && (now - parseInt(lastActivity) > TIMEOUT_MS)) {
           logout();
         } else {
           setUser(parsedUser);
@@ -55,38 +52,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         logout();
       }
-    } else if (isReload) {
-      logout();
-      sessionStorage.removeItem('is-reload');
     }
     
     setIsLoading(false);
 
-    // Set reload flag for next load
-    const handleUnload = () => {
-      sessionStorage.setItem('is-reload', 'true');
-    };
-    window.addEventListener('beforeunload', handleUnload);
-
-    // Inactivity tracking
+    // Inactivity tracking (Throttled to max once every 5 seconds)
+    let lastUpdate = Date.now();
     const activityHandler = () => {
-      localStorage.setItem('last-activity', Date.now().toString());
+      const currentTime = Date.now();
+      if (currentTime - lastUpdate > 5000) {
+        localStorage.setItem('last-activity', currentTime.toString());
+        lastUpdate = currentTime;
+      }
     };
-    window.addEventListener('mousemove', activityHandler);
-    window.addEventListener('keydown', activityHandler);
-    window.addEventListener('click', activityHandler);
-    window.addEventListener('scroll', activityHandler);
+    
+    window.addEventListener('mousemove', activityHandler, { passive: true });
+    window.addEventListener('keydown', activityHandler, { passive: true });
+    window.addEventListener('click', activityHandler, { passive: true });
+    window.addEventListener('scroll', activityHandler, { passive: true });
 
     // Auto-logout timer
     const interval = setInterval(() => {
       const last = localStorage.getItem('last-activity');
-      if (last && (Date.now() - parseInt(last) > 5 * 60 * 1000)) {
+      if (last && (Date.now() - parseInt(last) > TIMEOUT_MS)) {
         logout();
       }
     }, 60000); // Check every minute
 
     return () => {
-      window.removeEventListener('beforeunload', handleUnload);
       window.removeEventListener('mousemove', activityHandler);
       window.removeEventListener('keydown', activityHandler);
       window.removeEventListener('click', activityHandler);
@@ -100,7 +93,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('auth-user', JSON.stringify(userData));
     localStorage.setItem('token', token);
     localStorage.setItem('last-activity', Date.now().toString());
-    sessionStorage.removeItem('is-reload');
   };
 
   const logout = () => {
@@ -108,7 +100,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('auth-user');
     localStorage.removeItem('token');
     localStorage.removeItem('last-activity');
-    sessionStorage.removeItem('is-reload');
   };
 
   const updateUser = (updates: Partial<AuthUser>) => {

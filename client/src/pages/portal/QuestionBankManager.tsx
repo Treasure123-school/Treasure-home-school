@@ -132,6 +132,7 @@ export default function QuestionBankManager() {
             const r = await apiRequest('GET', `/api/question-bank/items?${params.toString()}`);
             return r.ok ? r.json() : [];
         },
+        enabled: !!selectedBankId,
     });
 
     // Create bank
@@ -400,15 +401,15 @@ export default function QuestionBankManager() {
 
     return (
         <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                <div>
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-2">
+                <div className="flex-1">
                     <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                        <Database className="w-7 h-7 text-primary" />
-                        Question Bank
+                        <Database className="w-7 h-7 text-primary shrink-0" />
+                        <span className="truncate">Question Bank</span>
                     </h1>
-                    <p className="text-muted-foreground mt-1">Manage reusable questions organized by curriculum</p>
+                    <p className="text-muted-foreground mt-1 text-sm sm:text-base">Manage reusable questions organized by curriculum</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                     <Button variant="outline" onClick={() => setIsBankDialogOpen(true)}>
                         <Plus className="w-4 h-4 mr-2" /> New Bank
                     </Button>
@@ -507,16 +508,24 @@ export default function QuestionBankManager() {
                 <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                         <span className="flex items-center gap-2"><BookOpen className="w-5 h-5" /> Questions</span>
-                        <Badge variant="secondary">{questions.length} found</Badge>
+                        {selectedBankId && (
+                            <Badge variant="secondary">{questions.length} found</Badge>
+                        )}
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {loadingQuestions ? (
+                    {!selectedBankId ? (
+                        <div className="text-center py-12">
+                            <Database className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
+                            <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">Select a Question Bank</p>
+                            <p className="text-muted-foreground">Please select a bank from the dropdown above to view its questions.</p>
+                        </div>
+                    ) : loadingQuestions ? (
                         <div className="flex justify-center py-8 text-muted-foreground">Loading questions...</div>
                     ) : questions.length === 0 ? (
                         <div className="text-center py-12">
                             <Database className="w-12 h-12 mx-auto text-muted-foreground/40 mb-3" />
-                            <p className="text-muted-foreground">No questions found. {selectedBankId ? 'Add your first question!' : 'Select a bank to get started.'}</p>
+                            <p className="text-muted-foreground">No questions found in this bank. Add your first question!</p>
                         </div>
                     ) : (
                         <div className="space-y-3">

@@ -475,6 +475,7 @@ export const examResults = sqliteTable("exam_results", {
   correct_answers: integer("correct_answers"),
   incorrect_answers: integer("incorrect_answers"),
   total_questions: integer("total_questions"),
+  timeTaken: integer("time_taken").default(0),
   submitted_at: integer("submitted_at", { mode: "timestamp" }),
   autoScored: integer("auto_scored", { mode: "boolean" }).notNull().default(false),
   recordedBy: text("recorded_by").notNull().references(() => users.id),

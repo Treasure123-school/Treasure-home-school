@@ -3,7 +3,7 @@ import ExamQuestionAdder from './ExamQuestionAdder';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { optimisticToggle, optimisticDelete, optimisticCreate, optimisticUpdateItem, rollbackOnError } from '@/lib/optimisticUpdates';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,18 +14,29 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { insertExamSchema, insertExamQuestionSchema, insertQuestionOptionSchema, type Exam, type ExamQuestion, type QuestionOption, type Class, type Subject } from '@shared/schema';
 import { z } from 'zod';
-import { Plus, Edit, Search, BookOpen, Trash2, Clock, Users, FileText, Eye, Play, Upload, Save, Shield, MoreVertical } from 'lucide-react';
+import { Plus, Edit, Search, BookOpen, Trash2, Clock, Users, FileText, Eye, Play, Upload, Save, Shield, MoreVertical, ChevronDown, ChevronUp, Settings } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 
 // Form schemas - Use the shared insertExamSchema which has proper preprocessing
-const examFormSchema = insertExamSchema.omit({ createdBy: true });
+const examFormSchema = insertExamSchema.omit({ 
+  createdBy: true,
+  allowRetakes: true,
+  shuffleOptions: true,
+  enableProctoring: true,
+  lockdownMode: true,
+  requireWebcam: true,
+  requireFullscreen: true,
+  maxTabSwitches: true
+});
 
 const questionFormSchema = insertExamQuestionSchema
   .omit({ examId: true, orderNumber: true }) // These are added later in onSubmitQuestion
@@ -120,6 +131,8 @@ export default function ExamManagement() {
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<ExamQuestion | null>(null);
   const [previewExam, setPreviewExam] = useState<Exam | null>(null);
+  const [isSecurityExpanded, setIsSecurityExpanded] = useState(false);
+  const [deletingExam, setDeletingExam] = useState<Exam | null>(null);
 
   // Track pending deletions to prevent race conditions with Realtime
   const pendingDeletionsRef = useRef<Set<number>>(new Set());
@@ -140,19 +153,12 @@ export default function ExamManagement() {
       timerMode: 'individual',
       timeLimit: 60,
       isPublished: false,
-      allowRetakes: false,
       shuffleQuestions: false,
       autoGradingEnabled: true,
       instantFeedback: false,
       showCorrectAnswers: false,
       passingScore: 60,
       gradingScale: 'standard',
-      enableProctoring: false,
-      lockdownMode: false,
-      requireWebcam: false,
-      requireFullscreen: false,
-      maxTabSwitches: 3,
-      shuffleOptions: false,
     }
   });
 
@@ -930,19 +936,12 @@ export default function ExamManagement() {
       startTime: parseToDate(exam.startTime),
       endTime: parseToDate(exam.endTime),
       isPublished: exam.isPublished || false,
-      allowRetakes: exam.allowRetakes || false,
       shuffleQuestions: exam.shuffleQuestions || false,
-      shuffleOptions: exam.shuffleOptions || false,
       autoGradingEnabled: exam.autoGradingEnabled !== false,
       instantFeedback: exam.instantFeedback || false,
       showCorrectAnswers: exam.showCorrectAnswers || false,
       passingScore: exam.passingScore || 60,
       gradingScale: (exam.gradingScale as 'standard' | 'percentage' | 'points' | 'custom') || 'standard',
-      enableProctoring: exam.enableProctoring || false,
-      lockdownMode: exam.lockdownMode || false,
-      requireWebcam: exam.requireWebcam || false,
-      requireFullscreen: exam.requireFullscreen || false,
-      maxTabSwitches: exam.maxTabSwitches || 3,
     });
 
     setIsExamDialogOpen(true);
@@ -1943,23 +1942,7 @@ export default function ExamManagement() {
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2">
-                    <Controller
-                      name="allowRetakes"
-                      control={examControl}
-                      render={({ field }) => (
-                        <Switch
-                          checked={field.value || false}
-                          onCheckedChange={field.onChange}
-                          data-testid="switch-exam-retakes"
-                        />
-                      )}
-                    />
-                    <div>
-                      <Label>Allow Retakes</Label>
-                      <p className="text-xs text-muted-foreground">Students can attempt multiple times</p>
-                    </div>
-                  </div>
+
                 </div>
 
                 <div className="flex items-center space-x-2">
@@ -2077,138 +2060,7 @@ export default function ExamManagement() {
                 </div>
               </div>
 
-              {/* Proctoring & Security Settings */}
-              <div className="space-y-4 p-4 border rounded-lg bg-red-50 dark:bg-red-950/20">
-                <h4 className="font-medium text-sm flex items-center gap-2">
-                  <Shield className="w-4 h-4" />
-                  Proctoring & Security Settings
-                </h4>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <Controller
-                      name="enableProctoring"
-                      control={examControl}
-                      render={({ field }) => (
-                        <Switch
-                          checked={field.value || false}
-                          onCheckedChange={field.onChange}
-                          data-testid="switch-enable-proctoring"
-                        />
-                      )}
-                    />
-                    <div>
-                      <Label>Enable Proctoring</Label>
-                      <p className="text-xs text-muted-foreground">Monitor students during exam</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Controller
-                      name="lockdownMode"
-                      control={examControl}
-                      render={({ field }) => (
-                        <Switch
-                          checked={field.value || false}
-                          onCheckedChange={field.onChange}
-                          data-testid="switch-lockdown-mode"
-                        />
-                      )}
-                    />
-                    <div>
-                      <Label>Lockdown Mode</Label>
-                      <p className="text-xs text-muted-foreground">Prevent tab switching & copy-paste</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <Controller
-                      name="requireWebcam"
-                      control={examControl}
-                      render={({ field }) => (
-                        <Switch
-                          checked={field.value || false}
-                          onCheckedChange={field.onChange}
-                          data-testid="switch-require-webcam"
-                        />
-                      )}
-                    />
-                    <div>
-                      <Label>Require Webcam</Label>
-                      <p className="text-xs text-muted-foreground">Students must enable camera</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Controller
-                      name="requireFullscreen"
-                      control={examControl}
-                      render={({ field }) => (
-                        <Switch
-                          checked={field.value || false}
-                          onCheckedChange={field.onChange}
-                          data-testid="switch-require-fullscreen"
-                        />
-                      )}
-                    />
-                    <div>
-                      <Label>Require Fullscreen</Label>
-                      <p className="text-xs text-muted-foreground">Force fullscreen mode</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="maxTabSwitches">Max Tab Switches</Label>
-                    <Input
-                      id="maxTabSwitches"
-                      type="number"
-                      min="0"
-                      max="10"
-                      {...registerExam('maxTabSwitches', { valueAsNumber: true })}
-                      data-testid="input-max-tab-switches"
-                      placeholder="3"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Auto-submit after this many violations (0 = unlimited)
-                    </p>
-                    {examErrors.maxTabSwitches && <p className="text-sm text-red-500">{examErrors.maxTabSwitches.message}</p>}
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Controller
-                      name="shuffleOptions"
-                      control={examControl}
-                      render={({ field }) => (
-                        <Switch
-                          checked={field.value || false}
-                          onCheckedChange={field.onChange}
-                          data-testid="switch-shuffle-options"
-                        />
-                      )}
-                    />
-                    <div>
-                      <Label>Shuffle Options</Label>
-                      <p className="text-xs text-muted-foreground">Randomize option order (A, B, C, D)</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-white dark:bg-gray-900 p-3 rounded border">
-                  <p className="text-sm font-medium mb-1">🔒 Security Features</p>
-                  <ul className="text-xs text-muted-foreground space-y-1">
-                    <li>• Proctoring monitors student activity during exams</li>
-                    <li>• Lockdown mode prevents cheating via external resources</li>
-                    <li>• Tab switching limits help maintain exam integrity</li>
-                    <li>• Shuffled options reduce answer sharing</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-2">
+              <div className="flex justify-end space-x-2 pt-4 border-t">
                 <Button type="button" variant="outline" onClick={() => handleExamDialogClose(false)}>
                   Cancel
                 </Button>
@@ -2492,83 +2344,73 @@ export default function ExamManagement() {
                             {questionCounts[exam.id] || 0} question{(questionCounts[exam.id] || 0) !== 1 ? 's' : ''}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setSelectedExam(exam)}
-                              data-testid={`button-manage-questions-${exam.id}`}
-                            >
-                              <Edit className="w-4 h-4 mr-1" />
-                              Questions
-                            </Button>
-                            <Button
-                              variant={exam.isPublished ? "default" : "secondary"}
-                              size="sm"
-                              onClick={() => togglePublishMutation.mutate({
-                                examId: exam.id,
-                                isPublished: !exam.isPublished
-                              })}
-                              disabled={togglingExamId === exam.id}
-                              data-testid={`button-toggle-publish-${exam.id}`}
-                            >
-                              <Play className="w-4 h-4 mr-1" />
-                              {togglingExamId === exam.id
-                                ? (exam.isPublished ? 'Unpublishing...' : 'Publishing...')
-                                : (exam.isPublished ? 'Unpublish' : 'Publish')
-                              }
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setPreviewExam(exam)}
-                              data-testid={`button-preview-exam-${exam.id}`}
-                              title="Preview exam as student"
-                            >
-                              <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEditExam(exam)}
-                              data-testid={`button-edit-exam-${exam.id}`}
-                              title="Edit exam settings"
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  disabled={deleteExamMutation.isPending}
-                                  data-testid={`button-delete-exam-${exam.id}`}
-                                  aria-label={`Delete exam ${exam.name}`}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Exam</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete the exam "{exam.name}"? This action cannot be undone and will permanently remove all exam questions and student results.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel disabled={deleteExamMutation.isPending}>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => deleteExamMutation.mutate(exam.id)}
-                                    disabled={deleteExamMutation.isPending}
-                                    className="bg-destructive hover:bg-destructive/90"
-                                  >
-                                    {deleteExamMutation.isPending ? 'Deleting...' : 'Delete Exam'}
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" data-testid={`button-exam-actions-${exam.id}`}>
+                                <MoreVertical className="h-4 w-4" />
+                                <span className="sr-only">Open actions</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem 
+                                onClick={() => setSelectedExam(exam)}
+                                className="cursor-pointer"
+                                data-testid={`menu-manage-questions-${exam.id}`}
+                              >
+                                <Edit className="w-4 h-4 mr-2 text-blue-500" />
+                                Manage Questions
+                              </DropdownMenuItem>
+                              
+                              <DropdownMenuItem 
+                                onClick={() => togglePublishMutation.mutate({
+                                  examId: exam.id,
+                                  isPublished: !exam.isPublished
+                                })}
+                                disabled={togglingExamId === exam.id}
+                                className="cursor-pointer"
+                                data-testid={`menu-toggle-publish-${exam.id}`}
+                              >
+                                <Play className={`w-4 h-4 mr-2 ${exam.isPublished ? "text-amber-500" : "text-green-500"}`} />
+                                {togglingExamId === exam.id
+                                  ? (exam.isPublished ? 'Unpublishing...' : 'Publishing...')
+                                  : (exam.isPublished ? 'Unpublish' : 'Publish')
+                                }
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem 
+                                onClick={() => setPreviewExam(exam)}
+                                className="cursor-pointer"
+                                data-testid={`menu-preview-exam-${exam.id}`}
+                              >
+                                <Eye className="w-4 h-4 mr-2 text-purple-500" />
+                                Preview Exam
+                              </DropdownMenuItem>
+
+                              <DropdownMenuItem 
+                                onClick={() => handleEditExam(exam)}
+                                className="cursor-pointer"
+                                data-testid={`menu-edit-exam-${exam.id}`}
+                              >
+                                <Settings className="w-4 h-4 mr-2 text-gray-500" />
+                                Exam Settings
+                              </DropdownMenuItem>
+
+                              <DropdownMenuSeparator />
+                              
+                              <DropdownMenuItem 
+                                className="text-destructive focus:text-destructive cursor-pointer"
+                                data-testid={`menu-delete-exam-${exam.id}`}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setDeletingExam(exam);
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete Exam
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -3063,6 +2905,41 @@ export default function ExamManagement() {
           }}
         />
       )}
+
+      {/* Delete Exam Confirmation Modal */}
+      <AlertDialog 
+        open={!!deletingExam} 
+        onOpenChange={(open) => {
+          if (!open && !deleteExamMutation.isPending) setDeletingExam(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Exam</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the exam "{deletingExam?.name}"? This action cannot be undone and will permanently remove all exam questions and student results.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteExamMutation.isPending}>Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={(e) => {
+                e.preventDefault();
+                if (deletingExam) {
+                  deleteExamMutation.mutate(deletingExam.id, {
+                    onSuccess: () => setDeletingExam(null),
+                    onError: () => setDeletingExam(null)
+                  });
+                }
+              }}
+              disabled={deleteExamMutation.isPending}
+            >
+              {deleteExamMutation.isPending ? 'Deleting...' : 'Delete Exam'}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

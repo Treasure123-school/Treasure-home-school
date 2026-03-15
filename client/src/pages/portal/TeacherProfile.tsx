@@ -28,6 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { apiRequest } from '@/lib/queryClient';
+import { getApiUrl } from '@/config/api';
 import type { TeacherProfileWithUser, Class } from '@shared/schema';
 
 export default function TeacherProfile() {

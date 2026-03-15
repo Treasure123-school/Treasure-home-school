@@ -572,6 +572,17 @@ async function autoScoreExamSession(sessionId: number, storage: any): Promise<vo
       throw new Error(`CRITICAL: Invalid recordedBy UUID: ${SYSTEM_AUTO_SCORING_UUID}`);
     }
 
+    // Extract timeTaken from session.metadata if available
+    let timeTaken = 0;
+    if (session.metadata) {
+      try {
+        const metadata = typeof session.metadata === 'string' ? JSON.parse(session.metadata) : session.metadata;
+        timeTaken = metadata.timeTakenSeconds || 0;
+      } catch (e) {
+        console.warn('[AUTO-SCORE] Failed to parse session metadata for timeTaken', e);
+      }
+    }
+
     // Only include fields that are in the database schema
     const resultData = {
       examId: session.examId,
@@ -581,6 +592,7 @@ async function autoScoreExamSession(sessionId: number, storage: any): Promise<vo
       marksObtained: totalAutoScore,
       autoScored: breakdown.pendingManualReview === 0,
       recordedBy: SYSTEM_AUTO_SCORING_UUID,
+      timeTaken: timeTaken,
     };
 
     let savedResultId: number | null = null;
@@ -739,7 +751,16 @@ async function mergeExamScores(answerId: number, storage: any): Promise<void> {
         marksObtained: totalScore,
         autoScored: false, // Now includes manual scores
       });
-    } else {
+      let timeTaken = 0;
+      if (session.metadata) {
+        try {
+          const metadata = typeof session.metadata === 'string' ? JSON.parse(session.metadata) : session.metadata;
+          timeTaken = metadata.timeTakenSeconds || 0;
+        } catch (e) {
+          console.warn('[MERGE-SCORES] Failed to parse session metadata for timeTaken', e);
+        }
+      }
+
       // Create new result (shouldn't happen, but handle it)
       await storage.recordExamResult({
         examId: session.examId,
@@ -747,6 +768,7 @@ async function mergeExamScores(answerId: number, storage: any): Promise<void> {
         score: totalScore,
         maxScore: maxScore,
         marksObtained: totalScore,
+        timeTaken: timeTaken,
         autoScored: false,
         recordedBy: session.studentId, // System recorded
       });
@@ -1518,6 +1540,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 // Ignore parse errors - keep defaults
               }
             }
+
+            // If timeTakenSeconds still 0, try computing from session start/submit times
+            if (baseResult.timeTakenSeconds === 0 && session.startedAt && session.submittedAt) {
+              try {
+                const start = new Date(session.startedAt).getTime();
+                const end = new Date(session.submittedAt).getTime();
+                if (start > 0 && end > start) {
+                  baseResult.timeTakenSeconds = Math.floor((end - start) / 1000);
+                }
+              } catch (e) { /* ignore */ }
+            }
+          }
+
+          // Add formatted time for display
+          if (baseResult.timeTakenSeconds > 0) {
+            const mins = Math.floor(baseResult.timeTakenSeconds / 60);
+            const secs = baseResult.timeTakenSeconds % 60;
+            (baseResult as any).timeTakenFormatted = mins === 0
+              ? `${secs} seconds`
+              : `${mins} minute${mins !== 1 ? 's' : ''} ${secs} second${secs !== 1 ? 's' : ''}`;
           }
 
           return baseResult;
@@ -1613,7 +1655,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         const sessions = await storage.getExamSessionsByStudent(studentId);
-        const matchingSession = sessions.find((s: any) => s.examId === examId && s.status === 'completed');
+        // BUG FIX: was checking s.status === 'completed' but status is 'submitted'/'graded', never 'completed'
+        // Use s.isCompleted (boolean) which IS correctly set to true on submission
+        const matchingSession = sessions.find((s: any) => s.examId === examId && s.isCompleted);
         if (matchingSession) {
           const metadata = typeof matchingSession.metadata === 'string'
             ? JSON.parse(matchingSession.metadata)
@@ -1621,6 +1665,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           timeTakenSeconds = metadata?.timeTakenSeconds || 0;
           submissionReason = metadata?.submissionReason || 'manual';
           violationCount = metadata?.violationCount || 0;
+
+          // Fallback: compute from session start/submit times if metadata didn't have it
+          if (timeTakenSeconds === 0 && matchingSession.startedAt && matchingSession.submittedAt) {
+            try {
+              const start = new Date(matchingSession.startedAt).getTime();
+              const end = new Date(matchingSession.submittedAt).getTime();
+              if (start > 0 && end > start) {
+                timeTakenSeconds = Math.floor((end - start) / 1000);
+              }
+            } catch (e) { /* ignore */ }
+          }
         }
       } catch (sessionError) {
         // Session enrichment failed, use defaults
@@ -1632,10 +1687,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
 
       // Get all student answers for this session
-      const sessions = await storage.getExamSessionsByStudent(studentId);
+      const allSessions = await storage.getExamSessionsByStudent(studentId);
       // Look for any session for this exam, prioritizing completed ones
-      const matchingSession = sessions.find((s: any) => s.examId === examId && s.status === 'completed') ||
-        sessions.find((s: any) => s.examId === examId);
+      const matchingSession = allSessions.find((s: any) => s.examId === examId && s.isCompleted) ||
+        allSessions.find((s: any) => s.examId === examId);
 
       let questionDetails: any[] = [];
       if (matchingSession) {
@@ -1694,6 +1749,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }));
       }
 
+      // Format time taken for display
+      const finalTimeTaken = (result as any).timeTaken || timeTakenSeconds;
+      const formatTimeTaken = (seconds: number) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        if (mins === 0) return `${secs} seconds`;
+        return `${mins} minute${mins !== 1 ? 's' : ''} ${secs} second${secs !== 1 ? 's' : ''}`;
+      };
+
       // Return the EXACT result for this specific exam - no mixing with other exams
       const enrichedResult = {
         id: result.id,
@@ -1708,8 +1772,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         correct_answers: (result as any).correctAnswers ?? 0,
         incorrect_answers: (result as any).incorrectAnswers ?? 0,
         total_questions: (result as any).totalQuestions ?? 0,
-        time_taken: (result as any).timeTaken ?? timeTakenSeconds,
-        timeTakenSeconds: (result as any).timeTaken || timeTakenSeconds,
+        time_taken: finalTimeTaken,
+        timeTakenSeconds: finalTimeTaken,
+        timeTakenFormatted: finalTimeTaken > 0 ? formatTimeTaken(finalTimeTaken) : null,
         submissionReason: submissionReason,
         violationCount: violationCount,
         examTitle: exam.name,
@@ -2481,6 +2546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateExamResult(existingResult.id, {
           correct_answers: correctAnswersCount,
           total_questions: examQuestions.length,
+          timeTaken: timeTakenSeconds,
           submitted_at: now
         });
       }
