@@ -45,6 +45,13 @@ npm run db:push  # Push schema changes to database
 - `NODE_ENV=development` is set in the dev script to ensure correct CORS and Vite dev middleware
 - CORS allows all `*.replit.dev` origins in development automatically
 
+## Student Block/Unblock
+
+- **Route**: `PATCH /api/students/:id/block` (Admin/Super Admin only)
+- **Body**: `{ isActive: boolean }` — `false` to block, `true` to unblock
+- **Effect**: Updates both `users.isActive` (UI display) and `users.status` ('suspended'/'active'), ensuring blocked students cannot log in
+- **Frontend**: Already wired with `blockStudentMutation` + `handleBlockToggle` in `StudentManagement.tsx`; block/unblock buttons rendered in both mobile and desktop table views
+
 ## Database
 
 - Schema managed via `drizzle-kit push` (not migrations)

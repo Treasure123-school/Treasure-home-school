@@ -8553,6 +8553,51 @@ School Management System Administration
     }
   });
 
+  // Block / Unblock student (Admin only)
+  app.patch('/api/students/:id/block', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const studentId = req.params.id;
+      const { isActive } = req.body;
+      const adminUser = req.user!;
+
+      if (typeof isActive !== 'boolean') {
+        return res.status(400).json({ message: 'isActive must be a boolean value' });
+      }
+
+      const student = await storage.getStudent(studentId);
+      if (!student) {
+        return res.status(404).json({ message: 'Student not found' });
+      }
+
+      // Update both isActive flag and status so login is properly blocked/allowed
+      const newStatus = isActive ? 'active' : 'suspended';
+      await storage.setUserActive(studentId, isActive);
+      await storage.updateUserStatus(studentId, newStatus, adminUser.id,
+        isActive ? 'Account unblocked by admin' : 'Account blocked by admin'
+      );
+
+      // Audit log (non-blocking)
+      storage.createAuditLog({
+        userId: adminUser.id,
+        action: isActive ? 'student_unblocked' : 'student_blocked',
+        entityType: 'user',
+        entityId: studentId,
+        newValue: JSON.stringify({ studentId, isActive, status: newStatus }),
+        reason: isActive ? `Admin unblocked student account` : `Admin blocked student account`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      }).catch(() => {});
+
+      res.json({
+        message: isActive ? 'Student account unblocked successfully' : 'Student account blocked successfully',
+        studentId,
+        isActive,
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to update student status' });
+    }
+  });
+
   // Delete student (soft delete - sets isActive to false)
   app.delete('/api/students/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
     try {
