@@ -2598,6 +2598,11 @@ var init_smart_deletion_manager = __esm({
             await db.update(reportCardItems).set({ examExamId: null }).where(eq(reportCardItems.examExamId, examId));
           } catch (e) {
           }
+          try {
+            const archiveResult = await db.delete(examSubmissionsArchive).where(eq(examSubmissionsArchive.examId, examId)).returning();
+            this.deletionService.recordDeletion("exam_submissions_archive", archiveResult.length);
+          } catch (e) {
+          }
           const result = await db.delete(exams).where(eq(exams.id, examId)).returning();
           this.deletionService.recordDeletion("exams", result.length);
         } catch (error) {
@@ -4756,6 +4761,7 @@ var init_storage = __esm({
           const testExamRefs = await db2.update(schema.reportCardItems).set({ testExamId: null }).where(eq2(schema.reportCardItems.testExamId, id)).returning();
           const examExamRefs = await db2.update(schema.reportCardItems).set({ examExamId: null }).where(eq2(schema.reportCardItems.examExamId, id)).returning();
           deletedCounts.reportCardRefsCleared = testExamRefs.length + examExamRefs.length;
+          await db2.delete(schema.examSubmissionsArchive).where(eq2(schema.examSubmissionsArchive.examId, id));
           const result = await db2.delete(schema.exams).where(eq2(schema.exams.id, id)).returning();
           const success = result.length > 0;
           console.log(`[SmartDeletion] Exam ${id} deletion complete:`, {
@@ -14066,7 +14072,7 @@ if (!JWT_SECRET2) {
   process.exit(1);
 }
 var SECRET_KEY = JWT_SECRET2;
-var JWT_EXPIRES_IN = "15m";
+var JWT_EXPIRES_IN = "24h";
 function normalizeUuid2(raw) {
   if (!raw) return void 0;
   if (typeof raw === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw)) {
@@ -21890,6 +21896,7 @@ School Management System Administration
         }
       }
       const oldStatus = user.status;
+      await storage.setUserActive(id, true);
       const updatedUser = await storage.updateUserStatus(id, "active", adminUser.id, "Suspension lifted by admin");
       storage.createAuditLog({
         userId: adminUser.id,
@@ -23104,6 +23111,46 @@ School Management System Administration
       res.json(updatedStudent);
     } catch (error) {
       res.status(500).json({ message: "Failed to update student profile" });
+    }
+  });
+  app2.patch("/api/students/:id/block", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
+    try {
+      const studentId = req.params.id;
+      const { isActive } = req.body;
+      const adminUser = req.user;
+      if (typeof isActive !== "boolean") {
+        return res.status(400).json({ message: "isActive must be a boolean value" });
+      }
+      const student = await storage.getStudent(studentId);
+      if (!student) {
+        return res.status(404).json({ message: "Student not found" });
+      }
+      const newStatus = isActive ? "active" : "suspended";
+      await storage.setUserActive(studentId, isActive);
+      await storage.updateUserStatus(
+        studentId,
+        newStatus,
+        adminUser.id,
+        isActive ? "Account unblocked by admin" : "Account blocked by admin"
+      );
+      storage.createAuditLog({
+        userId: adminUser.id,
+        action: isActive ? "student_unblocked" : "student_blocked",
+        entityType: "user",
+        entityId: studentId,
+        newValue: JSON.stringify({ studentId, isActive, status: newStatus }),
+        reason: isActive ? `Admin unblocked student account` : `Admin blocked student account`,
+        ipAddress: req.ip,
+        userAgent: req.headers["user-agent"]
+      }).catch(() => {
+      });
+      res.json({
+        message: isActive ? "Student account unblocked successfully" : "Student account blocked successfully",
+        studentId,
+        isActive
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Failed to update student status" });
     }
   });
   app2.delete("/api/students/:id", authenticateUser, authorizeRoles(ROLE_IDS.ADMIN, ROLE_IDS.SUPER_ADMIN), async (req, res) => {
