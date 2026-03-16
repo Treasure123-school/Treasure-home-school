@@ -2227,11 +2227,10 @@ export default function ExamManagement() {
                                 <DropdownMenuItem
                                   onSelect={(e) => e.preventDefault()}
                                   className="text-destructive focus:text-destructive"
-                                  disabled={deleteExamMutation.isPending}
                                   data-testid={`dropdown-delete-exam-${exam.id}`}
                                 >
                                   <Trash2 className="w-4 h-4 mr-2" />
-                                  {deleteExamMutation.isPending ? 'Deleting...' : 'Delete Exam'}
+                                  Delete Exam
                                 </DropdownMenuItem>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
@@ -2242,13 +2241,12 @@ export default function ExamManagement() {
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel disabled={deleteExamMutation.isPending}>Cancel</AlertDialogCancel>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
                                   <AlertDialogAction
                                     onClick={() => deleteExamMutation.mutate(exam.id)}
-                                    disabled={deleteExamMutation.isPending}
                                     className="bg-destructive hover:bg-destructive/90"
                                   >
-                                    {deleteExamMutation.isPending ? 'Deleting...' : 'Delete Exam'}
+                                    Delete Exam
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
@@ -2910,7 +2908,7 @@ export default function ExamManagement() {
       <AlertDialog 
         open={!!deletingExam} 
         onOpenChange={(open) => {
-          if (!open && !deleteExamMutation.isPending) setDeletingExam(null);
+          if (!open) setDeletingExam(null);
         }}
       >
         <AlertDialogContent>
@@ -2921,22 +2919,17 @@ export default function ExamManagement() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleteExamMutation.isPending}>Cancel</AlertDialogCancel>
-            <Button
-              variant="destructive"
-              onClick={(e) => {
-                e.preventDefault();
-                if (deletingExam) {
-                  deleteExamMutation.mutate(deletingExam.id, {
-                    onSuccess: () => setDeletingExam(null),
-                    onError: () => setDeletingExam(null)
-                  });
-                }
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                const examId = deletingExam?.id;
+                setDeletingExam(null);
+                if (examId) deleteExamMutation.mutate(examId);
               }}
-              disabled={deleteExamMutation.isPending}
             >
-              {deleteExamMutation.isPending ? 'Deleting...' : 'Delete Exam'}
-            </Button>
+              Delete Exam
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
