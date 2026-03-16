@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ChangePasswordCard } from '@/components/ChangePasswordCard';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/lib/auth';
@@ -474,6 +475,9 @@ export default function StudentProfile() {
             </Card>
           </div>
         )}
+
+        {/* Change Password */}
+        <ChangePasswordCard />
 
         {/* Quick Actions */}
         <Card>

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StatsCard } from '@/components/ui/stats-card';
+import { ChangePasswordCard } from '@/components/ChangePasswordCard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -738,6 +739,11 @@ export default function ParentDashboard() {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Change Password */}
+        <div className="mt-2">
+          <ChangePasswordCard />
         </div>
       </div>
     </>

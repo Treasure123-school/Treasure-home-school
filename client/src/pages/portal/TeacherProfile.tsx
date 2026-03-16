@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ChangePasswordCard } from '@/components/ChangePasswordCard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/lib/auth';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
@@ -1050,6 +1051,9 @@ export default function TeacherProfile() {
           </Card>
         </div>
       )}
+
+      {/* Change Password */}
+      <ChangePasswordCard />
 
       {/* Quick Actions */}
       <Card>
