@@ -1,11 +1,21 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { 
   CheckCircle, 
   XCircle, 
@@ -21,7 +31,8 @@ import {
   Users,
   Ban,
   Eye,
-  Search
+  Search,
+  ShieldOff
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -63,6 +74,7 @@ export default function UserManagement() {
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [userToUnsuspend, setUserToUnsuspend] = useState<User | null>(null);
 
   const { data: allUsers = [], isLoading } = useQuery<User[]>({
     queryKey: ['/api/users'],
@@ -100,6 +112,46 @@ export default function UserManagement() {
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
     }
   });
+
+  const unsuspendMutation = useMutation({
+    mutationFn: async (userId: string) => {
+      const res = await apiRequest('POST', `/api/users/${userId}/unsuspend`);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || 'Failed to unsuspend user');
+      }
+      return res.json();
+    },
+    onMutate: async (userId) => {
+      await queryClient.cancelQueries({ queryKey: ['/api/users'] });
+      const previousUsers = queryClient.getQueryData<User[]>(['/api/users']);
+      queryClient.setQueryData<User[]>(['/api/users'], (old = []) =>
+        old.map(u => u.id === userId ? { ...u, status: 'active' as const } : u)
+      );
+      return { previousUsers };
+    },
+    onSuccess: () => {
+      toast({ title: "Account Unsuspended", description: "The user can now sign in again." });
+      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
+    },
+    onError: (error: Error, _, context) => {
+      if (context?.previousUsers) {
+        queryClient.setQueryData(['/api/users'], context.previousUsers);
+      }
+      toast({
+        title: "Failed to Unsuspend",
+        description: error.message || "An error occurred. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleConfirmUnsuspend = () => {
+    if (userToUnsuspend) {
+      unsuspendMutation.mutate(userToUnsuspend.id);
+      setUserToUnsuspend(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -171,7 +223,10 @@ export default function UserManagement() {
                 </TableRow>
               ) : (
                 filteredUsers.map((user) => (
-                  <TableRow key={user.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
+                  <TableRow
+                    key={user.id}
+                    className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors"
+                  >
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-10 w-10 border border-slate-200 dark:border-slate-800">
@@ -208,24 +263,40 @@ export default function UserManagement() {
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800"
+                            disabled={unsuspendMutation.isPending && unsuspendMutation.variables === user.id}
+                          >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl shadow-xl border-slate-200 dark:border-slate-800">
-                          <DropdownMenuLabel className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Manage Account</DropdownMenuLabel>
+                          <DropdownMenuLabel className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            Manage Account
+                          </DropdownMenuLabel>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="rounded-lg py-2 text-sm cursor-pointer flex items-center gap-2 font-medium">
                             <Eye className="h-4 w-4 text-blue-500" />
                             View Profile
                           </DropdownMenuItem>
                           {user.status === 'pending' && (
-                            <DropdownMenuItem 
+                            <DropdownMenuItem
                               className="rounded-lg py-2 text-sm cursor-pointer flex items-center gap-2 text-green-600 font-bold"
                               onClick={() => approveMutation.mutate(user.id)}
                             >
                               <CheckCircle className="h-4 w-4" />
                               Verify & Activate
+                            </DropdownMenuItem>
+                          )}
+                          {user.status === 'suspended' && (
+                            <DropdownMenuItem
+                              className="rounded-lg py-2 text-sm cursor-pointer flex items-center gap-2 text-green-600 font-bold"
+                              onClick={() => setUserToUnsuspend(user)}
+                            >
+                              <ShieldOff className="h-4 w-4" />
+                              Unsuspend Account
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuItem className="rounded-lg py-2 text-sm cursor-pointer flex items-center gap-2 font-medium">
@@ -251,6 +322,30 @@ export default function UserManagement() {
           </Table>
         </div>
       </Card>
+
+      {/* Unsuspend Confirmation Dialog */}
+      <AlertDialog open={!!userToUnsuspend} onOpenChange={(open) => { if (!open) setUserToUnsuspend(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsuspend Account</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to unsuspend{' '}
+              <strong>{userToUnsuspend?.firstName} {userToUnsuspend?.lastName}</strong>?
+              <br /><br />
+              Their account will be restored to active status and they will be able to sign in again immediately.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmUnsuspend}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Yes, Unsuspend Account
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

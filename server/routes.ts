@@ -6999,7 +6999,8 @@ School Management System Administration
 
       const oldStatus = user.status;
 
-      // Update the user status to active
+      // Restore both status and isActive (isActive may have been set false by student block action)
+      await storage.setUserActive(id, true);
       const updatedUser = await storage.updateUserStatus(id, 'active', adminUser.id, 'Suspension lifted by admin');
 
       // PERFORMANCE: Log audit event asynchronously
