@@ -12,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Clock, BookOpen, Trophy, Play, Eye, CheckCircle, XCircle, Timer, Save, RotateCcw, AlertCircle, Loader, FileText, Circle, CheckCircle2, HelpCircle, ClipboardCheck, GraduationCap, Award, Calendar } from 'lucide-react';
+import { Clock, BookOpen, Trophy, Play, Eye, CheckCircle, XCircle, Timer, Save, RotateCcw, AlertCircle, Loader, FileText, Circle, CheckCircle2, HelpCircle, ClipboardCheck, GraduationCap, Award, Calendar, Calculator, X } from 'lucide-react';
 import type { Exam, ExamSession, ExamQuestion, QuestionOption, StudentAnswer } from '@shared/schema';
 import schoolLogo from '@assets/1000025432-removebg-preview (1)_1757796555126.png';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
@@ -66,6 +66,14 @@ export default function StudentExams() {
   const [questionSaveStatus, setQuestionSaveStatus] = useState<Record<number, QuestionSaveStatus>>({});
   const [pendingSaves, setPendingSaves] = useState<Set<number>>(new Set());
   const saveTimeoutsRef = useRef<Record<number, NodeJS.Timeout>>({});
+
+  // Calculator state
+  const [showCalculator, setShowCalculator] = useState(false);
+  const [calcDisplay, setCalcDisplay] = useState('0');
+  const [calcExpression, setCalcExpression] = useState('');
+  const [calcPrevValue, setCalcPrevValue] = useState<number | null>(null);
+  const [calcOperator, setCalcOperator] = useState<string | null>(null);
+  const [calcWaitingForSecond, setCalcWaitingForSecond] = useState(false);
 
   // ENHANCED SECURITY: Comprehensive violation tracking state
   const [violationCount, setViolationCount] = useState(0); // Total violations (renamed from tabSwitchCount)
@@ -2073,6 +2081,55 @@ export default function StudentExams() {
     return examQuestions.length > 0 ? ((currentQuestionIndex + 1) / examQuestions.length) * 100 : 0;
   }, [examQuestions.length, currentQuestionIndex]);
 
+  // Calculator logic
+  const handleCalcInput = useCallback((value: string) => {
+    if (!isNaN(Number(value)) || value === '.') {
+      if (calcWaitingForSecond) {
+        setCalcDisplay(value === '.' ? '0.' : value);
+        setCalcWaitingForSecond(false);
+      } else {
+        if (value === '.' && calcDisplay.includes('.')) return;
+        setCalcDisplay(prev => prev === '0' && value !== '.' ? value : prev + value);
+      }
+    } else if (['+', '-', '×', '÷'].includes(value)) {
+      setCalcPrevValue(parseFloat(calcDisplay));
+      setCalcOperator(value);
+      setCalcExpression(`${calcDisplay} ${value}`);
+      setCalcWaitingForSecond(true);
+    } else if (value === '=') {
+      if (calcPrevValue !== null && calcOperator) {
+        const current = parseFloat(calcDisplay);
+        let result: number;
+        switch (calcOperator) {
+          case '+': result = calcPrevValue + current; break;
+          case '-': result = calcPrevValue - current; break;
+          case '×': result = calcPrevValue * current; break;
+          case '÷': result = current !== 0 ? calcPrevValue / current : NaN; break;
+          default: result = current;
+        }
+        const resultStr = isNaN(result) ? 'Error' : parseFloat(result.toFixed(10)).toString();
+        setCalcDisplay(resultStr);
+        setCalcExpression('');
+        setCalcPrevValue(null);
+        setCalcOperator(null);
+        setCalcWaitingForSecond(false);
+      }
+    } else if (value === 'C') {
+      setCalcDisplay('0');
+      setCalcExpression('');
+      setCalcPrevValue(null);
+      setCalcOperator(null);
+      setCalcWaitingForSecond(false);
+    } else if (value === '⌫') {
+      setCalcDisplay(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
+    } else if (value === '%') {
+      setCalcDisplay(prev => {
+        const num = parseFloat(prev);
+        return isNaN(num) ? '0' : parseFloat((num / 100).toFixed(10)).toString();
+      });
+    }
+  }, [calcDisplay, calcPrevValue, calcOperator, calcWaitingForSecond]);
+
   if (!user) {
     return <div>Please log in to access the exam portal.</div>;
   }
@@ -2325,6 +2382,87 @@ export default function StudentExams() {
               </div>
             </div>
           </div>
+
+          {/* Floating Calculator */}
+          {showCalculator && (
+            <div
+              className="fixed bottom-24 right-4 z-50 w-72 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden select-none"
+              data-testid="calculator-panel"
+            >
+              {/* Calculator Header */}
+              <div className="flex items-center justify-between px-4 py-2.5 bg-blue-600 dark:bg-blue-700">
+                <div className="flex items-center gap-2 text-white">
+                  <Calculator className="w-4 h-4" />
+                  <span className="text-sm font-semibold">Calculator</span>
+                </div>
+                <button
+                  onClick={() => setShowCalculator(false)}
+                  className="text-white/80 hover:text-white transition-colors"
+                  data-testid="button-close-calculator"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Display */}
+              <div className="px-4 pt-3 pb-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                <div className="text-right text-xs text-gray-400 dark:text-gray-500 h-4 mb-1 truncate">
+                  {calcExpression || ' '}
+                </div>
+                <div className="text-right text-3xl font-mono font-bold text-gray-900 dark:text-white truncate" data-testid="calc-display">
+                  {calcDisplay}
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div className="p-3 grid grid-cols-4 gap-2">
+                {[
+                  { label: 'C',  style: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60 font-semibold' },
+                  { label: '%',  style: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' },
+                  { label: '⌫',  style: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' },
+                  { label: '÷',  style: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 font-semibold text-xl' },
+                  { label: '7',  style: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
+                  { label: '8',  style: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
+                  { label: '9',  style: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
+                  { label: '×',  style: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 font-semibold text-xl' },
+                  { label: '4',  style: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
+                  { label: '5',  style: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
+                  { label: '6',  style: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
+                  { label: '-',  style: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 font-semibold text-xl' },
+                  { label: '1',  style: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
+                  { label: '2',  style: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
+                  { label: '3',  style: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
+                  { label: '+',  style: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 font-semibold text-xl' },
+                  { label: '0',  style: 'col-span-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
+                  { label: '.',  style: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
+                  { label: '=',  style: 'bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600 font-bold text-xl' },
+                ].map(({ label, style }) => (
+                  <button
+                    key={label}
+                    onClick={() => handleCalcInput(label)}
+                    className={`${style} rounded-xl py-3 text-base font-medium transition-all duration-100 active:scale-95`}
+                    data-testid={`calc-btn-${label === '⌫' ? 'backspace' : label}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Calculator Toggle Button */}
+          <button
+            onClick={() => setShowCalculator(prev => !prev)}
+            className={`fixed bottom-6 right-4 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 active:scale-95 ${
+              showCalculator
+                ? 'bg-blue-700 dark:bg-blue-600 text-white shadow-blue-300 dark:shadow-blue-900'
+                : 'bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600'
+            }`}
+            title={showCalculator ? 'Hide Calculator' : 'Open Calculator'}
+            data-testid="button-toggle-calculator"
+          >
+            <Calculator className="w-6 h-6" />
+          </button>
 
           {/* Custom Submit Confirmation Dialog */}
           <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
