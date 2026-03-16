@@ -356,59 +356,70 @@ export default function StudentExams() {
     return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase();
   }, [user]);
 
-  // Fetch question options for current question
-  const { data: questionOptionsRaw = [] } = useQuery<QuestionOption[]>({
-    queryKey: ['/api/question-options', currentQuestion?.id],
-    enabled: !!currentQuestion?.id && currentQuestion?.questionType === 'multiple_choice',
+  // PERFORMANCE: Bulk-fetch ALL question options in one request when exam loads.
+  // This data lives in React memory for the entire exam — works offline after first load.
+  const { data: allQuestionOptions = [] } = useQuery<QuestionOption[]>({
+    queryKey: ['/api/question-options/bulk', examQuestions.map(q => q.id).join(',')],
+    queryFn: async () => {
+      if (!examQuestions.length) return [];
+      const mcQuestions = examQuestions.filter(q => q.questionType === 'multiple_choice');
+      if (mcQuestions.length === 0) return [];
+      const questionIds = mcQuestions.map(q => q.id).join(',');
+      const response = await apiRequest('GET', `/api/question-options/bulk?questionIds=${questionIds}`);
+      if (response.ok) return await response.json();
+      return [];
+    },
+    enabled: !!examQuestions.length && (showResults || examQuestions.some(q => q.questionType === 'multiple_choice')),
+    staleTime: Infinity,
+    gcTime: Infinity,
+    networkMode: 'offlineFirst',
   });
 
-  // OPTION RANDOMIZATION: Shuffle options if exam has shuffleQuestions enabled
+  // Per-question query kept only as a cache warm-up for the very first render.
+  // Rendering always uses the bulk data (already in memory) so options show even offline.
+  useQuery<QuestionOption[]>({
+    queryKey: ['/api/question-options', currentQuestion?.id],
+    enabled: !!currentQuestion?.id && currentQuestion?.questionType === 'multiple_choice',
+    staleTime: Infinity,
+    networkMode: 'offlineFirst',
+  });
+
+  // OPTION RENDERING: derive current question's options from bulk-loaded data.
+  // Since allQuestionOptions is fetched once at exam start and kept in memory (staleTime/gcTime
+  // Infinity), options are always visible regardless of connection status.
   const questionOptions = useMemo(() => {
-    if (!questionOptionsRaw.length || !currentQuestion) return [];
+    if (!currentQuestion || currentQuestion.questionType !== 'multiple_choice') return [];
+
+    // Primary source: bulk options already in memory (no network call needed)
+    let base: QuestionOption[] = allQuestionOptions.filter(o => o.questionId === currentQuestion.id);
+
+    // Fallback: per-question cache entry (covers the edge case where bulk hasn't loaded yet)
+    if (base.length === 0) {
+      const cached = queryClient.getQueryData<QuestionOption[]>(['/api/question-options', currentQuestion.id]);
+      if (cached?.length) base = cached;
+    }
+
+    if (base.length === 0) return [];
 
     const exam = exams.find(e => e.id === activeSession?.examId);
 
-    // If shuffleQuestions is enabled, shuffle the options
+    // Apply seeded shuffle if the exam has shuffleQuestions enabled
     if (exam?.shuffleQuestions && !activeSession?.isCompleted && activeSession?.id) {
-      // Use seeded random based on session ID + question ID for consistent shuffling
       const seed = activeSession.id + currentQuestion.id;
       let seedValue = seed;
       const seededRandom = () => {
         seedValue = (seedValue * 9301 + 49297) % 233280;
         return seedValue / 233280;
       };
-
-      // Use Fisher-Yates shuffle algorithm with seeded random
-      const shuffled = [...questionOptionsRaw];
+      const shuffled = [...base];
       for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(seededRandom() * (i + 1));
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
       }
       return shuffled;
     }
-    // Otherwise return in original order
-    return questionOptionsRaw;
-  }, [questionOptionsRaw, currentQuestion, activeSession?.examId, activeSession?.isCompleted, activeSession?.id, exams]);
-
-  // PERFORMANCE: Use bulk endpoint to fetch all question options in single request
-  const { data: allQuestionOptions = [] } = useQuery<QuestionOption[]>({
-    queryKey: ['/api/question-options/bulk', examQuestions.map(q => q.id).join(',')],
-    queryFn: async () => {
-      if (!examQuestions.length) return [];
-
-      const mcQuestions = examQuestions.filter(q => q.questionType === 'multiple_choice');
-      if (mcQuestions.length === 0) return [];
-
-      const questionIds = mcQuestions.map(q => q.id).join(',');
-      const response = await apiRequest('GET', `/api/question-options/bulk?questionIds=${questionIds}`);
-
-      if (response.ok) {
-        return await response.json();
-      }
-      return [];
-    },
-    enabled: !!examQuestions.length && (showResults || examQuestions.some(q => q.questionType === 'multiple_choice')),
-  });
+    return base;
+  }, [allQuestionOptions, currentQuestion, activeSession?.examId, activeSession?.isCompleted, activeSession?.id, exams]);
 
   // Fetch existing answers for active session
   const { data: existingAnswers = [] } = useQuery<StudentAnswer[]>({
