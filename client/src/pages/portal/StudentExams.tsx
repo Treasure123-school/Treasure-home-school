@@ -46,6 +46,38 @@ interface ViolationRecord {
 // Question save status type
 type QuestionSaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
 
+// ─── LocalStorage helpers for offline answer backup ───────────────────────────
+const LS_PREFIX = 'ths_exam_answers_';
+
+function lsKey(sessionId: number) { return `${LS_PREFIX}${sessionId}`; }
+
+function lsSave(sessionId: number, questionId: number, answer: any, questionType: string) {
+  try {
+    const raw = localStorage.getItem(lsKey(sessionId));
+    const store = raw ? JSON.parse(raw) : {};
+    store[questionId] = { answer, questionType, synced: false, ts: Date.now() };
+    localStorage.setItem(lsKey(sessionId), JSON.stringify(store));
+  } catch (_) {}
+}
+
+function lsMarkSynced(sessionId: number, questionId: number) {
+  try {
+    const raw = localStorage.getItem(lsKey(sessionId));
+    if (!raw) return;
+    const store = JSON.parse(raw);
+    if (store[questionId]) { store[questionId].synced = true; localStorage.setItem(lsKey(sessionId), JSON.stringify(store)); }
+  } catch (_) {}
+}
+
+function lsGetAll(sessionId: number): Record<string, { answer: any; questionType: string; synced: boolean; ts: number }> {
+  try { return JSON.parse(localStorage.getItem(lsKey(sessionId)) || '{}'); } catch (_) { return {}; }
+}
+
+function lsClear(sessionId: number) {
+  try { localStorage.removeItem(lsKey(sessionId)); } catch (_) {}
+}
+// ──────────────────────────────────────────────────────────────────────────────
+
 export default function StudentExams() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -109,6 +141,7 @@ export default function StudentExams() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [networkIssues, setNetworkIssues] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
+  const [localPendingCount, setLocalPendingCount] = useState(0);
 
   // Socket.IO realtime updates for exams list
   useSocketIORealtime({
@@ -403,6 +436,43 @@ export default function StudentExams() {
     }
   }, [answerMap]);
 
+  // Restore locally-stored answers when a session is active (offline recovery)
+  useEffect(() => {
+    if (!activeSession?.id) return;
+    const local = lsGetAll(activeSession.id);
+    const entries = Object.entries(local);
+    if (entries.length === 0) return;
+
+    // Merge local answers into state — only fill gaps the server doesn't already have
+    setAnswers(prev => {
+      const merged = { ...prev };
+      entries.forEach(([qIdStr, { answer }]) => {
+        const qId = parseInt(qIdStr);
+        if (merged[qId] === undefined) merged[qId] = answer;
+      });
+      return merged;
+    });
+
+    // Count how many haven't synced to server yet
+    const unsynced = entries.filter(([, v]) => !v.synced);
+    setLocalPendingCount(unsynced.length);
+
+    // If we're online right now, kick off a sync for unsynced answers
+    if (navigator.onLine && unsynced.length > 0) {
+      unsynced.forEach(([qIdStr, { answer, questionType }]) => {
+        const qId = parseInt(qIdStr);
+        // Only push answers the server didn't already return
+        if (answerMap[qId] === undefined) {
+          submitAnswerMutation.mutate({ questionId: qId, answer, questionType });
+        } else {
+          lsMarkSynced(activeSession.id, qId);
+        }
+      });
+      setLocalPendingCount(0);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSession?.id]);
+
   // Check for existing active session on component mount
   useEffect(() => {
     if (user?.id && !activeSession) {
@@ -477,21 +547,32 @@ export default function StudentExams() {
     const handleOnline = () => {
       setIsOnline(true);
       setNetworkIssues(false);
-      toast({
-        title: "Connection Restored",
-        description: "Your internet connection has been restored. Retrying failed saves...",
-        variant: "default",
-      });
 
-      // Retry any failed saves
+      // Sync any locally-stored answers that haven't reached the server yet
+      const session = activeSessionRef.current;
+      if (session) {
+        const local = lsGetAll(session.id);
+        const unsynced = Object.entries(local).filter(([, v]) => !v.synced);
+        unsynced.forEach(([qIdStr, { answer, questionType }]) => {
+          const qId = parseInt(qIdStr);
+          submitAnswerMutation.mutate({ questionId: qId, answer, questionType });
+        });
+        setLocalPendingCount(0);
+      }
+
+      // Also retry any answers that previously got a 'failed' status
       Object.keys(answers).forEach(questionId => {
         const qId = parseInt(questionId);
         if (questionSaveStatus[qId] === 'failed') {
           const question = examQuestions.find(q => q.id === qId);
-          if (question) {
-            handleRetryAnswer(qId, question.questionType);
-          }
+          if (question) handleRetryAnswer(qId, question.questionType);
         }
+      });
+
+      toast({
+        title: "Connection Restored",
+        description: "Back online — syncing your answers now...",
+        variant: "default",
       });
     };
 
@@ -500,7 +581,7 @@ export default function StudentExams() {
       setNetworkIssues(true);
       toast({
         title: "Connection Lost",
-        description: "Your internet connection was lost. Answers will be saved when connection is restored.",
+        description: "No internet — your answers are being saved on this device and will sync when you're back online.",
         variant: "destructive",
       });
     };
@@ -1319,6 +1400,12 @@ export default function StudentExams() {
         return newSet;
       });
 
+      // Mark this answer as synced in localStorage so we won't re-push it
+      if (activeSession) {
+        lsMarkSynced(activeSession.id, variables.questionId);
+        setLocalPendingCount(Object.values(lsGetAll(activeSession.id)).filter(v => !v.synced).length);
+      }
+
       // Auto-clear saved status after 2 seconds
       saveTimeoutsRef.current[variables.questionId] = setTimeout(() => {
         setQuestionSaveStatus(prev => ({ ...prev, [variables.questionId]: 'idle' }));
@@ -1539,6 +1626,10 @@ export default function StudentExams() {
     onSuccess: (data) => {
       setIsScoring(false);
 
+      // Clear locally-stored answers for this session — exam is done
+      if (activeSession) lsClear(activeSession.id);
+      setLocalPendingCount(0);
+
       // Enhanced cache invalidation for all related data
       queryClient.invalidateQueries({ 
         queryKey: ['/api/student-answers/session', activeSession?.id] 
@@ -1713,6 +1804,17 @@ export default function StudentExams() {
 
   const handleAnswerChange = (questionId: number, answer: any, questionType: string) => {
     setAnswers(prev => ({ ...prev, [questionId]: answer }));
+
+    // Always save to localStorage immediately as a device-level backup
+    if (activeSession) {
+      lsSave(activeSession.id, questionId, answer, questionType);
+      if (!isOnline) {
+        setLocalPendingCount(prev => {
+          const local = lsGetAll(activeSession.id);
+          return Object.values(local).filter(v => !v.synced).length;
+        });
+      }
+    }
 
     // Clear existing debounce timer for this question
     if (debounceTimersRef.current[questionId]) {
@@ -2280,11 +2382,22 @@ export default function StudentExams() {
                 </div>
               )}
               {!isOnline && (
-                <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded-r-lg p-3 flex items-center gap-3 text-red-800 dark:text-red-200 shadow-sm">
-                  <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-semibold">Connection Lost</p>
-                    <p className="text-xs mt-0.5">Your answers are being saved locally and will sync when connection is restored</p>
+                <div className="bg-red-600 dark:bg-red-700 rounded-lg p-3 flex items-center gap-3 text-white shadow-md">
+                  <div className="flex-shrink-0 w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                    <AlertCircle className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold">You are offline</p>
+                    <p className="text-xs opacity-90 mt-0.5">
+                      {localPendingCount > 0
+                        ? `${localPendingCount} answer${localPendingCount !== 1 ? 's' : ''} saved on this device — will auto-sync when reconnected`
+                        : 'Your answers are saved on this device and will sync automatically when reconnected'}
+                    </p>
+                  </div>
+                  <div className="flex-shrink-0 text-right">
+                    <div className="text-xs font-semibold bg-white/20 rounded px-2 py-1">
+                      {localPendingCount > 0 ? `${localPendingCount} pending` : 'All saved'}
+                    </div>
                   </div>
                 </div>
               )}
