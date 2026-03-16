@@ -74,6 +74,9 @@ export default function StudentExams() {
   const [calcPrevValue, setCalcPrevValue] = useState<number | null>(null);
   const [calcOperator, setCalcOperator] = useState<string | null>(null);
   const [calcWaitingForSecond, setCalcWaitingForSecond] = useState(false);
+  const [calcLastOperator, setCalcLastOperator] = useState<string | null>(null);
+  const [calcLastOperand, setCalcLastOperand] = useState<number | null>(null);
+  const [calcJustEvaluated, setCalcJustEvaluated] = useState(false);
 
   // ENHANCED SECURITY: Comprehensive violation tracking state
   const [violationCount, setViolationCount] = useState(0); // Total violations (renamed from tabSwitchCount)
@@ -2081,54 +2084,152 @@ export default function StudentExams() {
     return examQuestions.length > 0 ? ((currentQuestionIndex + 1) / examQuestions.length) * 100 : 0;
   }, [examQuestions.length, currentQuestionIndex]);
 
-  // Calculator logic
+  // Calculator helpers
+  const calcCompute = (a: number, b: number, op: string): number => {
+    switch (op) {
+      case '+': return a + b;
+      case '-': return a - b;
+      case '×': return a * b;
+      case '÷': return b !== 0 ? a / b : NaN;
+      default: return b;
+    }
+  };
+
+  const calcFormat = (n: number): string => {
+    if (isNaN(n)) return 'Error';
+    if (!isFinite(n)) return n > 0 ? '∞' : '-∞';
+    // Use toPrecision to avoid floating-point noise, then strip trailing zeros
+    const precise = parseFloat(parseFloat(n.toPrecision(10)).toString());
+    const str = precise.toString();
+    // If too long for display, use exponential
+    if (str.replace('-', '').replace('.', '').length > 12) {
+      return parseFloat(n.toPrecision(6)).toExponential();
+    }
+    return str;
+  };
+
+  // Calculator logic — full-featured: chaining, repeat =, negate, percent, operator switching
   const handleCalcInput = useCallback((value: string) => {
-    if (!isNaN(Number(value)) || value === '.') {
-      if (calcWaitingForSecond) {
-        setCalcDisplay(value === '.' ? '0.' : value);
+    // ── Digit / Decimal ──────────────────────────────────────────────────────
+    if ((!isNaN(Number(value)) && value.trim() !== '') || value === '.') {
+      if (calcWaitingForSecond || calcJustEvaluated) {
+        const next = value === '.' ? '0.' : value;
+        setCalcDisplay(next);
         setCalcWaitingForSecond(false);
+        setCalcJustEvaluated(false);
       } else {
         if (value === '.' && calcDisplay.includes('.')) return;
-        setCalcDisplay(prev => prev === '0' && value !== '.' ? value : prev + value);
+        setCalcDisplay(prev => {
+          if (prev === '0' && value !== '.') return value;
+          if (prev === '-0') return '-' + value;
+          // Limit to 12 significant digits
+          const digits = prev.replace(/[^0-9]/g, '');
+          if (digits.length >= 12) return prev;
+          return prev + value;
+        });
       }
-    } else if (['+', '-', '×', '÷'].includes(value)) {
-      setCalcPrevValue(parseFloat(calcDisplay));
-      setCalcOperator(value);
-      setCalcExpression(`${calcDisplay} ${value}`);
-      setCalcWaitingForSecond(true);
-    } else if (value === '=') {
-      if (calcPrevValue !== null && calcOperator) {
-        const current = parseFloat(calcDisplay);
-        let result: number;
-        switch (calcOperator) {
-          case '+': result = calcPrevValue + current; break;
-          case '-': result = calcPrevValue - current; break;
-          case '×': result = calcPrevValue * current; break;
-          case '÷': result = current !== 0 ? calcPrevValue / current : NaN; break;
-          default: result = current;
-        }
-        const resultStr = isNaN(result) ? 'Error' : parseFloat(result.toFixed(10)).toString();
+      return;
+    }
+
+    // ── Operators ────────────────────────────────────────────────────────────
+    if (['+', '-', '×', '÷'].includes(value)) {
+      const currentNum = parseFloat(calcDisplay);
+      if (calcWaitingForSecond) {
+        // Just switch the pending operator (no calculation yet)
+        setCalcOperator(value);
+        setCalcExpression(prev => prev.replace(/\s*[+\-×÷]\s*$/, '') + ` ${value} `);
+        return;
+      }
+      if (calcPrevValue !== null && calcOperator && !calcJustEvaluated) {
+        // Chain: compute the pending operation first
+        const result = calcCompute(calcPrevValue, currentNum, calcOperator);
+        const resultStr = calcFormat(result);
         setCalcDisplay(resultStr);
-        setCalcExpression('');
+        setCalcPrevValue(isNaN(result) ? null : result);
+        setCalcExpression(`${resultStr} ${value} `);
+      } else {
+        setCalcPrevValue(isNaN(currentNum) ? 0 : currentNum);
+        setCalcExpression(`${calcDisplay} ${value} `);
+      }
+      setCalcOperator(value);
+      setCalcWaitingForSecond(true);
+      setCalcJustEvaluated(false);
+      setCalcLastOperator(null);
+      return;
+    }
+
+    // ── Equals ───────────────────────────────────────────────────────────────
+    if (value === '=') {
+      if (calcPrevValue !== null && calcOperator) {
+        // Normal calculation
+        const currentNum = parseFloat(calcDisplay);
+        const result = calcCompute(calcPrevValue, currentNum, calcOperator);
+        const resultStr = calcFormat(result);
+        setCalcExpression(`${calcPrevValue} ${calcOperator} ${calcDisplay} =`);
+        setCalcDisplay(resultStr);
+        // Save for repeat-= feature
+        setCalcLastOperator(calcOperator);
+        setCalcLastOperand(currentNum);
         setCalcPrevValue(null);
         setCalcOperator(null);
         setCalcWaitingForSecond(false);
+        setCalcJustEvaluated(true);
+      } else if (calcJustEvaluated && calcLastOperator && calcLastOperand !== null) {
+        // Repeat last operation (e.g. 5+3=8, =11, =14…)
+        const currentNum = parseFloat(calcDisplay);
+        const result = calcCompute(currentNum, calcLastOperand, calcLastOperator);
+        const resultStr = calcFormat(result);
+        setCalcExpression(`${calcDisplay} ${calcLastOperator} ${calcLastOperand} =`);
+        setCalcDisplay(resultStr);
+        setCalcJustEvaluated(true);
       }
-    } else if (value === 'C') {
+      return;
+    }
+
+    // ── Clear ────────────────────────────────────────────────────────────────
+    if (value === 'C') {
       setCalcDisplay('0');
       setCalcExpression('');
       setCalcPrevValue(null);
       setCalcOperator(null);
       setCalcWaitingForSecond(false);
-    } else if (value === '⌫') {
-      setCalcDisplay(prev => prev.length > 1 ? prev.slice(0, -1) : '0');
-    } else if (value === '%') {
-      setCalcDisplay(prev => {
-        const num = parseFloat(prev);
-        return isNaN(num) ? '0' : parseFloat((num / 100).toFixed(10)).toString();
-      });
+      setCalcLastOperator(null);
+      setCalcLastOperand(null);
+      setCalcJustEvaluated(false);
+      return;
     }
-  }, [calcDisplay, calcPrevValue, calcOperator, calcWaitingForSecond]);
+
+    // ── Negate (±) ───────────────────────────────────────────────────────────
+    if (value === '±') {
+      setCalcDisplay(prev => {
+        if (prev === '0' || prev === 'Error') return prev;
+        return prev.startsWith('-') ? prev.slice(1) : '-' + prev;
+      });
+      return;
+    }
+
+    // ── Percent ──────────────────────────────────────────────────────────────
+    if (value === '%') {
+      const num = parseFloat(calcDisplay);
+      if (!isNaN(num)) {
+        // If inside an operation, calculate as % of prevValue (e.g. 200 + 10% = 220)
+        const pct = calcPrevValue !== null && (calcOperator === '+' || calcOperator === '-')
+          ? calcPrevValue * (num / 100)
+          : num / 100;
+        setCalcDisplay(calcFormat(pct));
+        setCalcJustEvaluated(false);
+      }
+      return;
+    }
+
+    // ── Backspace ────────────────────────────────────────────────────────────
+    if (value === '⌫') {
+      if (calcJustEvaluated) { setCalcDisplay('0'); setCalcJustEvaluated(false); return; }
+      setCalcDisplay(prev => (prev.length <= 1 || (prev.startsWith('-') && prev.length <= 2)) ? '0' : prev.slice(0, -1));
+      return;
+    }
+  }, [calcDisplay, calcExpression, calcPrevValue, calcOperator, calcWaitingForSecond,
+      calcLastOperator, calcLastOperand, calcJustEvaluated]);
 
   if (!user) {
     return <div>Please log in to access the exam portal.</div>;
@@ -2405,47 +2506,63 @@ export default function StudentExams() {
               </div>
 
               {/* Display */}
-              <div className="px-4 pt-3 pb-2 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                <div className="text-right text-xs text-gray-400 dark:text-gray-500 h-4 mb-1 truncate">
-                  {calcExpression || ' '}
+              <div className="px-4 pt-3 pb-3 bg-gray-900 dark:bg-gray-950">
+                <div className="text-right text-xs text-gray-400 h-5 mb-1 truncate">
+                  {calcExpression || '\u00A0'}
                 </div>
-                <div className="text-right text-3xl font-mono font-bold text-gray-900 dark:text-white truncate" data-testid="calc-display">
+                <div
+                  className={`text-right font-mono font-bold text-white truncate transition-all ${
+                    calcDisplay.length > 10 ? 'text-xl' : calcDisplay.length > 7 ? 'text-2xl' : 'text-4xl'
+                  }`}
+                  data-testid="calc-display"
+                >
                   {calcDisplay}
                 </div>
               </div>
 
               {/* Buttons */}
-              <div className="p-3 grid grid-cols-4 gap-2">
-                {[
-                  { label: 'C',  style: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60 font-semibold' },
-                  { label: '%',  style: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' },
-                  { label: '⌫',  style: 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600' },
-                  { label: '÷',  style: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 font-semibold text-xl' },
-                  { label: '7',  style: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
-                  { label: '8',  style: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
-                  { label: '9',  style: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
-                  { label: '×',  style: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 font-semibold text-xl' },
-                  { label: '4',  style: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
-                  { label: '5',  style: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
-                  { label: '6',  style: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
-                  { label: '-',  style: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 font-semibold text-xl' },
-                  { label: '1',  style: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
-                  { label: '2',  style: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
-                  { label: '3',  style: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
-                  { label: '+',  style: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/60 font-semibold text-xl' },
-                  { label: '0',  style: 'col-span-2 bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
-                  { label: '.',  style: 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600' },
-                  { label: '=',  style: 'bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600 font-bold text-xl' },
-                ].map(({ label, style }) => (
-                  <button
-                    key={label}
-                    onClick={() => handleCalcInput(label)}
-                    className={`${style} rounded-xl py-3 text-base font-medium transition-all duration-100 active:scale-95`}
-                    data-testid={`calc-btn-${label === '⌫' ? 'backspace' : label}`}
-                  >
-                    {label}
-                  </button>
-                ))}
+              <div className="p-3 grid grid-cols-4 gap-1.5">
+                {([
+                  { label: calcDisplay === '0' && !calcPrevValue ? 'AC' : 'C', key: 'C',  type: 'fn' },
+                  { label: '±',  key: '±',  type: 'fn' },
+                  { label: '%',  key: '%',  type: 'fn' },
+                  { label: '÷',  key: '÷',  type: 'op' },
+                  { label: '7',  key: '7',  type: 'num' },
+                  { label: '8',  key: '8',  type: 'num' },
+                  { label: '9',  key: '9',  type: 'num' },
+                  { label: '×',  key: '×',  type: 'op' },
+                  { label: '4',  key: '4',  type: 'num' },
+                  { label: '5',  key: '5',  type: 'num' },
+                  { label: '6',  key: '6',  type: 'num' },
+                  { label: '-',  key: '-',  type: 'op' },
+                  { label: '1',  key: '1',  type: 'num' },
+                  { label: '2',  key: '2',  type: 'num' },
+                  { label: '3',  key: '3',  type: 'num' },
+                  { label: '+',  key: '+',  type: 'op' },
+                  { label: '0',  key: '0',  type: 'num', wide: true },
+                  { label: '.',  key: '.',  type: 'num' },
+                  { label: '=',  key: '=',  type: 'eq' },
+                ] as { label: string; key: string; type: string; wide?: boolean }[]).map(({ label, key, type, wide }) => {
+                  const isActiveOp = type === 'op' && calcOperator === key && calcWaitingForSecond;
+                  const baseClass = wide ? 'col-span-2 text-left pl-5' : '';
+                  const typeClass =
+                    type === 'fn'  ? 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500' :
+                    type === 'op'  ? isActiveOp
+                      ? 'bg-white dark:bg-white text-blue-600 dark:text-blue-600 hover:bg-gray-100'
+                      : 'bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-400 dark:hover:bg-blue-500'
+                    : type === 'eq' ? 'bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-500 dark:hover:bg-blue-600'
+                    : 'bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600';
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => handleCalcInput(key)}
+                      className={`${baseClass} ${typeClass} rounded-2xl py-3.5 text-base font-semibold transition-all duration-100 active:scale-95 shadow-sm`}
+                      data-testid={`calc-btn-${key === '+' ? 'plus' : key === '-' ? 'minus' : key === '×' ? 'multiply' : key === '÷' ? 'divide' : key}`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
