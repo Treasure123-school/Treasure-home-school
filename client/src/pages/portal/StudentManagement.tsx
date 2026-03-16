@@ -51,6 +51,7 @@ export default function StudentManagement() {
   const [formSelectedClassId, setFormSelectedClassId] = useState<number | null>(null);
   const [editFormSelectedClassId, setEditFormSelectedClassId] = useState<number | null>(null);
   const [editFormDepartment, setEditFormDepartment] = useState<string | null>(null);
+  const [studentToBlock, setStudentToBlock] = useState<any>(null);
 
   const { register, handleSubmit, formState: { errors }, setValue, reset } = useForm<QuickStudentForm>({
     resolver: zodResolver(quickCreateStudentSchema),
@@ -1518,7 +1519,8 @@ export default function StudentManagement() {
                           variant="outline"
                           size="sm"
                           className="flex-1 text-xs"
-                          onClick={() => handleBlockToggle(student)}
+                          onClick={() => setStudentToBlock(student)}
+                          disabled={blockStudentMutation.isPending && blockStudentMutation.variables?.id === student.id}
                           data-testid={`button-block-${student.id}`}
                         >
                           {student.user?.isActive ? (
@@ -1679,7 +1681,8 @@ export default function StudentManagement() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleBlockToggle(student)}
+                              onClick={() => setStudentToBlock(student)}
+                              disabled={blockStudentMutation.isPending && blockStudentMutation.variables?.id === student.id}
                               data-testid={`button-block-${student.id}`}
                               title={student.user?.isActive ? "Block student" : "Activate student"}
                             >
@@ -1737,6 +1740,48 @@ export default function StudentManagement() {
           )}
         </CardContent>
       </Card>
+
+      {/* Block / Unblock Confirmation Dialog */}
+      <AlertDialog open={!!studentToBlock} onOpenChange={(open) => { if (!open) setStudentToBlock(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {studentToBlock?.user?.isActive ? 'Block Student Account' : 'Unblock Student Account'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {studentToBlock?.user?.isActive ? (
+                <>
+                  Are you sure you want to <strong>block</strong>{' '}
+                  <strong>{studentToBlock?.user?.firstName} {studentToBlock?.user?.lastName}</strong>?
+                  <br /><br />
+                  They will be immediately logged out and unable to sign in until their account is unblocked.
+                </>
+              ) : (
+                <>
+                  Are you sure you want to <strong>unblock</strong>{' '}
+                  <strong>{studentToBlock?.user?.firstName} {studentToBlock?.user?.lastName}</strong>?
+                  <br /><br />
+                  Their account will be restored and they will be able to sign in again.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (studentToBlock) {
+                  handleBlockToggle(studentToBlock);
+                  setStudentToBlock(null);
+                }
+              }}
+              className={studentToBlock?.user?.isActive ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'}
+            >
+              {studentToBlock?.user?.isActive ? 'Yes, Block Account' : 'Yes, Unblock Account'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
