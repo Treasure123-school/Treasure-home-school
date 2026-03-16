@@ -996,6 +996,14 @@ export class SmartDeletionManager {
           .where(eq(schema.reportCardItems.examExamId, examId));
       } catch (e) {}
 
+      // Delete archived submissions (FK: exam_submissions_archive_exam_id_exams_id_fk)
+      try {
+        const archiveResult = await db.delete(schema.examSubmissionsArchive)
+          .where(eq(schema.examSubmissionsArchive.examId, examId))
+          .returning();
+        this.deletionService.recordDeletion('exam_submissions_archive', archiveResult.length);
+      } catch (e) {}
+
       const result = await db.delete(schema.exams)
         .where(eq(schema.exams.id, examId))
         .returning();

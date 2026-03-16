@@ -2203,6 +2203,10 @@ export class DatabaseStorage implements IStorage {
 
       deletedCounts.reportCardRefsCleared = testExamRefs.length + examExamRefs.length;
 
+      // Delete archived submissions for this exam (FK: exam_submissions_archive_exam_id_exams_id_fk)
+      await db.delete(schema.examSubmissionsArchive)
+        .where(eq(schema.examSubmissionsArchive.examId, id));
+
       // Finally delete the exam itself
       const result = await db.delete(schema.exams)
         .where(eq(schema.exams.id, id))
