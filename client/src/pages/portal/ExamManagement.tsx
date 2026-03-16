@@ -2467,45 +2467,8 @@ export default function ExamManagement() {
                     <Plus className="w-4 h-4 mr-2" />
                     Add Questions
                   </Button>
-                  {/* CSV Template Download */}
-                  <Button
-                    variant="outline"
-                    onClick={downloadCSVTemplate}
-                    data-testid="button-download-template"
-                    title="Download CSV template for bulk question upload"
-                    className="w-full sm:w-auto"
-                    size="sm"
-                  >
-                    <FileText className="w-4 h-4 mr-2" />
-                    <span className="hidden sm:inline">Download Template</span>
-                    <span className="sm:hidden">Template</span>
-                  </Button>
 
-                  {/* CSV Upload Button */}
-                  <div className="relative w-full sm:w-auto">
-                    <input
-                      type="file"
-                      id="csv-upload"
-                      accept=".csv"
-                      onChange={handleCSVUpload}
-                      className="hidden"
-                      data-testid="input-csv-upload"
-                    />
-                    <Button
-                      variant="outline"
-                      onClick={() => document.getElementById('csv-upload')?.click()}
-                      data-testid="button-upload-csv"
-                      disabled={!selectedExam || csvUploadMutation.isPending}
-                      title={!selectedExam ? "Please select an exam first" : "Upload questions from CSV file"}
-                      className="w-full sm:w-auto"
-                      size="sm"
-                    >
-                      <Upload className="w-4 h-4 mr-2" />
-                      {csvUploadMutation.isPending ? 'Uploading...' : 'Upload CSV'}
-                    </Button>
-                  </div>
-
-                  {/* Manual Add Question */}
+                  {/* Edit Question Dialog (opened programmatically via edit pencil) */}
                   <Dialog
                     open={isQuestionDialogOpen}
                     onOpenChange={(open) => {
@@ -2528,20 +2491,6 @@ export default function ExamManagement() {
                       setIsQuestionDialogOpen(open);
                     }}
                   >
-                    <DialogTrigger asChild>
-                      <div title={!selectedExam ? "Select an exam from the list above to add questions" : ""} className="w-full sm:w-auto">
-                        <Button
-                          data-testid="button-add-question"
-                          disabled={!selectedExam}
-                          style={!selectedExam ? { pointerEvents: 'none' } : {}}
-                          className="w-full sm:w-auto"
-                          size="sm"
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Question
-                        </Button>
-                      </div>
-                    </DialogTrigger>
                     <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>{editingQuestion ? 'Edit Question' : 'Add New Question'}</DialogTitle>
