@@ -130,9 +130,14 @@ export default function UserManagement() {
       );
       return { previousUsers };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Write server-confirmed user directly into cache — no refetch, no flicker
+      if (data?.user) {
+        queryClient.setQueryData<User[]>(['/api/users'], (old = []) =>
+          old.map(u => u.id === data.user.id ? { ...u, ...data.user } : u)
+        );
+      }
       toast({ title: "Account Unsuspended", description: "The user can now sign in again." });
-      queryClient.invalidateQueries({ queryKey: ['/api/users'] });
     },
     onError: (error: Error, _, context) => {
       if (context?.previousUsers) {
