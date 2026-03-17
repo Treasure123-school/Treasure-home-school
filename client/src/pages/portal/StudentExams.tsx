@@ -33,6 +33,7 @@ type ViolationType =
   | 'browser_minimize' // Browser window minimized/backgrounded
   | 'devtools'        // DevTools/Inspect Element opened
   | 'refresh_attempt' // Refresh or back button detected
+  | 'page_reload'     // Actual page reload detected via sessionStorage
   | 'duplicate_session' // Same exam accessed from another device
   | 'screenshot'      // Screenshot/screen recording attempt (if detectable)
   | 'copy_paste';     // Copy/paste attempt
@@ -122,6 +123,8 @@ export default function StudentExams() {
   const [violationPenalty, setViolationPenalty] = useState(0);
   const devToolsCheckRef = useRef<NodeJS.Timeout | null>(null);
   const isAutoSubmittingRef = useRef(false); // Prevent double auto-submit
+  const detectedReloadSessionIdRef = useRef<number | null>(null); // Session ID from reload detection
+  const reloadViolationFiredRef = useRef(false); // Ensure reload violation is only fired once
   
   // RELIABILITY: Use refs to ensure latest values are always accessible for auto-submit
   const violationCountRef = useRef(violationCount);
@@ -432,7 +435,9 @@ export default function StudentExams() {
     const map: Record<number, any> = {};
     existingAnswers.forEach(answer => {
       if (answer.selectedOptionId) {
-        map[answer.questionId] = answer.selectedOptionId;
+        // Store as string so RadioGroup value comparisons work correctly
+        // (RadioGroupItem values are always strings)
+        map[answer.questionId] = String(answer.selectedOptionId);
       } else if (answer.textAnswer) {
         map[answer.questionId] = answer.textAnswer;
       }
@@ -484,6 +489,21 @@ export default function StudentExams() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSession?.id]);
 
+  // RELOAD DETECTION: On mount, check if a session was active before reload
+  useEffect(() => {
+    try {
+      const marker = sessionStorage.getItem('exam_session_active');
+      if (marker) {
+        const parsed = JSON.parse(marker);
+        if (parsed?.sessionId) {
+          detectedReloadSessionIdRef.current = parsed.sessionId;
+        }
+        // Remove marker immediately so it doesn't persist beyond this detection
+        sessionStorage.removeItem('exam_session_active');
+      }
+    } catch (_) {}
+  }, []);
+
   // Check for existing active session on component mount
   useEffect(() => {
     if (user?.id && !activeSession) {
@@ -496,14 +516,19 @@ export default function StudentExams() {
             if (exam) {
               setSelectedExam(exam);
             }
-            // Restore session state
+            // Restore session state from metadata
             try {
               const metadata = session.metadata ? JSON.parse(session.metadata) : {};
               if (metadata.currentQuestionIndex) {
                 setCurrentQuestionIndex(metadata.currentQuestionIndex);
               }
-              // Restore tab switch count and penalty if they were saved in metadata
-              if (metadata.tabSwitchCount !== undefined) {
+              // Restore violation count and penalty (persists across reloads)
+              if (metadata.violationCount !== undefined) {
+                setViolationCount(metadata.violationCount);
+                const restoredPenalty = calculateViolationPenalty(metadata.violationCount);
+                setViolationPenalty(restoredPenalty);
+              } else if (metadata.tabSwitchCount !== undefined) {
+                // Backward compatibility
                 setTabSwitchCount(metadata.tabSwitchCount);
                 const calculatedPenalty = calculateViolationPenalty(metadata.tabSwitchCount);
                 setViolationPenalty(calculatedPenalty);
@@ -522,18 +547,42 @@ export default function StudentExams() {
     if (activeSession && !activeSession.isCompleted) {
       const exam = exams.find(e => e.id === activeSession.examId);
 
-      // Recover timer from session if available (silently)
-      if (activeSession.timeRemaining !== null && activeSession.timeRemaining !== undefined) {
-        setTimeRemaining(activeSession.timeRemaining);
-      } else if (exam?.timeLimit && activeSession.startedAt) {
-        // Calculate remaining time based on start time
+      // ALWAYS calculate remaining time from startedAt for accuracy.
+      // Using the stored timeRemaining can be up to 30s stale (save interval),
+      // which makes the timer appear to reset to the beginning on reload.
+      if (exam?.timeLimit && activeSession.startedAt) {
         const elapsedSeconds = Math.floor((Date.now() - new Date(activeSession.startedAt).getTime()) / 1000);
         const totalSeconds = exam.timeLimit * 60;
         const remaining = Math.max(0, totalSeconds - elapsedSeconds);
         setTimeRemaining(remaining);
+      } else if (activeSession.timeRemaining !== null && activeSession.timeRemaining !== undefined) {
+        // Fallback: use stored value only when startedAt or timeLimit is unavailable
+        setTimeRemaining(activeSession.timeRemaining);
       }
+
+      // Set sessionStorage marker so that a page reload can be detected
+      try {
+        sessionStorage.setItem('exam_session_active', JSON.stringify({ sessionId: activeSession.id }));
+      } catch (_) {}
     }
   }, [activeSession, exams]);
+
+  // RELOAD VIOLATION: Fire a violation when a reload is detected for the current session
+  useEffect(() => {
+    if (
+      activeSession &&
+      !activeSession.isCompleted &&
+      detectedReloadSessionIdRef.current === activeSession.id &&
+      !reloadViolationFiredRef.current
+    ) {
+      reloadViolationFiredRef.current = true;
+      // Delay slightly to allow session state (violationCount etc.) to fully restore first
+      const t = setTimeout(() => {
+        handleSecurityViolation('page_reload', 'Student reloaded the page during the exam');
+      }, 1500);
+      return () => clearTimeout(t);
+    }
+  }, [activeSession, handleSecurityViolation]);
 
   // Timer countdown with race condition protection
   useEffect(() => {
@@ -692,6 +741,7 @@ export default function StudentExams() {
         'browser_minimize': 'Browser Minimized',
         'devtools': 'DevTools Detected',
         'refresh_attempt': 'Refresh/Back Attempt',
+        'page_reload': 'Page Reload',
         'duplicate_session': 'Duplicate Session',
         'screenshot': 'Screenshot Attempt',
         'copy_paste': 'Copy/Paste Attempt'
@@ -1637,8 +1687,9 @@ export default function StudentExams() {
     onSuccess: (data) => {
       setIsScoring(false);
 
-      // Clear locally-stored answers for this session — exam is done
+      // Clear locally-stored answers and the reload-detection marker — exam is done
       if (activeSession) lsClear(activeSession.id);
+      try { sessionStorage.removeItem('exam_session_active'); } catch (_) {}
       setLocalPendingCount(0);
 
       // Enhanced cache invalidation for all related data
