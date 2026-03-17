@@ -9,81 +9,72 @@ import { SkeletonShimmer, StatsCardSkeleton } from "./skeletons";
 // Student Dashboard Skeleton - matches the actual StudentDashboard layout
 export function StudentDashboardSkeleton() {
   return (
-    <div className="animate-in fade-in duration-200" data-testid="skeleton-student-dashboard">
-      {/* Welcome Box Skeleton */}
-      <div className="mb-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-6 text-white shadow-lg">
+    <div className="p-4 sm:p-6 space-y-6 animate-in fade-in duration-200" data-testid="skeleton-student-dashboard">
+      {/* Welcome Banner */}
+      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-2xl p-6 text-white">
         <div className="flex items-center gap-4">
-          <SkeletonShimmer className="h-[72px] w-[72px] rounded-2xl bg-white/20" />
-          <div className="space-y-2">
-            <SkeletonShimmer className="h-8 w-64 bg-white/30" />
-            <SkeletonShimmer className="h-4 w-80 bg-white/20" />
+          <SkeletonShimmer className="h-[72px] w-[72px] rounded-2xl bg-white/20 flex-shrink-0" />
+          <div className="space-y-2 flex-1 min-w-0">
+            <SkeletonShimmer className="h-7 w-56 bg-white/30" />
+            <SkeletonShimmer className="h-4 w-72 bg-white/20" />
           </div>
         </div>
       </div>
 
       {/* Stats Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="rounded-lg border bg-card p-6 shadow-xl">
-            <div className="flex items-start justify-between mb-4">
-              <div className="space-y-2">
-                <SkeletonShimmer className="h-4 w-20" />
-                <SkeletonShimmer className="h-10 w-16" />
-              </div>
-              <SkeletonShimmer className="h-12 w-12 rounded-xl" />
-            </div>
-            <SkeletonShimmer className="h-10 w-full" />
-          </div>
+          <StatsCardSkeleton key={i} />
         ))}
       </div>
 
       {/* Two Column Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Grades Card */}
-        <div className="rounded-lg border bg-card shadow-lg">
-          <div className="p-6 pb-3 flex items-center justify-between">
+        <div className="rounded-lg border bg-card shadow-sm">
+          <div className="p-6 border-b flex items-center justify-between">
             <div className="flex items-center gap-2">
               <SkeletonShimmer className="h-9 w-9 rounded-lg" />
               <SkeletonShimmer className="h-5 w-28" />
             </div>
             <SkeletonShimmer className="h-8 w-20" />
           </div>
-          <div className="px-6 pb-6 space-y-3">
+          <div className="p-6 space-y-3">
             {[1, 2, 3].map((i) => (
-              <SkeletonShimmer key={i} className="h-20 w-full rounded-xl" />
+              <SkeletonShimmer key={i} className="h-16 w-full rounded-lg" />
             ))}
           </div>
         </div>
 
         {/* Upcoming Exams Card */}
-        <div className="rounded-lg border bg-card shadow-lg">
-          <div className="p-6 pb-3 flex items-center justify-between">
+        <div className="rounded-lg border bg-card shadow-sm">
+          <div className="p-6 border-b flex items-center justify-between">
             <div className="flex items-center gap-2">
               <SkeletonShimmer className="h-9 w-9 rounded-lg" />
               <SkeletonShimmer className="h-5 w-32" />
             </div>
             <SkeletonShimmer className="h-8 w-20" />
           </div>
-          <div className="px-6 pb-6 space-y-3">
+          <div className="p-6 space-y-3">
             {[1, 2, 3].map((i) => (
-              <SkeletonShimmer key={i} className="h-32 w-full rounded-lg" />
+              <SkeletonShimmer key={i} className="h-20 w-full rounded-lg" />
             ))}
           </div>
         </div>
       </div>
 
       {/* Announcements Card - Full Width */}
-      <div className="mt-6 rounded-lg border bg-card shadow-lg">
-        <div className="p-6 pb-3 flex items-center justify-between">
+      <div className="rounded-lg border bg-card shadow-sm">
+        <div className="p-6 border-b flex items-center justify-between">
           <div className="flex items-center gap-2">
             <SkeletonShimmer className="h-9 w-9 rounded-lg" />
             <SkeletonShimmer className="h-5 w-40" />
           </div>
           <SkeletonShimmer className="h-8 w-20" />
         </div>
-        <div className="px-6 pb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           {[1, 2].map((i) => (
-            <SkeletonShimmer key={i} className="h-32 w-full rounded-lg" />
+            <SkeletonShimmer key={i} className="h-28 w-full rounded-lg" />
           ))}
         </div>
       </div>
