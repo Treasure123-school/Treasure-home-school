@@ -567,23 +567,6 @@ export default function StudentExams() {
     }
   }, [activeSession, exams]);
 
-  // RELOAD VIOLATION: Fire a violation when a reload is detected for the current session
-  useEffect(() => {
-    if (
-      activeSession &&
-      !activeSession.isCompleted &&
-      detectedReloadSessionIdRef.current === activeSession.id &&
-      !reloadViolationFiredRef.current
-    ) {
-      reloadViolationFiredRef.current = true;
-      // Delay slightly to allow session state (violationCount etc.) to fully restore first
-      const t = setTimeout(() => {
-        handleSecurityViolation('page_reload', 'Student reloaded the page during the exam');
-      }, 1500);
-      return () => clearTimeout(t);
-    }
-  }, [activeSession, handleSecurityViolation]);
-
   // Timer countdown with race condition protection
   useEffect(() => {
     if (timeRemaining !== null && timeRemaining > 0 && activeSession && !activeSession.isCompleted) {
@@ -795,6 +778,24 @@ export default function StudentExams() {
       return newCount;
     });
   }, [activeSession, violationHistory, toast]);
+
+  // RELOAD VIOLATION: Fire a violation when a page reload is detected for the active session.
+  // Must be placed AFTER handleSecurityViolation is defined.
+  useEffect(() => {
+    if (
+      activeSession &&
+      !activeSession.isCompleted &&
+      detectedReloadSessionIdRef.current === activeSession.id &&
+      !reloadViolationFiredRef.current
+    ) {
+      reloadViolationFiredRef.current = true;
+      // Delay slightly to let violation count restore from metadata first
+      const t = setTimeout(() => {
+        handleSecurityViolation('page_reload', 'Student reloaded the page during the exam');
+      }, 1500);
+      return () => clearTimeout(t);
+    }
+  }, [activeSession, handleSecurityViolation]);
 
   // =============================================================================
   // COMPREHENSIVE EXAM SECURITY SYSTEM
