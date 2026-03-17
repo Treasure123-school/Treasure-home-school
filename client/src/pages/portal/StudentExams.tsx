@@ -489,19 +489,23 @@ export default function StudentExams() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSession?.id]);
 
-  // RELOAD DETECTION: On mount, check if a session was active before reload
+  // LEFT-EXAM DETECTION: On mount, check if the student left the exam page
+  // localStorage persists across tab closes, navigation away, AND page reloads,
+  // so this catches all cases where a student abandons the exam page.
   useEffect(() => {
     try {
-      const marker = sessionStorage.getItem('exam_session_active');
+      const marker = localStorage.getItem('exam_left_marker');
       if (marker) {
         const parsed = JSON.parse(marker);
         if (parsed?.sessionId) {
           detectedReloadSessionIdRef.current = parsed.sessionId;
         }
-        // Remove marker immediately so it doesn't persist beyond this detection
-        sessionStorage.removeItem('exam_session_active');
+        // Remove immediately so it doesn't fire twice
+        localStorage.removeItem('exam_left_marker');
       }
     } catch (_) {}
+    // Clean up any leftover sessionStorage marker from the old mechanism
+    try { sessionStorage.removeItem('exam_session_active'); } catch (_) {}
   }, []);
 
   // Check for existing active session on component mount
@@ -560,9 +564,10 @@ export default function StudentExams() {
         setTimeRemaining(activeSession.timeRemaining);
       }
 
-      // Set sessionStorage marker so that a page reload can be detected
+      // Ensure the localStorage marker is always present while the exam is active.
+      // beforeunload also sets it, but this covers the moment the session first loads.
       try {
-        sessionStorage.setItem('exam_session_active', JSON.stringify({ sessionId: activeSession.id }));
+        localStorage.setItem('exam_left_marker', JSON.stringify({ sessionId: activeSession.id, timestamp: Date.now() }));
       } catch (_) {}
     }
   }, [activeSession, exams]);
@@ -724,7 +729,7 @@ export default function StudentExams() {
         'browser_minimize': 'Browser Minimized',
         'devtools': 'DevTools Detected',
         'refresh_attempt': 'Refresh/Back Attempt',
-        'page_reload': 'Page Reload',
+        'page_reload': 'Left Exam Page',
         'duplicate_session': 'Duplicate Session',
         'screenshot': 'Screenshot Attempt',
         'copy_paste': 'Copy/Paste Attempt'
@@ -791,7 +796,7 @@ export default function StudentExams() {
       reloadViolationFiredRef.current = true;
       // Delay slightly to let violation count restore from metadata first
       const t = setTimeout(() => {
-        handleSecurityViolation('page_reload', 'Student reloaded the page during the exam');
+        handleSecurityViolation('page_reload', 'Student left the exam page (tab closed, reloaded, or navigated away)');
       }, 1500);
       return () => clearTimeout(t);
     }
@@ -949,6 +954,14 @@ export default function StudentExams() {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = 'You have an exam in progress. Leaving will be recorded as a violation.';
+      // Set a localStorage marker that survives tab closes, navigation, AND reloads.
+      // This is the primary mechanism for detecting that the student left the exam.
+      try {
+        localStorage.setItem('exam_left_marker', JSON.stringify({
+          sessionId: activeSession.id,
+          timestamp: Date.now()
+        }));
+      } catch (_) {}
       return e.returnValue;
     };
 
@@ -1688,8 +1701,9 @@ export default function StudentExams() {
     onSuccess: (data) => {
       setIsScoring(false);
 
-      // Clear locally-stored answers and the reload-detection marker — exam is done
+      // Clear locally-stored answers and the left-exam markers — exam is done
       if (activeSession) lsClear(activeSession.id);
+      try { localStorage.removeItem('exam_left_marker'); } catch (_) {}
       try { sessionStorage.removeItem('exam_session_active'); } catch (_) {}
       setLocalPendingCount(0);
 
@@ -1966,6 +1980,7 @@ export default function StudentExams() {
     queryClient.invalidateQueries({ queryKey: ['/api/exam-results', user?.id] });
     
     // STEP 4: Reset exam state completely (prevent inline UI from showing)
+    try { localStorage.removeItem('exam_left_marker'); } catch (_) {}
     setShowResults(false);
     setExamResults(null);
     setActiveSession(null);
