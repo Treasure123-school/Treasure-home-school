@@ -686,102 +686,96 @@ export default function StudentExams() {
 
   // UNIFIED VIOLATION HANDLER: Centralizes all security violation processing
   // Handles: tab switches, browser minimize, DevTools, refresh attempts, duplicate sessions
+  // NOTE: Uses violationCountRef for reliable current count — never puts side effects inside
+  // a setState updater (which React requires to be pure / side-effect free).
   const handleSecurityViolation = useCallback((type: ViolationType, details?: string) => {
     if (!activeSession || activeSession.isCompleted || isAutoSubmittingRef.current) return;
-    
-    // Update violation count and history
-    setViolationCount(prev => {
-      const newCount = prev + 1;
-      
-      // Record this violation
-      const violationRecord: ViolationRecord = {
-        type,
-        timestamp: new Date(),
-        details
-      };
-      setViolationHistory(history => [...history, violationRecord]);
-      setLastViolationType(type);
-      
-      // Update penalty
-      const calculatedPenalty = calculateViolationPenalty(newCount);
-      setViolationPenalty(calculatedPenalty);
-      
-      // Also update tabSwitchCount for backward compatibility
-      if (type === 'tab_switch' || type === 'browser_minimize') {
-        setTabSwitchCount(tc => tc + 1);
-      }
-      
-      // Save violation to session metadata
-      if (activeSession?.id) {
-        apiRequest('PATCH', `/api/exam-sessions/${activeSession.id}/metadata`, {
-          metadata: JSON.stringify({
-            violationCount: newCount,
-            violationPenalty: calculatedPenalty,
-            lastViolationType: type,
-            violationHistory: [...violationHistory, violationRecord].slice(-10) // Keep last 10
-          })
-        }).catch(() => {});
-      }
-      
-      // Get violation type display name
-      const violationNames: Record<ViolationType, string> = {
-        'tab_switch': 'Tab Switch',
-        'browser_minimize': 'Browser Minimized',
-        'devtools': 'DevTools Detected',
-        'refresh_attempt': 'Refresh/Back Attempt',
-        'page_reload': 'Left Exam Page',
-        'duplicate_session': 'Duplicate Session',
-        'screenshot': 'Screenshot Attempt',
-        'copy_paste': 'Copy/Paste Attempt'
-      };
-      
-      // CHECK IF AUTO-SUBMIT REQUIRED (3rd violation)
-      if (newCount >= MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT) {
-        isAutoSubmittingRef.current = true;
-        
-        toast({
-          title: "EXAM AUTO-SUBMITTED",
-          description: `Your exam has been automatically submitted due to ${newCount} security violations. This is to maintain exam integrity.`,
-          variant: "destructive",
-        });
-        
-        // Trigger auto-submit immediately
-        setTimeout(() => {
-          forceSubmitExam();
-        }, 500);
-        
-        return newCount;
-      }
-      
-      // Show warning for 1st and 2nd violations
-      setShowViolationWarning(true);
-      setShowTabSwitchWarning(true);
-      
-      // Auto-hide warning after 5 seconds
-      if (violationTimeoutRef.current) clearTimeout(violationTimeoutRef.current);
-      violationTimeoutRef.current = setTimeout(() => {
-        setShowViolationWarning(false);
-        setShowTabSwitchWarning(false);
-      }, 5000);
-      
-      const warningsRemaining = MAX_WARNINGS_ALLOWED - newCount + 1;
-      
-      if (newCount === 1) {
-        toast({
-          title: `WARNING 1 of ${MAX_WARNINGS_ALLOWED}: ${violationNames[type]}`,
-          description: `This is your first warning. You have ${warningsRemaining - 1} more warning(s) before your exam is auto-submitted. Please stay focused on the exam.`,
-          variant: "destructive",
-        });
-      } else if (newCount === 2) {
-        toast({
-          title: `FINAL WARNING: ${violationNames[type]}`,
-          description: `This is your LAST warning! One more violation will automatically submit your exam. Stay on the exam page.`,
-          variant: "destructive",
-        });
-      }
-      
-      return newCount;
-    });
+
+    // Derive new count from ref (always current, no stale closure risk)
+    const newCount = violationCountRef.current + 1;
+
+    // Sync ref and state immediately
+    violationCountRef.current = newCount;
+    setViolationCount(newCount);
+
+    // Record violation in history
+    const violationRecord: ViolationRecord = {
+      type,
+      timestamp: new Date(),
+      details
+    };
+    setViolationHistory(history => [...history, violationRecord]);
+    setLastViolationType(type);
+
+    // Update penalty
+    const calculatedPenalty = calculateViolationPenalty(newCount);
+    violationPenaltyRef.current = calculatedPenalty;
+    setViolationPenalty(calculatedPenalty);
+
+    // Backward compatibility counter
+    if (type === 'tab_switch' || type === 'browser_minimize') {
+      setTabSwitchCount(tc => tc + 1);
+    }
+
+    // Violation display names
+    const violationNames: Record<ViolationType, string> = {
+      'tab_switch': 'Tab Switch',
+      'browser_minimize': 'Browser Minimized',
+      'devtools': 'DevTools Detected',
+      'refresh_attempt': 'Refresh/Back Attempt',
+      'page_reload': 'Left Exam Page',
+      'duplicate_session': 'Duplicate Session',
+      'screenshot': 'Screenshot Attempt',
+      'copy_paste': 'Copy/Paste Attempt'
+    };
+
+    // Persist violation to server (fire-and-forget)
+    if (activeSession?.id) {
+      apiRequest('PATCH', `/api/exam-sessions/${activeSession.id}/metadata`, {
+        metadata: JSON.stringify({
+          violationCount: newCount,
+          violationPenalty: calculatedPenalty,
+          lastViolationType: type,
+          violationHistory: [...violationHistory, violationRecord].slice(-10)
+        })
+      }).catch(() => {});
+    }
+
+    // ── 3rd (or more) violation → AUTO-SUBMIT ──────────────────────────────
+    if (newCount >= MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT) {
+      isAutoSubmittingRef.current = true;
+      toast({
+        title: '⚠️ EXAM AUTO-SUBMITTED',
+        description: `Your exam has been automatically submitted due to ${newCount} security violation(s). This is to maintain exam integrity.`,
+        variant: 'destructive',
+      });
+      setTimeout(() => forceSubmitExam(), 500);
+      return;
+    }
+
+    // ── 1st or 2nd violation → WARNING ─────────────────────────────────────
+    setShowViolationWarning(true);
+    setShowTabSwitchWarning(true);
+
+    if (violationTimeoutRef.current) clearTimeout(violationTimeoutRef.current);
+    violationTimeoutRef.current = setTimeout(() => {
+      setShowViolationWarning(false);
+      setShowTabSwitchWarning(false);
+    }, 8000);
+
+    if (newCount === 1) {
+      toast({
+        title: `⚠️ WARNING 1 of ${MAX_WARNINGS_ALLOWED}: ${violationNames[type]}`,
+        description: `This is your first warning. You have 1 more warning before your exam is auto-submitted. Please stay on the exam page.`,
+        variant: 'destructive',
+      });
+    } else if (newCount === 2) {
+      toast({
+        title: `🚨 FINAL WARNING: ${violationNames[type]}`,
+        description: `This is your LAST warning! One more violation will automatically submit your exam immediately.`,
+        variant: 'destructive',
+      });
+    }
   }, [activeSession, violationHistory, toast]);
 
   // RELOAD VIOLATION: Fire a violation when a page reload is detected for the active session.
