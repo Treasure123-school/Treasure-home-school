@@ -1,0 +1,137 @@
+⚠️ IMPLEMENTED BUT NOT VISIBLE/ACCESSIBLE
+Issue 1: Login Error Messages Not User-Friendly
+Current State: Generic error messages
+Expected: Role-specific, situation-specific messages as per plan
+
+Location:  (login endpoint)
+Problem: Messages exist but may not match the plan's exact wording
+
+Solution:
+
+Update login error messages to match plan specifications:
+Invalid credentials: "Invalid login. Please check your username or password."
+Pending approval: "Welcome to THS Portal. Your account is awaiting Admin approval. You will be notified once verified."
+Suspended (Staff): "Access denied: Your account has been suspended by THS Admin."
+Suspended (Student/Parent): "Your account is suspended. Contact your class teacher or Admin."
+Files to modify:  (lines 218-350)
+
+Issue 2: Pending Approvals Dashboard Not Prominent
+Current State: Admin dashboard shows pending count in notification bell
+Expected: Prominent alert/banner on dashboard
+
+Location:  has the notification (lines 85-125)
+Problem: It's there but may need better visibility
+
+Solution:
+
+Already implemented with prominent orange alert card
+Verify it displays when pendingCount > 0
+Test with actual pending users
+Completion: Should be visible - verify by creating a pending user
+
+Issue 3: Admin Control Panel Features Not Fully Exposed
+Current State: Backend supports Verify/Suspend/Delete/Reset Password
+Expected: UI for all admin powers in one place
+
+Location:
+
+Backend:  (endpoints exist)
+Frontend:  and 
+Missing UI Features:
+
+Recovery Email Management - No UI to change recovery email
+Audit Logs Viewer - Exists in backend but no prominent UI
+Force Password Change Toggle - Backend supports but UI missing
+Role Management - Backend supports but UI may be hidden
+Solution:
+
+Check  for role change UI
+Check  for audit trail
+Add recovery email field to user edit forms
+Add "Force Password Change" checkbox
+Files to check/modify:
+
+Issue 4: Password Reset Flow Not User-Facing
+Current State: Backend endpoints exist
+Expected: "Forgot Password?" link on login page
+
+Location: 
+Problem: May not have visible "Forgot Password" link
+
+Solution:
+
+Add "Forgot Password?" link to login form
+Create  page (already exists, verify it's linked)
+Ensure reset flow sends emails (currently logs to console in dev)
+Files to verify:
+
+ - Check for forgot password link
+ - Verify exists and works
+ - Verify exists and works
+Issue 5: Parent-Child Selector Not Prominent
+Current State:  has child selector (lines 62-158)
+Expected: Clear "Select child to view" interface
+
+Location: 
+Problem: Implemented but may need better UX
+
+Solution:
+
+Already has prominent child selector card
+Verify it shows when parent has multiple children
+Test with parent account
+Completion: Should be visible - verify with parent login
+
+Issue 6: Security Features Not Visible
+Current State: Backend has rate limiting, lockout, audit logs
+Expected: User notifications about security events
+
+Missing:
+
+Account Locked Notification - Backend locks accounts but no UI message
+Security Alerts for Admin - No dashboard widget
+Audit Log Access - May not be prominent in admin menu
+Solution:
+
+Add locked account message to login page
+Create security alerts dashboard widget
+Ensure "Audit Logs" is visible in admin sidebar
+Files to modify:
+
+ - Add locked account handling
+ - Add security widget
+ - Verify audit logs link
+📋 COMPLETION CHECKLIST
+High Priority (User-Facing):
+
+✅ Verify login error messages match plan specifications
+✅ Verify "Forgot Password" link exists on login page
+✅ Verify Pending Approvals alert shows on admin dashboard
+✅ Test parent-child selector visibility
+Medium Priority (Admin Tools):
+
+⚠️ Add/verify Recovery Email management UI
+⚠️ Ensure Audit Logs page is accessible from admin menu
+⚠️ Add "Force Password Change" option to user management
+⚠️ Verify role management UI exists
+Low Priority (Security):
+
+⚠️ Add account locked message to login
+⚠️ Add security alerts widget to admin dashboard
+⚠️ Add password reset notification emails (production)
+🎯 IMMEDIATE ACTION ITEMS
+Test Login Messages - Create test accounts in each status to verify messages
+Check Forgot Password Link - Open /login and look for link
+Verify Admin Menu - Ensure Audit Logs, Pending Approvals visible
+Test Parent Dashboard - Login as parent, verify child selector
+Check User Management - Verify all admin powers accessible
+Most features are implemented in backend but may need:
+
+Better frontend visibility (prominent links/buttons)
+User-friendly messaging (exact wording from plan)
+UI polish (accessibility of admin tools)
+Assistant mode
+
+advanced
+
+Ask Assistant, use @ to include specific files...

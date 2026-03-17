@@ -1,0 +1,216 @@
+Perfect, Marvellous — we’re entering the architectural phase now.
+Before I give you the prompt, here’s the quick mindset:
+
+A Super Admin Dashboard isn’t just “an admin panel” — it’s the command center of your system.
+It must be flexible, editable, and automatically scalable — because you said earlier that you don’t want to edit code again every time.
+
+So, the prompt below is carefully written for Replit Agent to:
+
+Understand your current stack (Vercel + Render + Supabase).
+
+Build in a modular, low-cost, scalable way.
+
+Avoid conflicts with existing code or schema.
+
+Implement live editing of most contents by the Super Admin.
+
+Check the Supabase database for missing or existing tables before making any change.
+
+
+
+---
+
+🧩 Prompt Script for Replit Agent — Super Admin Dashboard
+
+> Prompt Title:
+🧠 “Create a Standard, Scalable, and Secure Super Admin Dashboard for the THS Portal”
+
+
+
+> Prompt Body:
+
+You are the development agent working on the THS Portal project (Teacher–Student Management & Online Exam System).
+
+⚙️ Stack Information:
+
+Frontend: Next.js (Vercel Deployment)
+
+Backend: Express.js or Node.js (Render Deployment)
+
+Database: Supabase (with Auth, Storage, RLS, and Edge Functions)
+
+
+
+---
+
+🎯 Objective:
+Create a standard, modular, and scalable Super Admin Dashboard that allows the Super Admin to manage every critical aspect of the system without needing code edits.
+The dashboard should be responsive, modern, and performance-optimized.
+
+
+---
+
+🧱 Before Any Action:
+
+1. Check the Supabase database for all existing tables and avoid overwriting or creating duplicates.
+
+
+2. If a table is missing, create it following best naming conventions.
+
+
+3. Ensure schema relations remain consistent with existing users, teachers, students, exams, and reports tables.
+
+
+4. Avoid code conflicts — intelligently merge with existing routes, files, or modules.
+
+
+5. Keep everything modular and reusable.
+
+
+
+
+---
+
+🧰 Dashboard Features (Functional Requirements):
+
+👑 1. Overview Page
+
+Show system summary (total students, teachers, parents, exams, reports, active users).
+
+Include small charts/graphs (daily signups, exam count per subject, etc.).
+
+Add a quick search bar and filter.
+
+
+🧑‍💼 2. User Management
+
+Manage Admins, Teachers, Students, and Parents.
+
+Add, edit, verify, suspend, or delete any user.
+
+View user activity logs and recent actions.
+
+Approve or auto-verify teachers who complete their first-time profile.
+
+
+🧠 3. Academic Data Management
+
+Manage classes, subjects, and terms (CRUD operations).
+
+Assign subjects to teachers dynamically.
+
+Create and manage exam sessions and grading structures.
+
+
+📊 4. Exam Oversight
+
+View all exams created by teachers.
+
+Filter by class, subject, or teacher.
+
+Access live statistics: participation rate, submission status, average scores.
+
+Override or correct exam results manually if needed.
+
+
+📄 5. Content Editor
+
+Super Admin can edit homepage text, school logo, contact info, and footer links directly from the dashboard.
+
+Use a simple WYSIWYG editor or Markdown editor.
+
+
+💬 6. Notifications & Alerts
+
+Send system-wide messages or announcements to selected roles (students, teachers, parents).
+
+Store and display them dynamically on each user’s dashboard.
+
+
+🗄️ 7. Storage & File Management
+
+Manage all uploaded files, images, and media in Supabase Storage.
+
+Add a 2MB upload size limit and alert users if they exceed it.
+
+
+🔐 8. Settings & Configurations
+
+Configure exam durations, grading policies, warning penalties, or result visibility rules.
+
+Toggle “Allow Student Self-Registration” on/off.
+
+Manage registration age limits (e.g., 7–25 years).
+
+Manage account verification preferences.
+
+
+📈 9. Analytics & Reports
+
+Display charts of system activity over time.
+
+Download analytics in CSV or PDF formats.
+
+Auto-generate performance reports for each term.
+
+
+
+---
+
+💎 UI/UX Guidelines:
+
+Use a clean, professional, and minimalistic layout (sidebar + top nav).
+
+Components should be built with modular React structure.
+
+Include loading states, success/error toasts, and skeleton loaders.
+
+Fully responsive and mobile-friendly.
+
+Use TailwindCSS and ShadCN UI.
+
+
+
+---
+
+🔒 Security & Performance:
+
+Authenticate all routes using Supabase Auth session.
+
+Restrict this dashboard strictly to users with role = 'super_admin'.
+
+Use lazy loading for large datasets.
+
+Ensure minimal calls to Supabase; cache repeated requests.
+
+Add activity logs for every admin action.
+
+
+
+---
+
+🧩 Final Requirement:
+
+Structure code cleanly: /pages/super-admin, /components/admin, /services/supabase.js, /lib/hooks/.
+
+Ensure all configurations are editable from the dashboard, reducing future code edits.
+
+After completion, test all routes for access conflicts or missing schema.
+
+
+
+---
+
+🧠 Developer Note:
+Do not make assumptions. If you detect inconsistencies, prompt for clarification instead of overwriting.
+Ensure compatibility with the existing codebase and verify all schema relations with Supabase before creating new ones.
+The build should be scalable, editable, and optimized for long-term low-cost hosting.
+
+
+
+
+---
+
+Would you like me to now help you create the follow-up prompt that tells Replit Agent to connect the dashboard to Supabase (with role-based access + verification + analytics)?
+That’s usually the next phase after setting up the UI and logic structure.
+

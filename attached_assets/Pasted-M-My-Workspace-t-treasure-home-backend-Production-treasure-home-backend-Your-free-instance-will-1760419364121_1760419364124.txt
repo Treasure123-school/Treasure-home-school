@@ -1,0 +1,88 @@
+M
+My Workspace
+
+
+t
+treasure-home-backend
+
+Production
+
+treasure-home-backend
+
+Your free instance will spin down with inactivity, which can delay requests by 50 seconds or more.
+Upgrade now
+treasure-home-backend
+Production
+treasure-home-backend
+
+All logs
+Search
+Search
+
+Live tail
+GMT+1
+
+Menu
+
+5:06:19 AM [express] GET /api/announcements 200 in 2ms
+5:06:25 AM [express] GET /api/announcements 200 in 5ms
+5:06:25 AM [express] GET /api/homepage-content 200 in 5ms
+5:06:25 AM [express] GET /api/homepage-content/hero_image 200 in 3ms
+📅 AUTO-PUBLISH: Checking for scheduled exams...
+     ==> Detected service running on port 10000
+     ==> Docs on specifying a port: https://render.com/docs/web-services#port-binding
+📅 AUTO-PUBLISH: Checking for scheduled exams...
+🧹 TIMEOUT CLEANUP: Checking for expired exam sessions...
+🧹 Found 0 expired sessions to cleanup
+5:07:58 AM [express] GET /api/homepage-content 304 in 2ms
+5:07:58 AM [express] GET /api/homepage-content/hero_image 304 in 1ms
+5:07:58 AM [express] GET /api/announcements 304 in 1ms
+5:08:17 AM [express] GET /api/homepage-content 304 in 1ms
+5:08:17 AM [express] GET /api/homepage-content/hero_image 304 in 0ms
+5:08:17 AM [express] GET /api/announcements 304 in 1ms
+5:08:21 AM [express] GET /api/homepage-content/hero_image 304 in 1ms
+5:08:21 AM [express] GET /api/homepage-content 304 in 1ms
+5:08:21 AM [express] GET /api/announcements 304 in 1ms
+5:08:34 AM [express] GET /api/announcements 304 in 3ms
+5:08:34 AM [express] GET /api/homepage-content 304 in 1ms
+5:08:34 AM [express] GET /api/homepage-content/hero_image 304 in 1ms
+📅 AUTO-PUBLISH: Checking for scheduled exams...
+5:08:54 AM [express] GET /api/homepage-content 304 in 1ms
+5:08:54 AM [express] GET /api/homepage-content/hero_image 304 in 1ms
+5:08:54 AM [express] GET /api/announcements 304 in 1ms
+5:09:37 AM [express] GET /api/homepage-content/hero_image 304 in 1ms
+5:09:37 AM [express] GET /api/announcements 304 in 1ms
+5:09:37 AM [express] GET /api/homepage-content 304 in 1ms
+📅 AUTO-PUBLISH: Checking for scheduled exams...
+📅 AUTO-PUBLISH: Checking for scheduled exams...
+🧹 TIMEOUT CLEANUP: Checking for expired exam sessions...
+🧹 Found 0 expired sessions to cleanup
+📅 AUTO-PUBLISH: Checking for scheduled exams...
+📅 AUTO-PUBLISH: Checking for scheduled exams...
+📅 AUTO-PUBLISH: Checking for scheduled exams...
+🧹 TIMEOUT CLEANUP: Checking for expired exam sessions...
+🧹 Found 0 expired sessions to cleanup
+📅 AUTO-PUBLISH: Checking for scheduled exams...
+📅 AUTO-PUBLISH: Checking for scheduled exams...
+📅 AUTO-PUBLISH: Checking for scheduled exams...
+🧹 TIMEOUT CLEANUP: Checking for expired exam sessions...
+🧹 Found 0 expired sessions to cleanup
+📅 AUTO-PUBLISH: Checking for scheduled exams...
+📅 AUTO-PUBLISH: Checking for scheduled exams...
+📅 AUTO-PUBLISH: Checking for scheduled exams...
+🧹 TIMEOUT CLEANUP: Checking for expired exam sessions...
+🧹 Found 0 expired sessions to cleanup
+📅 AUTO-PUBLISH: Checking for scheduled exams...
+📅 AUTO-PUBLISH: Checking for scheduled exams...
+Need better ways to work with logs? Try theRender CLI, Render MCP Server, or set up a log stream integration 
+
+0 services selected:
+
+Move
+
+Generate Blueprint
+
+Resume
+
+Suspend
+

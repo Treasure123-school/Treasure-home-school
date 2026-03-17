@@ -1,0 +1,102 @@
+🔹 Step-by-Step Strategy for Building the Portal with Replit Agent
+
+🧭 1. Define the Global Summary
+
+At the very top of the Replit prompt, you’ll include a short summary of what the overall website is about — e.g.:
+
+> “We are building a multi-role online school portal with Super Admin, Admin, Teacher, Student, and Parent dashboards. The website uses Supabase for database, Vercel for frontend, and Render for backend. Follow clean modular structure and avoid conflicts with existing tables or files.”
+
+
+
+This helps Replit keep the overall vision in scope while working on small chunks.
+
+
+---
+
+🧩 2. Send Each Module One by One
+
+Each time, we’ll focus on a specific role or feature, like:
+
+✅ Login & Authentication
+
+✅ Profile System
+
+✅ Super Admin Dashboard
+
+✅ Teacher Exam Management
+
+✅ Student Exam Interface
+
+✅ Report Generation
+
+✅ Parent Monitoring Portal
+
+✅ Notification & Email System
+
+
+Each of these will have its own Replit prompt.
+
+
+---
+
+🧱 3. Structure for Each Prompt
+
+Each prompt to Replit should follow this exact format:
+
+🧾 Summary (1–2 lines):
+
+> Example: “This update adds the Super Admin dashboard with full control over users, settings, and data management.”
+
+
+
+🎯 Objective:
+
+> Create the Super Admin dashboard layout and routing
+
+Include menu: Users, Exams, Reports, Settings, Logs
+
+Fetch all users from Supabase
+
+Include search, filter, and pagination
+
+Ensure the design follows modern dashboard UI
+
+
+
+
+⚙️ Important Rules:
+
+> Don’t overwrite other features or pages.
+
+Ensure compatibility with Supabase tables.
+
+Use existing authentication logic.
+
+Add loading states and error handling.
+
+Keep performance in mind; avoid heavy loops.
+
+Use environment variables for keys and secrets.
+
+
+
+
+
+---
+
+💬 4. After Each Feature
+
+Once Replit finishes, we’ll test that feature before moving to the next.
+If everything works fine, we’ll then proceed to the next feature in the chain.
+This ensures clean modular development and zero feature clash.  PROMPT 1 — PREFLIGHT / SAFETY CHECK (MANDATORY FIRST STEP)
+Purpose: Ensure Supabase schema is ready and that the agent will not overwrite existing tables. This is a non-destructive safety gate.
+Instruction (paste to agent):
+Run a Supabase schema preflight and report back. Do NOT change anything yet. Steps:
+• Connect to Supabase using the project credentials (use safe env vars).
+• List tables and row counts for: users, teachers, students, parents, settings, audit_logs, exams, questions, exam_instances. Output a short JSON summary: { table: row_count }.
+• If any of the above tables are missing, return a list of the missing tables but do NOT create them yet. (We will create only specific safe tables later if needed.)
+• Check settings table for key allow_student_self_registration and teacher_auto_verify_on_profile_complete. If settings table missing, report that. Do not insert defaults yet.
+• Verify Supabase Auth providers configured (list providers: email, google).
+• Return: (a) summary JSON, (b) any errors, (c) recommended immediate next action.
+Acceptance criteria: Agent returns the JSON summary and confirms it did not alter any schema. If any table missing, agent lists them and waits for the next prompt.
+Stress alerts: DO NOT create, rename, or drop tables in this step. If the agent detects a dangerous schema mismatch, it should STOP and report.

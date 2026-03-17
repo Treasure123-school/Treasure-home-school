@@ -1,0 +1,57 @@
+
+**ROOT CAUSE:**
+The auto-scoring system in server/routes.ts uses a hardcoded system UUID `'00000000-0000-0000-0000-000000000001'` for the `recorded_by` field when saving exam results, but this UUID doesn't exist in the users table, causing every auto-scoring attempt to fail with a foreign key constraint violation.
+
+**CURRENT BROKEN FLOW:**
+1. Student submits exam successfully ✅
+2. Auto-scoring calculates correct scores ✅
+3. Database insertion FAILS due to missing system user ❌
+4. Retry mechanism also FAILS with same constraint violation ❌
+5. Fallback check finds no results (because insert failed) ❌
+6. Student gets "manual grading required" message despite auto-gradable questions ❌
+7. Performance exceeds goal (2754ms vs 2000ms target) due to failed operations ❌
+
+**ALL ISSUES TO FIX:**
+
+1. **MISSING SYSTEM USER RECORD** (PRIMARY ISSUE)
+   - The UUID '00000000-0000-0000-0000-000000000001' must be inserted into the users table
+   - This is the system user for auto-scoring operations
+   - Without this, ALL auto-scoring fails
+
+2. **BROKEN AUTO-SCORING PIPELINE**
+   - Auto-scoring logic works correctly (calculates scores properly)
+   - Database persistence fails due to foreign key constraint
+   - No exam results are being saved despite successful scoring
+
+3. **PERFORMANCE DEGRADATION**
+   - Submission taking 2754ms (37% over 2-second goal)
+   - Caused by failed database operations and retry attempts
+   - Performance monitoring shows consistent goal failures
+
+4. **POOR ERROR HANDLING**
+   - Students see misleading "manual grading required" messages
+   - Auto-gradable multiple choice questions appear to need manual review
+   - No clear indication of system failure vs actual manual grading needs
+
+5. **DATABASE SCHEMA INCONSISTENCY**
+   - Migration snapshots show recorded_by field changed from text to uuid
+   - System expects UUID type but hardcoded system user doesn't exist
+   - Foreign key constraint prevents any auto-scoring operations
+
+**IMPACT:**
+- Students cannot get instant feedback on exams
+- Auto-gradable questions appear broken
+- Manual workload increases unnecessarily for teachers
+- System performance degrades consistently
+- User experience is severely impacted
+
+**FILES AFFECTED:**
+- server/routes.ts (autoScoreExamSession function)
+- server/storage.ts (recordExamResult function)
+- Database users table (missing system user record)
+- migrations/schema.ts (shows foreign key constraint)
+
+**SOLUTION NEEDED:**
+Create the system user record with UUID '00000000-0000-0000-0000-000000000001' in the users table to satisfy the foreign key constraint and restore auto-scoring functionality.
+
+This is a blocking issue preventing the core exam functionality from working properly.

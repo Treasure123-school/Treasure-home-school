@@ -1,0 +1,265 @@
+
+# THS Teacher Profile Onboarding - Incomplete Features & Bugs
+**Generated:** January 2025  
+**Status:** Features not yet implemented or completed
+
+---
+
+## 🔴 CRITICAL BUGS (Fix Immediately)
+
+### 1. Teacher Overview API Failure ❌
+**Error:** `TypeError: Cannot read properties of undefined (reading 'subjects')`  
+**Location:** `server/routes.ts:7417`  
+**Impact:** Admin dashboard cannot display teacher overview table  
+**Status:** BLOCKING admin functionality  
+**Files Affected:**
+- `server/routes.ts` - Fix undefined subjects array handling
+- `client/src/pages/portal/AdminDashboard.tsx` - Error handling for failed API
+
+---
+
+## ❌ MISSING FEATURES
+
+### 2. Profile Completeness Meter
+**Status:** Not implemented  
+**Required:**
+- Visual progress bar (e.g., "Profile 85% complete")
+- Real-time calculation of completion percentage
+- Display missing fields to guide teacher
+- Block submission until 100% complete
+
+**Files to Create/Update:**
+- `client/src/pages/portal/TeacherProfileSetup.tsx` - Add progress calculation logic and UI
+
+---
+
+### 3. Auto-Save Draft Feature
+**Status:** Not implemented  
+**Required:**
+- Auto-save form data to localStorage every 10 seconds
+- Restore draft on page reload
+- Display "Last saved at HH:MM:SS" timestamp
+- Clear draft after successful submission
+
+**Files to Update:**
+- `client/src/pages/portal/TeacherProfileSetup.tsx` - Add useEffect hooks for auto-save/restore
+
+---
+
+### 4. Success Confetti Animation
+**Status:** Basic toast only, no celebration  
+**Required:**
+- Confetti animation on successful profile submission
+- Celebratory message: "🎉 Profile completed successfully! Welcome aboard, Teacher!"
+- 2-second delay with "Redirecting to your personalized dashboard..." message
+
+**Files to Update:**
+- `client/src/pages/portal/TeacherProfileSetup.tsx` - Add confetti library (canvas-confetti)
+- Install package: `npm install canvas-confetti`
+
+---
+
+### 5. Admin Notification Alert System
+**Status:** Notification created but not prominently displayed  
+**Required:**
+- Real-time in-app notification banner when teacher auto-verifies
+- Dashboard widget: "1 new teacher profile auto-verified today. Review for approval if needed."
+- Optional: Email notification to admin
+
+**Files to Update:**
+- `client/src/pages/portal/AdminDashboard.tsx` - Add notification summary widget
+- `server/routes.ts` - Add email notification trigger (optional)
+
+---
+
+### 6. Personalized Teacher Dashboard
+**Status:** Generic dashboard greeting only  
+**Required:**
+- Dynamic greeting: "Welcome, Mr. Adewale! You're assigned to JSS1A & JSS2B (Mathematics)."
+- Display assigned subjects and classes prominently
+- Show student count per class
+- Quick access cards for each assigned class
+
+**Files to Update:**
+- `client/src/pages/portal/TeacherDashboard.tsx` - Add personalization using teacher profile data
+
+---
+
+### 7. Smart Subject/Class Auto-Assignment
+**Status:** Manual array storage only  
+**Required:**
+- Automatic dashboard widget generation for assigned subjects
+- Display linked students based on class assignments
+- Subject-specific analytics and quick actions
+- Class data integration for scoring and reports
+
+**Files to Update:**
+- `client/src/pages/portal/TeacherDashboard.tsx` - Add filtered queries for assigned students/classes
+- `server/routes.ts` - Create endpoint `/api/teacher/assigned-students`
+
+---
+
+### 8. Fail-Safe Validation with Flagging
+**Status:** Basic required field validation only  
+**Required:**
+- Smart detection of incomplete/suspicious profile data
+- Auto-flag for admin review if:
+  - Missing critical fields (subjects, classes, department)
+  - Unusual/suspicious values detected
+  - Multiple validation failures
+- Display status: "Profile pending admin confirmation – incomplete subject assignment"
+
+**Files to Update:**
+- `server/routes.ts` - Add validation logic in `/api/teacher/profile/setup`
+- Database migration needed: Add `flagged_for_review` and `flag_reason` columns
+
+---
+
+### 9. Admin Dashboard Teacher Summary Card
+**Status:** Basic table only, no summary card  
+**Required:**
+- Dedicated summary card showing:
+  - Total teachers
+  - Auto-verified today count
+  - Pending manual review count
+  - Recently joined (last 7 days)
+- Quick action buttons: View All, Filter by Status
+
+**Files to Update:**
+- `client/src/pages/portal/AdminDashboard.tsx` - Add TeacherSummaryCard component
+
+---
+
+### 10. Last Updated Timestamp Display
+**Status:** Database field exists but not shown to users  
+**Required:**
+- Show "Profile last updated: [timestamp]" in teacher profile page
+- Track and display modification history
+- Show in admin teacher overview table
+
+**Files to Update:**
+- `client/src/pages/portal/TeacherProfile.tsx` - Display `last_updated` field
+- `client/src/pages/portal/AdminDashboard.tsx` - Add column to teacher table
+
+---
+
+### 11. Enhanced 3-Step Wizard Animations
+**Status:** Partial - basic steps exist but animations lacking  
+**Required:**
+- Smooth slide transitions between steps
+- Animated progress bar with fill effect
+- Step icons with completion checkmarks
+- Back/Next button hover animations
+- Step validation indicators (red/green borders)
+
+**Files to Update:**
+- `client/src/pages/portal/TeacherProfileSetup.tsx` - Add CSS transitions/animations
+- `client/src/index.css` - Add animation keyframes
+
+---
+
+### 12. System Settings Integration
+**Status:** Fields exist but not utilized in dashboard  
+**Required:**
+- Grading Mode affects dashboard behavior:
+  - Manual: Show grading queue prominently
+  - Auto: Hide manual grading options
+  - Hybrid: Show both with preferences
+- Notification Preference controls alert types
+- Availability affects scheduling visibility
+
+**Files to Update:**
+- `client/src/pages/portal/TeacherDashboard.tsx` - Use settings for conditional rendering
+- `server/routes.ts` - Respect notification preferences in alerts
+
+---
+
+## 🟡 MEDIUM PRIORITY ISSUES
+
+### 13. Profile Photo Not Displaying
+**Status:** Upload works but image not shown in dashboard  
+**Impact:** Teacher sees placeholder instead of uploaded photo  
+**Files to Check:**
+- `client/src/pages/portal/TeacherDashboard.tsx` - Verify image URL handling
+- `server/routes.ts` - Check file path storage in database
+
+---
+
+## 📊 DATABASE CHANGES NEEDED
+
+```sql
+-- Add profile flagging columns
+ALTER TABLE teacher_profiles 
+ADD COLUMN IF NOT EXISTS flagged_for_review BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS flag_reason TEXT;
+
+-- Add completion tracking
+ALTER TABLE teacher_profiles
+ADD COLUMN IF NOT EXISTS completion_percentage INTEGER DEFAULT 0;
+
+-- Add notification tracking
+CREATE TABLE IF NOT EXISTS admin_notifications (
+  id SERIAL PRIMARY KEY,
+  admin_id UUID REFERENCES users(id),
+  type VARCHAR(50),
+  message TEXT,
+  related_teacher_id UUID REFERENCES users(id),
+  is_read BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+```
+
+---
+
+## 📋 IMPLEMENTATION CHECKLIST
+
+### Phase 1 - Critical Fixes (Day 1-2)
+- [ ] Fix teacher overview API endpoint bug (TypeError)
+- [ ] Add auto-save draft feature with localStorage
+- [ ] Implement profile completeness meter with visual progress
+
+### Phase 2 - User Experience (Day 3-5)
+- [ ] Add success confetti animation
+- [ ] Personalize teacher dashboard with assignments
+- [ ] Improve admin notification system with widget
+
+### Phase 3 - Advanced Features (Day 6-8)
+- [ ] Smart subject/class assignment integration
+- [ ] Fail-safe validation with auto-flagging
+- [ ] Admin dashboard teacher summary card
+
+### Phase 4 - Polish (Day 9-10)
+- [ ] Enhanced wizard animations
+- [ ] Last updated timestamp display
+- [ ] System settings integration
+- [ ] Fix profile photo display issue
+
+---
+
+## 🎯 ACCEPTANCE CRITERIA
+
+### When Complete:
+✅ Teachers complete onboarding in < 5 minutes  
+✅ 100% auto-verification for valid profiles  
+✅ Admin sees all teacher activity without manual checks  
+✅ Zero friction from login → dashboard  
+✅ Personalized experience from first login  
+✅ No console errors or API failures  
+✅ All animations smooth and professional  
+
+---
+
+## 🚀 NEXT ACTIONS
+
+1. **START HERE:** Fix teacher overview API bug (blocking admin)
+2. Add auto-save to prevent data loss
+3. Implement completeness meter for better UX
+4. Deploy confetti for celebration moment
+5. Personalize dashboard based on profile data
+
+---
+
+**Total Missing Features:** 12  
+**Critical Bugs:** 1  
+**Estimated Time to Complete:** 8-10 working days  
+**Priority Order:** Bugs → UX → Advanced → Polish

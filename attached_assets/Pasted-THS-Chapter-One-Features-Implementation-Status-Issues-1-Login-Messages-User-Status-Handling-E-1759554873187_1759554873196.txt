@@ -1,0 +1,215 @@
+THS Chapter One Features - Implementation Status & Issues
+1. Login Messages & User Status Handling
+Expected Behavior:
+
+Invalid credentials: ❌ "Invalid login. Please check your username or password."
+Pending approval: ⏳ "Welcome to THS Portal. Your account is awaiting Admin approval. You will be notified once verified."
+Suspended (Staff): 🚫 "Access denied: Your account has been suspended by THS Admin."
+Suspended (Students/Parents): 🚫 "Your account is suspended. Contact your class teacher or Admin."
+Active login: ✅ "Welcome back to THS Portal. Redirecting you to your dashboard…"
+Current Issues:
+
+✅ Backend properly returns status-specific messages in  (lines handling login)
+⚠️ Frontend in  displays generic error messages from backend but doesn't show custom success messages
+⚠️ No visual icons (❌, ⏳, 🚫, ✅) displayed with messages on frontend
+⚠️ No special styling to differentiate message types (error, warning, success)
+Solution Needed:
+
+Update Login.tsx to display status-specific messages with appropriate icons and colors
+Add toast notifications with custom variants for each status type
+Ensure backend error messages are properly parsed and displayed
+2. Google OAuth Pending Approval Flow
+Expected Behavior:
+
+New Google sign-ins for Teachers/Admins → marked as "pending"
+Pending users see: ⏳ "Welcome to THS Portal. Your account is awaiting Admin approval. You will be notified once verified."
+Cannot access dashboard until approved
+Current Issues:
+
+✅ Backend creates pending users correctly in  (OAuth callback handler)
+✅ Backend blocks pending users from logging in
+⚠️ Frontend doesn't display the pending approval message clearly when OAuth callback fails
+⚠️ No visual indication on login page that account is pending
+Solution Needed:
+
+Add dedicated pending approval message display in Login.tsx for OAuth callbacks
+Show clear instructions for pending users to contact admin
+Display pending status prominently with orange/yellow styling
+3. Admin Control Panel - User Management
+Expected Features:
+
+View all pending Teachers/Admins
+Approve → Status changes to Active
+Suspend → Status changes to Suspended
+Revoke approval → Status changes back to Pending
+Delete Account (with warning)
+Reset Password / Force Password Change
+Role Management
+Audit Logs
+Current Issues:
+
+✅ UserManagement.tsx exists with approve/suspend/unsuspend functionality
+✅ Backend endpoints exist for all admin actions
+⚠️ "Unverify" button exists but called "Revoke Approval" - needs clearer labeling
+⚠️ No visual separation between "Verified" and "Unverified" users
+⚠️ Reset Password dialog exists but may not show "Force change on next login" option clearly
+⚠️ Role change functionality exists but UI could be more prominent
+⚠️ No visual count of pending approvals on admin dashboard quick actions
+Solution Needed:
+
+Add "Verified/Unverified" badge to user cards in UserManagement.tsx
+Rename "Revoke Approval" to "Move to Pending" or "Unverify" for clarity
+Ensure all admin action buttons are clearly visible and labeled
+Add pending count badge to Admin Dashboard quick actions
+4. Pending Approvals Page
+Expected Behavior:
+
+Dedicated page showing all pending Teachers/Admins
+Clear approve/reject actions
+Notification to admins when new users sign up
+Current Issues:
+
+✅ PendingApprovals.tsx page exists
+✅ Backend creates notifications for admins about pending users
+⚠️ PendingApprovals page may not be easily accessible from main navigation
+⚠️ No real-time notification bell showing new pending approvals count
+⚠️ Pending count might not update dynamically on admin dashboard
+Solution Needed:
+
+Ensure PendingApprovals link is visible in admin sidebar navigation
+Add notification bell component showing pending count
+Make pending count reactive/auto-refresh on admin dashboard
+5. Parent-Child Linking
+Expected Behavior:
+
+Parents log in and see: 👨‍👩‍👧 "Welcome, Parent. Please select the child whose records you wish to view."
+Parents can only view their linked children's data
+No access to other students
+Current Issues:
+
+✅ Backend has parent-child linking in database schema
+✅ CSV import automatically links parents to children
+⚠️ ParentDashboard.tsx may not display child selection prominently
+⚠️ No clear "Select Child" interface shown on parent login
+⚠️ Parent portal navigation might not enforce child-specific views
+Solution Needed:
+
+Add child selection dropdown/cards on ParentDashboard
+Display welcome message with child selection prompt
+Ensure all parent views are filtered by selected child
+Add visual indicator of which child's data is currently displayed
+6. Password Recovery System
+Expected Features:
+
+"Forgot Password?" link on login page
+Email with reset link (15-minute expiry)
+Strong password requirements enforced
+Admin can reset user passwords
+Recovery email management
+Audit logs for all password changes
+Current Issues:
+
+✅ Backend has password reset endpoints in server/routes.ts
+✅ Password reset tokens table exists in schema
+⚠️ "Forgot Password" link exists in Login.tsx but may just be a placeholder (#)
+⚠️ No password reset flow UI/pages visible
+⚠️ Admin password reset works but may not show temporary password clearly
+⚠️ No notification sent to user after admin password reset
+Solution Needed:
+
+Make "Forgot Password" link functional (navigate to reset request page)
+Create password reset request page for students/parents
+Create password reset confirmation page (with token from email)
+Add clear temporary password display in admin reset password dialog
+Implement email notifications for password resets (or show in UI for development)
+7. Audit Logs Display
+Expected Behavior:
+
+Track all admin actions (approve, suspend, delete, reset password, role changes)
+Display: Admin name, Date/time, Action taken, Affected account
+Accessible from admin dashboard
+Current Issues:
+
+✅ AuditLogs.tsx page exists
+✅ Backend creates audit log entries for admin actions
+⚠️ Audit logs page may not be linked in admin navigation
+⚠️ Filtering by action type may not show all relevant actions clearly
+⚠️ User-friendly action descriptions might need improvement
+Solution Needed:
+
+Add Audit Logs link to admin sidebar if missing
+Ensure all admin actions create proper audit entries
+Improve action descriptions to match the plan's clarity
+Add date range filtering for audit logs
+8. Clear Status Messages Throughout System
+Expected Behavior:
+
+No vague "Sign-in failed" messages
+Every message is situation-specific and professional
+Messages guide users on next steps
+Current Issues:
+
+✅ Backend returns specific error messages
+⚠️ Frontend toast notifications might not always show backend messages clearly
+⚠️ Error messages might be truncated or hidden in console instead of UI
+⚠️ Success messages might not be as prominent as errors
+Solution Needed:
+
+Review all toast notifications to ensure they display full backend messages
+Add appropriate toast variants (success, error, warning, info) with icons
+Ensure no generic "Failed" messages - always show the backend's specific reason
+Test all login scenarios and verify correct messages display
+9. Admin Dashboard - Pending Count Badge
+Expected Behavior:
+
+Admin dashboard shows pending approvals count prominently
+Quick action card for "Pending Approvals" with badge
+Updates in real-time or on page refresh
+Current Issues:
+
+✅ AdminDashboard.tsx fetches pending users count
+✅ Badge component exists showing count
+⚠️ Badge might not be visible enough in quick actions section
+⚠️ Count might not auto-refresh when new pending users arrive
+Solution Needed:
+
+Make pending count badge more prominent (larger, different color)
+Consider adding notification bell with count
+Add auto-refresh or real-time update for pending count
+10. Security Features
+Expected Features:
+
+Rate limiting on login attempts
+Account lockout after suspicious activity
+Audit trail for security events
+Email notifications for password changes
+Master recovery account for system admin
+Current Issues:
+
+✅ Backend has rate limiting in server/routes.ts
+✅ Backend has account lockout logic
+⚠️ No frontend display of "too many attempts" lockout message
+⚠️ No security alerts display in admin dashboard
+⚠️ No email notification system visible (might be development-only logs)
+Solution Needed:
+
+Display rate limit errors clearly on login page
+Add security alerts section to admin dashboard
+Implement email notification system or show notifications in UI for development
+Add master recovery documentation for system administrators
+Summary of Actions Needed
+High Priority (User-Facing Issues):
+Fix login page to display all status-specific messages with icons and proper styling
+Add functional "Forgot Password" flow with UI pages
+Ensure ParentDashboard displays child selection interface
+Make pending approvals count more prominent on admin dashboard
+Add Audit Logs to admin navigation if missing
+Medium Priority (Admin Experience):
+Improve UserManagement UI clarity (badges, button labels)
+Add notification bell for pending approvals
+Ensure all toast messages display full backend error details
+Add security alerts display to admin dashboard
+Low Priority (Polish & Professional Features):
+Implement email notification system (or clear development mode display)
+Add real-time updates for pending counts
+Improve audit log filtering and descriptions

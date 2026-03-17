@@ -1,0 +1,75 @@
+Teacher Profile Onboarding Script (First-Time Login Form)
+(For THS Portal — Smart Educator Tracking System)
+🎯 Purpose
+This compulsory onboarding form ensures every teacher’s identity, teaching scope, and operational structure are properly captured at their first login.
+It personalizes their dashboard, automates their class/subject allocations, and strengthens internal tracking, making administrative oversight seamless.
+🧠 Why It Matters
+Without this setup, the system has no baseline for:
+• Which teacher teaches which subject(s).
+• Which class(es) or department(s) they’re responsible for.
+• Their official school ID, qualification, or contact info.
+• Their preferred notification or marking method.
+So, this form becomes the “foundation record” linking teachers to classes, subjects, students, and reports — enabling accurate score mapping, result authorization, and communication flows within the portal.
+🧩 System Flow
+Step 1: First-Time Login Check
+if teacher.first_login: redirect_to('teacher_setup_form') else: redirect_to('teacher_dashboard') 
+The system automatically checks if it’s the teacher’s first time logging in.
+If yes, they are locked into the Teacher Setup Form until it’s completed and verified.
+🧾 Step 2: The Compulsory Teacher Setup Form
+Form Title:
+📘 "Welcome, Teacher! Please Complete Your Profile to Access the Portal."
+Sections and Fields
+🧍 Personal Information
+FieldTypeExampleFull NameAuto-filled from registrationMr. Femi AdewaleGenderSelectMale / FemaleDate of BirthDate Picker1987-04-15National ID / Staff IDInputTHS-TCH-2025-007Contact Email input (editable if needed)femi@thsportal.comPhone NumberInput+234-8012345678 
+🏫 Academic & Professional Details
+FieldTypeExampleHighest QualificationDropdownB.Ed, M.Ed, B.Sc, NCE, PGDEArea of SpecializationInputMathematics / English / BiologyTeaching Experience (Years)Number8Subject(s) to HandleMulti-selectMathematics, Basic ScienceClass(es) AssignedMulti-selectJSS1A, JSS2BDepartmentDropdownScience / Arts / Commercial 
+🧭 Operational Preferences
+FieldTypeDescriptionGrading ModeDropdown100 Marks / Continuous Assessment OnlyNotification PreferenceDropdownEmail / SMS / In-app AlertsAvailabilityTime RangeMon–Fri, 8AM–2PMDigital Signature (Upload)FileJPEG / PNG only 
+🖼️ Profile Photo
+• Upload field with live preview
+• Used for teacher identification in reports and internal communication
+🧾 System Agreement
+Declaration:
+“I hereby confirm that the information provided above is accurate and that I will comply with the institution’s digital data policy for student and score management.”
+Checkbox: ✅ I Agree & Proceed
+🔐 Step 3: Data Verification Logic
+When the teacher submits:
+if form.is_valid(): save_teacher_profile() teacher.first_login = False teacher.status = "Active" notify_admin_of_completion(teacher.id) else: show_error("Please fill all required fields.") 
+✅ The system automatically:
+• Locks the record to prevent re-submission.
+• Notifies Admin for cross-verification.
+• Grants full dashboard access only after approval.
+🧠 Step 4: Admin Dashboard Integration
+Admin View Example:
+TeacherSubject(s)Class(es)DepartmentStatusVerificationMr. Femi AdewaleMathematicsJSS1A, JSS2BScienceActive✅ VerifiedMrs. Grace OkonEnglishJSS3AArtsPending⏳ Awaiting Approval 
+Admins can:
+• Approve, Reject, or Request Edit.
+• Automatically assign them to class lists.
+• Track which teacher has filled their setup form and which hasn’t.
+📲 Step 5: Smart Profile View (After Setup)
+Once completed, teachers have a dynamic “Profile Overview Page” inside their dashboard:
+Sections Include:
+• Personal Info
+• Academic Qualifications
+• Teaching Assignments
+• Signature & Profile Picture
+• Account Activity Log (Recent actions: marks entry, report update, etc.)
+🧩 Optional Add-on: A progress indicator shows profile completeness:
+Profile Completion: 95% ✅
+Upload missing signature to reach 100%.
+⚙️ Step 6: Technical Schema Suggestion
+Database Table: teacher_profiles
+ColumnTypeDescriptionteacher_idFKLinked to main user tablestaff_idStringUnique school staff identifierqualificationStringAcademic qualificationspecializationStringSubject areaclasses_assignedJSONe.g. ["JSS1A", "JSS2B"]subjects_assignedJSONe.g. ["Mathematics", "Science"]departmentStringe.g. SciencesignatureFileDigital signatureprofile_photoFileImagefirst_loginBooleanDefault TrueverifiedBooleanDefault False 
+💼 Business & Security Value
+BenefitDescriptionAccountabilityEvery teacher can be directly linked to their students, subjects, and performance data.SecurityPrevents unauthorized teachers from entering scores for unassigned classes.Data OrganizationAllows automatic report generation by department or class.ProfessionalismBuilds credibility with structured, verifiable teacher profiles.ScalabilitySupports multi-school or departmental expansion without conflict. 
+🪶 UI/UX Recommendations
+• Use step-by-step form wizard (3 stages) instead of one long page.
+• Auto-save progress on each section (so they don’t lose data mid-way).
+• Progress bar like: Step 1 of 3 → Personal Info ✅ Step 2 of 3 → Academic Info ⏳ Step 3 of 3 → Confirmation 🟢 
+• Responsive for both desktop and mobile views.
+🧭 Final Workflow Summary
+StageActionResult1Teacher logs in first timeRedirect to setup form2Fills all sectionsData saved and locked3Admin verifiesTeacher profile activated4Access grantedDashboard personalized5System uses profileFor report linking, subject allocation, and analytics 
+🚀 Next Step Recommendation
+Once this is approved, the next extension will connect:
+• Teacher Profile → Subject/Class Allocation → Student Linking → Report Authorization
+That connection ensures that only authorized teachers can manage the right students and reports, enhancing both security and professionalism.

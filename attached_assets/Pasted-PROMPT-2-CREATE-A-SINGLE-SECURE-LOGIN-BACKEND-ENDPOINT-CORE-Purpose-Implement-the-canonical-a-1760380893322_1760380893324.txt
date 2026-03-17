@@ -1,0 +1,37 @@
+PROMPT 2 — CREATE A SINGLE, SECURE LOGIN BACKEND ENDPOINT (CORE)
+Purpose: Implement the canonical /auth/login endpoint that accepts either username/email + password, identifies role, checks status, and returns a session cookie. This is the core deterministic login decision step.
+Instruction (paste to agent once Preflight OK):
+Implement a backend endpoint POST /auth/login with these rules:
+• Input: { identifier, password } where identifier accepts either username or email.
+• Verify credentials via Supabase Auth or your app’s password verify (Argon2).
+• Fetch the user row from users table and user role (super_admin/admin/teacher/student/parent).
+• Check status: 
+• suspended → return 403 with message: "Account suspended. Contact administrator."
+• pending → return 403 with message: "Account pending verification. You will be notified."
+• If credentials valid and status active or verified: 
+• Issue secure HttpOnly cookie with short-lived access token and a refresh token. Include role in token claims.
+• Return { success: true, role, redirect: '/{role}/dashboard' }.
+• Log every login attempt to audit_logs with actor_id (if known), ip, success:boolean, message.
+• Add rate-limiting: 5 failed attempts → 15-minute lockout for that identifier/IP.
+Acceptance criteria:
+• Successful login returns an HttpOnly cookie and correct role in response.
+• Failed logins produce the correct messages and are logged.
+• Rate-limiting works (simulate 6 failed attempts → check lockout).
+Stress alerts: NEVER return raw DB errors to the client. Use friendly messages only. Do not create accounts here.
+PROMPT 3 — FRONTEND: SINGLE SIGN-IN PAGE (ROLE-AWARE UI)
+Purpose: Create the Vercel/Next.js login screen that calls /auth/login and routes users to their dashboard. Keep UI minimal and mobile responsive.
+Instruction (paste to agent after Prompt 2 validated):
+Build /pages/login (Next.js) with:
+• A single form: 
+• Identifier (email or username)
+• Password
+• Sign In button (show spinner while in-flight)
+• Sign in with Google button (only visible to teacher/admin flows; clicking triggers OAuth)
+• Forgot password? link
+• On submit: call POST /auth/login. If success, redirect to response.redirect. If 403 pending/suspended, show the message returned.
+• Implement friendly error toasts and skeleton loaders for slow network.
+• Accessibility: labels, focus states, keyboard navigation.
+Acceptance criteria:
+• Login page authenticates and redirects users of different roles correctly (test with one student and one teacher record).
+• UI shows spinner on submit; disables button to prevent duplicate requests.
+Stress alerts: Do not embed API keys in frontend. Use environment variables for OAuth redirect URIs.

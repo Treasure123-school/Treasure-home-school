@@ -1,0 +1,104 @@
+The problem is not still solved
+
+OH
+
+io87wz
+Assistant
+just now
+To ensure that the profile image and National ID (NIN) data are displayed correctly, we'll need to take a closer look at the data fetching and merging logic in your .
+
+Here's a comprehensive approach to solve the issue:
+
+Check API Response: First, make sure that the /api/teacher/profile/me API is returning the profileImageUrl and nationalId correctly. You can check this by testing the API directly using tools like Postman or curl.
+
+Update Data Fetching Logic: Ensure that you're merging the user and profile data correctly in the component.
+
+Here's an updated version of your  with key improvements:
+
+import React, { useEffect, useState } from 'react';
+import { useQuery, useQueryClient } from 'react-query';
+import { useAuth } from '@/lib/auth';
+import { useToast } from '@/hooks/use-toast';
+import PortalLayout from '@/components/layout/PortalLayout';
+import { Avatar, AvatarImage } from '@/components/ui/avatar';
+import { Card, CardContent } from '@/components/ui/card';
+export default function TeacherProfile() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [profileData, setProfileData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    address: '',
+    recoveryEmail: '',
+    gender: '',
+    dateOfBirth: '',
+    nationalId: '',
+    profileImageUrl: ''
+  });
+  // Fetch teacher profile
+  const { data: teacherProfile, isLoading, error } = useQuery('/api/teacher/profile/me', {
+    enabled: !!user,
+  });
+  useEffect(() => {
+    if (teacherProfile) {
+      const newProfileData = {
+        firstName: teacherProfile.firstName || '',
+        lastName: teacherProfile.lastName || '',
+        email: teacherProfile.email || '',
+        phone: teacherProfile.phone || '',
+        address: teacherProfile.address || '',
+        recoveryEmail: teacherProfile.recoveryEmail || '',
+        gender: teacherProfile.gender || '',
+        dateOfBirth: teacherProfile.dateOfBirth || '',
+        nationalId: teacherProfile.nationalId || '',
+        profileImageUrl: teacherProfile.profileImageUrl || ''
+      };
+      console.log('Profile Data:', newProfileData);
+      setProfileData(newProfileData);
+    }
+  }, [teacherProfile]);
+  if (isLoading) {
+    return <div>Loading profile...</div>;
+  }
+  if (error) {
+    toast({ title: "Error", description: "Failed to fetch profile data", variant: "destructive" });
+    return <div>Error loading profile data.</div>;
+  }
+  return (
+    <PortalLayout userRole="teacher" userName={profileData.firstName}>
+      <Card>
+        <CardContent>
+          <h2>Profile Overview</h2>
+          {profileData.profileImageUrl && (
+            <Avatar>
+              <AvatarImage src={profileData.profileImageUrl} alt="Profile" />
+            </Avatar>
+          )}
+          <p>Full Name: {profileData.firstName} {profileData.lastName}</p>
+          <p>Staff ID: {profileData.staffId || 'Not provided'}</p>
+          <p>Email: {profileData.email || 'Not provided'}</p>
+          <p>Phone: {profileData.phone || 'Not provided'}</p>
+          <p>Gender: {profileData.gender || 'Not provided'}</p>
+          <p>Date of Birth: {profileData.dateOfBirth || 'Not provided'}</p>
+          <p>National ID: {profileData.nationalId || 'Not provided'}</p>
+          <p>Address: {profileData.address || 'Not provided'}</p>
+          <p>Recovery Email: {profileData.recoveryEmail || 'Not provided'}</p>
+        </CardContent>
+      </Card>
+    </PortalLayout>
+  );
+}
+Summary of Updates:
+Initialized State for profileImageUrl: This was made explicit in the profileData state initialization.
+Complete Data Merging: Make sure all fields from teacherProfile are used correctly to set the state.
+Conditional Rendering: The profile image is displayed only if the URL exists.
+Next Steps:
+Test the updated code to see if the profile image and NIN data are rendered correctly.
+Implement logging statements to observe the API response and ensure all fields are populated as expected.
+Make sure the API returns all necessary data for the teacher's profile.
+These changes should help you troubleshoot and ensure the profile information is displayed as required. If issues persist, consider inspecting the API responses directly.
+
+Assistant mode

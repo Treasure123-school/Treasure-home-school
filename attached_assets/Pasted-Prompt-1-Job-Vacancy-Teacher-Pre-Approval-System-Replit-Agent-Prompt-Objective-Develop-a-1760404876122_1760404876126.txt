@@ -1,0 +1,199 @@
+Prompt 1: Job Vacancy & Teacher Pre-Approval System (Replit Agent Prompt)
+
+> 🎯 Objective:
+Develop a Job Vacancy & Teacher Application System that allows Treasure-Home School administrators to manage hiring and automatically pre-approve verified teacher emails for Google Sign-In access.
+
+
+
+
+---
+
+System Scope
+
+Backend: Supabase (Render server for endpoints)
+Frontend: Vercel (Next.js)
+
+
+---
+
+1. Job Vacancy Page
+
+Create a Job Vacancy page displaying current teaching opportunities.
+
+Each vacancy must include:
+
+Job Title
+
+Description / Requirements
+
+Application Deadline
+
+Apply Button
+
+
+
+Admin Control
+
+Admins can add, edit, or close vacancies from their dashboard (no code editing required).
+
+Store vacancy data in a vacancies table in Supabase.
+
+
+
+---
+
+2. Application Form
+
+Fields:
+
+Full Name
+
+Subject Specialty
+
+Qualification
+
+Experience (years)
+
+Google Email (must be verified with email regex for @gmail.com)
+
+Phone Number
+
+Short Bio / Cover Letter
+
+Resume Upload (PDF only, max 2MB)
+
+
+Backend Behavior:
+
+On submission:
+
+Save record to teacher_applications table.
+
+Default status = "Pending Review".
+
+Store resume in Supabase Storage (PDF only).
+
+
+
+
+---
+
+3. Admin Dashboard Integration
+
+Admin can view all applications (status: Pending, Approved, Rejected).
+
+Admin actions:
+
+✅ Approve: Moves the Google email + teacher name to approved_teachers table.
+
+❌ Reject: Updates status = "Rejected".
+
+
+
+Approved Emails:
+These will be recognized automatically during Google Sign-In.
+Only users in approved_teachers are allowed to log in using Google.
+
+
+---
+
+4. Database Schema (Supabase)
+
+vacancies Table
+
+CREATE TABLE IF NOT EXISTS vacancies (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text,
+  description text,
+  deadline timestamptz,
+  status text DEFAULT 'open',
+  created_at timestamptz DEFAULT now()
+);
+
+teacher_applications Table
+
+CREATE TABLE IF NOT EXISTS teacher_applications (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  full_name text,
+  subject text,
+  qualification text,
+  experience int,
+  google_email text,
+  phone text,
+  bio text,
+  resume_url text,
+  status text DEFAULT 'Pending Review',
+  date_applied timestamptz DEFAULT now()
+);
+
+approved_teachers Table
+
+CREATE TABLE IF NOT EXISTS approved_teachers (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  google_email text UNIQUE,
+  full_name text,
+  subject text,
+  date_approved timestamptz DEFAULT now()
+);
+
+
+---
+
+5. Security & Validation
+
+Strict email format check (@gmail.com).
+
+Prevent duplicate Google emails in approved_teachers.
+
+Resume size limit 2MB.
+
+Sanitize all form input to prevent injection.
+
+
+
+---
+
+6. Frontend Enhancements
+
+Add a “Job Vacancy” link to the footer of the main website.
+
+Position it beside other quick links like About Us, Contact, Privacy Policy.
+
+Clicking it should route users to /job-vacancy.
+
+
+Design the Job Vacancy UI to be mobile-responsive and align with the school’s theme.
+
+
+
+---
+
+7. Developer Acceptance Checklist
+
+[ ] vacancies, teacher_applications, approved_teachers tables exist
+
+[ ] Admin can post, edit, and close vacancies
+
+[ ] Teachers can submit applications (validated and stored)
+
+[ ] Admin can approve/reject applicants
+
+[ ] Approved teachers are automatically added to approved_teachers
+
+[ ] Footer includes Job Vacancy link
+
+[ ] Page is mobile-optimized
+
+
+
+---
+
+⚠️ Stress Rules
+
+Do not overwrite existing tables or drop any data.
+
+Ensure all new tables use safe schema creation (IF NOT EXISTS).
+
+Never store resume files directly in the database — only URLs.
+
+Validate and sanitize all incoming form data.

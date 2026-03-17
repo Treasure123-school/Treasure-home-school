@@ -1,0 +1,70 @@
+THS Story Plan — Chapter One: The Gatekeepers of Access
+Page 1 – The Foundation of Security
+In the world of Treasure-Home School (THS), every digital door has a lock, and every lock has a key.
+But not all keys are the same.
+• Admins hold the master keys.
+• Teachers hold keys that open classrooms.
+• Students hold keys that open learning halls.
+• Parents hold keys that open observation windows.
+But here is the golden rule: no one may enter a hall they don’t belong to.
+And the system itself is the gatekeeper.
+Page 2 – How Users Sign In
+Every role has its own entrance path:
+• Students & Parents:
+• Enter their username + password.
+• Example username: THS-STU-2025-PR3-001
+• If details are correct → door opens.
+• If incorrect → system says, 
+❌ “Invalid login. Please check your username or password.”
+• If suspended → system says, 
+🚫 “Your account is suspended. Contact your class teacher or Admin.”
+• Teachers & Admins:
+• Must use their real Google email.
+• On first sign-in, their account is marked Pending Approval.
+• If they try to log in before approval, system says: 
+⏳ “Welcome to THS Portal. Your account is awaiting Admin approval. You will be notified once verified.”
+• If Admin later approves → login works.
+• If Admin suspends → login blocked, with message: 
+🚫 “Access denied: Your account has been suspended by THS Admin.”
+Page 3 – The Role of the Admin
+The Admin dashboard is the control tower. From here, the Admin can:
+• See all Pending Teachers/Admins waiting for approval.
+• Approve → Status changes to Active.
+• Suspend → Status changes to Suspended.
+• Revoke approval → Status changes back to Pending.
+Whenever Admin acts, the system ensures that users see the right message when they try to log in.
+Page 4 – Why Clear Messages Matter
+THS must never confuse its community with vague “Sign-in failed.”
+Instead, every message must speak clearly to the user’s real situation:
+• Invalid credentials:
+❌ “Invalid login. Please check your details and try again.”
+• Pending approval:
+⏳ “Your account is awaiting Admin approval. Contact your school administrator.”
+• Suspended:
+🚫 “Your account is suspended. Please contact the Admin for support.”
+• Active and valid:
+✅ “Welcome back to THS Portal. Redirecting you to your dashboard…”
+These messages make the system feel professional, fair, and trustworthy.
+Page 5 – Parent–Child Linking
+When Admin imports student data, parents are linked automatically.
+If a parent logs in, the system says:
+👨‍👩‍👧 “Welcome, Parent. Please select the child whose records you wish to view.”
+Parents never see other students’ data. The system keeps boundaries strict.
+Page 6 – Recap of the Workflow
+• Students & Parents log in with username + password.
+• Teachers & Admins log in with Google → account enters Pending Approval.
+• Admin approves → status becomes Active.
+• Suspended users are blocked with clear reasons.
+• Every login attempt has a polished, role-specific message.
+Page 7 – The Promise
+At the end of Chapter One, THS has built a secure, respectful, and transparent entry system.
+No one is left guessing.
+No one gets the wrong access.
+And everyone understands their status, rights, and next steps.
+✅ Summary:
+• No vague “Sign-in failed.”
+• Every role has a dedicated entrance path.
+• Admin acts as the gatekeeper for Teachers/Admins.
+• Students/Parents use secure usernames.
+• Parents linked to children only.
+• Messages are clear, professional, and situation-specific.

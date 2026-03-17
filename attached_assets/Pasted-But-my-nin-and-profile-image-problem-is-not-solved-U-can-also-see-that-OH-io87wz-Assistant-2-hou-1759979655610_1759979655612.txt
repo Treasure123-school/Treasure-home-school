@@ -1,0 +1,84 @@
+But my nin and profile image problem is not solved. U can also see that.
+
+OH
+
+io87wz
+Assistant
+2 hours ago
+It seems the issue with displaying the NIN and profile image in your profile persists. Let's go through the steps to troubleshoot this effectively:
+
+Steps to Troubleshoot:
+Check API Response: Ensure that the API endpoint /api/teacher/profile/me returns the expected fields, especially profileImageUrl and nationalId. You can do this using a tool like Postman or your browser's developer tools (Network tab).
+
+Update Your Component Logic:
+
+Make sure your component is handling the fetched data correctly. Ensure the state is being updated properly with the required data from the API response.
+Modify the Rendering Logic:
+
+Ensure that the UI is set up to conditionally render the profile image and NIN data correctly based on the fetched information.
+Here's the modified  that includes debug logs and checks for the profileImageUrl and nationalId:
+
+import React, { useEffect, useState } from 'react';
+import { useQuery } from 'react-query';
+import { useAuth } from '@/lib/auth';
+import PortalLayout from '@/components/layout/PortalLayout';
+export default function TeacherProfile() {
+  const { user } = useAuth();
+  const [profileData, setProfileData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    address: '',
+    recoveryEmail: '',
+    gender: '',
+    dateOfBirth: '',
+    nationalId: '',
+    profileImageUrl: ''
+  });
+  const { data: teacherProfile, isLoading, error } = useQuery('/api/teacher/profile/me', {
+    enabled: !!user,
+  });
+  useEffect(() => {
+    if (teacherProfile) {
+      setProfileData(prev => ({
+        ...prev,
+        firstName: teacherProfile.firstName || '',
+        lastName: teacherProfile.lastName || '',
+        email: teacherProfile.email || '',
+        phone: teacherProfile.phone || '',
+        address: teacherProfile.address || '',
+        recoveryEmail: teacherProfile.recoveryEmail || '',
+        gender: teacherProfile.gender || '',
+        dateOfBirth: teacherProfile.dateOfBirth || '',
+        nationalId: teacherProfile.nationalId || '',
+        profileImageUrl: teacherProfile.profileImageUrl || ''
+      }));
+      // Debug log to verify the response
+      console.log('Fetched profile data:', teacherProfile);
+    }
+  }, [teacherProfile]);
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error loading profile data.</div>;
+  return (
+    <PortalLayout userRole="teacher" userName={profileData.firstName}>
+      <div>
+        <h2>Profile Overview</h2>
+        {profileData.profileImageUrl && (
+          <img src={profileData.profileImageUrl} alt="Profile" />
+        )}
+        <p>Name: {profileData.firstName} {profileData.lastName}</p>
+        <p>National ID: {profileData.nationalId || 'Not provided'}</p>
+        {/* Include other data fields as necessary */}
+      </div>
+    </PortalLayout>
+  );
+}
+Key Changes:
+Debug Logging: Added logs to verify the data being fetched from the API.
+Conditional Rendering: Made sure to check if profileImageUrl and nationalId are present before rendering.
+Next Steps:
+Test API: Confirm that the API returns the correct data.
+Observe Logs: Check console logs for any discrepancies in the fetched data.
+Refine Rendering: Make sure that the images and data are rendered only when available.
+This should help resolve the issue with displaying the profile image and NIN. Let me know if you need further assistance!

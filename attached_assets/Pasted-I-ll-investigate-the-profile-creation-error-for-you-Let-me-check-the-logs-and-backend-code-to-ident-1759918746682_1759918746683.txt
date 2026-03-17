@@ -1,0 +1,42 @@
+I'll investigate the profile creation error for you. Let me check the logs and backend code to identify all the issues.
+
+🔍 PROFILE CREATION ISSUES IDENTIFIED
+I've identified 5 critical errors in the teacher profile creation system that are causing the "Profile creation failed" error:
+
+CRITICAL ERRORS (Causing Profile Creation to Fail):
+1. Missing Method: getAllTeacherProfiles() ❌
+Location: server/routes.ts line 937
+Problem: Code tries to call storage.getAllTeacherProfiles() but this method doesn't exist in the storage interface
+Impact: Profile creation crashes when trying to auto-generate Staff IDs
+Used for: Auto-generating sequential Staff IDs (THS/TCH/2025/001, 002, etc.)
+2. Undefined Variable: fullName ❌
+Location: server/routes.ts line 1006
+Problem: Code references fullName variable that was never defined
+Impact: Crashes when trying to create admin notification for suspicious profiles
+Error message in code: ${fullName}'s profile has incomplete data...
+3. Wrong Data Type for relatedEntityId ❌
+Location: server/routes.ts lines 1008 & 1032
+Problem: Trying to assign profile.id (number) to relatedEntityId (expects string)
+Impact: Type error when creating notifications
+NON-CRITICAL ERRORS (Type/Interface Issues):
+4. Missing Property: autoGradeTheoryQuestions ⚠️
+Location: server/routes.ts line 996
+Problem: Property doesn't exist in teacher profile type definition
+Impact: TypeScript error, feature won't work as intended
+5. Missing Method: getAISuggestedGradingTasks() ⚠️
+Location: server/routes.ts line 886
+Problem: Method doesn't exist in IStorage interface
+Impact: AI grading feature won't work
+ROOT CAUSE OF "PROFILE CREATION FAILED":
+When a teacher tries to create their profile:
+
+✅ Form data is collected properly
+✅ Images are uploaded successfully
+❌ FAILS at line 937 when trying to call getAllTeacherProfiles() to auto-generate Staff ID
+❌ Server returns 500 error → Frontend shows "Profile creation failed"
+WHAT NEEDS TO BE FIXED (in priority order):
+Add getAllTeacherProfiles() method to server/storage.ts and IStorage interface
+Fix fullName variable - should be ${req.user!.firstName} ${req.user!.lastName}
+Fix relatedEntityId type - convert to string: relatedEntityId: profile.id.toString()
+Add autoGradeTheoryQuestions field to teacher profile schema
+Add getAISuggestedGradingTasks() method to storage or remove the endpoint

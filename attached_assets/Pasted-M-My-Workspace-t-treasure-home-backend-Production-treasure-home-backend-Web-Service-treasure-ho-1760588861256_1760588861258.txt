@@ -1,0 +1,75 @@
+M
+My Workspace
+
+
+t
+treasure-home-backend
+
+Production
+
+treasure-home-backend
+
+Web Service
+treasure-home-backend
+Node
+Free
+Upgrade your instance
+
+Connect
+
+Manual Deploy
+Service ID:
+srv-d3msdn3e5dus73c82c5g
+
+Treasure123-school / school-web-treasure
+main
+https://treasure-home-backend.onrender.com
+
+Your free instance will spin down with inactivity, which can delay requests by 50 seconds or more.
+Upgrade now
+October 16, 2025 at 5:12 AM
+failed
+1c56184
+Synchronize development and production environments to ensure feature consistency Resolves discrepancies between development (Replit) and production (Vercel/Render) environments, ensuring all existing and new features, including authentication and content updates, function correctly across all deployments. Replit-Commit-Author: Agent Replit-Commit-Session-Id: b9272468-78d9-4e29-a7aa-385c83846522 Replit-Commit-Checkpoint-Type: full_checkpoint Replit-Commit-Screenshot-Url: https://storage.googleapis.com/screenshot-production-us-central1/1d00e86e-090e-4f1f-9ea2-8e6d3b8795db/b9272468-78d9-4e29-a7aa-385c83846522/Dzh8y6f
+
+Rollback
+Exited with status 127 while building your code.
+Read our docs for common ways to troubleshoot your deploy.
+
+All logs
+Search
+Search
+
+Live tail
+GMT+1
+
+Menu
+
+==> Downloading cache...
+==> Cloning from https://github.com/Treasure123-school/school-web-treasure
+==> Checking out commit 1c561842f180135e11401d4157242fbfef12e05e in branch main
+==> Transferred 207MB in 8s. Extraction took 3s.
+==> Using Node.js version 22.16.0 (default)
+==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+==> Running build command 'npm install; npm run build'...
+up to date, audited 479 packages in 986ms
+59 packages are looking for funding
+  run `npm fund` for details
+found 0 vulnerabilities
+> rest-express@1.0.0 build
+> vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+sh: 1: vite: not found
+==> Build failed 😞
+==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
+Need better ways to work with logs? Try theRender CLI, Render MCP Server, or set up a log stream integration 
+
+0 services selected:
+
+Move
+
+Generate Blueprint
+
+Resume
+
+Suspend
+

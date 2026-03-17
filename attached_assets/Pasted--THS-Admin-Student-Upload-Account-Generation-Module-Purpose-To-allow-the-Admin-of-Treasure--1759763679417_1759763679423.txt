@@ -1,0 +1,207 @@
+🧱 THS Admin Student Upload & Account Generation Module
+
+🎯 Purpose
+
+To allow the Admin of Treasure-Home School (THS) to add or upload students in bulk or individually, while the system automatically creates a unique username and secure password for each student according to the THS naming convention.
+
+
+---
+
+⚙️ Feature Overview
+
+Action	Description
+
+Add Single Student	Admin fills a form to register one student manually.
+Bulk Upload	Admin uploads a .CSV file containing multiple student details.
+Auto-Generate Credentials	System automatically assigns each student a unique THS-branded username and a temporary password.
+Print / Export Login Slips	Admin can export or print each student’s login credentials for secure distribution.
+
+
+
+---
+
+🧩 1. Manual Add (Single Student Form)
+
+When the Admin navigates to “Add Student”, the form should collect:
+
+Full Name
+
+Class (e.g., Primary 3, JSS1, SS2)
+
+Gender
+
+Date of Birth
+
+Parent’s Email / Phone (optional at this stage)
+
+Admission Number (if available)
+
+
+Once submitted, the backend runs this process:
+
+# Example pseudo-code logic for backend (Python/Flask style)
+
+def generate_student_username(name, class_code, counter):
+    short_code = "THS-STU-" + str(datetime.now().year) + "-" + class_code + "-" + str(counter).zfill(3)
+    return short_code
+
+def generate_password():
+    return "THS@" + str(datetime.now().year) + "#" + secrets.token_hex(2).upper()
+
+def add_student(data):
+    username = generate_student_username(data['class_code'], data['name'], data['counter'])
+    password = generate_password()
+    
+    hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+    
+    student = Student(
+        name=data['name'],
+        class_name=data['class_name'],
+        username=username,
+        password_hash=hashed_password,
+        parent_email=data.get('parent_email'),
+        created_by='Admin',
+        must_change_password=True
+    )
+    db.session.add(student)
+    db.session.commit()
+
+    send_credential_email(student.parent_email, username, password)
+    return student
+
+> ✅ System Behavior:
+
+After adding, student’s account appears in the “Students List” table.
+
+The column Status shows “Pending Login” until the student logs in and updates their password.
+
+A login slip (PDF) can be generated instantly from the admin portal.
+
+
+
+
+
+---
+
+🧩 2. Bulk Upload (CSV Import)
+
+Admins can upload a .CSV file following this format:
+
+Full Name	Class	Gender	DOB	Parent Email	Parent Phone
+
+John Doe	PR3	Male	2014-05-20	parent1@gmail.com	09012345678
+Sarah Amos	PR3	Female	2014-09-12	parent2@gmail.com	08123456789
+
+
+Backend parses the CSV and executes add_student() for each row.
+
+> ⚠️ If any duplicate admission number or name is found, system highlights the conflict before committing.
+
+
+
+
+---
+
+🧠 3. Auto-Generated Credential Format
+
+Role	Format	Example
+
+Student	THS-STU-<YEAR>-<CLASS>-<SEQ>	THS-STU-2025-PR3-001
+Password	THS@<YEAR>#<TOKEN>	THS@2025#X4D1
+
+
+> ⚙️ must_change_password = true ensures students change this password after their first login.
+
+
+
+
+---
+
+🧾 4. Login Slip Generation
+
+After upload, Admin can:
+
+Print All Login Slips (PDF file auto-generated for each class)
+
+Each slip shows:
+
+Treasure-Home School (THS)
+Student Login Details
+
+Name: John Doe
+Class: Primary 3
+Username: THS-STU-2025-PR3-001
+Temporary Password: THS@2025#X4D1
+
+⚠️ Please change this password immediately after first login.
+
+Admin may also email these credentials automatically to parents if email is provided.
+
+
+
+---
+
+🔒 5. Security & Admin Controls
+
+Passwords are hashed (e.g., using bcrypt or Argon2).
+
+CSV files are deleted from the server after upload to prevent leaks.
+
+Admin can:
+
+Reset Password
+
+Suspend or Delete Student
+
+Edit Class or Parent Info
+
+
+
+> 🛡️ Only verified Admins can upload or delete accounts. Each upload action is logged in the Audit Trail table.
+
+
+
+
+---
+
+🧭 6. Dashboard Display (After Upload)
+
+In the Admin portal → Students Management Page:
+
+Student Name	Username	Class	Parent Email	Status	Actions
+
+John Doe	THS-STU-2025-PR3-001	PR3	parent1@gmail.com	✅ Active	Edit / Reset / Delete
+Sarah Amos	THS-STU-2025-PR3-002	PR3	parent2@gmail.com	⏳ Pending Login	Edit / Reset / Delete
+
+
+
+---
+
+🧩 7. Integration with Parent Linking
+
+If the parent account already exists, the system auto-links:
+
+if parent_email in Parent.email:
+    link_parent_to_student(student_id, parent_id)
+else:
+    create_new_parent_account(parent_email)
+
+So that each parent dashboard automatically reflects their children.
+
+
+---
+
+🏁 In Summary
+
+The Student Upload & Account Generation System ensures that:
+
+1. Admin can easily onboard new students individually or via CSV.
+
+
+2. Every student gets a standardized THS username and secure temporary password.
+
+
+3. Credentials can be safely printed or emailed.
+
+
+4. The system maintains data consistency, security, and parent–child linking automatically.

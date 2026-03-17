@@ -1,0 +1,40 @@
+CRITICAL DATABASE CONSTRAINT VIOLATION - Exam Auto-Scoring System Failure
+
+The exam submission system is failing due to a foreign key constraint violation in the exam_results table. Here's the specific issue and context:
+
+ERROR DETAILS:
+- PostgresError: insert or update on table "exam_results" violates foreign key constraint "exam_results_recorded_by_fkey"
+- Detail: Key (recorded_by)=(00000000-0000-0000-0000-000000000001) is not present in table "users"
+- The auto-scoring system tries to use a hardcoded UUID '00000000-0000-0000-0000-000000000001' for the recorded_by field, but this UUID doesn't exist in the users table
+
+ROOT CAUSE:
+The auto-scoring function in server/routes.ts uses a hardcoded system UUID (00000000-0000-0000-0000-000000000001) to indicate auto-generated results, but this UUID was never inserted into the users table, causing the foreign key constraint to fail.
+
+CURRENT BEHAVIOR:
+1. Student submits exam successfully 
+2. Auto-scoring begins and calculates correct scores
+3. Database insertion fails due to missing system user record
+4. Retry mechanism also fails with same constraint violation
+5. Student sees "manual grading required" message despite having auto-gradable questions
+6. Performance exceeds 2-second goal (2754ms) due to failed database operations
+
+REMAINING ISSUES TO SOLVE:
+
+1. **Create System User Record**: Insert the system UUID '00000000-0000-0000-0000-000000000001' into the users table with appropriate role/details for auto-scoring operations
+
+2. **Fix Auto-Scoring Pipeline**: Ensure the auto-scoring system can successfully save results to exam_results table without constraint violations
+
+3. **Performance Optimization**: The submission pipeline is taking 2754ms (exceeding 2-second goal) - likely due to failed database operations and retry attempts
+
+4. **Fallback Mechanism**: Improve error handling when auto-scoring fails to provide better user feedback
+
+5. **Database Schema Validation**: Ensure all foreign key relationships are properly satisfied for automated operations
+
+The system has comprehensive auto-scoring logic that correctly calculates scores, but fails at the final database persistence step due to this constraint violation. Students are experiencing degraded functionality where auto-gradable questions appear to require manual grading.
+
+Files involved:
+- server/routes.ts (autoScoreExamSession function)
+- server/storage.ts (recordExamResult function) 
+- Database schema (users and exam_results tables)
+
+Please fix the constraint violation and ensure the auto-scoring system can persist results successfully.

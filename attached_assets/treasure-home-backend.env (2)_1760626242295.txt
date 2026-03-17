@@ -1,0 +1,11 @@
+BACKEND_URL=https://treasure-home-backend.onrender.com
+DATABASE_URL=postgresql://postgres.vfqssftlihflcfhfzwkm:marvel_lous@1@aws-1-us-east-1.pooler.supabase.com:6543/postgres
+FRONTEND_URL=https://treasurehomeschool.vercel.app
+GOOGLE_CLIENT_ID=578610661363-ev4igr5ufcd2d9i18g38kt158o54rvdr.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
+GOOGLE_REDIRECT_URI=https://treasure-home-backend.onrender.com/api/auth/google/callback
+JWT_SECRET=lKch50VSBmSqd9oRkYQIUHC1NN2EcJ5XRlEr4ZnvEPAB2d6uP4zWCU5Jgb6nYagm
+NODE_ENV=production
+SESSION_SECRET=XyD/hLJMOqszdT/MHYD6oczd9pfKqIAMZAWevkUIqJNB0AEVY/8QLY2c8tNoTeOX
+SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZmcXNzZnRsaWhmbGNmaGZ6d2ttIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzYyOTA4OSwiZXhwIjoyMDczMjA1MDg5fQ.mvpJ5h_KHCgriUgT9ZzuLWK6TdgkzJHLh-lZ-wIK7tY
+SUPABASE_URL=https://vfqssftlihflcfhfzwkm.supabase.co

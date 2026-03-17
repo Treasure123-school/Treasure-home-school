@@ -1,0 +1,72 @@
+SCRIPT: Smart Auto-Link System for Student & Parent Accounts
+🔖 Title:
+Automated Parent Account Creation and Student–Parent Linkage
+🏁 Purpose
+To ensure every student in THS Portal has an automatically linked Parent/Guardian account for result tracking, communication, and transparency — with minimal manual effort from the Admin or Teacher.
+This feature improves data consistency, strengthens accountability, and enhances parental engagement across the THS ecosystem.
+⚙️ Core Concept
+Whenever a Student record is created (by Admin or verified Teacher):
+• The system checks if a Parent Username or Email was entered.
+• If Parent info exists, it links the student directly to that parent account.
+• If no Parent info is provided, the system auto-generates a new Parent account,
+creates login credentials, and links both profiles automatically.
+🧠 Flowchart Logic (Simplified)
+Admin/Teacher → Add Student Form → Submit ↓ Check if “Parent Username” field is filled ↓ ┌───────────────────────────┐ │ YES → Link student to that parent │ └───────────────────────────┘ ↓ ┌───────────────────────────┐ │ NO → Auto-create parent │ │ Generate username + password │ │ Assign relationship (Parent-Student) │ └───────────────────────────┘ ↓ Display success modal → show both (Student + Parent credentials) 
+🧩 Functional Details
+1. Add Student Form (Admin/Teacher View)
+Essential Fields:
+• Student Full Name
+• Gender
+• Date of Birth
+• Class / Arm
+• Parent Username (optional)
+• Parent Email / Phone (optional)
+System Actions on Submission:
+• Validate all fields.
+• Generate unique Student ID, Username, and Password.
+student.username = "THS-STU-" + generate_unique_id() student.password = generate_secure_password() 
+• Check if parent_username is provided:
+• ✅ If yes → fetch that parent record and link student.
+• 🚫 If not → auto-create new parent account:
+parent.username = "THS-PAR-" + generate_unique_id() parent.password = generate_secure_password() parent.status = "Active" 
+• Establish bi-directional link:
+student.parent_id = parent.id parent.children.append(student.id) 
+🧾 System Output After Adding Student
+Once record creation succeeds, show a Success Modal:
+✅ Student and Parent Accounts Created Successfully!
+Display:
+AccountUsernamePasswordStudentTHS-STU-0459sdhA!x2ParentTHS-PAR-045XyP@73Lm 
+[Copy Credentials] [Print PDF Slip] [Send via Email/SMS]
+🔒 Security & Verification Logic
+ConcernSystem ResponseDuplicate parent detected (same email)Link to existing parent, don’t recreate.No parent infoAuto-create securely.Teacher abuse (fake parent records)Only Admin-approved students generate final parent accounts.Password visibilityShown once at creation, then hashed in DB.Recovery optionsParent can reset password via registered email. 
+💡 Parent Portal Dashboard Features
+After login, each parent can see:
+• Child’s bio & class info
+• Performance reports
+• Attendance summary
+• Announcements
+• Direct message to teacher/admin
+• Multiple children (if linked)
+Parent.children = [Student1, Student2, ...] 
+🧩 Advantages
+BenefitDescription🕹️ AutomationReduces admin workload dramatically.🔗 Smart LinkingEvery student automatically has a guardian relationship.👨‍👩‍👧 Parent EngagementParents get direct, live access to child performance.🧱 Data ConsistencyEliminates orphan student records.🔐 Security ComplianceEach login separated by role type; no cross-permissions.📊 Analytics ReadyEnables easy reporting per student or parent family group. 
+🧰 Future Upgrades (Optional Enhancements)
+• Parent Invitation Email 
+• Send login details automatically after approval.
+• SMS Notification (If enabled) 
+• Parent receives: 
+“Your THS Portal account has been created. Username: THS-PAR-045”
+• Guardian Sub-Accounts 
+• Add multiple guardians under one student.
+• Auto-Link by Phone Number 
+• If the parent phone matches existing parent, link automatically.
+⚙️ Sample Backend Pseudocode
+def add_student(data): student_username = generate_username("STU") student_password = generate_password() if data.get("parent_username"): parent = Parent.objects.filter(username=data["parent_username"]).first() else: parent_username = generate_username("PAR") parent_password = generate_password() parent = Parent.objects.create( username=parent_username, password=hash_password(parent_password) ) student = Student.objects.create( name=data["name"], username=student_username, password=hash_password(student_password), parent=parent, class_assigned=data["class"] ) return { "student_credentials": {"username": student_username, "password": student_password}, "parent_credentials": {"username": parent.username, "password": parent_password if 'parent_password' in locals() else None} } 
+🏁 Result
+• Admin or Teacher adds a student once.
+• System intelligently: 
+• Generates both accounts.
+• Links them automatically.
+• Displays and stores secure login details.
+✅ Smart. Safe. Simplified.
+Perfect for your THS Portal ecosystem — a digital structure that runs itself.

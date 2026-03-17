@@ -1,0 +1,377 @@
+START TASK: Student Self-Registration + Auto Parent Creation (Step-by-step)
+
+> Priority: High — single feature, low risk, immediate value.
+Scope: backend (Render + Supabase), frontend (Vercel / Next.js), email/SMS hook (SendGrid stub).
+Safety rule: Check Supabase schema first. Do not create duplicate tables or drop anything.
+
+
+
+
+---
+
+STEP 0 — Preflight (Must do before any code change)
+
+1. Connect to Supabase and list existing tables (users, students, parents, settings).
+
+
+2. If any table missing (e.g., parents), create it using the schema snippet below (safe minimal fields).
+
+
+3. Report back current counts: users total, students total, parents total.
+
+
+4. Create a feature-flag in settings table: allow_student_self_registration = true (if missing, insert).
+Acceptance: Agent returns a short log showing table checks and the settings value.
+
+
+
+
+---
+
+STEP 1 — Database: Add / ensure minimal required structure (safe DDL)
+
+If tables missing, create minimal fields:
+
+-- Minimal safe parent table (run only if parents table does not exist)
+CREATE TABLE IF NOT EXISTS parents (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES users(id),
+  email text,
+  phone text,
+  created_at timestamptz DEFAULT now()
+);
+
+-- Ensure students table has parent_user_id
+ALTER TABLE students
+  ADD COLUMN IF NOT EXISTS parent_user_id uuid REFERENCES users(id);
+
+Acceptance: Parent table exists and students.parent_user_id column exists. No destructive changes.
+
+Stress alert: NEVER DROP or RENAME tables. If the table exists, reuse it.
+
+
+---
+
+STEP 2 — Backend: Create endpoints (small, atomic)
+
+Implement these endpoints on Render (Express/Fastify or Supabase Edge function). Keep each endpoint minimal and well-documented.
+
+1. POST /self-register/student/preview
+
+Input: { full_name, class_code, gender, dob, parent_email, parent_phone }
+
+Output: { suggested_username, parent_exists: boolean, errors[] }
+
+Purpose: allow frontend to show the generated username and warn if parent already exists.
+
+
+
+2. POST /self-register/student/commit
+
+Input: same as preview + password (or let student choose)
+
+Behaviour:
+
+Validate inputs
+
+Check allow_student_self_registration setting; refuse if false
+
+Generate student_username (see generator rules)
+
+If parent_email exists in users (role = parent) → link student to existing parent
+
+Else → create parent users row + parents row and generate parent temp password
+
+Create student users + students row, set must_change_pass = true
+
+send notification to parent (email stub) with credentials (or secure reset link)
+
+
+Output: { student_username, parent_created: boolean, parent_username, parent_password_shown_once }
+
+Important: Show parent temp password only once in response — do not store plaintext anywhere.
+
+
+
+3. GET /self-register/status/:student_username
+
+Simple check for registration success and verification status.
+
+
+
+
+Acceptance: Endpoints return expected output for valid test inputs.
+
+Stress alert: Do not return or log plaintext passwords to persistent logs. Only present them to the calling admin or the commit response once.
+
+
+---
+
+STEP 3 — Username & Password generation (deterministic + safe)
+
+Implement helper modules:
+
+generateStudentUsername(class_code):
+
+Use class_counters atomic upsert sequence for the class+year (avoid COUNT()+1).
+
+Format: THS-STU-<YEAR>-<CLASS>-<SEQ3> e.g., THS-STU-2025-PR3-001.
+
+
+generateParentUsername():
+
+Format: THS-PAR-<YEAR>-<RND4>
+
+
+generateTempPassword():
+
+Secure random (crypto) 8–10 characters, pattern: THS@<YEAR>#<RAND4>. Use only for display once.
+
+
+hashPassword(plain):
+
+Use Argon2 or bcrypt; store hash only.
+
+
+
+Acceptance: Unit tests for username generator show no collisions for 1,000 sequential calls (using DB atomic counter).
+
+Stress alert: Do not use COUNT() for sequences.
+
+
+---
+
+STEP 4 — Frontend: Registration UI (atomic component)
+
+Build a single-page component /register/student:
+
+Fields: Full name, class (dropdown), gender, DOB, parent email/phone, password, confirm password.
+
+Button: Preview Username — calls POST /self-register/student/preview and shows suggested_username and whether parent exists.
+
+Button: Create Account — calls POST /self-register/student/commit.
+
+After commit: show success modal with student username and the parent username + temp password (if a new parent was created). Give copy and print options.
+
+Also show a message: “Parent credentials were sent by email (if provided).”
+
+
+UI requirements:
+
+Disable submit while waiting; show spinner.
+
+Client-side validations (password match, parent contact presence).
+
+Do not display any raw passwords anywhere except the modal immediately after creation.
+
+
+Acceptance: Manual QA: complete form → preview → commit → success modal with credentials.
+
+Stress alert: Ensure the UI will not re-request commit if user refreshes. Use confirmation token or idempotency key.
+
+
+---
+
+STEP 5 — Parent auto-creation & linking rules
+
+Implementation details (backend logic):
+
+1. On commit:
+
+Lookup parent user: SELECT * FROM users WHERE email = parent_email AND role='parent'
+
+If found:
+
+Set parent_user_id in students to that user.id
+
+Append this student to parents.linked_students if your schema has that field
+
+parent_created = false
+
+
+If not found:
+
+Create users row: role = parent, username = THS-PAR-..., password_hash = hash(temp_password), status='active'
+
+Create parents row (phone/email)
+
+parent_created = true
+
+
+
+
+2. Create student user and student row with parent_user_id referencing the found/created parent.
+
+
+3. Send email to parent (or SMS if phone) with either:
+
+Preferred: secure link to set password (recommended)
+
+Alternative: show temp password once (if secure link not feasible)
+
+
+
+
+Acceptance: Student entry in DB references parent_user_id. If parent existed, no duplicate parent user is created.
+
+Stress alert: Always check uniqueness on parent email before creating new account.
+
+
+---
+
+STEP 6 — Notifications (email stub then production)
+
+1. For now implement a stub that logs the email content to server logs (dev).
+
+
+2. Provide SendGrid integration point (config in settings) — do NOT wire to production keys yet.
+
+
+3. Email template:
+
+Subject: THS Portal — Parent Account Created for <child name>
+
+Body: friendly text + link to portal + (preferred) password reset link OR the temp credentials (one-time display).
+
+
+
+
+Acceptance: Email stub prints the message body in dev logs. Production key hookup configurable via settings.
+
+Stress alert: Avoid emailing plaintext passwords if possible — prefer secure set-password link.
+
+
+---
+
+STEP 7 — Security & rate limits
+
+1. Block mass self-registration by IP (rate limit: 5 attempts per 10 minutes). Implement middleware.
+
+
+2. Require parent_email or parent_phone — do not allow child-only registration with no parent contact.
+
+
+3. Add CAPTCHA option in settings to enable later (for spam prevention).
+
+
+4. Log every registration in audit_logs with actor = system, action = 'student_self_register', details: {student_username, parent_linked, ip}.
+
+
+
+Acceptance: Rate limit blocks exceeding attempts and returns 429.
+
+Stress alert: If you allow public self-registration, ensure strong rate-limiting and CAPTCHA to avoid bots.
+
+
+---
+
+STEP 8 — Tests & QA
+
+1. Unit tests:
+
+Username generation uniqueness test (1000 runs).
+
+Parent linking: existing parent case; new parent case.
+
+Hashing + verify flow.
+
+
+
+2. Integration tests:
+
+End-to-end register preview -> commit -> DB records check.
+
+Email stub content validation.
+
+
+
+3. Manual test cases:
+
+Register with existing parent email → check linking.
+
+Register with absent parent email → check parent creation and linking.
+
+Re-registration attempts (duplicate user defenses).
+
+Concurrent registrations for the same class (race check for seq generator).
+
+
+
+
+Acceptance: All tests pass locally. Agent provides a test summary log.
+
+
+---
+
+STEP 9 — Deployment & Rollout
+
+1. Deploy backend changes to a staging Render service. Point frontend to staging Supabase.
+
+
+2. Test a small number (10) real signups. Validate DB entries, emails, and audit logs.
+
+
+3. Once stable, promote to production.
+
+
+
+Acceptance: Staging tests pass, production deploy follows after your confirmation.
+
+Stress alert: Never deploy migrations directly to production without running in staging first.
+
+
+---
+
+STEP 10 — Deliverable & Handoff
+
+Agent should produce:
+
+Endpoint code (with comments).
+
+Frontend component code for /register/student.
+
+Unit + integration tests.
+
+Migration SQL (if parents column/table was added).
+
+Short README: how to configure settings keys (SendGrid, CAPTCHA), and how to disable self-registration.
+
+
+
+---
+
+QUICK CHECKLIST (for the Agent to report back)
+
+[ ] Supabase schema check & settings flag exists
+
+[ ] Endpoints implemented: preview, commit, status
+
+[ ] Username & password generator implemented
+
+[ ] Frontend registration component added with preview + commit flows
+
+[ ] Parent linking logic correct (existing vs new)
+
+[ ] Email stub logs created; SendGrid hook ready in settings
+
+[ ] Rate-limits applied
+
+[ ] Unit & integration tests implemented
+
+[ ] Staging deploy tested
+
+
+
+---
+
+FINAL NOTES & STRESS CALL-OUTS (Read carefully)
+
+Do not overwrite existing DB tables or columns without checking. Always run preflight.
+
+Do not persist plaintext passwords anywhere. Only show the parent temp password ONCE in response and send a set-password link by email if possible.
+
+Avoid COUNT()+1 for sequence generation — use atomic upsert sequence or database sequence to avoid collisions.
+
+Be cautious with public registration — enable CAPTCHA and rate-limiting to prevent abuse.
+
+Log everything: registration events must be auditable.

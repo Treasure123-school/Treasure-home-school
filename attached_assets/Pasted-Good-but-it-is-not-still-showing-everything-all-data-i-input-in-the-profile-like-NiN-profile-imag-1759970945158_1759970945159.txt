@@ -1,0 +1,78 @@
+Good, but it is not still showing everything, all data i input in the profile like NiN, profile image. It yet to show all data. Ensure it is completely fix with the proper solution
+
+OH
+
+io87wz
+Assistant
+just now
+To resolve the issue of missing profile data—such as the profile image and personal information—in your , you'll need to ensure that all necessary fields are being populated and rendered correctly. Here are the steps and updated code you can follow to fix these issues completely.
+
+Steps to Fix Missing Profile Data
+Ensure API Response Completeness: Verify that your API is returning all necessary fields, including the National ID (nationalId), phone, date of birth, and profile image URL.
+
+Check Data Initialization: Ensure that the data is being properly initialized in your component.
+
+Complete Rendering: Make sure all fields are correctly displayed in the JSX of your TeacherProfile.
+
+Updated 
+Here is an updated version of your  that ensures all data is fetched and displayed correctly:
+
+import React, { useEffect, useState } from 'react';
+import { useQuery } from 'react-query';
+import { useAuth } from '@/lib/auth'; // Adjust this according to your project structure
+import { useToast } from '@/hooks/use-toast';
+import PortalLayout from '@/components/layout/PortalLayout';
+import { Avatar, AvatarImage } from '@/components/ui/avatar';
+import { Card, CardContent } from '@/components/ui/card';
+export default function TeacherProfile() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [profileData, setProfileData] = useState({});
+  // Fetching teacher profile data
+  const { data: teacherProfile, isLoading, error } = useQuery('/api/teacher/profile/me', {
+    enabled: !!user,
+  });
+  useEffect(() => {
+    if (teacherProfile) {
+      console.log('Profile Data:', teacherProfile);
+      setProfileData(teacherProfile);
+    }
+  }, [teacherProfile]);
+  if (isLoading) {
+    return <div>Loading profile...</div>;
+  }
+  if (error) {
+    toast({ title: "Error", description: "Failed to fetch profile data", variant: "destructive" });
+    return <div>Error loading profile data.</div>;
+  }
+  return (
+    <PortalLayout userRole="teacher" userName={profileData.firstName}>
+      <Card>
+        <CardContent>
+          <h2>Profile Overview</h2>
+          {profileData.profileImageUrl && (
+            <Avatar>
+              <AvatarImage src={profileData.profileImageUrl} alt="Profile" />
+            </Avatar>
+          )}
+          <p>Full Name: {profileData.firstName} {profileData.lastName}</p>
+          <p>Staff ID: {profileData.staffId}</p>
+          <p>Email: {profileData.email}</p>
+          <p>Phone: {profileData.phone || 'Not provided'}</p>
+          <p>Gender: {profileData.gender || 'Not provided'}</p>
+          <p>Date of Birth: {profileData.dateOfBirth || 'Not provided'}</p>
+          <p>National ID: {profileData.nationalId || 'Not provided'}</p>
+          <p>Address: {profileData.address || 'Not provided'}</p>
+          <p>Recovery Email: {profileData.recoveryEmail || 'Not provided'}</p>
+        </CardContent>
+      </Card>
+    </PortalLayout>
+  );
+}
+Key Modifications:
+Added missing fields like National ID, Phone, Date of Birth, Address, and Recovery Email to the JSX display.
+Integrated the fetching of the profile image with the Avatar component.
+Ensure the state updates with all incoming profile data and render any missing fields appropriately.
+Enhanced user feedback with toast notifications for errors during data fetching.
+Final Steps:
+After you have applied these changes, confirm that the API call returns all necessary fields and that the UI displays the intended data correctly. If issues persist, examine the API response in the network tab to ensure all profile data is being returned properly.

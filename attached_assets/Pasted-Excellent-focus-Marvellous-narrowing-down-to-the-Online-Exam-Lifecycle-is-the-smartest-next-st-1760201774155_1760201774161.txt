@@ -1,0 +1,313 @@
+Excellent focus, Marvellous 🔥 — narrowing down to the Online Exam Lifecycle is the smartest next step before scaling other modules.
+Let’s build this step-by-step roadmap (start → finish) in a way that even a senior developer would nod and say,
+
+> “Yes, this system is scalable, low-cost, and maintainable.”
+
+
+
+We’ll keep it simple, modular, and production-ready — so your Replit Agent, Supabase, and Vercel setup can handle it smoothly.
+
+
+---
+
+🧭 THE ONLINE EXAM SYSTEM — THS END-TO-END PLAN
+
+🏁 PHASE 1: FOUNDATION – DATA STRUCTURE & ACCESS CONTROL
+
+Objective: Build a clean and scalable foundation that separates all exam roles and data clearly.
+
+✅ Key Database Tables (in Supabase)
+
+Table	Purpose	Key Columns
+
+users	All user accounts (admin, teacher, student, parent)	id, email, role, verified, suspended, created_at
+students	Student profile data	user_id, name, class, parent_id
+teachers	Teacher profile data	user_id, subject, class_assigned
+parents	Parent info	user_id, name, contact, children_ids[]
+exams	Exam metadata	id, title, subject, class, created_by, start_time, end_time, timer_mode
+questions	Exam questions	id, exam_id, type (MCQ, essay, fill), question_text, options[], answer_key, mark, requires_manual
+student_answers	Student submissions	student_id, exam_id, question_id, answer_text, score, status
+exam_scores	Final per-student scores	student_id, exam_id, auto_score, manual_score, penalty, total_score, test_score, exam_score
+reports	Finalized term reports	student_id, subject, total_score, remarks, grade, rank
+
+
+🧱 Security Principle:
+
+Each table uses RLS (Row-Level Security) in Supabase:
+
+Students only see their own records.
+
+Teachers only see their assigned classes.
+
+Parents see linked child data.
+
+Admin sees all.
+
+
+
+
+---
+
+⚙️ PHASE 2: EXAM CREATION (Admin / Teacher)
+
+Objective: Enable Teachers or Admin to set up, schedule, and publish exams easily.
+
+Workflow:
+
+1. Teacher clicks “Create Exam.”
+
+Select subject, class, and timer mode (Global or Individual).
+
+Input marks per question, description, duration.
+
+
+
+2. Question Builder:
+
+Add MCQs, Fill-ins, or Essays.
+
+System autosaves after each question.
+
+Each question is tagged with requires_manual = true for theory.
+
+
+
+3. Exam Preview & Save:
+
+Teacher can test-run the exam view.
+
+Click “Publish” → Exam status = scheduled.
+
+
+
+4. Scheduling Logic:
+
+If global timer: All students’ exam starts and ends at once.
+
+If individual timer: Each student’s timer starts upon “Begin Exam”.
+
+
+
+
+✅ Modern Design Touches
+
+Use a progress tracker for question building.
+
+Add a loading animation when saving/publishing.
+
+Validate all required fields before saving.
+
+
+
+---
+
+💻 PHASE 3: STUDENT EXAM EXPERIENCE
+
+Objective: Deliver a clean, reliable, and secure exam interface.
+
+Features:
+
+1. Exam Start Page
+
+Show exam title, subject, and time remaining.
+
+Countdown visible before “Start Exam” button activates.
+
+
+
+2. Exam Interface
+
+Questions displayed one-by-one or paginated.
+
+Autosave every 10 seconds.
+
+Restricted features: copy-paste, refresh warning, tab-switch detection.
+
+
+
+3. Anti-Cheat Mechanism
+
+On each tab switch → add 1 warning.
+
+After 3 warnings → auto-deduct 5 marks each (max 20 marks).
+
+Log cheating incidents in exam_logs table.
+
+
+
+4. Timer
+
+Global mode → All stop at exact same end time.
+
+Individual mode → Personalized countdown.
+
+When time expires → auto-submit.
+
+
+
+5. Submission
+
+When submitted → answers saved → marked for auto-grading.
+
+
+
+
+✅ Modern Enhancements
+
+Toast message confirmations (“Answer saved”, “Exam submitted”).
+
+Use loading animations on question change to reduce lag.
+
+Responsive layout (works on phone/tablet/laptop).
+
+
+
+---
+
+🤖 PHASE 4: AUTO & MANUAL MARKING
+
+Objective: Blend automated and human grading for fairness.
+
+Auto Scoring (Objective)
+
+System compares student’s answer with answer_key.
+
+Full mark for match; partial if multi-select partially correct.
+
+Score written into auto_score in student_answers.
+
+
+Theory (AI or Keyword Logic)
+
+Use keyword matching or semantic scoring:
+
+Extract essential keywords.
+
+Compute similarity ratio.
+
+Example: score = (keyword_match + semantic_score) / 2.
+
+
+
+Manual Review
+
+Teachers see pending exams they created.
+
+They can:
+
+Adjust AI-suggested scores.
+
+Leave comments.
+
+Approve final score per student.
+
+
+
+
+---
+
+📊 PHASE 5: RESULT MERGING & TEACHER REPORT VIEW
+
+Objective: Merge Test (40) + Exam (60) → Generate per-subject total.
+
+1. Teacher Adds Test Score:
+
+On “Scores Page”, teacher inputs test scores.
+
+System automatically calculates total = test (40) + exam (60).
+
+
+
+2. Save & Sync to Report:
+
+Once all subject scores are finalized:
+
+exam_scores updated.
+
+reports table refreshed.
+
+
+
+
+3. Teacher Report Dashboard
+
+Shows:
+
+Student Name
+
+Total Score (out of 100)
+
+Remarks (auto or manual)
+
+Position / Rank
+
+Export options (PDF, CSV)
+
+
+If student hasn’t written the exam → total = empty (“—”).
+
+
+
+
+✅ Professional Touches
+
+Use real-time progress indicators (e.g., “5/20 graded”).
+
+Add filter by class/subject.
+
+Include average performance graph per subject.
+
+
+
+---
+
+📜 PHASE 6: FUTURE PROOFING & MAINTENANCE
+
+Objective: Keep the system light, secure, and low-cost.
+
+Frontend: Vercel (fast CDN + automatic scaling)
+
+Backend: Render (Node or Express)
+
+Database: Supabase (auth + row-level security)
+
+Caching: Enable Supabase caching for frequent reads (like questions).
+
+Media Handling: Limit image size ≤ 2MB; use Supabase Storage.
+
+Admin Controls:
+
+Super Admin can edit, suspend, delete, or reset any record.
+
+Avoid loops or auto-calls that hit the DB repeatedly.
+
+
+Error Handling:
+
+Use toast popups for user-friendly error messages.
+
+Add a retry mechanism for unstable connections.
+
+
+
+
+---
+
+🧠 SUMMARY: THS EXAM ENGINE FLOW
+
+Phase	Description	Owner
+
+1	Database & Roles Setup	Admin / Dev
+2	Exam Creation & Scheduling	Teacher / Admin
+3	Student Exam Experience	Student
+4	Auto & Manual Marking	System + Teacher
+5	Report Generation	Teacher + System
+6	Future Maintenance & Optimization	Admin / DevOps
+
+
+
+---
+
+Would you like me to now expand this into a full “developer-narrative script” (like a story for Replit Agent — detailed with what to build, how it should behave, and validations)?
+That version would include user flow, backend actions, and Supabase logic — almost like a “developer manual for the exam system.”
+

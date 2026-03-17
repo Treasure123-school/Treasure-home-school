@@ -1,0 +1,45 @@
+Chapter 1: Foundation — Roles, Login & Access Control
+Treasure-Home School begins with structure and security.
+Every feature that follows depends on a strong authentication and verification base.
+1. Defined Roles
+• Admin: Central authority. Manages classes, subjects, teachers, exams, and verifications.
+• Teacher: Creates exams, grades theory (or reviews AI scores), views performance.
+• Student: Takes tests and exams; views scores and feedback.
+• Parent: Linked to children; monitors academic progress and downloads reports.
+2. Login Architecture
+Google Sign-In (Teachers & Admins)
+• Uses Google OAuth2 for real identity verification.
+• When a teacher or admin signs in the first time, the system checks if their email is verified in the Admin Portal. 
+• ✅ If verified → grant dashboard access.
+• 🚫 If not verified → show friendly message: 
+“Your account is awaiting Admin approval. You’ll be notified once verified.”
+This replaces the confusing ‘Sign failed’ message.
+THS ID Login (Students & Parents)
+• Students and parents use system-generated IDs: 
+• Student → THS-STU-2025-PR3-001
+• Parent → THS-PAR-2025-001
+• Default password format: THS@2025#A9M4
+• Must change password on first login.
+Each role lands on their respective dashboard with appropriate permissions.
+3. Admin User Controls
+Inside the Admin Portal, each account (Teacher, Student, Parent) has management tools:
+ActionDescriptionVerify / UnverifyActivate or deactivate staff/student accounts.Suspend / UnsuspendTemporarily block access for misconduct or review.Reset PasswordGenerate a secure new password for any user.Change Recovery EmailUpdate recovery email address if lost or incorrect.Delete AccountSafely remove an account while preserving related exam data.LogsView all user activities and login history. 
+Messages to users must be clear:
+“Account suspended. Please contact the Admin.”
+“Account verification pending. Await Admin approval.”
+No vague “failed” messages — only professional and contextual feedback.
+4. Parent–Child Linking
+• During import or registration, each student record links to a parent account (via parent email or ID).
+• A parent with multiple children sees a “Switch Child” dropdown.
+• Parents cannot see other students’ data.
+5. Recovery & Password Reset
+Students/Parents
+• Click “Forgot Password” → enter username or registered email.
+• Receive reset link (expires in 15 mins).
+• Must use strong new password.
+• System logs recovery attempts (max 3/hour).
+Admin Recovery Powers
+• Can reset user passwords, edit recovery emails, or re-verify accounts.
+• Maintains super-admin account (recovery@ths.edu.ng) for last-resort recovery.
+✅ End of Chapter 1:
+All users can sign in securely, Google-linked roles are verified, and the admin has full oversight.

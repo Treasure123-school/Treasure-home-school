@@ -1,0 +1,71 @@
+Assistant
+just now
+Here are the current issues and solutions related to the teacher profile system you are facing:
+
+Current Issues
+Missing Database Columns:
+
+Status: Critical; blocking profile creation.
+Root Cause: users table lacks national_id, profile_image_url, and recovery_email columns.
+Impact: Profile creation fails due to database constraint errors.
+Evidence:
+
+Database query failed: column "national_id" does not exist
+Profile Data Not Fetching Correctly:
+
+Status: High Priority.
+Root Cause: /api/teacher/profile/me endpoint returns incomplete data.
+Expected vs Actual Response: Missing fields like nationalId and profileImageUrl.
+Profile Image and National ID Display Issues:
+
+Status: Medium Priority.
+Root Cause: Same as above; fields not included in API response.
+Cache Update Race Condition:
+
+Status: Medium Priority.
+Root Cause: Cache not updated before navigating, leading to old profile data being shown.
+Proposed Solutions
+Step 1: Add Missing Database Columns
+Update your migration file to add the missing columns:
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS national_id VARCHAR(50);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_image_url TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_email VARCHAR(255);
+CREATE INDEX IF NOT EXISTS idx_users_national_id ON users(national_id);
+COMMENT ON COLUMN users.national_id IS 'National Identification Number (NIN) for teachers and staff';
+COMMENT ON COLUMN users.profile_image_url IS 'URL/path to user profile image';
+COMMENT ON COLUMN users.recovery_email IS 'Alternative email for password recovery';
+Step 2: Fix API Endpoint
+Ensure the API correctly returns all required fields in the response:
+
+Change your endpoint in :
+
+const completeProfile = {
+    // Profile fields
+    id: profile.id,
+    nationalId: user.national_id || '',
+    profileImageUrl: user.profile_image_url || '',
+    // Other fields...
+};
+// Log and return:
+console.log('✅ Teacher profile API response:', { completeProfile });
+res.json(completeProfile);
+Step 3: Cache Update Fix
+Modify the cache update process in :
+
+onSuccess: (data) => {
+    queryClient.setQueryData(['/api/teacher/profile/me'], {
+        ...data,
+        hasProfile: true
+    });
+    setTimeout(() => navigate('/portal/teacher'), 2000); // Delay navigation
+}
+Summary of Fixes
+By implementing these solutions:
+
+Adding the necessary columns will facilitate successful profile creation.
+Ensuring that the API returns complete profile data will resolve data fetching issues.
+Fixing the cache update will prevent race conditions during navigation.
+These steps should help stabilize and improve the teacher profile system. If you need further assistance or specific code implementations, feel free to ask!
+
+Assistant mode

@@ -1,0 +1,736 @@
+End-to-End Online Exam Plan — Replit Agent Instructions
+
+Executive summary (tone: decisive, forward-looking)
+
+Agent — your mission is to implement a production-ready, end-to-end online exam system for primary, junior, and secondary schools inside this website. The system must support four roles (Admin, Teacher, Student, Parent), deliver secure exam delivery and scoring, route scores to the correct teacher for review, merge auto and manual marks, and produce final report cards (Test = 40, Exam = 60, Total = 100). This document is an operational charter: think of it as both a product brief and a step-by-step instruction set for execution.
+
+
+---
+
+Goals & Success Metrics
+
+Primary goals
+
+Deliver an MVP that supports end-to-end exam lifecycle: creation → delivery → submission → scoring → teacher review → report generation → distribution.
+
+Ensure accurate score routing and merging (auto + manual) and consistent, auditable final reporting.
+
+Friendly UIs for Admin/Teacher/Student/Parent with role-based access.
+
+
+Success metrics (KPI)
+
+99.9% exam submission durability (no data loss on submit/autosave).
+
+Teachers receive and clear 95% of manual grading tasks within 48 hours.
+
+Final report generation latency < 2 minutes after last teacher mark.
+
+Zero integrity mismatches between DB and exported report cards.
+
+
+
+---
+
+Assumptions & Constraints
+
+Test component = 40 marks, Exam component = 60 marks; total per subject = 100.
+
+Platform is web-first, mobile-responsive.
+
+Support for basic anti-cheat features (question randomization, navigation control, autosave, IP tracking). Advanced proctoring (camera monitoring) is out of MVP scope.
+
+Use standard web stack (Node/Express or FastAPI, Postgres, React/Next.js with Tailwind). Agent can choose stack but must standardize on one.
+
+
+
+---
+
+High-level architecture (recommended)
+
+Frontend: React (or Next.js) + Tailwind. Role-based UI components.
+
+Backend: RESTful API (or GraphQL) + WebSocket channel for real-time notifications.
+
+Database: Postgres (relational model suits queries and ACID transactions for scoring).
+
+File Storage: S3-compatible (for attachments, PDF exports).
+
+Background workers: BullMQ / Sidekiq style queue for heavy tasks: auto-scoring, merging, PDF generation.
+
+Realtime: Socket.io or server-sent events for teacher notification when submissions arrive and for exam timers.
+
+CI/CD & Hosting: Replit for development + a staging environment; production could be deployed in any cloud provider or container service. Database backups and migrations set up.
+
+
+---
+
+Domain model (core tables/entities)
+
+> Use clear primary/foreign keys and timestamps. All mutable score updates must have audit trails.
+
+
+
+Users
+
+id, email, password_hash, role (admin|teacher|student|parent), name, active, created_at, updated_at
+
+
+Students
+
+id, user_id (FK to Users), reg_no, class_id, section, parent_user_id (FK to Users), dob
+
+
+Teachers
+
+id, user_id, employee_no, subjects[]
+
+
+Classes
+
+id, name (e.g., Primary 3, JSS 2, SS 1)
+
+
+Subjects
+
+id, name (Mathematics, English), code
+
+
+Exams (exam templates or scheduled exams)
+
+id, title, subject_id, class_id, teacher_id, start_at, end_at, duration_minutes, shuffle_questions (bool), allowed_attempts, status (draft|scheduled|live|closed), created_by
+
+
+Questions
+
+id, exam_id, type (mcq|truefalse|short|long|matching|fillblank), body, options(json), correct_answer (encrypted if needed), marks (max marks for question), requires_manual_marking (bool)
+
+
+ExamInstances (per-student exam session record)
+
+id, exam_id, student_id, started_at, ended_at, status (in_progress|submitted|auto_scored|grading|finalized), timezone, token
+
+
+Answers
+
+id, instance_id, question_id, response (json/text), submitted_at, is_autosaved
+
+
+AutoScores
+
+id, answer_id, awarded_marks, details
+
+
+ManualScores
+
+id, answer_id, grader_id, awarded_marks, comment, graded_at
+
+
+SubmissionScores (merged per instance)
+
+id, instance_id, auto_score_total, manual_score_total, total_score, is_final
+
+
+Reports
+
+id, student_id, term, session, generated_at, report_json, pdf_path
+
+
+Notifications
+
+id, user_id, type, payload(json), read_at
+
+
+AuditLogs
+
+id, entity_type, entity_id, action, performed_by, diff, timestamp
+
+
+
+---
+
+Data flow — high level (story mode)
+
+1. Admin/Teacher creates an Exam: The user (teacher or admin) fires the POST /exams endpoint with metadata (subject, class, schedule, duration). Exam is saved as draft.
+
+
+2. Teacher adds Questions: Questions are stored as linked rows with requires_manual_marking flagged for essays.
+
+
+3. Exam goes Live: Admin schedules the exam and flips status to scheduled or live at start time. System creates ExamSession per student on start if preferred, or create ExamInstance once the student clicks "Start".
+
+
+4. Student starts exam: Student authenticates and clicks Start. System creates an ExamInstance with in_progress status, issue a secure token, open a websocket channel to keep the timer in sync.
+
+
+5. During exam — autosave & navigation: Client autosaves answers to POST /instances/:id/answers every N seconds or when question changes. Each autosave sets is_autosaved=true and updates last_saved_at.
+
+
+6. Time expiry or manual submit: When the student submits or time expires, instance status becomes submitted. A background job enqueues auto-scoring.
+
+
+7. Auto-scoring job: Worker processes objective questions, generates AutoScores, and computes auto_score_total. It writes SubmissionScores.auto_score_total and sets instance status to auto_scored.
+
+
+8. Manual grading queue: For any Answer where requires_manual_marking=true, the system creates a grading_task and assigns (or displays) the task to the appropriate teacher (assignment rules below). Notify teacher via socket and in-app notification.
+
+
+9. Teacher marks answers: Teacher opens the Marking UI, grades the answers (creates ManualScores for each answer), and once teacher finalizes, the instance's manual_score_total is updated.
+
+
+10. Score merge & finalization: When manual grading is complete (no pending manual items for the instance), a merge job calculates total_score = auto_score_total + manual_score_total. The instance is marked finalized and stored in SubmissionScores. A Report generation job is queued.
+
+
+11. Report generation: The system aggregates per-subject results for a term/session, builds the report JSON and PDF, stores Reports record and triggers notifications to student, assigned teacher(s), parent, and admin.
+
+
+12. Parent accesses report: Parent logs in, sees linked child's reports, downloads PDF.
+
+
+
+
+---
+
+How scores get to the right teacher (explicit mapping)
+
+Mapping logic (strong, deterministic rule)
+
+Each Exam is created for a subject_id and class_id. The system stores exam.teacher_id (assigned teacher). If exam.teacher_id is NULL, agent selects the class-subject teacher from the class_assignments table (mapping of teachers to classes + subjects).
+
+When Answer requires manual grading, create a GradingTask with assignee_teacher_id = exam.teacher_id (fallback to class-subject primary teacher).
+
+The teacher's dashboard queries GET /grading/tasks?teacher_id=ME&status=pending to see pending tasks.
+
+
+Notification
+
+Real-time (socket): push event grading_task.created with task_id, student_name, exam_title, question_preview.
+
+In-app notification record + optional email summary (daily or immediate, per preference).
+
+
+Teacher workflow
+
+1. Open task → view student's full answer (with context & attachments).
+
+
+2. Enter awarded_marks and comment → POST /answers/:id/manual-score.
+
+
+3. When all tasks for an ExamInstance are graded, teacher clicks Finalize or the system auto-detects completion and queues merge.
+
+
+
+Auditability & Safety
+
+Keep ManualScores with grader_id and timestamp.
+
+Maintain an AuditLogs entry for grade changes; only users with teacher or admin role can overwrite a manual score.
+
+
+
+---
+
+Final report logic — how the final report is created and routed to the right parent/student/teacher
+
+Per-subject calculation
+
+For each subject (and each student):
+
+Test total (test_total) is sum of test components scaled to 40 (or inherently the tests are built to sum to 40). If multiple tests exist, sum them but cap/normalize to max 40.
+
+Exam total (exam_total) is sum of exam components scaled to 60.
+
+Subject total = test_total + exam_total (max 100).
+
+
+
+Storing subject records
+
+Store per-subject results into SubjectResults (or as part of Reports.report_json). Include test_total, exam_total, total, grade, remark, grader_comments.
+
+
+Grade computation
+
+Allow school admin to configure grade boundaries (e.g., A: >=70, B: 60-69). Default set included, but editable.
+
+
+Aggregate student report
+
+total_obtained = SUM(subject.total)
+
+total_possible = number_of_subjects * 100
+
+percentage = (total_obtained / total_possible) * 100
+
+overall_grade = compute using school boundaries
+
+rank = compute within class/section using ORDER BY percentage DESC. Tie-breaker: higher sum of exam_total; if still tied, higher test_total; else shared rank.
+
+
+Report creation pipeline
+
+1. Trigger: when all exam instances for a student (for a term/session) are finalized, or when admin requests a generation.
+
+
+2. Worker aggregates SubjectResults and computes the student's report JSON.
+
+
+3. Generate PDF using templating (HTML -> PDF) and persist to storage.
+
+
+4. Save Reports row and send notifications to student, teacher(s), parent(s), admin.
+
+
+
+Distribution
+
+Student Dashboard shows report (view & download). Teacher Dashboard shows class reports and individual student reports. Parent Dashboard shows child's reports only.
+
+
+
+---
+
+UI Wireframes & Components (pages and primary actions)
+
+Admin
+
+Dashboard (live metrics)
+
+Exam Management (create, schedule, assign teachers)
+
+User Management (register teachers/students/parents)
+
+Reports Center (bulk export, configs)
+
+
+Teacher
+
+Dashboard (pending grading, class overviews)
+
+Grading Queue (task list) → Marking UI (full script, comments, award marks)
+
+Exam Builder (optionally if teachers create content)
+
+Class Analytics (performance trends)
+
+
+Student
+
+Dashboard (upcoming/ongoing/past exams)
+
+Exam Player (timer, question nav, autosave, submit)
+
+My Reports
+
+
+Parent
+
+Child Selector (if multiple kids)
+
+Child Reports (download/view)
+
+Notifications
+
+
+Shared components
+
+Real-time notifications pane
+
+PDF viewer
+
+Download/Export button
+
+
+
+---
+
+Key API endpoints (recommended RESTful design)
+
+> Authentication handled globally. Use JWT with refresh tokens.
+
+
+
+Auth
+
+POST /auth/login → {token, refreshToken}
+
+POST /auth/refresh
+
+
+Exams
+
+POST /exams → create exam (admin/teacher)
+
+PUT /exams/:id → update exam
+
+GET /exams?class_id=&status= → list
+
+
+Questions
+
+POST /exams/:id/questions
+
+GET /exams/:id/questions
+
+
+Exam instances & answers
+
+POST /exams/:id/start → create ExamInstance
+
+POST /instances/:instance_id/answers → save/auto-save answer
+
+POST /instances/:instance_id/submit → mark as submitted
+
+
+Scoring & grading
+
+GET /grading/tasks → teacher pending tasks
+
+POST /answers/:id/manual-score → grade an answer
+
+POST /instances/:id/finalize → trigger merge if teacher wants to finalize
+
+
+Reports & exports
+
+GET /students/:id/reports → list
+
+POST /reports/generate → regenerate
+
+GET /reports/:id/download → PDF path
+
+
+Notifications
+
+GET /notifications → in-app notifications
+
+
+
+---
+
+Background jobs & queues (must implement)
+
+1. AutoScoreWorker: process Submitted instances, compute auto scores, save AutoScores.
+
+
+2. GradingTaskCreator: for each instance, create tasks for teacher for manual answers.
+
+
+3. MergeScoresWorker: when manual scores exist and tasks are complete, compute totals and set finalized flag.
+
+
+4. ReportGeneratorWorker: generate report JSON + PDF and update Reports table.
+
+
+5. NotificationWorker: send emails / push / in-app notifications.
+
+
+6. Cleanup & Retry Worker: handle failed jobs and retries.
+
+
+
+Priority: AutoScoreWorker → GradingTaskCreator → MergeScoresWorker → ReportGeneratorWorker.
+
+
+---
+
+Acceptance Criteria (detailed)
+
+Exam creation
+
+[ ] Admin/Teacher can create an exam with subject/class/teacher
+
+[ ] Questions can be added and flagged for manual grading
+
+
+Exam delivery
+
+[ ] Student can start an exam; instance persists
+
+[ ] Autosave works every 15–30s and on navigation
+
+[ ] Timer enforces auto-submit at expiry
+
+
+Scoring
+
+[ ] Auto-scoring correctly grades objective items
+
+[ ] Manual grading tasks appear in teacher queue within 1 minute of submit
+
+[ ] Teacher can add marks and comments; changes audited
+
+
+Merging & report
+
+[ ] Merging adds auto + manual marks and stores per-instance total
+
+[ ] Reports show Test(40) | Exam(60) | Total(100) per subject
+
+[ ] Parent can access child report only
+
+
+Security
+
+[ ] Role-based access control strictly enforced
+
+[ ] All exam content and answers are encrypted at rest or access-controlled
+
+
+
+---
+
+Testing plan
+
+Unit tests for scoring logic and grade boundaries.
+
+Integration tests for full exam flow (create exam → take → submit → auto-score → teacher mark → finalize → report generation).
+
+End-to-end tests using Playwright or Cypress simulating student & teacher actions.
+
+Load test (k6) — simulate many concurrent students starting and submitting.
+
+
+
+---
+
+Anti-cheating baseline
+
+Question randomization per student (shuffling options & order)
+
+Disable back/forward navigation or at least detect it (configurable)
+
+Autosave to server to prove persistence
+
+IP logging & attempt rate-limiting
+
+Lock exam window/tab using visibility API and mark suspicious behavior for review
+
+
+Advanced (future): webcam proctoring, live monitoring, audio detection.
+
+
+---
+
+Security & compliance
+
+Use secure password storage (bcrypt/argon2) and JWT with short expiry
+
+RBAC: admin/teacher/student/parent
+
+Input validation and server-side sanitization
+
+DB backups and point-in-time recovery
+
+GDPR-like privacy considerations: data retention policy and deletion processes
+
+Audit logs for grade changes
+
+
+
+---
+
+Performance & scaling
+
+Use connection pools for DB
+
+Horizontal scale workers for auto-scoring and report generation
+
+Cache heavy read endpoints (teacher dashboards, public exam metadata) using Redis
+
+
+
+---
+
+Deployment & infra (practical checklist for Agent)
+
+1. Create a new repo: online-exam-system (init with monorepo: frontend/ and backend/).
+
+
+2. Scaffold backend: express/fastapi, auth boilerplate, DB migrations (use prisma/typeorm/sequelize/alembic).
+
+
+3. Scaffold frontend: Next.js with Tailwind, global auth, role-based routes.
+
+
+4. Provision Postgres DB and Redis for queues and caching.
+
+
+5. Implement worker process with BullMQ or equivalent.
+
+
+6. Create staging environment and run migrations.
+
+
+7. Deploy to staging and run smoke tests for flows.
+
+
+8. Prepare production deployment with DB backups and monitoring.
+
+
+
+
+---
+
+Sprint roadmap & priorities (practical micro-steps for the Agent)
+
+Sprint 0 — Setup (2–3 days)
+
+Repo + CI + dev environment + base auth + DB schema migrations.
+
+
+Sprint 1 — Core exam engine (1 week)
+
+Exam model + questions + exam creation UI, exam scheduling.
+
+Student start & instance creation.
+
+
+Sprint 2 — Exam player + autosave (1 week)
+
+Exam Player UI, autosave to backend, timer enforcement.
+
+
+Sprint 3 — Auto scoring + manual grading queue (1 week)
+
+AutoScore worker, grading task creator, teacher queue UI.
+
+
+Sprint 4 — Merge & report generation (1 week)
+
+Merge worker, per-subject totals calculation (40/60 weight), report JSON + PDF generator.
+
+
+Sprint 5 — Roles & distribution (1 week)
+
+Parent access, admin views, export features, basic analytics.
+
+
+Sprint 6 — Hardening (1 week)
+
+Security, performance, testing, monitoring, production deploy.
+
+
+
+---
+
+Operational checklist for the Agent (direct commands & deliverables)
+
+Agent, execute the following in order and mark each step complete when green:
+
+1. Initialize repo and branches: main, dev.
+
+
+2. Create database schema and migrations for all tables above.
+
+
+3. Implement auth endpoints and role scaffolding.
+
+
+4. Implement Exam CRUD APIs and question model.
+
+
+5. Implement ExamInstance & Answer save endpoints (autosave logic).
+
+
+6. Implement auto-score worker and test on dummy MCQ data.
+
+
+7. Implement teacher grading queue and marking endpoint.
+
+
+8. Implement MergeScores worker, finalize instance state.
+
+
+9. Implement report generator (JSON + PDF), store in S3-compatible bucket.
+
+
+10. Build student exam player (timer, autosave, sectioned navigation).
+
+
+11. Build teacher marking UI and bulk grading capabilities.
+
+
+12. Build admin dashboard for exam scheduling and grade boundary configuration.
+
+
+13. Build parent dashboard with child report access.
+
+
+14. Add notifications (socket + in-app + email fallback).
+
+
+15. Add audit logs for score modifications and grade overrides.
+
+
+16. Write unit & integration tests for the full flow.
+
+
+17. Deploy to staging and run end-to-end tests.
+
+
+18. Run load tests and fix bottlenecks.
+
+
+19. Deploy to production with backups + monitoring.
+
+
+
+
+---
+
+Example acceptance test (walkthrough scenario)
+
+Goal: Student Alice (Primary 5) takes Mathematics exam; system auto-scores MCQs and routes essay to Mr. B (Math teacher). Final report appears on Alice's & parent's dashboard.
+
+1. Admin schedules "Math Midterm" for Primary 5 (subject Math) assigned to Mr. B.
+
+
+2. Alice logs in and starts exam; she answers MCQs and an essay. Autosave works.
+
+
+3. Alice submits. AutoScoreWorker scores MCQs (40% of tests) and records auto_score_total.
+
+
+4. System creates grading task for Mr. B for essay.
+
+
+5. Mr. B receives socket notification and opens grading UI; he gives 8/10 and a comment.
+
+
+6. Merge worker runs, computes manual_score_total, adds to auto score to reach subject total (out of 100 with test/exam splits applied), and marks the instance finalized.
+
+
+7. ReportGeneratorWorker runs for the term, aggregates subject results, produces PDF.
+
+
+8. Alice and her parent receive notification; parent logs in and downloads the report.
+
+
+
+Acceptance criteria: report shows Test (40) | Exam (60) | Total (100), teacher comment is visible, and parent's report matches student's.
+
+
+---
+
+Closing & next actions (pragmatic)
+
+Agent, this is a high-fidelity charter. Execute the sprint roadmap, verify acceptance criteria, and report status after each sprint. For the earliest visible value, prioritize the Exam Player (autosave/timer), AutoScoreWorker, and Teacher Grading Queue — these three features unlock a functional end-to-end loop.
+
+I’m optimistic about your progress — this is a pragmatic, auditable, and enterprise-minded plan. Once you execute the initial sprints I’ll help you translate any acceptance test failures into bug tickets and propose fixes. Let’s ship a reliable exam system that teachers trust and parents appreciate.
+
+
+---
+
+If you want, I can now:
+
+break this document into discrete GitHub/Replit issues (one per ticket),
+
+produce example DB migrations and a minimal API spec (OpenAPI), or
+
+scaffold the frontend Exam Player and Teacher Marking UI components.
+
+
+Tell me which of these three to proceed with and I’ll produce the next artifact.
+

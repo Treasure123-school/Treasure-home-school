@@ -1,0 +1,60 @@
+THS Story Plan — Chapter One (Extended: Admin Powers)
+Page 8 – The Admin’s Control Panel
+Inside THS, the Admin is not just a user — the Admin is the guardian of the gates.
+That means they need full control over who comes in, who stays in, and who must be removed.
+The Admin dashboard should therefore support the following status levels and actions for every user:
+1. Verified vs Unverified
+• Unverified: Default status for all new Google sign-ins (Teachers & Admins). 
+• They cannot access the dashboard until Admin reviews.
+• Message to user: 
+⏳ “Your account is pending verification. Please wait for Admin approval.”
+• Verified: Admin approves, user gets access immediately. 
+• System marks them as Trusted.
+2. Suspend vs Unsuspend
+• Suspend: Admin can block a user without deleting them. 
+• User tries to log in → 
+🚫 “Your account has been suspended. Contact Admin for assistance.”
+• Unsuspend: Restores account access.
+This is useful for temporary issues (discipline, misuse, etc.) without losing user records.
+3. Delete Account
+• Removes the account completely.
+• System logs this action in an Audit Trail (record of Admin actions).
+• A warning confirms before deletion: 
+⚠️ “Are you sure? Deleting this account is permanent and cannot be undone.”
+4. Reset Password / Force Password Change
+• Admin can generate a new password for students or parents.
+• Option to enforce: “Next login must change password.”
+5. Role Management
+• Admin can upgrade or downgrade roles (e.g., a teacher promoted to senior admin, or revoked back).
+• Every role change is tracked.
+6. Audit Logs (Optional, but Professional)
+• Every admin action (approve, suspend, delete, reset password) should be recorded with: 
+• Admin name
+• Date/time
+• Action taken
+• Affected account
+This ensures accountability inside the system itself.
+7. Security Alerts (Optional, but Future-Ready)
+• If a suspicious login attempt happens (wrong password too many times, login from new device, etc.), Admin can get a notification.
+Page 9 – Why These Controls Matter
+• Verified/Unverified → Prevents strangers from posing as Teachers/Admins.
+• Suspend/Unsuspend → Gives Admin flexibility without losing data.
+• Delete → Ensures permanent removal if needed.
+• Reset Password → Helps Students/Parents who forget their credentials.
+• Role Management → Keeps the structure dynamic but controlled.
+• Audit Logs → Builds trust and transparency.
+• Security Alerts → Raises system credibility to a professional level.
+Page 10 – The Gatekeeper’s Promise
+With these powers, the Admin is not only a manager but also a protector of the system’s integrity.
+The portal becomes:
+• Safe (no intruders).
+• Transparent (clear user messages).
+• Flexible (temporary suspension vs permanent deletion).
+• Professional (audit logs + structured verification).
+At the end of this chapter, THS has a login and admin control system that mirrors the best practices of real educational technology platforms.
+✅ Update Recap for Chapter One:
+• Added Admin Control Powers: Verified/Unverified, Suspend/Unsuspend, Delete, Reset Password, Role Management.
+• Added Audit Logs + Security Alerts as optional professional features.
+• Strengthened system against abuse while keeping it flexible for day-to-day school use.
+
+

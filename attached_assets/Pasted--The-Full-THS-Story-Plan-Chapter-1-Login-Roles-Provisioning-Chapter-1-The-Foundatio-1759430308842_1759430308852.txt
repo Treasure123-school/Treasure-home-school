@@ -1,0 +1,193 @@
+📖 The Full THS Story Plan — Chapter 1 (Login, Roles & Provisioning)
+
+
+---
+
+Chapter 1: The Foundation — Roles, Login, and Provisioning
+
+Treasure-Home School (THS) must begin with a secure, role-based authentication system. This is the backbone that guarantees each user — whether admin, teacher, student, or parent — accesses only what is meant for them. Without this, the exam lifecycle cannot function properly.
+
+
+---
+
+1. 🎭 Roles to Support
+
+Every role is clearly separated, and permissions are carefully scoped:
+
+Admin
+
+Creates accounts for all roles (students, teachers, parents).
+
+Manages classes, subjects, and teacher assignments.
+
+Oversees exams, reports, and resets passwords if needed.
+
+
+Teacher
+
+Creates and schedules exams for assigned subjects.
+
+Marks subjective questions (if manual review is required).
+
+Reviews scores and provides remarks.
+
+Monitors cheating alerts for their subject exams.
+
+
+Student
+
+Logs in to take exams within scheduled time.
+
+Views personal scores and report cards.
+
+Cannot see or edit other students’ data.
+
+
+Parent
+
+Logs in only to view their child’s performance.
+
+Downloads report cards and exam summaries.
+
+If linked to multiple children, can switch between them.
+
+
+
+
+---
+
+2. 🔐 Usernames & Passwords (THS-Branded Standard)
+
+Every user account follows a Treasure-Home School branded convention to ensure uniqueness, order, and professionalism.
+
+Student IDs:
+Format → THS-STU-<YEAR>-<CLASS>-<ROLLNO>
+Example → THS-STU-2025-PR3-001
+
+Teacher IDs:
+Format → THS-TCH-<YEAR>-<SUBJECT>-<ROLLNO>
+Example → THS-TCH-2025-MTH-002
+
+Parent IDs:
+Format → THS-PAR-<YEAR>-<ROLLNO>
+Example → THS-PAR-2025-001
+
+Admin IDs:
+Format → THS-ADM-<ROLE>
+Example → THS-ADM-PRINCIPAL
+
+
+Default Password Format:
+THS@<YEAR>#<RANDOM>
+Example → THS@2025#9X3M
+
+On first login, must_change_password = true.
+
+This forces users to set their own secure password immediately.
+
+
+
+---
+
+3. 🔗 Parent–Child Linking
+
+Parent accounts are automatically tied to students when Admin enters student details.
+
+One Parent → One Child (default)
+
+One Parent → Multiple Children (if siblings attend THS)
+
+Parent dashboard has a “Switch Child” dropdown.
+
+
+Privacy Control: Parents never see other students’ data.
+
+
+Data Model Example:
+
+Parent ID: THS-PAR-2025-001
+Parent Name: Mrs. Akinwale
+Linked Students:
+  - THS-STU-2025-PR3-001 (Tunde Akinwale, Primary 3)
+  - THS-STU-2025-PR6-010 (Titi Akinwale, Primary 6)
+
+
+---
+
+4. 📧 Emails for Login (Teachers/Admins)
+
+Students/Parents: Use THS-generated usernames (to avoid dependency on personal email).
+
+Teachers/Admins: Can use real Google/Yahoo emails for login.
+
+Example: teacher.jane@gmail.com or admin@treasurehomeschool.org.
+
+This makes password recovery easier and keeps teacher/admin accounts professional.
+
+
+
+
+---
+
+5. 🔑 Forgot Password Flow
+
+A forgot password system reduces admin workload and improves security.
+
+1. Login Page: “Forgot Password?” link.
+
+
+2. Recovery Options:
+
+Teachers/Admins → Reset link sent to their email.
+
+Students → Reset link sent to parent’s registered email.
+
+Parents → Reset link sent to their own email.
+
+
+
+3. Tokenized Link:
+
+Expires in 15 minutes.
+
+Allows secure password reset.
+
+
+
+4. Admin Override:
+
+Admin dashboard includes Reset Password option for emergencies.
+
+
+
+
+
+---
+
+6. 🛠 Provisioning Flow (How Accounts Are Created)
+
+Step 1: Admin uploads CSV file (or enters manually).
+
+Student Name | Class | Parent Name | Parent Email | Teacher | Subject
+
+Step 2: System auto-generates THS usernames + passwords.
+
+Step 3: Parent-child link established.
+
+Step 4: Login slips generated (printable, with QR code optional).
+
+Step 5: Accounts ready for login → dashboards open.
+
+
+
+---
+
+👉 By the end of Chapter 1, THS has:
+
+All roles provisioned with usernames/passwords.
+
+Parent-child links in place.
+
+Login recovery options enabled.
+
+A secure base ready for the exam lifecycle to begin.

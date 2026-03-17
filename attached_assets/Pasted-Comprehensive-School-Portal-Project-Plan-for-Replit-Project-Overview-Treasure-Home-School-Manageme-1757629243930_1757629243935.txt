@@ -1,0 +1,436 @@
+Comprehensive School Portal Project Plan for Replit
+
+Project Overview: Treasure-Home School Management System
+
+School Information:
+
+· Name: Treasure-Home School ·Motto: "Honesty and Success" ·Address: Seriki-Soyinka Ifo, Ogun State ·Email: treasurehomeschool@gmail.com ·Phone: 08037906249, 08107921359 ·Tagline: "Quality Education & Moral Excellence"
+
+Technology Architecture
+
+```
+Frontend (Vercel): React + TypeScript + Vite + Tailwind CSS
+Backend (Render): Node.js + Express + TypeScript
+Database (Supabase): PostgreSQL with real-time capabilities
+Authentication: Supabase Auth with role-based access
+File Storage: Supabase Storage for images/documents
+```
+
+Complete Database Schema (Supabase)
+
+```sql
+-- Enable extensions
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
+-- Core tables
+CREATE TABLE roles (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    permissions TEXT[] DEFAULT '{}',
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE users (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash TEXT,
+    role_id BIGINT REFERENCES roles(id) NOT NULL,
+    first_name VARCHAR(100) NOT NULL,
+    last_name VARCHAR(100) NOT NULL,
+    phone VARCHAR(20),
+    address TEXT,
+    date_of_birth DATE,
+    gender VARCHAR(10) CHECK (gender IN ('Male', 'Female', 'Other')),
+    profile_image_url TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Academic structure
+CREATE TABLE academic_terms (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    year VARCHAR(9) NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    is_current BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE classes (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(50) NOT NULL UNIQUE,
+    level VARCHAR(20) NOT NULL,
+    capacity INTEGER DEFAULT 30,
+    class_teacher_id UUID REFERENCES users(id),
+    current_term_id BIGINT REFERENCES academic_terms(id),
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE subjects (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    code VARCHAR(20) UNIQUE NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Student information
+CREATE TABLE students (
+    id UUID PRIMARY KEY REFERENCES users(id),
+    admission_number VARCHAR(50) UNIQUE NOT NULL,
+    class_id BIGINT REFERENCES classes(id),
+    parent_id UUID REFERENCES users(id),
+    admission_date DATE DEFAULT CURRENT_DATE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Attendance system
+CREATE TABLE attendance (
+    id BIGSERIAL PRIMARY KEY,
+    student_id UUID REFERENCES students(id) NOT NULL,
+    class_id BIGINT REFERENCES classes(id) NOT NULL,
+    date DATE NOT NULL,
+    status VARCHAR(10) CHECK (status IN ('Present', 'Absent', 'Late', 'Excused')),
+    recorded_by UUID REFERENCES users(id) NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(student_id, date)
+);
+
+-- Grading system
+CREATE TABLE exams (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    class_id BIGINT REFERENCES classes(id) NOT NULL,
+    subject_id BIGINT REFERENCES subjects(id) NOT NULL,
+    total_marks INTEGER NOT NULL,
+    date DATE NOT NULL,
+    term_id BIGINT REFERENCES academic_terms(id) NOT NULL,
+    created_by UUID REFERENCES users(id) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE exam_results (
+    id BIGSERIAL PRIMARY KEY,
+    exam_id BIGINT REFERENCES exams(id) NOT NULL,
+    student_id UUID REFERENCES students(id) NOT NULL,
+    marks_obtained INTEGER NOT NULL,
+    grade VARCHAR(5),
+    remarks TEXT,
+    recorded_by UUID REFERENCES users(id) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(exam_id, student_id)
+);
+
+-- Communication system
+CREATE TABLE announcements (
+    id BIGSERIAL PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    content TEXT NOT NULL,
+    author_id UUID REFERENCES users(id) NOT NULL,
+    target_roles VARCHAR(20)[] DEFAULT '{"All"}',
+    target_classes BIGINT[] DEFAULT '{}',
+    is_published BOOLEAN DEFAULT FALSE,
+    published_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE messages (
+    id BIGSERIAL PRIMARY KEY,
+    sender_id UUID REFERENCES users(id) NOT NULL,
+    recipient_id UUID REFERENCES users(id) NOT NULL,
+    subject VARCHAR(200) NOT NULL,
+    content TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Gallery system
+CREATE TABLE gallery_categories (
+    id BIGSERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE gallery (
+    id BIGSERIAL PRIMARY KEY,
+    image_url TEXT NOT NULL,
+    caption TEXT,
+    category_id BIGINT REFERENCES gallery_categories(id),
+    uploaded_by UUID REFERENCES users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Insert default data
+INSERT INTO roles (name, permissions) VALUES 
+('Admin', '{"manage_users", "manage_classes", "manage_subjects", "view_reports", "send_announcements", "manage_system"}'),
+('Teacher', '{"take_attendance", "record_grades", "view_students", "send_announcements", "manage_own_class"}'),
+('Student', '{"view_grades", "view_attendance", "view_announcements"}'),
+('Parent', '{"view_grades", "view_attendance", "view_announcements", "view_children"}');
+
+INSERT INTO academic_terms (name, year, start_date, end_date, is_current) VALUES 
+('First Term', '2024/2025', '2024-09-10', '2024-12-15', true),
+('Second Term', '2024/2025', '2025-01-08', '2025-04-10', false),
+('Third Term', '2024/2025', '2025-04-28', '2025-07-30', false);
+
+INSERT INTO classes (name, level, capacity) VALUES 
+('Playgroup', 'Pre-School', 20),
+('Nursery 1', 'Pre-School', 25),
+('Nursery 2', 'Pre-School', 25),
+('Primary 1', 'Primary', 30),
+('Primary 2', 'Primary', 30),
+('Primary 3', 'Primary', 30),
+('Primary 4', 'Primary', 30),
+('Primary 5', 'Primary', 30),
+('Primary 6', 'Primary', 30),
+('JSS 1', 'Junior Secondary', 35),
+('JSS 2', 'Junior Secondary', 35),
+('JSS 3', 'Junior Secondary', 35),
+('SSS 1', 'Senior Secondary', 35),
+('SSS 2', 'Senior Secondary', 35),
+('SSS 3', 'Senior Secondary', 35);
+
+INSERT INTO subjects (name, code) VALUES 
+('Mathematics', 'MATH'),
+('English Language', 'ENG'),
+('Basic Science', 'BSC'),
+('Social Studies', 'SST'),
+('Verbal Reasoning', 'VR'),
+('Quantitative Reasoning', 'QR'),
+('Christian Religious Studies', 'CRS'),
+('Home Economics', 'HEC'),
+('Physical Health Education', 'PHE'),
+('Yoruba Language', 'YOR'),
+('Computer Science', 'COMP'),
+('Agricultural Science', 'AGRIC'),
+('Business Studies', 'BUS'),
+('Fine Arts', 'ART'),
+('Music', 'MUSIC'),
+('French', 'FRN'),
+('Civic Education', 'CIVIC');
+
+INSERT INTO gallery_categories (name, description) VALUES 
+('School Events', 'Photos from school events and activities'),
+('Classroom Activities', 'Learning activities in the classroom'),
+('Sports', 'Sports and physical education activities'),
+('Achievements', 'Awards and recognition events'),
+('Infrastructure', 'School buildings and facilities');
+```
+
+Project Structure for Replit
+
+```
+treasure-home-school/
+├── client/                      # Frontend (Vercel)
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── ui/             # Reusable UI components
+│   │   │   ├── layout/         # Layout components
+│   │   │   ├── public/         # Public website components
+│   │   │   └── portal/         # Portal components
+│   │   ├── pages/
+│   │   │   ├── public/         # Public pages
+│   │   │   │   ├── Home.tsx
+│   │   │   │   ├── About.tsx
+│   │   │   │   ├── Contact.tsx
+│   │   │   │   ├── Gallery.tsx
+│   │   │   │   └── Admissions.tsx
+│   │   │   └── portal/         # Portal pages
+│   │   │       ├── admin/      # Admin portal
+│   │   │       ├── teacher/    # Teacher portal
+│   │   │       ├── student/    # Student portal
+│   │   │       └── parent/     # Parent portal
+│   │   ├── hooks/              # Custom React hooks
+│   │   ├── lib/                # Utilities & configurations
+│   │   ├── types/              # TypeScript definitions
+│   │   └── styles/             # Global styles
+│   ├── public/                 # Static assets
+│   │   ├── images/
+│   │   │   └── logo.png        # School logo
+│   │   ├── favicon.ico
+│   │   └── index.html
+│   ├── package.json
+│   ├── vite.config.ts
+│   ├── tailwind.config.js
+│   ├── tsconfig.json
+│   └── index.html
+├── server/                     # Backend API (Render)
+│   ├── src/
+│   │   ├── controllers/        # Route handlers
+│   │   ├── middleware/         # Auth, validation, etc.
+│   │   ├── routes/             # API routes
+│   │   ├── utils/              # Helper functions
+│   │   └── index.ts            # Server entry point
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── .env
+├── database/                   # Database scripts
+│   ├── schema.sql              # Main schema
+│   ├── seed.sql                # Initial data
+│   └── migrations/             # Database change scripts
+├── docs/                       # Documentation
+│   ├── setup.md                # Setup instructions
+│   ├── deployment.md           # Deployment guide
+│   └── api.md                  # API documentation
+├── .env.example               # Environment variables template
+└── README.md                  # Project overview
+```
+
+Environment Configuration
+
+client/.env
+
+```env
+VITE_SUPABASE_URL=your_supabase_project_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_API_URL=https://your-render-backend.onrender.com
+```
+
+server/.env
+
+```env
+PORT=3001
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
+NODE_ENV=production
+JWT_SECRET=your_jwt_secret
+FRONTEND_URL=https://your-vercel-app.vercel.app
+```
+
+Package.json Files
+
+client/package.json
+
+```json
+{
+  "name": "treasure-home-school-client",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.8.1",
+    "@supabase/supabase-js": "^2.38.0",
+    "lucide-react": "^0.294.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.0.0",
+    "tailwind-merge": "^1.14.0",
+    "date-fns": "^2.30.0",
+    "react-hook-form": "^7.48.2",
+    "react-query": "^3.39.3"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@vitejs/plugin-react": "^4.1.0",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.53.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.4",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.3.6",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.8"
+  }
+}
+```
+
+server/package.json
+
+```json
+{
+  "name": "treasure-home-school-server",
+  "version": "1.0.0",
+  "description": "Backend API for Treasure-Home School",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node-dev src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "@supabase/supabase-js": "^2.38.0",
+    "dotenv": "^16.3.1",
+    "zod": "^3.22.4",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.17",
+    "@types/node": "^20.9.0",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/multer": "^1.4.11",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.2.2",
+    "@typescript-eslint/eslint-plugin": "^6.10.0",
+    "@typescript-eslint/parser": "^6.10.0"
+  }
+}
+```
+
+Deployment Instructions
+
+1. Supabase Setup
+2. Create account at https://supabase.com
+3. Create new project "treasure-home-school"
+4. Run the provided SQL schema in the SQL editor
+5. Note down URL and API keys from Settings > API
+6. Backend Deployment (Render)
+7. Push code to GitHub repository
+8. Connect repository to Render
+9. Set build command: npm install && npm run build
+10. Set start command: npm start
+11. Add environment variables in Render dashboard
+12. Frontend Deployment (Vercel)
+13. Connect GitHub repository to Vercel
+14. Set root directory to "client"
+15. Set build command: npm run build
+16. Set output directory: dist
+17. Add environment variables in Vercel dashboard
+
+Development Workflow
+
+1. Week 1: Setup and authentication system
+2. Week 2: Public website and admin portal
+3. Week 3: Teacher and student portals
+4. Week 4: Parent portal and advanced features
+5. Week 5: Testing, deployment, and documentation
+
+Key Features by Role
+
+Admin Portal
+
+· User management (CRUD operations) ·Class and subject configuration ·Academic term management ·System settings and analytics ·Announcement system
+
+Teacher Portal
+
+· Attendance management ·Grade recording and management ·Student progress tracking ·Assignment creation and grading ·Communication with parents
+
+Student Portal
+
+· View grades and attendance ·Access learning materials ·Submit assignments ·Update personal profile
+
+Parent Portal
+
+· Monitor child's progress ·View attendance records ·Communicate with teachers ·Make payments (if implemented)
+
+This comprehensive plan provides everything needed to build a professional school management system that can be easily deployed and maintained. The structure is designed to be modular and scalable, allowing for future enhancements.

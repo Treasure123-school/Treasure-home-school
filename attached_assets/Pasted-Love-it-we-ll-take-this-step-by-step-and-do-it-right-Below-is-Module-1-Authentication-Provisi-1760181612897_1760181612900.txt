@@ -1,0 +1,506 @@
+Love it — we’ll take this step-by-step and do it right. Below is Module 1 — Authentication & Provisioning written as a clear, prescriptive script that a Replit agent (or a developer) can follow and implement end-to-end. It’s detailed, practical, highlights risky items, and is intentionally bite-sized so you can implement, test, then move to Module 2.
+
+
+---
+
+Module 1 — Authentication & Provisioning (Actionable script for Replit Agent)
+
+Goal: Implement a secure, auditable, easy-to-manage auth & onboarding system for THS so Admin/Teacher/Student/Parent accounts are created reliably and safely. Teacher/Admin use Google OAuth; Students/Parents use THS usernames + password. Super Admin settings control behavior.
+
+Outcome (acceptance criteria):
+
+Admin can add a single student and bulk upload CSV to create students + parent links.
+
+System auto-generates THS usernames and secure temporary passwords.
+
+Passwords are hashed in DB; password visible to Admin only once (print/email slips).
+
+Teachers/Admins authenticate by Google OAuth; sign-in creates pending or logs in if pre-created.
+
+Invite + auto-verification rules are available via settings table.
+
+Audit logs record every creation/approval/reset action.
+
+Super Admin can edit global settings via settings table (no code changes required).
+
+
+
+---
+
+1 — High-level tasks (priority order)
+
+1. Run the DB migration (the SQL you already have) in Supabase. Confirm tables exist: users, teachers, students, parents, settings, audit_logs, etc.
+
+
+2. Implement username & password generator modules (unit-tested).
+
+
+3. Build Admin UI: single-student form + bulk CSV uploader (preview & validation).
+
+
+4. Create backend endpoints: preview import, commit import, create student, generate/return login slip (PDF), email sending.
+
+
+5. Implement Google OAuth (teachers/admins) + backend verification logic to match email -> user record and enforce pending/active logic.
+
+
+6. Implement login (username/password) for students/parents.
+
+
+7. Implement forgot-password flow (tokenized, 15-min expiry) and admin override.
+
+
+8. Add audit logs and send notification to admin on pending accounts.
+
+
+
+
+---
+
+2 — Database actions & mapping (exact operations)
+
+When Admin adds a single student (manual flow):
+
+1. Validate fields (name, class_code, dob, parent_email optional).
+
+
+2. Generate student username: THS-STU-<YEAR>-<CLASS>-<SEQ> (SEQ must be computed per class+year).
+
+
+3. Generate password: THS@<YEAR>#<RAND4> (crypto-random); set must_change_pass = true.
+
+
+4. Insert into users:
+
+email = NULL or parent email? (We store parent in parents table.) Use role='student'.
+
+username = generated username.
+
+password_hash = bcrypt/argon2 hash.
+
+status = 'active' (or 'pending' if teacher-added waiting admin approval — see policy).
+
+
+
+5. Insert into students linking to users.id.
+
+
+6. If parent email provided:
+
+Check users table for existing parent by email OR parents table by phone.
+
+If exists → link (set students.parent_user_id to parent.id) and append to parents.linked_students.
+
+If not → auto-create parent user and parents row with generated parent username/password (show to admin once).
+
+
+
+7. Write audit log row: { actor: admin_id, action: 'create_student', details: {...}}.
+
+
+
+When Admin bulk uploads CSV:
+
+Parse CSV server-side; run validations; return a preview JSON of rows with errors/warnings.
+
+On commit: Insert inside a DB transaction or batch with savepoints; for each row perform steps above.
+
+Use small batches (e.g., 200 rows per transaction) to avoid DB timeouts.
+
+Save generated credentials to a temporary secure storage (or ephemeral memory) and produce printable PDF per class; do not store plaintext passwords in DB.
+
+
+
+---
+
+3 — API endpoints (recommended canonical list)
+
+Implement these endpoints on your Render backend (secure them with RBAC).
+
+POST  /admin/import/preview         -- upload CSV, validate, return preview (no DB writes)
+POST  /admin/import/commit          -- commit validated preview (creates users/students/parents)
+POST  /admin/students               -- create single student (body: minimal fields)
+GET   /admin/students              -- paginated list (filters: class, status)
+GET   /admin/students/:id           -- fetch details
+POST  /admin/generate-slips         -- generate PDF login slips (for given student ids or class)
+POST  /auth/login                   -- THS username + password (students/parents)
+GET   /auth/google                  -- begin OAuth (redirect to Google)
+GET   /auth/google/callback         -- OAuth callback (verify token, match DB, issue session)
+POST  /auth/forgot                  -- start forget password (email or parent email)
+POST  /auth/reset                   -- perform reset (token + new password)
+POST  /admin/invite                 -- create staff invite (email + role)
+GET   /admin/pending-users          -- list pending users (staff signins)
+PUT   /admin/users/:id/verify       -- set user.status=active (or suspend/unverify)
+
+
+---
+
+4 — Backend logic (detailed pseudocode + risk calls)
+
+Username generator (Node.js example)
+
+// deterministic generator, safe for concurrency via DB-sequence or row lock
+async function generateStudentUsername(supabase, year, classCode) {
+  // Acquire next sequence per class+year via a helper table (preferred)
+  // or query count+1 (race-prone) — RECOMMEND: sequence table `counters` (class_code, year, seq)
+  const { data } = await supabase
+    .from('counters')
+    .upsert({ class_code: classCode, year }, { onConflict: ['class_code','year'] })
+    .select();
+
+  // Better: use Postgres sequence per class+year (advanced). For now generate and check uniqueness in loop
+  let seq = await nextSequenceForClassYear(classCode, year);
+  return `THS-STU-${year}-${classCode}-${String(seq).padStart(3,'0')}`;
+}
+
+Risk call: Do not use COUNT(*) + 1 for seq generation in multi-concurrency environments. Use database sequence or atomic upsert with RETURNING.
+
+Password generator (Node.js)
+
+import crypto from 'crypto';
+function generateTempPassword(year){
+  const token = crypto.randomBytes(3).toString('base64').replace(/[^A-Za-z0-9]/g,'').slice(0,4).toUpperCase();
+  return `THS@${year}#${token}`;
+}
+
+Security: only display this password to admin once. Store hash only.
+
+CSV import (pseudocode)
+
+1. Receive CSV and parse rows.
+2. Sanitize inputs; validate class codes; check duplicates.
+3. Build preview JSON with:
+   - computed username
+   - parent_exists? (email match)
+   - errors/warnings per row
+4. Return preview to UI for admin confirmation.
+5. On commit:
+   - For each validated chunk (batch size 100):
+     - Begin transaction
+     - For each row:
+         - create user row for student (hash password)
+         - create student row
+         - if parent email exists:
+             - find parent user -> if not exists create parent user with generated credentials
+             - create parent record and link to child
+     - Commit transaction
+6. Return summary (success_count, failed_rows)
+
+Stressful point: Very large CSVs = memory & DB timeouts. Limit upload size (e.g., 5k rows) and queue big jobs to background worker.
+
+
+---
+
+5 — Google OAuth handling (teacher/admin)
+
+Flow (secure, no password on your site):
+
+1. Frontend hits /auth/google — redirect to Google OAuth (use Supabase auth provider or your own OAuth flow).
+
+
+2. Google redirects to /auth/google/callback?code=....
+
+
+3. Backend exchanges code for tokens and verifies ID token (use google-auth-library or Supabase OAuth token verification).
+
+
+4. Extract email, sub (google_id), email_verified.
+
+
+5. Backend logic:
+
+If email_verified === false => deny.
+
+Lookup user by google_id OR email.
+
+If found and role in teacher|admin|super_admin and status == 'active' => issue your session token (JWT) and redirect to dashboard.
+
+If found and status == 'pending' => create a pending note, show friendly message: “Your account is still pending admin approval.”
+
+If not found:
+
+If invite exists for the email -> create user with role from invite, status = pending (or auto-verified policy).
+
+Otherwise create user with role = pending_staff, status = pending and notify admin.
+
+
+
+
+
+6. Log all events in audit_logs.
+
+
+
+Sample node (very short):
+
+const {OAuth2Client} = require('google-auth-library');
+const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+
+async function handleGoogleCallback(idToken) {
+  const ticket = await client.verifyIdToken({ idToken, audience: GOOGLE_CLIENT_ID });
+  const payload = ticket.getPayload();
+  const email = payload.email;
+  const sub = payload.sub;
+  // now match with DB
+}
+
+Stressful item: Don’t allow Google account to auto-grant Admin/Teacher access — always check DB or invite list. Never collect Google password on your site.
+
+
+---
+
+6 — UI: Admin pages (what to build, UX rules)
+
+Page: Add Student (single)
+
+Fields: Full name, Class (dropdown), DOB (date picker), Parent email/phone (optional), Admission No (optional).
+
+Buttons: Generate Username preview, Create & Show Credentials (disabled until validate).
+
+After create: show modal with student username (copy) and temp password (show only once) + buttons: [Print Slip], [Email to Parent] (if parent email present).
+
+
+Page: Bulk Upload
+
+CSV drag-drop, show file size and example CSV format.
+
+On upload → show preview table with rows, highlighted errors (invalid DOB, missing class code).
+
+Buttons: [Commit All] (disabled if errors), [Download Errors CSV].
+
+On commit → show progress bar and batch summary.
+
+
+UX rules
+
+Show spinners during long operations; disable buttons to prevent duplicate submits.
+
+If a job is queued (large import), show a queue ticket number; admin can check status later.
+
+Limit file uploads to prevent DOS.
+
+
+
+---
+
+7 — Email & Slip generation
+
+Use SendGrid/Postmark; send credentials to parent email (if allowed).
+
+For printable slips: use HTML template + puppeteer on Render (headless Chrome) to render to PDF and store to Supabase Storage.
+
+Security: When generating credentials PDF, ensure a secure signed URL expires after short time if shared.
+
+
+Stressful spot: Emailing plaintext passwords is suboptimal — it's common but risky. Ideally, send "Account created — click this secure link to set password" rather than email the password. If you must provide the password, show it only in the admin modal and in a single PDF; do not store plaintext.
+
+
+---
+
+8 — Forgot password & Admin override
+
+Forgot password flow
+
+Student clicks Forgot → provide username → server looks up student -> find parent email -> create short token (random UUID + expiry 15min) in password_resets table -> email to parent a secure reset link (/auth/reset?token=XXX).
+
+Token usage: change password then delete token; set must_change_pass=false.
+
+
+Admin override
+
+Admin UI: Reset Password -> choose user -> generate new temp password -> show to admin once and flag must_change_pass=true.
+
+Log action to audit_logs.
+
+
+Security: Limit resets per hour to avoid abuse. Rate limit endpoint.
+
+
+---
+
+9 — Tests & acceptance scripts (QA)
+
+Automated tests
+
+Unit test username generator for collisions.
+
+Test CSV preview with edge cases: duplicates, invalid DOBs.
+
+Test Google OAuth callback: approved email, pending email, unknown email (create pending).
+
+Test forgot password flow and admin override.
+
+
+Manual acceptance
+
+Admin uploads 10-row CSV -> preview shows all -> commit -> check DB users & students created -> printable slips generated -> parent link assigned -> login with generated student credentials (require change password on first login).
+
+Teacher signs in with Google for pre-created email -> allow access.
+
+Teacher signs in with new Google email -> pending account created and admin notified.
+
+
+
+---
+
+10 — Super Admin settings to expose in UI (editable, no code changes)
+
+Put these keys in settings table and build a small Admin UI to edit:
+
+allow_self_registration (bool)
+
+teacher_auto_verify_on_profile_complete (bool)
+
+default_student_password_pattern (string)
+
+image_max_size_bytes (int)
+
+csv_batch_size (int)
+
+invite_expiry_hours (int)
+
+password_reset_token_minutes (int)
+
+max_failed_login_attempts (int)
+
+lockout_duration_minutes (int)
+
+
+Important: Your UI must validate these inputs and the backend must re-read settings regularly or cache with TTL.
+
+
+---
+
+11 — Risky / stressful items to fix early (callout)
+
+Username sequencing race condition — use DB sequence or atomic counter, not COUNT() + 1.
+
+Storing plaintext passwords — never store in DB; only show once to admin; hash (Argon2 preferred).
+
+Large CSVs — must be processed in background queue with progress feedback; do not block HTTP request.
+
+Emails with plaintext passwords — recommend sending reset links instead.
+
+Google OAuth — must always validate token server-side and check DB role. Do not auto-create admin/teacher active accounts without admin policy.
+
+Publicly accessible /admin endpoints — protect with RBAC and rate limits.
+
+No audit_logs — add logs from day 1; otherwise troubleshooting is painful.
+
+
+
+---
+
+12 — Implementation checklist for the Agent (step-by-step)
+
+1. Run DB migration SQL on Supabase -> confirm tables exist.
+
+
+2. Implement usernameGenerator + passwordGenerator modules (unit tests).
+
+
+3. Build backend endpoints above (Express/Fastify or Supabase Edge functions).
+
+
+4. Implement CSV preview endpoint (parse & validate).
+
+
+5. Implement CSV commit — batch writes with transaction and audit logging.
+
+
+6. Implement single-student add endpoint and parent auto-create logic.
+
+
+7. Implement printable slip generation (puppeteer) and save to Supabase storage.
+
+
+8. Integrate email provider (SendGrid) for reset/invite/credential letters.
+
+
+9. Implement Google OAuth callback logic on backend — match & enforce role/status.
+
+
+10. Implement login (username + password) flow with session cookie JWT.
+
+
+11. Add forgot/reset endpoints and admin password reset tool.
+
+
+12. Add admin UI pages for upload, preview, pending users, settings.
+
+
+13. Write unit & E2E tests for acceptance criteria.
+
+
+14. Deploy to Render & test end-to-end. Monitor logs.
+
+
+
+
+---
+
+13 — Small code snippets for quick start
+
+Username generator (robust approach — use a counter table)
+
+-- counter table example (run once)
+CREATE TABLE class_counters (
+  id SERIAL PRIMARY KEY,
+  class_code TEXT NOT NULL,
+  year INT NOT NULL,
+  seq INT DEFAULT 0,
+  UNIQUE (class_code, year)
+);
+
+-- get next seq in a transaction
+WITH upsert AS (
+  INSERT INTO class_counters (class_code, year, seq)
+  VALUES ('PR3', 2025, 1)
+  ON CONFLICT (class_code, year) DO UPDATE SET seq = class_counters.seq + 1
+  RETURNING seq
+)
+SELECT seq FROM upsert;
+
+Use the returned seq to build THS-STU-2025-PR3-001.
+
+Password hashing (Node.js)
+
+import argon2 from 'argon2';
+async function hashPassword(plainPass){
+  return await argon2.hash(plainPass);
+}
+async function verify(passHash, plain){
+  return await argon2.verify(passHash, plain);
+}
+
+
+---
+
+14 — Short rollout plan (minimal cost, low risk)
+
+1. Implement backend auth & single-student creation + login + forgot password (MVP).
+
+
+2. Test end-to-end (Admin creates student -> student login -> change password).
+
+
+3. Add CSV preview feature and commit (batched).
+
+
+4. Add Google OAuth for teachers/admins + invite flow.
+
+
+5. Add printable slips and email sending.
+
+
+6. Iterate with tests and monitoring.
+
+
+
+
+---
+
+I’ve kept Module 1 both precise and pragmatic so the agent (or developer) can start implementing immediately and deliver meaningful value quickly. Next module will be Exam Creation & Scheduling (Module 2) — equally detailed, with API endpoints, DB interactions, UI flow, autosave & anti-cheat hooks, and acceptance tests.
+
+If you want I’ll now produce Module 2 right away — full, step-by-step. Otherwise say “Next” when you want me to continue.
+

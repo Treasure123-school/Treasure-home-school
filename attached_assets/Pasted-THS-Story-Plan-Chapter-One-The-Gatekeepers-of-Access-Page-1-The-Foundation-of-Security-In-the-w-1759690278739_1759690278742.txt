@@ -1,0 +1,759 @@
+THS Story Plan — Chapter One: The Gatekeepers of Access
+Page 1 – The Foundation of Security
+In the world of Treasure-Home School (THS), every digital door has a lock, and every lock has a key.
+But not all keys are the same.
+• Admins hold the master keys.
+• Teachers hold keys that open classrooms.
+• Students hold keys that open learning halls.
+• Parents hold keys that open observation windows.
+But here is the golden rule: no one may enter a hall they don’t belong to.
+And the system itself is the gatekeeper.
+Page 2 – How Users Sign In
+Every role has its own entrance path:
+• Students & Parents:
+• Enter their username + password.
+• Example username: THS-STU-2025-PR3-001
+• If details are correct → door opens.
+• If incorrect → system says, 
+❌ “Invalid login. Please check your username or password.”
+• If suspended → system says, 
+🚫 “Your account is suspended. Contact your class teacher or Admin.”
+• Teachers & Admins:
+• Must use their real Google email.
+• On first sign-in, their account is marked Pending Approval.
+• If they try to log in before approval, system says: 
+⏳ “Welcome to THS Portal. Your account is awaiting Admin approval. You will be notified once verified.”
+• If Admin later approves → login works.
+• If Admin suspends → login blocked, with message: 
+🚫 “Access denied: Your account has been suspended by THS Admin.”
+Page 3 – The Role of the Admin
+The Admin dashboard is the control tower. From here, the Admin can:
+• See all Pending Teachers/Admins waiting for approval.
+• Approve → Status changes to Active.
+• Suspend → Status changes to Suspended.
+• Revoke approval → Status changes back to Pending.
+Whenever Admin acts, the system ensures that users see the right message when they try to log in.
+Page 4 – Why Clear Messages Matter
+THS must never confuse its community with vague “Sign-in failed.”
+Instead, every message must speak clearly to the user’s real situation:
+• Invalid credentials:
+❌ “Invalid login. Please check your details and try again.”
+• Pending approval:
+⏳ “Your account is awaiting Admin approval. Contact your school administrator.”
+• Suspended:
+🚫 “Your account is suspended. Please contact the Admin for support.”
+• Active and valid:
+✅ “Welcome back to THS Portal. Redirecting you to your dashboard…”
+These messages make the system feel professional, fair, and trustworthy.
+Page 5 – Parent–Child Linking
+When Admin imports student data, parents are linked automatically.
+If a parent logs in, the system says:
+👨‍👩‍👧 “Welcome, Parent. Please select the child whose records you wish to view.”
+Parents never see other students’ data. The system keeps boundaries strict.
+Page 6 – Recap of the Workflow
+• Students & Parents log in with username + password.
+• Teachers & Admins log in with Google → account enters Pending Approval.
+• Admin approves → status becomes Active.
+• Suspended users are blocked with clear reasons.
+• Every login attempt has a polished, role-specific message.
+Page 7 – The Promise
+At the end of Chapter One, THS has built a secure, respectful, and transparent entry system.
+No one is left guessing.
+No one gets the wrong access.
+And everyone understands their status, rights, and next steps.
+✅ Summary:
+• No vague “Sign-in failed.”
+• Every role has a dedicated entrance path.
+• Admin acts as the gatekeeper for Teachers/Admins.
+• Students/Parents use secure usernames.
+• Parents linked to children only.
+• Messages are clear, professional, and situation-specific.
+
+
+
+
+
+
+
+
+
+
+✨ THS Story Plan — Chapter One (Extended: Admin Powers)
+Page 8 – The Admin’s Control Panel
+Inside THS, the Admin is not just a user — the Admin is the guardian of the gates.
+That means they need full control over who comes in, who stays in, and who must be removed.
+The Admin dashboard should therefore support the following status levels and actions for every user:
+1. Verified vs Unverified
+• Unverified: Default status for all new Google sign-ins (Teachers & Admins). 
+• They cannot access the dashboard until Admin reviews.
+• Message to user: 
+⏳ “Your account is pending verification. Please wait for Admin approval.”
+• Verified: Admin approves, user gets access immediately. 
+• System marks them as Trusted.
+2. Suspend vs Unsuspend
+• Suspend: Admin can block a user without deleting them. 
+• User tries to log in → 
+🚫 “Your account has been suspended. Contact Admin for assistance.”
+• Unsuspend: Restores account access.
+This is useful for temporary issues (discipline, misuse, etc.) without losing user records.
+3. Delete Account
+• Removes the account completely.
+• System logs this action in an Audit Trail (record of Admin actions).
+• A warning confirms before deletion: 
+⚠️ “Are you sure? Deleting this account is permanent and cannot be undone.”
+4. Reset Password / Force Password Change
+• Admin can generate a new password for students or parents.
+• Option to enforce: “Next login must change password.”
+5. Role Management
+• Admin can upgrade or downgrade roles (e.g., a teacher promoted to senior admin, or revoked back).
+• Every role change is tracked.
+6. Audit Logs (Optional, but Professional)
+• Every admin action (approve, suspend, delete, reset password) should be recorded with: 
+• Admin name
+• Date/time
+• Action taken
+• Affected account
+This ensures accountability inside the system itself.
+7. Security Alerts (Optional, but Future-Ready)
+• If a suspicious login attempt happens (wrong password too many times, login from new device, etc.), Admin can get a notification.
+Page 9 – Why These Controls Matter
+• Verified/Unverified → Prevents strangers from posing as Teachers/Admins.
+• Suspend/Unsuspend → Gives Admin flexibility without losing data.
+• Delete → Ensures permanent removal if needed.
+• Reset Password → Helps Students/Parents who forget their credentials.
+• Role Management → Keeps the structure dynamic but controlled.
+• Audit Logs → Builds trust and transparency.
+• Security Alerts → Raises system credibility to a professional level.
+Page 10 – The Gatekeeper’s Promise
+With these powers, the Admin is not only a manager but also a protector of the system’s integrity.
+The portal becomes:
+• Safe (no intruders).
+• Transparent (clear user messages).
+• Flexible (temporary suspension vs permanent deletion).
+• Professional (audit logs + structured verification).
+At the end of this chapter, THS has a login and admin control system that mirrors the best practices of real educational technology platforms.
+✅ Update Recap for Chapter One:
+• Added Admin Control Powers: Verified/Unverified, Suspend/Unsuspend, Delete, Reset Password, Role Management.
+• Added Audit Logs + Security Alerts as optional professional features.
+• Strengthened system against abuse while keeping it flexible for day-to-day school use.
+
+
+
+
+
+
+
+
+
+✨ THS Story Plan — Chapter One (Extended: Password Recovery & Admin Recovery)
+Page 11 – The Human Side of Passwords
+No matter how carefully users are trained, students forget, parents lose slips, and even teachers misplace credentials.
+That’s why THS must implement a “Forget Password” and “Admin Recovery” mechanism.
+1. Forget Password (Students & Parents)
+• On login screen → link: “Forgot Password?”
+• Flow: 
+• User enters username or email.
+• System checks if it exists.
+• If valid → sends reset link to registered parent/teacher email. 
+• Email: 
+📧 “Hello, you requested a password reset for THS Portal. Click the link below to set a new password. This link expires in 15 minutes.”
+• User clicks link → taken to secure reset form.
+• System enforces strong password rules: 
+• At least 8 characters
+• Mix of upper/lowercase, numbers, and symbols
+• New password replaces old one → audit log entry created.
+⚠️ Security Check:
+• Limit reset attempts (e.g., max 3 per hour) to prevent abuse.
+• Link expires quickly.
+2. Forget Password (Teachers & Admins via Google Sign-In)
+Since Teachers/Admins log in with Google, they don’t need password reset inside THS.
+• If they can’t access their Google account → recovery is handled via Google itself.
+• But inside THS, if a teacher’s account is suspended or unverified, message clearly states: 
+🔒 “Your account is inactive. Please contact Admin.”
+3. Admin Recovery Powers
+The Admin must be equipped with extra tools:
+a) Reset Student/Parent Passwords
+• From the Admin dashboard: 
+• Click user → “Reset Password” → generates a random secure password.
+• Option: “Require password change at next login.”
+b) Change Recovery Email
+• Each account has a Recovery Email field.
+• Students/Parents → parent’s email.
+• Teachers → their Google email.
+• Admin can update it if wrong/lost.
+• Log entry always records “Recovery email updated by Admin.”
+c) Master Recovery Account
+• THS should have one super-admin email (e.g., recovery@ths.edu.ng).
+• This is stored securely in the system, only used for: 
+• Restoring lost Admin accounts
+• Resetting the entire system’s Admin login
+• This ensures that no one can permanently lock the Admin out.
+4. Professional Safeguards
+• Audit Logs: Every reset, recovery, or email change is logged.
+• Notifications: When recovery is done, send an alert email to the account holder: 
+⚠️ “Your password was reset on THS Portal by Admin. If this wasn’t you, contact the school immediately.”
+• Suspicious Activity Lock: If too many failed recovery attempts happen, system temporarily locks the account.
+Page 12 – Why Recovery Matters
+Without recovery:
+• Students would flood Admin with “I forgot” issues.
+• Parents would get frustrated and lose trust.
+• Admin could be permanently locked out if something goes wrong.
+With recovery:
+• Smooth self-service for Students/Parents.
+• Secure oversight for Admin.
+• Strong safety net with a Master Recovery Account.
+✅ Update Recap for Chapter One:
+• Added Forget Password Flow for Students/Parents (reset link by email).
+• Teachers/Admins rely on Google recovery.
+• Admin recovery powers: reset user passwords, change recovery emails, restore locked accounts.
+• Added Master Recovery Account (super admin fallback).
+• Security layers: audit logs, notifications, rate-limiting, suspicious activity lock.
+
+
+
+
+
+
+
+
+If u see any features or thing that is already implemented, pls just leave it, don't duplicate it. I can see several mistake. I need u to look deep and work smartly. Ensure what u are doing does affect other things or features in the website. Apply each features or complete each features. Ensure it is also responsive on all device screen. Follow the plan and Ensure all error messages or messages are clear to user. Work smartly.If u see any features or thing that is already implemented, pls just leave it, don't duplicate it. I can see several mistake. I need u to look deep and work smartly. Ensure what u are doing does affect other things or features in the website. Apply each features or complete each features. Ensure it is also responsive on all device screen. Follow the plan and Ensure all error messages or messages are clear to user. Work smartly.If u see any features or thing that is already implemented, pls just leave it, don't duplicate it. I can see several mistake. I need u to look deep and work smartly. Ensure what u are doing does affect other things or features in the website. Apply each features or complete each features. Ensure it is also responsive on all device screen. Follow the plan and Ensure all error messages or messages are clear to user. Work smartly.If u see any features or thing that is already implemented, pls just leave it, don't duplicate it. I can see several mistake. I need u to look deep and work smartly. Ensure what u are doing does affect other things or features in the website. Apply each features or complete each features. Ensure it is also responsive on all device screen. Follow the plan and Ensure all error messages or messages are clear to user. Work smartly.If u see any features or thing that is already implemented, pls just leave it, don't duplicate it. I can see several mistake. I need u to look deep and work smartly. Ensure what u are doing does affect other things or features in the website. Apply each features or complete each features. Ensure it is also responsive on all device screen. Follow the plan and Ensure all error messages or messages are clear to user. Work smartly.If u see any features or thing that is already implemented, pls just leave it, don't duplicate it. I can see several mistake. I need u to look deep and work smartly. Ensure what u are doing does affect other things or features in the website. Apply each features or complete each features. Ensure it is also responsive on all device screen. Follow the plan and Ensure all error messages or messages are clear to user. Work smartly.If u see any features or thing that is already implemented, pls just leave it, don't duplicate it. I can see several mistake. I need u to look deep and work smartly. Ensure what u are doing does affect other things or features in the website. Apply each features or complete each features. Ensure it is also responsive on all device screen. Follow the plan and Ensure all error messages or messages are clear to user. Work smartly.If u see any features or thing that is already implemented, pls just leave it, don't duplicate it. I can see several mistake. I need u to look deep and work smartly. Ensure what u are doing does affect other things or features in the website. Apply each features or complete each features. Ensure it is also responsive on all device screen. Follow the plan and Ensure all error messages or messages are clear to user. Work smartly.THS Story Plan — Chapter One: The Gatekeepers of Access
+Page 1 – The Foundation of Security
+In the world of Treasure-Home School (THS), every digital door has a lock, and every lock has a key.
+But not all keys are the same.
+• Admins hold the master keys.
+• Teachers hold keys that open classrooms.
+• Students hold keys that open learning halls.
+• Parents hold keys that open observation windows.
+But here is the golden rule: no one may enter a hall they don’t belong to.
+And the system itself is the gatekeeper.
+Page 2 – How Users Sign In
+Every role has its own entrance path:
+• Students & Parents:
+• Enter their username + password.
+• Example username: THS-STU-2025-PR3-001
+• If details are correct → door opens.
+• If incorrect → system says, 
+❌ “Invalid login. Please check your username or password.”
+• If suspended → system says, 
+🚫 “Your account is suspended. Contact your class teacher or Admin.”
+• Teachers & Admins:
+• Must use their real Google email.
+• On first sign-in, their account is marked Pending Approval.
+• If they try to log in before approval, system says: 
+⏳ “Welcome to THS Portal. Your account is awaiting Admin approval. You will be notified once verified.”
+• If Admin later approves → login works.
+• If Admin suspends → login blocked, with message: 
+🚫 “Access denied: Your account has been suspended by THS Admin.”
+Page 3 – The Role of the Admin
+The Admin dashboard is the control tower. From here, the Admin can:
+• See all Pending Teachers/Admins waiting for approval.
+• Approve → Status changes to Active.
+• Suspend → Status changes to Suspended.
+• Revoke approval → Status changes back to Pending.
+Whenever Admin acts, the system ensures that users see the right message when they try to log in.
+Page 4 – Why Clear Messages Matter
+THS must never confuse its community with vague “Sign-in failed.”
+Instead, every message must speak clearly to the user’s real situation:
+• Invalid credentials:
+❌ “Invalid login. Please check your details and try again.”
+• Pending approval:
+⏳ “Your account is awaiting Admin approval. Contact your school administrator.”
+• Suspended:
+🚫 “Your account is suspended. Please contact the Admin for support.”
+• Active and valid:
+✅ “Welcome back to THS Portal. Redirecting you to your dashboard…”
+These messages make the system feel professional, fair, and trustworthy.
+Page 5 – Parent–Child Linking
+When Admin imports student data, parents are linked automatically.
+If a parent logs in, the system says:
+👨‍👩‍👧 “Welcome, Parent. Please select the child whose records you wish to view.”
+Parents never see other students’ data. The system keeps boundaries strict.
+Page 6 – Recap of the Workflow
+• Students & Parents log in with username + password.
+• Teachers & Admins log in with Google → account enters Pending Approval.
+• Admin approves → status becomes Active.
+• Suspended users are blocked with clear reasons.
+• Every login attempt has a polished, role-specific message.
+Page 7 – The Promise
+At the end of Chapter One, THS has built a secure, respectful, and transparent entry system.
+No one is left guessing.
+No one gets the wrong access.
+And everyone understands their status, rights, and next steps.
+✅ Summary:
+• No vague “Sign-in failed.”
+• Every role has a dedicated entrance path.
+• Admin acts as the gatekeeper for Teachers/Admins.
+• Students/Parents use secure usernames.
+• Parents linked to children only.
+• Messages are clear, professional, and situation-specific.
+
+
+
+
+
+
+
+
+
+
+✨ THS Story Plan — Chapter One (Extended: Admin Powers)
+Page 8 – The Admin’s Control Panel
+Inside THS, the Admin is not just a user — the Admin is the guardian of the gates.
+That means they need full control over who comes in, who stays in, and who must be removed.
+The Admin dashboard should therefore support the following status levels and actions for every user:
+1. Verified vs Unverified
+• Unverified: Default status for all new Google sign-ins (Teachers & Admins). 
+• They cannot access the dashboard until Admin reviews.
+• Message to user: 
+⏳ “Your account is pending verification. Please wait for Admin approval.”
+• Verified: Admin approves, user gets access immediately. 
+• System marks them as Trusted.
+2. Suspend vs Unsuspend
+• Suspend: Admin can block a user without deleting them. 
+• User tries to log in → 
+🚫 “Your account has been suspended. Contact Admin for assistance.”
+• Unsuspend: Restores account access.
+This is useful for temporary issues (discipline, misuse, etc.) without losing user records.
+3. Delete Account
+• Removes the account completely.
+• System logs this action in an Audit Trail (record of Admin actions).
+• A warning confirms before deletion: 
+⚠️ “Are you sure? Deleting this account is permanent and cannot be undone.”
+4. Reset Password / Force Password Change
+• Admin can generate a new password for students or parents.
+• Option to enforce: “Next login must change password.”
+5. Role Management
+• Admin can upgrade or downgrade roles (e.g., a teacher promoted to senior admin, or revoked back).
+• Every role change is tracked.
+6. Audit Logs (Optional, but Professional)
+• Every admin action (approve, suspend, delete, reset password) should be recorded with: 
+• Admin name
+• Date/time
+• Action taken
+• Affected account
+This ensures accountability inside the system itself.
+7. Security Alerts (Optional, but Future-Ready)
+• If a suspicious login attempt happens (wrong password too many times, login from new device, etc.), Admin can get a notification.
+Page 9 – Why These Controls Matter
+• Verified/Unverified → Prevents strangers from posing as Teachers/Admins.
+• Suspend/Unsuspend → Gives Admin flexibility without losing data.
+• Delete → Ensures permanent removal if needed.
+• Reset Password → Helps Students/Parents who forget their credentials.
+• Role Management → Keeps the structure dynamic but controlled.
+• Audit Logs → Builds trust and transparency.
+• Security Alerts → Raises system credibility to a professional level.
+Page 10 – The Gatekeeper’s Promise
+With these powers, the Admin is not only a manager but also a protector of the system’s integrity.
+The portal becomes:
+• Safe (no intruders).
+• Transparent (clear user messages).
+• Flexible (temporary suspension vs permanent deletion).
+• Professional (audit logs + structured verification).
+At the end of this chapter, THS has a login and admin control system that mirrors the best practices of real educational technology platforms.
+✅ Update Recap for Chapter One:
+• Added Admin Control Powers: Verified/Unverified, Suspend/Unsuspend, Delete, Reset Password, Role Management.
+• Added Audit Logs + Security Alerts as optional professional features.
+• Strengthened system against abuse while keeping it flexible for day-to-day school use.
+
+
+
+
+
+
+
+
+
+✨ THS Story Plan — Chapter One (Extended: Password Recovery & Admin Recovery)
+Page 11 – The Human Side of Passwords
+No matter how carefully users are trained, students forget, parents lose slips, and even teachers misplace credentials.
+That’s why THS must implement a “Forget Password” and “Admin Recovery” mechanism.
+1. Forget Password (Students & Parents)
+• On login screen → link: “Forgot Password?”
+• Flow: 
+• User enters username or email.
+• System checks if it exists.
+• If valid → sends reset link to registered parent/teacher email. 
+• Email: 
+📧 “Hello, you requested a password reset for THS Portal. Click the link below to set a new password. This link expires in 15 minutes.”
+• User clicks link → taken to secure reset form.
+• System enforces strong password rules: 
+• At least 8 characters
+• Mix of upper/lowercase, numbers, and symbols
+• New password replaces old one → audit log entry created.
+⚠️ Security Check:
+• Limit reset attempts (e.g., max 3 per hour) to prevent abuse.
+• Link expires quickly.
+2. Forget Password (Teachers & Admins via Google Sign-In)
+Since Teachers/Admins log in with Google, they don’t need password reset inside THS.
+• If they can’t access their Google account → recovery is handled via Google itself.
+• But inside THS, if a teacher’s account is suspended or unverified, message clearly states: 
+🔒 “Your account is inactive. Please contact Admin.”
+3. Admin Recovery Powers
+The Admin must be equipped with extra tools:
+a) Reset Student/Parent Passwords
+• From the Admin dashboard: 
+• Click user → “Reset Password” → generates a random secure password.
+• Option: “Require password change at next login.”
+b) Change Recovery Email
+• Each account has a Recovery Email field.
+• Students/Parents → parent’s email.
+• Teachers → their Google email.
+• Admin can update it if wrong/lost.
+• Log entry always records “Recovery email updated by Admin.”
+c) Master Recovery Account
+• THS should have one super-admin email (e.g., recovery@ths.edu.ng).
+• This is stored securely in the system, only used for: 
+• Restoring lost Admin accounts
+• Resetting the entire system’s Admin login
+• This ensures that no one can permanently lock the Admin out.
+4. Professional Safeguards
+• Audit Logs: Every reset, recovery, or email change is logged.
+• Notifications: When recovery is done, send an alert email to the account holder: 
+⚠️ “Your password was reset on THS Portal by Admin. If this wasn’t you, contact the school immediately.”
+• Suspicious Activity Lock: If too many failed recovery attempts happen, system temporarily locks the account.
+Page 12 – Why Recovery Matters
+Without recovery:
+• Students would flood Admin with “I forgot” issues.
+• Parents would get frustrated and lose trust.
+• Admin could be permanently locked out if something goes wrong.
+With recovery:
+• Smooth self-service for Students/Parents.
+• Secure oversight for Admin.
+• Strong safety net with a Master Recovery Account.
+✅ Update Recap for Chapter One:
+• Added Forget Password Flow for Students/Parents (reset link by email).
+• Teachers/Admins rely on Google recovery.
+• Admin recovery powers: reset user passwords, change recovery emails, restore locked accounts.
+• Added Master Recovery Account (super admin fallback).
+• Security layers: audit logs, notifications, rate-limiting, suspicious activity lock.
+
+
+
+
+
+
+
+
+THS Story Plan — Chapter One: The Gatekeepers of Access
+Page 1 – The Foundation of Security
+In the world of Treasure-Home School (THS), every digital door has a lock, and every lock has a key.
+But not all keys are the same.
+• Admins hold the master keys.
+• Teachers hold keys that open classrooms.
+• Students hold keys that open learning halls.
+• Parents hold keys that open observation windows.
+But here is the golden rule: no one may enter a hall they don’t belong to.
+And the system itself is the gatekeeper.
+Page 2 – How Users Sign In
+Every role has its own entrance path:
+• Students & Parents:
+• Enter their username + password.
+• Example username: THS-STU-2025-PR3-001
+• If details are correct → door opens.
+• If incorrect → system says, 
+❌ “Invalid login. Please check your username or password.”
+• If suspended → system says, 
+🚫 “Your account is suspended. Contact your class teacher or Admin.”
+• Teachers & Admins:
+• Must use their real Google email.
+• On first sign-in, their account is marked Pending Approval.
+• If they try to log in before approval, system says: 
+⏳ “Welcome to THS Portal. Your account is awaiting Admin approval. You will be notified once verified.”
+• If Admin later approves → login works.
+• If Admin suspends → login blocked, with message: 
+🚫 “Access denied: Your account has been suspended by THS Admin.”
+Page 3 – The Role of the Admin
+The Admin dashboard is the control tower. From here, the Admin can:
+• See all Pending Teachers/Admins waiting for approval.
+• Approve → Status changes to Active.
+• Suspend → Status changes to Suspended.
+• Revoke approval → Status changes back to Pending.
+Whenever Admin acts, the system ensures that users see the right message when they try to log in.
+Page 4 – Why Clear Messages Matter
+THS must never confuse its community with vague “Sign-in failed.”
+Instead, every message must speak clearly to the user’s real situation:
+• Invalid credentials:
+❌ “Invalid login. Please check your details and try again.”
+• Pending approval:
+⏳ “Your account is awaiting Admin approval. Contact your school administrator.”
+• Suspended:
+🚫 “Your account is suspended. Please contact the Admin for support.”
+• Active and valid:
+✅ “Welcome back to THS Portal. Redirecting you to your dashboard…”
+These messages make the system feel professional, fair, and trustworthy.
+Page 5 – Parent–Child Linking
+When Admin imports student data, parents are linked automatically.
+If a parent logs in, the system says:
+👨‍👩‍👧 “Welcome, Parent. Please select the child whose records you wish to view.”
+Parents never see other students’ data. The system keeps boundaries strict.
+Page 6 – Recap of the Workflow
+• Students & Parents log in with username + password.
+• Teachers & Admins log in with Google → account enters Pending Approval.
+• Admin approves → status becomes Active.
+• Suspended users are blocked with clear reasons.
+• Every login attempt has a polished, role-specific message.
+Page 7 – The Promise
+At the end of Chapter One, THS has built a secure, respectful, and transparent entry system.
+No one is left guessing.
+No one gets the wrong access.
+And everyone understands their status, rights, and next steps.
+✅ Summary:
+• No vague “Sign-in failed.”
+• Every role has a dedicated entrance path.
+• Admin acts as the gatekeeper for Teachers/Admins.
+• Students/Parents use secure usernames.
+• Parents linked to children only.
+• Messages are clear, professional, and situation-specific.
+
+
+
+
+
+
+
+
+
+
+✨ THS Story Plan — Chapter One (Extended: Admin Powers)
+Page 8 – The Admin’s Control Panel
+Inside THS, the Admin is not just a user — the Admin is the guardian of the gates.
+That means they need full control over who comes in, who stays in, and who must be removed.
+The Admin dashboard should therefore support the following status levels and actions for every user:
+1. Verified vs Unverified
+• Unverified: Default status for all new Google sign-ins (Teachers & Admins). 
+• They cannot access the dashboard until Admin reviews.
+• Message to user: 
+⏳ “Your account is pending verification. Please wait for Admin approval.”
+• Verified: Admin approves, user gets access immediately. 
+• System marks them as Trusted.
+2. Suspend vs Unsuspend
+• Suspend: Admin can block a user without deleting them. 
+• User tries to log in → 
+🚫 “Your account has been suspended. Contact Admin for assistance.”
+• Unsuspend: Restores account access.
+This is useful for temporary issues (discipline, misuse, etc.) without losing user records.
+3. Delete Account
+• Removes the account completely.
+• System logs this action in an Audit Trail (record of Admin actions).
+• A warning confirms before deletion: 
+⚠️ “Are you sure? Deleting this account is permanent and cannot be undone.”
+4. Reset Password / Force Password Change
+• Admin can generate a new password for students or parents.
+• Option to enforce: “Next login must change password.”
+5. Role Management
+• Admin can upgrade or downgrade roles (e.g., a teacher promoted to senior admin, or revoked back).
+• Every role change is tracked.
+6. Audit Logs (Optional, but Professional)
+• Every admin action (approve, suspend, delete, reset password) should be recorded with: 
+• Admin name
+• Date/time
+• Action taken
+• Affected account
+This ensures accountability inside the system itself.
+7. Security Alerts (Optional, but Future-Ready)
+• If a suspicious login attempt happens (wrong password too many times, login from new device, etc.), Admin can get a notification.
+Page 9 – Why These Controls Matter
+• Verified/Unverified → Prevents strangers from posing as Teachers/Admins.
+• Suspend/Unsuspend → Gives Admin flexibility without losing data.
+• Delete → Ensures permanent removal if needed.
+• Reset Password → Helps Students/Parents who forget their credentials.
+• Role Management → Keeps the structure dynamic but controlled.
+• Audit Logs → Builds trust and transparency.
+• Security Alerts → Raises system credibility to a professional level.
+Page 10 – The Gatekeeper’s Promise
+With these powers, the Admin is not only a manager but also a protector of the system’s integrity.
+The portal becomes:
+• Safe (no intruders).
+• Transparent (clear user messages).
+• Flexible (temporary suspension vs permanent deletion).
+• Professional (audit logs + structured verification).
+At the end of this chapter, THS has a login and admin control system that mirrors the best practices of real educational technology platforms.
+✅ Update Recap for Chapter One:
+• Added Admin Control Powers: Verified/Unverified, Suspend/Unsuspend, Delete, Reset Password, Role Management.
+• Added Audit Logs + Security Alerts as optional professional features.
+• Strengthened system against abuse while keeping it flexible for day-to-day school use.
+
+
+
+
+
+
+
+
+
+✨ THS Story Plan — Chapter One (Extended: Password Recovery & Admin Recovery)
+Page 11 – The Human Side of Passwords
+No matter how carefully users are trained, students forget, parents lose slips, and even teachers misplace credentials.
+That’s why THS must implement a “Forget Password” and “Admin Recovery” mechanism.
+1. Forget Password (Students & Parents)
+• On login screen → link: “Forgot Password?”
+• Flow: 
+• User enters username or email.
+• System checks if it exists.
+• If valid → sends reset link to registered parent/teacher email. 
+• Email: 
+📧 “Hello, you requested a password reset for THS Portal. Click the link below to set a new password. This link expires in 15 minutes.”
+• User clicks link → taken to secure reset form.
+• System enforces strong password rules: 
+• At least 8 characters
+• Mix of upper/lowercase, numbers, and symbols
+• New password replaces old one → audit log entry created.
+⚠️ Security Check:
+• Limit reset attempts (e.g., max 3 per hour) to prevent abuse.
+• Link expires quickly.
+2. Forget Password (Teachers & Admins via Google Sign-In)
+Since Teachers/Admins log in with Google, they don’t need password reset inside THS.
+• If they can’t access their Google account → recovery is handled via Google itself.
+• But inside THS, if a teacher’s account is suspended or unverified, message clearly states: 
+🔒 “Your account is inactive. Please contact Admin.”
+3. Admin Recovery Powers
+The Admin must be equipped with extra tools:
+a) Reset Student/Parent Passwords
+• From the Admin dashboard: 
+• Click user → “Reset Password” → generates a random secure password.
+• Option: “Require password change at next login.”
+b) Change Recovery Email
+• Each account has a Recovery Email field.
+• Students/Parents → parent’s email.
+• Teachers → their Google email.
+• Admin can update it if wrong/lost.
+• Log entry always records “Recovery email updated by Admin.”
+c) Master Recovery Account
+• THS should have one super-admin email (e.g., recovery@ths.edu.ng).
+• This is stored securely in the system, only used for: 
+• Restoring lost Admin accounts
+• Resetting the entire system’s Admin login
+• This ensures that no one can permanently lock the Admin out.
+4. Professional Safeguards
+• Audit Logs: Every reset, recovery, or email change is logged.
+• Notifications: When recovery is done, send an alert email to the account holder: 
+⚠️ “Your password was reset on THS Portal by Admin. If this wasn’t you, contact the school immediately.”
+• Suspicious Activity Lock: If too many failed recovery attempts happen, system temporarily locks the account.
+Page 12 – Why Recovery Matters
+Without recovery:
+• Students would flood Admin with “I forgot” issues.
+• Parents would get frustrated and lose trust.
+• Admin could be permanently locked out if something goes wrong.
+With recovery:
+• Smooth self-service for Students/Parents.
+• Secure oversight for Admin.
+• Strong safety net with a Master Recovery Account.
+✅ Update Recap for Chapter One:
+• Added Forget Password Flow for Students/Parents (reset link by email).
+• Teachers/Admins rely on Google recovery.
+• Admin recovery powers: reset user passwords, change recovery emails, restore locked accounts.
+• Added Master Recovery Account (super admin fallback).
+• Security layers: audit logs, notifications, rate-limiting, suspicious activity lock.
+
+
+
+
+
+
+
+
+THS Story Plan — Chapter One: The Gatekeepers of Access
+Page 1 – The Foundation of Security
+In the world of Treasure-Home School (THS), every digital door has a lock, and every lock has a key.
+But not all keys are the same.
+• Admins hold the master keys.
+• Teachers hold keys that open classrooms.
+• Students hold keys that open learning halls.
+• Parents hold keys that open observation windows.
+But here is the golden rule: no one may enter a hall they don’t belong to.
+And the system itself is the gatekeeper.
+Page 2 – How Users Sign In
+Every role has its own entrance path:
+• Students & Parents:
+• Enter their username + password.
+• Example username: THS-STU-2025-PR3-001
+• If details are correct → door opens.
+• If incorrect → system says, 
+❌ “Invalid login. Please check your username or password.”
+• If suspended → system says, 
+🚫 “Your account is suspended. Contact your class teacher or Admin.”
+• Teachers & Admins:
+• Must use their real Google email.
+• On first sign-in, their account is marked Pending Approval.
+• If they try to log in before approval, system says: 
+⏳ “Welcome to THS Portal. Your account is awaiting Admin approval. You will be notified once verified.”
+• If Admin later approves → login works.
+• If Admin suspends → login blocked, with message: 
+🚫 “Access denied: Your account has been suspended by THS Admin.”
+Page 3 – The Role of the Admin
+The Admin dashboard is the control tower. From here, the Admin can:
+• See all Pending Teachers/Admins waiting for approval.
+• Approve → Status changes to Active.
+• Suspend → Status changes to Suspended.
+• Revoke approval → Status changes back to Pending.
+Whenever Admin acts, the system ensures that users see the right message when they try to log in.
+Page 4 – Why Clear Messages Matter
+THS must never confuse its community with vague “Sign-in failed.”
+Instead, every message must speak clearly to the user’s real situation:
+• Invalid credentials:
+❌ “Invalid login. Please check your details and try again.”
+• Pending approval:
+⏳ “Your account is awaiting Admin approval. Contact your school administrator.”
+• Suspended:
+🚫 “Your account is suspended. Please contact the Admin for support.”
+• Active and valid:
+✅ “Welcome back to THS Portal. Redirecting you to your dashboard…”
+These messages make the system feel professional, fair, and trustworthy.
+Page 5 – Parent–Child Linking
+When Admin imports student data, parents are linked automatically.
+If a parent logs in, the system says:
+👨‍👩‍👧 “Welcome, Parent. Please select the child whose records you wish to view.”
+Parents never see other students’ data. The system keeps boundaries strict.
+Page 6 – Recap of the Workflow
+• Students & Parents log in with username + password.
+• Teachers & Admins log in with Google → account enters Pending Approval.
+• Admin approves → status becomes Active.
+• Suspended users are blocked with clear reasons.
+• Every login attempt has a polished, role-specific message.
+Page 7 – The Promise
+At the end of Chapter One, THS has built a secure, respectful, and transparent entry system.
+No one is left guessing.
+No one gets the wrong access.
+And everyone understands their status, rights, and next steps.
+✅ Summary:
+• No vague “Sign-in failed.”
+• Every role has a dedicated entrance path.
+• Admin acts as the gatekeeper for Teachers/Admins.
+• Students/Parents use secure usernames.
+• Parents linked to children only.
+• Messages are clear, professional, and situation-specific.
+
+
+
+
+
+
+
+
+
+
+✨ THS Story Plan — Chapter One (Extended: Admin Powers)
+Page 8 – The Admin’s Control Panel
+Inside THS, the Admin is not just a user — the Admin is the guardian of the gates.
+That means they need full control over who comes in, who stays in, and who must be removed.
+The Admin dashboard should therefore support the following status levels and actions for every user:
+1. Verified vs Unverified
+• Unverified: Default status for all new Google sign-ins (Teachers & Admins). 
+• They cannot access the dashboard until Admin reviews.
+• Message to user: 
+⏳ “Your account is pending verification. Please wait for Admin approval.”
+• Verified: Admin approves, user gets access immediately. 
+• System marks them as Trusted.
+2. Suspend vs Unsuspend
+• Suspend: Admin can block a user without deleting them. 
+• User tries to log in → 
+🚫 “Your account has been suspended. Contact Admin for assistance.”
+• Unsuspend: Restores account access.
+This is useful for temporary issues (discipline, misuse, etc.) without losing user records.
+3. Delete Account
+• Removes the account completely.
+• System logs this action in an Audit Trail (record of Admin actions).
+• A warning confirms before deletion: 
+⚠️ “Are you sure? Deleting this account is permanent and cannot be undone.”
+4. Reset Password / Force Password Change
+• Admin can generate a new password f

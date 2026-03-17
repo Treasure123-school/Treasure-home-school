@@ -1,0 +1,233 @@
+Chapter One: The Foundation — Roles, Login, and Secure Access
+
+For Treasure-Home School (THS), the most critical first step is to build a rock-solid login and provisioning system. Without this, no exam, no reports, and no parent monitoring will work smoothly.
+
+We want:
+
+Admin/Teacher → use real Google email for login.
+
+Student/Parent → use THS Username + Password.
+
+No one should be able to “just sign in with Google” and become an admin/teacher.
+
+One login attempt = full access (no double login, no stuck at “welcome”).
+
+
+
+---
+
+1. 🎭 Define Roles
+
+Admin
+
+Manages all users (create students, parents, teachers).
+
+Sets up subjects, classes, and exams.
+
+
+Teacher
+
+Creates exams, marks subjective answers, views performance.
+
+
+Student
+
+Takes exams, sees scores.
+
+
+Parent
+
+Views only their child’s report card and progress.
+
+
+
+
+---
+
+2. 🔑 Account Provisioning (How Accounts Are Created)
+
+No open “Create Account” button.
+
+Only Admin can create accounts for Teachers, Students, Parents.
+
+
+Process:
+
+1. Admin uploads a CSV list of students, teachers, parents.
+
+
+2. System automatically generates THS usernames + default passwords.
+
+
+3. For teachers and admins → Admin must enter their real Google email when creating them.
+
+
+4. Printable login slips are generated (with username/password for students/parents).
+
+
+
+
+✅ This way, nobody can sneak into the system by self-signing up.
+
+
+---
+
+3. 📧 Login Methods
+
+Admins/Teachers
+
+Must log in with Google Sign-In.
+
+After Google login → system checks if that email exists in THS database and has the correct role.
+
+If valid → redirect to Admin/Teacher dashboard.
+
+If invalid → logout immediately and show: “Access denied – not registered in THS.”
+
+
+Students/Parents
+
+Must log in with THS Username + Password.
+
+Username format (for branding):
+
+Student → THS-STU-2025-PR3-001
+
+Parent → THS-PAR-2025-001
+
+
+Default password example → THS@2025#A9ZK.
+
+On first login, system forces password reset.
+
+
+
+
+---
+
+4. 🔄 Authentication Flow
+
+Step-by-step (backend + frontend working together):
+
+1. User enters credentials or clicks Google Sign-In.
+
+
+2. Backend checks credentials against THS Users DB.
+
+If Google login → compare email to DB.
+
+If Username/password → verify hash in DB.
+
+
+
+3. If valid → system generates a JWT/Session Token that contains:
+
+User ID
+
+Role (Admin, Teacher, Student, Parent)
+
+Expiry time (e.g., 30 mins inactivity).
+
+
+
+4. Token is stored securely (HTTP-only cookie or localStorage).
+
+
+5. System immediately redirects based on role:
+
+Admin → /admin/dashboard
+
+Teacher → /teacher/dashboard
+
+Student → /student/exams
+
+Parent → /parent/child-report
+
+
+
+6. On every page load, middleware checks token validity. If expired, force re-login.
+
+
+
+
+---
+
+5. 🚨 Security Guardrails
+
+Students/Parents cannot log in with Google. Their Google emails are ignored.
+
+Teachers/Admins cannot log in with just a THS-username. They must use Google.
+
+Anyone trying to log in with wrong role → auto logout.
+
+Passwords stored as hashed (bcrypt/argon2), never plain text.
+
+Sessions auto-expire after 30 minutes of inactivity.
+
+
+
+---
+
+6. 🔐 Forgot Password Flow
+
+Students/Parents:
+
+Click “Forgot Password.”
+
+Enter username or parent email.
+
+System emails reset link to parent’s email.
+
+Or admin can reset directly from dashboard.
+
+
+Teachers/Admins:
+
+Reset handled by Google (since login is via Google).
+
+
+
+
+---
+
+7. ⚡ Fixing Your Current Issues (Why Your Dashboard Fails)
+
+1. “Invalid password” issue:
+
+Happens because you tried to log in with Google → but backend didn’t check against THS DB.
+
+Fix: After Google login, cross-check email with your Admin table. If email exists → redirect. If not → deny.
+
+
+
+2. “Welcome… but no redirect” issue:
+
+Frontend must include:
+
+window.location.href = "/admin/dashboard";
+
+after verifying role + token.
+
+
+
+3. “Two logins before it works” issue:
+
+Your session/token is not being set on the first login attempt.
+
+Fix: Store JWT/cookie immediately upon success, then reload page or redirect instantly.
+
+
+
+
+
+---
+
+👉 At the end of Chapter One, all users now have:
+
+A role-based login.
+
+A smooth one-time login (no double attempts).
+
+Security guardrails (no fake Google login as teacher/admin).
+
+Password reset where needed.

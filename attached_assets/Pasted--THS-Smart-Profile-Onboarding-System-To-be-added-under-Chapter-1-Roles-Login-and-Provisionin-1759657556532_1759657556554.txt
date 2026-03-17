@@ -1,0 +1,201 @@
+
+
+THS Smart Profile Onboarding System
+
+(To be added under Chapter 1 — “Roles, Login, and Provisioning”)
+
+🎯 Purpose
+
+To ensure that every approved staff or user (Admin, Teacher, Student, Parent) completes their personal profile immediately after first login — before gaining full dashboard access.
+This creates a standardized data record and saves the Admin from manually entering every detail.
+
+
+---
+
+🧩 How It Works — Step-by-Step
+
+1. Admin Approval Triggers Profile Activation
+
+Once an account (Teacher, Student, or Parent) is approved/verified by the Admin:
+
+The system updates their status to Active.
+
+But their profile_completion flag remains false until they fill the onboarding form.
+
+
+2. First Login Redirect
+
+When a user logs in for the first time (or any time their profile is incomplete):
+
+Instead of loading the main dashboard, they’re redirected to the Profile Setup Page.
+
+A message appears:
+
+> “👋 Welcome to Treasure-Home School Portal! Please complete your profile to unlock your dashboard.”
+
+
+
+
+3. Smart Multi-Step Form (Modern UI)
+
+To make the experience smooth and engaging, the onboarding form should be a multi-step modern form, not a boring single-page dump.
+Here’s how it should look and feel:
+
+Step 1 — Personal Info
+
+Fields:
+
+Full Name (pre-filled from invite)
+
+Gender
+
+Date of Birth
+
+Profile Photo Upload
+(Auto-resized to maintain uniform display across dashboards.)
+
+
+Step 2 — Contact Info
+
+Fields:
+
+Email (read-only)
+
+Phone Number
+
+Address
+
+State / Country
+
+
+Step 3 — Role-Specific Details
+
+If Teacher: Subject(s), Class(es), Qualification, Years of Experience.
+
+If Admin: Department, Role Description, Access Level.
+
+If Student: Class, Admission Number (auto-filled), Guardian Name.
+
+If Parent: Linked Student(s), Occupation, Contact Preference.
+
+
+Step 4 — Security Setup
+
+Encourage responsible login habits:
+
+Add a security question (for password recovery)
+
+Set a PIN or 2FA option (if implemented later)
+
+Checkbox for “I agree to the THS Data Policy.”
+
+
+Step 5 — Preview & Submit
+
+Show all entered details for confirmation.
+
+Once submitted, a toast notification says:
+
+> “🎉 Profile completed successfully! Redirecting you to your dashboard…”
+
+
+
+
+
+---
+
+🧠 Key Functional Logic
+
+Event	System Behavior
+
+profile_completion = false	Redirect to onboarding page
+profile_completion = true	Direct dashboard access
+Form auto-saves	Every step auto-saves progress in case of refresh
+Editable later	After submission, user can edit only non-critical fields (Admin can unlock full edit rights)
+
+
+
+---
+
+🎨 Modern UX/UI Design Touches
+
+1. Progress Bar: Shows 0–100% completion.
+→ “You’re 60% done — just 2 more steps to go!”
+
+
+2. Lucide Icons: For each step (User, Contact, Role, Security).
+
+
+3. Animations: Subtle Framer Motion transitions between steps.
+
+
+4. Responsive Layout: Clean card-based design, optimized for phones and desktops.
+
+
+5. Validation Feedback: Real-time field validation (✅ green checkmarks).
+
+
+
+
+---
+
+🔐 Security & Data Integrity
+
+Uploaded files stored securely with unique IDs.
+
+Auto-logout after 10 minutes of inactivity on profile setup.
+
+All sensitive data encrypted (especially recovery Q&A and 2FA tokens).
+
+
+
+---
+
+📊 Admin Dashboard View
+
+Admins can monitor Profile Completion Status:
+
+Name	Role	Status	Last Login	Completion %
+
+Mrs. Helen	Teacher	✅ Verified	Oct 4, 2025	100%
+John Doe	Student	⚠️ Pending	—	20%
+
+
+Admins can also:
+
+Send reminder emails for incomplete profiles.
+
+Force update for outdated information (e.g. once per term).
+
+
+
+---
+
+💡 Extra Smart Features (Optional Future Enhancements)
+
+1. AI Autofill Suggestion: Auto-suggest missing fields based on email domain (e.g. school.edu.ng → pre-fill department).
+
+
+2. Parent–Child Sync: When a parent updates address or contact info, linked student record updates automatically.
+
+
+3. Smart Alerts: “You haven’t uploaded your profile photo yet — complete your setup for a personalized dashboard.”
+
+
+
+
+---
+
+🏁 In Summary
+
+The THS Smart Profile Onboarding System is a self-service data completion workflow that:
+
+Reduces Admin workload by 70%
+
+Ensures clean and consistent user data
+
+Creates a professional and guided user experience
+
+Enhances security and personalization
+
+Prevents incomplete or fake profiles from entering the ecosystem

@@ -1,0 +1,69 @@
+Assistant
+just now
+To fully address the issue of missing profile data, including the National ID and profile image, here's an updated version of your  that ensures all data is fetched and displayed correctly.
+
+Updated Code for 
+import React, { useEffect, useState } from 'react';
+import { useQuery } from 'react-query';
+import { useAuth } from '@/lib/auth'; // Adjust this according to your project structure
+import { useToast } from '@/hooks/use-toast';
+import PortalLayout from '@/components/layout/PortalLayout';
+import { Avatar, AvatarImage } from '@/components/ui/avatar';
+import { Card, CardContent } from '@/components/ui/card';
+export default function TeacherProfile() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [profileData, setProfileData] = useState({});
+  // Fetching teacher profile data
+  const { data: teacherProfile, isLoading, error } = useQuery('/api/teacher/profile/me', {
+    enabled: !!user,
+  });
+  useEffect(() => {
+    if (teacherProfile) {
+      console.log('Profile Data:', teacherProfile);
+      setProfileData(teacherProfile);
+    }
+  }, [teacherProfile]);
+  if (isLoading) {
+    return <div>Loading profile...</div>;
+  }
+  if (error) {
+    toast({ title: "Error", description: "Failed to fetch profile data", variant: "destructive" });
+    return <div>Error loading profile data.</div>;
+  }
+  return (
+    <PortalLayout userRole="teacher" userName={profileData.firstName}>
+      <Card>
+        <CardContent>
+          <h2>Profile Overview</h2>
+          {profileData.profileImageUrl && (
+            <Avatar>
+              <AvatarImage src={profileData.profileImageUrl} alt="Profile" />
+            </Avatar>
+          )}
+          <p>Full Name: {profileData.firstName} {profileData.lastName}</p>
+          <p>Staff ID: {profileData.staffId || 'Not provided'}</p>
+          <p>Email: {profileData.email || 'Not provided'}</p>
+          <p>Phone: {profileData.phone || 'Not provided'}</p>
+          <p>Gender: {profileData.gender || 'Not provided'}</p>
+          <p>Date of Birth: {profileData.dateOfBirth || 'Not provided'}</p>
+          <p>National ID: {profileData.nationalId || 'Not provided'}</p>
+          <p>Address: {profileData.address || 'Not provided'}</p>
+          <p>Recovery Email: {profileData.recoveryEmail || 'Not provided'}</p>
+        </CardContent>
+      </Card>
+    </PortalLayout>
+  );
+}
+Key Modifications:
+Data Fetching: Ensures the API call retrieves all relevant profile fields including nationalId and profileImageUrl.
+Display All Information: Adds rendering logic for all fields, ensuring that none are missing.
+Fallback Values: Uses fallback messages for any missing data.
+User Feedback: Displays a loading state and error feedback using toast notifications.
+Final Steps:
+After applying these changes, verify that the API is properly returning all required fields.
+Check the network tab in your browser's developer tools to ensure the complete data payload is available.
+If the issue persists, closely inspect the API request/response to confirm that the necessary data is being sent from the server.
+By incorporating these adjustments, your TeacherProfile component should now render all relevant profile information correctly.
+
+Assistant mode

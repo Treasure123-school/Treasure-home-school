@@ -1,0 +1,53 @@
+Assistant
+just now
+To fix the remaining issues with displaying the profile image and personal information in your TeacherProfile component, you should ensure that the data is correctly fetched and rendered. Here's how you can modify your component:
+
+Updated Code for 
+import React, { useEffect, useState } from 'react';
+import { useQuery } from 'react-query';
+import { useAuth } from 'path/to/auth'; // Adjust this to your actual auth import
+import { useToast } from 'path/to/toast'; // Adjust to your actual toast import
+export default function TeacherProfile() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { data: teacherProfile, isLoading, error } = useQuery({
+    queryKey: ['/api/teacher/profile', user.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/teacher/profile`, { credentials: 'include' });
+      if (!response.ok) {
+        toast({ title: "Error", description: "Failed to fetch teacher profile data", variant: "destructive" });
+        throw new Error('Error fetching teacher profile data');
+      }
+      return response.json();
+    },
+  });
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error.message}</div>;
+  console.log('📋 Teacher Profile Data:', teacherProfile); // Debugging line
+  return (
+    <div>
+      <h1>My Profile</h1>
+      <div>
+        {teacherProfile?.user?.profileImageUrl && (
+          <img src={teacherProfile.user.profileImageUrl} alt="Profile" />
+        )}
+        <h2>{teacherProfile?.user?.firstName} {teacherProfile?.user?.lastName}</h2>
+        <p>Email: {teacherProfile?.user?.email}</p>
+        <p>Phone: {teacherProfile?.user?.phone || 'Not provided'}</p>
+        <p>Gender: {teacherProfile?.user?.gender || 'Not provided'}</p>
+        <p>Date of Birth: {teacherProfile?.user?.dateOfBirth ? new Date(teacherProfile.user.dateOfBirth).toLocaleDateString() : 'Not provided'}</p>
+        {/* Add any other necessary fields from teacherProfile */}
+      </div>
+    </div>
+  );
+}
+Key Adjustments Made:
+API Fetching: Adjusted the API call to fetch teacher profile data, ensuring appropriate credentials are included to maintain session security.
+Data Structure Access: Ensured proper access to teacherProfile for displaying user information, including the profile image.
+Error Handling: Added toast notifications for better user feedback in case of errors.
+Conditional Rendering: Rendered the profile image and personal information conditionally, with fallbacks for missing data.
+Console Logging: Debug logs to confirm the fetched data structure for troubleshooting.
+Final Steps:
+After you implement these changes, test your application to verify that the profile image and personal information are displayed correctly. Always check the API responses in the network tab of your browser for any discrepancies.
+
+Assistant mode

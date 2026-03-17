@@ -1,0 +1,139 @@
+{
+  "timestamp": "2025-12-05T14:12:47.268Z",
+  "summary": {
+    "totalEndpointsTested": 4,
+    "totalRequests": 13344,
+    "overallAverageLatency": 89.1325,
+    "overallErrorRate": 0,
+    "maxRPS": 828.8,
+    "websocketConnectionsAttempted": 0,
+    "websocketConnectionsSuccessful": 0
+  },
+  "publicEndpoints": [
+    {
+      "endpoint": "/api/health",
+      "method": "GET",
+      "duration": 5,
+      "requests": {
+        "total": 3770,
+        "average": 754,
+        "min": 512,
+        "max": 1030,
+        "p50": 754,
+        "p99": 1030
+      },
+      "latency": {
+        "average": 65.98,
+        "min": 13,
+        "max": 1744,
+        "p50": 63,
+        "p99": 193
+      },
+      "throughput": {
+        "average": 417792,
+        "total": 2089024
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "status2xx": 3770,
+      "status4xx": 0,
+      "status5xx": 0
+    },
+    {
+      "endpoint": "/api/public/homepage-content",
+      "method": "GET",
+      "duration": 5,
+      "requests": {
+        "total": 3972,
+        "average": 794.4,
+        "min": 755,
+        "max": 845,
+        "p50": 786,
+        "p99": 845
+      },
+      "latency": {
+        "average": 62.49,
+        "min": 20,
+        "max": 268,
+        "p50": 59,
+        "p99": 183
+      },
+      "throughput": {
+        "average": 316134.41,
+        "total": 1580856
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "status2xx": 3972,
+      "status4xx": 0,
+      "status5xx": 0
+    },
+    {
+      "endpoint": "/api/announcements",
+      "method": "GET",
+      "duration": 5,
+      "requests": {
+        "total": 4144,
+        "average": 828.8,
+        "min": 788,
+        "max": 870,
+        "p50": 832,
+        "p99": 870
+      },
+      "latency": {
+        "average": 59.46,
+        "min": 10,
+        "max": 189,
+        "p50": 58,
+        "p99": 186
+      },
+      "throughput": {
+        "average": 329856,
+        "total": 1649312
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "status2xx": 4144,
+      "status4xx": 0,
+      "status5xx": 0
+    },
+    {
+      "endpoint": "/api/vacancies",
+      "method": "GET",
+      "duration": 5,
+      "requests": {
+        "total": 1458,
+        "average": 291.61,
+        "min": 191,
+        "max": 331,
+        "p50": 316,
+        "p99": 331
+      },
+      "latency": {
+        "average": 168.6,
+        "min": 90,
+        "max": 439,
+        "p50": 154,
+        "p99": 392
+      },
+      "throughput": {
+        "average": 112262.4,
+        "total": 561330
+      },
+      "errors": 0,
+      "timeouts": 0,
+      "status2xx": 1458,
+      "status4xx": 0,
+      "status5xx": 0
+    }
+  ],
+  "authenticatedEndpoints": [],
+  "websocketTests": [],
+  "bottlenecks": [],
+  "recommendations": [
+    "COMPRESSION: Enable gzip/brotli compression for API responses.",
+    "CDN: Serve static assets through a CDN to reduce server load.",
+    "MONITORING: Set up APM tools (DataDog, New Relic) for production monitoring.",
+    "LOAD BALANCING: Deploy multiple instances behind a load balancer for 500+ concurrent users."
+  ]
+}
