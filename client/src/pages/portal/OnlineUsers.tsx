@@ -503,7 +503,7 @@ export default function OnlineUsers() {
                       <th className="text-left px-3 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wide">Login Time</th>
                       <th className="text-left px-3 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wide">Last Active</th>
                       <th className="text-left px-3 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wide">Duration</th>
-                      <th className="text-center px-3 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wide">Tabs</th>
+                      <th className="text-center px-3 py-3 font-medium text-muted-foreground text-xs uppercase tracking-wide">Sessions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
@@ -620,7 +620,7 @@ export default function OnlineUsers() {
         </span>
         <span className="flex items-center gap-1.5">
           <Wifi className="h-3 w-3" />
-          <strong>Tabs</strong> — number of open browser tabs
+          <strong>Sessions</strong> — active socket connections (approx. open tabs)
         </span>
         <span className="flex items-center gap-1.5">
           <Clock className="h-3 w-3" />
