@@ -25,7 +25,8 @@ import {
   BookOpen,
   RefreshCw,
   Wifi,
-  WifiOff
+  WifiOff,
+  X
 } from 'lucide-react';
 const JSS_CLASSES = ['JSS1', 'JSS2', 'JSS3', 'JSS 1', 'JSS 2', 'JSS 3'];
 const SSS_CLASSES = ['SS1', 'SS2', 'SS3', 'SS 1', 'SS 2', 'SS 3', 'SSS1', 'SSS2', 'SSS3', 'SSS 1', 'SSS 2', 'SSS 3'];
@@ -71,6 +72,14 @@ export default function UnifiedSubjectAssignment() {
   const [pendingChanges, setPendingChanges] = useState<Map<string, SubjectAssignment>>(new Map());
   const [pendingRemovals, setPendingRemovals] = useState<Set<string>>(new Set());
   const [isSaving, setIsSaving] = useState(false);
+  const [infoDismissed, setInfoDismissed] = useState(() => {
+    try { return localStorage.getItem('subject-setup-info-dismissed') === 'true'; } catch { return false; }
+  });
+
+  const dismissInfo = () => {
+    setInfoDismissed(true);
+    try { localStorage.setItem('subject-setup-info-dismissed', 'true'); } catch {}
+  };
 
   const { data: subjects = [], isLoading: subjectsLoading } = useQuery<Subject[]>({
     queryKey: ['/api/subjects'],
@@ -696,10 +705,10 @@ export default function UnifiedSubjectAssignment() {
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground" data-testid="text-page-title">
-              Class-Level & Department Subject Assignment
+              Subject Setup
             </h1>
             <p className="text-muted-foreground mt-0.5 text-sm">
-              Centralized configuration for subject visibility across the entire school portal
+              Assign subjects to class levels and departments across the school portal
             </p>
             <div className="flex items-center gap-1.5 mt-2" data-testid="status-connection">
               {isConnected ? (
@@ -767,19 +776,29 @@ export default function UnifiedSubjectAssignment() {
         </div>
       </div>
 
-      {/* Info Banner */}
-      <div className="flex items-start gap-3 p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40">
-        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center mt-0.5">
-          <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+      {/* Info Banner — dismissible */}
+      {!infoDismissed && (
+        <div className="flex items-start gap-3 p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40">
+          <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center mt-0.5">
+            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">How this page works</p>
+            <p className="text-sm text-blue-700 dark:text-blue-300 mt-0.5">
+              Use this page to control which subjects appear for each class and department. 
+              Changes here affect report cards, exams, student portals, and teacher assignments — all at once.
+            </p>
+          </div>
+          <button
+            onClick={dismissInfo}
+            aria-label="Dismiss"
+            className="flex-shrink-0 mt-0.5 p-1 rounded-lg text-blue-400 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors"
+            data-testid="button-dismiss-info"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
-        <div>
-          <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">Single Source of Truth</p>
-          <p className="text-sm text-blue-700 dark:text-blue-300 mt-0.5">
-            This configuration controls subject visibility across the entire system — report cards, exam creation,
-            student portals, and teacher assignments. Changes apply instantly to all areas.
-          </p>
-        </div>
-      </div>
+      )}
 
       {isLoading ? (
         <div className="space-y-4">

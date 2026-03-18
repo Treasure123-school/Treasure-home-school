@@ -196,7 +196,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             items: [
               { href: `/portal/${userRole}/classes`, icon: BookOpen, label: 'Classes' },
               { href: `/portal/${userRole}/subjects`, icon: BookOpen, label: 'Subjects' },
-              { href: `/portal/${userRole}/subject-manager/unified-assignment`, icon: ClipboardList, label: 'Class Level Assignment' },
+              { href: `/portal/${userRole}/subject-manager/unified-assignment`, icon: ClipboardList, label: 'Subject Setup' },
               { href: `/portal/${userRole}/subject-assignment`, icon: Users, label: 'Teacher Assignments' },
               { href: `/portal/${userRole}/academic-terms`, icon: Calendar, label: 'Academic Terms' },
               { href: `/portal/${userRole}/syllabus-topics`, icon: Layers, label: 'Syllabus Topics' },
