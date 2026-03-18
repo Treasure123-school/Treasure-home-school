@@ -11,7 +11,7 @@ import {
   Circle, Wifi, WifiOff, ArrowRight,
 } from 'lucide-react';
 import { Link } from 'wouter';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { AnimatedCounter } from '@/components/ui/animated-counter';
 import { useLoginSuccess } from '@/hooks/use-login-success';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -294,37 +294,92 @@ export default function AdminDashboard() {
 
       {/* User Distribution + Live Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* User Distribution Chart */}
-        <Card className="lg:col-span-2 shadow-sm border border-border" data-testid="card-user-distribution">
-          <CardHeader className="flex flex-row items-center justify-between gap-2">
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-indigo-600" />
-              User Distribution
-            </CardTitle>
-            <Badge variant="secondary" data-testid="badge-total-users">
-              Total: {allUsers.length}
-            </Badge>
-          </CardHeader>
-          <CardContent className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={roleDistribution}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {roleDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend verticalAlign="bottom" height={36} />
-              </PieChart>
-            </ResponsiveContainer>
+        {/* User Distribution Chart — Redesigned */}
+        <Card className="lg:col-span-2 shadow-md border border-border overflow-hidden" data-testid="card-user-distribution">
+          {/* Card header with gradient accent */}
+          <div className="bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-white">
+              <BarChart3 className="h-5 w-5" />
+              <h3 className="font-semibold text-base">User Distribution</h3>
+              <span className="text-indigo-200 text-sm">— by role</span>
+            </div>
+            <span
+              className="bg-white/20 backdrop-blur-sm text-white text-sm font-bold px-3 py-1 rounded-full border border-white/30"
+              data-testid="badge-total-users"
+            >
+              {allUsers.length} total
+            </span>
+          </div>
+
+          <CardContent className="p-5">
+            <div className="flex flex-col sm:flex-row items-center gap-6">
+              {/* Donut chart with center label */}
+              <div className="relative shrink-0 w-[180px] h-[180px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={roleDistribution.length > 0 ? roleDistribution : [{ name: 'No data', value: 1, color: '#e5e7eb' }]}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={58}
+                      outerRadius={80}
+                      paddingAngle={roleDistribution.length > 1 ? 4 : 0}
+                      dataKey="value"
+                      strokeWidth={2}
+                      stroke="hsl(var(--background))"
+                    >
+                      {(roleDistribution.length > 0 ? roleDistribution : [{ name: 'No data', value: 1, color: '#e5e7eb' }]).map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{ borderRadius: '8px', fontSize: '12px', border: '1px solid hsl(var(--border))' }}
+                      formatter={(value: any, name: any) => [
+                        `${value} (${allUsers.length > 0 ? Math.round((value / allUsers.length) * 100) : 0}%)`,
+                        name,
+                      ]}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                {/* Center label overlay */}
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-3xl font-bold text-foreground leading-none">{allUsers.length}</span>
+                  <span className="text-[11px] text-muted-foreground mt-1 font-medium">Users</span>
+                </div>
+              </div>
+
+              {/* Per-role breakdown rows */}
+              <div className="flex-1 w-full space-y-3">
+                {roleDistribution.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">No users registered yet.</p>
+                ) : (
+                  roleDistribution.map((role) => {
+                    const pct = allUsers.length > 0 ? Math.round((role.value / allUsers.length) * 100) : 0;
+                    return (
+                      <div key={role.name} className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: role.color }} />
+                            <span className="font-medium text-foreground">{role.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-muted-foreground text-xs">{pct}%</span>
+                            <span className="font-bold text-foreground w-7 text-right">{role.value}</span>
+                          </div>
+                        </div>
+                        {/* Progress bar */}
+                        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-700"
+                            style={{ width: `${pct}%`, backgroundColor: role.color }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -401,26 +456,56 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
+          {/* Quick Stats — enriched */}
           <Card className="shadow-sm border border-border" data-testid="card-quick-stats">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle className="text-sm font-medium">Quick Stats</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-semibold">Quick Stats</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Pending Grading</span>
-                  <span className="text-sm font-medium" data-testid="text-pending-grading">
-                    {gradingStats?.pendingCount || 0}
+            <CardContent className="space-y-0 divide-y divide-border">
+              {[
+                {
+                  label: 'Total Parents',
+                  value: allUsers.filter(u => u.roleId === ROLE_IDS.PARENT).length,
+                  testId: 'text-total-parents',
+                  color: 'text-orange-600',
+                },
+                {
+                  label: 'Student-Teacher Ratio',
+                  value: (() => {
+                    const t = allUsers.filter(u => u.roleId === ROLE_IDS.TEACHER).length;
+                    const s = allUsers.filter(u => u.roleId === ROLE_IDS.STUDENT).length;
+                    return t > 0 ? `${Math.round(s / t)}:1` : '—';
+                  })(),
+                  testId: 'text-student-teacher-ratio',
+                  color: 'text-blue-600',
+                },
+                {
+                  label: 'Pending Grading',
+                  value: gradingStats?.pendingCount || 0,
+                  testId: 'text-pending-grading',
+                  color: gradingStats?.pendingCount > 0 ? 'text-amber-600' : 'text-foreground',
+                },
+                {
+                  label: 'Active Exams',
+                  value: allExams.filter((e: any) => e.status === 'published').length,
+                  testId: 'text-active-exams',
+                  color: allExams.filter((e: any) => e.status === 'published').length > 0 ? 'text-red-600' : 'text-foreground',
+                },
+                {
+                  label: 'Total Exams',
+                  value: allExams.length,
+                  testId: 'text-total-exams',
+                  color: 'text-foreground',
+                },
+              ].map(({ label, value, testId, color }) => (
+                <div key={label} className="flex items-center justify-between py-2.5 first:pt-0 last:pb-0">
+                  <span className="text-sm text-muted-foreground">{label}</span>
+                  <span className={`text-sm font-semibold ${color}`} data-testid={testId}>
+                    {value}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Active Exams</span>
-                  <span className="text-sm font-medium" data-testid="text-active-exams">
-                    {allExams.filter((e: any) => e.status === 'published').length}
-                  </span>
-                </div>
-              </div>
+              ))}
             </CardContent>
           </Card>
         </div>
