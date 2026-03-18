@@ -2,9 +2,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
 import { useQuery } from '@tanstack/react-query';
-import { TrendingUp, Calendar, Trophy, MessageSquare, BookOpen, ClipboardList, Star, FileText, Play, AlertCircle, ChevronRight, Award, Target, Clock } from 'lucide-react';
+import { TrendingUp, Calendar, Trophy, MessageSquare, BookOpen, ClipboardList, Star, FileText, Play, AlertCircle, ChevronRight, Award, Target, Clock, X } from 'lucide-react';
 import { Link, useLocation } from 'wouter';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { apiRequest } from '@/lib/queryClient';
 import { CircularProgress } from '@/components/ui/circular-progress';
 import { AnimatedCounter } from '@/components/ui/animated-counter';
@@ -19,6 +19,15 @@ import { useLoginSuccess } from '@/hooks/use-login-success';
 export default function StudentDashboard() {
   const { user, updateUser } = useAuth();
   const [, navigate] = useLocation();
+
+  const bannerKey = `profile_banner_dismissed_${user?.id}`;
+  const [bannerDismissed, setBannerDismissed] = useState(() =>
+    sessionStorage.getItem(bannerKey) === 'true'
+  );
+  const dismissBanner = () => {
+    sessionStorage.setItem(bannerKey, 'true');
+    setBannerDismissed(true);
+  };
   
   useLoginSuccess();
 
@@ -210,34 +219,54 @@ export default function StudentDashboard() {
   return (
     <>
       {/* Profile Completion Banner */}
-      {!statusLoading && profileStatus && !profileStatus.completed && (
-        <div className="mb-4 sm:mb-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 sm:p-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-500" data-testid="profile-incomplete-banner">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
-            <div className="flex items-start sm:items-center gap-2 sm:gap-3 flex-1">
-              <div className="bg-yellow-100 dark:bg-yellow-900/50 rounded-lg p-1.5 sm:p-2 flex-shrink-0">
-                <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600 dark:text-yellow-400" />
+      {!statusLoading && profileStatus && !profileStatus.completed && !bannerDismissed && (
+        <div
+          className="mb-4 sm:mb-6 relative overflow-hidden rounded-xl border border-amber-200 dark:border-amber-700/60 bg-gradient-to-r from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-950/40 dark:via-yellow-950/30 dark:to-orange-950/30 shadow-sm animate-in fade-in slide-in-from-top-3 duration-500"
+          data-testid="profile-incomplete-banner"
+        >
+          {/* Decorative accent bar */}
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-amber-400 to-orange-400 rounded-l-xl" />
+
+          <div className="pl-5 pr-3 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+            {/* Icon + text */}
+            <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
+              <div className="flex-shrink-0 mt-0.5 sm:mt-0 bg-amber-100 dark:bg-amber-900/50 rounded-full p-2">
+                <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 dark:text-amber-400" />
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-sm sm:text-base font-semibold text-yellow-800 dark:text-yellow-200">
-                  Complete Your Profile
-                </h3>
-                <p className="text-xs sm:text-sm text-yellow-700 dark:text-yellow-300 line-clamp-2 sm:line-clamp-none">
-                  Complete it to unlock exams, grades, and study resources.
+                <p className="text-sm sm:text-base font-semibold text-amber-900 dark:text-amber-200 leading-snug">
+                  Your profile is incomplete
+                </p>
+                <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-300/90 mt-0.5">
+                  Complete your profile to unlock exams, report cards, and other academic features.
                   {profileStatus.percentage > 0 && (
-                    <span className="ml-1 font-medium">({profileStatus.percentage}% done)</span>
+                    <span className="ml-1 font-semibold text-amber-800 dark:text-amber-200">
+                      {profileStatus.percentage}% done
+                    </span>
                   )}
                 </p>
               </div>
             </div>
-            <Button 
-              onClick={() => navigate('/portal/student/profile')}
-              variant="default"
-              size="sm"
-              className="bg-yellow-600 hover:bg-yellow-700 text-white shadow-sm w-full sm:w-auto text-xs sm:text-sm"
-              data-testid="button-complete-profile"
-            >
-              Complete Profile
-            </Button>
+
+            {/* Actions */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Button
+                onClick={() => navigate('/portal/student/profile')}
+                size="sm"
+                className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm text-xs sm:text-sm font-medium h-8 sm:h-9 px-3 sm:px-4"
+                data-testid="button-complete-profile"
+              >
+                Complete Profile
+              </Button>
+              <button
+                onClick={dismissBanner}
+                aria-label="Dismiss banner"
+                data-testid="button-dismiss-banner"
+                className="flex-shrink-0 rounded-full p-1.5 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}

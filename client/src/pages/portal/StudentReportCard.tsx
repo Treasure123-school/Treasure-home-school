@@ -45,6 +45,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import RequireCompleteProfile from '@/components/RequireCompleteProfile';
 
 const RATING_LABELS = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
 
@@ -332,6 +333,7 @@ export default function StudentReportCard() {
   ];
 
   return (
+    <RequireCompleteProfile feature="report cards and academic results">
     <div className="space-y-6 print:space-y-4" data-testid="student-report-card">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 print:hidden">
@@ -976,5 +978,6 @@ export default function StudentReportCard() {
         </div>
       )}
     </div>
+    </RequireCompleteProfile>
   );
 }

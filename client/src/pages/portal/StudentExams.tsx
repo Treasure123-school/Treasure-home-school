@@ -17,6 +17,7 @@ import type { Exam, ExamSession, ExamQuestion, QuestionOption, StudentAnswer } f
 import schoolLogo from '@assets/1000025432-removebg-preview (1)_1757796555126.png';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { ExamHeader } from '@/components/ExamHeader';
+import RequireCompleteProfile from '@/components/RequireCompleteProfile';
 
 // ENHANCED EXAM SECURITY CONSTANTS
 // Students receive 3 numbered warnings (Warning 1/3, 2/3, 3/3).
@@ -3169,6 +3170,7 @@ export default function StudentExams() {
   // Main rendering of the student exams portal
   if (!selectedExam && !activeSession) {
     return (
+      <RequireCompleteProfile feature="exams and assessments">
       <div className="p-2 sm:p-4 space-y-4 max-w-5xl mx-auto">
         <div className="flex flex-col space-y-1">
           <div className="flex items-center gap-2 text-black dark:text-white">
@@ -3286,6 +3288,7 @@ export default function StudentExams() {
           </div>
         )}
       </div>
+      </RequireCompleteProfile>
     );
   }
 }
