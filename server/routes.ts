@@ -1048,21 +1048,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         rawOnline.map(async (entry) => {
           try {
             const user = await storage.getUser(entry.userId);
-            return {
+            const displayName = user ? `${user.firstName} ${user.lastName}`.trim() : entry.userId;
+            const base = {
               ...entry,
-              displayName: user ? `${user.firstName} ${user.lastName}`.trim() : entry.userId,
+              displayName,
               username: user?.username || entry.userId,
               email: user?.email,
               roleId: user?.roleId,
+              loginAt: user?.lastLoginAt ? user.lastLoginAt.toISOString() : entry.firstConnectedAt,
             };
+            // For students, fetch their class
+            const roleStr = entry.role.toLowerCase().replace(/\s+/g, '_');
+            if ((roleStr === 'student' || roleStr === 'stu') && !entry.className) {
+              try {
+                const student = await storage.getStudentByUserId(entry.userId);
+                if (student?.classId) {
+                  const cls = await storage.getClass(student.classId);
+                  return { ...base, classId: student.classId, className: cls?.name };
+                }
+              } catch { /* ignore */ }
+            }
+            return base;
           } catch {
-            return { ...entry, displayName: entry.userId, username: entry.userId };
+            return { ...entry, displayName: entry.userId, username: entry.userId, loginAt: entry.firstConnectedAt };
           }
         })
       );
       res.json(enriched);
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch online users' });
+    }
+  });
+
+  // ==================== ACTIVITY FEED (ADMIN ONLY) ====================
+  app.get('/api/admin/activity-feed', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), (_req, res) => {
+    try {
+      res.json(realtimeService.getActivityFeed());
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch activity feed' });
     }
   });
 

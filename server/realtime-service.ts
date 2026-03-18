@@ -52,9 +52,13 @@ export interface UserActivityRecord {
   socketIds: Set<string>;
   firstConnectedAt: Date;
   lastActive: Date;
+  wasIdle: boolean; // for idle-transition detection
   // Enriched at API layer from DB
   displayName?: string;
   username?: string;
+  email?: string;
+  className?: string;
+  classId?: number;
 }
 
 export interface OnlineUserInfo {
@@ -66,6 +70,17 @@ export interface OnlineUserInfo {
   lastActive: string;
   status: 'online' | 'idle';
   socketCount: number;
+  className?: string;
+  classId?: number;
+}
+
+export interface ActivityFeedEvent {
+  id: string;
+  type: 'login' | 'logout' | 'idle' | 'active';
+  userId: string;
+  displayName: string;
+  role: string;
+  timestamp: string;
 }
 
 class RealtimeService {
@@ -78,6 +93,11 @@ class RealtimeService {
   // Real-time user activity tracking: Map<userId, UserActivityRecord>
   private userActivityMap = new Map<string, UserActivityRecord>();
   private activityCheckInterval: NodeJS.Timeout | null = null;
+
+  // Activity feed: last 100 events (login / logout / idle / active)
+  private activityFeed: ActivityFeedEvent[] = [];
+  private static readonly FEED_MAX = 100;
+  private static readonly IDLE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes
 
   // Duplicate session detection: Map<sessionId, ActiveExamSession>
   private activeExamSessions = new Map<number, ActiveExamSession>();
@@ -664,6 +684,32 @@ class RealtimeService {
 
   // ─── USER ACTIVITY TRACKING ───────────────────────────────────────────────
 
+  private logActivityEvent(type: ActivityFeedEvent['type'], rec: Pick<UserActivityRecord, 'userId' | 'role' | 'displayName' | 'username'>) {
+    const event: ActivityFeedEvent = {
+      id: crypto.randomUUID(),
+      type,
+      userId: rec.userId,
+      displayName: rec.displayName || rec.username || rec.userId,
+      role: rec.role,
+      timestamp: new Date().toISOString(),
+    };
+    this.activityFeed.unshift(event);
+    if (this.activityFeed.length > RealtimeService.FEED_MAX) {
+      this.activityFeed.length = RealtimeService.FEED_MAX;
+    }
+    // Broadcast updated feed to admins
+    if (this.io) {
+      this.io
+        .to('role:admin').to('role:Admin')
+        .to('role:super_admin').to('role:Super Admin').to('role:superadmin')
+        .emit('admin:activity_feed', this.activityFeed);
+    }
+  }
+
+  getActivityFeed(): ActivityFeedEvent[] {
+    return [...this.activityFeed];
+  }
+
   private async trackUserConnect(user: SocketUser, socketId: string) {
     const now = new Date();
     const existing = this.userActivityMap.get(user.userId);
@@ -677,8 +723,11 @@ class RealtimeService {
         socketIds: new Set([socketId]),
         firstConnectedAt: now,
         lastActive: now,
+        wasIdle: false,
       };
       this.userActivityMap.set(user.userId, record);
+      // Log login event (async enrichment will update name later)
+      this.logActivityEvent('login', record);
 
       // Async enrich display name without blocking connect; re-broadcast once
       // names are available so admins see real names immediately (not the UUID).
@@ -690,6 +739,9 @@ class RealtimeService {
               if (r) {
                 r.displayName = info.displayName;
                 r.username = info.username;
+                // Update the login event's displayName in feed
+                const loginEvent = this.activityFeed.find(e => e.userId === user.userId && e.type === 'login');
+                if (loginEvent) loginEvent.displayName = info.displayName;
                 this.broadcastOnlineUsersToAdmins();
               }
             }
@@ -732,9 +784,9 @@ class RealtimeService {
 
   private getOnlineUsersRaw(): Array<{
     userId: string; role: string; displayName: string; username: string;
-    firstConnectedAt: string; lastActive: string; status: 'online' | 'idle'; socketCount: number;
+    firstConnectedAt: string; lastActive: string; status: 'online' | 'idle';
+    socketCount: number; className?: string; classId?: number;
   }> {
-    const IDLE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes without heartbeat = idle
     const now = Date.now();
     const result: ReturnType<typeof this.getOnlineUsersRaw> = [];
     this.userActivityMap.forEach((rec) => {
@@ -746,8 +798,10 @@ class RealtimeService {
         username: rec.username || rec.userId,
         firstConnectedAt: rec.firstConnectedAt.toISOString(),
         lastActive: rec.lastActive.toISOString(),
-        status: msSinceActive > IDLE_THRESHOLD_MS ? 'idle' : 'online',
+        status: msSinceActive > RealtimeService.IDLE_THRESHOLD_MS ? 'idle' : 'online',
         socketCount: rec.socketIds.size,
+        className: rec.className,
+        classId: rec.classId,
       });
     });
     return result;
@@ -787,6 +841,7 @@ class RealtimeService {
       socketIds: new Set(), // no socket yet; that's fine
       firstConnectedAt: new Date(),
       lastActive: new Date(),
+      wasIdle: false,
     };
     this.userActivityMap.set(userId, record);
 
@@ -834,7 +889,21 @@ class RealtimeService {
         // Expire the whole record if the user has been fully inactive
         const msSinceActive = now - rec.lastActive.getTime();
         if (msSinceActive > EXPIRY_MS) {
+          this.logActivityEvent('logout', rec);
           this.userActivityMap.delete(userId);
+          changed = true;
+          return; // skip idle-check for expired record
+        }
+
+        // Detect online → idle transition
+        const isNowIdle = msSinceActive > RealtimeService.IDLE_THRESHOLD_MS;
+        if (isNowIdle && !rec.wasIdle) {
+          rec.wasIdle = true;
+          this.logActivityEvent('idle', rec);
+          changed = true;
+        } else if (!isNowIdle && rec.wasIdle) {
+          rec.wasIdle = false;
+          this.logActivityEvent('active', rec);
           changed = true;
         }
       });
