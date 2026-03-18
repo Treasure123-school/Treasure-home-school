@@ -1,6 +1,7 @@
-import { forwardRef } from 'react';
+import { forwardRef, useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ContactUtils } from '@shared/contact-utils';
+import { imageUrlToBase64 } from '@/lib/report-export-utils';
 
 interface SubjectScore {
   subjectName: string;
@@ -206,6 +207,28 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
   const schoolMotto = propSchoolMotto || settings?.schoolMotto || "";
   const displayLogo = customLogo || settings?.schoolLogo || "";
 
+  // Pre-convert photo and logo to base64 so they render correctly in
+  // html-to-image exports, PDF captures, and print windows (all of which
+  // cannot resolve relative URLs once the DOM is serialised / captured).
+  const [photoSrc, setPhotoSrc] = useState<string>('');
+  const [logoSrc, setLogoSrc] = useState<string>('');
+
+  useEffect(() => {
+    if (reportCard.studentPhoto) {
+      imageUrlToBase64(reportCard.studentPhoto).then(setPhotoSrc);
+    } else {
+      setPhotoSrc('');
+    }
+  }, [reportCard.studentPhoto]);
+
+  useEffect(() => {
+    if (displayLogo) {
+      imageUrlToBase64(displayLogo).then(setLogoSrc);
+    } else {
+      setLogoSrc('');
+    }
+  }, [displayLogo]);
+
   const subjects = reportCard.items || reportCard.subjects || [];
   const totalObtained = subjects.reduce((sum, s) => sum + (s.obtainedMarks || 0), 0);
   const totalMax = subjects.length * 100;
@@ -285,8 +308,8 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
             </div>
           </td>
           <td style={{ width: 70, verticalAlign: 'middle', textAlign: 'right' }}>
-            {displayLogo && (
-              <img src={displayLogo} alt="Logo" style={{ height: 65, width: 65, objectFit: 'contain' }} crossOrigin="anonymous" />
+            {logoSrc && (
+              <img src={logoSrc} alt="Logo" style={{ height: 65, width: 65, objectFit: 'contain' }} />
             )}
           </td>
         </tr></tbody>
@@ -376,8 +399,8 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
           {/* Photo (right) */}
           <td style={{ width: 75, verticalAlign: 'top', padding: 5, borderLeft: B }}>
             <div style={{ width: 64, height: 76, border: B, overflow: 'hidden', backgroundColor: '#f8f8f8', textAlign: 'center', lineHeight: '76px' }}>
-              {reportCard.studentPhoto ? (
-                <img src={reportCard.studentPhoto} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover', verticalAlign: 'middle' }} crossOrigin="anonymous" />
+              {photoSrc ? (
+                <img src={photoSrc} alt="Photo" style={{ width: '100%', height: '100%', objectFit: 'cover', verticalAlign: 'middle' }} />
               ) : (
                 <span style={{ color: '#aaa', fontSize: 8, lineHeight: '76px' }}>Photo</span>
               )}

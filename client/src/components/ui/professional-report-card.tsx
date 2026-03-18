@@ -42,6 +42,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { SkillsSection } from '@/components/ui/skill-rating';
+import { imageUrlToBase64 } from '@/lib/report-export-utils';
 
 interface SubjectScore {
   id: number;
@@ -254,6 +255,17 @@ export function ProfessionalReportCard({
   // Baseline snapshot of loaded skills - used to compute diff for save payload
   const initialSkillsRef = useRef<Record<string, number> | null>(null);
   const [skillsLoaded, setSkillsLoaded] = useState(false);
+
+  // Pre-convert student photo to base64 so it renders in html-to-image,
+  // PDF, and print windows (relative URLs fail in SVG/blank window contexts).
+  const [photoSrc, setPhotoSrc] = useState<string>('');
+  useEffect(() => {
+    if (reportCard.studentPhoto) {
+      imageUrlToBase64(reportCard.studentPhoto).then(setPhotoSrc);
+    } else {
+      setPhotoSrc('');
+    }
+  }, [reportCard.studentPhoto]);
   
   // Track the current report card ID to detect when switching to a different student
   const currentReportCardIdRef = useRef<number>(reportCard.id);
@@ -535,19 +547,18 @@ export function ProfessionalReportCard({
             {/* Student Photo */}
             <div className="flex justify-center sm:justify-start">
               <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-2 border-primary/20 print:border-primary print:hidden">
-                {reportCard.studentPhoto ? (
-                  <AvatarImage src={reportCard.studentPhoto} alt={reportCard.studentName} crossOrigin="anonymous" />
+                {photoSrc ? (
+                  <AvatarImage src={photoSrc} alt={reportCard.studentName} />
                 ) : null}
                 <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-bold text-xl">
                   {reportCard.studentName?.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() || <User className="w-8 h-8" />}
                 </AvatarFallback>
               </Avatar>
-              {/* Print-safe image fallback — AvatarImage uses JS load detection that may fail in print window contexts */}
-              {reportCard.studentPhoto ? (
+              {/* Print-safe image — uses base64 src so it renders in print windows and exports */}
+              {photoSrc ? (
                 <img
-                  src={reportCard.studentPhoto}
+                  src={photoSrc}
                   alt={reportCard.studentName}
-                  crossOrigin="anonymous"
                   className="hidden print:block h-20 w-20 sm:h-24 sm:w-24 rounded-full object-cover border-2 border-primary"
                 />
               ) : (

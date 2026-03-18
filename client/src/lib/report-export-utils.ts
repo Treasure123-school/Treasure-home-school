@@ -1,6 +1,36 @@
 import { toCanvas, toPng } from 'html-to-image';
 import jsPDF from 'jspdf';
 
+/**
+ * Converts any image URL (relative or absolute) to a base64 data URL.
+ * This is essential for export methods (html-to-image, PDF, print windows)
+ * because relative URLs cannot be resolved in SVG/foreignObject or blank windows.
+ * Returns the original URL on failure so rendering still degrades gracefully.
+ */
+export async function imageUrlToBase64(url: string): Promise<string> {
+  if (!url || url.startsWith('data:')) return url;
+
+  // Make relative URLs absolute so fetch can resolve them
+  const absoluteUrl =
+    url.startsWith('http://') || url.startsWith('https://')
+      ? url
+      : `${window.location.origin}${url.startsWith('/') ? '' : '/'}${url}`;
+
+  try {
+    const response = await fetch(absoluteUrl, { credentials: 'include' });
+    if (!response.ok) return url;
+    const blob = await response.blob();
+    return await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(url);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return url;
+  }
+}
+
 export interface ExportOptions {
   filename?: string;
   scale?: number;
