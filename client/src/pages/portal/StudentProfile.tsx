@@ -9,7 +9,7 @@ import { useAuth } from '@/lib/auth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getApiUrl } from '@/config/api';
 import { apiRequest } from '@/lib/queryClient';
-import { User, Mail, Phone, MapPin, Calendar, School, Save, Edit, BookOpen, CheckCircle2, Circle, ShieldAlert, HeartPulse } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Calendar, School, Save, Edit, BookOpen, CheckCircle2, Circle, ShieldAlert, HeartPulse, X } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -195,24 +195,27 @@ export default function StudentProfile() {
     <>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">My Profile</h1>
-            <p className="text-muted-foreground">View and manage your personal information</p>
+        <div className="flex items-start sm:items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">My Profile</h1>
+            <p className="text-muted-foreground text-sm sm:text-base">View and manage your personal information</p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex shrink-0 gap-2">
             {isEditing ? (
               <>
-                <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
-                <Button onClick={handleSave} disabled={isSaving}>
-                  <Save className="h-4 w-4 mr-2" />
-                  {isSaving ? "Saving..." : "Save Changes"}
+                <Button variant="outline" onClick={() => setIsEditing(false)} size="sm" className="sm:size-auto">
+                  <X className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Cancel</span>
+                </Button>
+                <Button onClick={handleSave} disabled={isSaving} size="sm" className="sm:size-auto">
+                  <Save className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">{isSaving ? "Saving..." : "Save Changes"}</span>
                 </Button>
               </>
             ) : (
-              <Button onClick={() => setIsEditing(true)}>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit Profile
+              <Button onClick={() => setIsEditing(true)} size="sm" className="sm:size-auto">
+                <Edit className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Edit Profile</span>
               </Button>
             )}
           </div>
@@ -261,20 +264,6 @@ export default function StudentProfile() {
                 })}
               </div>
 
-              {/* CTA */}
-              {!isEditing && (
-                <div className="mt-3">
-                  <Button
-                    size="sm"
-                    onClick={() => setIsEditing(true)}
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs sm:text-sm h-8 px-4"
-                    data-testid="button-edit-profile-from-banner"
-                  >
-                    <Edit className="h-3.5 w-3.5 mr-1.5" />
-                    Edit Profile Now
-                  </Button>
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -469,40 +458,25 @@ export default function StudentProfile() {
                       id="dateOfBirth"
                       type="date"
                       value={profileData.dateOfBirth}
-                      onChange={(e) => handleChange('dateOfBirth', e.target.value)}
-                      disabled={!isEditing}
+                      disabled
                       data-testid="input-date-of-birth"
                     />
+                    <p className="text-xs text-muted-foreground">Contact an admin to update your date of birth.</p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="gender">
                       Gender
                       {!student?.gender && <span className="ml-1 text-xs text-amber-600 font-normal">(required for completion)</span>}
                     </Label>
-                    {isEditing ? (
-                      <Select
-                        value={profileData.gender}
-                        onValueChange={(val) => handleChange('gender', val)}
-                      >
-                        <SelectTrigger id="gender" data-testid="select-gender">
-                          <SelectValue placeholder="Select gender" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="male">Male</SelectItem>
-                          <SelectItem value="female">Female</SelectItem>
-                          <SelectItem value="other">Other</SelectItem>
-                          <SelectItem value="prefer_not_to_say">Prefer not to say</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Input
-                        id="gender"
-                        value={profileData.gender ? profileData.gender.replace(/_/g, ' ') : ''}
-                        disabled
-                        placeholder="Not provided"
-                        className="capitalize"
-                      />
-                    )}
+                    <Input
+                      id="gender"
+                      value={profileData.gender ? profileData.gender.replace(/_/g, ' ') : ''}
+                      disabled
+                      placeholder="Not provided"
+                      className="capitalize"
+                      data-testid="input-gender"
+                    />
+                    <p className="text-xs text-muted-foreground">Contact an admin to update your gender.</p>
                   </div>
                   <div className="space-y-2 md:col-span-2">
                     <Label htmlFor="address">

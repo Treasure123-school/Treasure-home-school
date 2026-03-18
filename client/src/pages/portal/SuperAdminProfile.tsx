@@ -196,31 +196,32 @@ export default function SuperAdminProfile() {
   return (
     <SuperAdminLayout>
       <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start sm:items-center justify-between gap-3">
+        <div className="min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold dark:text-white flex items-center gap-2" data-testid="text-page-title">
-            <User className="h-7 w-7" />
+            <User className="h-7 w-7 shrink-0" />
             My Profile
           </h1>
           <p className="text-sm sm:text-base text-slate-600 dark:text-slate-400 mt-1">
             Manage your account information
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex shrink-0 gap-2">
           {isEditing ? (
             <>
-              <Button variant="outline" onClick={() => setIsEditing(false)}>
-                Cancel
+              <Button variant="outline" onClick={() => setIsEditing(false)} size="sm" className="sm:size-auto">
+                <X className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Cancel</span>
               </Button>
-              <Button onClick={handleProfileUpdate} disabled={isSaving}>
-                <Save className="h-4 w-4 mr-2" />
-                {isSaving ? "Saving..." : "Save Changes"}
+              <Button onClick={handleProfileUpdate} disabled={isSaving} size="sm" className="sm:size-auto">
+                <Save className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">{isSaving ? "Saving..." : "Save Changes"}</span>
               </Button>
             </>
           ) : (
-            <Button onClick={() => setIsEditing(true)}>
-              <Pen className="h-4 w-4 mr-2" />
-              Edit Profile
+            <Button onClick={() => setIsEditing(true)} size="sm" className="sm:size-auto">
+              <Pen className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Edit Profile</span>
             </Button>
           )}
         </div>

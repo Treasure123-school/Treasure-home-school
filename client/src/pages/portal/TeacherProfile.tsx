@@ -6,7 +6,7 @@ import { ChangePasswordCard } from '@/components/ChangePasswordCard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/lib/auth';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { User, Mail, Phone, MapPin, Save, Edit, Camera, GraduationCap, BookOpen, Users, CheckCircle, Clock, Award, FileText, Pen } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Save, Edit, Camera, GraduationCap, BookOpen, Users, CheckCircle, Clock, Award, FileText, Pen, X } from 'lucide-react';
 import { Link } from 'wouter';
 import React, { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -392,37 +392,41 @@ export default function TeacherProfile() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">My Profile</h1>
-          <p className="text-muted-foreground">
+      <div className="flex items-start sm:items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">My Profile</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
             View and manage your personal information
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex shrink-0 gap-2">
           {isEditing ? (
             <>
               <Button
                 variant="outline"
                 onClick={() => setIsEditing(false)}
                 disabled={isSaving}
+                size="sm"
+                className="sm:size-auto"
               >
-                Cancel
+                <X className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">Cancel</span>
               </Button>
               <Button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg"
+                size="sm"
+                className="sm:size-auto transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg"
                 data-testid="button-save-changes"
               >
-                <Save className={`h-4 w-4 mr-2 ${isSaving ? 'animate-spin' : ''}`} />
-                {isSaving ? 'Saving...' : 'Save Changes'}
+                <Save className={`h-4 w-4 sm:mr-2 ${isSaving ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save Changes'}</span>
               </Button>
             </>
           ) : (
-            <Button onClick={() => setIsEditing(true)}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Profile
+            <Button onClick={() => setIsEditing(true)} size="sm" className="sm:size-auto">
+              <Edit className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Edit Profile</span>
             </Button>
           )}
         </div>
