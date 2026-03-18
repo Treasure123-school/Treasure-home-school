@@ -15,7 +15,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createStudentSchema, quickCreateStudentSchema, type CreateStudentRequest, type QuickCreateStudentRequest } from '@shared/schema';
-import { UserPlus, Edit, Search, Download, Trash2, Shield, ShieldOff, Upload, FileText, Key, AlertTriangle, AlertCircle, GraduationCap, Palette, Briefcase, Info } from 'lucide-react';
+import { UserPlus, Edit, Search, Download, Trash2, Shield, ShieldOff, Upload, FileText, Key, AlertTriangle, AlertCircle, GraduationCap, Palette, Briefcase, Info, MoreHorizontal, Users, BookOpen } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/lib/auth';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { ROLE_IDS } from '@/lib/roles';
@@ -1504,67 +1505,51 @@ export default function StudentManagement() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2 pt-2 border-t border-border">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="flex-1 text-xs"
-                          onClick={() => handleEditClick(student)}
-                          data-testid={`button-edit-${student.id}`}
-                        >
-                          <Edit className="h-3.5 w-3.5 mr-1.5" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 text-xs"
-                          onClick={() => setStudentToBlock(student)}
-                          disabled={blockStudentMutation.isPending && blockStudentMutation.variables?.id === student.id}
-                          data-testid={`button-block-${student.id}`}
-                        >
-                          {student.user?.isActive ? (
-                            <>
-                              <ShieldOff className="h-3.5 w-3.5 mr-1.5 text-orange-600" />
-                              Block
-                            </>
-                          ) : (
-                            <>
-                              <Shield className="h-3.5 w-3.5 mr-1.5 text-green-600" />
-                              Activate
-                            </>
-                          )}
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
+                      <div className="flex items-center justify-end pt-2 border-t border-border">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
                             <Button
                               variant="outline"
                               size="sm"
-                              className="text-xs"
-                              data-testid={`button-delete-${student.id}`}
+                              className="h-8 w-8 p-0"
+                              data-testid={`button-actions-${student.id}`}
                             >
-                              <Trash2 className="h-3.5 w-3.5 text-red-600" />
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Open actions</span>
                             </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Student</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete {student.user?.firstName} {student.user?.lastName}? 
-                                This will deactivate the student account and cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDeleteStudent(student.id)}
-                                className="bg-red-600 hover:bg-red-700"
-                              >
-                                Delete Student
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem
+                              onClick={() => handleEditClick(student)}
+                              data-testid={`button-edit-${student.id}`}
+                            >
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit Student
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => setStudentToBlock(student)}
+                              disabled={blockStudentMutation.isPending && blockStudentMutation.variables?.id === student.id}
+                              data-testid={`button-block-${student.id}`}
+                              className={student.user?.isActive ? 'text-orange-600 focus:text-orange-600' : 'text-green-600 focus:text-green-600'}
+                            >
+                              {student.user?.isActive ? (
+                                <><ShieldOff className="h-4 w-4 mr-2" />Block Account</>
+                              ) : (
+                                <><Shield className="h-4 w-4 mr-2" />Unblock Account</>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteStudent(student.id)}
+                              data-testid={`button-delete-${student.id}`}
+                              className="text-red-600 focus:text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete Student
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   </div>
@@ -1668,61 +1653,50 @@ export default function StudentManagement() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center space-x-1">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => handleEditClick(student)}
-                              data-testid={`button-edit-${student.id}`}
-                              title="Edit student"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setStudentToBlock(student)}
-                              disabled={blockStudentMutation.isPending && blockStudentMutation.variables?.id === student.id}
-                              data-testid={`button-block-${student.id}`}
-                              title={student.user?.isActive ? "Block student" : "Activate student"}
-                            >
-                              {student.user?.isActive ? (
-                                <ShieldOff className="h-4 w-4 text-orange-600" />
-                              ) : (
-                                <Shield className="h-4 w-4 text-green-600" />
-                              )}
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  data-testid={`button-delete-${student.id}`}
-                                  title="Delete student"
-                                >
-                                  <Trash2 className="h-4 w-4 text-red-600" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Student</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete {student.user?.firstName} {student.user?.lastName}? 
-                                    This will deactivate the student account and cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => handleDeleteStudent(student.id)}
-                                    className="bg-red-600 hover:bg-red-700"
-                                  >
-                                    Delete Student
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                data-testid={`button-actions-${student.id}`}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Open actions</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem
+                                onClick={() => handleEditClick(student)}
+                                data-testid={`button-edit-${student.id}`}
+                              >
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit Student
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => setStudentToBlock(student)}
+                                disabled={blockStudentMutation.isPending && blockStudentMutation.variables?.id === student.id}
+                                data-testid={`button-block-${student.id}`}
+                                className={student.user?.isActive ? 'text-orange-600 focus:text-orange-600' : 'text-green-600 focus:text-green-600'}
+                              >
+                                {student.user?.isActive ? (
+                                  <><ShieldOff className="h-4 w-4 mr-2" />Block Account</>
+                                ) : (
+                                  <><Shield className="h-4 w-4 mr-2" />Unblock Account</>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => handleDeleteStudent(student.id)}
+                                data-testid={`button-delete-${student.id}`}
+                                className="text-red-600 focus:text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete Student
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
