@@ -4805,7 +4805,7 @@ export class DatabaseStorage implements IStorage {
 
       // Safety net: deduplicate by subjectId, keeping the lowest-id item per subject
       const seenSubjectIds = new Set<number>();
-      const deduplicatedItems = items.filter(item => {
+      const deduplicatedItems = items.filter((item: { subjectId: number }) => {
         if (seenSubjectIds.has(item.subjectId)) return false;
         seenSubjectIds.add(item.subjectId);
         return true;
