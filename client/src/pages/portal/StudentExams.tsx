@@ -529,12 +529,20 @@ export default function StudentExams() {
               // Restore violation count and penalty (persists across reloads)
               if (metadata.violationCount !== undefined) {
                 setViolationCount(metadata.violationCount);
+                // Sync ref immediately — setViolationCount is async so the ref's
+                // useEffect would lag behind. The reload violation fires 1.5 s from
+                // now; without this the ref would still be 0 and newCount would be
+                // wrong (e.g. 1 instead of the correct restored+1 value).
+                violationCountRef.current = metadata.violationCount;
                 const restoredPenalty = calculateViolationPenalty(metadata.violationCount);
+                violationPenaltyRef.current = restoredPenalty;
                 setViolationPenalty(restoredPenalty);
               } else if (metadata.tabSwitchCount !== undefined) {
                 // Backward compatibility
                 setTabSwitchCount(metadata.tabSwitchCount);
+                violationCountRef.current = metadata.tabSwitchCount;
                 const calculatedPenalty = calculateViolationPenalty(metadata.tabSwitchCount);
+                violationPenaltyRef.current = calculatedPenalty;
                 setViolationPenalty(calculatedPenalty);
               }
             } catch (e) {
