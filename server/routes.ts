@@ -1031,6 +1031,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ ...stats, roomCounts });
   });
 
+  // ==================== USER ACTIVITY HEARTBEAT ====================
+  // Lightweight endpoint every authenticated user calls periodically.
+  // The authenticateUser middleware already calls touchUserActivity, so this
+  // route body is intentionally empty — the middleware does the work.
+  app.post('/api/user/heartbeat', authenticateUser, (_req, res) => {
+    res.json({ ok: true });
+  });
+
   // ==================== ONLINE USERS (ADMIN ONLY) ====================
   app.get('/api/admin/online-users', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (_req, res) => {
     try {

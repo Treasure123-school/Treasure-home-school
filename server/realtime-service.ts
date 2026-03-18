@@ -261,10 +261,19 @@ class RealtimeService {
         socket.emit('subscriptions', { rooms });
       });
 
-      // USER ACTIVITY: client sends this heartbeat every 30s to stay "online"
+      // USER ACTIVITY: client sends this heartbeat every 25s to stay "online"
       socket.on('user:heartbeat', () => {
         const u = this.authenticatedSockets.get(socket.id);
-        if (u) this.updateUserActivity(u.userId);
+        if (!u) return;
+        const existing = this.userActivityMap.get(u.userId);
+        if (existing) {
+          // Record is alive — just refresh the timestamp
+          existing.lastActive = new Date();
+        } else {
+          // Record was pruned by the activity-check interval but the socket is
+          // still open.  Recreate the entry so the user re-appears in the list.
+          this.touchUserActivity(u.userId, undefined, u.role);
+        }
       });
 
       // EXAM SESSION SECURITY: Register active exam session for duplicate detection
@@ -671,7 +680,8 @@ class RealtimeService {
       };
       this.userActivityMap.set(user.userId, record);
 
-      // Async enrich display name without blocking connect
+      // Async enrich display name without blocking connect; re-broadcast once
+      // names are available so admins see real names immediately (not the UUID).
       if (this.userInfoProvider) {
         this.userInfoProvider(user.userId)
           .then((info) => {
@@ -680,6 +690,7 @@ class RealtimeService {
               if (r) {
                 r.displayName = info.displayName;
                 r.username = info.username;
+                this.broadcastOnlineUsersToAdmins();
               }
             }
           })
@@ -779,7 +790,8 @@ class RealtimeService {
     };
     this.userActivityMap.set(userId, record);
 
-    // Async-enrich with display name / username from DB
+    // Async-enrich with display name / username from DB; re-broadcast once
+    // complete so admins see real names immediately via socket push.
     if (this.userInfoProvider) {
       this.userInfoProvider(userId)
         .then((info) => {
@@ -788,6 +800,7 @@ class RealtimeService {
             if (r) {
               r.displayName = info.displayName;
               r.username = info.username;
+              this.broadcastOnlineUsersToAdmins();
             }
           }
         })
@@ -799,8 +812,10 @@ class RealtimeService {
 
   private startActivityCheck() {
     // Every 30 s: prune stale socket IDs and expire users who have been
-    // completely inactive (no API calls, no socket heartbeats) for 5 minutes.
-    const EXPIRY_MS = 5 * 60 * 1000;
+    // completely inactive (no API calls AND no socket heartbeats) for 10 minutes.
+    // 10 minutes gives socket heartbeats (every 25 s) ample room to refresh
+    // the record even after brief network blips or page navigations.
+    const EXPIRY_MS = 10 * 60 * 1000;
 
     this.activityCheckInterval = setInterval(() => {
       const now = Date.now();
