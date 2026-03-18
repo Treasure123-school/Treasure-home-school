@@ -2,6 +2,7 @@ import { Server as SocketIOServer, Socket } from 'socket.io';
 import type { Server as HTTPServer } from 'http';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import { ROLE_NAMES } from '@shared/role-constants';
 
 const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'development' ? 'dev-secret-key-change-in-production' : undefined);
 
@@ -82,6 +83,13 @@ class RealtimeService {
   private activeExamSessions = new Map<number, ActiveExamSession>();
   // Track socket to session mapping for cleanup
   private socketToSession = new Map<string, number>();
+
+  // Pluggable user info provider for enriching activity records
+  private userInfoProvider: ((userId: string) => Promise<{ displayName: string; username: string } | null>) | null = null;
+
+  setUserInfoProvider(fn: (userId: string) => Promise<{ displayName: string; username: string } | null>) {
+    this.userInfoProvider = fn;
+  }
 
   initialize(httpServer: HTTPServer) {
     // Build allowed origins for CORS - production ready
@@ -179,7 +187,10 @@ class RealtimeService {
           authorizedStudentIds?: string[];
         };
         
-        const role = decoded.roleName || decoded.role || 'unknown';
+        // Prefer roleName from token; fall back to resolving from roleId for legacy tokens
+        const role = decoded.roleName 
+          || decoded.role 
+          || (decoded.roleId ? (ROLE_NAMES[decoded.roleId as keyof typeof ROLE_NAMES] || 'unknown') : 'unknown');
         
         this.authenticatedSockets.set(socket.id, {
           id: socket.id,
@@ -644,20 +655,36 @@ class RealtimeService {
 
   // ─── USER ACTIVITY TRACKING ───────────────────────────────────────────────
 
-  private trackUserConnect(user: SocketUser, socketId: string) {
+  private async trackUserConnect(user: SocketUser, socketId: string) {
     const now = new Date();
     const existing = this.userActivityMap.get(user.userId);
     if (existing) {
       existing.socketIds.add(socketId);
       existing.lastActive = now;
     } else {
-      this.userActivityMap.set(user.userId, {
+      const record: UserActivityRecord = {
         userId: user.userId,
         role: user.role,
         socketIds: new Set([socketId]),
         firstConnectedAt: now,
         lastActive: now,
-      });
+      };
+      this.userActivityMap.set(user.userId, record);
+
+      // Async enrich display name without blocking connect
+      if (this.userInfoProvider) {
+        this.userInfoProvider(user.userId)
+          .then((info) => {
+            if (info) {
+              const r = this.userActivityMap.get(user.userId);
+              if (r) {
+                r.displayName = info.displayName;
+                r.username = info.username;
+              }
+            }
+          })
+          .catch(() => {/* ignore enrichment failures */});
+      }
     }
     this.broadcastOnlineUsersToAdmins();
   }
@@ -682,12 +709,19 @@ class RealtimeService {
   private broadcastOnlineUsersToAdmins() {
     if (!this.io) return;
     const list = this.getOnlineUsersRaw();
-    this.io.to('role:admin').to('role:superadmin').emit('admin:online_users', list);
+    // Target both admin room name variants to be resilient to role name formats
+    this.io
+      .to('role:admin')
+      .to('role:Admin')
+      .to('role:super_admin')
+      .to('role:Super Admin')
+      .to('role:superadmin')
+      .emit('admin:online_users', list);
   }
 
   private getOnlineUsersRaw(): Array<{
-    userId: string; role: string; firstConnectedAt: string;
-    lastActive: string; status: 'online' | 'idle'; socketCount: number;
+    userId: string; role: string; displayName: string; username: string;
+    firstConnectedAt: string; lastActive: string; status: 'online' | 'idle'; socketCount: number;
   }> {
     const IDLE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes without heartbeat = idle
     const now = Date.now();
@@ -697,6 +731,8 @@ class RealtimeService {
       result.push({
         userId: rec.userId,
         role: rec.role,
+        displayName: rec.displayName || rec.username || rec.userId,
+        username: rec.username || rec.userId,
         firstConnectedAt: rec.firstConnectedAt.toISOString(),
         lastActive: rec.lastActive.toISOString(),
         status: msSinceActive > IDLE_THRESHOLD_MS ? 'idle' : 'online',

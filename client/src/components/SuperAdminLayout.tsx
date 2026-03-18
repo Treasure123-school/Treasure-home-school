@@ -40,6 +40,7 @@ interface SuperAdminLayoutProps {
   children: ReactNode;
 }
 import { useQuery } from "@tanstack/react-query";
+import { useUserActivityTracker } from '@/hooks/useUserActivityTracker';
 
 interface SettingsData {
   schoolName: string;
@@ -53,6 +54,8 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useUserActivityTracker(true);
 
   const { data: settings } = useQuery<SettingsData>({
     queryKey: ["/api/public/settings"],

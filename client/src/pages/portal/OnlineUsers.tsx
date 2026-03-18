@@ -26,15 +26,22 @@ interface OnlineUser {
 }
 
 const ROLE_CONFIG: Record<string, { label: string; icon: typeof Shield; color: string }> = {
-  superadmin: { label: 'Super Admin', icon: Shield, color: 'text-purple-600' },
-  admin:      { label: 'Admin',       icon: Shield, color: 'text-red-600' },
-  teacher:    { label: 'Teacher',     icon: BookOpen, color: 'text-blue-600' },
-  student:    { label: 'Student',     icon: GraduationCap, color: 'text-green-600' },
-  parent:     { label: 'Parent',      icon: UserCheck, color: 'text-orange-600' },
+  superadmin:    { label: 'Super Admin', icon: Shield, color: 'text-purple-600' },
+  super_admin:   { label: 'Super Admin', icon: Shield, color: 'text-purple-600' },
+  'super admin': { label: 'Super Admin', icon: Shield, color: 'text-purple-600' },
+  admin:         { label: 'Admin',       icon: Shield, color: 'text-red-600' },
+  teacher:       { label: 'Teacher',     icon: BookOpen, color: 'text-blue-600' },
+  student:       { label: 'Student',     icon: GraduationCap, color: 'text-green-600' },
+  parent:        { label: 'Parent',      icon: UserCheck, color: 'text-orange-600' },
 };
 
+function normalizeRoleKey(role: string): string {
+  return role.toLowerCase().replace(/\s+/g, '_').replace(/-/g, '_');
+}
+
 function RoleBadge({ role }: { role: string }) {
-  const cfg = ROLE_CONFIG[role] ?? { label: role, icon: Users, color: 'text-gray-600' };
+  const key = role.toLowerCase();
+  const cfg = ROLE_CONFIG[key] ?? ROLE_CONFIG[normalizeRoleKey(role)] ?? { label: role, icon: Users, color: 'text-gray-600' };
   const Icon = cfg.icon;
   return (
     <span className={`inline-flex items-center gap-1 text-sm font-medium ${cfg.color}`}>
@@ -66,47 +73,61 @@ export default function OnlineUsers() {
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
   const [socketConnected, setSocketConnected] = useState(false);
   const [search, setSearch] = useState('');
-  const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
+  const enrichedCacheRef = useRef<Map<string, OnlineUser>>(new Map());
 
+  // Periodically refresh from REST API for enriched display names
   const { data: initialData, isLoading, refetch } = useQuery<OnlineUser[]>({
     queryKey: ['/api/admin/online-users'],
     enabled: !!user,
-    refetchInterval: false,
+    refetchInterval: 15000, // refresh every 15 seconds
   });
 
+  // Keep enriched cache up to date from REST responses
   useEffect(() => {
-    if (initialData) setOnlineUsers(initialData);
+    if (!initialData) return;
+    initialData.forEach((u) => enrichedCacheRef.current.set(u.userId, u));
+    setOnlineUsers(initialData);
   }, [initialData]);
 
+  // Merge live socket update with cached enriched data (display names)
   const handleOnlineUsers = useCallback((data: OnlineUser[]) => {
-    setOnlineUsers(data);
+    const merged = data.map((u) => {
+      const cached = enrichedCacheRef.current.get(u.userId);
+      return {
+        ...u,
+        displayName: u.displayName && u.displayName !== u.userId ? u.displayName : (cached?.displayName || u.displayName),
+        username: u.username && u.username !== u.userId ? u.username : (cached?.username || u.username),
+        email: u.email ?? cached?.email,
+        roleId: u.roleId ?? cached?.roleId,
+      };
+    });
+    // Update cache with latest activity data
+    merged.forEach((u) => enrichedCacheRef.current.set(u.userId, u));
+    setOnlineUsers(merged);
   }, []);
 
   useEffect(() => {
     const socket = getSharedSocket();
 
-    const onConnect = () => setSocketConnected(true);
+    const onConnect = () => {
+      setSocketConnected(true);
+      socket.emit('user:heartbeat');
+    };
     const onDisconnect = () => setSocketConnected(false);
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
     socket.on('admin:online_users', handleOnlineUsers);
 
-    if (socket.connected) setSocketConnected(true);
-
-    // Send heartbeat every 30 seconds to keep current user marked as active
-    heartbeatRef.current = setInterval(() => {
-      if (socket.connected) socket.emit('user:heartbeat');
-    }, 30000);
-
-    // Send an initial heartbeat on mount
-    if (socket.connected) socket.emit('user:heartbeat');
+    if (socket.connected) {
+      setSocketConnected(true);
+      socket.emit('user:heartbeat');
+    }
 
     return () => {
       socket.off('connect', onConnect);
       socket.off('disconnect', onDisconnect);
       socket.off('admin:online_users', handleOnlineUsers);
-      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     };
   }, [handleOnlineUsers]);
 

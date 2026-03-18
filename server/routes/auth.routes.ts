@@ -5,6 +5,7 @@ import { z } from "zod";
 import { storage } from "../storage";
 import { authenticateUser, SECRET_KEY, JWT_EXPIRES_IN, ROLES } from "./middleware";
 import { sendSuccess, sendBadRequest, sendUnauthorized, sendNotFound, handleRouteError } from "../utils/response-helpers";
+import { ROLE_NAMES } from "@shared/role-constants";
 
 const router = Router();
 
@@ -118,7 +119,8 @@ router.post('/login', async (req: Request, res: Response) => {
     loginAttempts.delete(identifier);
     lockoutViolations.delete(identifier);
 
-    const token = jwt.sign({ userId: user.id, roleId: user.roleId }, SECRET_KEY, { expiresIn: JWT_EXPIRES_IN });
+    const roleName = ROLE_NAMES[user.roleId as keyof typeof ROLE_NAMES] || 'unknown';
+    const token = jwt.sign({ userId: user.id, roleId: user.roleId, roleName }, SECRET_KEY, { expiresIn: JWT_EXPIRES_IN });
     sendSuccess(res, {
       token,
       user: {

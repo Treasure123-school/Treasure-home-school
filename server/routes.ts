@@ -952,6 +952,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const { socketOptimizer } = await import('./socket-optimizer');
   const { getPoolStats } = await import('./query-optimizer');
 
+  // Register user info provider so realtime service can enrich display names
+  realtimeService.setUserInfoProvider(async (userId: string) => {
+    try {
+      const user = await storage.getUser(userId);
+      if (!user) return null;
+      return {
+        displayName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || userId,
+        username: user.username || userId,
+      };
+    } catch {
+      return null;
+    }
+  });
+
   // ==================== HEALTH & PERFORMANCE ENDPOINTS ====================
 
   // Basic health check (public)

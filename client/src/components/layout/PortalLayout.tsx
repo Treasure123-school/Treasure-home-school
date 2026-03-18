@@ -29,6 +29,7 @@ import { HeaderSearch } from '@/components/HeaderSearch';
 
 
 import { useQuery } from '@tanstack/react-query';
+import { useUserActivityTracker } from '@/hooks/useUserActivityTracker';
 
 interface SettingsData {
   schoolName: string;
@@ -69,6 +70,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
+
+  useUserActivityTracker(true);
 
 
   // Load sidebar state from localStorage
