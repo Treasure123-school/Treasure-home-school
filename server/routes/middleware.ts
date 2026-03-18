@@ -83,6 +83,13 @@ export const authenticateUser = async (req: any, res: any, next: any) => {
       return res.status(401).json({ message: "User role has changed, please log in again" });
     }
     req.user = user;
+
+    // Keep lastActive fresh on every API call (lazy import to avoid circular deps)
+    try {
+      const { realtimeService } = await import('../realtime-service');
+      realtimeService.touchUserActivity(normalizedUserId);
+    } catch { /* non-critical — ignore if realtime service isn't ready */ }
+
     next();
   } catch (error) {
     res.status(401).json({ message: "Authentication failed" });

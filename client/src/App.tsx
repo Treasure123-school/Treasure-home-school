@@ -56,23 +56,45 @@ function ActivityHeartbeat() {
   useEffect(() => {
     if (!isAuthenticated || !user) return;
 
+    // Attempt to emit heartbeat — creates socket if it doesn't exist yet
     const sendHeartbeat = () => {
       try {
         const socket = getSharedSocket();
-        if (socket.connected) socket.emit('user:heartbeat');
+        if (socket.connected) {
+          socket.emit('user:heartbeat');
+        }
       } catch {
-        // socket not ready yet, skip
+        // socket not ready yet — connection will fire trackUserConnect on server
       }
     };
 
-    // Initial heartbeat after a short delay to let the socket connect
-    const initial = setTimeout(sendHeartbeat, 2000);
-    // Then every 30 seconds
-    intervalRef.current = setInterval(sendHeartbeat, 30000);
+    // 1. Connect immediately so the server tracks this user as online right away
+    try { getSharedSocket(); } catch { /* ignore */ }
+
+    // 2. Periodic heartbeat every 20s keeps lastActive fresh and status accurate
+    intervalRef.current = setInterval(sendHeartbeat, 20000);
+
+    // 3. On socket connect / reconnect: send heartbeat immediately so the user
+    //    is marked online again after a network drop without waiting 20s
+    let socket: ReturnType<typeof getSharedSocket>;
+    try {
+      socket = getSharedSocket();
+      socket.on('connect', sendHeartbeat);
+    } catch { /* ignore */ }
+
+    // 4. Tab visibility: when user switches back to this tab, ping immediately
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') sendHeartbeat();
+    };
+    document.addEventListener('visibilitychange', onVisible);
 
     return () => {
-      clearTimeout(initial);
       if (intervalRef.current) clearInterval(intervalRef.current);
+      document.removeEventListener('visibilitychange', onVisible);
+      try {
+        const s = getSharedSocket();
+        s.off('connect', sendHeartbeat);
+      } catch { /* ignore */ }
     };
   }, [isAuthenticated, user]);
 

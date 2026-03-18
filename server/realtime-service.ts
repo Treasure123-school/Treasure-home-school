@@ -710,6 +710,15 @@ class RealtimeService {
     return this.getOnlineUsersRaw();
   }
 
+  /**
+   * Called from the REST auth middleware on every authenticated request.
+   * Updates lastActive if the user already has a socket connection tracked.
+   * No-op if the user isn't in the map (socket not connected).
+   */
+  touchUserActivity(userId: string) {
+    this.updateUserActivity(userId);
+  }
+
   private startActivityCheck() {
     // Every 60s: clean up ghost entries where all sockets are gone
     this.activityCheckInterval = setInterval(() => {
