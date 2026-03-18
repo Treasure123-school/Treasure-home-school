@@ -606,6 +606,16 @@ export default function StudentExams() {
                   setViolationHistory(hist);
                   violationHistoryRef.current = hist;
                 }
+
+                // If the count is already at (or somehow beyond) the threshold, the
+                // exam should have been auto-submitted on the previous session but
+                // forceSubmit may have failed. Block any more violations immediately
+                // and trigger a silent auto-submit so the count never exceeds MAX.
+                if (restoredCount >= MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT) {
+                  isAutoSubmittingRef.current = true;
+                  // Small delay so the session state settles before submitting
+                  setTimeout(() => forceSubmitExam(), 2000);
+                }
               }
             } catch (e) {
             }
@@ -762,6 +772,14 @@ export default function StudentExams() {
   // effect to re-subscribe on each violation.
   const handleSecurityViolation = useCallback((type: ViolationType, details?: string) => {
     if (!activeSession || activeSession.isCompleted || isAutoSubmittingRef.current) return;
+    // Double-guard: if the violation count already reached the auto-submit threshold
+    // (e.g. restored from a previous session where forceSubmit failed), lock out
+    // any further violations immediately so the count can never exceed MAX.
+    if (violationCountRef.current >= MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT) {
+      isAutoSubmittingRef.current = true;
+      setTimeout(() => forceSubmitExam(), 1000);
+      return;
+    }
 
     // Derive new count from ref (always current, no stale closure risk)
     const newCount = violationCountRef.current + 1;
@@ -833,11 +851,15 @@ export default function StudentExams() {
       setShowTabSwitchWarning(false);
     }, 8000);
 
-    // ── 3rd violation → WARNING 3 of 3 then AUTO-SUBMIT ─────────────────────
+    // Display count is always capped at MAX_WARNINGS_ALLOWED so we never show
+    // "4 of 3" even if the raw count exceeded 3 due to a rare timing edge case.
+    const displayCount = Math.min(newCount, MAX_WARNINGS_ALLOWED);
+
+    // ── 3rd (or beyond) violation → WARNING 3 of 3 then AUTO-SUBMIT ─────────
     if (newCount >= MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT) {
       isAutoSubmittingRef.current = true;
       toast({
-        title: `🚨 WARNING ${newCount} of ${MAX_WARNINGS_ALLOWED}: ${violationNames[type]}`,
+        title: `🚨 WARNING ${displayCount} of ${MAX_WARNINGS_ALLOWED}: ${violationNames[type]}`,
         description: `This is your 3rd and final violation. Your exam is being automatically submitted now.`,
         variant: 'destructive',
         duration: 8000,
@@ -849,7 +871,7 @@ export default function StudentExams() {
 
     // ── 1st or 2nd violation → numbered warning ──────────────────────────────
     toast({
-      title: `⚠️ WARNING ${newCount} of ${MAX_WARNINGS_ALLOWED}: ${violationNames[type]}`,
+      title: `⚠️ WARNING ${displayCount} of ${MAX_WARNINGS_ALLOWED}: ${violationNames[type]}`,
       description: newCount === 1
         ? `This is Warning 1 of 3. You have 2 more violations allowed before your exam is auto-submitted. Stay on this page and do not switch tabs or reload.`
         : `This is Warning 2 of 3. ONE more violation will automatically submit your exam immediately. Stay on this page.`,
@@ -2562,8 +2584,8 @@ export default function StudentExams() {
                   <div>
                     <p className="text-sm font-semibold">
                       {violationCount >= MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT
-                        ? `🚨 WARNING ${violationCount} of ${MAX_WARNINGS_ALLOWED} — Exam is being auto-submitted!`
-                        : `⚠️ WARNING ${violationCount} of ${MAX_WARNINGS_ALLOWED} — ${MAX_WARNINGS_ALLOWED - violationCount} more violation(s) before auto-submit`
+                        ? `🚨 WARNING ${Math.min(violationCount, MAX_WARNINGS_ALLOWED)} of ${MAX_WARNINGS_ALLOWED} — Exam is being auto-submitted!`
+                        : `⚠️ WARNING ${Math.min(violationCount, MAX_WARNINGS_ALLOWED)} of ${MAX_WARNINGS_ALLOWED} — ${Math.max(0, MAX_WARNINGS_ALLOWED - violationCount)} more violation(s) before auto-submit`
                       }
                     </p>
                     <p className="text-xs mt-0.5">
