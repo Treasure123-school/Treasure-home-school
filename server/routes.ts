@@ -2227,7 +2227,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Emit realtime event for exam update
       realtimeService.emitTableChange('exams', 'UPDATE', exam, existingExam, teacherId);
+      // Emit to the specific exam room — students currently taking this exam are subscribed here
+      realtimeService.emitToExam(exam.id, 'exam.updated', exam);
       if (exam.classId) {
+        // Emit to the class room — students in this class who have the exam page open receive this
         realtimeService.emitToClass(exam.classId.toString(), 'exam.updated', exam);
       }
 

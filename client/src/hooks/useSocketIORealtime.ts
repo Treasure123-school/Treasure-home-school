@@ -305,8 +305,8 @@ export function useSocketIORealtime({
 
       const customEvents = [
         'exam.started', 'exam.submitted', 'exam.graded', 'exam.auto_submitted',
-        'exam.published', 'exam.unpublished', 'exam.deleted',
-        'question.deleted',
+        'exam.published', 'exam.unpublished', 'exam.deleted', 'exam.updated',
+        'question.deleted', 'question.updated',
         'reportcard.updated', 'reportcard.published', 'reportcard.finalized', 'reportcard.reverted',
         'score-updated', 'score.updated',
         'user.created', 'user.updated', 'user.deleted',

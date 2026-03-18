@@ -184,6 +184,10 @@ export default function StudentExams() {
     }
   }, [activeSession]);
 
+  // Deduplication: track the last processed exam-update by exam-id+JSON hash to avoid
+  // firing multiple toasts when the same update arrives via both table_change and exam.updated
+  const lastExamUpdateKeyRef = useRef<string | null>(null);
+
   // Network status monitoring
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [networkIssues, setNetworkIssues] = useState(false);
@@ -210,6 +214,66 @@ export default function StudentExams() {
         });
         setSelectedExam(null);
         setActiveSession(null);
+      }
+      // Handle exam settings updated by teacher (live update while student is taking/viewing exam)
+      const isExamUpdate =
+        event.eventType === 'exam.updated' ||
+        (event.operation === 'UPDATE' && event.table === 'exams');
+      if (isExamUpdate && event.data?.id) {
+        const updatedExam = event.data as Exam;
+        // Deduplicate: the same update can arrive via table_change AND exam.updated simultaneously.
+        // Use a key of examId + relevant fields so identical payloads only fire once.
+        const dedupeKey = `${updatedExam.id}|${updatedExam.timeLimit}|${updatedExam.name}|${updatedExam.instructions}|${updatedExam.totalMarks}|${updatedExam.passingScore}`;
+        if (lastExamUpdateKeyRef.current === dedupeKey) {
+          return;
+        }
+        lastExamUpdateKeyRef.current = dedupeKey;
+        // Always refresh the exam list
+        queryClient.invalidateQueries({ queryKey: ['/api/exams'] });
+        // Only apply live updates if this is the exam the student currently has open
+        if (selectedExam && updatedExam.id === selectedExam.id) {
+          const prevTimeLimit = selectedExam.timeLimit;
+          const newTimeLimit = updatedExam.timeLimit;
+          // Push updated exam data into React state so UI reflects changes instantly
+          setSelectedExam(updatedExam);
+          // --- Time limit changed while student is in an active session ---
+          if (activeSession && !activeSession.isCompleted && prevTimeLimit !== newTimeLimit) {
+            if (newTimeLimit) {
+              // Recalculate remaining time: new total − time already elapsed
+              const elapsedSeconds = activeSession.startedAt
+                ? Math.floor((Date.now() - new Date(activeSession.startedAt).getTime()) / 1000)
+                : 0;
+              const newTotalSeconds = newTimeLimit * 60;
+              const newRemaining = Math.max(0, newTotalSeconds - elapsedSeconds);
+              setTimeRemaining(newRemaining);
+              const minutesLeft = Math.ceil(newRemaining / 60);
+              toast({
+                title: "⏱ Exam Time Updated",
+                description: `Your teacher has changed the exam duration. You now have ${minutesLeft} minute${minutesLeft !== 1 ? 's' : ''} remaining.`,
+              });
+            } else {
+              // Time limit removed — student now has unlimited time
+              setTimeRemaining(null);
+              toast({
+                title: "⏱ Time Limit Removed",
+                description: "Your teacher has removed the time limit. You now have unlimited time to complete this exam.",
+              });
+            }
+          } else if (activeSession && !activeSession.isCompleted) {
+            // Other settings changed while exam is active — determine what changed
+            const changes: string[] = [];
+            if (updatedExam.name !== selectedExam.name) changes.push('exam name');
+            if (updatedExam.instructions !== selectedExam.instructions) changes.push('instructions');
+            if (updatedExam.totalMarks !== selectedExam.totalMarks) changes.push('total marks');
+            if (updatedExam.passingScore !== selectedExam.passingScore) changes.push('passing score');
+            if (changes.length > 0) {
+              toast({
+                title: "Exam Settings Updated",
+                description: `Your teacher has updated this exam's ${changes.join(' and ')}. Please continue your exam.`,
+              });
+            }
+          }
+        }
       }
     }
   });
