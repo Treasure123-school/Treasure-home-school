@@ -765,11 +765,12 @@ export default function StudentExams() {
       isAutoSubmittingRef.current = true;
       toast({
         title: `🚨 WARNING ${newCount} of ${MAX_WARNINGS_ALLOWED}: ${violationNames[type]}`,
-        description: `This is your 3rd violation. Your exam is being automatically submitted now.`,
+        description: `This is your 3rd and final violation. Your exam is being automatically submitted now.`,
         variant: 'destructive',
+        duration: 8000,
       });
-      // Give 2 seconds so the student can see the final warning before submit
-      setTimeout(() => forceSubmitExam(), 2000);
+      // Give 3 seconds so the student can read the final warning before submit
+      setTimeout(() => forceSubmitExam(), 3000);
       return;
     }
 
@@ -777,9 +778,10 @@ export default function StudentExams() {
     toast({
       title: `⚠️ WARNING ${newCount} of ${MAX_WARNINGS_ALLOWED}: ${violationNames[type]}`,
       description: newCount === 1
-        ? `This is Warning 1 of 3. You have 2 more warning(s) before your exam is auto-submitted. Stay on this page.`
+        ? `This is Warning 1 of 3. You have 2 more violations allowed before your exam is auto-submitted. Stay on this page and do not switch tabs or reload.`
         : `This is Warning 2 of 3. ONE more violation will automatically submit your exam immediately. Stay on this page.`,
       variant: 'destructive',
+      duration: 12000,
     });
   }, [activeSession, violationHistory, toast]);
 
@@ -2438,7 +2440,7 @@ export default function StudentExams() {
   // Render active exam without PortalLayout wrapper
   if (activeSession && examQuestions.length > 0) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-[120px] sm:pt-[140px]">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-[120px] sm:pt-[140px] select-none">
         <ExamHeader
           subjectName={subjectName}
           className={studentClassName}
