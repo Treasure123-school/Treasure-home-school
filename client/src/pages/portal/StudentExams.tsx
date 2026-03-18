@@ -19,9 +19,10 @@ import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { ExamHeader } from '@/components/ExamHeader';
 
 // ENHANCED EXAM SECURITY CONSTANTS
-// Allow only 2 warnings per exam session. On the 3rd violation, auto-submit the exam instantly.
-const MAX_WARNINGS_ALLOWED = 2; // Students get 2 warnings
-const MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT = 3; // Auto-submit on 3rd violation
+// Students receive 3 numbered warnings (Warning 1/3, 2/3, 3/3).
+// On the 3rd violation the warning is shown AND the exam is auto-submitted immediately.
+const MAX_WARNINGS_ALLOWED = 3; // Total warnings shown (1 of 3, 2 of 3, 3 of 3)
+const MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT = 3; // Auto-submit triggers ON the 3rd violation
 const PENALTY_PER_VIOLATION = 5;
 const MAX_PENALTY = 20;
 const VIOLATION_DETECTION_DELAY = 500; // ms delay to avoid false positives
@@ -33,6 +34,7 @@ type ViolationType =
   | 'browser_minimize' // Browser window minimized/backgrounded
   | 'devtools'        // DevTools/Inspect Element opened
   | 'refresh_attempt' // Refresh or back button detected
+  | 'page_reload'     // Actual page reload detected via sessionStorage
   | 'duplicate_session' // Same exam accessed from another device
   | 'screenshot'      // Screenshot/screen recording attempt (if detectable)
   | 'copy_paste';     // Copy/paste attempt
@@ -122,6 +124,8 @@ export default function StudentExams() {
   const [violationPenalty, setViolationPenalty] = useState(0);
   const devToolsCheckRef = useRef<NodeJS.Timeout | null>(null);
   const isAutoSubmittingRef = useRef(false); // Prevent double auto-submit
+  const detectedReloadSessionIdRef = useRef<number | null>(null); // Session ID from reload detection
+  const reloadViolationFiredRef = useRef(false); // Ensure reload violation is only fired once
   
   // RELIABILITY: Use refs to ensure latest values are always accessible for auto-submit
   const violationCountRef = useRef(violationCount);
@@ -432,7 +436,9 @@ export default function StudentExams() {
     const map: Record<number, any> = {};
     existingAnswers.forEach(answer => {
       if (answer.selectedOptionId) {
-        map[answer.questionId] = answer.selectedOptionId;
+        // Store as string so RadioGroup value comparisons work correctly
+        // (RadioGroupItem values are always strings)
+        map[answer.questionId] = String(answer.selectedOptionId);
       } else if (answer.textAnswer) {
         map[answer.questionId] = answer.textAnswer;
       }
@@ -484,6 +490,25 @@ export default function StudentExams() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSession?.id]);
 
+  // LEFT-EXAM DETECTION: On mount, check if the student left the exam page
+  // localStorage persists across tab closes, navigation away, AND page reloads,
+  // so this catches all cases where a student abandons the exam page.
+  useEffect(() => {
+    try {
+      const marker = localStorage.getItem('exam_left_marker');
+      if (marker) {
+        const parsed = JSON.parse(marker);
+        if (parsed?.sessionId) {
+          detectedReloadSessionIdRef.current = parsed.sessionId;
+        }
+        // Remove immediately so it doesn't fire twice
+        localStorage.removeItem('exam_left_marker');
+      }
+    } catch (_) {}
+    // Clean up any leftover sessionStorage marker from the old mechanism
+    try { sessionStorage.removeItem('exam_session_active'); } catch (_) {}
+  }, []);
+
   // Check for existing active session on component mount
   useEffect(() => {
     if (user?.id && !activeSession) {
@@ -496,16 +521,29 @@ export default function StudentExams() {
             if (exam) {
               setSelectedExam(exam);
             }
-            // Restore session state
+            // Restore session state from metadata
             try {
               const metadata = session.metadata ? JSON.parse(session.metadata) : {};
               if (metadata.currentQuestionIndex) {
                 setCurrentQuestionIndex(metadata.currentQuestionIndex);
               }
-              // Restore tab switch count and penalty if they were saved in metadata
-              if (metadata.tabSwitchCount !== undefined) {
+              // Restore violation count and penalty (persists across reloads)
+              if (metadata.violationCount !== undefined) {
+                setViolationCount(metadata.violationCount);
+                // Sync ref immediately — setViolationCount is async so the ref's
+                // useEffect would lag behind. The reload violation fires 1.5 s from
+                // now; without this the ref would still be 0 and newCount would be
+                // wrong (e.g. 1 instead of the correct restored+1 value).
+                violationCountRef.current = metadata.violationCount;
+                const restoredPenalty = calculateViolationPenalty(metadata.violationCount);
+                violationPenaltyRef.current = restoredPenalty;
+                setViolationPenalty(restoredPenalty);
+              } else if (metadata.tabSwitchCount !== undefined) {
+                // Backward compatibility
                 setTabSwitchCount(metadata.tabSwitchCount);
+                violationCountRef.current = metadata.tabSwitchCount;
                 const calculatedPenalty = calculateViolationPenalty(metadata.tabSwitchCount);
+                violationPenaltyRef.current = calculatedPenalty;
                 setViolationPenalty(calculatedPenalty);
               }
             } catch (e) {
@@ -522,16 +560,24 @@ export default function StudentExams() {
     if (activeSession && !activeSession.isCompleted) {
       const exam = exams.find(e => e.id === activeSession.examId);
 
-      // Recover timer from session if available (silently)
-      if (activeSession.timeRemaining !== null && activeSession.timeRemaining !== undefined) {
-        setTimeRemaining(activeSession.timeRemaining);
-      } else if (exam?.timeLimit && activeSession.startedAt) {
-        // Calculate remaining time based on start time
+      // ALWAYS calculate remaining time from startedAt for accuracy.
+      // Using the stored timeRemaining can be up to 30s stale (save interval),
+      // which makes the timer appear to reset to the beginning on reload.
+      if (exam?.timeLimit && activeSession.startedAt) {
         const elapsedSeconds = Math.floor((Date.now() - new Date(activeSession.startedAt).getTime()) / 1000);
         const totalSeconds = exam.timeLimit * 60;
         const remaining = Math.max(0, totalSeconds - elapsedSeconds);
         setTimeRemaining(remaining);
+      } else if (activeSession.timeRemaining !== null && activeSession.timeRemaining !== undefined) {
+        // Fallback: use stored value only when startedAt or timeLimit is unavailable
+        setTimeRemaining(activeSession.timeRemaining);
       }
+
+      // Ensure the localStorage marker is always present while the exam is active.
+      // beforeunload also sets it, but this covers the moment the session first loads.
+      try {
+        localStorage.setItem('exam_left_marker', JSON.stringify({ sessionId: activeSession.id, timestamp: Date.now() }));
+      } catch (_) {}
     }
   }, [activeSession, exams]);
 
@@ -649,102 +695,123 @@ export default function StudentExams() {
 
   // UNIFIED VIOLATION HANDLER: Centralizes all security violation processing
   // Handles: tab switches, browser minimize, DevTools, refresh attempts, duplicate sessions
+  // NOTE: Uses violationCountRef for reliable current count — never puts side effects inside
+  // a setState updater (which React requires to be pure / side-effect free).
   const handleSecurityViolation = useCallback((type: ViolationType, details?: string) => {
     if (!activeSession || activeSession.isCompleted || isAutoSubmittingRef.current) return;
-    
-    // Update violation count and history
-    setViolationCount(prev => {
-      const newCount = prev + 1;
-      
-      // Record this violation
-      const violationRecord: ViolationRecord = {
-        type,
-        timestamp: new Date(),
-        details
-      };
-      setViolationHistory(history => [...history, violationRecord]);
-      setLastViolationType(type);
-      
-      // Update penalty
-      const calculatedPenalty = calculateViolationPenalty(newCount);
-      setViolationPenalty(calculatedPenalty);
-      
-      // Also update tabSwitchCount for backward compatibility
-      if (type === 'tab_switch' || type === 'browser_minimize') {
-        setTabSwitchCount(tc => tc + 1);
-      }
-      
-      // Save violation to session metadata
-      if (activeSession?.id) {
-        apiRequest('PATCH', `/api/exam-sessions/${activeSession.id}/metadata`, {
-          metadata: JSON.stringify({
-            violationCount: newCount,
-            violationPenalty: calculatedPenalty,
-            lastViolationType: type,
-            violationHistory: [...violationHistory, violationRecord].slice(-10) // Keep last 10
-          })
-        }).catch(() => {});
-      }
-      
-      // Get violation type display name
-      const violationNames: Record<ViolationType, string> = {
-        'tab_switch': 'Tab Switch',
-        'browser_minimize': 'Browser Minimized',
-        'devtools': 'DevTools Detected',
-        'refresh_attempt': 'Refresh/Back Attempt',
-        'duplicate_session': 'Duplicate Session',
-        'screenshot': 'Screenshot Attempt',
-        'copy_paste': 'Copy/Paste Attempt'
-      };
-      
-      // CHECK IF AUTO-SUBMIT REQUIRED (3rd violation)
-      if (newCount >= MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT) {
-        isAutoSubmittingRef.current = true;
-        
-        toast({
-          title: "EXAM AUTO-SUBMITTED",
-          description: `Your exam has been automatically submitted due to ${newCount} security violations. This is to maintain exam integrity.`,
-          variant: "destructive",
-        });
-        
-        // Trigger auto-submit immediately
-        setTimeout(() => {
-          forceSubmitExam();
-        }, 500);
-        
-        return newCount;
-      }
-      
-      // Show warning for 1st and 2nd violations
-      setShowViolationWarning(true);
-      setShowTabSwitchWarning(true);
-      
-      // Auto-hide warning after 5 seconds
-      if (violationTimeoutRef.current) clearTimeout(violationTimeoutRef.current);
-      violationTimeoutRef.current = setTimeout(() => {
-        setShowViolationWarning(false);
-        setShowTabSwitchWarning(false);
-      }, 5000);
-      
-      const warningsRemaining = MAX_WARNINGS_ALLOWED - newCount + 1;
-      
-      if (newCount === 1) {
-        toast({
-          title: `WARNING 1 of ${MAX_WARNINGS_ALLOWED}: ${violationNames[type]}`,
-          description: `This is your first warning. You have ${warningsRemaining - 1} more warning(s) before your exam is auto-submitted. Please stay focused on the exam.`,
-          variant: "destructive",
-        });
-      } else if (newCount === 2) {
-        toast({
-          title: `FINAL WARNING: ${violationNames[type]}`,
-          description: `This is your LAST warning! One more violation will automatically submit your exam. Stay on the exam page.`,
-          variant: "destructive",
-        });
-      }
-      
-      return newCount;
+
+    // Derive new count from ref (always current, no stale closure risk)
+    const newCount = violationCountRef.current + 1;
+
+    // Sync ref and state immediately
+    violationCountRef.current = newCount;
+    setViolationCount(newCount);
+
+    // Record violation in history
+    const violationRecord: ViolationRecord = {
+      type,
+      timestamp: new Date(),
+      details
+    };
+    setViolationHistory(history => [...history, violationRecord]);
+    setLastViolationType(type);
+
+    // Update penalty
+    const calculatedPenalty = calculateViolationPenalty(newCount);
+    violationPenaltyRef.current = calculatedPenalty;
+    setViolationPenalty(calculatedPenalty);
+
+    // Backward compatibility counter
+    if (type === 'tab_switch' || type === 'browser_minimize') {
+      setTabSwitchCount(tc => tc + 1);
+    }
+
+    // Violation display names
+    const violationNames: Record<ViolationType, string> = {
+      'tab_switch': 'Tab Switch',
+      'browser_minimize': 'Browser Minimized',
+      'devtools': 'DevTools Detected',
+      'refresh_attempt': 'Refresh/Back Attempt',
+      'page_reload': 'Left Exam Page',
+      'duplicate_session': 'Duplicate Session',
+      'screenshot': 'Screenshot Attempt',
+      'copy_paste': 'Copy/Paste Attempt'
+    };
+
+    // Persist violation to server (fire-and-forget)
+    if (activeSession?.id) {
+      apiRequest('PATCH', `/api/exam-sessions/${activeSession.id}/metadata`, {
+        metadata: JSON.stringify({
+          violationCount: newCount,
+          violationPenalty: calculatedPenalty,
+          lastViolationType: type,
+          violationHistory: [...violationHistory, violationRecord].slice(-10)
+        })
+      }).catch(() => {});
+    }
+
+    // ── Show warning banner for every violation ─────────────────────────────
+    setShowViolationWarning(true);
+    setShowTabSwitchWarning(true);
+
+    if (violationTimeoutRef.current) clearTimeout(violationTimeoutRef.current);
+    violationTimeoutRef.current = setTimeout(() => {
+      setShowViolationWarning(false);
+      setShowTabSwitchWarning(false);
+    }, 8000);
+
+    // ── 3rd violation → WARNING 3 of 3 then AUTO-SUBMIT ─────────────────────
+    if (newCount >= MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT) {
+      isAutoSubmittingRef.current = true;
+      toast({
+        title: `🚨 WARNING ${newCount} of ${MAX_WARNINGS_ALLOWED}: ${violationNames[type]}`,
+        description: `This is your 3rd and final violation. Your exam is being automatically submitted now.`,
+        variant: 'destructive',
+        duration: 8000,
+      });
+      // Give 3 seconds so the student can read the final warning before submit
+      setTimeout(() => forceSubmitExam(), 3000);
+      return;
+    }
+
+    // ── 1st or 2nd violation → numbered warning ──────────────────────────────
+    toast({
+      title: `⚠️ WARNING ${newCount} of ${MAX_WARNINGS_ALLOWED}: ${violationNames[type]}`,
+      description: newCount === 1
+        ? `This is Warning 1 of 3. You have 2 more violations allowed before your exam is auto-submitted. Stay on this page and do not switch tabs or reload.`
+        : `This is Warning 2 of 3. ONE more violation will automatically submit your exam immediately. Stay on this page.`,
+      variant: 'destructive',
+      duration: 12000,
     });
   }, [activeSession, violationHistory, toast]);
+
+  // RELOAD VIOLATION: Fire a violation when a page reload is detected for the active session.
+  // Must be placed AFTER handleSecurityViolation is defined.
+  //
+  // IMPORTANT: reloadViolationFiredRef.current is set INSIDE the timeout callback, not before.
+  // If it were set before, any React effect re-run (caused by activeSession or
+  // handleSecurityViolation changing) would cancel the timeout AND leave the ref = true,
+  // so the condition would fail on re-run and the violation would silently disappear.
+  useEffect(() => {
+    if (
+      !activeSession ||
+      activeSession.isCompleted ||
+      detectedReloadSessionIdRef.current !== activeSession.id ||
+      reloadViolationFiredRef.current
+    ) return;
+
+    const t = setTimeout(() => {
+      // Double-check inside the timeout to handle the race where two timeouts
+      // briefly overlap before the first one sets the flag.
+      if (reloadViolationFiredRef.current) return;
+      reloadViolationFiredRef.current = true;
+      handleSecurityViolation('page_reload', 'Student left the exam page (tab closed, reloaded, or navigated away)');
+    }, 1500);
+
+    // Cancel the timeout if deps change — a fresh one will be rescheduled on
+    // the next run (ref is still false, so the outer guard above still passes).
+    return () => clearTimeout(t);
+  }, [activeSession, handleSecurityViolation]);
 
   // =============================================================================
   // COMPREHENSIVE EXAM SECURITY SYSTEM
@@ -898,6 +965,14 @@ export default function StudentExams() {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = 'You have an exam in progress. Leaving will be recorded as a violation.';
+      // Set a localStorage marker that survives tab closes, navigation, AND reloads.
+      // This is the primary mechanism for detecting that the student left the exam.
+      try {
+        localStorage.setItem('exam_left_marker', JSON.stringify({
+          sessionId: activeSession.id,
+          timestamp: Date.now()
+        }));
+      } catch (_) {}
       return e.returnValue;
     };
 
@@ -1637,8 +1712,10 @@ export default function StudentExams() {
     onSuccess: (data) => {
       setIsScoring(false);
 
-      // Clear locally-stored answers for this session — exam is done
+      // Clear locally-stored answers and the left-exam markers — exam is done
       if (activeSession) lsClear(activeSession.id);
+      try { localStorage.removeItem('exam_left_marker'); } catch (_) {}
+      try { sessionStorage.removeItem('exam_session_active'); } catch (_) {}
       setLocalPendingCount(0);
 
       // Enhanced cache invalidation for all related data
@@ -1914,6 +1991,7 @@ export default function StudentExams() {
     queryClient.invalidateQueries({ queryKey: ['/api/exam-results', user?.id] });
     
     // STEP 4: Reset exam state completely (prevent inline UI from showing)
+    try { localStorage.removeItem('exam_left_marker'); } catch (_) {}
     setShowResults(false);
     setExamResults(null);
     setActiveSession(null);
@@ -2362,7 +2440,7 @@ export default function StudentExams() {
   // Render active exam without PortalLayout wrapper
   if (activeSession && examQuestions.length > 0) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-[120px] sm:pt-[140px]">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-[120px] sm:pt-[140px] select-none">
         <ExamHeader
           subjectName={subjectName}
           className={studentClassName}
@@ -2379,16 +2457,25 @@ export default function StudentExams() {
           {(showTabSwitchWarning || !isOnline) && (
             <div className="mb-6 space-y-2">
               {showTabSwitchWarning && (
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-500 rounded-r-lg p-3 flex items-center gap-3 text-yellow-800 dark:text-yellow-200 shadow-sm">
+                <div className={`border-l-4 rounded-r-lg p-3 flex items-center gap-3 shadow-sm ${
+                  violationCount >= MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT
+                    ? 'bg-red-50 dark:bg-red-900/30 border-red-600 text-red-800 dark:text-red-200'
+                    : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500 text-yellow-800 dark:text-yellow-200'
+                }`}>
                   <AlertCircle className="w-5 h-5 flex-shrink-0" />
                   <div>
                     <p className="text-sm font-semibold">
-                      {violationCount < MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT 
-                        ? `Security Warning ${violationCount}/${MAX_WARNINGS_ALLOWED} - ${MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT - violationCount} violation(s) until auto-submit`
-                        : `EXAM AUTO-SUBMITTED: ${violationCount} violations detected`
+                      {violationCount >= MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT
+                        ? `🚨 WARNING ${violationCount} of ${MAX_WARNINGS_ALLOWED} — Exam is being auto-submitted!`
+                        : `⚠️ WARNING ${violationCount} of ${MAX_WARNINGS_ALLOWED} — ${MAX_WARNINGS_ALLOWED - violationCount} more violation(s) before auto-submit`
                       }
                     </p>
-                    <p className="text-xs mt-0.5">Stay on this page. Any violation will be recorded and may auto-submit your exam.</p>
+                    <p className="text-xs mt-0.5">
+                      {violationCount >= MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT
+                        ? 'Your exam has been submitted automatically due to repeated violations.'
+                        : 'Stay on this page. Switching tabs, reloading, or navigating away counts as a violation.'
+                      }
+                    </p>
                   </div>
                 </div>
               )}
