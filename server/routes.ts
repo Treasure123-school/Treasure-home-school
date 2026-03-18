@@ -3446,12 +3446,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update exam session metadata (tab switches, violations)
+  // MERGE: incoming fields are merged into existing metadata so nothing is lost.
   app.patch('/api/exam-sessions/:id/metadata', authenticateUser, async (req, res) => {
     try {
       const sessionId = parseInt(req.params.id);
       const { metadata } = req.body;
 
-      const session = await storage.updateExamSession(sessionId, { metadata });
+      // Fetch current session so we can merge metadata safely
+      const existing = await storage.getExamSessionById(sessionId);
+      if (!existing) {
+        return res.status(404).json({ message: 'Session not found' });
+      }
+
+      // Parse both existing and incoming metadata and deep-merge them
+      let existingMeta: Record<string, any> = {};
+      try {
+        if (existing.metadata) {
+          existingMeta = typeof existing.metadata === 'string'
+            ? JSON.parse(existing.metadata)
+            : existing.metadata;
+        }
+      } catch (_) {}
+
+      let incomingMeta: Record<string, any> = {};
+      try {
+        if (metadata) {
+          incomingMeta = typeof metadata === 'string'
+            ? JSON.parse(metadata)
+            : metadata;
+        }
+      } catch (_) {}
+
+      // Incoming values always win (they are newer)
+      const mergedMeta = { ...existingMeta, ...incomingMeta };
+
+      const session = await storage.updateExamSession(sessionId, {
+        metadata: JSON.stringify(mergedMeta)
+      });
 
       if (!session) {
         return res.status(404).json({ message: 'Session not found' });

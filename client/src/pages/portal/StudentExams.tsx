@@ -51,6 +51,38 @@ type QuestionSaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
 // ─── LocalStorage helpers for offline answer backup ───────────────────────────
 const LS_PREFIX = 'ths_exam_answers_';
 
+// ─── LocalStorage helpers for violation count backup ──────────────────────────
+// This is written synchronously on every violation AND in beforeunload so that
+// even if the server PATCH is in-flight or fails, the count survives a tab close.
+const LS_VIOLATIONS_PREFIX = 'ths_exam_violations_';
+
+function lsViolationKey(sessionId: number) { return `${LS_VIOLATIONS_PREFIX}${sessionId}`; }
+
+function lsViolationSave(sessionId: number, count: number, penalty: number, history: ViolationRecord[]) {
+  try {
+    localStorage.setItem(lsViolationKey(sessionId), JSON.stringify({
+      violationCount: count,
+      violationPenalty: penalty,
+      violationHistory: history.slice(-10),
+      ts: Date.now(),
+    }));
+  } catch (_) {}
+}
+
+function lsViolationGet(sessionId: number): { violationCount: number; violationPenalty: number; violationHistory: ViolationRecord[] } | null {
+  try {
+    const raw = localStorage.getItem(lsViolationKey(sessionId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (typeof parsed.violationCount === 'number') return parsed;
+    return null;
+  } catch (_) { return null; }
+}
+
+function lsViolationClear(sessionId: number) {
+  try { localStorage.removeItem(lsViolationKey(sessionId)); } catch (_) {}
+}
+
 function lsKey(sessionId: number) { return `${LS_PREFIX}${sessionId}`; }
 
 function lsSave(sessionId: number, questionId: number, answer: any, questionType: string) {
@@ -131,15 +163,26 @@ export default function StudentExams() {
   const violationCountRef = useRef(violationCount);
   const tabSwitchCountRef = useRef(tabSwitchCount);
   const violationPenaltyRef = useRef(violationPenalty);
+  const violationHistoryRef = useRef<ViolationRecord[]>([]); // Avoids stale closure in handleSecurityViolation
   const timeRemainingRef = useRef(timeRemaining);
   const activeSessionRef = useRef(activeSession);
+  // Grace period: ignore blur/visibilitychange for 2 s after the exam page loads
+  // to avoid false positives during browser rendering / initial focus.
+  const examLoadedAtRef = useRef<number | null>(null);
   
   // Keep refs in sync with state
   useEffect(() => { violationCountRef.current = violationCount; }, [violationCount]);
   useEffect(() => { tabSwitchCountRef.current = tabSwitchCount; }, [tabSwitchCount]);
   useEffect(() => { violationPenaltyRef.current = violationPenalty; }, [violationPenalty]);
+  useEffect(() => { violationHistoryRef.current = violationHistory; }, [violationHistory]);
   useEffect(() => { timeRemainingRef.current = timeRemaining; }, [timeRemaining]);
   useEffect(() => { activeSessionRef.current = activeSession; }, [activeSession]);
+  // Mark the moment the active session becomes live (start of grace period)
+  useEffect(() => {
+    if (activeSession && !activeSession.isCompleted && examLoadedAtRef.current === null) {
+      examLoadedAtRef.current = Date.now();
+    }
+  }, [activeSession]);
 
   // Network status monitoring
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -527,24 +570,42 @@ export default function StudentExams() {
               if (metadata.currentQuestionIndex) {
                 setCurrentQuestionIndex(metadata.currentQuestionIndex);
               }
-              // Restore violation count and penalty (persists across reloads)
+              // Restore violation count and penalty (persists across reloads).
+              // Strategy: take the HIGHER of the server value and the localStorage
+              // backup so that a failed server PATCH never causes us to lose count.
+              let serverCount = 0;
               if (metadata.violationCount !== undefined) {
-                setViolationCount(metadata.violationCount);
+                serverCount = metadata.violationCount;
+              } else if (metadata.tabSwitchCount !== undefined) {
+                // Backward compatibility
+                serverCount = metadata.tabSwitchCount;
+              }
+
+              const lsBackup = lsViolationGet(session.id);
+              const restoredCount = lsBackup
+                ? Math.max(serverCount, lsBackup.violationCount)
+                : serverCount;
+
+              if (restoredCount > 0) {
+                setViolationCount(restoredCount);
                 // Sync ref immediately — setViolationCount is async so the ref's
                 // useEffect would lag behind. The reload violation fires 1.5 s from
                 // now; without this the ref would still be 0 and newCount would be
                 // wrong (e.g. 1 instead of the correct restored+1 value).
-                violationCountRef.current = metadata.violationCount;
-                const restoredPenalty = calculateViolationPenalty(metadata.violationCount);
+                violationCountRef.current = restoredCount;
+                const restoredPenalty = calculateViolationPenalty(restoredCount);
                 violationPenaltyRef.current = restoredPenalty;
                 setViolationPenalty(restoredPenalty);
-              } else if (metadata.tabSwitchCount !== undefined) {
-                // Backward compatibility
-                setTabSwitchCount(metadata.tabSwitchCount);
-                violationCountRef.current = metadata.tabSwitchCount;
-                const calculatedPenalty = calculateViolationPenalty(metadata.tabSwitchCount);
-                violationPenaltyRef.current = calculatedPenalty;
-                setViolationPenalty(calculatedPenalty);
+
+                // Restore violation history from localStorage backup if richer
+                if (lsBackup?.violationHistory?.length) {
+                  const hist: ViolationRecord[] = lsBackup.violationHistory.map((v: any) => ({
+                    ...v,
+                    timestamp: new Date(v.timestamp),
+                  }));
+                  setViolationHistory(hist);
+                  violationHistoryRef.current = hist;
+                }
               }
             } catch (e) {
             }
@@ -695,8 +756,10 @@ export default function StudentExams() {
 
   // UNIFIED VIOLATION HANDLER: Centralizes all security violation processing
   // Handles: tab switches, browser minimize, DevTools, refresh attempts, duplicate sessions
-  // NOTE: Uses violationCountRef for reliable current count — never puts side effects inside
-  // a setState updater (which React requires to be pure / side-effect free).
+  // NOTE: Uses violationCountRef / violationHistoryRef for reliable current values —
+  // never relies on stale closures. violationHistory is intentionally NOT in the
+  // dependency array so the callback is stable and does not cause every security
+  // effect to re-subscribe on each violation.
   const handleSecurityViolation = useCallback((type: ViolationType, details?: string) => {
     if (!activeSession || activeSession.isCompleted || isAutoSubmittingRef.current) return;
 
@@ -707,13 +770,15 @@ export default function StudentExams() {
     violationCountRef.current = newCount;
     setViolationCount(newCount);
 
-    // Record violation in history
+    // Record violation in history — use ref for current history (no stale closure)
     const violationRecord: ViolationRecord = {
       type,
       timestamp: new Date(),
       details
     };
-    setViolationHistory(history => [...history, violationRecord]);
+    const updatedHistory = [...violationHistoryRef.current, violationRecord].slice(-10);
+    violationHistoryRef.current = updatedHistory;
+    setViolationHistory(updatedHistory);
     setLastViolationType(type);
 
     // Update penalty
@@ -738,16 +803,24 @@ export default function StudentExams() {
       'copy_paste': 'Copy/Paste Attempt'
     };
 
-    // Persist violation to server (fire-and-forget)
+    // Save to localStorage backup IMMEDIATELY (synchronous, survives any network failure)
+    if (activeSession?.id) {
+      lsViolationSave(activeSession.id, newCount, calculatedPenalty, updatedHistory);
+    }
+
+    // Persist violation to server (fire-and-forget; localStorage is the fallback)
     if (activeSession?.id) {
       apiRequest('PATCH', `/api/exam-sessions/${activeSession.id}/metadata`, {
         metadata: JSON.stringify({
           violationCount: newCount,
           violationPenalty: calculatedPenalty,
           lastViolationType: type,
-          violationHistory: [...violationHistory, violationRecord].slice(-10)
+          violationHistory: updatedHistory
         })
-      }).catch(() => {});
+      }).catch(() => {
+        // Server PATCH failed — localStorage backup already saved above, so the
+        // count will still be restored correctly when the student returns.
+      });
     }
 
     // ── Show warning banner for every violation ─────────────────────────────
@@ -783,7 +856,7 @@ export default function StudentExams() {
       variant: 'destructive',
       duration: 12000,
     });
-  }, [activeSession, violationHistory, toast]);
+  }, [activeSession, toast]);
 
   // RELOAD VIOLATION: Fire a violation when a page reload is detected for the active session.
   // Must be placed AFTER handleSecurityViolation is defined.
@@ -824,7 +897,15 @@ export default function StudentExams() {
 
     let visibilityTimer: NodeJS.Timeout | null = null;
 
+    // Grace period: ignore events for the first 2 seconds after the exam loads
+    // to prevent false positives from the browser rendering / initial focus.
+    const GRACE_PERIOD_MS = 2000;
+    const isWithinGracePeriod = () =>
+      examLoadedAtRef.current !== null &&
+      Date.now() - examLoadedAtRef.current < GRACE_PERIOD_MS;
+
     const handleVisibilityChange = () => {
+      if (isWithinGracePeriod()) return;
       if (document.hidden) {
         visibilityTimer = setTimeout(() => {
           if (document.hidden) {
@@ -840,9 +921,12 @@ export default function StudentExams() {
     };
 
     const handleWindowBlur = () => {
+      if (isWithinGracePeriod()) return;
+      // Only fire for window-level blur (e.g. alt-tab / minimize), not tab switches
+      // (those are already caught by visibilitychange above).
       if (!document.hidden) {
         visibilityTimer = setTimeout(() => {
-          if (!document.hasFocus()) {
+          if (!document.hasFocus() && !document.hidden) {
             handleSecurityViolation('browser_minimize', 'Browser window lost focus');
           }
         }, VIOLATION_DETECTION_DELAY * 2);
@@ -972,6 +1056,16 @@ export default function StudentExams() {
           sessionId: activeSession.id,
           timestamp: Date.now()
         }));
+      } catch (_) {}
+      // Also snapshot the latest violation count to localStorage backup so even
+      // if the async PATCH is in-flight or fails, count survives the tab close.
+      try {
+        lsViolationSave(
+          activeSession.id,
+          violationCountRef.current,
+          violationPenaltyRef.current,
+          violationHistoryRef.current
+        );
       } catch (_) {}
       return e.returnValue;
     };
@@ -1712,8 +1806,9 @@ export default function StudentExams() {
     onSuccess: (data) => {
       setIsScoring(false);
 
-      // Clear locally-stored answers and the left-exam markers — exam is done
+      // Clear locally-stored answers, violation backup, and the left-exam markers — exam is done
       if (activeSession) lsClear(activeSession.id);
+      if (activeSession) lsViolationClear(activeSession.id);
       try { localStorage.removeItem('exam_left_marker'); } catch (_) {}
       try { sessionStorage.removeItem('exam_session_active'); } catch (_) {}
       setLocalPendingCount(0);
@@ -1992,6 +2087,7 @@ export default function StudentExams() {
     
     // STEP 4: Reset exam state completely (prevent inline UI from showing)
     try { localStorage.removeItem('exam_left_marker'); } catch (_) {}
+    if (activeSession?.id) lsViolationClear(activeSession.id);
     setShowResults(false);
     setExamResults(null);
     setActiveSession(null);
