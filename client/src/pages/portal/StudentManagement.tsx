@@ -1651,6 +1651,7 @@ export default function StudentManagement() {
             </div>
           </>
         )}
+      </div>
 
       {/* Block / Unblock Confirmation Dialog */}
       <AlertDialog open={!!studentToBlock} onOpenChange={(open) => { if (!open) setStudentToBlock(null); }}>
