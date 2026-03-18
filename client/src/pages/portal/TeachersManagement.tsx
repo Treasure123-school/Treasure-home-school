@@ -1213,157 +1213,204 @@ export default function TeachersManagement() {
         </CardContent>
       </Card>
 
-      {/* Teachers List */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Teachers ({filteredTeachers.length})</span>
-            <Badge variant="secondary" data-testid="text-total-teachers">
-              Total: {teachers.length}
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loadingTeachers ? (
-            <div className="flex justify-center py-8">
-              <div className="text-muted-foreground">Loading teachers...</div>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Teacher</TableHead>
-                  <TableHead>Employee ID</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Joining Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTeachers.length > 0 ? (
-                  filteredTeachers.map((teacher: any) => (
-                    <TableRow key={teacher.id} data-testid={`row-teacher-${teacher.id}`}>
-                      <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                            <span className="text-sm font-medium text-primary">
-                              {teacher.firstName?.[0]}{teacher.lastName?.[0]}
-                            </span>
-                          </div>
-                          <div>
-                            <div className="font-medium" data-testid={`text-teacher-name-${teacher.id}`}>
-                              {teacher.firstName} {teacher.lastName}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {teacher.qualifications || 'No qualifications listed'}
-                            </div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell data-testid={`text-employee-id-${teacher.id}`}>
-                        <Badge variant="outline">
-                          {teacher.employeeId || 'Not assigned'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell data-testid={`text-department-${teacher.id}`}>
-                        <div className="flex items-center">
-                          <GraduationCap className="w-4 h-4 mr-1 text-muted-foreground" />
-                          {teacher.department || 'Not assigned'}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center text-sm">
-                            <Mail className="w-3 h-3 mr-1 text-muted-foreground" />
-                            {teacher.email}
-                          </div>
-                          {teacher.phone && (
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <Phone className="w-3 h-3 mr-1" />
-                              {teacher.phone}
-                            </div>
+      {/* Teachers List - Card Grid */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm text-muted-foreground">
+            Showing <span className="font-semibold text-foreground">{filteredTeachers.length}</span> of{' '}
+            <span className="font-semibold text-foreground">{teachers.length}</span> teachers
+          </p>
+        </div>
+
+        {loadingTeachers ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(6)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 rounded-full bg-muted" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-muted rounded w-3/4" />
+                      <div className="h-3 bg-muted rounded w-1/2" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-3 bg-muted rounded" />
+                    <div className="h-3 bg-muted rounded w-2/3" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : filteredTeachers.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Users className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <p className="text-lg font-medium text-muted-foreground">No teachers found</p>
+              <p className="text-sm text-muted-foreground mt-1">Try adjusting your search or filters</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredTeachers.map((teacher: any) => (
+              <Card
+                key={teacher.id}
+                className="group hover:shadow-md transition-shadow duration-200"
+                data-testid={`card-teacher-${teacher.id}`}
+              >
+                <CardContent className="p-5">
+                  {/* Card Header — Avatar + Name + Actions */}
+                  <div className="flex items-start justify-between gap-2 mb-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 border border-primary/20">
+                        <span className="text-base font-semibold text-primary">
+                          {teacher.firstName?.[0]?.toUpperCase()}{teacher.lastName?.[0]?.toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm leading-tight truncate" data-testid={`text-teacher-name-${teacher.id}`}>
+                          {teacher.firstName} {teacher.lastName}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">
+                          {teacher.qualifications || 'No qualifications'}
+                        </p>
+                      </div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          data-testid={`button-actions-teacher-${teacher.id}`}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Open actions</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem
+                          onClick={() => handleEdit(teacher)}
+                          data-testid={`button-edit-teacher-${teacher.id}`}
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit Teacher
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleOpenAssignmentDialog(teacher)}
+                          data-testid={`button-assign-teacher-${teacher.id}`}
+                        >
+                          <BookOpen className="w-4 h-4 mr-2" />
+                          Manage Assignments
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setTeacherToBlock(teacher)}
+                          data-testid={`button-block-teacher-${teacher.id}`}
+                          className={teacher.isActive ? 'text-orange-600 focus:text-orange-600' : 'text-green-600 focus:text-green-600'}
+                        >
+                          {teacher.isActive ? (
+                            <><Ban className="w-4 h-4 mr-2" />Block Teacher</>
+                          ) : (
+                            <><ShieldCheck className="w-4 h-4 mr-2" />Unblock Teacher</>
                           )}
-                        </div>
-                      </TableCell>
-                      <TableCell data-testid={`text-joining-date-${teacher.id}`}>
-                        {teacher.dateOfJoining ? 
-                          new Date(teacher.dateOfJoining).toLocaleDateString() : 
-                          'Not specified'
-                        }
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={teacher.isActive ? "default" : "secondary"}>
-                          {teacher.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                              data-testid={`button-actions-teacher-${teacher.id}`}
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Open actions</span>
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem
-                              onClick={() => handleEdit(teacher)}
-                              data-testid={`button-edit-teacher-${teacher.id}`}
-                            >
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit Teacher
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleOpenAssignmentDialog(teacher)}
-                              data-testid={`button-assign-teacher-${teacher.id}`}
-                            >
-                              <BookOpen className="w-4 h-4 mr-2" />
-                              Manage Assignments
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => setTeacherToBlock(teacher)}
-                              data-testid={`button-block-teacher-${teacher.id}`}
-                              className={teacher.isActive ? 'text-orange-600 focus:text-orange-600' : 'text-green-600 focus:text-green-600'}
-                            >
-                              {teacher.isActive ? (
-                                <><Ban className="w-4 h-4 mr-2" />Block Teacher</>
-                              ) : (
-                                <><ShieldCheck className="w-4 h-4 mr-2" />Unblock Teacher</>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => setTeacherToDelete(teacher)}
-                              data-testid={`button-delete-teacher-${teacher.id}`}
-                              className="text-red-600 focus:text-red-600"
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete Teacher
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
-                      No teachers found
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setTeacherToDelete(teacher)}
+                          data-testid={`button-delete-teacher-${teacher.id}`}
+                          className="text-red-600 focus:text-red-600"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete Teacher
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  {/* Status + Department row */}
+                  <div className="flex items-center gap-2 mb-3 flex-wrap">
+                    <Badge
+                      variant={teacher.isActive ? "default" : "secondary"}
+                      className={`text-xs ${teacher.isActive ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800' : ''}`}
+                    >
+                      {teacher.isActive ? '● Active' : '○ Inactive'}
+                    </Badge>
+                    {teacher.department && (
+                      <Badge variant="outline" className="text-xs capitalize">
+                        <GraduationCap className="w-3 h-3 mr-1" />
+                        {teacher.department}
+                      </Badge>
+                    )}
+                    {teacher.employeeId && (
+                      <Badge variant="outline" className="text-xs font-mono" data-testid={`text-employee-id-${teacher.id}`}>
+                        {teacher.employeeId}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Divider */}
+                  <div className="border-t border-border my-3" />
+
+                  {/* Contact Info */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Mail className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="truncate">{teacher.email}</span>
+                    </div>
+                    {teacher.phone && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Phone className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>{teacher.phone}</span>
+                      </div>
+                    )}
+                    {teacher.dateOfJoining && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground" data-testid={`text-joining-date-${teacher.id}`}>
+                        <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>Joined {new Date(teacher.dateOfJoining).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer actions (always visible on mobile) */}
+                  <div className="mt-4 pt-3 border-t border-border flex items-center justify-between sm:hidden">
+                    <span className="text-xs text-muted-foreground">Actions</span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                          <MoreHorizontal className="h-3.5 w-3.5" />
+                          More
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem onClick={() => handleEdit(teacher)}>
+                          <Edit className="w-4 h-4 mr-2" />Edit Teacher
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleOpenAssignmentDialog(teacher)}>
+                          <BookOpen className="w-4 h-4 mr-2" />Manage Assignments
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setTeacherToBlock(teacher)}
+                          className={teacher.isActive ? 'text-orange-600 focus:text-orange-600' : 'text-green-600 focus:text-green-600'}
+                        >
+                          {teacher.isActive ? <><Ban className="w-4 h-4 mr-2" />Block</> : <><ShieldCheck className="w-4 h-4 mr-2" />Unblock</>}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setTeacherToDelete(teacher)} className="text-red-600 focus:text-red-600">
+                          <Trash2 className="w-4 h-4 mr-2" />Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Block/Unblock Confirmation Dialog */}
       <AlertDialog open={!!teacherToBlock} onOpenChange={(open) => { if (!open) setTeacherToBlock(null); }}>
