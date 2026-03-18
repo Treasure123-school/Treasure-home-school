@@ -194,12 +194,19 @@ export default function StudentExams() {
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
   const [localPendingCount, setLocalPendingCount] = useState(0);
 
-  // Socket.IO realtime updates for exams list
+  // Socket.IO realtime updates for exams list.
+  // Subscribes to the CLASS channel (students are allowed) so that teacher edits
+  // (name, time limit, instructions, etc.) arrive even when no specific exam is selected.
+  // studentClassId is derived from the exams query cache synchronously here.
+  // useQuery returns cached data immediately on every render, so this is safe before the hook below.
+  const cachedExams = queryClient.getQueryData<Exam[]>(['/api/exams']) ?? [];
+  const studentClassId = cachedExams.length > 0 ? cachedExams[0]?.classId?.toString() : undefined;
   useSocketIORealtime({
     table: 'exams',
     queryKey: ['/api/exams', 'student-list'],
     enabled: !!user?.id,
     examId: selectedExam?.id,
+    classId: studentClassId,
     onEvent: (event) => {
       // Handle exam published/unpublished events
       if (event.eventType === 'exam.published' || event.eventType === 'exam.unpublished') {
@@ -228,7 +235,12 @@ export default function StudentExams() {
           return;
         }
         lastExamUpdateKeyRef.current = dedupeKey;
-        // Always refresh the exam list
+        // Directly patch the exam into the query cache for instant UI update across
+        // the whole page (exam cards, detail view, etc.), then invalidate to ensure
+        // the server copy is also fetched in the background.
+        queryClient.setQueryData(['/api/exams'], (old: Exam[] | undefined) =>
+          old ? old.map(e => e.id === updatedExam.id ? updatedExam : e) : old
+        );
         queryClient.invalidateQueries({ queryKey: ['/api/exams'] });
         // Only apply live updates if this is the exam the student currently has open
         if (selectedExam && updatedExam.id === selectedExam.id) {
@@ -330,7 +342,11 @@ export default function StudentExams() {
     }
   }, [activeSession?.id, activeSession?.isCompleted, isRedirecting, setLocation]);
 
-  // Fetch available exams
+  // Fetch available exams.
+  // When a student has an active session, poll every 30 s as a safety net so that
+  // teacher changes (time limit, instructions, etc.) are always picked up even if
+  // a socket event is missed.
+  const hasActiveSession = !!activeSession && !activeSession.isCompleted;
   const { data: exams = [], isLoading: loadingExams, error: examsError } = useQuery<Exam[]>({
     queryKey: ['/api/exams'],
     enabled: !!user,
@@ -347,6 +363,7 @@ export default function StudentExams() {
     },
     retry: 3,
     retryDelay: 1000,
+    refetchInterval: hasActiveSession ? 30000 : false,
   });
 
   // Fetch subjects for displaying subject name in exam results
