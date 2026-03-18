@@ -84,10 +84,13 @@ export const authenticateUser = async (req: any, res: any, next: any) => {
     }
     req.user = user;
 
-    // Keep lastActive fresh on every API call (lazy import to avoid circular deps)
+    // Keep lastActive fresh on every API call.
+    // Pass roleId + roleName so the service can CREATE a record for users who
+    // haven't connected via socket yet (or whose socket failed).
     try {
       const { realtimeService } = await import('../realtime-service');
-      realtimeService.touchUserActivity(normalizedUserId);
+      const roleName = (decoded as any).roleName as string | undefined;
+      realtimeService.touchUserActivity(normalizedUserId, user.roleId, roleName);
     } catch { /* non-critical — ignore if realtime service isn't ready */ }
 
     next();

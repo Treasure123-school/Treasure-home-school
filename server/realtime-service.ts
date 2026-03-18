@@ -693,9 +693,9 @@ class RealtimeService {
     const record = this.userActivityMap.get(userId);
     if (!record) return;
     record.socketIds.delete(socketId);
-    if (record.socketIds.size === 0) {
-      this.userActivityMap.delete(userId);
-    }
+    // Do NOT remove user from map on socket disconnect — they may still be making
+    // API calls. The activity-check interval will expire them after EXPIRY_MS of
+    // complete inactivity (no API calls AND no socket heartbeats).
     this.broadcastOnlineUsersToAdmins();
   }
 
@@ -748,20 +748,66 @@ class RealtimeService {
 
   /**
    * Called from the REST auth middleware on every authenticated request.
-   * Updates lastActive if the user already has a socket connection tracked.
-   * No-op if the user isn't in the map (socket not connected).
+   *
+   * - If the user is already tracked → refresh their lastActive timestamp.
+   * - If the user is NOT yet tracked AND role info is provided → create a new
+   *   "REST-tracked" entry so they appear in Live Activity even when their
+   *   socket connection has not yet been established (or failed entirely).
+   *
+   * This makes API-call activity the primary tracking signal; socket heartbeats
+   * are a supplementary real-time refresh on top of that.
    */
-  touchUserActivity(userId: string) {
-    this.updateUserActivity(userId);
+  touchUserActivity(userId: string, roleId?: number, roleName?: string) {
+    const existing = this.userActivityMap.get(userId);
+    if (existing) {
+      existing.lastActive = new Date();
+      return;
+    }
+
+    // Need at least one role identifier to create a meaningful record
+    if (!roleId && !roleName) return;
+
+    const role = roleName
+      || (roleId ? (ROLE_NAMES[roleId as keyof typeof ROLE_NAMES] || 'unknown') : 'unknown');
+
+    const record: UserActivityRecord = {
+      userId,
+      role,
+      socketIds: new Set(), // no socket yet; that's fine
+      firstConnectedAt: new Date(),
+      lastActive: new Date(),
+    };
+    this.userActivityMap.set(userId, record);
+
+    // Async-enrich with display name / username from DB
+    if (this.userInfoProvider) {
+      this.userInfoProvider(userId)
+        .then((info) => {
+          if (info) {
+            const r = this.userActivityMap.get(userId);
+            if (r) {
+              r.displayName = info.displayName;
+              r.username = info.username;
+            }
+          }
+        })
+        .catch(() => { /* enrichment is non-critical */ });
+    }
+
+    this.broadcastOnlineUsersToAdmins();
   }
 
   private startActivityCheck() {
-    // Every 60s: clean up ghost entries where all sockets are gone
+    // Every 30 s: prune stale socket IDs and expire users who have been
+    // completely inactive (no API calls, no socket heartbeats) for 5 minutes.
+    const EXPIRY_MS = 5 * 60 * 1000;
+
     this.activityCheckInterval = setInterval(() => {
-      if (!this.io) return;
+      const now = Date.now();
       let changed = false;
+
       this.userActivityMap.forEach((rec, userId) => {
-        // Verify each socket ID is still actually connected
+        // Remove any socket IDs that are no longer connected
         rec.socketIds.forEach((sid) => {
           const sock = this.io?.sockets.sockets.get(sid);
           if (!sock || sock.disconnected) {
@@ -769,13 +815,17 @@ class RealtimeService {
             changed = true;
           }
         });
-        if (rec.socketIds.size === 0) {
+
+        // Expire the whole record if the user has been fully inactive
+        const msSinceActive = now - rec.lastActive.getTime();
+        if (msSinceActive > EXPIRY_MS) {
           this.userActivityMap.delete(userId);
           changed = true;
         }
       });
+
       if (changed) this.broadcastOnlineUsersToAdmins();
-    }, 60000);
+    }, 30000);
   }
 
   // ─── END USER ACTIVITY TRACKING ───────────────────────────────────────────
