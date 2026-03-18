@@ -19,9 +19,10 @@ import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { ExamHeader } from '@/components/ExamHeader';
 
 // ENHANCED EXAM SECURITY CONSTANTS
-// Allow only 2 warnings per exam session. On the 3rd violation, auto-submit the exam instantly.
-const MAX_WARNINGS_ALLOWED = 2; // Students get 2 warnings
-const MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT = 3; // Auto-submit on 3rd violation
+// Students receive 3 numbered warnings (Warning 1/3, 2/3, 3/3).
+// On the 3rd violation the warning is shown AND the exam is auto-submitted immediately.
+const MAX_WARNINGS_ALLOWED = 3; // Total warnings shown (1 of 3, 2 of 3, 3 of 3)
+const MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT = 3; // Auto-submit triggers ON the 3rd violation
 const PENALTY_PER_VIOLATION = 5;
 const MAX_PENALTY = 20;
 const VIOLATION_DETECTION_DELAY = 500; // ms delay to avoid false positives
@@ -749,19 +750,7 @@ export default function StudentExams() {
       }).catch(() => {});
     }
 
-    // ── 3rd (or more) violation → AUTO-SUBMIT ──────────────────────────────
-    if (newCount >= MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT) {
-      isAutoSubmittingRef.current = true;
-      toast({
-        title: '⚠️ EXAM AUTO-SUBMITTED',
-        description: `Your exam has been automatically submitted due to ${newCount} security violation(s). This is to maintain exam integrity.`,
-        variant: 'destructive',
-      });
-      setTimeout(() => forceSubmitExam(), 500);
-      return;
-    }
-
-    // ── 1st or 2nd violation → WARNING ─────────────────────────────────────
+    // ── Show warning banner for every violation ─────────────────────────────
     setShowViolationWarning(true);
     setShowTabSwitchWarning(true);
 
@@ -771,37 +760,55 @@ export default function StudentExams() {
       setShowTabSwitchWarning(false);
     }, 8000);
 
-    if (newCount === 1) {
+    // ── 3rd violation → WARNING 3 of 3 then AUTO-SUBMIT ─────────────────────
+    if (newCount >= MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT) {
+      isAutoSubmittingRef.current = true;
       toast({
-        title: `⚠️ WARNING 1 of ${MAX_WARNINGS_ALLOWED}: ${violationNames[type]}`,
-        description: `This is your first warning. You have 1 more warning before your exam is auto-submitted. Please stay on the exam page.`,
+        title: `🚨 WARNING ${newCount} of ${MAX_WARNINGS_ALLOWED}: ${violationNames[type]}`,
+        description: `This is your 3rd violation. Your exam is being automatically submitted now.`,
         variant: 'destructive',
       });
-    } else if (newCount === 2) {
-      toast({
-        title: `🚨 FINAL WARNING: ${violationNames[type]}`,
-        description: `This is your LAST warning! One more violation will automatically submit your exam immediately.`,
-        variant: 'destructive',
-      });
+      // Give 2 seconds so the student can see the final warning before submit
+      setTimeout(() => forceSubmitExam(), 2000);
+      return;
     }
+
+    // ── 1st or 2nd violation → numbered warning ──────────────────────────────
+    toast({
+      title: `⚠️ WARNING ${newCount} of ${MAX_WARNINGS_ALLOWED}: ${violationNames[type]}`,
+      description: newCount === 1
+        ? `This is Warning 1 of 3. You have 2 more warning(s) before your exam is auto-submitted. Stay on this page.`
+        : `This is Warning 2 of 3. ONE more violation will automatically submit your exam immediately. Stay on this page.`,
+      variant: 'destructive',
+    });
   }, [activeSession, violationHistory, toast]);
 
   // RELOAD VIOLATION: Fire a violation when a page reload is detected for the active session.
   // Must be placed AFTER handleSecurityViolation is defined.
+  //
+  // IMPORTANT: reloadViolationFiredRef.current is set INSIDE the timeout callback, not before.
+  // If it were set before, any React effect re-run (caused by activeSession or
+  // handleSecurityViolation changing) would cancel the timeout AND leave the ref = true,
+  // so the condition would fail on re-run and the violation would silently disappear.
   useEffect(() => {
     if (
-      activeSession &&
-      !activeSession.isCompleted &&
-      detectedReloadSessionIdRef.current === activeSession.id &&
-      !reloadViolationFiredRef.current
-    ) {
+      !activeSession ||
+      activeSession.isCompleted ||
+      detectedReloadSessionIdRef.current !== activeSession.id ||
+      reloadViolationFiredRef.current
+    ) return;
+
+    const t = setTimeout(() => {
+      // Double-check inside the timeout to handle the race where two timeouts
+      // briefly overlap before the first one sets the flag.
+      if (reloadViolationFiredRef.current) return;
       reloadViolationFiredRef.current = true;
-      // Delay slightly to let violation count restore from metadata first
-      const t = setTimeout(() => {
-        handleSecurityViolation('page_reload', 'Student left the exam page (tab closed, reloaded, or navigated away)');
-      }, 1500);
-      return () => clearTimeout(t);
-    }
+      handleSecurityViolation('page_reload', 'Student left the exam page (tab closed, reloaded, or navigated away)');
+    }, 1500);
+
+    // Cancel the timeout if deps change — a fresh one will be rescheduled on
+    // the next run (ref is still false, so the outer guard above still passes).
+    return () => clearTimeout(t);
   }, [activeSession, handleSecurityViolation]);
 
   // =============================================================================
@@ -2448,16 +2455,25 @@ export default function StudentExams() {
           {(showTabSwitchWarning || !isOnline) && (
             <div className="mb-6 space-y-2">
               {showTabSwitchWarning && (
-                <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-500 rounded-r-lg p-3 flex items-center gap-3 text-yellow-800 dark:text-yellow-200 shadow-sm">
+                <div className={`border-l-4 rounded-r-lg p-3 flex items-center gap-3 shadow-sm ${
+                  violationCount >= MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT
+                    ? 'bg-red-50 dark:bg-red-900/30 border-red-600 text-red-800 dark:text-red-200'
+                    : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-500 text-yellow-800 dark:text-yellow-200'
+                }`}>
                   <AlertCircle className="w-5 h-5 flex-shrink-0" />
                   <div>
                     <p className="text-sm font-semibold">
-                      {violationCount < MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT 
-                        ? `Security Warning ${violationCount}/${MAX_WARNINGS_ALLOWED} - ${MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT - violationCount} violation(s) until auto-submit`
-                        : `EXAM AUTO-SUBMITTED: ${violationCount} violations detected`
+                      {violationCount >= MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT
+                        ? `🚨 WARNING ${violationCount} of ${MAX_WARNINGS_ALLOWED} — Exam is being auto-submitted!`
+                        : `⚠️ WARNING ${violationCount} of ${MAX_WARNINGS_ALLOWED} — ${MAX_WARNINGS_ALLOWED - violationCount} more violation(s) before auto-submit`
                       }
                     </p>
-                    <p className="text-xs mt-0.5">Stay on this page. Any violation will be recorded and may auto-submit your exam.</p>
+                    <p className="text-xs mt-0.5">
+                      {violationCount >= MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT
+                        ? 'Your exam has been submitted automatically due to repeated violations.'
+                        : 'Stay on this page. Switching tabs, reloading, or navigating away counts as a violation.'
+                      }
+                    </p>
                   </div>
                 </div>
               )}
