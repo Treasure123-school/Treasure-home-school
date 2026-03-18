@@ -622,9 +622,14 @@ export default function UnifiedSubjectAssignment() {
     const config = CATEGORY_CONFIG[subject.category as keyof typeof CATEGORY_CONFIG] || CATEGORY_CONFIG.general;
 
     return (
-      <div 
+      <div
         key={`${classId}-${subject.id}-${department}`}
-        className={`flex items-center gap-2 p-2 rounded-md transition-colors ${isPending ? 'bg-yellow-50 dark:bg-yellow-950/30' : ''} ${isSaving ? 'opacity-70' : ''}`}
+        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all duration-150
+          ${isAssigned ? 'border-primary/20 bg-primary/5 dark:bg-primary/10' : 'border-border bg-background hover:bg-muted/40'}
+          ${isPending ? 'ring-2 ring-amber-400/50 border-amber-300 dark:border-amber-600 bg-amber-50/60 dark:bg-amber-950/30' : ''}
+          ${isSaving ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}
+        `}
+        onClick={() => !isSaving && toggleSubjectAssignment(classId, subject.id, department, !isAssigned)}
       >
         <Checkbox
           id={key}
@@ -632,11 +637,20 @@ export default function UnifiedSubjectAssignment() {
           disabled={isSaving}
           onCheckedChange={(checked) => toggleSubjectAssignment(classId, subject.id, department, checked)}
           data-testid={`checkbox-subject-${subject.id}-class-${classId}${department ? `-dept-${department}` : ''}`}
+          onClick={(e) => e.stopPropagation()}
         />
-        <label htmlFor={key} className={`flex items-center gap-2 text-sm flex-1 ${isSaving ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-          <span>{subject.name}</span>
-          <Badge className={`text-xs ${config.color}`}>{subject.code}</Badge>
-          {isPending && <Badge variant="outline" className="text-xs text-yellow-600">Pending</Badge>}
+        <label
+          htmlFor={key}
+          className={`flex items-center gap-2 text-sm flex-1 select-none ${isSaving ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <span className={`font-medium ${isAssigned ? 'text-foreground' : 'text-muted-foreground'}`}>{subject.name}</span>
+          <Badge className={`text-xs px-1.5 py-0 ${config.color}`}>{subject.code}</Badge>
+          {isPending && (
+            <Badge variant="outline" className="text-xs px-1.5 py-0 text-amber-600 border-amber-300 dark:border-amber-600">
+              Pending
+            </Badge>
+          )}
         </label>
       </div>
     );
@@ -650,15 +664,22 @@ export default function UnifiedSubjectAssignment() {
     icon: React.ReactNode
   ) => {
     if (subjects.length === 0) return null;
+    const assignedCount = subjects.filter(s => isSubjectAssigned(classId, s.id, department)).length;
 
     return (
       <div className="space-y-2">
-        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-          {icon}
-          <span>{title}</span>
-          <Badge variant="secondary" className="text-xs">{subjects.length} subjects</Badge>
+        <div className="flex items-center gap-2 pb-1 border-b border-border/50">
+          <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+            {icon}
+            <span>{title}</span>
+          </div>
+          <div className="flex items-center gap-1.5 ml-auto">
+            <Badge variant="secondary" className="text-xs font-normal">
+              {assignedCount}/{subjects.length} assigned
+            </Badge>
+          </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-1.5">
           {subjects.map(subject => renderSubjectCheckbox(subject, classId, department))}
         </div>
       </div>
@@ -666,303 +687,438 @@ export default function UnifiedSubjectAssignment() {
   };
 
   return (
-      <div className="space-y-6">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center shadow-sm">
+            <School className="h-6 w-6 text-primary" />
+          </div>
           <div>
-            <h1 className="text-2xl font-bold flex items-center gap-2" data-testid="text-page-title">
-              <School className="h-6 w-6" />
+            <h1 className="text-2xl font-bold tracking-tight text-foreground" data-testid="text-page-title">
               Class-Level & Department Subject Assignment
             </h1>
-            <p className="text-muted-foreground mt-1">
-              Centralized configuration for all subject visibility across the school portal
+            <p className="text-muted-foreground mt-0.5 text-sm">
+              Centralized configuration for subject visibility across the entire school portal
             </p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground" data-testid="status-connection">
+            <div className="flex items-center gap-1.5 mt-2" data-testid="status-connection">
               {isConnected ? (
-                <>
-                  <Wifi className="w-3 h-3 text-green-500" />
-                  <span className="hidden sm:inline">Live</span>
-                </>
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
+                  <Wifi className="w-3 h-3" />
+                  Live sync active
+                </span>
               ) : (
-                <>
-                  <WifiOff className="w-3 h-3 text-yellow-500" />
-                  <span className="hidden sm:inline">Offline</span>
-                </>
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
+                  <WifiOff className="w-3 h-3" />
+                  Offline
+                </span>
               )}
             </div>
-            {hasPendingChanges && (
-              <>
-                <Button 
-                  variant="outline" 
-                  onClick={discardChanges}
-                  disabled={isSaving}
-                  data-testid="button-discard-changes"
-                >
-                  Discard
-                </Button>
-                <Button 
-                  onClick={saveChanges}
-                  disabled={isSaving}
-                  data-testid="button-save-changes"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="w-4 h-4 mr-2" />
-                      Save Changes ({pendingChanges.size + pendingRemovals.size})
-                    </>
-                  )}
-                </Button>
-              </>
-            )}
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => refetchAssignments()}
-              disabled={isLoading}
-              data-testid="button-refresh"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </Button>
           </div>
         </div>
 
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertTitle>Single Source of Truth</AlertTitle>
-          <AlertDescription>
-            This configuration controls subject visibility across the entire system: report cards, exam creation, 
+        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetchAssignments()}
+            disabled={isLoading}
+            data-testid="button-refresh"
+            className="gap-2"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+          {hasPendingChanges && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={discardChanges}
+                disabled={isSaving}
+                data-testid="button-discard-changes"
+              >
+                Discard
+              </Button>
+              <Button
+                size="sm"
+                onClick={saveChanges}
+                disabled={isSaving}
+                data-testid="button-save-changes"
+                className="gap-2 shadow-sm"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-3.5 h-3.5" />
+                    Save Changes
+                    <Badge variant="secondary" className="text-xs ml-0.5 bg-white/20 text-white dark:text-white">
+                      {pendingChanges.size + pendingRemovals.size}
+                    </Badge>
+                  </>
+                )}
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Info Banner */}
+      <div className="flex items-start gap-3 p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40">
+        <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center mt-0.5">
+          <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">Single Source of Truth</p>
+          <p className="text-sm text-blue-700 dark:text-blue-300 mt-0.5">
+            This configuration controls subject visibility across the entire system — report cards, exam creation,
             student portals, and teacher assignments. Changes apply instantly to all areas.
-          </AlertDescription>
-        </Alert>
+          </p>
+        </div>
+      </div>
 
-        {isLoading ? (
-          <div className="space-y-4">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-64 w-full" />
-          </div>
-        ) : (
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'jss' | 'sss')}>
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="jss" className="flex items-center gap-2" data-testid="tab-jss">
-                <Users className="w-4 h-4" />
-                Junior Secondary (JSS1-JSS3)
-                <Badge variant="secondary" className="text-xs">{getJSSAssignmentCount()}</Badge>
-              </TabsTrigger>
-              <TabsTrigger value="sss" className="flex items-center gap-2" data-testid="tab-sss">
-                <GraduationCap className="w-4 h-4" />
-                Senior Secondary (SS1-SS3)
-              </TabsTrigger>
-            </TabsList>
+      {isLoading ? (
+        <div className="space-y-4">
+          <Skeleton className="h-12 w-full rounded-xl" />
+          <Skeleton className="h-72 w-full rounded-xl" />
+        </div>
+      ) : (
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'jss' | 'sss')}>
+          <TabsList className="grid w-full grid-cols-2 h-12 p-1 rounded-xl">
+            <TabsTrigger value="jss" className="flex items-center gap-2 rounded-lg text-sm font-medium" data-testid="tab-jss">
+              <Users className="w-4 h-4" />
+              <span>Junior Secondary (JSS)</span>
+              <Badge variant="secondary" className="text-xs ml-0.5">{getJSSAssignmentCount()}</Badge>
+            </TabsTrigger>
+            <TabsTrigger value="sss" className="flex items-center gap-2 rounded-lg text-sm font-medium" data-testid="tab-sss">
+              <GraduationCap className="w-4 h-4" />
+              <span>Senior Secondary (SSS)</span>
+            </TabsTrigger>
+          </TabsList>
 
-            <TabsContent value="jss" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BookOpen className="w-5 h-5" />
-                    JSS Subject Assignments
-                  </CardTitle>
-                  <CardDescription>
-                    Configure which subjects are visible to Junior Secondary School students (JSS1, JSS2, JSS3).
-                    All JSS students see the same subjects regardless of department.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="mb-6 p-4 bg-muted/50 rounded-lg">
-                    <h3 className="font-medium mb-3">Quick Actions - Assign to All JSS Classes</h3>
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="text-sm font-medium text-muted-foreground mb-2 flex items-center gap-2">
-                          <BookMarked className="w-4 h-4" /> General Subjects
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {generalSubjects.map(subject => (
-                            <div key={subject.id} className="flex items-center gap-2 p-2 bg-background rounded-md border">
-                              <Checkbox
-                                id={`jss-all-${subject.id}`}
-                                checked={areAllJSSAssigned(subject.id)}
-                                onCheckedChange={(checked) => toggleAllJSSSubjects(subject.id, checked)}
-                                data-testid={`checkbox-jss-all-${subject.id}`}
-                              />
-                              <label htmlFor={`jss-all-${subject.id}`} className="text-sm cursor-pointer">
-                                {subject.name}
-                              </label>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
+          {/* ─── JSS TAB ─── */}
+          <TabsContent value="jss" className="mt-4 space-y-4">
+            <Card className="border shadow-sm">
+              <CardHeader className="pb-3 border-b bg-muted/30 rounded-t-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
+                    <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">JSS Subject Assignments</CardTitle>
+                    <CardDescription className="text-xs mt-0.5">
+                      All JSS students see the same subjects — no department split at this level.
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-5 space-y-5">
+                {/* Quick Actions */}
+                <div className="rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/40 overflow-hidden">
+                  <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-800/50">
+                    <BookMarked className="w-4 h-4 text-slate-600 dark:text-slate-400" />
+                    <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">Quick Actions — Assign to All JSS Classes</span>
+                  </div>
+                  <div className="p-4">
+                    <p className="text-xs text-muted-foreground mb-3">Toggle a subject below to assign or unassign it from every JSS class at once.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {generalSubjects.map(subject => {
+                        const allAssigned = areAllJSSAssigned(subject.id);
+                        return (
+                          <label
+                            key={subject.id}
+                            htmlFor={`jss-all-${subject.id}`}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all text-sm
+                              ${allAssigned
+                                ? 'bg-primary/10 border-primary/30 text-primary dark:text-primary font-medium'
+                                : 'bg-background border-border text-muted-foreground hover:bg-muted/50'
+                              }`}
+                          >
+                            <Checkbox
+                              id={`jss-all-${subject.id}`}
+                              checked={allAssigned}
+                              onCheckedChange={(checked) => toggleAllJSSSubjects(subject.id, checked)}
+                              data-testid={`checkbox-jss-all-${subject.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            {subject.name}
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
+                </div>
 
-                  <Accordion type="multiple" defaultValue={jssClasses.map(c => c.id.toString())}>
-                    {jssClasses.map(cls => (
-                      <AccordionItem key={cls.id} value={cls.id.toString()}>
-                        <AccordionTrigger className="hover:no-underline" data-testid={`accordion-class-${cls.id}`}>
+                {/* Per-Class Accordion */}
+                <Accordion type="multiple" defaultValue={jssClasses.map(c => c.id.toString())} className="space-y-2">
+                  {jssClasses.map(cls => {
+                    const assignedCount = activeSubjects.filter(s => isSubjectAssigned(cls.id, s.id, null)).length;
+                    return (
+                      <AccordionItem
+                        key={cls.id}
+                        value={cls.id.toString()}
+                        className="border rounded-xl overflow-hidden shadow-sm"
+                      >
+                        <AccordionTrigger
+                          className="hover:no-underline px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors [&[data-state=open]]:bg-muted/50"
+                          data-testid={`accordion-class-${cls.id}`}
+                        >
                           <div className="flex items-center gap-3">
-                            <span className="font-medium">{cls.name}</span>
-                            <Badge variant="secondary" className="text-xs">
-                              {activeSubjects.filter(s => isSubjectAssigned(cls.id, s.id, null)).length} subjects
+                            <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/60 flex items-center justify-center text-xs font-bold text-indigo-700 dark:text-indigo-300">
+                              {cls.name.replace(/\s/g, '').slice(0, 4)}
+                            </div>
+                            <span className="font-semibold text-sm">{cls.name}</span>
+                            <Badge variant="secondary" className="text-xs font-normal">
+                              {assignedCount} / {activeSubjects.length} subjects
                             </Badge>
                           </div>
                         </AccordionTrigger>
-                        <AccordionContent className="pt-4">
-                          <ScrollArea className="h-auto max-h-[400px]">
-                            <div className="space-y-6 pr-4">
-                              {renderSubjectCategory('General Subjects', generalSubjects, cls.id, null, <BookMarked className="w-4 h-4" />)}
-                              {renderSubjectCategory('Science Subjects', scienceSubjects, cls.id, null, <GraduationCap className="w-4 h-4" />)}
-                              {renderSubjectCategory('Art Subjects', artSubjects, cls.id, null, <Palette className="w-4 h-4" />)}
-                              {renderSubjectCategory('Commercial Subjects', commercialSubjects, cls.id, null, <Briefcase className="w-4 h-4" />)}
+                        <AccordionContent className="px-4 pt-4 pb-5 bg-background">
+                          <ScrollArea className="h-auto max-h-[420px]">
+                            <div className="space-y-5 pr-2">
+                              {renderSubjectCategory('General Subjects', generalSubjects, cls.id, null, <BookMarked className="w-4 h-4 text-slate-500" />)}
+                              {renderSubjectCategory('Science Subjects', scienceSubjects, cls.id, null, <GraduationCap className="w-4 h-4 text-blue-500" />)}
+                              {renderSubjectCategory('Art Subjects', artSubjects, cls.id, null, <Palette className="w-4 h-4 text-purple-500" />)}
+                              {renderSubjectCategory('Commercial Subjects', commercialSubjects, cls.id, null, <Briefcase className="w-4 h-4 text-amber-500" />)}
                             </div>
                           </ScrollArea>
                         </AccordionContent>
                       </AccordionItem>
-                    ))}
-                  </Accordion>
-                </CardContent>
-              </Card>
-            </TabsContent>
+                    );
+                  })}
+                </Accordion>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-            <TabsContent value="sss" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <GraduationCap className="w-5 h-5" />
-                    SSS Subject Assignments by Department
-                  </CardTitle>
-                  <CardDescription>
-                    Configure subjects for each department. SSS students see subjects based on their assigned department 
-                    (Science, Art, or Commercial). General subjects can be shared across departments.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Tabs defaultValue="science">
-                    <TabsList className="grid w-full grid-cols-3">
-                      {DEPARTMENTS.map(dept => {
-                        const config = DEPARTMENT_CONFIG[dept];
-                        const Icon = config.icon;
-                        return (
-                          <TabsTrigger key={dept} value={dept} className="flex items-center gap-2" data-testid={`tab-dept-${dept}`}>
-                            <Icon className="w-4 h-4" />
-                            {config.label}
-                            <Badge variant="secondary" className="text-xs">{getSSSAssignmentCount(dept)}</Badge>
-                          </TabsTrigger>
-                        );
-                      })}
-                    </TabsList>
-
+          {/* ─── SSS TAB ─── */}
+          <TabsContent value="sss" className="mt-4 space-y-4">
+            <Card className="border shadow-sm">
+              <CardHeader className="pb-3 border-b bg-muted/30 rounded-t-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center">
+                    <GraduationCap className="w-5 h-5 text-violet-600 dark:text-violet-400" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base">SSS Subject Assignments by Department</CardTitle>
+                    <CardDescription className="text-xs mt-0.5">
+                      SSS students see subjects based on their department — Science, Art, or Commercial.
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-5">
+                <Tabs defaultValue="science">
+                  <TabsList className="flex w-full h-11 p-1 rounded-xl mb-5">
                     {DEPARTMENTS.map(dept => {
                       const config = DEPARTMENT_CONFIG[dept];
                       const Icon = config.icon;
-                      const deptSubjects = activeSubjects.filter(s => s.category === dept);
-
                       return (
-                        <TabsContent key={dept} value={dept} className="space-y-4">
-                          <div className={`p-4 rounded-lg ${config.bgLight}`}>
-                            <h3 className="font-medium mb-3 flex items-center gap-2">
-                              <Icon className="w-5 h-5" />
-                              Quick Actions - Assign to All SSS Classes ({config.label})
-                            </h3>
-                            <div className="space-y-4">
-                              <div>
-                                <h4 className="text-sm font-medium text-muted-foreground mb-2">General Subjects</h4>
-                                <div className="flex flex-wrap gap-2">
-                                  {generalSubjects.map(subject => (
-                                    <div key={subject.id} className="flex items-center gap-2 p-2 bg-background rounded-md border">
+                        <TabsTrigger
+                          key={dept}
+                          value={dept}
+                          className="flex-1 flex items-center justify-center gap-2 rounded-lg text-sm font-medium"
+                          data-testid={`tab-dept-${dept}`}
+                        >
+                          <Icon className="w-4 h-4" />
+                          <span className="hidden sm:inline">{config.label}</span>
+                          <Badge variant="secondary" className="text-xs ml-0.5">{getSSSAssignmentCount(dept)}</Badge>
+                        </TabsTrigger>
+                      );
+                    })}
+                  </TabsList>
+
+                  {DEPARTMENTS.map(dept => {
+                    const config = DEPARTMENT_CONFIG[dept];
+                    const Icon = config.icon;
+                    const deptSubjects = activeSubjects.filter(s => s.category === dept);
+
+                    const deptColorMap: Record<string, string> = {
+                      science: 'blue',
+                      art: 'purple',
+                      commercial: 'amber',
+                    };
+                    const deptColor = deptColorMap[dept] || 'slate';
+
+                    return (
+                      <TabsContent key={dept} value={dept} className="space-y-4 mt-0">
+                        {/* Quick Actions for this dept */}
+                        <div className={`rounded-xl border overflow-hidden
+                          ${dept === 'science' ? 'border-blue-200 dark:border-blue-800' : ''}
+                          ${dept === 'art' ? 'border-purple-200 dark:border-purple-800' : ''}
+                          ${dept === 'commercial' ? 'border-amber-200 dark:border-amber-800' : ''}
+                        `}>
+                          <div className={`flex items-center gap-2 px-4 py-3 border-b
+                            ${dept === 'science' ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800' : ''}
+                            ${dept === 'art' ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800' : ''}
+                            ${dept === 'commercial' ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800' : ''}
+                          `}>
+                            <Icon className={`w-4 h-4
+                              ${dept === 'science' ? 'text-blue-600 dark:text-blue-400' : ''}
+                              ${dept === 'art' ? 'text-purple-600 dark:text-purple-400' : ''}
+                              ${dept === 'commercial' ? 'text-amber-600 dark:text-amber-400' : ''}
+                            `} />
+                            <span className={`text-sm font-semibold
+                              ${dept === 'science' ? 'text-blue-800 dark:text-blue-200' : ''}
+                              ${dept === 'art' ? 'text-purple-800 dark:text-purple-200' : ''}
+                              ${dept === 'commercial' ? 'text-amber-800 dark:text-amber-200' : ''}
+                            `}>
+                              Quick Actions — Assign to All SSS Classes ({config.label})
+                            </span>
+                          </div>
+                          <div className="p-4 bg-background space-y-4">
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">General Subjects</p>
+                              <div className="flex flex-wrap gap-2">
+                                {generalSubjects.map(subject => {
+                                  const allAssigned = areAllSSSAssignedForDept(subject.id, dept);
+                                  return (
+                                    <label
+                                      key={subject.id}
+                                      htmlFor={`sss-${dept}-all-general-${subject.id}`}
+                                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all text-sm
+                                        ${allAssigned
+                                          ? 'bg-primary/10 border-primary/30 text-primary font-medium'
+                                          : 'bg-background border-border text-muted-foreground hover:bg-muted/50'
+                                        }`}
+                                    >
                                       <Checkbox
                                         id={`sss-${dept}-all-general-${subject.id}`}
-                                        checked={areAllSSSAssignedForDept(subject.id, dept)}
+                                        checked={allAssigned}
                                         onCheckedChange={(checked) => toggleAllSSSSubjectsForDept(subject.id, dept, checked)}
                                         data-testid={`checkbox-sss-${dept}-all-${subject.id}`}
+                                        onClick={(e) => e.stopPropagation()}
                                       />
-                                      <label htmlFor={`sss-${dept}-all-general-${subject.id}`} className="text-sm cursor-pointer">
-                                        {subject.name}
-                                      </label>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                              <div>
-                                <h4 className="text-sm font-medium text-muted-foreground mb-2">{config.label} Specific Subjects</h4>
-                                <div className="flex flex-wrap gap-2">
-                                  {deptSubjects.map(subject => (
-                                    <div key={subject.id} className="flex items-center gap-2 p-2 bg-background rounded-md border">
-                                      <Checkbox
-                                        id={`sss-${dept}-all-${subject.id}`}
-                                        checked={areAllSSSAssignedForDept(subject.id, dept)}
-                                        onCheckedChange={(checked) => toggleAllSSSSubjectsForDept(subject.id, dept, checked)}
-                                        data-testid={`checkbox-sss-${dept}-all-specific-${subject.id}`}
-                                      />
-                                      <label htmlFor={`sss-${dept}-all-${subject.id}`} className="text-sm cursor-pointer">
-                                        {subject.name}
-                                      </label>
-                                    </div>
-                                  ))}
-                                </div>
+                                      {subject.name}
+                                    </label>
+                                  );
+                                })}
                               </div>
                             </div>
+                            {deptSubjects.length > 0 && (
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">{config.label} Specific Subjects</p>
+                                <div className="flex flex-wrap gap-2">
+                                  {deptSubjects.map(subject => {
+                                    const allAssigned = areAllSSSAssignedForDept(subject.id, dept);
+                                    return (
+                                      <label
+                                        key={subject.id}
+                                        htmlFor={`sss-${dept}-all-${subject.id}`}
+                                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-all text-sm
+                                          ${allAssigned
+                                            ? 'bg-primary/10 border-primary/30 text-primary font-medium'
+                                            : 'bg-background border-border text-muted-foreground hover:bg-muted/50'
+                                          }`}
+                                      >
+                                        <Checkbox
+                                          id={`sss-${dept}-all-${subject.id}`}
+                                          checked={allAssigned}
+                                          onCheckedChange={(checked) => toggleAllSSSSubjectsForDept(subject.id, dept, checked)}
+                                          data-testid={`checkbox-sss-${dept}-all-specific-${subject.id}`}
+                                          onClick={(e) => e.stopPropagation()}
+                                        />
+                                        {subject.name}
+                                      </label>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            )}
                           </div>
+                        </div>
 
-                          <Accordion type="multiple" defaultValue={sssClasses.map(c => c.id.toString())}>
-                            {sssClasses.map(cls => (
-                              <AccordionItem key={cls.id} value={cls.id.toString()}>
-                                <AccordionTrigger className="hover:no-underline" data-testid={`accordion-class-${cls.id}-dept-${dept}`}>
+                        {/* Per-Class Accordion */}
+                        <Accordion type="multiple" defaultValue={sssClasses.map(c => c.id.toString())} className="space-y-2">
+                          {sssClasses.map(cls => {
+                            const assignedCount = activeSubjects.filter(s => isSubjectAssigned(cls.id, s.id, dept)).length;
+                            return (
+                              <AccordionItem
+                                key={cls.id}
+                                value={cls.id.toString()}
+                                className="border rounded-xl overflow-hidden shadow-sm"
+                              >
+                                <AccordionTrigger
+                                  className="hover:no-underline px-4 py-3 bg-muted/30 hover:bg-muted/50 transition-colors [&[data-state=open]]:bg-muted/50"
+                                  data-testid={`accordion-class-${cls.id}-dept-${dept}`}
+                                >
                                   <div className="flex items-center gap-3">
-                                    <span className="font-medium">{cls.name}</span>
-                                    <Badge className={config.color}>{config.label}</Badge>
-                                    <Badge variant="secondary" className="text-xs">
-                                      {activeSubjects.filter(s => isSubjectAssigned(cls.id, s.id, dept)).length} subjects
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold
+                                      ${dept === 'science' ? 'bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300' : ''}
+                                      ${dept === 'art' ? 'bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300' : ''}
+                                      ${dept === 'commercial' ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300' : ''}
+                                    `}>
+                                      {cls.name.replace(/\s/g, '').slice(0, 4)}
+                                    </div>
+                                    <span className="font-semibold text-sm">{cls.name}</span>
+                                    <Badge className={`text-xs font-medium text-white ${config.color}`}>
+                                      {config.label}
+                                    </Badge>
+                                    <Badge variant="secondary" className="text-xs font-normal">
+                                      {assignedCount} subjects
                                     </Badge>
                                   </div>
                                 </AccordionTrigger>
-                                <AccordionContent className="pt-4">
-                                  <ScrollArea className="h-auto max-h-[400px]">
-                                    <div className="space-y-6 pr-4">
-                                      {renderSubjectCategory('General Subjects', generalSubjects, cls.id, dept, <BookMarked className="w-4 h-4" />)}
-                                      {renderSubjectCategory(`${config.label} Subjects`, deptSubjects, cls.id, dept, <Icon className="w-4 h-4" />)}
+                                <AccordionContent className="px-4 pt-4 pb-5 bg-background">
+                                  <ScrollArea className="h-auto max-h-[420px]">
+                                    <div className="space-y-5 pr-2">
+                                      {renderSubjectCategory('General Subjects', generalSubjects, cls.id, dept, <BookMarked className="w-4 h-4 text-slate-500" />)}
+                                      {renderSubjectCategory(`${config.label} Subjects`, deptSubjects, cls.id, dept, <Icon className={`w-4 h-4 ${dept === 'science' ? 'text-blue-500' : dept === 'art' ? 'text-purple-500' : 'text-amber-500'}`} />)}
                                     </div>
                                   </ScrollArea>
                                 </AccordionContent>
                               </AccordionItem>
-                            ))}
-                          </Accordion>
-                        </TabsContent>
-                      );
-                    })}
-                  </Tabs>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        )}
-
-        {hasPendingChanges && (
-          <div className="fixed bottom-4 right-4 z-50">
-            <Card className="shadow-lg border-yellow-200 dark:border-yellow-800">
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="flex items-center gap-2 text-yellow-600 dark:text-yellow-400">
-                  <Info className="w-5 h-5" />
-                  <span className="font-medium">
-                    {pendingChanges.size + pendingRemovals.size} unsaved changes
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={discardChanges} disabled={isSaving}>
-                    Discard
-                  </Button>
-                  <Button size="sm" onClick={saveChanges} disabled={isSaving}>
-                    {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 mr-1" />}
-                    Save
-                  </Button>
-                </div>
+                            );
+                          })}
+                        </Accordion>
+                      </TabsContent>
+                    );
+                  })}
+                </Tabs>
               </CardContent>
             </Card>
+          </TabsContent>
+        </Tabs>
+      )}
+
+      {/* Floating Save Bar */}
+      {hasPendingChanges && (
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4">
+          <div className="flex items-center justify-between gap-4 px-5 py-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-700 shadow-xl shadow-black/10 dark:shadow-black/40">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+                <Info className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground leading-tight">Unsaved changes</p>
+                <p className="text-xs text-muted-foreground">{pendingChanges.size + pendingRemovals.size} modification{(pendingChanges.size + pendingRemovals.size) !== 1 ? 's' : ''} pending</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={discardChanges} disabled={isSaving} className="h-8 px-3 text-xs">
+                Discard
+              </Button>
+              <Button size="sm" onClick={saveChanges} disabled={isSaving} className="h-8 px-4 text-xs gap-1.5 shadow-sm">
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-3.5 h-3.5" />
+                    Save
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+    </div>
   );
 }
