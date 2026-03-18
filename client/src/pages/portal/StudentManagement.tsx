@@ -15,7 +15,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createStudentSchema, quickCreateStudentSchema, type CreateStudentRequest, type QuickCreateStudentRequest } from '@shared/schema';
-import { UserPlus, Edit, Search, Download, Trash2, Shield, ShieldOff, Upload, FileText, Key, AlertTriangle, AlertCircle, GraduationCap, Palette, Briefcase, Info } from 'lucide-react';
+import { UserPlus, Edit, Search, Download, Trash2, Shield, ShieldOff, Upload, FileText, Key, AlertTriangle, AlertCircle, GraduationCap, Palette, Briefcase, Info, MoreHorizontal, Users, BookOpen, Phone } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/lib/auth';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { ROLE_IDS } from '@/lib/roles';
@@ -1420,326 +1421,237 @@ export default function StudentManagement() {
         </CardContent>
       </Card>
 
-      {/* Students Table - Fully Responsive */}
-      <Card>
-        <CardHeader className="p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-            <CardTitle className="text-base sm:text-lg">Students ({filteredStudents.length})</CardTitle>
-            <Button variant="outline" size="sm" className="w-full sm:w-auto text-xs sm:text-sm" data-testid="button-export-students">
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="p-3 sm:p-6 sm:pt-0">
-          {loadingStudents ? (
-            <div className="text-center py-8 text-sm sm:text-base">Loading students...</div>
-          ) : (
-            <>
-              {/* Mobile Card View */}
-              <div className="md:hidden space-y-3">
-                {filteredStudents.map((student: any) => (
-                  <div 
-                    key={student.id} 
-                    className="border border-border rounded-lg p-4 bg-muted/30"
-                    data-testid={`card-student-${student.id}`}
-                  >
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-sm truncate">
-                            {student.user?.firstName} {student.user?.lastName}
-                          </div>
-                          <div className="text-xs text-muted-foreground truncate">
-                            {student.user?.email}
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {student.admissionNumber}
-                          </div>
-                        </div>
-                        <Badge variant={student.user?.isActive ? "default" : "secondary"} className="ml-2 text-xs">
-                          {student.user?.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </div>
+      {/* Students List */}
+      <div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <p className="text-sm text-muted-foreground">
+            Showing <span className="font-semibold text-foreground">{filteredStudents.length}</span> of{' '}
+            <span className="font-semibold text-foreground">{students.length}</span> students
+          </p>
+          <Button variant="outline" size="sm" data-testid="button-export-students">
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+        </div>
 
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div>
-                          <span className="text-muted-foreground">Class:</span>
-                          <div className="font-medium mt-0.5">
-                            <Badge variant="secondary" className="text-xs">
-                              {student.class?.name || 'N/A'}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Department:</span>
-                          <div className="font-medium mt-0.5">
-                            {student.department ? (
-                              <Badge 
-                                variant="outline" 
-                                className={`text-xs capitalize ${
-                                  student.department === 'science' 
-                                    ? 'border-blue-500 text-blue-700 dark:text-blue-300' 
-                                    : student.department === 'art' 
-                                      ? 'border-purple-500 text-purple-700 dark:text-purple-300' 
-                                      : 'border-green-500 text-green-700 dark:text-green-300'
-                                }`}
-                              >
-                                {student.department}
-                              </Badge>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Parent:</span>
-                          <div className="font-medium mt-0.5 truncate">
-                            {student.parent?.firstName ? `${student.parent.firstName} ${student.parent.lastName}` : 'N/A'}
-                          </div>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Emergency:</span>
-                          <div className="font-medium mt-0.5">{student.emergencyContact}</div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 pt-2 border-t border-border">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="flex-1 text-xs"
-                          onClick={() => handleEditClick(student)}
-                          data-testid={`button-edit-${student.id}`}
-                        >
-                          <Edit className="h-3.5 w-3.5 mr-1.5" />
-                          Edit
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="flex-1 text-xs"
-                          onClick={() => setStudentToBlock(student)}
-                          disabled={blockStudentMutation.isPending && blockStudentMutation.variables?.id === student.id}
-                          data-testid={`button-block-${student.id}`}
-                        >
-                          {student.user?.isActive ? (
-                            <>
-                              <ShieldOff className="h-3.5 w-3.5 mr-1.5 text-orange-600" />
-                              Block
-                            </>
-                          ) : (
-                            <>
-                              <Shield className="h-3.5 w-3.5 mr-1.5 text-green-600" />
-                              Activate
-                            </>
-                          )}
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-xs"
-                              data-testid={`button-delete-${student.id}`}
-                            >
-                              <Trash2 className="h-3.5 w-3.5 text-red-600" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Student</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete {student.user?.firstName} {student.user?.lastName}? 
-                                This will deactivate the student account and cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDeleteStudent(student.id)}
-                                className="bg-red-600 hover:bg-red-700"
-                              >
-                                Delete Student
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
+        {loadingStudents ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(6)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 rounded-full bg-muted" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-muted rounded w-3/4" />
+                      <div className="h-3 bg-muted rounded w-1/2" />
                     </div>
                   </div>
-                ))}
-                {filteredStudents.length === 0 && (
-                  <div className="text-center py-8 text-sm text-muted-foreground">
-                    No students found
+                  <div className="space-y-2">
+                    <div className="h-3 bg-muted rounded" />
+                    <div className="h-3 bg-muted rounded w-2/3" />
                   </div>
-                )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : filteredStudents.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Users className="w-8 h-8 text-muted-foreground" />
               </div>
+              <p className="text-lg font-medium text-muted-foreground">No students found</p>
+              <p className="text-sm text-muted-foreground mt-1">Try adjusting your search or filter</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            {/* Select all bar */}
+            {filteredStudents.length > 0 && (
+              <div className="flex items-center gap-3 mb-3 px-1">
+                <input
+                  type="checkbox"
+                  checked={selectedStudents.length === filteredStudents.length && filteredStudents.length > 0}
+                  onChange={handleSelectAll}
+                  className="h-4 w-4 rounded"
+                  data-testid="checkbox-select-all"
+                />
+                <span className="text-sm text-muted-foreground">
+                  {selectedStudents.length > 0 ? `${selectedStudents.length} selected` : 'Select all'}
+                </span>
+              </div>
+            )}
 
-              {/* Desktop Table View */}
-              <div className="hidden md:block overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredStudents.map((student: any) => (
+                <Card
+                  key={student.id}
+                  className="group hover:shadow-md transition-shadow duration-200"
+                  data-testid={`card-student-${student.id}`}
+                >
+                  <CardContent className="p-5">
+                    {/* Card Header — Checkbox + Avatar + Name + Actions */}
+                    <div className="flex items-start justify-between gap-2 mb-4">
+                      <div className="flex items-center gap-3 min-w-0">
                         <input
                           type="checkbox"
-                          checked={selectedStudents.length === filteredStudents.length && filteredStudents.length > 0}
-                          onChange={handleSelectAll}
-                          className="h-4 w-4"
-                          data-testid="checkbox-select-all"
+                          checked={selectedStudents.includes(student.id)}
+                          onChange={() => handleSelectStudent(student.id)}
+                          className="h-4 w-4 rounded flex-shrink-0 mt-0.5"
+                          data-testid={`checkbox-student-${student.id}`}
                         />
-                      </TableHead>
-                      <TableHead className="text-xs lg:text-sm">Admission Number</TableHead>
-                      <TableHead className="text-xs lg:text-sm">Name</TableHead>
-                      <TableHead className="text-xs lg:text-sm">Class</TableHead>
-                      <TableHead className="text-xs lg:text-sm">Department</TableHead>
-                      <TableHead className="text-xs lg:text-sm">Parent</TableHead>
-                      <TableHead className="text-xs lg:text-sm">Contact</TableHead>
-                      <TableHead className="text-xs lg:text-sm">Status</TableHead>
-                      <TableHead className="text-xs lg:text-sm">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredStudents.map((student: any) => (
-                      <TableRow key={student.id} data-testid={`row-student-${student.id}`}>
-                        <TableCell>
-                          <input
-                            type="checkbox"
-                            checked={selectedStudents.includes(student.id)}
-                            onChange={() => handleSelectStudent(student.id)}
-                            className="h-4 w-4"
-                            data-testid={`checkbox-student-${student.id}`}
-                          />
-                        </TableCell>
-                        <TableCell className="font-medium text-xs lg:text-sm">
-                          {student.admissionNumber}
-                        </TableCell>
-                        <TableCell className="text-xs lg:text-sm">
-                          <div>
-                            <div className="font-medium">
-                              {student.user?.firstName} {student.user?.lastName}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {student.user?.email}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-xs lg:text-sm">
-                          <Badge variant="secondary" className="text-xs">
-                            {student.class?.name}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-xs lg:text-sm">
-                          {student.department ? (
-                            <Badge 
-                              variant="outline" 
-                              className={`text-xs capitalize ${
-                                student.department === 'science' 
-                                  ? 'border-blue-500 text-blue-700 dark:text-blue-300' 
-                                  : student.department === 'art' 
-                                    ? 'border-purple-500 text-purple-700 dark:text-purple-300' 
-                                    : 'border-green-500 text-green-700 dark:text-green-300'
-                              }`}
-                            >
-                              {student.department}
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-xs lg:text-sm">
-                          {student.parent?.firstName} {student.parent?.lastName}
-                        </TableCell>
-                        <TableCell className="text-xs lg:text-sm">{student.emergencyContact}</TableCell>
-                        <TableCell>
-                          {!student.user?.isActive ? (
-                            <Badge variant="secondary" className="text-xs">
-                              Inactive
-                            </Badge>
-                          ) : student.user?.mustChangePassword && !student.user?.lastLoginAt ? (
-                            <Badge variant="outline" className="text-xs border-orange-500 text-orange-700 dark:text-orange-300">
-                              ⏳ Pending Login
-                            </Badge>
-                          ) : (
-                            <Badge variant="default" className="text-xs bg-green-600">
-                              ✅ Active
-                            </Badge>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center space-x-1">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => handleEditClick(student)}
-                              data-testid={`button-edit-${student.id}`}
-                              title="Edit student"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setStudentToBlock(student)}
-                              disabled={blockStudentMutation.isPending && blockStudentMutation.variables?.id === student.id}
-                              data-testid={`button-block-${student.id}`}
-                              title={student.user?.isActive ? "Block student" : "Activate student"}
-                            >
-                              {student.user?.isActive ? (
-                                <ShieldOff className="h-4 w-4 text-orange-600" />
-                              ) : (
-                                <Shield className="h-4 w-4 text-green-600" />
-                              )}
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  data-testid={`button-delete-${student.id}`}
-                                  title="Delete student"
-                                >
-                                  <Trash2 className="h-4 w-4 text-red-600" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Student</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete {student.user?.firstName} {student.user?.lastName}? 
-                                    This will deactivate the student account and cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => handleDeleteStudent(student.id)}
-                                    className="bg-red-600 hover:bg-red-700"
-                                  >
-                                    Delete Student
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {filteredStudents.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-sm">
-                          No students found
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+                        <div className="w-11 h-11 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 border border-primary/20">
+                          <span className="text-sm font-semibold text-primary">
+                            {student.user?.firstName?.[0]?.toUpperCase()}{student.user?.lastName?.[0]?.toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm leading-tight truncate">
+                            {student.user?.firstName} {student.user?.lastName}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">
+                            {student.user?.email}
+                          </p>
+                        </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                            data-testid={`button-actions-${student.id}`}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Open actions</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem
+                            onClick={() => handleEditClick(student)}
+                            data-testid={`button-edit-${student.id}`}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit Student
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => setStudentToBlock(student)}
+                            disabled={blockStudentMutation.isPending && blockStudentMutation.variables?.id === student.id}
+                            data-testid={`button-block-${student.id}`}
+                            className={student.user?.isActive ? 'text-orange-600 focus:text-orange-600' : 'text-green-600 focus:text-green-600'}
+                          >
+                            {student.user?.isActive ? (
+                              <><ShieldOff className="h-4 w-4 mr-2" />Block Account</>
+                            ) : (
+                              <><Shield className="h-4 w-4 mr-2" />Unblock Account</>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => handleDeleteStudent(student.id)}
+                            data-testid={`button-delete-${student.id}`}
+                            className="text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Student
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+
+                    {/* Status + Class + Department badges */}
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
+                      {!student.user?.isActive ? (
+                        <Badge variant="secondary" className="text-xs">○ Inactive</Badge>
+                      ) : student.user?.mustChangePassword && !student.user?.lastLoginAt ? (
+                        <Badge variant="outline" className="text-xs border-orange-500 text-orange-600 dark:text-orange-400">
+                          ⏳ Pending
+                        </Badge>
+                      ) : (
+                        <Badge variant="default" className="text-xs bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800">
+                          ● Active
+                        </Badge>
+                      )}
+                      {student.class?.name && (
+                        <Badge variant="secondary" className="text-xs">
+                          {student.class.name}
+                        </Badge>
+                      )}
+                      {student.department && (
+                        <Badge
+                          variant="outline"
+                          className={`text-xs capitalize ${
+                            student.department === 'science'
+                              ? 'border-blue-400 text-blue-700 dark:text-blue-300'
+                              : student.department === 'art'
+                                ? 'border-purple-400 text-purple-700 dark:text-purple-300'
+                                : 'border-green-400 text-green-700 dark:text-green-300'
+                          }`}
+                        >
+                          {student.department}
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Divider */}
+                    <div className="border-t border-border my-3" />
+
+                    {/* Detail rows */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">ID:</span>
+                        <span className="font-mono">{student.admissionNumber}</span>
+                      </div>
+                      {student.parent?.firstName && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground">Parent:</span>
+                          <span className="truncate">{student.parent.firstName} {student.parent.lastName}</span>
+                        </div>
+                      )}
+                      {student.emergencyContact && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Phone className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span>{student.emergencyContact}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Mobile footer actions (always visible) */}
+                    <div className="mt-4 pt-3 border-t border-border flex items-center justify-between sm:hidden">
+                      <span className="text-xs text-muted-foreground">Actions</span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                            <MoreHorizontal className="h-3.5 w-3.5" />
+                            More
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem onClick={() => handleEditClick(student)}>
+                            <Edit className="h-4 w-4 mr-2" />Edit Student
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => setStudentToBlock(student)}
+                            className={student.user?.isActive ? 'text-orange-600 focus:text-orange-600' : 'text-green-600 focus:text-green-600'}
+                          >
+                            {student.user?.isActive ? <><ShieldOff className="h-4 w-4 mr-2" />Block</> : <><Shield className="h-4 w-4 mr-2" />Unblock</>}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleDeleteStudent(student.id)} className="text-red-600 focus:text-red-600">
+                            <Trash2 className="h-4 w-4 mr-2" />Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
 
       {/* Block / Unblock Confirmation Dialog */}
       <AlertDialog open={!!studentToBlock} onOpenChange={(open) => { if (!open) setStudentToBlock(null); }}>

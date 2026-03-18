@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,7 +16,8 @@ import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { GraduationCap, Palette, Briefcase, UserPlus, Search, Mail, Phone, Edit, Trash2, CheckCircle, Copy, BookOpen, X, Plus } from 'lucide-react';
+import { GraduationCap, Palette, Briefcase, UserPlus, Search, Mail, Phone, Edit, Trash2, CheckCircle, Copy, BookOpen, X, Plus, MoreHorizontal, Ban, ShieldCheck, Users } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 import { ROLE_IDS } from '@/lib/roles';
 import { isSeniorSecondaryClass } from '@/lib/utils';
@@ -51,6 +53,7 @@ export default function TeachersManagement() {
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
   const [editingTeacher, setEditingTeacher] = useState<any>(null);
   const [teacherToDelete, setTeacherToDelete] = useState<any>(null);
+  const [teacherToBlock, setTeacherToBlock] = useState<any>(null);
   const [credentialsDialog, setCredentialsDialog] = useState<{
     open: boolean;
     username: string;
@@ -489,6 +492,43 @@ export default function TeachersManagement() {
     },
   });
   
+  // Block/Unblock teacher mutation
+  const blockTeacherMutation = useMutation({
+    mutationFn: async ({ id, isActive }: { id: string; isActive: boolean }) => {
+      const endpoint = isActive ? `/api/users/${id}/unsuspend` : `/api/users/${id}/suspend`;
+      const response = await apiRequest('POST', endpoint, { reason: isActive ? 'Account restored by admin' : 'Account blocked by admin' });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update teacher status');
+      }
+      return await response.json();
+    },
+    onMutate: async ({ id, isActive }) => {
+      await queryClient.cancelQueries({ queryKey: ['/api/users', 'Teacher'] });
+      const previousData = queryClient.getQueryData(['/api/users', 'Teacher']);
+      queryClient.setQueryData(['/api/users', 'Teacher'], (old: any) => {
+        if (!old || !Array.isArray(old)) return old;
+        return old.map((t: any) => t.id === id ? { ...t, isActive } : t);
+      });
+      toast({ title: isActive ? 'Activating...' : 'Blocking...', description: 'Updating teacher status' });
+      return { previousData };
+    },
+    onSuccess: (_, { isActive }) => {
+      toast({
+        title: 'Success',
+        description: isActive ? 'Teacher account activated successfully' : 'Teacher account blocked successfully',
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/users', 'Teacher'] });
+      setTeacherToBlock(null);
+    },
+    onError: (error: any, _, context: any) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(['/api/users', 'Teacher'], context.previousData);
+      }
+      toast({ title: 'Error', description: error.message || 'Failed to update teacher status', variant: 'destructive' });
+    },
+  });
+
   // Create teacher assignment mutation
   const createAssignmentMutation = useMutation({
     mutationFn: async (data: { teacherId: string; classId: number; subjectId: number; department?: string }) => {
@@ -707,10 +747,17 @@ export default function TeachersManagement() {
   // Get unique departments for filter
   const departments = Array.from(new Set(teachers.map((t: any) => t.department).filter(Boolean))) as string[];
 
+  const activeTeachers = teachers.filter((t: any) => t.isActive).length;
+  const blockedTeachers = teachers.filter((t: any) => !t.isActive).length;
+
   return (
     <div className="space-y-6" data-testid="teachers-management">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Teachers Management</h1>
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Teachers Management</h1>
+          <p className="text-sm text-muted-foreground mt-1">Manage teacher accounts, assignments and access</p>
+        </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button data-testid="button-add-teacher">
@@ -1098,15 +1145,52 @@ export default function TeachersManagement() {
         </Dialog>
       </div>
 
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Users className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Total Teachers</p>
+              <p className="text-2xl font-bold" data-testid="stat-total-teachers">{teachers.length}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center flex-shrink-0">
+              <ShieldCheck className="w-5 h-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Active</p>
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400" data-testid="stat-active-teachers">{activeTeachers}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="col-span-2 sm:col-span-1">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center flex-shrink-0">
+              <Ban className="w-5 h-5 text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Blocked</p>
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400" data-testid="stat-blocked-teachers">{blockedTeachers}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Filters */}
       <Card>
         <CardContent className="py-4">
-          <div className="flex space-x-4">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
               <div className="relative">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search teachers by name, email, or employee ID..."
+                  placeholder="Search by name, email, or employee ID..."
                   className="pl-10"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -1115,7 +1199,7 @@ export default function TeachersManagement() {
               </div>
             </div>
             <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-              <SelectTrigger className="w-48" data-testid="select-department-filter">
+              <SelectTrigger className="w-full sm:w-48" data-testid="select-department-filter">
                 <SelectValue placeholder="Filter by Department" />
               </SelectTrigger>
               <SelectContent>
@@ -1129,127 +1213,245 @@ export default function TeachersManagement() {
         </CardContent>
       </Card>
 
-      {/* Teachers List */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <span>Teachers ({filteredTeachers.length})</span>
-            <Badge variant="secondary" data-testid="text-total-teachers">
-              Total: {teachers.length}
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loadingTeachers ? (
-            <div className="flex justify-center py-8">
-              <div className="text-muted-foreground">Loading teachers...</div>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Teacher</TableHead>
-                  <TableHead>Employee ID</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Joining Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTeachers.length > 0 ? (
-                  filteredTeachers.map((teacher: any) => (
-                    <TableRow key={teacher.id} data-testid={`row-teacher-${teacher.id}`}>
-                      <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                            <span className="text-sm font-medium text-primary">
-                              {teacher.firstName?.[0]}{teacher.lastName?.[0]}
-                            </span>
-                          </div>
-                          <div>
-                            <div className="font-medium" data-testid={`text-teacher-name-${teacher.id}`}>
-                              {teacher.firstName} {teacher.lastName}
-                            </div>
-                            <div className="text-sm text-muted-foreground">
-                              {teacher.qualifications || 'No qualifications listed'}
-                            </div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell data-testid={`text-employee-id-${teacher.id}`}>
-                        <Badge variant="outline">
-                          {teacher.employeeId || 'Not assigned'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell data-testid={`text-department-${teacher.id}`}>
-                        <div className="flex items-center">
-                          <GraduationCap className="w-4 h-4 mr-1 text-muted-foreground" />
-                          {teacher.department || 'Not assigned'}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="flex items-center text-sm">
-                            <Mail className="w-3 h-3 mr-1 text-muted-foreground" />
-                            {teacher.email}
-                          </div>
-                          {teacher.phone && (
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <Phone className="w-3 h-3 mr-1" />
-                              {teacher.phone}
-                            </div>
+      {/* Teachers List - Card Grid */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm text-muted-foreground">
+            Showing <span className="font-semibold text-foreground">{filteredTeachers.length}</span> of{' '}
+            <span className="font-semibold text-foreground">{teachers.length}</span> teachers
+          </p>
+        </div>
+
+        {loadingTeachers ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[...Array(6)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-12 h-12 rounded-full bg-muted" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-muted rounded w-3/4" />
+                      <div className="h-3 bg-muted rounded w-1/2" />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-3 bg-muted rounded" />
+                    <div className="h-3 bg-muted rounded w-2/3" />
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : filteredTeachers.length === 0 ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                <Users className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <p className="text-lg font-medium text-muted-foreground">No teachers found</p>
+              <p className="text-sm text-muted-foreground mt-1">Try adjusting your search or filters</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredTeachers.map((teacher: any) => (
+              <Card
+                key={teacher.id}
+                className="group hover:shadow-md transition-shadow duration-200"
+                data-testid={`card-teacher-${teacher.id}`}
+              >
+                <CardContent className="p-5">
+                  {/* Card Header — Avatar + Name + Actions */}
+                  <div className="flex items-start justify-between gap-2 mb-4">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 border border-primary/20">
+                        <span className="text-base font-semibold text-primary">
+                          {teacher.firstName?.[0]?.toUpperCase()}{teacher.lastName?.[0]?.toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm leading-tight truncate" data-testid={`text-teacher-name-${teacher.id}`}>
+                          {teacher.firstName} {teacher.lastName}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">
+                          {teacher.qualifications || 'No qualifications'}
+                        </p>
+                      </div>
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          data-testid={`button-actions-teacher-${teacher.id}`}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Open actions</span>
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem
+                          onClick={() => handleEdit(teacher)}
+                          data-testid={`button-edit-teacher-${teacher.id}`}
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit Teacher
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleOpenAssignmentDialog(teacher)}
+                          data-testid={`button-assign-teacher-${teacher.id}`}
+                        >
+                          <BookOpen className="w-4 h-4 mr-2" />
+                          Manage Assignments
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setTeacherToBlock(teacher)}
+                          data-testid={`button-block-teacher-${teacher.id}`}
+                          className={teacher.isActive ? 'text-orange-600 focus:text-orange-600' : 'text-green-600 focus:text-green-600'}
+                        >
+                          {teacher.isActive ? (
+                            <><Ban className="w-4 h-4 mr-2" />Block Teacher</>
+                          ) : (
+                            <><ShieldCheck className="w-4 h-4 mr-2" />Unblock Teacher</>
                           )}
-                        </div>
-                      </TableCell>
-                      <TableCell data-testid={`text-joining-date-${teacher.id}`}>
-                        {teacher.dateOfJoining ? 
-                          new Date(teacher.dateOfJoining).toLocaleDateString() : 
-                          'Not specified'
-                        }
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={teacher.isActive ? "default" : "secondary"}>
-                          {teacher.isActive ? "Active" : "Inactive"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(teacher)}
-                            data-testid={`button-edit-teacher-${teacher.id}`}
-                          >
-                            <Edit className="w-4 h-4 mr-1" />
-                            Edit
-                          </Button>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => setTeacherToDelete(teacher)}
-                            data-testid={`button-delete-teacher-${teacher.id}`}
-                          >
-                            <Trash2 className="w-4 h-4 mr-1" />
-                            Delete
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
-                      No teachers found
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setTeacherToDelete(teacher)}
+                          data-testid={`button-delete-teacher-${teacher.id}`}
+                          className="text-red-600 focus:text-red-600"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete Teacher
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  {/* Status + Department row */}
+                  <div className="flex items-center gap-2 mb-3 flex-wrap">
+                    <Badge
+                      variant={teacher.isActive ? "default" : "secondary"}
+                      className={`text-xs ${teacher.isActive ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-200 dark:border-green-800' : ''}`}
+                    >
+                      {teacher.isActive ? '● Active' : '○ Inactive'}
+                    </Badge>
+                    {teacher.department && (
+                      <Badge variant="outline" className="text-xs capitalize">
+                        <GraduationCap className="w-3 h-3 mr-1" />
+                        {teacher.department}
+                      </Badge>
+                    )}
+                    {teacher.employeeId && (
+                      <Badge variant="outline" className="text-xs font-mono" data-testid={`text-employee-id-${teacher.id}`}>
+                        {teacher.employeeId}
+                      </Badge>
+                    )}
+                  </div>
+
+                  {/* Divider */}
+                  <div className="border-t border-border my-3" />
+
+                  {/* Contact Info */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Mail className="w-3.5 h-3.5 flex-shrink-0" />
+                      <span className="truncate">{teacher.email}</span>
+                    </div>
+                    {teacher.phone && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Phone className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>{teacher.phone}</span>
+                      </div>
+                    )}
+                    {teacher.dateOfJoining && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground" data-testid={`text-joining-date-${teacher.id}`}>
+                        <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                        <span>Joined {new Date(teacher.dateOfJoining).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer actions (always visible on mobile) */}
+                  <div className="mt-4 pt-3 border-t border-border flex items-center justify-between sm:hidden">
+                    <span className="text-xs text-muted-foreground">Actions</span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                          <MoreHorizontal className="h-3.5 w-3.5" />
+                          More
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem onClick={() => handleEdit(teacher)}>
+                          <Edit className="w-4 h-4 mr-2" />Edit Teacher
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleOpenAssignmentDialog(teacher)}>
+                          <BookOpen className="w-4 h-4 mr-2" />Manage Assignments
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => setTeacherToBlock(teacher)}
+                          className={teacher.isActive ? 'text-orange-600 focus:text-orange-600' : 'text-green-600 focus:text-green-600'}
+                        >
+                          {teacher.isActive ? <><Ban className="w-4 h-4 mr-2" />Block</> : <><ShieldCheck className="w-4 h-4 mr-2" />Unblock</>}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => setTeacherToDelete(teacher)} className="text-red-600 focus:text-red-600">
+                          <Trash2 className="w-4 h-4 mr-2" />Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Block/Unblock Confirmation Dialog */}
+      <AlertDialog open={!!teacherToBlock} onOpenChange={(open) => { if (!open) setTeacherToBlock(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {teacherToBlock?.isActive ? 'Block Teacher Account' : 'Unblock Teacher Account'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {teacherToBlock?.isActive ? (
+                <>
+                  Are you sure you want to <strong>block</strong>{' '}
+                  <strong>{teacherToBlock?.firstName} {teacherToBlock?.lastName}</strong>?
+                  <br /><br />
+                  They will be immediately logged out and unable to sign in until unblocked.
+                </>
+              ) : (
+                <>
+                  Are you sure you want to <strong>unblock</strong>{' '}
+                  <strong>{teacherToBlock?.firstName} {teacherToBlock?.lastName}</strong>?
+                  <br /><br />
+                  Their account will be restored and they will be able to sign in again.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (teacherToBlock) {
+                  blockTeacherMutation.mutate({ id: teacherToBlock.id, isActive: !teacherToBlock.isActive });
+                }
+              }}
+              className={teacherToBlock?.isActive ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'}
+            >
+              {teacherToBlock?.isActive ? 'Yes, Block Account' : 'Yes, Unblock Account'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Delete Confirmation Dialog */}
       {teacherToDelete && (
