@@ -47,6 +47,7 @@ const TeacherAssignmentManagement = lazy(() => import('@/pages/portal/TeacherAss
 const AnnouncementsManagement = lazy(() => import('@/pages/portal/AnnouncementsManagement'));
 const ReportsManagement = lazy(() => import('@/pages/portal/ReportsManagement'));
 const PerformanceMonitoring = lazy(() => import('@/pages/portal/PerformanceMonitoring'));
+const OnlineUsers = lazy(() => import('@/pages/portal/OnlineUsers'));
 const HomepageManagement = lazy(() => import('@/pages/portal/HomepageManagement'));
 const AcademicTermsManagement = lazy(() => import('@/pages/portal/AcademicTermsManagement'));
 const SettingsManagement = lazy(() => import('@/pages/portal/SettingsManagement'));
@@ -144,6 +145,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/announcements" component={AnnouncementsManagement} />
             <Route path="/portal/admin/reports" component={ReportsManagement} />
             <Route path="/portal/admin/performance" component={PerformanceMonitoring} />
+            <Route path="/portal/admin/online-users" component={OnlineUsers} />
             <Route path="/portal/admin/homepage-management" component={HomepageManagement} />
             <Route path="/portal/admin/gallery" component={PortalGallery} />
             <Route path="/portal/admin/academic-terms" component={AcademicTermsManagement} />

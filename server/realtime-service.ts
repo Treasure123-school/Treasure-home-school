@@ -44,13 +44,40 @@ interface ActiveExamSession {
   lastPing: Date;
 }
 
+// Track per-user activity for admin visibility
+export interface UserActivityRecord {
+  userId: string;
+  role: string;
+  socketIds: Set<string>;
+  firstConnectedAt: Date;
+  lastActive: Date;
+  // Enriched at API layer from DB
+  displayName?: string;
+  username?: string;
+}
+
+export interface OnlineUserInfo {
+  userId: string;
+  role: string;
+  displayName: string;
+  username: string;
+  firstConnectedAt: string;
+  lastActive: string;
+  status: 'online' | 'idle';
+  socketCount: number;
+}
+
 class RealtimeService {
   private io: SocketIOServer | null = null;
   private connectedClients = new Map<string, Set<string>>();
   private authenticatedSockets = new Map<string, SocketUser>();
   private recentEventIds = new Set<string>();
   private eventIdCleanupInterval: NodeJS.Timeout | null = null;
-  
+
+  // Real-time user activity tracking: Map<userId, UserActivityRecord>
+  private userActivityMap = new Map<string, UserActivityRecord>();
+  private activityCheckInterval: NodeJS.Timeout | null = null;
+
   // Duplicate session detection: Map<sessionId, ActiveExamSession>
   private activeExamSessions = new Map<number, ActiveExamSession>();
   // Track socket to session mapping for cleanup
@@ -119,6 +146,7 @@ class RealtimeService {
     this.setupEventHandlers();
     this.startEventIdCleanup();
     this.startHeartbeatCheck();
+    this.startActivityCheck();
     
     console.log('✅ Socket.IO Realtime Service initialized');
     console.log(`   → CORS origins: ${allowedOrigins.length > 0 ? allowedOrigins.join(', ') : 'dynamic (Replit)'}`);
@@ -181,6 +209,8 @@ class RealtimeService {
         socket.join(`user:${user.userId}`);
         socket.join(`role:${user.role}`);
         console.log(`   → Auto-joined rooms: user:${user.userId}, role:${user.role}`);
+        // Track user activity
+        this.trackUserConnect(user, socket.id);
       }
 
       socket.on('subscribe', (data: SubscriptionData) => {
@@ -218,6 +248,12 @@ class RealtimeService {
       socket.on('get:subscriptions', () => {
         const rooms = Array.from(socket.rooms).filter(r => r !== socket.id);
         socket.emit('subscriptions', { rooms });
+      });
+
+      // USER ACTIVITY: client sends this heartbeat every 30s to stay "online"
+      socket.on('user:heartbeat', () => {
+        const u = this.authenticatedSockets.get(socket.id);
+        if (u) this.updateUserActivity(u.userId);
       });
 
       // EXAM SESSION SECURITY: Register active exam session for duplicate detection
@@ -598,8 +634,106 @@ class RealtimeService {
       }
     });
 
+    // Remove socket from user activity tracking; notify admins if user fully offline
+    if (user) {
+      this.trackUserDisconnect(user.userId, socket.id);
+    }
+
     this.authenticatedSockets.delete(socket.id);
   }
+
+  // ─── USER ACTIVITY TRACKING ───────────────────────────────────────────────
+
+  private trackUserConnect(user: SocketUser, socketId: string) {
+    const now = new Date();
+    const existing = this.userActivityMap.get(user.userId);
+    if (existing) {
+      existing.socketIds.add(socketId);
+      existing.lastActive = now;
+    } else {
+      this.userActivityMap.set(user.userId, {
+        userId: user.userId,
+        role: user.role,
+        socketIds: new Set([socketId]),
+        firstConnectedAt: now,
+        lastActive: now,
+      });
+    }
+    this.broadcastOnlineUsersToAdmins();
+  }
+
+  private trackUserDisconnect(userId: string, socketId: string) {
+    const record = this.userActivityMap.get(userId);
+    if (!record) return;
+    record.socketIds.delete(socketId);
+    if (record.socketIds.size === 0) {
+      this.userActivityMap.delete(userId);
+    }
+    this.broadcastOnlineUsersToAdmins();
+  }
+
+  private updateUserActivity(userId: string) {
+    const record = this.userActivityMap.get(userId);
+    if (record) {
+      record.lastActive = new Date();
+    }
+  }
+
+  private broadcastOnlineUsersToAdmins() {
+    if (!this.io) return;
+    const list = this.getOnlineUsersRaw();
+    this.io.to('role:admin').to('role:superadmin').emit('admin:online_users', list);
+  }
+
+  private getOnlineUsersRaw(): Array<{
+    userId: string; role: string; firstConnectedAt: string;
+    lastActive: string; status: 'online' | 'idle'; socketCount: number;
+  }> {
+    const IDLE_THRESHOLD_MS = 3 * 60 * 1000; // 3 minutes without heartbeat = idle
+    const now = Date.now();
+    const result: ReturnType<typeof this.getOnlineUsersRaw> = [];
+    this.userActivityMap.forEach((rec) => {
+      const msSinceActive = now - rec.lastActive.getTime();
+      result.push({
+        userId: rec.userId,
+        role: rec.role,
+        firstConnectedAt: rec.firstConnectedAt.toISOString(),
+        lastActive: rec.lastActive.toISOString(),
+        status: msSinceActive > IDLE_THRESHOLD_MS ? 'idle' : 'online',
+        socketCount: rec.socketIds.size,
+      });
+    });
+    return result;
+  }
+
+  getOnlineUsers() {
+    return this.getOnlineUsersRaw();
+  }
+
+  private startActivityCheck() {
+    // Every 60s: clean up ghost entries where all sockets are gone
+    this.activityCheckInterval = setInterval(() => {
+      if (!this.io) return;
+      let changed = false;
+      this.userActivityMap.forEach((rec, userId) => {
+        // Verify each socket ID is still actually connected
+        rec.socketIds.forEach((sid) => {
+          const sock = this.io?.sockets.sockets.get(sid);
+          if (!sock || sock.disconnected) {
+            rec.socketIds.delete(sid);
+            changed = true;
+          }
+        });
+        if (rec.socketIds.size === 0) {
+          this.userActivityMap.delete(userId);
+          changed = true;
+        }
+      });
+      if (changed) this.broadcastOnlineUsersToAdmins();
+    }, 60000);
+  }
+
+  // ─── END USER ACTIVITY TRACKING ───────────────────────────────────────────
 
   private generateEventId(): string {
     return crypto.randomUUID();
@@ -1125,6 +1259,9 @@ class RealtimeService {
     }
     if (this.heartbeatInterval) {
       clearInterval(this.heartbeatInterval);
+    }
+    if (this.activityCheckInterval) {
+      clearInterval(this.activityCheckInterval);
     }
     if (this.io) {
       this.io.close();

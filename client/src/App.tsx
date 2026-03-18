@@ -1,10 +1,11 @@
 import { Switch, Route } from "wouter";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { AuthProvider } from "@/lib/auth";
+import { AuthProvider, useAuth } from "@/lib/auth";
+import { getSharedSocket } from "@/hooks/useSocketIORealtime";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { ROLE_IDS } from "@/lib/roles";
 import { MinimalRouteFallback } from "@/components/ui/skeletons";
@@ -48,8 +49,43 @@ const AssignSubjectTeachers = lazy(() => import("@/pages/portal/AssignSubjectTea
 const ProfileOnboarding = lazy(() => import("@/pages/ProfileOnboarding"));
 
 // Real-time updates are now handled by Socket.IO on the backend
+function ActivityHeartbeat() {
+  const { user, isAuthenticated } = useAuth();
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    const sendHeartbeat = () => {
+      try {
+        const socket = getSharedSocket();
+        if (socket.connected) socket.emit('user:heartbeat');
+      } catch {
+        // socket not ready yet, skip
+      }
+    };
+
+    // Initial heartbeat after a short delay to let the socket connect
+    const initial = setTimeout(sendHeartbeat, 2000);
+    // Then every 30 seconds
+    intervalRef.current = setInterval(sendHeartbeat, 30000);
+
+    return () => {
+      clearTimeout(initial);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [isAuthenticated, user]);
+
+  return null;
+}
+
 function RealtimeProvider({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return (
+    <>
+      <ActivityHeartbeat />
+      {children}
+    </>
+  );
 }
 const SuperAdminSecurityPolicies = lazy(() => import("@/pages/portal/SuperAdminSecurityPolicies"));
 const SuperAdminBrandingTheme = lazy(() => import("@/pages/portal/SuperAdminBrandingTheme"));

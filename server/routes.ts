@@ -1017,6 +1017,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ ...stats, roomCounts });
   });
 
+  // ==================== ONLINE USERS (ADMIN ONLY) ====================
+  app.get('/api/admin/online-users', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (_req, res) => {
+    try {
+      const rawOnline = realtimeService.getOnlineUsers();
+      // Enrich with user details from DB in parallel
+      const enriched = await Promise.all(
+        rawOnline.map(async (entry) => {
+          try {
+            const user = await storage.getUser(entry.userId);
+            return {
+              ...entry,
+              displayName: user ? `${user.firstName} ${user.lastName}`.trim() : entry.userId,
+              username: user?.username || entry.userId,
+              email: user?.email,
+              roleId: user?.roleId,
+            };
+          } catch {
+            return { ...entry, displayName: entry.userId, username: entry.userId };
+          }
+        })
+      );
+      res.json(enriched);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch online users' });
+    }
+  });
+
   // ==================== TEACHER ASSIGNMENT ROUTES ====================
   // Register teacher class/subject assignment management routes
   // Note: Authentication is handled within the router via requireAuth/requireAdmin

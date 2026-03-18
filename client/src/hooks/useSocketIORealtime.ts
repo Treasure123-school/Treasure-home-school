@@ -464,6 +464,11 @@ export function useUploadProgress() {
   return { uploads };
 }
 
+/** Returns the shared global socket (creating it if needed, using the stored token). */
+export function getSharedSocket() {
+  return getOrCreateSocket();
+}
+
 if (typeof window !== 'undefined') {
   window.addEventListener('beforeunload', () => {
     if (globalSocket) {
