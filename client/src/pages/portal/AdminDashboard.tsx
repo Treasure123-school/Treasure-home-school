@@ -8,11 +8,37 @@ import { ROLE_IDS } from '@/lib/roles';
 import {
   Users, GraduationCap, School, TrendingUp, BarChart3, FileText,
   UserCheck, Shield, BookOpen, MessageSquare, Activity, Clock,
+  Circle, Wifi, WifiOff, ArrowRight,
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { AnimatedCounter } from '@/components/ui/animated-counter';
 import { useLoginSuccess } from '@/hooks/use-login-success';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { getSharedSocket } from '@/hooks/useSocketIORealtime';
+import { formatDistanceToNow } from 'date-fns';
+
+interface OnlineUser {
+  userId: string;
+  role: string;
+  displayName: string;
+  username: string;
+  lastActive: string;
+  status: 'online' | 'idle';
+}
+
+const ROLE_COLORS: Record<string, string> = {
+  superadmin: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+  admin:      'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
+  teacher:    'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  student:    'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+  parent:     'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  superadmin: 'Super Admin', admin: 'Admin', teacher: 'Teacher',
+  student: 'Student', parent: 'Parent',
+};
 
 export default function AdminDashboard() {
   const { user } = useAuth();
@@ -39,6 +65,38 @@ export default function AdminDashboard() {
     queryKey: ['/api/exams'],
     enabled: !!user,
   });
+
+  // --- Live online users ---
+  const { data: initialOnline } = useQuery<OnlineUser[]>({
+    queryKey: ['/api/admin/online-users'],
+    enabled: !!user,
+    refetchInterval: false,
+  });
+  const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
+  const [liveConnected, setLiveConnected] = useState(false);
+  const socketReadyRef = useRef(false);
+
+  useEffect(() => {
+    if (initialOnline) setOnlineUsers(initialOnline);
+  }, [initialOnline]);
+
+  const handleOnlineUsers = useCallback((data: OnlineUser[]) => setOnlineUsers(data), []);
+
+  useEffect(() => {
+    if (!user) return;
+    const socket = getSharedSocket();
+    const onConnect = () => setLiveConnected(true);
+    const onDisconnect = () => setLiveConnected(false);
+    socket.on('connect', onConnect);
+    socket.on('disconnect', onDisconnect);
+    socket.on('admin:online_users', handleOnlineUsers);
+    if (socket.connected) { setLiveConnected(true); socketReadyRef.current = true; }
+    return () => {
+      socket.off('connect', onConnect);
+      socket.off('disconnect', onDisconnect);
+      socket.off('admin:online_users', handleOnlineUsers);
+    };
+  }, [user, handleOnlineUsers]);
 
   const roleDistribution = [
     { name: 'Students', value: allUsers.filter(u => u.roleId === ROLE_IDS.STUDENT).length, color: '#3b82f6' },
@@ -270,37 +328,76 @@ export default function AdminDashboard() {
           </CardContent>
         </Card>
 
-        {/* Live Overview + Quick Stats */}
+        {/* Live Activity Panel + Quick Stats */}
         <div className="space-y-6">
+          {/* Who's Online Now */}
           <Card
-            className="shadow-sm border border-border bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-950/20 dark:to-card"
-            data-testid="card-live-overview"
+            className="shadow-sm border border-border bg-gradient-to-br from-green-50 to-white dark:from-green-950/10 dark:to-card"
+            data-testid="card-who-is-online"
           >
-            <CardHeader>
-              <CardTitle className="text-sm font-medium flex items-center gap-2">
-                <Activity className="h-4 w-4 text-indigo-500" />
-                Live Overview
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <p className="text-2xl font-bold" data-testid="text-pending-grading">
-                    {gradingStats?.pendingCount || 0}
-                  </p>
-                  <p className="text-xs text-muted-foreground uppercase">Pending Grading</p>
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <Activity className="h-4 w-4 text-green-600" />
+                  Who's Online Now
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  {liveConnected ? (
+                    <Badge className="bg-green-100 text-green-700 border-green-200 text-[10px] gap-1 px-1.5 py-0.5 dark:bg-green-900/30 dark:text-green-400">
+                      <Wifi className="h-2.5 w-2.5" />
+                      Live
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-gray-100 text-gray-500 border-gray-200 text-[10px] gap-1 px-1.5 py-0.5">
+                      <WifiOff className="h-2.5 w-2.5" />
+                      Off
+                    </Badge>
+                  )}
+                  <span className="text-xl font-bold text-green-600" data-testid="text-online-count-dashboard">
+                    {onlineUsers.length}
+                  </span>
                 </div>
-                <FileText className="h-8 w-8 text-indigo-200" />
               </div>
-              <div className="flex items-center justify-between pt-4 border-t">
-                <div className="space-y-1">
-                  <p className="text-2xl font-bold" data-testid="text-active-users">
-                    {allUsers.filter(u => u.status === 'active').length}
-                  </p>
-                  <p className="text-xs text-muted-foreground uppercase">Active Users</p>
-                </div>
-                <UserCheck className="h-8 w-8 text-green-200" />
-              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {onlineUsers.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">No users currently online</p>
+              ) : (
+                <ul className="space-y-2 mt-1">
+                  {onlineUsers.slice(0, 5).map((u) => (
+                    <li key={u.userId} className="flex items-center gap-2" data-testid={`dashboard-user-${u.userId}`}>
+                      <Circle
+                        className={`h-2 w-2 shrink-0 ${u.status === 'online' ? 'fill-green-500 text-green-500' : 'fill-yellow-400 text-yellow-400'}`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{u.displayName}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">
+                          {formatDistanceToNow(new Date(u.lastActive), { addSuffix: true })}
+                        </p>
+                      </div>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${ROLE_COLORS[u.role] ?? 'bg-gray-100 text-gray-600'}`}>
+                        {ROLE_LABELS[u.role] ?? u.role}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {onlineUsers.length > 5 && (
+                <p className="text-xs text-muted-foreground mt-2 text-center">
+                  +{onlineUsers.length - 5} more user{onlineUsers.length - 5 !== 1 ? 's' : ''}
+                </p>
+              )}
+              <Link to="/portal/admin/online-users">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full mt-3 h-7 text-xs text-green-700 hover:text-green-800 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20"
+                  data-testid="button-view-all-online"
+                >
+                  View full activity
+                  <ArrowRight className="h-3 w-3 ml-1" />
+                </Button>
+              </Link>
             </CardContent>
           </Card>
 
@@ -312,8 +409,10 @@ export default function AdminDashboard() {
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Term Week</span>
-                  <span className="text-sm font-medium">Week 4</span>
+                  <span className="text-sm text-muted-foreground">Pending Grading</span>
+                  <span className="text-sm font-medium" data-testid="text-pending-grading">
+                    {gradingStats?.pendingCount || 0}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm text-muted-foreground">Active Exams</span>
