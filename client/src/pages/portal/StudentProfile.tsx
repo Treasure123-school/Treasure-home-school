@@ -33,6 +33,7 @@ export default function StudentProfile() {
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<{ firstName?: string; lastName?: string }>({});
   const [profileData, setProfileData] = useState({
     firstName: '',
     lastName: '',
@@ -111,6 +112,15 @@ export default function StudentProfile() {
   };
 
   const handleSave = async () => {
+    const errors: { firstName?: string; lastName?: string } = {};
+    if (!profileData.firstName.trim()) errors.firstName = 'First name is required.';
+    if (!profileData.lastName.trim()) errors.lastName = 'Last name is required.';
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      toast({ title: 'Missing required fields', description: 'First name and last name cannot be empty.', variant: 'destructive' });
+      return;
+    }
+    setFormErrors({});
     try {
       setIsSaving(true);
       let updatedProfileImageUrl = user?.profileImageUrl;
@@ -330,22 +340,32 @@ export default function StudentProfile() {
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
+                    <Label htmlFor="firstName">
+                      First Name <span className="text-destructive">*</span>
+                    </Label>
                     <Input
                       id="firstName"
                       value={profileData.firstName}
-                      onChange={(e) => handleChange('firstName', e.target.value)}
+                      onChange={(e) => { handleChange('firstName', e.target.value); if (formErrors.firstName) setFormErrors(p => ({ ...p, firstName: undefined })); }}
                       disabled={!isEditing}
+                      className={formErrors.firstName ? 'border-destructive focus-visible:ring-destructive' : ''}
+                      data-testid="input-first-name"
                     />
+                    {formErrors.firstName && <p className="text-xs text-destructive">{formErrors.firstName}</p>}
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
+                    <Label htmlFor="lastName">
+                      Last Name <span className="text-destructive">*</span>
+                    </Label>
                     <Input
                       id="lastName"
                       value={profileData.lastName}
-                      onChange={(e) => handleChange('lastName', e.target.value)}
+                      onChange={(e) => { handleChange('lastName', e.target.value); if (formErrors.lastName) setFormErrors(p => ({ ...p, lastName: undefined })); }}
                       disabled={!isEditing}
+                      className={formErrors.lastName ? 'border-destructive focus-visible:ring-destructive' : ''}
+                      data-testid="input-last-name"
                     />
+                    {formErrors.lastName && <p className="text-xs text-destructive">{formErrors.lastName}</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email">Email (Optional)</Label>

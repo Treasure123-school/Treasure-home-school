@@ -42,6 +42,7 @@ export default function SuperAdminProfile() {
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<{ firstName?: string; lastName?: string }>({});
 
   const [profileData, setProfileData] = useState<ProfileData>({
     firstName: user?.firstName || "",
@@ -84,6 +85,15 @@ export default function SuperAdminProfile() {
   });
 
   const handleProfileUpdate = async () => {
+    const errors: { firstName?: string; lastName?: string } = {};
+    if (!profileData.firstName.trim()) errors.firstName = 'First name is required.';
+    if (!profileData.lastName.trim()) errors.lastName = 'Last name is required.';
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      toast({ title: 'Missing required fields', description: 'First name and last name cannot be empty.', variant: 'destructive' });
+      return;
+    }
+    setFormErrors({});
     try {
       setIsSaving(true);
       let updatedProfileImageUrl = user?.profileImageUrl;
@@ -321,26 +331,32 @@ export default function SuperAdminProfile() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="firstName" className="dark:text-slate-200">First Name</Label>
+                  <Label htmlFor="firstName" className="dark:text-slate-200">
+                    First Name <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     id="firstName"
                     data-testid="input-first-name"
                     value={profileData.firstName}
-                    onChange={(e) => setProfileData({ ...profileData, firstName: e.target.value })}
-                    className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                    onChange={(e) => { setProfileData({ ...profileData, firstName: e.target.value }); if (formErrors.firstName) setFormErrors(p => ({ ...p, firstName: undefined })); }}
+                    className={`dark:bg-slate-900 dark:border-slate-700 dark:text-white${formErrors.firstName ? ' border-destructive focus-visible:ring-destructive' : ''}`}
                     disabled={!isEditing}
                   />
+                  {formErrors.firstName && <p className="text-xs text-destructive">{formErrors.firstName}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lastName" className="dark:text-slate-200">Last Name</Label>
+                  <Label htmlFor="lastName" className="dark:text-slate-200">
+                    Last Name <span className="text-destructive">*</span>
+                  </Label>
                   <Input
                     id="lastName"
                     data-testid="input-last-name"
                     value={profileData.lastName}
-                    onChange={(e) => setProfileData({ ...profileData, lastName: e.target.value })}
-                    className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
+                    onChange={(e) => { setProfileData({ ...profileData, lastName: e.target.value }); if (formErrors.lastName) setFormErrors(p => ({ ...p, lastName: undefined })); }}
+                    className={`dark:bg-slate-900 dark:border-slate-700 dark:text-white${formErrors.lastName ? ' border-destructive focus-visible:ring-destructive' : ''}`}
                     disabled={!isEditing}
                   />
+                  {formErrors.lastName && <p className="text-xs text-destructive">{formErrors.lastName}</p>}
                 </div>
               </div>
               {isEditing && (
