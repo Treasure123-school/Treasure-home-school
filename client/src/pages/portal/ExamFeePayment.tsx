@@ -12,12 +12,12 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-type PaymentStep = "check" | "paying" | "verifying" | "success" | "failed";
+type PaymentStep = "recovering" | "check" | "paying" | "verifying" | "success" | "failed";
 
 export default function ExamFeePayment() {
   const [location, navigate] = useLocation();
   const { toast } = useToast();
-  const [step, setStep] = useState<PaymentStep>("check");
+  const [step, setStep] = useState<PaymentStep>("recovering");
   const [paymentReference, setPaymentReference] = useState<string | null>(null);
   const [authorizationUrl, setAuthorizationUrl] = useState<string | null>(null);
   const popupRef = useRef<Window | null>(null);
@@ -29,6 +29,44 @@ export default function ExamFeePayment() {
   const feeAmount: number = status?.feeAmount ?? 0;
   const currentTerm: any = status?.currentTerm;
   const requirePayment: boolean = status?.requirePayment ?? false;
+
+  // ── Auto-recover on every page load ─────────────────────────────────────────
+  // Silently re-check Paystack for any pending payment from a previous session.
+  // This handles: logout mid-flow, browser crash, redirect mishap, etc.
+  const recoverMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/exam-payments/recover");
+      if (!res.ok) throw new Error("Recovery call failed");
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      if (data?.recovered && data?.payment) {
+        // Payment was found on Paystack and is now marked paid
+        queryClient.invalidateQueries({ queryKey: ["/api/exam-payments/status"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
+        setStep("success");
+      } else {
+        // No previous payment to recover — show normal pay screen
+        setStep("check");
+      }
+    },
+    onError: () => {
+      // Recovery failed silently — just show normal pay screen
+      setStep("check");
+    },
+  });
+
+  useEffect(() => {
+    // Only run recovery once after status has loaded and payment is not already confirmed
+    if (!statusQuery.isLoading && !isAlreadyPaid && step === "recovering") {
+      recoverMutation.mutate();
+    }
+    // If already paid skip recovery entirely
+    if (!statusQuery.isLoading && isAlreadyPaid && step === "recovering") {
+      setStep("check");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [statusQuery.isLoading, isAlreadyPaid]);
 
   // ── Cleanup on unmount ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -238,11 +276,14 @@ export default function ExamFeePayment() {
     setAuthorizationUrl(null);
   };
 
-  // ── Loading ─────────────────────────────────────────────────────────────────
-  if (statusQuery.isLoading) {
+  // ── Loading / recovering ─────────────────────────────────────────────────────
+  if (statusQuery.isLoading || step === "recovering") {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        {step === "recovering" && !statusQuery.isLoading && (
+          <p className="text-sm text-muted-foreground">Checking for previous payment…</p>
+        )}
       </div>
     );
   }

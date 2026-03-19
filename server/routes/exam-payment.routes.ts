@@ -431,6 +431,76 @@ router.post("/verify", authenticateUser, authorizeRoles(ROLES.STUDENT), async (r
   }
 });
 
+// ─── POST /api/exam-payments/recover ──────────────────────────────────────────
+// Student: called automatically on page load — if there is a pending/failed
+// payment record with a reference, we re-verify with Paystack.
+// This handles: logout mid-flow, browser crash, redirect to wrong page, etc.
+router.post("/recover", authenticateUser, authorizeRoles(ROLES.STUDENT), async (req: Request, res: Response) => {
+  try {
+    const studentId = req.user!.id;
+    const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
+    if (!paystackSecretKey) {
+      return res.json({ recovered: false, reason: "gateway_not_configured" });
+    }
+
+    const terms = await storage.getAcademicTerms();
+    const currentTerm = terms.find((t: any) => t.isCurrent);
+    if (!currentTerm) {
+      return res.json({ recovered: false, reason: "no_active_term" });
+    }
+
+    // Is there already a confirmed paid record? Nothing to recover.
+    const paidPayment = await storage.getExamPayment(studentId, currentTerm.id);
+    if (paidPayment) {
+      return res.json({ recovered: true, alreadyPaid: true, payment: paidPayment });
+    }
+
+    // Look for a pending/failed record with a reference we can re-check
+    const pending = await storage.getPendingExamPayment(studentId, currentTerm.id);
+    if (!pending || !pending.paymentReference) {
+      return res.json({ recovered: false, reason: "no_pending_payment" });
+    }
+
+    // Verify with Paystack
+    const verifyRes = await fetch(
+      `https://api.paystack.co/transaction/verify/${encodeURIComponent(pending.paymentReference)}`,
+      { headers: { Authorization: `Bearer ${paystackSecretKey}` } },
+    );
+    const verifyData: any = await verifyRes.json();
+
+    if (!verifyData.status || verifyData.data?.status !== "success") {
+      // Payment was not completed on Paystack — still pending, leave record as-is
+      return res.json({ recovered: false, reason: "not_paid_on_gateway", gatewayStatus: verifyData.data?.status });
+    }
+
+    // Paystack confirms it was paid — mark as paid in our DB
+    const updatedPayment = await storage.updateExamPayment(pending.id, {
+      status: "paid",
+      amountPaid: Math.floor(verifyData.data.amount / 100),
+      paymentMethod: "online",
+      gatewayResponse: JSON.stringify(verifyData.data),
+      paidAt: new Date(),
+    });
+
+    try {
+      await storage.createAuditLog({
+        userId: studentId,
+        action: "exam_payment_auto_recovered",
+        entityType: "exam_payment",
+        entityId: String(pending.id),
+        reason: `Exam fee auto-recovered on login. Reference: ${pending.paymentReference}`,
+      });
+    } catch { }
+
+    console.log(`[PAYMENT] Auto-recovered payment for student ${studentId}, ref: ${pending.paymentReference}`);
+    return res.json({ recovered: true, alreadyPaid: false, payment: updatedPayment });
+  } catch (error: any) {
+    console.error("[PAYMENT] Recover error:", error);
+    // Never fail — just report nothing was recovered
+    return res.json({ recovered: false, reason: "error" });
+  }
+});
+
 // ─── POST /api/exam-payments/webhook ─────────────────────────────────────────
 // Paystack webhook — no auth, HMAC-verified using raw body
 router.post("/webhook", async (req: Request, res: Response) => {

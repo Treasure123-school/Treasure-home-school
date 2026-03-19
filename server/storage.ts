@@ -531,6 +531,7 @@ export interface IStorage {
 
   // Exam payments
   getExamPayment(studentId: string, termId: number): Promise<ExamPayment | undefined>;
+  getPendingExamPayment(studentId: string, termId: number): Promise<ExamPayment | undefined>;
   getExamPaymentByReference(reference: string): Promise<ExamPayment | undefined>;
   getExamPaymentsByTerm(termId: number): Promise<ExamPayment[]>;
   getExamPaymentsByStudent(studentId: string): Promise<ExamPayment[]>;
@@ -7428,6 +7429,21 @@ export class DatabaseStorage implements IStorage {
       .where(eq(schema.examPayments.id, id))
       .returning();
     return result[0];
+  }
+
+  async getPendingExamPayment(studentId: string, termId: number): Promise<ExamPayment | undefined> {
+    // Return any non-paid record (pending/failed) that has a reference we can re-verify
+    const rows = await this.db.select().from(schema.examPayments)
+      .where(and(
+        eq(schema.examPayments.studentId, studentId),
+        eq(schema.examPayments.termId, termId),
+      ))
+      .orderBy(desc(schema.examPayments.createdAt))
+      .limit(1);
+    const row = rows[0];
+    // Only return it if it's not already paid and has a reference to check
+    if (row && row.status !== 'paid' && row.paymentReference) return row;
+    return undefined;
   }
 
   async initiatePendingExamPayment(studentId: string, termId: number, reference: string, amountPaid: number): Promise<ExamPayment> {
