@@ -23,6 +23,12 @@ declare global {
         onClose: () => void;
         callback: (response: { reference: string }) => void;
       }): { openIframe: () => void };
+      newTransaction(options: {
+        key: string;
+        access_code: string;
+        onSuccess: (response: { reference: string }) => void;
+        onCancel: () => void;
+      }): { openIframe: () => void };
     };
   }
 }
@@ -81,20 +87,18 @@ export default function ExamFeePayment() {
       setPaymentReference(data.reference);
       setStep("paying");
 
-      const handler = window.PaystackPop.setup({
+      const handler = window.PaystackPop.newTransaction({
         key: data.publicKey,
-        email: data.email,
-        amount: data.amountKobo,
-        ref: data.reference,
-        onClose: () => {
+        access_code: data.accessCode,
+        onSuccess: (response: { reference: string }) => {
+          verifyMutation.mutate(response.reference);
+        },
+        onCancel: () => {
           setStep("check");
           toast({
             title: "Payment cancelled",
             description: "You closed the payment window. You can try again anytime.",
           });
-        },
-        callback: (response: { reference: string }) => {
-          verifyMutation.mutate(response.reference);
         },
       });
 
