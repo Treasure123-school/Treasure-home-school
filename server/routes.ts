@@ -8784,6 +8784,7 @@ School Management System Administration
           student?.emergencyContact,
           student?.medicalInfo,
           user?.recoveryEmail,
+          user?.profileImageUrl,
         ];
         const filledFields = fields.filter(field => field !== null && field !== undefined && field !== '').length;
         completionPercentage = Math.round((filledFields / fields.length) * 100);

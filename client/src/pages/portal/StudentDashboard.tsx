@@ -15,6 +15,7 @@ import { StudentDashboardSkeleton } from '@/components/ui/page-skeletons';
 import type { Exam } from '@shared/schema';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { useLoginSuccess } from '@/hooks/use-login-success';
+import { useProfileCompletion } from '@/hooks/useProfileCompletion';
 
 export default function StudentDashboard() {
   const { user, updateUser } = useAuth();
@@ -59,14 +60,9 @@ export default function StudentDashboard() {
     }
   }, [freshUserData, user.id, updateUser]);
 
-  const { data: profileStatus, isLoading: statusLoading } = useQuery({
-    queryKey: ['/api/student/profile/status'],
-    queryFn: async () => {
-      const response = await apiRequest('GET', '/api/student/profile/status');
-      return await response.json();
-    },
-    enabled: !!user
-  });
+  // Completion is computed locally from cached student data — instantly reflects
+  // any save, no separate server round-trip needed.
+  const profileCompletion = useProfileCompletion();
 
 
   const { data: examResults, isLoading: isLoadingGrades } = useQuery({
@@ -219,7 +215,7 @@ export default function StudentDashboard() {
   return (
     <>
       {/* Profile Completion Banner */}
-      {!statusLoading && profileStatus && !profileStatus.completed && !bannerDismissed && (
+      {!profileCompletion.isLoading && !profileCompletion.isComplete && !bannerDismissed && (
         <div
           className="mb-4 sm:mb-6 relative overflow-hidden rounded-xl border border-amber-200 dark:border-amber-700/60 bg-gradient-to-r from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-950/40 dark:via-yellow-950/30 dark:to-orange-950/30 shadow-sm animate-in fade-in slide-in-from-top-3 duration-500"
           data-testid="profile-incomplete-banner"
@@ -239,9 +235,9 @@ export default function StudentDashboard() {
                 </p>
                 <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-300/90 mt-0.5">
                   Complete your profile to unlock exams, report cards, and other academic features.
-                  {profileStatus.percentage > 0 && (
+                  {profileCompletion.percentage > 0 && (
                     <span className="ml-1 font-semibold text-amber-800 dark:text-amber-200">
-                      {profileStatus.percentage}% done
+                      {profileCompletion.percentage}% done
                     </span>
                   )}
                 </p>

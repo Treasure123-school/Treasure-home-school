@@ -7,55 +7,42 @@ import { Button } from '@/components/ui/button';
 import { AlertCircle, Lock } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ROLE_IDS } from '@/lib/roles';
+import { useAuth } from '@/lib/auth';
+import { useProfileCompletion } from '@/hooks/useProfileCompletion';
 
 interface RequireCompleteProfileProps {
   children: ReactNode;
   feature?: string;
 }
-interface AuthUser {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  roleId: number;
-  username?: string;
-  role?: string;
-  profileImageUrl?: string;
-  profileCompleted?: boolean;
-  profileCompletionPercentage?: number;
-  profileSkipped?: boolean;
-  phone?: string;
-  address?: string;
-  dateOfBirth?: string;
-  gender?: string;
-  recoveryEmail?: string;
-}
-interface AuthMeResponse {
-  user: AuthUser;
-}
-export default function RequireCompleteProfile({ 
-  children, 
-  feature = "this feature" 
+
+export default function RequireCompleteProfile({
+  children,
+  feature = "this feature",
 }: RequireCompleteProfileProps) {
   const [, navigate] = useLocation();
-  const { data } = useQuery<AuthMeResponse>({ queryKey: ['/api/auth/me'] });
-  const user = data?.user;
+  const { user } = useAuth();
 
-  // Determine which profile status endpoint to use based on role
   const isTeacher = user?.roleId === ROLE_IDS.TEACHER;
-  const profileStatusEndpoint = isTeacher ? '/api/teacher/profile/status' : '/api/student/profile/status';
 
-  // Check profile status
-  const { data: profileStatus, isLoading } = useQuery({
-    queryKey: [profileStatusEndpoint],
+  // ── Teachers: use server-side endpoint (different tracked fields) ──────────
+  const { data: teacherStatus, isLoading: teacherLoading } = useQuery({
+    queryKey: ['/api/teacher/profile/status'],
     queryFn: async () => {
-      const response = await apiRequest('GET', profileStatusEndpoint);
-      return await response.json();
+      const response = await apiRequest('GET', '/api/teacher/profile/status');
+      return response.json();
     },
-    enabled: !!user,
+    enabled: !!user && isTeacher,
+    staleTime: 0,
   });
 
-  // Show loading state
+  // ── Students: compute INSTANTLY from cached student data — zero round-trip ─
+  const studentCompletion = useProfileCompletion();
+
+  // Show a spinner only on true first load (nothing cached yet)
+  const isLoading = isTeacher
+    ? teacherLoading
+    : studentCompletion.isLoading && studentCompletion.percentage === 0;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -63,14 +50,19 @@ export default function RequireCompleteProfile({
       </div>
     );
   }
-  // If profile is complete, render children
-  // For teachers: check profileCompleted, for students: check completed
-  const isProfileComplete = isTeacher ? profileStatus?.profileCompleted : profileStatus?.completed;
-  
+
+  const isProfileComplete = isTeacher
+    ? teacherStatus?.profileCompleted
+    : studentCompletion.isComplete;
+
   if (isProfileComplete) {
     return <>{children}</>;
   }
-  // If profile is incomplete, show restriction message
+
+  const displayPercentage = isTeacher
+    ? teacherStatus?.percentage
+    : studentCompletion.percentage;
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-3xl" data-testid="profile-required-gate">
       <Card className="border-destructive">
@@ -82,9 +74,10 @@ export default function RequireCompleteProfile({
             </AlertTitle>
             <AlertDescription className="space-y-4">
               <p className="text-base">
-                You need to complete your profile to access {feature}. This helps us provide you with the best experience and ensures all features work correctly.
+                You need to complete your profile to access {feature}. This helps us
+                provide you with the best experience and ensures all features work correctly.
               </p>
-              
+
               <div className="bg-destructive/10 dark:bg-destructive/20 rounded-lg p-4 space-y-2">
                 <p className="font-medium text-sm">Restricted Features:</p>
                 <ul className="list-disc pl-5 text-sm space-y-1">
@@ -97,16 +90,22 @@ export default function RequireCompleteProfile({
               </div>
 
               <div className="flex gap-3 pt-2">
-                <Button 
-                  onClick={() => navigate(isTeacher ? '/portal/teacher/profile' : '/portal/student/profile')}
+                <Button
+                  onClick={() =>
+                    navigate(
+                      isTeacher ? '/portal/teacher/profile' : '/portal/student/profile'
+                    )
+                  }
                   className="flex-1"
                   data-testid="button-goto-profile"
                 >
                   <AlertCircle className="w-4 h-4 mr-2" />
                   Complete Profile Now
                 </Button>
-                <Button 
-                  onClick={() => navigate(isTeacher ? '/portal/teacher' : '/portal/student')}
+                <Button
+                  onClick={() =>
+                    navigate(isTeacher ? '/portal/teacher' : '/portal/student')
+                  }
                   variant="outline"
                   data-testid="button-back-to-dashboard"
                 >
@@ -114,9 +113,9 @@ export default function RequireCompleteProfile({
                 </Button>
               </div>
 
-              {profileStatus?.percentage > 0 && (
+              {displayPercentage > 0 && (
                 <p className="text-sm text-center pt-2 text-muted-foreground">
-                  Your profile is <strong>{profileStatus.percentage}%</strong> complete
+                  Your profile is <strong>{displayPercentage}%</strong> complete
                 </p>
               )}
             </AlertDescription>

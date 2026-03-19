@@ -106,6 +106,7 @@ export default function StudentProfile() {
     { key: 'emergencyContact', label: 'Emergency Contact Name', value: student?.emergencyContact },
     { key: 'medicalInfo',      label: 'Medical Information',    value: student?.medicalInfo },
     { key: 'recoveryEmail',    label: 'Recovery Email',         value: student?.recoveryEmail || user?.recoveryEmail },
+    { key: 'profileImageUrl',  label: 'Profile Photo',          value: student?.profileImageUrl || user?.profileImageUrl },
   ], [student, user]);
 
   const missingFields = useMemo(() => trackedFields.filter(f => !f.value), [trackedFields]);
@@ -119,6 +120,10 @@ export default function StudentProfile() {
       if (!response.ok) throw new Error('Failed to remove image');
       toast({ title: "Profile image removed", description: "Your profile image has been removed successfully." });
       updateUser({ profileImageUrl: undefined });
+      const cached = queryClient.getQueryData<any>(['student', user.id]);
+      if (cached) {
+        queryClient.setQueryData(['student', user.id], { ...cached, profileImageUrl: null });
+      }
       queryClient.invalidateQueries({ queryKey: ['student', user.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
     } catch (error) {
@@ -173,9 +178,28 @@ export default function StudentProfile() {
       toast({ title: "Profile Updated", description: "Your profile has been updated successfully." });
       setProfileImageFile(null);
       setIsEditing(false);
+
+      // Immediately patch the cached student data so gates and banners update
+      // without waiting for a server round-trip. The invalidate below will then
+      // sync the full authoritative payload in the background.
+      const cached = queryClient.getQueryData<any>(['student', user.id]);
+      if (cached) {
+        queryClient.setQueryData(['student', user.id], {
+          ...cached,
+          phone: profileData.phone,
+          address: profileData.address,
+          gender: profileData.gender,
+          dateOfBirth: profileData.dateOfBirth,
+          emergencyContact: profileData.emergencyContact,
+          emergencyPhone: profileData.emergencyPhone,
+          medicalInfo: profileData.medicalInfo,
+          recoveryEmail: profileData.recoveryEmail,
+          profileImageUrl: updatedProfileImageUrl,
+        });
+      }
+
       queryClient.invalidateQueries({ queryKey: ['student', user.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      queryClient.invalidateQueries({ queryKey: ['/api/student/profile/status'] });
     } catch (error: any) {
       toast({
         title: "Update Failed",
