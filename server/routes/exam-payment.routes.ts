@@ -564,37 +564,52 @@ router.post("/verify-by-ref", authenticateUser, authorizeRoles(ROLES.STUDENT), a
       });
     }
 
-    // Check if the amount matches (Paystack amount is in kobo)
-    const settings = await storage.getSystemSettings();
-    const feeAmount = settings?.examFeeAmount ?? 0;
+    // Use the canonical reference from Paystack's response (not whatever the student typed).
+    // This is our system's reference (e.g. EP-7d23e3f6-T7-...) that Paystack stored.
+    const canonicalRef: string = verifyData.data.reference || ref;
     const paidAmountNaira = Math.floor(verifyData.data.amount / 100);
 
-    // Make sure this reference isn't already used by another student
-    const existingByRef = await storage.getExamPaymentByReference(ref);
+    // Collision check: make sure this Paystack reference isn't tied to a different student
+    const existingByRef = await storage.getExamPaymentByReference(canonicalRef);
     if (existingByRef && existingByRef.studentId !== studentId) {
       return res.status(409).json({ message: "This reference is already associated with another student account." });
     }
-    if (existingByRef && existingByRef.studentId === studentId && existingByRef.status === "paid") {
-      return res.json({ success: true, alreadyPaid: true, payment: existingByRef });
+
+    // Look for ANY existing record for this student+term (paid, pending, or failed)
+    // Priority: the record matching the canonical ref, then the paid record, then the pending record.
+    // This covers the case where initiation created a pending record with OUR ref, but the student
+    // submitted a different reference (e.g. OPay's Merchant Order No.) that Paystack still resolved.
+    const existingPaid = await storage.getExamPayment(studentId, currentTerm.id);
+    if (existingPaid) {
+      // Already fully paid — just return success
+      return res.json({ success: true, alreadyPaid: true, payment: existingPaid });
     }
+
+    // Use the most thorough fallback: pending (with ref), then any record at all
+    const existingPending = existingByRef
+      || await storage.getPendingExamPayment(studentId, currentTerm.id)
+      || await storage.getAnyExamPaymentByStudentTerm(studentId, currentTerm.id);
 
     // Create or update the payment record as paid
     let payment: any;
-    if (existingByRef) {
-      payment = await storage.updateExamPayment(existingByRef.id, {
+    if (existingPending) {
+      // Update the existing pending/failed record → paid
+      payment = await storage.updateExamPayment(existingPending.id, {
         status: "paid",
         amountPaid: paidAmountNaira,
         paymentMethod: "online",
+        paymentReference: canonicalRef,
         gatewayResponse: JSON.stringify(verifyData.data),
         paidAt: new Date(),
       });
     } else {
+      // No record at all — create a fresh paid record
       payment = await storage.createExamPayment({
         studentId,
         termId: currentTerm.id,
         amountPaid: paidAmountNaira,
         paymentMethod: "online",
-        paymentReference: ref,
+        paymentReference: canonicalRef,
         status: "paid",
         paidAt: new Date(),
         gatewayResponse: JSON.stringify(verifyData.data),
