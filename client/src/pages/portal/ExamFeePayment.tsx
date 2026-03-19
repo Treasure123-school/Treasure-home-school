@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useLocation } from "wouter";
@@ -9,63 +9,20 @@ import { useToast } from "@/hooks/use-toast";
 import {
   CreditCard, CheckCircle2, AlertCircle, Loader2, ArrowLeft,
   ShieldCheck, Receipt, GraduationCap, Calendar, DollarSign,
+  ExternalLink,
 } from "lucide-react";
-
-// ─── Paystack v2 inline type declarations ────────────────────────────────────
-declare global {
-  interface Window {
-    PaystackPop: new () => {
-      newTransaction(options: {
-        key: string;
-        email: string;
-        amount: number;
-        ref: string;
-        currency?: string;
-        metadata?: Record<string, unknown>;
-        onSuccess: (transaction: { reference: string }) => void;
-        onCancel: () => void;
-      }): void;
-      resumeTransaction(
-        accessCode: string,
-        onSuccess: (transaction: { reference: string }) => void,
-        onCancel: () => void,
-      ): void;
-    };
-  }
-}
-
-// ─── Utility: lazily load the Paystack v2 inline script ──────────────────────
-function loadPaystackScript(): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (window.PaystackPop) return resolve();
-
-    const existing = document.getElementById("paystack-js");
-    if (existing) {
-      existing.addEventListener("load", () => resolve());
-      existing.addEventListener("error", () =>
-        reject(new Error("Paystack script failed to load"))
-      );
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.id = "paystack-js";
-    script.src = "https://js.paystack.co/v2/inline.js";
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load payment gateway script"));
-    document.head.appendChild(script);
-  });
-}
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function ExamFeePayment() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [step, setStep] = useState<"check" | "paying" | "success" | "failed">("check");
+  const [step, setStep] = useState<"check" | "paying" | "verifying" | "success" | "failed">("check");
   const [paymentReference, setPaymentReference] = useState<string | null>(null);
+  const [authorizationUrl, setAuthorizationUrl] = useState<string | null>(null);
+  const popupRef = useRef<Window | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ── Status query ────────────────────────────────────────────────────────────
+  // ── Status query ─────────────────────────────────────────────────────────────
   const statusQuery = useQuery({ queryKey: ["/api/exam-payments/status"] });
   const status: any = statusQuery.data;
   const isAlreadyPaid: boolean = status?.hasPaid ?? false;
@@ -73,103 +30,120 @@ export default function ExamFeePayment() {
   const currentTerm: any = status?.currentTerm;
   const requirePayment: boolean = status?.requirePayment ?? false;
 
-  // ── Verify mutation ─────────────────────────────────────────────────────────
+  // ── Clean up on unmount ───────────────────────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
+    };
+  }, []);
+
+  // ── Start polling for payment completion ──────────────────────────────────────
+  const startPolling = (reference: string) => {
+    if (pollRef.current) clearInterval(pollRef.current);
+
+    pollRef.current = setInterval(async () => {
+      // Check if popup was closed by user
+      if (popupRef.current && popupRef.current.closed) {
+        clearInterval(pollRef.current!);
+        pollRef.current = null;
+        // Try to verify — maybe they completed payment before closing
+        verifyMutation.mutate(reference);
+        return;
+      }
+
+      // Poll the status endpoint
+      try {
+        const res = await fetch("/api/exam-payments/status", {
+          headers: { "Cache-Control": "no-cache" },
+          credentials: "include",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.hasPaid) {
+            clearInterval(pollRef.current!);
+            pollRef.current = null;
+            if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
+            queryClient.invalidateQueries({ queryKey: ["/api/exam-payments/status"] });
+            queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
+            setStep("success");
+          }
+        }
+      } catch {
+        // Network hiccup — keep polling
+      }
+    }, 3000);
+  };
+
+  // ── Verify mutation (fallback after popup close) ──────────────────────────────
   const verifyMutation = useMutation({
     mutationFn: (reference: string) =>
       apiRequest("POST", "/api/exam-payments/verify", { reference }),
-    onSuccess: () => {
-      setStep("success");
-      queryClient.invalidateQueries({ queryKey: ["/api/exam-payments/status"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
+    onSuccess: (data: any) => {
+      if (data?.success) {
+        setStep("success");
+        queryClient.invalidateQueries({ queryKey: ["/api/exam-payments/status"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
+      } else {
+        setStep("check");
+        toast({
+          title: "Payment not completed",
+          description: "It looks like the payment was not completed. Please try again.",
+        });
+      }
     },
-    onError: (error: any) => {
-      setStep("failed");
+    onError: () => {
+      setStep("check");
       toast({
-        title: "Verification failed",
-        description:
-          error.message ||
-          "Payment verification failed. If you were charged, please contact the administrator.",
-        variant: "destructive",
+        title: "Payment not completed",
+        description: "It looks like the payment was not completed. Please try again.",
       });
     },
   });
 
-  // ── Initiate mutation ───────────────────────────────────────────────────────
+  // ── Initiate mutation ─────────────────────────────────────────────────────────
   const initiateMutation = useMutation({
     mutationFn: () => apiRequest("POST", "/api/exam-payments/initiate"),
-    onSuccess: async (data: any) => {
-      // Load Paystack v2 script
-      try {
-        await loadPaystackScript();
-      } catch {
-        setStep("check");
+    onSuccess: (data: any) => {
+      const { reference, authorizationUrl: url } = data;
+
+      if (!url) {
         toast({
-          title: "Payment gateway unavailable",
-          description: "Could not load the payment gateway. Please check your connection and try again.",
+          title: "Payment error",
+          description: "Could not get payment URL. Please try again.",
           variant: "destructive",
         });
+        setStep("check");
         return;
       }
 
-      if (!window.PaystackPop) {
-        setStep("check");
-        toast({
-          title: "Payment gateway error",
-          description: "Payment gateway failed to initialize. Please refresh the page and try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      setPaymentReference(data.reference);
+      setPaymentReference(reference);
+      setAuthorizationUrl(url);
       setStep("paying");
 
-      try {
-        const paystack = new window.PaystackPop();
+      // Open Paystack payment page in a popup window
+      const width = 500;
+      const height = 700;
+      const left = window.screenX + (window.outerWidth - width) / 2;
+      const top = window.screenY + (window.outerHeight - height) / 2;
+      const popup = window.open(
+        url,
+        "paystack_payment",
+        `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`,
+      );
 
-        // Use resumeTransaction when we have a server-side access_code.
-        // This is the correct Paystack v2 method for pre-initialized transactions.
-        if (data.accessCode) {
-          paystack.resumeTransaction(
-            data.accessCode,
-            (transaction: { reference: string }) => {
-              verifyMutation.mutate(transaction.reference);
-            },
-            () => {
-              setStep("check");
-              toast({
-                title: "Payment cancelled",
-                description: "You closed the payment window. You can try again anytime.",
-              });
-            },
-          );
-        } else {
-          // Fallback: initialize directly from the client using the public key
-          paystack.newTransaction({
-            key: data.publicKey,
-            email: data.email,
-            amount: data.amountKobo,
-            ref: data.reference,
-            onSuccess: (transaction: { reference: string }) => {
-              verifyMutation.mutate(transaction.reference);
-            },
-            onCancel: () => {
-              setStep("check");
-              toast({
-                title: "Payment cancelled",
-                description: "You closed the payment window. You can try again anytime.",
-              });
-            },
-          });
-        }
-      } catch (err: any) {
-        setStep("check");
+      if (!popup || popup.closed) {
+        // Popup was blocked — show the link fallback
         toast({
-          title: "Could not open payment window",
-          description: err.message || "Please try again.",
+          title: "Popup blocked",
+          description: "Your browser blocked the payment window. Use the button below to open it manually.",
           variant: "destructive",
         });
+        return;
       }
+
+      popupRef.current = popup;
+      startPolling(reference);
     },
     onError: (error: any) => {
       setStep("check");
@@ -186,11 +160,31 @@ export default function ExamFeePayment() {
     initiateMutation.mutate();
   };
 
-  const handleRetryVerify = () => {
-    if (paymentReference) verifyMutation.mutate(paymentReference);
+  const handleOpenLink = () => {
+    if (!authorizationUrl) return;
+    const popup = window.open(authorizationUrl, "_blank", "noopener");
+    if (popup) {
+      popupRef.current = popup;
+      if (paymentReference) startPolling(paymentReference);
+    }
   };
 
-  // ── Loading state ────────────────────────────────────────────────────────────
+  const handleVerifyManually = () => {
+    if (paymentReference) {
+      setStep("verifying");
+      verifyMutation.mutate(paymentReference);
+    }
+  };
+
+  const handleRetry = () => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
+    setStep("check");
+    setPaymentReference(null);
+    setAuthorizationUrl(null);
+  };
+
+  // ── Loading state ─────────────────────────────────────────────────────────────
   if (statusQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -199,7 +193,7 @@ export default function ExamFeePayment() {
     );
   }
 
-  // ── Payment not required ─────────────────────────────────────────────────────
+  // ── Payment not required ──────────────────────────────────────────────────────
   if (!requirePayment) {
     return (
       <div className="max-w-lg mx-auto p-6">
@@ -219,7 +213,7 @@ export default function ExamFeePayment() {
     );
   }
 
-  // ── Already paid ─────────────────────────────────────────────────────────────
+  // ── Already paid ──────────────────────────────────────────────────────────────
   if (isAlreadyPaid) {
     return (
       <div className="max-w-lg mx-auto p-6">
@@ -248,7 +242,7 @@ export default function ExamFeePayment() {
     );
   }
 
-  // ── Main payment view ─────────────────────────────────────────────────────────
+  // ── Main view ─────────────────────────────────────────────────────────────────
   return (
     <div className="max-w-lg mx-auto p-4 space-y-4">
       <Button
@@ -265,13 +259,11 @@ export default function ExamFeePayment() {
       {step === "success" && (
         <Card className="border-green-200 dark:border-green-800">
           <CardContent className="pt-8 pb-6 text-center space-y-4">
-            <div className="mx-auto w-20 h-20 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center animate-bounce">
+            <div className="mx-auto w-20 h-20 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
               <CheckCircle2 className="h-12 w-12 text-green-600 dark:text-green-400" />
             </div>
             <div>
-              <p className="font-bold text-2xl text-green-700 dark:text-green-400">
-                Payment Successful!
-              </p>
+              <p className="font-bold text-2xl text-green-700 dark:text-green-400">Payment Successful!</p>
               <p className="text-muted-foreground text-sm mt-2">
                 Your exam access has been unlocked for this term.
               </p>
@@ -279,6 +271,59 @@ export default function ExamFeePayment() {
             <Button onClick={() => navigate("/portal/student/exams")} data-testid="button-go-to-exams">
               <GraduationCap className="mr-2 h-4 w-4" /> Go to My Exams
             </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Paying — popup opened, waiting ── */}
+      {step === "paying" && (
+        <Card className="border-blue-200 dark:border-blue-800">
+          <CardContent className="pt-6 space-y-4 text-center">
+            <div className="mx-auto w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="font-bold text-lg">Waiting for Payment</p>
+              <p className="text-muted-foreground text-sm mt-1">
+                Complete your payment in the Paystack window that just opened.
+              </p>
+            </div>
+            <div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
+              <p>If the payment window did not open, click the button below.</p>
+            </div>
+            <div className="flex flex-col gap-2">
+              {authorizationUrl && (
+                <Button onClick={handleOpenLink} variant="outline" className="gap-2">
+                  <ExternalLink className="h-4 w-4" /> Open Payment Window
+                </Button>
+              )}
+              <Button
+                onClick={handleVerifyManually}
+                disabled={verifyMutation.isPending}
+                variant="outline"
+                className="gap-2"
+                data-testid="button-verify-payment"
+              >
+                {verifyMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                I've Completed Payment — Verify Now
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleRetry} className="text-muted-foreground">
+                Cancel and start over
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ── Verifying ── */}
+      {step === "verifying" && (
+        <Card>
+          <CardContent className="pt-8 pb-6 text-center space-y-3">
+            <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary" />
+            <p className="font-semibold text-lg">Verifying Payment…</p>
+            <p className="text-muted-foreground text-sm">
+              Please wait while we confirm your payment with Paystack.
+            </p>
           </CardContent>
         </Card>
       )}
@@ -291,9 +336,7 @@ export default function ExamFeePayment() {
               <AlertCircle className="h-10 w-10 text-red-600 dark:text-red-400" />
             </div>
             <div>
-              <p className="font-bold text-lg text-red-700 dark:text-red-400">
-                Payment Not Confirmed
-              </p>
+              <p className="font-bold text-lg text-red-700 dark:text-red-400">Payment Not Confirmed</p>
               <p className="text-muted-foreground text-sm mt-1">
                 We could not confirm your payment. If you were charged, please contact your
                 administrator with reference:{" "}
@@ -304,21 +347,15 @@ export default function ExamFeePayment() {
               {paymentReference && (
                 <Button
                   variant="outline"
-                  onClick={handleRetryVerify}
+                  onClick={handleVerifyManually}
                   disabled={verifyMutation.isPending}
                   data-testid="button-retry-verify"
                 >
-                  {verifyMutation.isPending && (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  )}
+                  {verifyMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Retry Verification
                 </Button>
               )}
-              <Button
-                onClick={handlePayNow}
-                disabled={initiateMutation.isPending}
-                data-testid="button-try-again"
-              >
+              <Button onClick={handleRetry} data-testid="button-try-again">
                 Try Again
               </Button>
             </div>
@@ -326,8 +363,8 @@ export default function ExamFeePayment() {
         </Card>
       )}
 
-      {/* ── Pay / Paying ── */}
-      {(step === "check" || step === "paying") && (
+      {/* ── Pay / Initial ── */}
+      {step === "check" && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -391,10 +428,10 @@ export default function ExamFeePayment() {
             <Button
               className="w-full h-12 text-base font-semibold"
               onClick={handlePayNow}
-              disabled={initiateMutation.isPending || step === "paying"}
+              disabled={initiateMutation.isPending}
               data-testid="button-pay-now"
             >
-              {initiateMutation.isPending || step === "paying" ? (
+              {initiateMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Opening Payment Gateway…
