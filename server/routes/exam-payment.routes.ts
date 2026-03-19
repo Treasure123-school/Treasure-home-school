@@ -302,8 +302,8 @@ router.post("/initiate", authenticateUser, authorizeRoles(ROLES.STUDENT), async 
     // Upsert pending record (prevents double-payment)
     await storage.initiatePendingExamPayment(studentId, currentTerm.id, reference, feeAmount);
 
-    // Initialize Paystack transaction
-    const amountKobo = feeAmount * 100; // Paystack uses kobo (smallest currency unit)
+    // Paystack requires amount in kobo (integer, no decimals)
+    const amountKobo = Math.round(feeAmount * 100);
     const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
       method: "POST",
       headers: {
@@ -313,6 +313,7 @@ router.post("/initiate", authenticateUser, authorizeRoles(ROLES.STUDENT), async 
       body: JSON.stringify({
         email: studentUser.email,
         amount: amountKobo,
+        currency: "NGN",
         reference,
         metadata: {
           studentId,
