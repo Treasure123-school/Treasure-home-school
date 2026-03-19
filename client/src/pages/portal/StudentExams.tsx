@@ -12,8 +12,15 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
-import { Clock, BookOpen, Trophy, Play, Eye, CheckCircle, XCircle, Timer, Save, RotateCcw, AlertCircle, Loader, FileText, Circle, CheckCircle2, HelpCircle, ClipboardCheck, GraduationCap, Award, Calendar, Calculator, X } from 'lucide-react';
-import type { Exam, ExamSession, ExamQuestion, QuestionOption, StudentAnswer } from '@shared/schema';
+import { Clock, BookOpen, Trophy, Play, Eye, CheckCircle, XCircle, Timer, Save, RotateCcw, AlertCircle, Loader, FileText, Circle, CheckCircle2, HelpCircle, ClipboardCheck, GraduationCap, Award, Calendar, Calculator, X, Lock, CreditCard } from 'lucide-react';
+import type { Exam as BaseExam, ExamSession, ExamQuestion, QuestionOption, StudentAnswer } from '@shared/schema';
+
+// Extend Exam with payment fields injected by the server at runtime
+type Exam = BaseExam & {
+  paymentRequired?: boolean;
+  hasPaid?: boolean;
+  feeAmount?: number;
+};
 import schoolLogo from '@assets/1000025432-removebg-preview (1)_1757796555126.png';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { ExamHeader } from '@/components/ExamHeader';
@@ -2017,6 +2024,15 @@ export default function StudentExams() {
   });
 
   const handleStartExam = (exam: Exam) => {
+    // Payment gate: block if fee required and not paid
+    if (exam.paymentRequired && !exam.hasPaid) {
+      toast({
+        title: "Exam Fee Required",
+        description: `You must pay the exam fee (₦${(exam.feeAmount ?? 0).toLocaleString()}) before you can start this exam. Please contact the admin to record your payment.`,
+        variant: "destructive",
+      });
+      return;
+    }
 
     // Comprehensive validation checks
     if (!exam.id) {
@@ -3207,25 +3223,33 @@ export default function StudentExams() {
             {exams.map((exam) => {
               const status = getExamStatus(exam.id);
               const subject = subjects.find(s => s.id === exam.subjectId);
+              const isLocked = exam.paymentRequired && !exam.hasPaid && !status.isCompleted;
               
               return (
                 <Card 
                   key={exam.id} 
-                  className="group overflow-hidden border border-slate-200 dark:border-slate-800 shadow-none hover:border-green-400/50 transition-all duration-300 bg-white dark:bg-card relative rounded-xl"
+                  className={`group overflow-hidden border shadow-none transition-all duration-300 bg-white dark:bg-card relative rounded-xl ${isLocked ? 'border-red-200 dark:border-red-800 hover:border-red-400/50 opacity-90' : 'border-slate-200 dark:border-slate-800 hover:border-green-400/50'}`}
                   data-testid={`card-exam-${exam.id}`}
                 >
-                  <div className="absolute top-4 right-4 text-green-100 dark:text-green-900/20">
-                    <GraduationCap className="h-8 w-8" />
+                  <div className={`absolute top-4 right-4 ${isLocked ? 'text-red-100 dark:text-red-900/20' : 'text-green-100 dark:text-green-900/20'}`}>
+                    {isLocked ? <Lock className="h-8 w-8" /> : <GraduationCap className="h-8 w-8" />}
                   </div>
 
                   <CardContent className="p-6">
                     <div className="flex flex-col space-y-4">
                       {/* Status Badge */}
                       <div className="flex items-center justify-between">
-                        <div className="bg-green-600 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                          {status.isCompleted ? "Done" : "Available"}
-                        </div>
+                        {isLocked ? (
+                          <div className="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
+                            <Lock className="h-3.5 w-3.5" />
+                            Fee Required
+                          </div>
+                        ) : (
+                          <div className="bg-green-600 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                            {status.isCompleted ? "Done" : "Available"}
+                          </div>
+                        )}
                       </div>
 
                       {/* Exam Title & Date */}
@@ -3269,15 +3293,23 @@ export default function StudentExams() {
                         </div>
                       </div>
 
+                      {/* Payment notice for locked exams */}
+                      {isLocked && (
+                        <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-300">
+                          <CreditCard className="h-4 w-4 shrink-0" />
+                          <span>Pay exam fee (₦{(exam.feeAmount ?? 0).toLocaleString()}) to unlock this exam.</span>
+                        </div>
+                      )}
+
                       {/* Action Button */}
                       <Button 
                         onClick={() => status.isCompleted ? setLocation(`/portal/student/exam-results?examId=${exam.id}`) : handleStartExam(exam)}
-                        className="w-full h-9 bg-[#3b82f6] hover:bg-blue-700 text-white rounded-md font-medium shadow-none transition-all group/btn text-sm"
+                        className={`w-full h-9 rounded-md font-medium shadow-none transition-all group/btn text-sm text-white ${isLocked ? 'bg-slate-400 hover:bg-slate-500 cursor-not-allowed' : 'bg-[#3b82f6] hover:bg-blue-700'}`}
                         data-testid={`button-action-${exam.id}`}
                       >
                         <div className="flex items-center justify-center gap-2">
-                          <Eye className="h-4 w-4" />
-                          {status.isCompleted ? "View Score" : "Start Exam"}
+                          {isLocked ? <Lock className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          {status.isCompleted ? "View Score" : isLocked ? "Locked — Fee Unpaid" : "Start Exam"}
                         </div>
                       </Button>
                     </div>

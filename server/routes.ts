@@ -26,6 +26,7 @@ import { uploadFileToStorage, replaceFile, deleteFileFromStorage } from "./uploa
 import teacherAssignmentRoutes from "./teacher-assignment-routes";
 import jobVacancyRoutes from "./routes/job-vacancy.routes";
 import settingsRoutes from "./routes/settings.routes";
+import examPaymentRoutes from "./routes/exam-payment.routes";
 import reportCardSkillsRoutes from "./routes/report-card-skills.routes";
 import questionBankRoutes from "./routes/question-bank.routes";
 import termsRoutes from "./routes/terms.routes";
@@ -1102,6 +1103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(questionBankRoutes);
   app.use('/api/terms', termsRoutes);
   app.use("/api/upload", uploadRoutes);
+  app.use("/api/exam-payments", examPaymentRoutes);
 
   // ==================== END FILE UPLOAD ROUTES ====================
 
@@ -1349,6 +1351,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (completedExamError) {
           // Non-fatal: log but still return visible exams
           console.warn('[EXAMS] Could not fetch completed exams to merge into student list:', completedExamError);
+        }
+
+        // Attach payment status for each exam's term
+        try {
+          const sysSettings = await storage.getSystemSettings();
+          if (sysSettings?.requireExamPayment) {
+            const allPayments = await storage.getExamPaymentsByStudent(userId);
+            const paidTermIds = new Set(allPayments.map((p: any) => p.termId));
+            for (const exam of studentExams) {
+              (exam as any).paymentRequired = true;
+              (exam as any).hasPaid = paidTermIds.has(exam.termId);
+              (exam as any).feeAmount = sysSettings.examFeeAmount ?? 0;
+            }
+          } else {
+            for (const exam of studentExams) {
+              (exam as any).paymentRequired = false;
+              (exam as any).hasPaid = true;
+            }
+          }
+        } catch (paymentError) {
+          console.warn('[EXAMS] Could not attach payment status:', paymentError);
         }
 
         return res.json(studentExams);
@@ -3353,6 +3376,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (student.classId !== exam.classId) {
         return res.status(403).json({ message: 'This exam is not available for your class' });
+      }
+
+      // PAYMENT CHECK: Block access if exam fee is required and unpaid
+      const sysSettings = await storage.getSystemSettings();
+      if (sysSettings?.requireExamPayment) {
+        const payment = await storage.getExamPayment(studentId, exam.termId);
+        if (!payment) {
+          return res.status(402).json({
+            message: 'Exam fee payment required',
+            paymentRequired: true,
+            termId: exam.termId,
+            feeAmount: sysSettings.examFeeAmount ?? 0,
+          });
+        }
       }
 
       // RE-ENTRY PREVENTION: Check if student already has a completed session for this exam

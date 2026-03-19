@@ -286,6 +286,8 @@ export const systemSettings = pgTable("system_settings", {
   allowTeacherOverrides: boolean("allow_teacher_overrides").notNull().default(true),
   positioningMethod: varchar("positioning_method", { length: 20 }).notNull().default('average'),
   deletedUserRetentionDays: integer("deleted_user_retention_days").notNull().default(30),
+  requireExamPayment: boolean("require_exam_payment").notNull().default(false),
+  examFeeAmount: integer("exam_fee_amount").notNull().default(0),
   updatedBy: varchar("updated_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -1122,6 +1124,25 @@ export const syncAuditLogs = pgTable("sync_audit_logs", {
   syncAuditLogsRetryIdx: index("sync_audit_logs_retry_idx").on(table.status, table.nextRetryAt),
 }));
 
+// Exam payments table — one record per student per term
+export const examPayments = pgTable("exam_payments", {
+  id: serial("id").primaryKey(),
+  studentId: varchar("student_id", { length: 36 }).notNull().references(() => students.id, { onDelete: 'cascade' }),
+  termId: integer("term_id").notNull().references(() => academicTerms.id),
+  amountPaid: integer("amount_paid").notNull().default(0),
+  paymentMethod: varchar("payment_method", { length: 50 }).notNull().default('cash'),
+  paymentReference: varchar("payment_reference", { length: 255 }),
+  status: varchar("status", { length: 20 }).notNull().default('paid'),
+  recordedBy: varchar("recorded_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  notes: text("notes"),
+  paidAt: timestamp("paid_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  examPaymentsStudentTermIdx: uniqueIndex("exam_payments_student_term_idx").on(table.studentId, table.termId),
+  examPaymentsStudentIdx: index("exam_payments_student_idx").on(table.studentId),
+  examPaymentsTermIdx: index("exam_payments_term_idx").on(table.termId),
+}));
+
 // Export types (compatible with SQLite schema types)
 export type Role = typeof roles.$inferSelect;
 export type InsertRole = typeof roles.$inferInsert;
@@ -1227,3 +1248,5 @@ export type SyllabusTopic = typeof syllabusTopics.$inferSelect;
 export type InsertSyllabusTopic = typeof syllabusTopics.$inferInsert;
 export type ExamQuestionBankLink = typeof examQuestionBankLinks.$inferSelect;
 export type InsertExamQuestionBankLink = typeof examQuestionBankLinks.$inferInsert;
+export type ExamPayment = typeof examPayments.$inferSelect;
+export type InsertExamPayment = typeof examPayments.$inferInsert;

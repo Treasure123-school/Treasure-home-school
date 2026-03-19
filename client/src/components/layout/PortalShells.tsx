@@ -61,6 +61,7 @@ const AdminProfile = lazy(() => import('@/pages/portal/AdminProfile'));
 const ReportCommentTemplates = lazy(() => import('@/pages/portal/ReportCommentTemplates'));
 const SyllabusTopicsManager = lazy(() => import('@/pages/portal/SyllabusTopicsManager'));
 const QuestionBankManager = lazy(() => import('@/pages/portal/QuestionBankManager'));
+const ExamPaymentManagement = lazy(() => import('@/pages/portal/ExamPaymentManagement'));
 
 const ParentDashboard = lazy(() => import('@/pages/portal/ParentDashboard'));
 const ParentReportCards = lazy(() => import('@/pages/portal/ParentReportCards'));
@@ -168,6 +169,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/comment-templates" component={ReportCommentTemplates} />
             <Route path="/portal/admin/syllabus-topics" component={SyllabusTopicsManager} />
             <Route path="/portal/admin/question-bank" component={QuestionBankManager} />
+            <Route path="/portal/admin/exam-payments" component={ExamPaymentManagement} />
             <Route path="/portal/admin/*" component={PortalComingSoon} />
           </Switch>
         )}

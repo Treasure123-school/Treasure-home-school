@@ -24,7 +24,8 @@ import type {
   TeacherApplication, InsertTeacherApplication, ApprovedTeacher,
   Timetable, InsertTimetable,
   StudentSubjectAssignment, InsertStudentSubjectAssignment, ClassSubjectMapping, InsertClassSubjectMapping,
-  SyllabusTopic, InsertSyllabusTopic, ExamQuestionBankLink, InsertExamQuestionBankLink
+  SyllabusTopic, InsertSyllabusTopic, ExamQuestionBankLink, InsertExamQuestionBankLink,
+  ExamPayment, InsertExamPayment
 } from "@shared/schema";
 
 // Get centralized database instance and schema from db.ts
@@ -527,6 +528,13 @@ export interface IStorage {
   }>;
   getSystemSettings(): Promise<SystemSettings | undefined>;
   updateSystemSettings(settings: Partial<InsertSystemSettings>): Promise<SystemSettings>;
+
+  // Exam payments
+  getExamPayment(studentId: string, termId: number): Promise<ExamPayment | undefined>;
+  getExamPaymentsByTerm(termId: number): Promise<ExamPayment[]>;
+  getExamPaymentsByStudent(studentId: string): Promise<ExamPayment[]>;
+  createExamPayment(data: InsertExamPayment): Promise<ExamPayment>;
+  deleteExamPayment(id: number): Promise<boolean>;
 
   // User recovery management
   getDeletedUsers(roleFilter?: number[]): Promise<User[]>;
@@ -7370,6 +7378,38 @@ export class DatabaseStorage implements IStorage {
       if (!rows || !rows.length) throw new Error("Insert failed");
       return rows[0];
     }
+  }
+
+  // Exam payment implementations
+  async getExamPayment(studentId: string, termId: number): Promise<ExamPayment | undefined> {
+    const result = await this.db.select().from(schema.examPayments)
+      .where(and(eq(schema.examPayments.studentId, studentId), eq(schema.examPayments.termId, termId)))
+      .limit(1);
+    return result[0];
+  }
+
+  async getExamPaymentsByTerm(termId: number): Promise<ExamPayment[]> {
+    return await this.db.select().from(schema.examPayments)
+      .where(eq(schema.examPayments.termId, termId))
+      .orderBy(desc(schema.examPayments.createdAt));
+  }
+
+  async getExamPaymentsByStudent(studentId: string): Promise<ExamPayment[]> {
+    return await this.db.select().from(schema.examPayments)
+      .where(eq(schema.examPayments.studentId, studentId))
+      .orderBy(desc(schema.examPayments.createdAt));
+  }
+
+  async createExamPayment(data: InsertExamPayment): Promise<ExamPayment> {
+    const result = await this.db.insert(schema.examPayments).values(data).returning();
+    return result[0];
+  }
+
+  async deleteExamPayment(id: number): Promise<boolean> {
+    const result = await this.db.delete(schema.examPayments)
+      .where(eq(schema.examPayments.id, id))
+      .returning();
+    return result.length > 0;
   }
 
   // User recovery management implementations
