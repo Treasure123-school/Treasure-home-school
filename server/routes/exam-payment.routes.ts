@@ -592,10 +592,36 @@ router.post("/verify-by-ref", authenticateUser, authorizeRoles(ROLES.STUDENT), a
     const canonicalRef: string = verifyData.data.reference || ref;
     const paidAmountNaira = Math.floor(verifyData.data.amount / 100);
 
-    // Collision check: make sure this Paystack reference isn't tied to a different student
+    // ── Primary ownership check (metadata-based) ─────────────────────────────
+    // Our server embeds studentId and termId in Paystack's metadata at initiation time.
+    // Paystack stores this and returns it on verify. It cannot be forged by the student.
+    // This is the authoritative proof of who the payment belongs to, even when no DB
+    // record exists yet (e.g. payments from a previous server environment).
+    const metaStudentId: string | undefined = verifyData.data?.metadata?.studentId;
+    const metaTermId: number | undefined = verifyData.data?.metadata?.termId;
+
+    if (metaStudentId && metaStudentId !== studentId) {
+      console.warn(`[PAYMENT SECURITY] Student ${studentId} attempted to use reference belonging to student ${metaStudentId}. Ref: ${canonicalRef}`);
+      return res.status(403).json({
+        message: "This payment reference belongs to a different student account. Contact your school administrator if you believe this is an error.",
+      });
+    }
+
+    if (metaTermId && metaTermId !== currentTerm.id) {
+      console.warn(`[PAYMENT SECURITY] Reference ${canonicalRef} is for term ${metaTermId}, but current term is ${currentTerm.id}`);
+      return res.status(409).json({
+        message: `This payment reference is for a different academic term (${verifyData.data?.metadata?.termName || "unknown"}). It cannot be used for the current term.`,
+      });
+    }
+
+    // ── Secondary ownership check (DB-based) ─────────────────────────────────
+    // Belt-and-suspenders: if the record is already in our DB, confirm the reference
+    // is not tied to a different student (covers payments without metadata, e.g. from
+    // admin-created records that went through Paystack separately).
     const existingByRef = await storage.getExamPaymentByReference(canonicalRef);
     if (existingByRef && existingByRef.studentId !== studentId) {
-      return res.status(409).json({ message: "This reference is already associated with another student account." });
+      console.warn(`[PAYMENT SECURITY] DB record for ref ${canonicalRef} belongs to student ${existingByRef.studentId}, not ${studentId}.`);
+      return res.status(403).json({ message: "This reference is already associated with another student account." });
     }
 
     // Look for ANY existing record for this student+term (paid, pending, or failed)

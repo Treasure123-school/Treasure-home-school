@@ -99,6 +99,14 @@ After any successful exam fee payment, the system sends a confirmation email and
 - If a record already exists for the same student+term, it updates the existing record instead of failing
 - This prevents the "Failed query: insert into exam_payments" error in the restore modal
 
+### Cross-Student Reference Theft Prevention (Security Fix)
+- **Vulnerability**: A student could enter another student's Paystack reference in the restore modal and get exam access, especially if the payment record didn't exist in the local DB (e.g. from a previous server environment).
+- **Root cause**: The old DB-only collision check (`getExamPaymentByReference`) only worked if the reference was already stored in the current DB. If not, the check was bypassed entirely.
+- **Fix**: Two-layer ownership verification in `verify-by-ref`:
+  1. **Primary (metadata-based)**: After Paystack verifies the transaction, extract `metadata.studentId` and `metadata.termId` from Paystack's response. These are embedded by our server at initiation time and stored by Paystack — they cannot be forged. If `metaStudentId ≠ logged-in student`, return HTTP 403.
+  2. **Secondary (DB-based)**: Belt-and-suspenders — if a DB record exists for that reference belonging to a different student, return HTTP 403.
+- Security violations are logged with `[PAYMENT SECURITY]` prefix for admin visibility.
+
 ## Replit Configuration
 
 - **Workflow**: "Start application" runs `npm run dev` on port 5000 (webview)
