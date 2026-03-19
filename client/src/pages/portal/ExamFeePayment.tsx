@@ -5,11 +5,13 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   CreditCard, CheckCircle2, AlertCircle, Loader2, ArrowLeft,
   ShieldCheck, Receipt, GraduationCap, Calendar, DollarSign,
-  ExternalLink,
+  ExternalLink, KeyRound,
 } from "lucide-react";
 
 type PaymentStep = "recovering" | "check" | "paying" | "verifying" | "success" | "failed";
@@ -20,6 +22,9 @@ export default function ExamFeePayment() {
   const [step, setStep] = useState<PaymentStep>("recovering");
   const [paymentReference, setPaymentReference] = useState<string | null>(null);
   const [authorizationUrl, setAuthorizationUrl] = useState<string | null>(null);
+  const [manualRef, setManualRef] = useState("");
+  const [manualRefError, setManualRefError] = useState("");
+  const [showManualInput, setShowManualInput] = useState(false);
   const popupRef = useRef<Window | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -182,6 +187,34 @@ export default function ExamFeePayment() {
         description: "Could not verify your payment. If you were charged, please contact your school administrator.",
         variant: "destructive",
       });
+    },
+  });
+
+  // ── Manual Reference Verification ──────────────────────────────────────────
+  const verifyByRefMutation = useMutation({
+    mutationFn: async (reference: string) => {
+      const res = await apiRequest("POST", "/api/exam-payments/verify-by-ref", { reference });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.message || "Verification failed");
+      return body;
+    },
+    onSuccess: (data: any) => {
+      setManualRefError("");
+      if (data?.success) {
+        setStep("success");
+        setShowManualInput(false);
+        queryClient.invalidateQueries({ queryKey: ["/api/exam-payments/status"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
+        toast({
+          title: "Access Restored!",
+          description: "Your payment has been verified and your exam access is now unlocked.",
+        });
+      } else {
+        setManualRefError("That reference was not found or was not successful on Paystack. Double-check it and try again.");
+      }
+    },
+    onError: (error: any) => {
+      setManualRefError(error.message || "Could not verify that reference. Please check and try again.");
     },
   });
 
@@ -431,33 +464,91 @@ export default function ExamFeePayment() {
       {/* ── Failed ── */}
       {step === "failed" && (
         <Card className="border-red-200 dark:border-red-800">
-          <CardContent className="pt-6 space-y-4 text-center">
-            <div className="mx-auto w-16 h-16 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
-              <AlertCircle className="h-10 w-10 text-red-600 dark:text-red-400" />
-            </div>
-            <div>
-              <p className="font-bold text-lg text-red-700 dark:text-red-400">Payment Not Confirmed</p>
-              <p className="text-muted-foreground text-sm mt-1">
-                We could not confirm your payment. If you were charged, please contact your
-                administrator with reference:{" "}
-                <span className="font-mono font-semibold">{paymentReference}</span>
-              </p>
-            </div>
-            <div className="flex gap-3 justify-center">
-              {paymentReference && (
+          <CardContent className="pt-6 space-y-4">
+            <div className="flex flex-col items-center text-center gap-3">
+              <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
+                <AlertCircle className="h-10 w-10 text-red-600 dark:text-red-400" />
+              </div>
+              <div>
+                <p className="font-bold text-lg text-red-700 dark:text-red-400">Payment Not Confirmed</p>
+                <p className="text-muted-foreground text-sm mt-1">
+                  We could not automatically confirm your payment.
+                  {paymentReference && (
+                    <> Your reference was: <span className="font-mono font-semibold">{paymentReference}</span></>
+                  )}
+                </p>
+              </div>
+              <div className="flex gap-3 justify-center flex-wrap">
+                {paymentReference && (
+                  <Button
+                    variant="outline"
+                    onClick={handleVerifyManually}
+                    disabled={verifyMutation.isPending || verifyByRefMutation.isPending}
+                    data-testid="button-retry-verify"
+                  >
+                    {verifyMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Retry Verification
+                  </Button>
+                )}
                 <Button
-                  variant="outline"
-                  onClick={handleVerifyManually}
-                  disabled={verifyMutation.isPending}
-                  data-testid="button-retry-verify"
+                  onClick={handleRetry}
+                  disabled={verifyMutation.isPending || verifyByRefMutation.isPending}
+                  data-testid="button-try-again"
                 >
-                  {verifyMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Retry Verification
+                  Try Again
                 </Button>
+              </div>
+            </div>
+            {/* Manual Reference Entry */}
+            <div className="border-t pt-4">
+              <button
+                className="flex items-center gap-2 text-sm text-primary hover:underline mx-auto"
+                onClick={() => { setShowManualInput((v) => !v); setManualRefError(""); }}
+                data-testid="button-toggle-manual-ref"
+              >
+                <KeyRound className="h-4 w-4" />
+                {showManualInput ? "Hide" : "Have a different Paystack reference? Enter it manually"}
+              </button>
+              {showManualInput && (
+                <div className="mt-3 space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="manual-ref-input">Paystack Payment Reference</Label>
+                    <Input
+                      id="manual-ref-input"
+                      placeholder="e.g. EP-abc123-… or any Paystack ref"
+                      value={manualRef}
+                      onChange={(e) => { setManualRef(e.target.value); setManualRefError(""); }}
+                      disabled={verifyByRefMutation.isPending}
+                      data-testid="input-manual-paystack-ref"
+                      autoComplete="off"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Found in your Paystack email receipt or the payment summary screen.
+                    </p>
+                  </div>
+                  {manualRefError && (
+                    <div className="flex items-start gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
+                      <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                      <span>{manualRefError}</span>
+                    </div>
+                  )}
+                  <Button
+                    className="w-full"
+                    onClick={() => {
+                      if (!manualRef.trim()) { setManualRefError("Please enter your reference."); return; }
+                      verifyByRefMutation.mutate(manualRef.trim());
+                    }}
+                    disabled={verifyByRefMutation.isPending || !manualRef.trim()}
+                    data-testid="button-submit-manual-ref"
+                  >
+                    {verifyByRefMutation.isPending ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying…</>
+                    ) : (
+                      <><CheckCircle2 className="mr-2 h-4 w-4" /> Verify & Unlock Exams</>
+                    )}
+                  </Button>
+                </div>
               )}
-              <Button onClick={handleRetry} data-testid="button-try-again">
-                Try Again
-              </Button>
             </div>
           </CardContent>
         </Card>

@@ -317,6 +317,8 @@ router.post("/initiate", authenticateUser, authorizeRoles(ROLES.STUDENT), async 
       },
       body: JSON.stringify({
         email: studentUser.email,
+        first_name: studentUser.firstName || "",
+        last_name: studentUser.lastName || "",
         amount: amountKobo,
         currency: "NGN",
         reference,
@@ -498,6 +500,107 @@ router.post("/recover", authenticateUser, authorizeRoles(ROLES.STUDENT), async (
     console.error("[PAYMENT] Recover error:", error);
     // Never fail — just report nothing was recovered
     return res.json({ recovered: false, reason: "error" });
+  }
+});
+
+// ─── POST /api/exam-payments/verify-by-ref ────────────────────────────────────
+// Student: provide their own Paystack reference to verify a payment that has
+// no pending record in our DB (e.g. session was different, cleared, or redirect failed).
+router.post("/verify-by-ref", authenticateUser, authorizeRoles(ROLES.STUDENT), async (req: Request, res: Response) => {
+  try {
+    const { reference } = req.body;
+    if (!reference || typeof reference !== "string" || reference.trim().length < 5) {
+      return res.status(400).json({ message: "A valid Paystack reference is required" });
+    }
+    const ref = reference.trim();
+
+    const studentId = req.user!.id;
+    const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
+    if (!paystackSecretKey) {
+      return res.status(503).json({ message: "Payment gateway is not configured" });
+    }
+
+    const terms = await storage.getAcademicTerms();
+    const currentTerm = terms.find((t: any) => t.isCurrent);
+    if (!currentTerm) {
+      return res.status(400).json({ message: "No active academic term found" });
+    }
+
+    // Already paid? Return success immediately.
+    const alreadyPaid = await storage.getExamPayment(studentId, currentTerm.id);
+    if (alreadyPaid) {
+      return res.json({ success: true, alreadyPaid: true, payment: alreadyPaid });
+    }
+
+    // Verify with Paystack backend-to-backend
+    const verifyRes = await fetch(
+      `https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`,
+      { headers: { Authorization: `Bearer ${paystackSecretKey}` } },
+    );
+    const verifyData: any = await verifyRes.json();
+
+    if (!verifyData.status || verifyData.data?.status !== "success") {
+      const gwStatus = verifyData.data?.status || "not_found";
+      return res.status(402).json({
+        message: gwStatus === "not_found"
+          ? "No payment found for that reference. Please check the reference and try again."
+          : `Payment not confirmed by Paystack (status: ${gwStatus}). If you were charged, contact your administrator.`,
+        gatewayStatus: gwStatus,
+      });
+    }
+
+    // Check if the amount matches (Paystack amount is in kobo)
+    const settings = await storage.getSystemSettings();
+    const feeAmount = settings?.examFeeAmount ?? 0;
+    const paidAmountNaira = Math.floor(verifyData.data.amount / 100);
+
+    // Make sure this reference isn't already used by another student
+    const existingByRef = await storage.getExamPaymentByReference(ref);
+    if (existingByRef && existingByRef.studentId !== studentId) {
+      return res.status(409).json({ message: "This reference is already associated with another student account." });
+    }
+    if (existingByRef && existingByRef.studentId === studentId && existingByRef.status === "paid") {
+      return res.json({ success: true, alreadyPaid: true, payment: existingByRef });
+    }
+
+    // Create or update the payment record as paid
+    let payment: any;
+    if (existingByRef) {
+      payment = await storage.updateExamPayment(existingByRef.id, {
+        status: "paid",
+        amountPaid: paidAmountNaira,
+        paymentMethod: "online",
+        gatewayResponse: JSON.stringify(verifyData.data),
+        paidAt: new Date(),
+      });
+    } else {
+      payment = await storage.createExamPayment({
+        studentId,
+        termId: currentTerm.id,
+        amountPaid: paidAmountNaira,
+        paymentMethod: "online",
+        paymentReference: ref,
+        status: "paid",
+        paidAt: new Date(),
+        gatewayResponse: JSON.stringify(verifyData.data),
+      });
+    }
+
+    try {
+      await storage.createAuditLog({
+        userId: studentId,
+        action: "exam_payment_manual_ref_verified",
+        entityType: "exam_payment",
+        entityId: String(payment?.id),
+        reason: `Student manually provided Paystack reference and payment was verified. Ref: ${ref}`,
+      });
+    } catch { }
+
+    console.log(`[PAYMENT] Manual ref verification successful for student ${studentId}, ref: ${ref}`);
+    return res.json({ success: true, alreadyPaid: false, payment });
+  } catch (error: any) {
+    console.error("[PAYMENT] verify-by-ref error:", error);
+    res.status(500).json({ message: error.message || "Failed to verify payment reference" });
   }
 });
 

@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Clock, BookOpen, Trophy, Play, Eye, CheckCircle, XCircle, Timer, Save, RotateCcw, AlertCircle, Loader, FileText, Circle, CheckCircle2, HelpCircle, ClipboardCheck, GraduationCap, Award, Calendar, Calculator, X, Lock, CreditCard } from 'lucide-react';
 import type { Exam as BaseExam, ExamSession, ExamQuestion, QuestionOption, StudentAnswer } from '@shared/schema';
@@ -203,6 +204,9 @@ export default function StudentExams() {
   const [localPendingCount, setLocalPendingCount] = useState(0);
   const [isRecoveringPayment, setIsRecoveringPayment] = useState(false);
   const [paymentRecovered, setPaymentRecovered] = useState(false);
+  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
+  const [manualReference, setManualReference] = useState("");
+  const [manualRefError, setManualRefError] = useState("");
   const recoveryAttemptedRef = useRef(false);
 
   // Socket.IO realtime updates for exams list.
@@ -384,8 +388,8 @@ export default function StudentExams() {
   });
 
   // ── Payment Recovery ─────────────────────────────────────────────────────────
-  // If a student paid but the browser closed / redirect failed before confirmation,
-  // this silently re-checks Paystack and unlocks exams automatically.
+  // Silent background recovery: if a student paid but the browser closed / redirect
+  // failed, this re-checks Paystack and unlocks exams automatically.
   const recoverPaymentMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/exam-payments/recover");
@@ -395,6 +399,7 @@ export default function StudentExams() {
     onSuccess: (data: any) => {
       setIsRecoveringPayment(false);
       if (data?.recovered && data?.payment) {
+        // Payment was found on Paystack — exams now unlocked
         setPaymentRecovered(true);
         queryClient.invalidateQueries({ queryKey: ["/api/exam-payments/status"] });
         queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
@@ -402,15 +407,51 @@ export default function StudentExams() {
           title: "Payment Restored",
           description: "Your previous payment was found and your exam access has been unlocked.",
         });
+      } else if (
+        data?.reason === "no_pending_payment" ||
+        data?.reason === "not_paid_on_gateway" ||
+        data?.reason === "no_active_term" ||
+        data?.reason === "gateway_not_configured"
+      ) {
+        // No pending record in our DB — show manual reference dialog
+        setShowRestoreDialog(true);
       }
     },
     onError: () => {
       setIsRecoveringPayment(false);
+      // Network or server error — still show the dialog so student can try manual entry
+      setShowRestoreDialog(true);
+    },
+  });
+
+  // ── Manual Reference Verification ─────────────────────────────────────────────
+  // Student provides their Paystack reference directly when auto-recovery fails
+  const verifyByRefMutation = useMutation({
+    mutationFn: async (reference: string) => {
+      const res = await apiRequest("POST", "/api/exam-payments/verify-by-ref", { reference });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body.message || "Verification failed");
+      return body;
+    },
+    onSuccess: (data: any) => {
+      setManualRefError("");
+      if (data?.success) {
+        setShowRestoreDialog(false);
+        setManualReference("");
+        queryClient.invalidateQueries({ queryKey: ["/api/exam-payments/status"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
+        toast({
+          title: "Access Restored!",
+          description: "Your payment has been verified and your exam access is now unlocked.",
+        });
+      }
+    },
+    onError: (error: any) => {
+      setManualRefError(error.message || "Could not verify that reference. Please check it and try again.");
     },
   });
 
   // Silently run recovery once when we detect payment-locked exams.
-  // This handles: webhook delay, redirect failure, browser crash, etc.
   useEffect(() => {
     if (loadingExams || recoveryAttemptedRef.current) return;
     const hasLockedExams = (exams as Exam[]).some(
@@ -3361,11 +3402,13 @@ export default function StudentExams() {
                             className="w-full flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 disabled:opacity-50"
                             onClick={(e) => {
                               e.stopPropagation();
-                              recoveryAttemptedRef.current = false;
+                              if (verifyByRefMutation.isPending || isRecoveringPayment) return;
+                              setManualRefError("");
+                              // Try auto-recovery first; if no record found, dialog opens
                               setIsRecoveringPayment(true);
                               recoverPaymentMutation.mutate();
                             }}
-                            disabled={isRecoveringPayment}
+                            disabled={isRecoveringPayment || verifyByRefMutation.isPending}
                             data-testid={`button-restore-payment-${exam.id}`}
                           >
                             {isRecoveringPayment ? (
@@ -3396,6 +3439,77 @@ export default function StudentExams() {
           </div>
         )}
       </div>
+
+      {/* ── Restore Payment Dialog ── */}
+      <Dialog open={showRestoreDialog} onOpenChange={(open) => {
+        setShowRestoreDialog(open);
+        if (!open) { setManualReference(""); setManualRefError(""); }
+      }}>
+        <DialogContent className="max-w-md" data-testid="dialog-restore-payment">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5 text-primary" />
+              Restore Exam Access
+            </DialogTitle>
+            <DialogDescription>
+              We could not find an automatic payment record for your account. If you paid through Paystack, enter the reference number from your payment confirmation or receipt below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="paystack-ref">Paystack Payment Reference</Label>
+              <Input
+                id="paystack-ref"
+                placeholder="e.g. EP-abc123-T7-… or any Paystack ref"
+                value={manualReference}
+                onChange={(e) => { setManualReference(e.target.value); setManualRefError(""); }}
+                disabled={verifyByRefMutation.isPending}
+                data-testid="input-paystack-reference"
+                autoComplete="off"
+              />
+              <p className="text-xs text-muted-foreground">
+                You can find this reference in your Paystack email receipt or the payment summary page after checkout.
+              </p>
+            </div>
+            {manualRefError && (
+              <div className="flex items-start gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
+                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>{manualRefError}</span>
+              </div>
+            )}
+            <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-200">
+              If you do not have your reference number, contact your school administrator and provide your name and the date you made the payment.
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => { setShowRestoreDialog(false); setManualReference(""); setManualRefError(""); }}
+              disabled={verifyByRefMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!manualReference.trim()) {
+                  setManualRefError("Please enter your payment reference.");
+                  return;
+                }
+                verifyByRefMutation.mutate(manualReference.trim());
+              }}
+              disabled={verifyByRefMutation.isPending || !manualReference.trim()}
+              data-testid="button-verify-manual-ref"
+            >
+              {verifyByRefMutation.isPending ? (
+                <><Loader className="mr-2 h-4 w-4 animate-spin" /> Verifying…</>
+              ) : (
+                <><CheckCircle2 className="mr-2 h-4 w-4" /> Verify & Restore Access</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       </RequireCompleteProfile>
     );
   }
