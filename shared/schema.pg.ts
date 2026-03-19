@@ -1135,7 +1135,8 @@ export const examPayments = pgTable("exam_payments", {
   status: varchar("status", { length: 20 }).notNull().default('paid'),
   recordedBy: varchar("recorded_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
   notes: text("notes"),
-  paidAt: timestamp("paid_at").notNull().defaultNow(),
+  gatewayResponse: text("gateway_response"),
+  paidAt: timestamp("paid_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => ({
   examPaymentsStudentTermIdx: uniqueIndex("exam_payments_student_term_idx").on(table.studentId, table.termId),

@@ -2028,9 +2028,10 @@ export default function StudentExams() {
     if (exam.paymentRequired && !exam.hasPaid) {
       toast({
         title: "Exam Fee Required",
-        description: `You must pay the exam fee (₦${(exam.feeAmount ?? 0).toLocaleString()}) before you can start this exam. Please contact the admin to record your payment.`,
+        description: `Pay your exam fee (₦${(exam.feeAmount ?? 0).toLocaleString()}) to unlock this exam.`,
         variant: "destructive",
       });
+      setLocation("/portal/student/exam-payment");
       return;
     }
 
@@ -3295,9 +3296,20 @@ export default function StudentExams() {
 
                       {/* Payment notice for locked exams */}
                       {isLocked && (
-                        <div className="flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 text-sm text-red-700 dark:text-red-300">
-                          <CreditCard className="h-4 w-4 shrink-0" />
-                          <span>Pay exam fee (₦{(exam.feeAmount ?? 0).toLocaleString()}) to unlock this exam.</span>
+                        <div className="flex items-center justify-between gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                          <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200">
+                            <CreditCard className="h-4 w-4 shrink-0" />
+                            <span>Exam fee ₦{(exam.feeAmount ?? 0).toLocaleString()} required</span>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="h-7 px-3 text-xs shrink-0"
+                            onClick={(e) => { e.stopPropagation(); setLocation("/portal/student/exam-payment"); }}
+                            data-testid={`button-pay-fee-${exam.id}`}
+                          >
+                            Pay Now
+                          </Button>
                         </div>
                       )}
 

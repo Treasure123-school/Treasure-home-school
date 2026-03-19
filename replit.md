@@ -38,6 +38,31 @@ npm run db:push  # Push schema changes to database
 - `JWT_SECRET` — JWT signing secret
 - `SESSION_SECRET` — Express session secret
 - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` — Cloudinary (used in production)
+- `PAYSTACK_SECRET_KEY` — Paystack secret key (server-side only, for payment init & verification)
+- `PAYSTACK_PUBLIC_KEY` — Paystack public key (returned to client for Paystack popup)
+
+## Online Exam Payment System
+
+Implemented a secure end-to-end online exam fee payment flow using Paystack:
+
+### Flow
+1. **Initiate** (`POST /api/exam-payments/initiate` — student only): Backend creates a `pending` payment record with a unique server-generated reference tied to the authenticated student + current term. Calls Paystack API to initialize the transaction. Returns access_code, reference, and public key to the client.
+2. **Checkout**: Frontend loads Paystack inline JS popup from CDN. Student pays via card/bank transfer. No payment data touches our server.
+3. **Verify** (`POST /api/exam-payments/verify` — student only): After Paystack popup success, frontend sends the reference back. Backend verifies server-to-server with Paystack API (`GET /transaction/verify/:ref`). If confirmed, marks payment as `paid` and sets `paidAt` timestamp.
+4. **Webhook** (`POST /api/exam-payments/webhook` — public): Paystack sends a `charge.success` event signed with HMAC-SHA512. Backend verifies the signature and marks payment as `paid` as a secondary confirmation layer.
+
+### Security Properties
+- Reference is generated server-side; student cannot influence it
+- Student identity comes from the authenticated session (not user input)
+- Duplicate payments blocked by unique index on `(studentId, termId)` — paid records cannot be overwritten
+- Webhook HMAC verification prevents spoofing
+- Secret key never leaves the server
+
+### Key Files
+- `server/routes/exam-payment.routes.ts` — initiate, verify, webhook, admin CRUD
+- `client/src/pages/portal/ExamFeePayment.tsx` — student payment page with Paystack popup
+- `client/src/pages/portal/StudentExams.tsx` — locked exam card with "Pay Now" button
+- `client/src/pages/portal/SuperAdminIntegrations.tsx` — setup guide for Paystack keys
 
 ## Replit Configuration
 

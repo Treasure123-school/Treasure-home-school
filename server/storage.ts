@@ -531,9 +531,12 @@ export interface IStorage {
 
   // Exam payments
   getExamPayment(studentId: string, termId: number): Promise<ExamPayment | undefined>;
+  getExamPaymentByReference(reference: string): Promise<ExamPayment | undefined>;
   getExamPaymentsByTerm(termId: number): Promise<ExamPayment[]>;
   getExamPaymentsByStudent(studentId: string): Promise<ExamPayment[]>;
   createExamPayment(data: InsertExamPayment): Promise<ExamPayment>;
+  updateExamPayment(id: number, data: Partial<InsertExamPayment>): Promise<ExamPayment | undefined>;
+  initiatePendingExamPayment(studentId: string, termId: number, reference: string, amountPaid: number): Promise<ExamPayment>;
   deleteExamPayment(id: number): Promise<boolean>;
 
   // User recovery management
@@ -7388,6 +7391,13 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
+  async getExamPaymentByReference(reference: string): Promise<ExamPayment | undefined> {
+    const result = await this.db.select().from(schema.examPayments)
+      .where(eq(schema.examPayments.paymentReference, reference))
+      .limit(1);
+    return result[0];
+  }
+
   async getExamPaymentsByTerm(termId: number): Promise<ExamPayment[]> {
     return await this.db.select().from(schema.examPayments)
       .where(eq(schema.examPayments.termId, termId))
@@ -7402,6 +7412,39 @@ export class DatabaseStorage implements IStorage {
 
   async createExamPayment(data: InsertExamPayment): Promise<ExamPayment> {
     const result = await this.db.insert(schema.examPayments).values(data).returning();
+    return result[0];
+  }
+
+  async updateExamPayment(id: number, data: Partial<InsertExamPayment>): Promise<ExamPayment | undefined> {
+    const result = await this.db.update(schema.examPayments)
+      .set(data)
+      .where(eq(schema.examPayments.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async initiatePendingExamPayment(studentId: string, termId: number, reference: string, amountPaid: number): Promise<ExamPayment> {
+    const existing = await this.getExamPayment(studentId, termId);
+    if (existing) {
+      if (existing.status === 'paid') {
+        throw new Error('ALREADY_PAID');
+      }
+      // Update the pending record with a fresh reference
+      const updated = await this.updateExamPayment(existing.id, {
+        paymentReference: reference,
+        amountPaid,
+        status: 'pending',
+      });
+      return updated!;
+    }
+    const result = await this.db.insert(schema.examPayments).values({
+      studentId,
+      termId,
+      amountPaid,
+      paymentMethod: 'online',
+      paymentReference: reference,
+      status: 'pending',
+    }).returning();
     return result[0];
   }
 

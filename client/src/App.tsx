@@ -116,6 +116,7 @@ const SuperAdminBackupRestore = lazy(() => import("@/pages/portal/SuperAdminBack
 const SuperAdminApiAccess = lazy(() => import("@/pages/portal/SuperAdminApiAccess"));
 
 import StudentExams from "@/pages/portal/StudentExams";
+const ExamFeePayment = lazy(() => import("@/pages/portal/ExamFeePayment"));
 
 function Router() {
   return (
@@ -512,6 +513,13 @@ function Router() {
         <Route path="/portal/onboarding">
           <ProtectedRoute allowedRoleIds={[ROLE_IDS.STUDENT, ROLE_IDS.TEACHER, ROLE_IDS.PARENT, ROLE_IDS.ADMIN]}>
             <ProfileOnboarding />
+          </ProtectedRoute>
+        </Route>
+
+        {/* Student Exam Fee Payment */}
+        <Route path="/portal/student/exam-payment">
+          <ProtectedRoute allowedRoleIds={[ROLE_IDS.STUDENT]}>
+            <ExamFeePayment />
           </ProtectedRoute>
         </Route>
 

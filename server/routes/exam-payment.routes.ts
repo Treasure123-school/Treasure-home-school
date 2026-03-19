@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { storage } from "../storage";
 import { authenticateUser, authorizeRoles, ROLES } from "./middleware";
 import { z } from "zod";
+import crypto from "crypto";
 
 const router = Router();
 
@@ -262,6 +263,216 @@ router.post("/bulk", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_A
     res.json(results);
   } catch (error: any) {
     res.status(500).json({ message: error.message || "Bulk payment failed" });
+  }
+});
+
+// ─── POST /api/exam-payments/initiate ────────────────────────────────────────
+// Student: begin checkout — creates a pending payment and returns Paystack init data
+router.post("/initiate", authenticateUser, authorizeRoles(ROLES.STUDENT), async (req: Request, res: Response) => {
+  try {
+    const studentId = req.user!.id;
+
+    const settings = await storage.getSystemSettings();
+    const requirePayment = settings?.requireExamPayment ?? false;
+    const feeAmount = settings?.examFeeAmount ?? 0;
+
+    if (!requirePayment) {
+      return res.status(400).json({ message: "Online exam payment is not required" });
+    }
+
+    const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
+    if (!paystackSecretKey) {
+      return res.status(503).json({ message: "Payment gateway is not configured. Please contact the administrator." });
+    }
+
+    const terms = await storage.getAcademicTerms();
+    const currentTerm = terms.find((t: any) => t.isCurrent);
+    if (!currentTerm) {
+      return res.status(400).json({ message: "No active academic term found" });
+    }
+
+    const studentUser = await storage.getUser(studentId);
+    if (!studentUser) {
+      return res.status(404).json({ message: "Student account not found" });
+    }
+
+    // Generate a unique reference tied to this student and term
+    const reference = `EP-${studentId.slice(0, 8)}-T${currentTerm.id}-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
+
+    // Upsert pending record (prevents double-payment)
+    await storage.initiatePendingExamPayment(studentId, currentTerm.id, reference, feeAmount);
+
+    // Initialize Paystack transaction
+    const amountKobo = feeAmount * 100; // Paystack uses kobo (smallest currency unit)
+    const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${paystackSecretKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        email: studentUser.email,
+        amount: amountKobo,
+        reference,
+        metadata: {
+          studentId,
+          termId: currentTerm.id,
+          termName: `${currentTerm.name} ${currentTerm.year}`,
+          studentName: `${studentUser.firstName} ${studentUser.lastName}`,
+        },
+      }),
+    });
+
+    if (!paystackRes.ok) {
+      const errBody = await paystackRes.json().catch(() => ({}));
+      console.error("[PAYMENT] Paystack init failed:", errBody);
+      return res.status(502).json({ message: "Payment gateway initialization failed. Please try again." });
+    }
+
+    const paystackData: any = await paystackRes.json();
+    if (!paystackData.status) {
+      return res.status(502).json({ message: paystackData.message || "Payment initialization failed" });
+    }
+
+    return res.json({
+      reference,
+      accessCode: paystackData.data.access_code,
+      authorizationUrl: paystackData.data.authorization_url,
+      publicKey: process.env.PAYSTACK_PUBLIC_KEY || "",
+      email: studentUser.email,
+      amountKobo,
+      currentTerm,
+    });
+  } catch (error: any) {
+    if (error.message === "ALREADY_PAID") {
+      return res.status(409).json({ message: "You have already paid the exam fee for this term" });
+    }
+    console.error("[PAYMENT] Initiate error:", error);
+    res.status(500).json({ message: error.message || "Failed to initiate payment" });
+  }
+});
+
+// ─── POST /api/exam-payments/verify ──────────────────────────────────────────
+// Student: verify their payment from the backend after Paystack callback
+router.post("/verify", authenticateUser, authorizeRoles(ROLES.STUDENT), async (req: Request, res: Response) => {
+  try {
+    const { reference } = req.body;
+    if (!reference || typeof reference !== "string") {
+      return res.status(400).json({ message: "Payment reference is required" });
+    }
+
+    const studentId = req.user!.id;
+    const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
+    if (!paystackSecretKey) {
+      return res.status(503).json({ message: "Payment gateway is not configured" });
+    }
+
+    // Look up pending record — must belong to this student
+    const payment = await storage.getExamPaymentByReference(reference);
+    if (!payment) {
+      return res.status(404).json({ message: "Payment record not found for this reference" });
+    }
+    if (payment.studentId !== studentId) {
+      return res.status(403).json({ message: "This payment reference does not belong to your account" });
+    }
+    if (payment.status === "paid") {
+      return res.json({ success: true, alreadyPaid: true, payment });
+    }
+
+    // Verify with Paystack backend-to-backend
+    const verifyRes = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+      headers: { Authorization: `Bearer ${paystackSecretKey}` },
+    });
+    const verifyData: any = await verifyRes.json();
+
+    if (!verifyData.status || verifyData.data?.status !== "success") {
+      const gatewayStatus = verifyData.data?.status || "failed";
+      await storage.updateExamPayment(payment.id, {
+        status: gatewayStatus === "abandoned" ? "pending" : "failed",
+        gatewayResponse: JSON.stringify(verifyData.data || {}),
+      });
+      return res.status(402).json({
+        message: `Payment not confirmed. Gateway status: ${gatewayStatus}`,
+        gatewayStatus,
+      });
+    }
+
+    // Confirmed — mark as paid
+    const updatedPayment = await storage.updateExamPayment(payment.id, {
+      status: "paid",
+      amountPaid: Math.floor(verifyData.data.amount / 100),
+      paymentMethod: "online",
+      gatewayResponse: JSON.stringify(verifyData.data),
+      paidAt: new Date(),
+    });
+
+    // Audit log
+    try {
+      await storage.createAuditLog({
+        userId: studentId,
+        action: "exam_payment_online_verified",
+        entityType: "exam_payment",
+        entityId: String(payment.id),
+        reason: `Online exam fee payment verified via Paystack. Reference: ${reference}`,
+      });
+    } catch { }
+
+    return res.json({ success: true, alreadyPaid: false, payment: updatedPayment });
+  } catch (error: any) {
+    console.error("[PAYMENT] Verify error:", error);
+    res.status(500).json({ message: error.message || "Failed to verify payment" });
+  }
+});
+
+// ─── POST /api/exam-payments/webhook ─────────────────────────────────────────
+// Paystack webhook — no auth, HMAC-verified
+router.post("/webhook", async (req: Request, res: Response) => {
+  try {
+    const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
+    if (!paystackSecretKey) return res.sendStatus(200);
+
+    // Verify Paystack HMAC signature
+    const hash = crypto.createHmac("sha512", paystackSecretKey)
+      .update(JSON.stringify(req.body))
+      .digest("hex");
+    const signature = req.headers["x-paystack-signature"] as string;
+    if (!signature || hash !== signature) {
+      return res.sendStatus(400);
+    }
+
+    const event = req.body;
+    if (event.event !== "charge.success") {
+      return res.sendStatus(200); // Acknowledge other events but do nothing
+    }
+
+    const { reference, status, amount } = event.data;
+    if (status !== "success" || !reference) return res.sendStatus(200);
+
+    const payment = await storage.getExamPaymentByReference(reference);
+    if (!payment || payment.status === "paid") return res.sendStatus(200);
+
+    await storage.updateExamPayment(payment.id, {
+      status: "paid",
+      amountPaid: Math.floor(amount / 100),
+      paymentMethod: "online",
+      gatewayResponse: JSON.stringify(event.data),
+      paidAt: new Date(),
+    });
+
+    try {
+      await storage.createAuditLog({
+        userId: payment.studentId,
+        action: "exam_payment_webhook_confirmed",
+        entityType: "exam_payment",
+        entityId: String(payment.id),
+        reason: `Exam fee confirmed via Paystack webhook. Reference: ${reference}`,
+      });
+    } catch { }
+
+    return res.sendStatus(200);
+  } catch (error) {
+    console.error("[PAYMENT] Webhook error:", error);
+    return res.sendStatus(200); // Always 200 to Paystack
   }
 });
 
