@@ -334,6 +334,8 @@ export const systemSettings = sqliteTable("system_settings", {
   enableTwoFactor: integer("enable_two_factor", { mode: "boolean" }).notNull().default(false),
   twoFactorTarget: text("two_factor_target").notNull().default('admins'), // 'admins', 'all'
   logoutOnPasswordChange: integer("logout_on_password_change", { mode: "boolean" }).notNull().default(true),
+  requireExamPayment: integer("require_exam_payment", { mode: "boolean" }).notNull().default(false),
+  examFeeAmount: integer("exam_fee_amount").notNull().default(0),
   updatedBy: text("updated_by").references(() => users.id, { onDelete: 'set null' }),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
@@ -1373,6 +1375,23 @@ export const insertQuestionBankOptionSchema = createInsertSchema(questionBankOpt
 export const insertSyllabusTopicSchema = createInsertSchema(syllabusTopics).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertExamQuestionBankLinkSchema = createInsertSchema(examQuestionBankLinks).omit({ id: true, createdAt: true });
 
+// Exam Payments table
+export const examPayments = sqliteTable("exam_payments", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  studentId: text("student_id").notNull().references(() => students.id, { onDelete: 'cascade' }),
+  termId: integer("term_id").notNull().references(() => academicTerms.id),
+  amountPaid: integer("amount_paid").notNull().default(0),
+  paymentMethod: text("payment_method").notNull().default('cash'),
+  paymentReference: text("payment_reference"),
+  status: text("status").notNull().default('paid'),
+  recordedBy: text("recorded_by").references(() => users.id, { onDelete: 'set null' }),
+  notes: text("notes"),
+  gatewayResponse: text("gateway_response"),
+  paidAt: integer("paid_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+export const insertExamPaymentSchema = createInsertSchema(examPayments).omit({ id: true, createdAt: true });
+
 // Types
 export type Role = typeof roles.$inferSelect;
 export type User = typeof users.$inferSelect;
@@ -1508,3 +1527,6 @@ export type StudentSubjectAssignment = typeof studentSubjectAssignments.$inferSe
 export type InsertStudentSubjectAssignment = z.infer<typeof insertStudentSubjectAssignmentSchema>;
 export type ClassSubjectMapping = typeof classSubjectMappings.$inferSelect;
 export type InsertClassSubjectMapping = z.infer<typeof insertClassSubjectMappingSchema>;
+
+export type ExamPayment = typeof examPayments.$inferSelect;
+export type InsertExamPayment = z.infer<typeof insertExamPaymentSchema>;

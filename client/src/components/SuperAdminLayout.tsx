@@ -96,7 +96,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
     label: string;
     path?: string;
     icon: any;
-    children?: { label: string; path: string }[];
+    children?: { label: string; path: string; icon?: any }[];
   }
 
   const navItems: NavItem[] = [
