@@ -7420,8 +7420,34 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createExamPayment(data: InsertExamPayment): Promise<ExamPayment> {
-    const result = await this.db.insert(schema.examPayments).values(data).returning();
-    return result[0];
+    try {
+      const result = await this.db.insert(schema.examPayments).values(data).returning();
+      return result[0];
+    } catch (err: any) {
+      // Unique constraint violation — a record already exists for this student+term.
+      // This can happen when the webhook ran before verify-by-ref, or due to a race condition.
+      // Fetch the existing record and update it to the new values instead.
+      if (err.code === "23505") {
+        const existing = await this.db.select().from(schema.examPayments)
+          .where(and(
+            eq(schema.examPayments.studentId, data.studentId),
+            eq(schema.examPayments.termId, data.termId!),
+          ))
+          .limit(1);
+        if (existing[0]) {
+          const updated = await this.updateExamPayment(existing[0].id, {
+            status: data.status ?? existing[0].status,
+            amountPaid: data.amountPaid ?? existing[0].amountPaid,
+            paymentMethod: data.paymentMethod ?? existing[0].paymentMethod,
+            paymentReference: data.paymentReference ?? existing[0].paymentReference,
+            gatewayResponse: data.gatewayResponse ?? existing[0].gatewayResponse,
+            paidAt: data.paidAt ?? existing[0].paidAt,
+          });
+          return updated!;
+        }
+      }
+      throw err;
+    }
   }
 
   async updateExamPayment(id: number, data: Partial<InsertExamPayment>): Promise<ExamPayment | undefined> {

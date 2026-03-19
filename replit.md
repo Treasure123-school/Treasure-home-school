@@ -40,6 +40,11 @@ npm run db:push  # Push schema changes to database
 - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` — Cloudinary (used in production)
 - `PAYSTACK_SECRET_KEY` — Paystack secret key (server-side only, for payment init & verification)
 - `PAYSTACK_PUBLIC_KEY` — Paystack public key (returned to client for Paystack popup)
+- `RESEND_API_KEY` — Resend API key for sending email notifications (optional; emails skipped if absent)
+- `EMAIL_FROM` — Email sender address e.g. `THS Portal <noreply@yourdomain.com>` (optional, defaults to resend.dev)
+- `TWILIO_ACCOUNT_SID` — Twilio Account SID for SMS notifications (optional)
+- `TWILIO_AUTH_TOKEN` — Twilio Auth Token (optional)
+- `TWILIO_PHONE_NUMBER` — Twilio sender phone number, e.g. `+1234567890` (optional)
 
 ## Online Exam Payment System
 
@@ -63,6 +68,36 @@ Implemented a secure end-to-end online exam fee payment flow using Paystack:
 - `client/src/pages/portal/ExamFeePayment.tsx` — student payment page with Paystack popup
 - `client/src/pages/portal/StudentExams.tsx` — locked exam card with "Pay Now" button
 - `client/src/pages/portal/SuperAdminIntegrations.tsx` — setup guide for Paystack keys
+
+## Payment Notifications (Email + SMS)
+
+After any successful exam fee payment, the system sends a confirmation email and/or SMS to the student containing their Paystack reference as proof. This covers all payment paths:
+
+- **Webhook** (`charge.success` event from Paystack)
+- **Verify** (student callback after Paystack popup)
+- **Verify-by-ref** (restore modal — student provides their reference manually)
+- **Recover** (auto-recovery on page load if payment completed but redirect failed)
+
+### Email
+- Uses Resend (`RESEND_API_KEY` env var). If not configured, emails are skipped with a log warning.
+- Sender configured via `EMAIL_FROM` env var (default: `THS Portal <noreply@resend.dev>`)
+- Template in `server/email-service.ts` → `getPaymentConfirmationEmailHTML()`
+
+### SMS
+- Uses Twilio (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` env vars)
+- If any Twilio env var is missing, SMS is silently skipped
+- Nigerian phone numbers (07xx, 08xx, 09xx) are auto-normalized to +234 format
+- Template in `server/sms-service.ts` → `getPaymentConfirmationSms()`
+
+### Notification Service
+- `server/payment-notifications.ts` — `sendPaymentConfirmationNotifications()` centralizes both email + SMS
+- Reads `enableEmailNotifications` and `enableSmsNotifications` from system settings
+- Fire-and-forget (never blocks or crashes the payment confirmation response)
+
+### DB Insert Failure Fix
+- `createExamPayment()` now gracefully handles unique constraint violations (error code 23505)
+- If a record already exists for the same student+term, it updates the existing record instead of failing
+- This prevents the "Failed query: insert into exam_payments" error in the restore modal
 
 ## Replit Configuration
 

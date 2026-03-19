@@ -3,6 +3,7 @@ import { storage } from "../storage";
 import { authenticateUser, authorizeRoles, ROLES } from "./middleware";
 import { z } from "zod";
 import crypto from "crypto";
+import { sendPaymentConfirmationNotifications } from "../payment-notifications";
 
 const router = Router();
 
@@ -407,12 +408,13 @@ router.post("/verify", authenticateUser, authorizeRoles(ROLES.STUDENT), async (r
     }
 
     // Confirmed — mark as paid
+    const paidAt = new Date();
     const updatedPayment = await storage.updateExamPayment(payment.id, {
       status: "paid",
       amountPaid: Math.floor(verifyData.data.amount / 100),
       paymentMethod: "online",
       gatewayResponse: JSON.stringify(verifyData.data),
-      paidAt: new Date(),
+      paidAt,
     });
 
     // Audit log
@@ -425,6 +427,17 @@ router.post("/verify", authenticateUser, authorizeRoles(ROLES.STUDENT), async (r
         reason: `Online exam fee payment verified via Paystack. Reference: ${reference}`,
       });
     } catch { }
+
+    // Send email + SMS confirmation with the Paystack reference as proof
+    const terms = await storage.getAcademicTerms();
+    const currentTerm = terms.find((t: any) => t.id === payment.termId);
+    sendPaymentConfirmationNotifications({
+      studentId,
+      amount: Math.floor(verifyData.data.amount / 100),
+      reference,
+      termName: currentTerm ? `${currentTerm.name} ${currentTerm.year}` : "Current Term",
+      paidAt,
+    }).catch(() => {});
 
     return res.json({ success: true, alreadyPaid: false, payment: updatedPayment });
   } catch (error: any) {
@@ -476,12 +489,13 @@ router.post("/recover", authenticateUser, authorizeRoles(ROLES.STUDENT), async (
     }
 
     // Paystack confirms it was paid — mark as paid in our DB
+    const recoveredAt = new Date();
     const updatedPayment = await storage.updateExamPayment(pending.id, {
       status: "paid",
       amountPaid: Math.floor(verifyData.data.amount / 100),
       paymentMethod: "online",
       gatewayResponse: JSON.stringify(verifyData.data),
-      paidAt: new Date(),
+      paidAt: recoveredAt,
     });
 
     try {
@@ -493,6 +507,15 @@ router.post("/recover", authenticateUser, authorizeRoles(ROLES.STUDENT), async (
         reason: `Exam fee auto-recovered on login. Reference: ${pending.paymentReference}`,
       });
     } catch { }
+
+    // Send email + SMS with the reference as proof
+    sendPaymentConfirmationNotifications({
+      studentId,
+      amount: Math.floor(verifyData.data.amount / 100),
+      reference: pending.paymentReference!,
+      termName: `Term ${currentTerm.name} ${currentTerm.year}`,
+      paidAt: recoveredAt,
+    }).catch(() => {});
 
     console.log(`[PAYMENT] Auto-recovered payment for student ${studentId}, ref: ${pending.paymentReference}`);
     return res.json({ recovered: true, alreadyPaid: false, payment: updatedPayment });
@@ -591,6 +614,7 @@ router.post("/verify-by-ref", authenticateUser, authorizeRoles(ROLES.STUDENT), a
       || await storage.getAnyExamPaymentByStudentTerm(studentId, currentTerm.id);
 
     // Create or update the payment record as paid
+    const verifiedAt = new Date();
     let payment: any;
     if (existingPending) {
       // Update the existing pending/failed record → paid
@@ -600,10 +624,10 @@ router.post("/verify-by-ref", authenticateUser, authorizeRoles(ROLES.STUDENT), a
         paymentMethod: "online",
         paymentReference: canonicalRef,
         gatewayResponse: JSON.stringify(verifyData.data),
-        paidAt: new Date(),
+        paidAt: verifiedAt,
       });
     } else {
-      // No record at all — create a fresh paid record
+      // No record at all — create a fresh paid record (upsert handles unique constraint)
       payment = await storage.createExamPayment({
         studentId,
         termId: currentTerm.id,
@@ -611,7 +635,7 @@ router.post("/verify-by-ref", authenticateUser, authorizeRoles(ROLES.STUDENT), a
         paymentMethod: "online",
         paymentReference: canonicalRef,
         status: "paid",
-        paidAt: new Date(),
+        paidAt: verifiedAt,
         gatewayResponse: JSON.stringify(verifyData.data),
       });
     }
@@ -625,6 +649,15 @@ router.post("/verify-by-ref", authenticateUser, authorizeRoles(ROLES.STUDENT), a
         reason: `Student manually provided Paystack reference and payment was verified. Ref: ${ref}`,
       });
     } catch { }
+
+    // Send email + SMS confirmation with the reference as proof
+    sendPaymentConfirmationNotifications({
+      studentId,
+      amount: paidAmountNaira,
+      reference: canonicalRef,
+      termName: `${currentTerm.name} ${currentTerm.year}`,
+      paidAt: verifiedAt,
+    }).catch(() => {});
 
     console.log(`[PAYMENT] Manual ref verification successful for student ${studentId}, ref: ${ref}`);
     return res.json({ success: true, alreadyPaid: false, payment });
@@ -662,12 +695,14 @@ router.post("/webhook", async (req: Request, res: Response) => {
     const payment = await storage.getExamPaymentByReference(reference);
     if (!payment || payment.status === "paid") return res.sendStatus(200);
 
+    const webhookPaidAt = new Date();
+    const amountNaira = Math.floor(amount / 100);
     await storage.updateExamPayment(payment.id, {
       status: "paid",
-      amountPaid: Math.floor(amount / 100),
+      amountPaid: amountNaira,
       paymentMethod: "online",
       gatewayResponse: JSON.stringify(event.data),
-      paidAt: new Date(),
+      paidAt: webhookPaidAt,
     });
 
     try {
@@ -678,6 +713,19 @@ router.post("/webhook", async (req: Request, res: Response) => {
         entityId: String(payment.id),
         reason: `Exam fee confirmed via Paystack webhook. Reference: ${reference}`,
       });
+    } catch { }
+
+    // Send email + SMS confirmation (fire-and-forget, must not delay webhook 200 response)
+    try {
+      const terms = await storage.getAcademicTerms();
+      const term = terms.find((t: any) => t.id === payment.termId);
+      sendPaymentConfirmationNotifications({
+        studentId: payment.studentId,
+        amount: amountNaira,
+        reference,
+        termName: term ? `${term.name} ${term.year}` : "Current Term",
+        paidAt: webhookPaidAt,
+      }).catch(() => {});
     } catch { }
 
     return res.sendStatus(200);
