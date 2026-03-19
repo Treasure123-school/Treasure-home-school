@@ -511,20 +511,26 @@ export default function ExamFeePayment() {
               </button>
               {showManualInput && (
                 <div className="mt-3 space-y-3">
+                  <div className="rounded-lg border bg-muted/40 p-3 space-y-2 text-xs">
+                    <p className="font-semibold text-foreground">Where to find your reference:</p>
+                    <ul className="space-y-1 text-muted-foreground list-disc list-inside">
+                      <li><span className="font-medium text-foreground">OPay receipt:</span> use the <span className="font-mono bg-background rounded px-1">Merchant Order No.</span></li>
+                      <li><span className="font-medium text-foreground">Paystack email/checkout:</span> use the reference shown there</li>
+                    </ul>
+                    <p className="text-amber-700 dark:text-amber-400 font-medium">Do NOT use the plain Transaction No. — use the Merchant Order No.</p>
+                  </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="manual-ref-input">Paystack Payment Reference</Label>
+                    <Label htmlFor="manual-ref-input">Merchant Order No. / Paystack Reference</Label>
                     <Input
                       id="manual-ref-input"
-                      placeholder="e.g. EP-abc123-… or any Paystack ref"
+                      placeholder="e.g. paystack_5950722615_n86mp"
                       value={manualRef}
                       onChange={(e) => { setManualRef(e.target.value); setManualRefError(""); }}
                       disabled={verifyByRefMutation.isPending}
                       data-testid="input-manual-paystack-ref"
                       autoComplete="off"
+                      className="font-mono"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Found in your Paystack email receipt or the payment summary screen.
-                    </p>
                   </div>
                   {manualRefError && (
                     <div className="flex items-start gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg p-3 border border-red-200 dark:border-red-800">

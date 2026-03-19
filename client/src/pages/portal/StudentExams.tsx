@@ -3452,24 +3452,32 @@ export default function StudentExams() {
               Restore Exam Access
             </DialogTitle>
             <DialogDescription>
-              We could not find an automatic payment record for your account. If you paid through Paystack, enter the reference number from your payment confirmation or receipt below.
+              Enter the payment reference from your receipt to restore access.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
+            {/* Reference Guide */}
+            <div className="rounded-lg border bg-muted/40 p-3 space-y-2 text-xs">
+              <p className="font-semibold text-foreground">Where to find your reference:</p>
+              <ul className="space-y-1 text-muted-foreground list-disc list-inside">
+                <li><span className="font-medium text-foreground">OPay receipt:</span> use the <span className="font-mono bg-background rounded px-1">Merchant Order No.</span> (e.g. <span className="font-mono">paystack_123_abc</span>)</li>
+                <li><span className="font-medium text-foreground">Paystack email:</span> use the reference in the subject or body</li>
+                <li><span className="font-medium text-foreground">Paystack checkout page:</span> copy the ref shown after payment</li>
+              </ul>
+              <p className="text-amber-700 dark:text-amber-400 font-medium">Do NOT enter the plain Transaction No. — it must be the Merchant Order No. or Paystack reference.</p>
+            </div>
             <div className="space-y-2">
-              <Label htmlFor="paystack-ref">Paystack Payment Reference</Label>
+              <Label htmlFor="paystack-ref">Paystack Reference / Merchant Order No.</Label>
               <Input
                 id="paystack-ref"
-                placeholder="e.g. EP-abc123-T7-… or any Paystack ref"
+                placeholder="e.g. paystack_5950722615_n86mp"
                 value={manualReference}
                 onChange={(e) => { setManualReference(e.target.value); setManualRefError(""); }}
                 disabled={verifyByRefMutation.isPending}
                 data-testid="input-paystack-reference"
                 autoComplete="off"
+                className="font-mono"
               />
-              <p className="text-xs text-muted-foreground">
-                You can find this reference in your Paystack email receipt or the payment summary page after checkout.
-              </p>
             </div>
             {manualRefError && (
               <div className="flex items-start gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
@@ -3478,7 +3486,7 @@ export default function StudentExams() {
               </div>
             )}
             <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-200">
-              If you do not have your reference number, contact your school administrator and provide your name and the date you made the payment.
+              If you cannot find your reference, contact your school administrator with your name and payment date.
             </div>
           </div>
           <DialogFooter className="gap-2">

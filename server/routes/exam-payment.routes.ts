@@ -533,18 +533,33 @@ router.post("/verify-by-ref", authenticateUser, authorizeRoles(ROLES.STUDENT), a
     }
 
     // Verify with Paystack backend-to-backend
-    const verifyRes = await fetch(
-      `https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`,
-      { headers: { Authorization: `Bearer ${paystackSecretKey}` } },
-    );
-    const verifyData: any = await verifyRes.json();
+    let verifyData: any;
+    try {
+      const verifyRes = await fetch(
+        `https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`,
+        { headers: { Authorization: `Bearer ${paystackSecretKey}` } },
+      );
+      const raw = await verifyRes.text();
+      try {
+        verifyData = JSON.parse(raw);
+      } catch {
+        // Paystack returned non-JSON (HTML error page) — reference format is invalid
+        console.warn(`[PAYMENT] verify-by-ref: Paystack returned non-JSON for ref "${ref}". Likely wrong reference format.`);
+        return res.status(400).json({
+          message: "That does not look like a valid Paystack reference. Please check the Merchant Order No. on your receipt and try again.",
+        });
+      }
+    } catch (fetchError: any) {
+      console.error("[PAYMENT] verify-by-ref: Paystack network error:", fetchError);
+      return res.status(502).json({ message: "Could not reach the payment gateway. Please try again in a moment." });
+    }
 
     if (!verifyData.status || verifyData.data?.status !== "success") {
       const gwStatus = verifyData.data?.status || "not_found";
       return res.status(402).json({
         message: gwStatus === "not_found"
-          ? "No payment found for that reference. Please check the reference and try again."
-          : `Payment not confirmed by Paystack (status: ${gwStatus}). If you were charged, contact your administrator.`,
+          ? "No payment found for that reference. Please double-check the Merchant Order No. on your receipt."
+          : `Payment not confirmed by Paystack (status: ${gwStatus}). If you were charged, contact your school administrator.`,
         gatewayStatus: gwStatus,
       });
     }
