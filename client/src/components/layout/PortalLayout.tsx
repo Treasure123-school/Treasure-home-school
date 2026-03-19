@@ -5,7 +5,7 @@ import {
   ClipboardList, ChevronDown, History, UserCheck, Eye, Briefcase, Shield, Activity,
   Clock, PenTool, CheckSquare, Award, Star, Library, DollarSign, Trophy, HelpCircle,
   Inbox, Megaphone, MessagesSquare, ClipboardPen, BarChart3, FolderOpen, RotateCcw,
-  Layers, Database
+  Layers, Database, CreditCard, Receipt
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
@@ -128,7 +128,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: `/portal/${userRole}/forum`, icon: MessagesSquare, label: 'Discussion Forum' },
             ]
           },
-          { name: 'Fees & Payments', href: `/portal/${userRole}/fees`, icon: DollarSign },
+          { name: 'Exam Fee Payment', href: `/portal/${userRole}/exam-payment`, icon: CreditCard },
           { name: 'Library', href: `/portal/${userRole}/library`, icon: Library },
           { name: 'Extracurricular', href: `/portal/${userRole}/extracurricular`, icon: Trophy },
           { name: 'Help & Support', href: `/portal/${userRole}/help`, icon: HelpCircle },
@@ -211,6 +211,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-exams' : null),
             items: [
               { href: '/portal/admin/exams', icon: PenTool, label: 'Exam Management' },
+              { href: '/portal/admin/exam-payments', icon: CreditCard, label: 'Exam Payments' },
               { href: '/portal/admin/question-bank', icon: Database, label: 'Question Bank' },
               { href: '/portal/admin/results/publishing', icon: Eye, label: 'Result Publishing' },
               { href: `/portal/${userRole}/coming-soon?page=ca`, icon: ClipboardList, label: 'Continuous Assessment' },

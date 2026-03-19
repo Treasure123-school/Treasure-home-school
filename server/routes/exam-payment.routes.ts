@@ -476,6 +476,55 @@ router.post("/webhook", async (req: Request, res: Response) => {
   }
 });
 
+// ─── GET /api/exam-payments/settings ─────────────────────────────────────────
+// Admin & Super Admin: get exam payment configuration
+router.get("/settings", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  try {
+    const settings = await storage.getSystemSettings();
+    res.json({
+      requireExamPayment: settings?.requireExamPayment ?? false,
+      examFeeAmount: settings?.examFeeAmount ?? 0,
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message || "Failed to get payment settings" });
+  }
+});
+
+// ─── PUT /api/exam-payments/settings ──────────────────────────────────────────
+// Admin & Super Admin: update exam fee amount and requirement flag
+const updateSettingsSchema = z.object({
+  requireExamPayment: z.boolean(),
+  examFeeAmount: z.number().int().min(0),
+});
+
+router.put("/settings", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  try {
+    const parsed = updateSettingsSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ message: "Invalid data", errors: parsed.error.flatten() });
+    }
+    const { requireExamPayment, examFeeAmount } = parsed.data;
+    const settings = await storage.updateSystemSettings({ requireExamPayment, examFeeAmount });
+
+    try {
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        action: "exam_payment_settings_updated",
+        entityType: "system_settings",
+        entityId: String(settings.id),
+        reason: `Exam payment settings updated: requirePayment=${requireExamPayment}, feeAmount=${examFeeAmount}`,
+      });
+    } catch { }
+
+    res.json({
+      requireExamPayment: settings.requireExamPayment,
+      examFeeAmount: settings.examFeeAmount,
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: error.message || "Failed to update payment settings" });
+  }
+});
+
 // ─── DELETE /api/exam-payments/:id ───────────────────────────────────────────
 // Admin: revoke a payment
 router.delete("/:id", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {

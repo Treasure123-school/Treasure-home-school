@@ -114,6 +114,7 @@ const SuperAdminBrandingTheme = lazy(() => import("@/pages/portal/SuperAdminBran
 const SuperAdminIntegrations = lazy(() => import("@/pages/portal/SuperAdminIntegrations"));
 const SuperAdminBackupRestore = lazy(() => import("@/pages/portal/SuperAdminBackupRestore"));
 const SuperAdminApiAccess = lazy(() => import("@/pages/portal/SuperAdminApiAccess"));
+const ExamPaymentManagement = lazy(() => import("@/pages/portal/ExamPaymentManagement"));
 
 import StudentExams from "@/pages/portal/StudentExams";
 const ExamFeePayment = lazy(() => import("@/pages/portal/ExamFeePayment"));
@@ -357,6 +358,13 @@ function Router() {
         <Route path="/portal/superadmin/finance/transactions">
           <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
             <SuperAdminPlaceholder title="Transactions" category="Finance" description="View all financial transactions" />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/portal/superadmin/exam-payments">
+          <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
+            <SuperAdminLayout>
+              <ExamPaymentManagement />
+            </SuperAdminLayout>
           </ProtectedRoute>
         </Route>
 

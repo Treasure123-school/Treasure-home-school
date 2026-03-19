@@ -18,6 +18,7 @@ import {
   Activity,
   LifeBuoy,
   Terminal,
+  CreditCard,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -128,6 +129,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
       label: "Financial Policies",
       icon: DollarSign,
       children: [
+        { label: "Exam Payments", path: "/portal/superadmin/exam-payments", icon: CreditCard },
         { label: "Fee Structure", path: "/portal/superadmin/placeholder?page=fees" },
         { label: "Fee Categories", path: "/portal/superadmin/placeholder?page=fee-categories" },
         { label: "Discounts & Waivers", path: "/portal/superadmin/placeholder?page=discounts" },

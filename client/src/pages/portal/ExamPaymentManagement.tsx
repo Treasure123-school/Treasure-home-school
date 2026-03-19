@@ -96,11 +96,11 @@ export default function ExamPaymentManagement() {
     enabled: !!effectiveTermId,
   });
 
-  // Fetch system settings
+  // Fetch exam payment settings
   const { data: sysSettings } = useQuery<SystemSettings>({
-    queryKey: ['/api/public/settings'],
+    queryKey: ['/api/exam-payments/settings'],
     queryFn: async () => {
-      const res = await apiRequest('GET', '/api/public/settings');
+      const res = await apiRequest('GET', '/api/exam-payments/settings');
       return res.json();
     },
   });
@@ -199,7 +199,7 @@ export default function ExamPaymentManagement() {
   // Update settings
   const updateSettingsMutation = useMutation({
     mutationFn: async (data: { requireExamPayment: boolean; examFeeAmount: number }) => {
-      const res = await apiRequest('PUT', '/api/superadmin/settings', data);
+      const res = await apiRequest('PUT', '/api/exam-payments/settings', data);
       if (!res.ok) {
         const err = await res.json();
         throw new Error(err.message || 'Failed to update settings');
@@ -209,8 +209,9 @@ export default function ExamPaymentManagement() {
     onSuccess: () => {
       toast({ title: 'Settings saved', description: 'Exam fee settings updated successfully.' });
       setShowSettingsDialog(false);
-      queryClient.invalidateQueries({ queryKey: ['/api/public/settings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/exam-payments/settings'] });
       queryClient.invalidateQueries({ queryKey: ['/api/exam-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/exam-payments/status'] });
     },
     onError: (err: Error) => {
       toast({ title: 'Error', description: err.message, variant: 'destructive' });
