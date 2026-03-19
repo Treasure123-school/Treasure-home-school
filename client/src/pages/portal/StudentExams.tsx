@@ -201,6 +201,9 @@ export default function StudentExams() {
   const [networkIssues, setNetworkIssues] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
   const [localPendingCount, setLocalPendingCount] = useState(0);
+  const [isRecoveringPayment, setIsRecoveringPayment] = useState(false);
+  const [paymentRecovered, setPaymentRecovered] = useState(false);
+  const recoveryAttemptedRef = useRef(false);
 
   // Socket.IO realtime updates for exams list.
   // Subscribes to the CLASS channel (students are allowed) so that teacher edits
@@ -379,6 +382,47 @@ export default function StudentExams() {
     queryKey: ['/api/subjects'],
     enabled: !!user,
   });
+
+  // ── Payment Recovery ─────────────────────────────────────────────────────────
+  // If a student paid but the browser closed / redirect failed before confirmation,
+  // this silently re-checks Paystack and unlocks exams automatically.
+  const recoverPaymentMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/exam-payments/recover");
+      if (!res.ok) throw new Error("Recovery failed");
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      setIsRecoveringPayment(false);
+      if (data?.recovered && data?.payment) {
+        setPaymentRecovered(true);
+        queryClient.invalidateQueries({ queryKey: ["/api/exam-payments/status"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
+        toast({
+          title: "Payment Restored",
+          description: "Your previous payment was found and your exam access has been unlocked.",
+        });
+      }
+    },
+    onError: () => {
+      setIsRecoveringPayment(false);
+    },
+  });
+
+  // Silently run recovery once when we detect payment-locked exams.
+  // This handles: webhook delay, redirect failure, browser crash, etc.
+  useEffect(() => {
+    if (loadingExams || recoveryAttemptedRef.current) return;
+    const hasLockedExams = (exams as Exam[]).some(
+      (e) => e.paymentRequired && !e.hasPaid
+    );
+    if (hasLockedExams) {
+      recoveryAttemptedRef.current = true;
+      setIsRecoveringPayment(true);
+      recoverPaymentMutation.mutate();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exams, loadingExams]);
 
   // Fetch all exam sessions for the student to track completed exams
   const { data: studentExamSessions = [] } = useQuery<Array<{
@@ -2024,11 +2068,12 @@ export default function StudentExams() {
   });
 
   const handleStartExam = (exam: Exam) => {
-    // Payment gate: block if fee required and not paid
+    // Payment gate: block if fee required and not paid.
+    // First try silent recovery (in case webhook/redirect was missed), then redirect.
     if (exam.paymentRequired && !exam.hasPaid) {
       toast({
         title: "Exam Fee Required",
-        description: `Pay your exam fee (₦${(exam.feeAmount ?? 0).toLocaleString()}) to unlock this exam.`,
+        description: `Pay your exam fee to unlock this exam, or click "I already paid — Restore access" if you have already paid.`,
         variant: "destructive",
       });
       setLocation("/portal/student/exam-payment");
@@ -3296,20 +3341,39 @@ export default function StudentExams() {
 
                       {/* Payment notice for locked exams */}
                       {isLocked && (
-                        <div className="flex items-center justify-between gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                          <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200">
-                            <CreditCard className="h-4 w-4 shrink-0" />
-                            <span>Exam fee ₦{(exam.feeAmount ?? 0).toLocaleString()} required</span>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+                            <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200">
+                              <CreditCard className="h-4 w-4 shrink-0" />
+                              <span>Exam fee ₦{(exam.feeAmount ?? 0).toLocaleString()} required</span>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="default"
+                              className="h-7 px-3 text-xs shrink-0"
+                              onClick={(e) => { e.stopPropagation(); setLocation("/portal/student/exam-payment"); }}
+                              data-testid={`button-pay-fee-${exam.id}`}
+                            >
+                              Pay Now
+                            </Button>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="default"
-                            className="h-7 px-3 text-xs shrink-0"
-                            onClick={(e) => { e.stopPropagation(); setLocation("/portal/student/exam-payment"); }}
-                            data-testid={`button-pay-fee-${exam.id}`}
+                          <button
+                            className="w-full flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 disabled:opacity-50"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              recoveryAttemptedRef.current = false;
+                              setIsRecoveringPayment(true);
+                              recoverPaymentMutation.mutate();
+                            }}
+                            disabled={isRecoveringPayment}
+                            data-testid={`button-restore-payment-${exam.id}`}
                           >
-                            Pay Now
-                          </Button>
+                            {isRecoveringPayment ? (
+                              <><Loader className="h-3 w-3 animate-spin" /> Checking payment status…</>
+                            ) : (
+                              <><CheckCircle2 className="h-3 w-3" /> I already paid — Restore access</>
+                            )}
+                          </button>
                         </div>
                       )}
 
