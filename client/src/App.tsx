@@ -26,6 +26,7 @@ import Admissions from "@/pages/Admissions";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import JobVacancy from "@/pages/JobVacancy";
+import PaymentCallback from "@/pages/PaymentCallback";
 
 // Super Admin pages - lazy loaded
 const SuperAdminDashboard = lazy(() => import("@/pages/portal/SuperAdminDashboard"));
@@ -133,6 +134,9 @@ function Router() {
         <Route path="/login" component={Login} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
+
+        {/* Payment callback — no auth required, Paystack redirects here after payment */}
+        <Route path="/payment/callback" component={PaymentCallback} />
 
         {/* Super Admin Portal Routes */}
         <Route path="/portal/superadmin">

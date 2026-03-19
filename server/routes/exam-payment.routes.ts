@@ -302,6 +302,11 @@ router.post("/initiate", authenticateUser, authorizeRoles(ROLES.STUDENT), async 
     // Upsert pending record (prevents double-payment)
     await storage.initiatePendingExamPayment(studentId, currentTerm.id, reference, feeAmount);
 
+    // Derive the app's base URL for the Paystack callback
+    const origin = req.headers.origin ||
+      `${req.protocol}://${req.get("host")}`;
+    const callbackUrl = `${origin}/payment/callback`;
+
     // Paystack requires amount in kobo (integer, no decimals)
     const amountKobo = Math.round(feeAmount * 100);
     const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
@@ -315,6 +320,7 @@ router.post("/initiate", authenticateUser, authorizeRoles(ROLES.STUDENT), async 
         amount: amountKobo,
         currency: "NGN",
         reference,
+        callback_url: callbackUrl,
         metadata: {
           studentId,
           termId: currentTerm.id,

@@ -15,7 +15,7 @@ import {
 type PaymentStep = "check" | "paying" | "verifying" | "success" | "failed";
 
 export default function ExamFeePayment() {
-  const [, navigate] = useLocation();
+  const [location, navigate] = useLocation();
   const { toast } = useToast();
   const [step, setStep] = useState<PaymentStep>("check");
   const [paymentReference, setPaymentReference] = useState<string | null>(null);
@@ -30,11 +30,47 @@ export default function ExamFeePayment() {
   const currentTerm: any = status?.currentTerm;
   const requirePayment: boolean = status?.requirePayment ?? false;
 
+  // ── Cleanup on unmount ──────────────────────────────────────────────────────
   useEffect(() => {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
       if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
     };
+  }, []);
+
+  // ── Mobile/redirect flow: ?verify=REF in URL ────────────────────────────────
+  // When Paystack redirects to /payment/callback and no opener exists (mobile /
+  // new tab), the callback page redirects here with ?verify=REF so we can
+  // auto-trigger verification.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const verifyRef = params.get("verify");
+    if (verifyRef && step === "check") {
+      // Remove the query param from URL without a reload
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, "", cleanUrl);
+      setPaymentReference(verifyRef);
+      setStep("verifying");
+      verifyMutation.mutate(verifyRef);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location]);
+
+  // ── Listen for postMessage from the /payment/callback popup ─────────────────
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === "PAYSTACK_PAYMENT_CALLBACK" && event.data?.reference) {
+        const ref = event.data.reference as string;
+        stopPolling();
+        setPaymentReference(ref);
+        setStep("verifying");
+        verifyMutation.mutate(ref);
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const stopPolling = () => {
@@ -44,17 +80,26 @@ export default function ExamFeePayment() {
     }
   };
 
+  // ── Poll /api/exam-payments/status every 3 s while popup is open ───────────
   const startPolling = (reference: string) => {
     stopPolling();
     pollRef.current = setInterval(async () => {
+      // If popup was closed by user (not by callback redirect), trigger verify
       if (popupRef.current && popupRef.current.closed) {
         stopPolling();
+        setStep("verifying");
         verifyMutation.mutate(reference);
         return;
       }
+
+      // Poll status — include auth token so the request is authenticated
       try {
+        const token = localStorage.getItem("token");
         const res = await fetch("/api/exam-payments/status", {
-          headers: { "Cache-Control": "no-cache" },
+          headers: {
+            "Cache-Control": "no-cache",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
           credentials: "include",
         });
         if (res.ok) {
@@ -73,6 +118,7 @@ export default function ExamFeePayment() {
     }, 3000);
   };
 
+  // ── Verify mutation ─────────────────────────────────────────────────────────
   const verifyMutation = useMutation({
     mutationFn: async (reference: string) => {
       const res = await apiRequest("POST", "/api/exam-payments/verify", { reference });
@@ -101,6 +147,7 @@ export default function ExamFeePayment() {
     },
   });
 
+  // ── Initiate mutation ───────────────────────────────────────────────────────
   const initiateMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/exam-payments/initiate");
@@ -127,6 +174,7 @@ export default function ExamFeePayment() {
       setAuthorizationUrl(url);
       setStep("paying");
 
+      // Try to open a popup; fall back gracefully if blocked
       const width = 500;
       const height = 700;
       const left = window.screenX + (window.outerWidth - width) / 2;
@@ -138,6 +186,7 @@ export default function ExamFeePayment() {
       );
 
       if (!popup || popup.closed) {
+        // Popup was blocked — let user open manually; polling not possible
         toast({
           title: "Popup blocked",
           description: "Your browser blocked the payment window. Use the button below to open it manually.",
@@ -166,7 +215,8 @@ export default function ExamFeePayment() {
 
   const handleOpenLink = () => {
     if (!authorizationUrl) return;
-    const popup = window.open(authorizationUrl, "_blank", "noopener");
+    // On mobile this opens in the same tab; the callback URL will bring them back
+    const popup = window.open(authorizationUrl, "_blank", "noopener,noreferrer");
     if (popup && paymentReference) {
       popupRef.current = popup;
       startPolling(paymentReference);
@@ -175,6 +225,7 @@ export default function ExamFeePayment() {
 
   const handleVerifyManually = () => {
     if (!paymentReference) return;
+    stopPolling();
     setStep("verifying");
     verifyMutation.mutate(paymentReference);
   };
@@ -187,6 +238,7 @@ export default function ExamFeePayment() {
     setAuthorizationUrl(null);
   };
 
+  // ── Loading ─────────────────────────────────────────────────────────────────
   if (statusQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -195,6 +247,7 @@ export default function ExamFeePayment() {
     );
   }
 
+  // ── Payment not required ────────────────────────────────────────────────────
   if (!requirePayment) {
     return (
       <div className="max-w-lg mx-auto p-6">
@@ -214,6 +267,7 @@ export default function ExamFeePayment() {
     );
   }
 
+  // ── Already paid ────────────────────────────────────────────────────────────
   if (isAlreadyPaid) {
     return (
       <div className="max-w-lg mx-auto p-6">
@@ -242,6 +296,7 @@ export default function ExamFeePayment() {
     );
   }
 
+  // ── Main UI ─────────────────────────────────────────────────────────────────
   return (
     <div className="max-w-lg mx-auto p-4 space-y-4">
       <Button
@@ -254,7 +309,7 @@ export default function ExamFeePayment() {
         <ArrowLeft className="h-4 w-4" /> Back to Exams
       </Button>
 
-      {/* Success */}
+      {/* ── Success ── */}
       {step === "success" && (
         <Card className="border-green-200 dark:border-green-800">
           <CardContent className="pt-8 pb-6 text-center space-y-4">
@@ -274,7 +329,7 @@ export default function ExamFeePayment() {
         </Card>
       )}
 
-      {/* Waiting for payment in popup */}
+      {/* ── Waiting for payment ── */}
       {step === "paying" && (
         <Card className="border-blue-200 dark:border-blue-800">
           <CardContent className="pt-6 space-y-4 text-center">
@@ -292,7 +347,12 @@ export default function ExamFeePayment() {
             </div>
             <div className="flex flex-col gap-2">
               {authorizationUrl && (
-                <Button onClick={handleOpenLink} variant="outline" className="gap-2" data-testid="button-open-payment">
+                <Button
+                  onClick={handleOpenLink}
+                  variant="outline"
+                  className="gap-2"
+                  data-testid="button-open-payment"
+                >
                   <ExternalLink className="h-4 w-4" /> Open Payment Window
                 </Button>
               )}
@@ -314,7 +374,7 @@ export default function ExamFeePayment() {
         </Card>
       )}
 
-      {/* Verifying */}
+      {/* ── Verifying ── */}
       {step === "verifying" && (
         <Card>
           <CardContent className="pt-8 pb-6 text-center space-y-3">
@@ -327,7 +387,7 @@ export default function ExamFeePayment() {
         </Card>
       )}
 
-      {/* Failed */}
+      {/* ── Failed ── */}
       {step === "failed" && (
         <Card className="border-red-200 dark:border-red-800">
           <CardContent className="pt-6 space-y-4 text-center">
@@ -362,7 +422,7 @@ export default function ExamFeePayment() {
         </Card>
       )}
 
-      {/* Initial pay screen */}
+      {/* ── Initial pay screen ── */}
       {step === "check" && (
         <Card>
           <CardHeader>
