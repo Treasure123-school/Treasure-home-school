@@ -104,7 +104,10 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json({ limit: '10mb' })); // Increased limit for file uploads
+// Capture raw body for Paystack webhook HMAC verification — must be before express.json()
+app.use('/api/exam-payments/webhook', express.raw({ type: 'application/json' }));
+
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 // Serve uploaded files as static assets from server/uploads

@@ -426,22 +426,23 @@ router.post("/verify", authenticateUser, authorizeRoles(ROLES.STUDENT), async (r
 });
 
 // ─── POST /api/exam-payments/webhook ─────────────────────────────────────────
-// Paystack webhook — no auth, HMAC-verified
+// Paystack webhook — no auth, HMAC-verified using raw body
 router.post("/webhook", async (req: Request, res: Response) => {
   try {
     const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
     if (!paystackSecretKey) return res.sendStatus(200);
 
-    // Verify Paystack HMAC signature
+    // req.body is a raw Buffer (set by express.raw middleware in index.ts)
+    const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
     const hash = crypto.createHmac("sha512", paystackSecretKey)
-      .update(JSON.stringify(req.body))
+      .update(rawBody)
       .digest("hex");
     const signature = req.headers["x-paystack-signature"] as string;
     if (!signature || hash !== signature) {
       return res.sendStatus(400);
     }
 
-    const event = req.body;
+    const event = JSON.parse(rawBody.toString("utf8"));
     if (event.event !== "charge.success") {
       return res.sendStatus(200); // Acknowledge other events but do nothing
     }

@@ -12,17 +12,17 @@ import {
   ExternalLink,
 } from "lucide-react";
 
-// ─── Component ────────────────────────────────────────────────────────────────
+type PaymentStep = "check" | "paying" | "verifying" | "success" | "failed";
+
 export default function ExamFeePayment() {
   const [, navigate] = useLocation();
   const { toast } = useToast();
-  const [step, setStep] = useState<"check" | "paying" | "verifying" | "success" | "failed">("check");
+  const [step, setStep] = useState<PaymentStep>("check");
   const [paymentReference, setPaymentReference] = useState<string | null>(null);
   const [authorizationUrl, setAuthorizationUrl] = useState<string | null>(null);
   const popupRef = useRef<Window | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ── Status query ─────────────────────────────────────────────────────────────
   const statusQuery = useQuery({ queryKey: ["/api/exam-payments/status"] });
   const status: any = statusQuery.data;
   const isAlreadyPaid: boolean = status?.hasPaid ?? false;
@@ -30,7 +30,6 @@ export default function ExamFeePayment() {
   const currentTerm: any = status?.currentTerm;
   const requirePayment: boolean = status?.requirePayment ?? false;
 
-  // ── Clean up on unmount ───────────────────────────────────────────────────────
   useEffect(() => {
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
@@ -38,21 +37,21 @@ export default function ExamFeePayment() {
     };
   }, []);
 
-  // ── Start polling for payment completion ──────────────────────────────────────
-  const startPolling = (reference: string) => {
-    if (pollRef.current) clearInterval(pollRef.current);
+  const stopPolling = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
 
+  const startPolling = (reference: string) => {
+    stopPolling();
     pollRef.current = setInterval(async () => {
-      // Check if popup was closed by user
       if (popupRef.current && popupRef.current.closed) {
-        clearInterval(pollRef.current!);
-        pollRef.current = null;
-        // Try to verify — maybe they completed payment before closing
+        stopPolling();
         verifyMutation.mutate(reference);
         return;
       }
-
-      // Poll the status endpoint
       try {
         const res = await fetch("/api/exam-payments/status", {
           headers: { "Cache-Control": "no-cache" },
@@ -61,8 +60,7 @@ export default function ExamFeePayment() {
         if (res.ok) {
           const data = await res.json();
           if (data.hasPaid) {
-            clearInterval(pollRef.current!);
-            pollRef.current = null;
+            stopPolling();
             if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
             queryClient.invalidateQueries({ queryKey: ["/api/exam-payments/status"] });
             queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
@@ -75,45 +73,53 @@ export default function ExamFeePayment() {
     }, 3000);
   };
 
-  // ── Verify mutation (fallback after popup close) ──────────────────────────────
   const verifyMutation = useMutation({
-    mutationFn: (reference: string) =>
-      apiRequest("POST", "/api/exam-payments/verify", { reference }),
+    mutationFn: async (reference: string) => {
+      const res = await apiRequest("POST", "/api/exam-payments/verify", { reference });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: "Verification failed" }));
+        throw new Error(err.message || "Verification failed");
+      }
+      return res.json();
+    },
     onSuccess: (data: any) => {
       if (data?.success) {
         setStep("success");
         queryClient.invalidateQueries({ queryKey: ["/api/exam-payments/status"] });
         queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
       } else {
-        setStep("check");
-        toast({
-          title: "Payment not completed",
-          description: "It looks like the payment was not completed. Please try again.",
-        });
+        setStep("failed");
       }
     },
     onError: () => {
-      setStep("check");
+      setStep("failed");
       toast({
-        title: "Payment not completed",
-        description: "It looks like the payment was not completed. Please try again.",
+        title: "Payment not confirmed",
+        description: "Could not verify your payment. If you were charged, please contact your school administrator.",
+        variant: "destructive",
       });
     },
   });
 
-  // ── Initiate mutation ─────────────────────────────────────────────────────────
   const initiateMutation = useMutation({
-    mutationFn: () => apiRequest("POST", "/api/exam-payments/initiate"),
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/exam-payments/initiate");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: "Could not start payment" }));
+        throw new Error(err.message || "Could not start payment");
+      }
+      return res.json();
+    },
     onSuccess: (data: any) => {
       const { reference, authorizationUrl: url } = data;
 
-      if (!url) {
+      if (!url || !reference) {
+        setStep("check");
         toast({
           title: "Payment error",
           description: "Could not get payment URL. Please try again.",
           variant: "destructive",
         });
-        setStep("check");
         return;
       }
 
@@ -121,7 +127,6 @@ export default function ExamFeePayment() {
       setAuthorizationUrl(url);
       setStep("paying");
 
-      // Open Paystack payment page in a popup window
       const width = 500;
       const height = 700;
       const left = window.screenX + (window.outerWidth - width) / 2;
@@ -133,7 +138,6 @@ export default function ExamFeePayment() {
       );
 
       if (!popup || popup.closed) {
-        // Popup was blocked — show the link fallback
         toast({
           title: "Popup blocked",
           description: "Your browser blocked the payment window. Use the button below to open it manually.",
@@ -163,28 +167,26 @@ export default function ExamFeePayment() {
   const handleOpenLink = () => {
     if (!authorizationUrl) return;
     const popup = window.open(authorizationUrl, "_blank", "noopener");
-    if (popup) {
+    if (popup && paymentReference) {
       popupRef.current = popup;
-      if (paymentReference) startPolling(paymentReference);
+      startPolling(paymentReference);
     }
   };
 
   const handleVerifyManually = () => {
-    if (paymentReference) {
-      setStep("verifying");
-      verifyMutation.mutate(paymentReference);
-    }
+    if (!paymentReference) return;
+    setStep("verifying");
+    verifyMutation.mutate(paymentReference);
   };
 
   const handleRetry = () => {
-    if (pollRef.current) clearInterval(pollRef.current);
+    stopPolling();
     if (popupRef.current && !popupRef.current.closed) popupRef.current.close();
     setStep("check");
     setPaymentReference(null);
     setAuthorizationUrl(null);
   };
 
-  // ── Loading state ─────────────────────────────────────────────────────────────
   if (statusQuery.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -193,7 +195,6 @@ export default function ExamFeePayment() {
     );
   }
 
-  // ── Payment not required ──────────────────────────────────────────────────────
   if (!requirePayment) {
     return (
       <div className="max-w-lg mx-auto p-6">
@@ -213,7 +214,6 @@ export default function ExamFeePayment() {
     );
   }
 
-  // ── Already paid ──────────────────────────────────────────────────────────────
   if (isAlreadyPaid) {
     return (
       <div className="max-w-lg mx-auto p-6">
@@ -233,7 +233,7 @@ export default function ExamFeePayment() {
             <p className="text-sm text-muted-foreground">
               Your exam access is unlocked for this term. You can now take all available exams.
             </p>
-            <Button onClick={() => navigate("/portal/student/exams")}>
+            <Button onClick={() => navigate("/portal/student/exams")} data-testid="button-go-to-exams">
               <GraduationCap className="mr-2 h-4 w-4" /> Go to My Exams
             </Button>
           </CardContent>
@@ -242,7 +242,6 @@ export default function ExamFeePayment() {
     );
   }
 
-  // ── Main view ─────────────────────────────────────────────────────────────────
   return (
     <div className="max-w-lg mx-auto p-4 space-y-4">
       <Button
@@ -255,7 +254,7 @@ export default function ExamFeePayment() {
         <ArrowLeft className="h-4 w-4" /> Back to Exams
       </Button>
 
-      {/* ── Success ── */}
+      {/* Success */}
       {step === "success" && (
         <Card className="border-green-200 dark:border-green-800">
           <CardContent className="pt-8 pb-6 text-center space-y-4">
@@ -275,7 +274,7 @@ export default function ExamFeePayment() {
         </Card>
       )}
 
-      {/* ── Paying — popup opened, waiting ── */}
+      {/* Waiting for payment in popup */}
       {step === "paying" && (
         <Card className="border-blue-200 dark:border-blue-800">
           <CardContent className="pt-6 space-y-4 text-center">
@@ -293,7 +292,7 @@ export default function ExamFeePayment() {
             </div>
             <div className="flex flex-col gap-2">
               {authorizationUrl && (
-                <Button onClick={handleOpenLink} variant="outline" className="gap-2">
+                <Button onClick={handleOpenLink} variant="outline" className="gap-2" data-testid="button-open-payment">
                   <ExternalLink className="h-4 w-4" /> Open Payment Window
                 </Button>
               )}
@@ -315,7 +314,7 @@ export default function ExamFeePayment() {
         </Card>
       )}
 
-      {/* ── Verifying ── */}
+      {/* Verifying */}
       {step === "verifying" && (
         <Card>
           <CardContent className="pt-8 pb-6 text-center space-y-3">
@@ -328,7 +327,7 @@ export default function ExamFeePayment() {
         </Card>
       )}
 
-      {/* ── Failed ── */}
+      {/* Failed */}
       {step === "failed" && (
         <Card className="border-red-200 dark:border-red-800">
           <CardContent className="pt-6 space-y-4 text-center">
@@ -363,7 +362,7 @@ export default function ExamFeePayment() {
         </Card>
       )}
 
-      {/* ── Pay / Initial ── */}
+      {/* Initial pay screen */}
       {step === "check" && (
         <Card>
           <CardHeader>
@@ -376,7 +375,6 @@ export default function ExamFeePayment() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
-            {/* Current term */}
             {currentTerm && (
               <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
                 <Calendar className="h-5 w-5 text-muted-foreground flex-shrink-0" />
@@ -389,7 +387,6 @@ export default function ExamFeePayment() {
               </div>
             )}
 
-            {/* Fee amount */}
             <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
@@ -403,7 +400,6 @@ export default function ExamFeePayment() {
               <Badge variant="secondary">One-time payment</Badge>
             </div>
 
-            {/* Trust indicators */}
             <div className="space-y-2 text-sm text-muted-foreground">
               <div className="flex items-start gap-2">
                 <ShieldCheck className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
@@ -424,7 +420,6 @@ export default function ExamFeePayment() {
               </div>
             </div>
 
-            {/* Pay button */}
             <Button
               className="w-full h-12 text-base font-semibold"
               onClick={handlePayNow}
