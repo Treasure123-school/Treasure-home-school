@@ -513,11 +513,18 @@ export default function ExamFeePayment() {
                 <div className="mt-3 space-y-3">
                   <div className="rounded-lg border bg-muted/40 p-3 space-y-2 text-xs">
                     <p className="font-semibold text-foreground">Where to find your reference:</p>
-                    <ul className="space-y-1 text-muted-foreground list-disc list-inside">
-                      <li><span className="font-medium text-foreground">OPay receipt:</span> use the <span className="font-mono bg-background rounded px-1">Merchant Order No.</span></li>
-                      <li><span className="font-medium text-foreground">Paystack email/checkout:</span> use the reference shown there</li>
+                    <ul className="space-y-2 text-muted-foreground list-disc list-inside mt-2">
+                      <li>
+                        <span className="font-medium text-foreground">Email Receipt:</span> If you received a payment confirmation email, use the <span className="font-mono bg-background rounded px-1">Paystack Reference</span> shown in the email.
+                      </li>
+                      <li>
+                        <span className="font-medium text-foreground">OPay/Bank receipt:</span> Use the <span className="font-mono bg-background rounded px-1">Merchant Order No.</span> or <span className="font-mono bg-background rounded px-1">Session ID</span>.
+                      </li>
                     </ul>
-                    <p className="text-amber-700 dark:text-amber-400 font-medium">Do NOT use the plain Transaction No. — use the Merchant Order No.</p>
+                    <div className="mt-3 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-amber-800 dark:text-amber-300">
+                      <p className="font-medium">⚠️ Important</p>
+                      <p>Do NOT use the plain "Transaction No." from your bank app. Only use the Paystack Reference or Merchant Order No.</p>
+                    </div>
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="manual-ref-input">Merchant Order No. / Paystack Reference</Label>

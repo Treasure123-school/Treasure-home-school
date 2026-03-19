@@ -19,8 +19,8 @@ export async function sendEmail({ to, subject, html }: SendEmailOptions): Promis
       console.log(`[EMAIL] No RESEND_API_KEY configured — skipping email to ${to} (subject: "${subject}")`);
       return false;
     }
-    const fromAddress = process.env.EMAIL_FROM || 'THS Portal <noreply@resend.dev>';
-    const { error } = await resend.emails.send({
+    const fromAddress = process.env.EMAIL_FROM || 'Treasure Home School <onboarding@resend.dev>';
+    const { data, error } = await resend.emails.send({
       from: fromAddress,
       to: [to],
       subject: subject,
@@ -28,12 +28,13 @@ export async function sendEmail({ to, subject, html }: SendEmailOptions): Promis
     });
 
     if (error) {
-      console.error("[EMAIL] Resend error:", error);
+      console.error(`[EMAIL] Resend API error sending to ${to}:`, error);
       return false;
     }
+    console.log(`[EMAIL] Successfully sent email to ${to} (ID: ${data?.id})`);
     return true;
-  } catch (error) {
-    console.error("[EMAIL] Failed to send email:", error);
+  } catch (error: any) {
+    console.error(`[EMAIL] Exception sending email to ${to}:`, error?.message || error);
     return false;
   }
 }
