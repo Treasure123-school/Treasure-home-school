@@ -14,36 +14,28 @@ import {
 
 declare global {
   interface Window {
-    PaystackPop: {
-      setup(options: {
-        key: string;
-        email: string;
-        amount: number;
-        ref: string;
-        onClose: () => void;
-        callback: (response: { reference: string }) => void;
-      }): { openIframe: () => void };
+    PaystackPop: new () => {
       newTransaction(options: {
         key: string;
         access_code: string;
         onSuccess: (response: { reference: string }) => void;
         onCancel: () => void;
-      }): { openIframe: () => void };
+      }): void;
     };
   }
 }
 
 function loadPaystackScript(): Promise<void> {
   return new Promise((resolve, reject) => {
-    if (window.PaystackPop) return resolve();
     const existing = document.getElementById("paystack-js");
     if (existing) {
+      if (window.PaystackPop) return resolve();
       existing.addEventListener("load", () => resolve());
       return;
     }
     const script = document.createElement("script");
     script.id = "paystack-js";
-    script.src = "https://js.paystack.co/v1/inline.js";
+    script.src = "https://js.paystack.co/v2/inline.js";
     script.onload = () => resolve();
     script.onerror = () => reject(new Error("Failed to load Paystack script"));
     document.head.appendChild(script);
@@ -87,7 +79,8 @@ export default function ExamFeePayment() {
       setPaymentReference(data.reference);
       setStep("paying");
 
-      const handler = window.PaystackPop.newTransaction({
+      const paystack = new window.PaystackPop();
+      paystack.newTransaction({
         key: data.publicKey,
         access_code: data.accessCode,
         onSuccess: (response: { reference: string }) => {
@@ -101,8 +94,6 @@ export default function ExamFeePayment() {
           });
         },
       });
-
-      handler.openIframe();
     },
     onError: (error: any) => {
       setStep("check");

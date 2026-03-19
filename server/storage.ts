@@ -7386,7 +7386,11 @@ export class DatabaseStorage implements IStorage {
   // Exam payment implementations
   async getExamPayment(studentId: string, termId: number): Promise<ExamPayment | undefined> {
     const result = await this.db.select().from(schema.examPayments)
-      .where(and(eq(schema.examPayments.studentId, studentId), eq(schema.examPayments.termId, termId)))
+      .where(and(
+        eq(schema.examPayments.studentId, studentId),
+        eq(schema.examPayments.termId, termId),
+        eq(schema.examPayments.status, "paid")
+      ))
       .limit(1);
     return result[0];
   }
@@ -7406,7 +7410,10 @@ export class DatabaseStorage implements IStorage {
 
   async getExamPaymentsByStudent(studentId: string): Promise<ExamPayment[]> {
     return await this.db.select().from(schema.examPayments)
-      .where(eq(schema.examPayments.studentId, studentId))
+      .where(and(
+        eq(schema.examPayments.studentId, studentId),
+        eq(schema.examPayments.status, "paid")
+      ))
       .orderBy(desc(schema.examPayments.createdAt));
   }
 
@@ -7424,12 +7431,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async initiatePendingExamPayment(studentId: string, termId: number, reference: string, amountPaid: number): Promise<ExamPayment> {
-    const existing = await this.getExamPayment(studentId, termId);
+    // Look for any existing record (paid, pending, or failed) for this student+term
+    const existingRows = await this.db.select().from(schema.examPayments)
+      .where(and(
+        eq(schema.examPayments.studentId, studentId),
+        eq(schema.examPayments.termId, termId),
+      ))
+      .orderBy(desc(schema.examPayments.createdAt))
+      .limit(1);
+    const existing = existingRows[0];
     if (existing) {
       if (existing.status === 'paid') {
         throw new Error('ALREADY_PAID');
       }
-      // Update the pending record with a fresh reference
+      // Reuse the existing row — just update the reference so the verify endpoint can find it
       const updated = await this.updateExamPayment(existing.id, {
         paymentReference: reference,
         amountPaid,
