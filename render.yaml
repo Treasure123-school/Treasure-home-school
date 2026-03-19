@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: school-management-backend
+    env: node
+    region: oregon
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm run start
+    # Production Configuration:
+    # - Database: Neon PostgreSQL (via DATABASE_URL)
+    # - File Storage: Cloudinary (requires CLOUDINARY_* env vars)
+    # - No persistent disk needed in production!
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Database - Neon PostgreSQL
+      - key: DATABASE_URL
+        sync: false  # Set this in Render dashboard with your Neon connection string
+      # Authentication
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      # Frontend URL
+      - key: FRONTEND_URL
+        sync: false
+      # Cloudinary - File Storage (Required for production)
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      # Google OAuth (Optional)
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_CALLBACK_URL
+        sync: false
+      # Backend URL
+      - key: BACKEND_URL
+        sync: false
+    healthCheckPath: /api/health
+    autoDeploy: true

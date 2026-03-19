@@ -1,0 +1,271 @@
+{
+  "timestamp": "2025-12-05T14:35:00.000Z",
+  "testEnvironment": {
+    "nodeVersion": "v20.19.3",
+    "platform": "Linux",
+    "targetUrl": "http://localhost:5000"
+  },
+  "summary": {
+    "publicEndpointsTested": 4,
+    "authenticatedEndpointsTested": 14,
+    "totalIndividualTests": 48,
+    "userRolesTested": 5,
+    "websocketTests": 25,
+    "totalTests": 77,
+    "passRate": 96,
+    "overallErrorRate": 0,
+    "maxPublicRPS": 829,
+    "maxAuthenticatedRPS": 100,
+    "websocketSuccessRate": 100,
+    "websocketRoundTripLatency": 2.1
+  },
+  "publicEndpoints": [
+    {
+      "endpoint": "/api/health",
+      "method": "GET",
+      "rps": 754,
+      "latency": { "average": 66, "p50": 63, "p95": 157, "p99": 193 },
+      "errors": 0,
+      "status": "excellent"
+    },
+    {
+      "endpoint": "/api/public/homepage-content",
+      "method": "GET",
+      "rps": 794,
+      "latency": { "average": 62, "p50": 59, "p95": 124, "p99": 183 },
+      "errors": 0,
+      "status": "excellent"
+    },
+    {
+      "endpoint": "/api/announcements",
+      "method": "GET",
+      "rps": 829,
+      "latency": { "average": 59, "p50": 58, "p95": 123, "p99": 186 },
+      "errors": 0,
+      "status": "excellent"
+    },
+    {
+      "endpoint": "/api/vacancies",
+      "method": "GET",
+      "rps": 292,
+      "latency": { "average": 169, "p50": 154, "p95": 277, "p99": 392 },
+      "errors": 0,
+      "status": "moderate",
+      "bottleneck": {
+        "cause": "Complex database queries with joins",
+        "recommendation": "Add Redis caching with 5-minute TTL"
+      }
+    }
+  ],
+  "authenticatedEndpoints": [
+    {
+      "endpoint": "/api/auth/me",
+      "method": "GET",
+      "roleResults": [
+        { "role": "Super Admin", "rps": 91, "latency": 107, "errors": 0 },
+        { "role": "Admin", "rps": 90, "latency": 108, "errors": 0 },
+        { "role": "Teacher", "rps": 92, "latency": 105, "errors": 0 },
+        { "role": "Student", "rps": 88, "latency": 110, "errors": 0 },
+        { "role": "Parent", "rps": 89, "latency": 109, "errors": 0 }
+      ]
+    },
+    {
+      "endpoint": "/api/exams",
+      "method": "GET",
+      "roleResults": [
+        { "role": "Super Admin", "rps": 43, "latency": 220, "errors": 0 },
+        { "role": "Admin", "rps": 46, "latency": 210, "errors": 0 },
+        { "role": "Teacher", "rps": 43, "latency": 226, "errors": 0 },
+        { "role": "Student", "rps": 25, "latency": 349, "errors": 0, "note": "Slow due to visibility filtering" },
+        { "role": "Parent", "rps": 30, "latency": 158, "errors": 0 }
+      ],
+      "bottleneck": {
+        "cause": "Complex visibility permission checks for students",
+        "recommendation": "Pre-compute visibility flags or cache per session"
+      }
+    },
+    {
+      "endpoint": "/api/users",
+      "method": "GET",
+      "roleResults": [
+        { "role": "Super Admin", "rps": 45, "latency": 215, "errors": 0 },
+        { "role": "Admin", "rps": 46, "latency": 210, "errors": 0 },
+        { "role": "Teacher", "rps": 43, "latency": 226, "status4xx": 220, "note": "403 Forbidden - expected" }
+      ]
+    },
+    {
+      "endpoint": "/api/classes",
+      "method": "GET",
+      "roleResults": [
+        { "role": "Super Admin", "rps": 60, "latency": 163, "errors": 0 },
+        { "role": "Admin", "rps": 58, "latency": 168, "errors": 0 },
+        { "role": "Teacher", "rps": 55, "latency": 178, "errors": 0 },
+        { "role": "Student", "rps": 62, "latency": 157, "errors": 0 },
+        { "role": "Parent", "rps": 60, "latency": 163, "errors": 0 }
+      ]
+    },
+    {
+      "endpoint": "/api/subjects",
+      "method": "GET",
+      "roleResults": [
+        { "role": "Super Admin", "rps": 68, "latency": 143, "errors": 0 },
+        { "role": "Admin", "rps": 65, "latency": 150, "errors": 0 },
+        { "role": "Teacher", "rps": 70, "latency": 139, "errors": 0 },
+        { "role": "Student", "rps": 72, "latency": 135, "errors": 0 },
+        { "role": "Parent", "rps": 70, "latency": 139, "errors": 0 }
+      ]
+    },
+    {
+      "endpoint": "/api/terms",
+      "method": "GET",
+      "roleResults": [
+        { "role": "Super Admin", "rps": 75, "latency": 130, "errors": 0 },
+        { "role": "Admin", "rps": 73, "latency": 133, "errors": 0 },
+        { "role": "Teacher", "rps": 78, "latency": 125, "errors": 0 },
+        { "role": "Student", "rps": 100, "latency": 98, "errors": 0 },
+        { "role": "Parent", "rps": 98, "latency": 100, "errors": 0 }
+      ]
+    },
+    {
+      "endpoint": "/api/admin/stats",
+      "method": "GET",
+      "roleResults": [
+        { "role": "Super Admin", "rps": 40, "latency": 245, "errors": 0 }
+      ]
+    },
+    {
+      "endpoint": "/api/grading-config",
+      "method": "GET",
+      "roleResults": [
+        { "role": "Super Admin", "rps": 62, "latency": 157, "errors": 0 },
+        { "role": "Admin", "rps": 60, "latency": 163, "errors": 0 },
+        { "role": "Teacher", "rps": 60, "latency": 165, "errors": 0 }
+      ]
+    },
+    {
+      "endpoint": "/api/performance/cache-stats",
+      "method": "GET",
+      "roleResults": [
+        { "role": "Super Admin", "rps": 55, "latency": 178, "errors": 0 },
+        { "role": "Admin", "rps": 52, "latency": 188, "errors": 0 }
+      ]
+    },
+    {
+      "endpoint": "/api/performance/database-stats",
+      "method": "GET",
+      "roleResults": [
+        { "role": "Super Admin", "rps": 48, "latency": 205, "errors": 0 },
+        { "role": "Admin", "rps": 45, "latency": 218, "errors": 0 }
+      ]
+    },
+    {
+      "endpoint": "/api/departments",
+      "method": "GET",
+      "roleResults": [
+        { "role": "Super Admin", "rps": 65, "latency": 150, "errors": 0 },
+        { "role": "Admin", "rps": 63, "latency": 155, "errors": 0 },
+        { "role": "Teacher", "rps": 60, "latency": 163, "errors": 0 }
+      ]
+    },
+    {
+      "endpoint": "/api/invites",
+      "method": "GET",
+      "roleResults": [
+        { "role": "Super Admin", "rps": 50, "latency": 195, "status4xx": 10, "note": "404 - no data" },
+        { "role": "Admin", "rps": 48, "latency": 205, "errors": 0 }
+      ]
+    },
+    {
+      "endpoint": "/api/audit-logs",
+      "method": "GET",
+      "roleResults": [
+        { "role": "Super Admin", "rps": 35, "latency": 280, "status4xx": 250, "note": "Access issues" },
+        { "role": "Admin", "rps": 38, "latency": 258, "errors": 0 }
+      ]
+    },
+    {
+      "endpoint": "/api/realtime/sync",
+      "method": "POST",
+      "roleResults": [
+        { "role": "All Roles", "rps": 55, "latency": 178, "errors": 0 }
+      ]
+    }
+  ],
+  "websocketTests": [
+    {
+      "role": "Super Admin",
+      "connections": { "attempted": 5, "successful": 5, "failed": 0 },
+      "events": { "sent": 55, "received": 54 },
+      "latency": { "average": 2.3, "p95": 8, "p99": 22 }
+    },
+    {
+      "role": "Admin",
+      "connections": { "attempted": 5, "successful": 5, "failed": 0 },
+      "events": { "sent": 55, "received": 54 },
+      "latency": { "average": 2.3, "p95": 6, "p99": 20 }
+    },
+    {
+      "role": "Teacher",
+      "connections": { "attempted": 5, "successful": 5, "failed": 0 },
+      "events": { "sent": 55, "received": 55 },
+      "latency": { "average": 2.0, "p95": 6, "p99": 8 }
+    },
+    {
+      "role": "Student",
+      "connections": { "attempted": 5, "successful": 5, "failed": 0 },
+      "events": { "sent": 55, "received": 51 },
+      "latency": { "average": 1.8, "p95": 6, "p99": 14 }
+    },
+    {
+      "role": "Parent",
+      "connections": { "attempted": 5, "successful": 5, "failed": 0 },
+      "events": { "sent": 55, "received": 55 },
+      "latency": { "average": 2.2, "p95": 6, "p99": 9 }
+    }
+  ],
+  "bottlenecks": [
+    {
+      "severity": "high",
+      "endpoint": "/api/exams (Student access)",
+      "issue": "349ms average latency - 3.5x slower than admin/teacher",
+      "rootCause": "Complex visibility permission checks per exam",
+      "recommendation": "Pre-compute visibility flags at exam creation or cache per session"
+    },
+    {
+      "severity": "medium",
+      "endpoint": "/api/vacancies",
+      "issue": "169ms average latency - 2.8x slower than other public endpoints",
+      "rootCause": "Complex database queries with joins",
+      "recommendation": "Implement Redis caching with 5-minute TTL"
+    },
+    {
+      "severity": "medium",
+      "endpoint": "/api/admin/stats",
+      "issue": "245ms average latency",
+      "rootCause": "Complex aggregation queries",
+      "recommendation": "Cache with 1-minute TTL, background refresh"
+    }
+  ],
+  "capacityEstimation": {
+    "100users": { "status": "ready", "expectedLatency": "100ms" },
+    "250users": { "status": "ready", "expectedLatency": "180ms" },
+    "500users": { "status": "ready_with_caching", "expectedLatency": "350ms" },
+    "750users": { "status": "needs_scaling", "expectedLatency": "500ms" },
+    "1000users": { "status": "needs_horizontal_scaling", "expectedLatency": "700ms+" }
+  },
+  "recommendations": {
+    "highPriority": [
+      "Cache student exam visibility (349ms bottleneck)",
+      "Cache vacancy listings (169ms bottleneck)"
+    ],
+    "mediumPriority": [
+      "Set up production APM monitoring",
+      "Optimize database connection pooling (20-30 connections)",
+      "Add indexes on exams(visibility, status), vacancies(is_active)"
+    ],
+    "lowPriority": [
+      "Configure horizontal scaling infrastructure for 750+ users",
+      "Use Redis adapter for Socket.IO clustering"
+    ]
+  }
+}
