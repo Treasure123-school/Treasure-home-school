@@ -273,7 +273,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
                   >
                     <Icon className="h-4 w-4 flex-shrink-0" />
                     <span className={`flex-1 text-left whitespace-nowrap overflow-hidden transition-[opacity,max-width,margin] duration-200 ease-in-out ${collapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-[160px] ml-3'}`}>{item.label}</span>
-                    <ChevronDown className={`h-4 w-4 flex-shrink-0 transition-[opacity,transform] duration-200 ease-in-out ${collapsed ? 'opacity-0' : 'opacity-100'} ${isExpanded ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`h-4 flex-shrink-0 transition-[opacity,width,transform] duration-200 ease-in-out ${collapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100 w-4'} ${isExpanded ? 'rotate-180' : ''}`} />
                   </Button>
                   {!collapsed && isExpanded && (
                     <div className="space-y-1 ml-2 border-l-2 border-gray-200 dark:border-gray-700 pl-2">
@@ -338,7 +338,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex flex-col">
 
       {/* Full-Width Header — spans above sidebar and content */}
-      <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-md h-[72px] flex items-center px-4 sm:px-5 md:px-6 flex-shrink-0">
+      <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm h-[72px] flex items-center px-4 sm:px-5 md:px-6 flex-shrink-0">
         <div className="flex justify-between items-center gap-2 sm:gap-3 w-full">
           <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
             {/* Mobile Menu Trigger */}

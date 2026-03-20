@@ -390,7 +390,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
                     >
                       <Icon className="h-4 w-4 flex-shrink-0" />
                       <span className={`flex-1 text-left whitespace-nowrap overflow-hidden transition-[opacity,max-width,margin] duration-200 ease-in-out ${collapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-[160px] ml-3'}`}>{item.label}</span>
-                      <ChevronDown className={`h-4 w-4 flex-shrink-0 transition-[opacity,transform] duration-200 ease-in-out ${collapsed ? 'opacity-0' : 'opacity-100'} ${item.isOpen ? 'rotate-0' : '-rotate-90'}`} />
+                      <ChevronDown className={`h-4 flex-shrink-0 transition-[opacity,width,transform] duration-200 ease-in-out ${collapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100 w-4'} ${item.isOpen ? 'rotate-0' : '-rotate-90'}`} />
                     </Button>
                   </CollapsibleTrigger>
                   {!collapsed && (
@@ -473,7 +473,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
 
       {/* Full-Width Header — spans above sidebar and content */}
       {!isExamPage && (
-        <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-md h-[72px] flex items-center px-4 sm:px-5 md:px-6 flex-shrink-0">
+        <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm h-[72px] flex items-center px-4 sm:px-5 md:px-6 flex-shrink-0">
           <div className="flex justify-between items-center gap-2 sm:gap-3 w-full">
             <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
               {/* Mobile Menu Trigger */}
