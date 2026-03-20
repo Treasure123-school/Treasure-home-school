@@ -365,17 +365,6 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               <p className="text-[9px] text-blue-600 dark:text-blue-300 font-semibold tracking-wide uppercase whitespace-nowrap truncate">{schoolMotto}</p>
               <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium mt-0.5 whitespace-nowrap">{getRoleTitle()}</p>
             </div>
-            {/* Desktop collapse toggle — only rendered inside the real sidebar, not mobile sheet */}
-            {!isMobile && !onNavigate && (
-              <button
-                onClick={toggleSidebar}
-                className="flex-shrink-0 ml-auto p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-300 transition-all duration-200"
-                title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                data-testid="button-toggle-sidebar"
-              >
-                {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
-              </button>
-            )}
           </div>
         </div>
 
@@ -496,7 +485,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
           <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-md h-[72px] flex items-center px-4 sm:px-5 md:px-6">
             <div className="flex justify-between items-center gap-2 sm:gap-3 w-full max-w-7xl mx-auto">
               <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4 flex-1 min-w-0">
-                {/* Modern Mobile Menu Trigger */}
+                {/* Mobile Menu Trigger */}
                 {isMobile && (
                   <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                     <SheetTrigger asChild>
@@ -516,7 +505,20 @@ export default function PortalLayout({ children, userRole, userName, userInitial
                     </SheetContent>
                   </Sheet>
                 )}
-                <div className="flex flex-col ml-2 min-w-0 flex-1">
+
+                {/* Desktop sidebar toggle — lives in the header, always reachable */}
+                {!isMobile && (
+                  <button
+                    onClick={toggleSidebar}
+                    className="hidden md:flex items-center justify-center h-9 w-9 flex-shrink-0 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-200 dark:hover:border-blue-800 transition-all duration-200 shadow-sm"
+                    title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    data-testid="button-toggle-sidebar"
+                  >
+                    {sidebarCollapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+                  </button>
+                )}
+
+                <div className="flex flex-col min-w-0 flex-1">
                   <h1 className="text-lg sm:text-xl md:text-2xl font-bold truncate bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-400 dark:to-blue-500 bg-clip-text text-transparent leading-tight">
                     {schoolName}
                   </h1>
