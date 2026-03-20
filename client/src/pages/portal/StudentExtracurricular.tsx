@@ -192,7 +192,7 @@ export default function StudentExtracurricular() {
       )}
 
       {/* Category Filter */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+      <div className="flex gap-2 overflow-x-auto pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {categories.map(cat => (
           <button
             key={cat}
