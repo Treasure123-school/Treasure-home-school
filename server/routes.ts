@@ -13462,6 +13462,28 @@ School Management System Administration
     }
   });
 
+  // Student: get syllabus topics for their class (scheme of work view)
+  app.get('/api/my-syllabus-topics', authenticateUser, authorizeRoles(ROLES.STUDENT), async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const student = await storage.getStudentByUserId(userId);
+      if (!student || !student.classId) {
+        return res.json([]);
+      }
+      const subjectId = req.query.subjectId ? parseInt(req.query.subjectId as string) : undefined;
+      const filters: { classId?: number; subjectId?: number; isActive?: boolean } = {
+        classId: student.classId,
+        isActive: true,
+      };
+      if (subjectId && !isNaN(subjectId)) filters.subjectId = subjectId;
+      const topics = await storage.getSyllabusTopics(filters);
+      res.json(topics);
+    } catch (error: any) {
+      console.error('Error fetching syllabus topics for student:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch syllabus topics' });
+    }
+  });
+
   // ==================== END STUDENT SUBJECT ASSIGNMENT ROUTES ====================
 
   // ==================== SETTINGS API ROUTES ====================

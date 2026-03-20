@@ -5,7 +5,7 @@ import {
   ClipboardList, ChevronDown, History, UserCheck, Eye, Briefcase, Shield, Activity,
   Clock, PenTool, CheckSquare, Award, Star, Library, DollarSign, Trophy, HelpCircle,
   Inbox, Megaphone, MessagesSquare, ClipboardPen, BarChart3, FolderOpen, RotateCcw,
-  Layers, Database, CreditCard, Receipt
+  Layers, Database, CreditCard, Receipt, ListChecks
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
@@ -108,6 +108,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             items: [
               { href: `/portal/${userRole}/timetable`, icon: Clock, label: 'Class Schedule' },
               { href: `/portal/${userRole}/subjects`, icon: BookOpen, label: 'Subjects' },
+              { href: `/portal/${userRole}/scheme-of-work`, icon: ListChecks, label: 'Scheme of Work' },
               { href: `/portal/${userRole}/assignments`, icon: ClipboardPen, label: 'Assignments' },
               { href: `/portal/${userRole}/exams`, icon: PenTool, label: 'Exams / Tests' },
               { href: `/portal/${userRole}/grades`, icon: BarChart3, label: 'Gradebook' },
