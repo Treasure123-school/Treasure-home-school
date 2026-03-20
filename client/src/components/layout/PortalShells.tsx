@@ -21,6 +21,7 @@ const StudentClassSchedule = lazy(() => import('@/pages/portal/StudentClassSched
 const StudentAssignments = lazy(() => import('@/pages/portal/StudentAssignments'));
 const StudentLibrary = lazy(() => import('@/pages/portal/StudentLibrary'));
 const StudentHelp = lazy(() => import('@/pages/portal/StudentHelp'));
+const StudentExtracurricular = lazy(() => import('@/pages/portal/StudentExtracurricular'));
 const PortalGallery = lazy(() => import('@/pages/portal/Gallery'));
 const PortalComingSoon = lazy(() => import('@/pages/portal/PortalComingSoon'));
 
@@ -116,6 +117,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/student/assignments" component={StudentAssignments} />
             <Route path="/portal/student/library" component={StudentLibrary} />
             <Route path="/portal/student/help" component={StudentHelp} />
+            <Route path="/portal/student/extracurricular" component={StudentExtracurricular} />
             <Route path="/portal/student/*" component={PortalComingSoon} />
           </Switch>
         )}

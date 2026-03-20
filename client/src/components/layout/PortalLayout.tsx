@@ -116,7 +116,6 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             ]
           },
           { name: 'Attendance', href: `/portal/${userRole}/attendance`, icon: Calendar },
-          { name: 'Learning Materials', href: `/portal/${userRole}/study-resources`, icon: FolderOpen },
           {
             type: 'group',
             label: 'Communication',
