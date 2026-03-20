@@ -292,12 +292,6 @@ export default function StudentMessages() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" asChild className="flex-shrink-0">
-            <Link href="/portal/student">
-              <ArrowLeft className="h-4 w-4 mr-1.5" />
-              Dashboard
-            </Link>
-          </Button>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Messages</h1>
             <p className="text-sm text-muted-foreground">Communicate with teachers and school staff</p>
@@ -312,8 +306,8 @@ export default function StudentMessages() {
           <Dialog open={isComposeOpen} onOpenChange={setIsComposeOpen}>
             <DialogTrigger asChild>
               <Button className="shadow-sm" data-testid="button-compose">
-                <Plus className="h-4 w-4 mr-2" />
-                New Message
+                <Plus className="h-4 w-4 sm:mr-2" />
+                <span className="hidden sm:inline">New Message</span>
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg">
