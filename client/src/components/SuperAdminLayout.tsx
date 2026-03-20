@@ -246,15 +246,14 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
             if (hasChildren) {
               return (
                 <div key={item.label} className="space-y-0.5">
-                  <Button
-                    variant="ghost"
+                  <button
+                    type="button"
                     onClick={() => {
                       if (collapsed) {
                         if (item.children?.[0]) {
                           handleNavigation(item.children![0].path);
                         }
                       } else {
-                        // Exclusive dropdown behavior (Accordion style)
                         if (isExpanded) {
                           setExpandedSections(prev => prev.filter(s => s !== item.label));
                         } else {
@@ -262,19 +261,23 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
                         }
                       }
                     }}
-                    className={`w-full text-sm font-semibold rounded-xl ${
-                      collapsed ? 'justify-center px-2 gap-0' : 'justify-start px-3'
-                    } ${
+                    className={`flex items-center ${
+                      collapsed ? 'justify-center px-2' : 'justify-start px-3'
+                    } py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ease-in-out w-full ${
                       childActive 
                         ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 dark:hover:from-blue-900/20 dark:hover:to-blue-800/20 hover:text-blue-700 dark:hover:text-blue-300'
-                    } transition-all duration-300 ease-in-out`}
+                    }`}
                     title={collapsed ? item.label : undefined}
                   >
                     <Icon className="h-4 w-4 flex-shrink-0" />
-                    <span className={`flex-1 text-left whitespace-nowrap overflow-hidden transition-[opacity,max-width,margin] duration-200 ease-in-out ${collapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-[160px] ml-3'}`}>{item.label}</span>
-                    <ChevronDown className={`h-4 flex-shrink-0 transition-[opacity,width,transform] duration-200 ease-in-out ${collapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100 w-4'} ${isExpanded ? 'rotate-180' : ''}`} />
-                  </Button>
+                    {!collapsed && (
+                      <>
+                        <span className="ml-3 whitespace-nowrap overflow-hidden flex-1 text-left">{item.label}</span>
+                        <ChevronDown className={`h-4 w-4 flex-shrink-0 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} />
+                      </>
+                    )}
+                  </button>
                   {!collapsed && isExpanded && (
                     <div className="space-y-1 ml-2 border-l-2 border-gray-200 dark:border-gray-700 pl-2">
                       {item.children?.map((child) => (
