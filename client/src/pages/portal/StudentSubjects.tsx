@@ -24,43 +24,11 @@ import { useLocation } from 'wouter';
 const CATEGORY_CONFIG: Record<string, {
   label: string;
   icon: any;
-  gradient: string;
-  headerText: string;
-  accent: string;
-  badge: string;
 }> = {
-  general: {
-    label: 'General',
-    icon: BookMarked,
-    gradient: 'from-slate-500 to-slate-600',
-    headerText: 'text-white',
-    accent: 'bg-slate-500',
-    badge: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
-  },
-  science: {
-    label: 'Science',
-    icon: GraduationCap,
-    gradient: 'from-blue-500 to-blue-700',
-    headerText: 'text-white',
-    accent: 'bg-blue-500',
-    badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300',
-  },
-  art: {
-    label: 'Art',
-    icon: Palette,
-    gradient: 'from-purple-500 to-purple-700',
-    headerText: 'text-white',
-    accent: 'bg-purple-500',
-    badge: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300',
-  },
-  commercial: {
-    label: 'Commercial',
-    icon: Briefcase,
-    gradient: 'from-amber-500 to-amber-700',
-    headerText: 'text-white',
-    accent: 'bg-amber-500',
-    badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300',
-  },
+  general: { label: 'General', icon: BookMarked },
+  science: { label: 'Science', icon: GraduationCap },
+  art: { label: 'Art', icon: Palette },
+  commercial: { label: 'Commercial', icon: Briefcase },
 };
 
 export default function StudentSubjects() {
@@ -138,9 +106,9 @@ export default function StudentSubjects() {
           size="sm"
           onClick={() => navigate('/portal/student/report-card')}
           data-testid="button-view-report-card"
-          className="self-start sm:self-auto"
+          className="self-start sm:self-auto gap-1.5"
         >
-          <FileText className="w-4 h-4 mr-2" />
+          <FileText className="w-4 h-4" />
           Report Card
         </Button>
       </div>
@@ -148,30 +116,28 @@ export default function StudentSubjects() {
       {/* Summary Strip */}
       {!isLoading && (
         <div className="flex flex-wrap gap-2">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-sm font-medium">
-            <GraduationCap className="w-4 h-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Class:</span>
-            <span>{studentInfo?.className || 'Not Assigned'}</span>
-          </div>
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted text-sm font-medium">
-            <BookMarked className="w-4 h-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Subjects:</span>
-            <span>{assignedSubjects.length}</span>
-          </div>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-xs font-medium text-muted-foreground">
+            <GraduationCap className="w-3.5 h-3.5" />
+            {studentInfo?.className || 'Not Assigned'}
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-xs font-medium text-muted-foreground">
+            <BookMarked className="w-3.5 h-3.5" />
+            {assignedSubjects.length} Subject{assignedSubjects.length !== 1 ? 's' : ''}
+          </span>
           {totalActive > 0 && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-sm font-medium">
-              <Sparkles className="w-4 h-4" />
-              <span>{totalActive} Active Exam{totalActive !== 1 ? 's' : ''}</span>
-            </div>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/20 text-xs font-semibold text-amber-700 dark:text-secondary">
+              <Sparkles className="w-3.5 h-3.5" />
+              {totalActive} Active Exam{totalActive !== 1 ? 's' : ''}
+            </span>
           )}
         </div>
       )}
 
       {/* Loading Skeletons */}
       {isLoading && (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2">
           {[1, 2, 3, 4, 5, 6].map(i => (
-            <Skeleton key={i} className="h-64 w-full rounded-2xl" />
+            <Skeleton key={i} className="h-36 w-full rounded-xl" />
           ))}
         </div>
       )}
@@ -179,10 +145,10 @@ export default function StudentSubjects() {
       {/* Empty State */}
       {!isLoading && assignedSubjects.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-            <BookOpen className="w-8 h-8 text-muted-foreground opacity-60" />
+          <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
+            <BookOpen className="w-7 h-7 text-muted-foreground opacity-50" />
           </div>
-          <p className="text-base font-medium">No Subjects Assigned</p>
+          <p className="text-base font-semibold">No Subjects Assigned</p>
           <p className="text-sm text-muted-foreground mt-1 max-w-xs">
             Your subjects haven't been assigned yet. Contact your class teacher or administrator.
           </p>
@@ -191,7 +157,7 @@ export default function StudentSubjects() {
 
       {/* Subjects by Category */}
       {!isLoading && assignedSubjects.length > 0 && (
-        <div className="space-y-10">
+        <div className="space-y-8">
           {Object.entries(groupedSubjects).map(([category, subjects]: [string, any[]]) => {
             const config = CATEGORY_CONFIG[category] || CATEGORY_CONFIG.general;
             const CategoryIcon = config.icon;
@@ -199,18 +165,16 @@ export default function StudentSubjects() {
             return (
               <section key={category}>
                 {/* Category Heading */}
-                <div className="flex items-center gap-2 mb-5">
-                  <div className={`w-7 h-7 rounded-lg ${config.accent} flex items-center justify-center`}>
-                    <CategoryIcon className="w-4 h-4 text-white" />
-                  </div>
+                <div className="flex items-center gap-2 mb-3">
+                  <CategoryIcon className="w-4 h-4 text-primary" />
                   <h2 className="text-sm font-semibold text-foreground">{config.label} Subjects</h2>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${config.badge}`}>
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
                     {subjects.length}
                   </span>
                 </div>
 
                 {/* Cards Grid */}
-                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-3 sm:grid-cols-2">
                   {subjects.map((subject: any) => {
                     const subjectId = subject.id || subject.subjectId;
                     const teacher = getTeacher(subjectId);
@@ -220,107 +184,98 @@ export default function StudentSubjects() {
                     return (
                       <div
                         key={subjectId}
-                        className={`rounded-xl overflow-hidden border bg-card shadow-sm hover:shadow-md transition-all duration-200 flex flex-col ${
-                          active ? 'ring-2 ring-amber-400 dark:ring-amber-500' : ''
+                        className={`rounded-xl border bg-card transition-shadow hover:shadow-sm flex flex-col ${
+                          active ? 'border-secondary/60 dark:border-secondary/40' : 'border-border'
                         }`}
                         data-testid={`subject-card-${subjectId}`}
                       >
-                        {/* Thin accent bar */}
-                        <div className={`h-1 bg-gradient-to-r ${config.gradient}`} />
+                        <div className="p-4 flex flex-col gap-3">
 
-                        {/* Card Content */}
-                        <div className="flex-1 flex flex-col p-4 gap-3">
-                          {/* Subject identity row */}
+                          {/* Subject Identity */}
                           <div className="flex items-start gap-3">
-                            <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${config.gradient} flex items-center justify-center shrink-0`}>
-                              <CategoryIcon className="w-4 h-4 text-white" />
+                            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                              <CategoryIcon className="w-4 h-4 text-primary" />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                              <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground leading-none mb-1">
                                 {subject.subjectCode || subject.code}
                               </p>
-                              <h3 className="text-sm font-bold leading-snug line-clamp-2">
+                              <h3 className="text-sm font-semibold leading-snug line-clamp-2 text-foreground">
                                 {subject.subjectName || subject.name}
                               </h3>
                             </div>
                             {active && (
-                              <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 hover:bg-amber-100 text-xs font-bold flex items-center gap-1 px-2 shrink-0">
-                                <Sparkles className="w-3 h-3" />
-                                {activeExams.length}
-                              </Badge>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-secondary/20 text-amber-700 dark:text-secondary shrink-0">
+                                <Sparkles className="w-2.5 h-2.5" />
+                                {activeExams.length} Exam{activeExams.length !== 1 ? 's' : ''}
+                              </span>
                             )}
                           </div>
 
                           {/* Teacher Row */}
                           {teacher ? (
                             <div className="flex items-center gap-2">
-                              <Avatar className="w-7 h-7 shrink-0">
+                              <Avatar className="w-6 h-6 shrink-0">
                                 <AvatarImage
                                   src={teacher.profileImageUrl || undefined}
                                   alt={`${teacher.firstName} ${teacher.lastName}`}
                                 />
-                                <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+                                <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-bold">
                                   {(teacher.firstName?.[0] || '') + (teacher.lastName?.[0] || '')}
                                 </AvatarFallback>
                               </Avatar>
-                              <div className="min-w-0">
-                                <p className="text-xs font-semibold truncate">
-                                  {teacher.firstName} {teacher.lastName}
-                                </p>
-                                <p className="text-xs text-muted-foreground">Subject Teacher</p>
-                              </div>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {teacher.firstName} {teacher.lastName}
+                              </p>
                             </div>
                           ) : (
                             <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0">
-                                <User className="w-3.5 h-3.5 text-muted-foreground" />
-                              </div>
-                              <p className="text-xs text-muted-foreground">No teacher assigned</p>
+                              <User className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
+                              <p className="text-xs text-muted-foreground/60">No teacher assigned</p>
                             </div>
                           )}
 
-                          {/* Action Buttons */}
-                          <div className="grid grid-cols-2 gap-2 mt-auto pt-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs font-medium flex items-center gap-1.5 justify-center"
+                          {/* Action Row */}
+                          <div className="flex items-center gap-1.5 pt-1 border-t border-border/60">
+                            <button
+                              className="flex-1 flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary py-1.5 rounded-lg hover:bg-primary/5 transition-colors"
                               onClick={() => navigate(`/portal/student/scheme-of-work?subject=${subjectId}`)}
                               data-testid={`button-scheme-${subjectId}`}
                             >
                               <Layers className="w-3.5 h-3.5" />
                               Scheme
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs font-medium flex items-center gap-1.5 justify-center"
+                            </button>
+                            <div className="w-px h-4 bg-border" />
+                            <button
+                              className="flex-1 flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary py-1.5 rounded-lg hover:bg-primary/5 transition-colors"
                               onClick={() => navigate(`/portal/student/study-resources?subject=${subjectId}`)}
                               data-testid={`button-materials-${subjectId}`}
                             >
                               <FolderOpen className="w-3.5 h-3.5" />
                               Materials
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant={active ? 'default' : 'outline'}
-                              className={`h-8 text-xs font-medium flex items-center gap-1.5 justify-center ${active ? 'bg-amber-500 hover:bg-amber-600 border-amber-500' : ''}`}
+                            </button>
+                            <div className="w-px h-4 bg-border" />
+                            <button
+                              className={`flex-1 flex items-center justify-center gap-1 text-xs py-1.5 rounded-lg transition-colors ${
+                                active
+                                  ? 'text-amber-700 dark:text-secondary font-semibold hover:bg-secondary/10'
+                                  : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
+                              }`}
                               onClick={() => navigate(`/portal/student/exams?subject=${subjectId}`)}
                               data-testid={`button-exams-${subjectId}`}
                             >
                               <ClipboardList className="w-3.5 h-3.5" />
                               Exams
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 text-xs font-medium flex items-center gap-1.5 justify-center"
+                            </button>
+                            <div className="w-px h-4 bg-border" />
+                            <button
+                              className="flex-1 flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary py-1.5 rounded-lg hover:bg-primary/5 transition-colors"
                               onClick={() => navigate(`/portal/student/exam-results?subject=${subjectId}`)}
                               data-testid={`button-scores-${subjectId}`}
                             >
                               <Award className="w-3.5 h-3.5" />
                               Scores
-                            </Button>
+                            </button>
                           </div>
                         </div>
                       </div>
