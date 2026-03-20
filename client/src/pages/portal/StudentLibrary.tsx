@@ -1,15 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Search, BookOpen, FileText, Video, Music, Image as ImageIcon,
   Download, Eye, X, ExternalLink, Filter, Clock, Star,
-  ChevronRight, PlayCircle, Globe, Paperclip,
+  ChevronRight, PlayCircle, Globe,
 } from 'lucide-react';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -32,15 +31,15 @@ type Resource = {
 type Subject = { id: number; name: string };
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-const RESOURCE_TYPE_CFG: Record<string, { label: string; icon: React.ReactNode; gradient: string; badge: string }> = {
-  pdf:        { label: 'PDF',        icon: <FileText className="h-5 w-5"  />, gradient: 'from-red-500 to-rose-600',     badge: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'   },
-  video:      { label: 'Video',      icon: <Video className="h-5 w-5"     />, gradient: 'from-blue-500 to-cyan-600',    badge: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' },
-  audio:      { label: 'Audio',      icon: <Music className="h-5 w-5"     />, gradient: 'from-purple-500 to-violet-600',badge: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' },
-  image:      { label: 'Image',      icon: <ImageIcon className="h-5 w-5" />, gradient: 'from-emerald-500 to-teal-600', badge: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400' },
-  past_paper: { label: 'Past Paper', icon: <FileText className="h-5 w-5" />, gradient: 'from-orange-500 to-amber-600', badge: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400' },
-  study_guide:{ label: 'Study Guide',icon: <BookOpen className="h-5 w-5" />, gradient: 'from-green-500 to-emerald-600',badge: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' },
-  notes:      { label: 'Notes',      icon: <FileText className="h-5 w-5" />, gradient: 'from-slate-500 to-gray-600',   badge: 'bg-slate-100 dark:bg-slate-900/30 text-slate-700 dark:text-slate-400' },
-  link:       { label: 'Link',       icon: <Globe className="h-5 w-5"     />, gradient: 'from-indigo-500 to-blue-600',  badge: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400' },
+const RESOURCE_TYPE_CFG: Record<string, { label: string; icon: React.ReactNode }> = {
+  pdf:        { label: 'PDF',        icon: <FileText className="h-4 w-4"  /> },
+  video:      { label: 'Video',      icon: <Video className="h-4 w-4"     /> },
+  audio:      { label: 'Audio',      icon: <Music className="h-4 w-4"     /> },
+  image:      { label: 'Image',      icon: <ImageIcon className="h-4 w-4" /> },
+  past_paper: { label: 'Past Paper', icon: <FileText className="h-4 w-4" /> },
+  study_guide:{ label: 'Study Guide',icon: <BookOpen className="h-4 w-4" /> },
+  notes:      { label: 'Notes',      icon: <FileText className="h-4 w-4" /> },
+  link:       { label: 'Link',       icon: <Globe className="h-4 w-4"     /> },
 };
 
 function getTypeCfg(r: Resource) {
@@ -144,22 +143,18 @@ export default function StudentLibrary() {
   const typeOptions = ['all', ...Array.from(new Set(enriched.map(r => (r.fileType || r.resourceType || 'other').toLowerCase())))];
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+    <div className="space-y-6 pb-8" data-testid="student-library">
       {/* Header */}
-      <div className="rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 text-white p-5 sm:p-6 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
-            <BookOpen className="h-6 w-6" />
-          </div>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Library</h1>
-            <p className="text-blue-200 text-sm mt-0.5">Study resources, past papers, videos & more</p>
-          </div>
-          <div className="ml-auto text-right">
-            <p className="text-3xl font-bold">{enriched.length}</p>
-            <p className="text-blue-200 text-xs">resources</p>
-          </div>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Library</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Study resources, past papers, videos & more</p>
         </div>
+        {enriched.length > 0 && (
+          <span className="text-sm font-semibold text-primary bg-primary/10 rounded-full px-3 py-1 shrink-0">
+            {enriched.length} resources
+          </span>
+        )}
       </div>
 
       {/* Search + Filters */}
@@ -258,42 +253,36 @@ function ResourceCard({ r, onClick }: { r: Resource; onClick: () => void }) {
     <div
       data-testid={`card-resource-${r.id}`}
       onClick={onClick}
-      className="group bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg hover:border-emerald-300 dark:hover:border-emerald-600 flex flex-col"
+      className="group bg-card rounded-xl border overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-md flex flex-col"
     >
-      {/* Icon header */}
-      <div className={`h-14 bg-gradient-to-r ${cfg.gradient} flex items-center px-4 gap-3`}>
-        <div className="text-white">{cfg.icon}</div>
-        <span className="text-white text-xs font-bold uppercase tracking-wider">{cfg.label}</span>
-        {r.fileSize && <span className="ml-auto text-white/70 text-xs">{formatSize(r.fileSize)}</span>}
-      </div>
-
       {/* Body */}
-      <div className="p-4 flex-1 flex flex-col gap-2">
-        <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm leading-tight line-clamp-2" data-testid={`text-resource-title-${r.id}`}>
+      <div className="p-3 flex-1 flex flex-col gap-2">
+        {/* Type label row */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-primary">
+            {cfg.icon}
+            <span className="text-xs font-semibold text-muted-foreground">{cfg.label}</span>
+          </div>
+          {r.fileSize && <span className="text-[10px] text-muted-foreground">{formatSize(r.fileSize)}</span>}
+        </div>
+
+        <h3 className="font-semibold text-sm leading-snug line-clamp-2" data-testid={`text-resource-title-${r.id}`}>
           {r.title}
         </h3>
 
         {r.subjectName && (
-          <Badge className={`text-xs w-fit ${cfg.badge} border-0`}>{r.subjectName}</Badge>
+          <span className="text-[10px] font-medium text-primary bg-primary/10 rounded-full px-2 py-0.5 w-fit">{r.subjectName}</span>
         )}
 
         {r.description && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 flex-1">{r.description}</p>
+          <p className="text-xs text-muted-foreground line-clamp-2 flex-1">{r.description}</p>
         )}
 
-        <div className="flex items-center justify-between pt-2 border-t border-gray-100 dark:border-gray-800">
-          <span className="text-xs text-gray-400">{formatDate(r.createdAt)}</span>
-          <div className="flex items-center gap-1.5">
-            {isViewable(r) ? (
-              <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                <Eye className="h-3.5 w-3.5" /> View
-              </span>
-            ) : (
-              <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-medium">
-                <Download className="h-3.5 w-3.5" /> Download
-              </span>
-            )}
-          </div>
+        <div className="flex items-center justify-between pt-2 border-t border-border">
+          <span className="text-[10px] text-muted-foreground">{formatDate(r.createdAt)}</span>
+          <span className="flex items-center gap-1 text-xs text-primary font-medium">
+            {isViewable(r) ? <><Eye className="h-3 w-3" /> View</> : <><Download className="h-3 w-3" /> Download</>}
+          </span>
         </div>
       </div>
     </div>
@@ -306,14 +295,15 @@ function MiniCard({ r, onClick }: { r: Resource; onClick: () => void }) {
   return (
     <div
       onClick={onClick}
-      className="flex-shrink-0 w-36 bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden cursor-pointer hover:shadow-md transition-all"
+      className="flex-shrink-0 w-32 bg-card rounded-xl border overflow-hidden cursor-pointer hover:shadow-sm transition-all"
       data-testid={`mini-card-${r.id}`}
     >
-      <div className={`h-8 bg-gradient-to-r ${cfg.gradient} flex items-center px-2 gap-1.5`}>
-        <span className="text-white scale-75">{cfg.icon}</span>
+      <div className="flex items-center gap-1.5 px-2 py-1.5 bg-primary/10 border-b border-border">
+        <span className="text-primary">{cfg.icon}</span>
+        <span className="text-[10px] font-medium text-primary">{cfg.label}</span>
       </div>
       <div className="p-2">
-        <p className="text-xs font-semibold text-gray-900 dark:text-gray-100 line-clamp-2">{r.title}</p>
+        <p className="text-xs font-medium line-clamp-2">{r.title}</p>
       </div>
     </div>
   );
@@ -335,21 +325,18 @@ function ResourceViewerDialog({ resource, recommended, onClose, onOpen }: {
   return (
     <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl p-0" data-testid="dialog-resource-viewer">
-        {/* Gradient header */}
-        <div className={`h-2 w-full rounded-t-2xl bg-gradient-to-r ${cfg.gradient}`} />
-
         <div className="p-5 sm:p-6 space-y-5">
           <DialogHeader>
             <div className="flex items-start gap-3">
-              <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${cfg.gradient} flex items-center justify-center text-white flex-shrink-0`}>
+              <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
                 {cfg.icon}
               </div>
               <div className="flex-1 min-w-0">
-                <DialogTitle className="text-lg font-bold text-gray-900 dark:text-gray-100 leading-snug" data-testid="text-viewer-title">
+                <DialogTitle className="text-lg font-bold leading-snug" data-testid="text-viewer-title">
                   {resource.title}
                 </DialogTitle>
                 {resource.subjectName && (
-                  <Badge className={`text-xs mt-1 ${cfg.badge} border-0`}>{resource.subjectName}</Badge>
+                  <span className="text-xs font-medium text-primary bg-primary/10 rounded-full px-2 py-0.5 mt-1 inline-block">{resource.subjectName}</span>
                 )}
               </div>
               <div className="flex gap-2 flex-shrink-0">
@@ -386,8 +373,8 @@ function ResourceViewerDialog({ resource, recommended, onClose, onOpen }: {
               </video>
             ) : isAudio(resource) ? (
               <div className="p-8 flex flex-col items-center gap-4">
-                <div className={`h-20 w-20 rounded-2xl bg-gradient-to-br ${cfg.gradient} flex items-center justify-center`}>
-                  <PlayCircle className="h-10 w-10 text-white" />
+                <div className="h-20 w-20 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
+                  <PlayCircle className="h-10 w-10" />
                 </div>
                 <audio src={resource.fileUrl} controls className="w-full" data-testid="viewer-audio">
                   Your browser does not support the audio tag.
@@ -402,11 +389,11 @@ function ResourceViewerDialog({ resource, recommended, onClose, onOpen }: {
               />
             ) : (
               <div className="p-10 flex flex-col items-center gap-4 text-center">
-                <div className={`h-16 w-16 rounded-2xl bg-gradient-to-br ${cfg.gradient} flex items-center justify-center text-white`}>
+                <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
                   {cfg.icon}
                 </div>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">Preview not available for this file type.</p>
-                <Button onClick={handleDownload} className="rounded-xl" data-testid="button-download-fallback">
+                <p className="text-sm text-muted-foreground">Preview not available for this file type.</p>
+                <Button onClick={handleDownload} data-testid="button-download-fallback">
                   <Download className="h-4 w-4 mr-2" /> Download to View
                 </Button>
               </div>
@@ -444,7 +431,7 @@ function ResourceViewerDialog({ resource, recommended, onClose, onOpen }: {
           {/* Related Resources */}
           {recommended.length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+              <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                 <Star className="h-4 w-4 text-amber-500" /> Related Resources
               </h3>
               <div className="grid grid-cols-2 gap-2">
@@ -455,13 +442,13 @@ function ResourceViewerDialog({ resource, recommended, onClose, onOpen }: {
                       key={r.id}
                       onClick={() => onOpen(r)}
                       data-testid={`button-related-${r.id}`}
-                      className="text-left flex items-center gap-2.5 p-3 rounded-xl border border-gray-200 dark:border-gray-700 hover:border-emerald-300 dark:hover:border-emerald-600 transition-colors"
+                      className="text-left flex items-center gap-2.5 p-3 rounded-xl border hover:border-primary/40 transition-colors"
                     >
-                      <div className={`h-8 w-8 rounded-lg bg-gradient-to-br ${rcfg.gradient} flex items-center justify-center text-white flex-shrink-0 scale-90`}>
+                      <div className="h-7 w-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
                         {rcfg.icon}
                       </div>
-                      <span className="text-xs font-medium text-gray-900 dark:text-gray-100 line-clamp-2 flex-1">{r.title}</span>
-                      <ChevronRight className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                      <span className="text-xs font-medium line-clamp-2 flex-1">{r.title}</span>
+                      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                     </button>
                   );
                 })}
@@ -479,10 +466,10 @@ function Section({ title, icon, count, children }: { title: string; icon: React.
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <span className="text-emerald-600 dark:text-emerald-400">{icon}</span>
-        <h2 className="text-base font-bold text-gray-900 dark:text-gray-100">{title}</h2>
+        <span className="text-primary">{icon}</span>
+        <h2 className="text-sm font-semibold">{title}</h2>
         {count !== undefined && (
-          <Badge variant="outline" className="ml-auto text-xs">{count}</Badge>
+          <span className="ml-auto text-xs font-medium text-primary bg-primary/10 rounded-full px-2 py-0.5">{count}</span>
         )}
       </div>
       {children}
@@ -494,17 +481,17 @@ function Section({ title, icon, count, children }: { title: string; icon: React.
 function EmptyState({ hasFilters, onClear }: { hasFilters: boolean; onClear: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center" data-testid="empty-state-library">
-      <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center mb-4">
-        <BookOpen className="h-8 w-8 text-emerald-400" />
+      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+        <BookOpen className="h-7 w-7 text-primary" />
       </div>
-      <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">
+      <h3 className="text-base font-semibold mb-1">
         {hasFilters ? 'No matching resources' : 'No resources yet'}
       </h3>
-      <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs mb-4">
+      <p className="text-sm text-muted-foreground max-w-xs mb-4">
         {hasFilters ? 'Try adjusting your search or filters.' : 'Your teachers haven\'t uploaded any resources yet. Check back later.'}
       </p>
       {hasFilters && (
-        <Button variant="outline" className="rounded-xl" onClick={onClear}>Clear Filters</Button>
+        <Button variant="outline" size="sm" onClick={onClear}>Clear Filters</Button>
       )}
     </div>
   );
@@ -515,12 +502,12 @@ function GridSkeleton() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {[1, 2, 3, 4, 5, 6].map(i => (
-        <div key={i} className="rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <Skeleton className="h-14 w-full rounded-none" />
-          <div className="p-4 space-y-2">
+        <div key={i} className="rounded-xl border overflow-hidden">
+          <div className="p-3 space-y-2">
+            <Skeleton className="h-3 w-1/3" />
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-3 w-1/2" />
-            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-3 w-full" />
           </div>
         </div>
       ))}
