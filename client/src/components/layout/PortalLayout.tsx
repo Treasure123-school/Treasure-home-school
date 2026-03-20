@@ -493,7 +493,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header - Modern Responsive Design - Fixed at Top */}
         {!isExamPage && (
-          <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-md h-[100px] flex items-center px-4 sm:px-5 md:px-6">
+          <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-md h-[72px] flex items-center px-4 sm:px-5 md:px-6">
             <div className="flex justify-between items-center gap-2 sm:gap-3 w-full max-w-7xl mx-auto">
               <div className="flex items-center space-x-2 sm:space-x-3 lg:space-x-4 flex-1 min-w-0">
                 {/* Modern Mobile Menu Trigger */}
