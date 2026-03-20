@@ -146,7 +146,7 @@ export default function StudentLibrary() {
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 text-white p-5 sm:p-6 shadow-xl shadow-blue-500/20">
+      <div className="rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 text-white p-5 sm:p-6 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="h-11 w-11 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
             <BookOpen className="h-6 w-6" />

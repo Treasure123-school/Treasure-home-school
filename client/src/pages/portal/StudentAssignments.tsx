@@ -148,14 +148,14 @@ export default function StudentAssignments() {
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
       {/* Header */}
-      <div className="rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-700 text-white p-5 sm:p-6 shadow-xl shadow-indigo-500/20">
+      <div className="rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 text-white p-5 sm:p-6 shadow-sm">
         <div className="flex items-center gap-3 mb-1">
           <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center">
             <ClipboardPen className="h-5 w-5" />
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Assignments</h1>
-            <p className="text-indigo-200 text-sm">Track, submit, and review your work</p>
+            <p className="text-blue-200 text-sm">Track, submit, and review your work</p>
           </div>
         </div>
       </div>
@@ -169,8 +169,8 @@ export default function StudentAssignments() {
             data-testid={`button-filter-${tab}`}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 border ${
               filter === tab
-                ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-500/25'
-                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-600'
+                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600'
             }`}
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)}

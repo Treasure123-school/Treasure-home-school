@@ -176,7 +176,7 @@ export default function StudentClassSchedule() {
   return (
     <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
       {/* ── Header ── */}
-      <div className="rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 text-white p-5 sm:p-6 shadow-xl shadow-blue-500/20">
+      <div className="rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 text-white p-5 sm:p-6 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-blue-200 text-sm font-medium">

@@ -220,35 +220,41 @@ export default function StudentSubjects() {
                     return (
                       <div
                         key={subjectId}
-                        className={`rounded-2xl overflow-hidden border bg-card shadow-sm hover:shadow-md transition-all duration-200 flex flex-col ${
+                        className={`rounded-xl overflow-hidden border bg-card shadow-sm hover:shadow-md transition-all duration-200 flex flex-col ${
                           active ? 'ring-2 ring-amber-400 dark:ring-amber-500' : ''
                         }`}
                         data-testid={`subject-card-${subjectId}`}
                       >
-                        {/* Gradient Header */}
-                        <div className={`relative bg-gradient-to-br ${config.gradient} px-4 pt-5 pb-8`}>
-                          {active && (
-                            <div className="absolute top-3 right-3">
-                              <Badge className="bg-amber-400 text-amber-900 hover:bg-amber-400 text-xs font-bold flex items-center gap-1 px-2">
-                                <Sparkles className="w-3 h-3" />
-                                {activeExams.length} Exam{activeExams.length !== 1 ? 's' : ''}
-                              </Badge>
-                            </div>
-                          )}
-                          <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-1">
-                            {subject.subjectCode || subject.code}
-                          </p>
-                          <h3 className="text-white font-bold text-lg leading-snug line-clamp-2">
-                            {subject.subjectName || subject.name}
-                          </h3>
-                        </div>
+                        {/* Thin accent bar */}
+                        <div className={`h-1 bg-gradient-to-r ${config.gradient}`} />
 
-                        {/* Card Body */}
-                        <div className="flex-1 flex flex-col p-4 gap-4 -mt-4 bg-card rounded-t-2xl relative">
+                        {/* Card Content */}
+                        <div className="flex-1 flex flex-col p-4 gap-3">
+                          {/* Subject identity row */}
+                          <div className="flex items-start gap-3">
+                            <div className={`w-9 h-9 rounded-lg bg-gradient-to-br ${config.gradient} flex items-center justify-center shrink-0`}>
+                              <CategoryIcon className="w-4 h-4 text-white" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                                {subject.subjectCode || subject.code}
+                              </p>
+                              <h3 className="text-sm font-bold leading-snug line-clamp-2">
+                                {subject.subjectName || subject.name}
+                              </h3>
+                            </div>
+                            {active && (
+                              <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 hover:bg-amber-100 text-xs font-bold flex items-center gap-1 px-2 shrink-0">
+                                <Sparkles className="w-3 h-3" />
+                                {activeExams.length}
+                              </Badge>
+                            )}
+                          </div>
+
                           {/* Teacher Row */}
                           {teacher ? (
-                            <div className="flex items-center gap-2.5">
-                              <Avatar className="w-8 h-8 shrink-0 ring-2 ring-background">
+                            <div className="flex items-center gap-2">
+                              <Avatar className="w-7 h-7 shrink-0">
                                 <AvatarImage
                                   src={teacher.profileImageUrl || undefined}
                                   alt={`${teacher.firstName} ${teacher.lastName}`}
@@ -258,27 +264,27 @@ export default function StudentSubjects() {
                                 </AvatarFallback>
                               </Avatar>
                               <div className="min-w-0">
-                                <p className="text-sm font-semibold truncate leading-tight">
+                                <p className="text-xs font-semibold truncate">
                                   {teacher.firstName} {teacher.lastName}
                                 </p>
                                 <p className="text-xs text-muted-foreground">Subject Teacher</p>
                               </div>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-                                <User className="w-4 h-4 text-muted-foreground" />
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center shrink-0">
+                                <User className="w-3.5 h-3.5 text-muted-foreground" />
                               </div>
-                              <p className="text-sm text-muted-foreground">No teacher assigned</p>
+                              <p className="text-xs text-muted-foreground">No teacher assigned</p>
                             </div>
                           )}
 
                           {/* Action Buttons */}
-                          <div className="grid grid-cols-2 gap-2 mt-auto">
+                          <div className="grid grid-cols-2 gap-2 mt-auto pt-1">
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-9 text-xs font-medium flex items-center gap-1.5 justify-center"
+                              className="h-8 text-xs font-medium flex items-center gap-1.5 justify-center"
                               onClick={() => navigate(`/portal/student/scheme-of-work?subject=${subjectId}`)}
                               data-testid={`button-scheme-${subjectId}`}
                             >
@@ -288,7 +294,7 @@ export default function StudentSubjects() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-9 text-xs font-medium flex items-center gap-1.5 justify-center"
+                              className="h-8 text-xs font-medium flex items-center gap-1.5 justify-center"
                               onClick={() => navigate(`/portal/student/study-resources?subject=${subjectId}`)}
                               data-testid={`button-materials-${subjectId}`}
                             >
@@ -298,7 +304,7 @@ export default function StudentSubjects() {
                             <Button
                               size="sm"
                               variant={active ? 'default' : 'outline'}
-                              className={`h-9 text-xs font-medium flex items-center gap-1.5 justify-center ${active ? 'bg-amber-500 hover:bg-amber-600 border-amber-500' : ''}`}
+                              className={`h-8 text-xs font-medium flex items-center gap-1.5 justify-center ${active ? 'bg-amber-500 hover:bg-amber-600 border-amber-500' : ''}`}
                               onClick={() => navigate(`/portal/student/exams?subject=${subjectId}`)}
                               data-testid={`button-exams-${subjectId}`}
                             >
@@ -308,7 +314,7 @@ export default function StudentSubjects() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="h-9 text-xs font-medium flex items-center gap-1.5 justify-center"
+                              className="h-8 text-xs font-medium flex items-center gap-1.5 justify-center"
                               onClick={() => navigate(`/portal/student/exam-results?subject=${subjectId}`)}
                               data-testid={`button-scores-${subjectId}`}
                             >
