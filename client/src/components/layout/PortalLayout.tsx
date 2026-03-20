@@ -384,7 +384,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
                     <Button
                       variant="ghost"
                       className={`w-full text-sm font-semibold rounded-xl ${
-                        collapsed ? 'justify-center px-2' : 'justify-start px-3'
+                        collapsed ? 'justify-center px-2 gap-0' : 'justify-start px-3'
                       } text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 dark:hover:from-blue-900/20 dark:hover:to-blue-800/20 hover:text-blue-700 dark:hover:text-blue-300 transition-all duration-300 ease-in-out`}
                       title={collapsed ? item.label : undefined}
                     >

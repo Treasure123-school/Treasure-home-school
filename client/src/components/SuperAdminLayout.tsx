@@ -263,7 +263,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
                       }
                     }}
                     className={`w-full text-sm font-semibold rounded-xl ${
-                      collapsed ? 'justify-center px-2' : 'justify-start px-3'
+                      collapsed ? 'justify-center px-2 gap-0' : 'justify-start px-3'
                     } ${
                       childActive 
                         ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
