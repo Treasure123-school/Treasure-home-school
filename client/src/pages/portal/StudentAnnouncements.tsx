@@ -1,182 +1,278 @@
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/auth';
 import { useQuery } from '@tanstack/react-query';
-import { MessageSquare, Calendar, Filter, Search } from 'lucide-react';
-import { Link } from 'wouter';
+import { Megaphone, Calendar, Search, User, ChevronDown, ChevronUp, Bell, AlertTriangle, Info } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useState } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
+
+type Priority = 'high' | 'medium' | 'normal';
+type FilterType = 'all' | Priority;
+
+const PRIORITY_CONFIG: Record<Priority, { label: string; badgeClass: string; borderClass: string; bgClass: string; icon: React.ElementType }> = {
+  high: {
+    label: 'Urgent',
+    badgeClass: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800',
+    borderClass: 'border-l-red-500',
+    bgClass: 'bg-red-50/60 dark:bg-red-900/10',
+    icon: AlertTriangle,
+  },
+  medium: {
+    label: 'Important',
+    badgeClass: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+    borderClass: 'border-l-amber-500',
+    bgClass: 'bg-amber-50/60 dark:bg-amber-900/10',
+    icon: Bell,
+  },
+  normal: {
+    label: 'General',
+    badgeClass: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+    borderClass: 'border-l-blue-400',
+    bgClass: '',
+    icon: Info,
+  },
+};
 
 export default function StudentAnnouncements() {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [filter, setFilter] = useState<FilterType>('all');
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
 
   if (!user) {
-    return <div>Please log in to access announcements.</div>;
+    return <div className="p-6 text-center text-muted-foreground">Please log in to view announcements.</div>;
   }
+
   const { data: announcements, isLoading } = useQuery({
     queryKey: ['announcements', 'Student'],
     queryFn: async () => {
-      const response = await fetch('/api/announcements?role=Student', {
-        credentials: 'include'
-      });
+      const response = await fetch('/api/announcements?role=Student', { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch announcements');
       return response.json();
     }
   });
 
-  // Format announcements for display
-  const formattedAnnouncements = announcements?.map((announcement: any) => ({
-    id: announcement.id,
-    title: announcement.title,
-    content: announcement.content,
-    publishedAt: new Date(announcement.createdAt || announcement.publishedAt),
-    author: announcement.authorName || announcement.author || 'School Administration',
-    priority: announcement.priority || 'normal',
-    category: announcement.category || 'general'
-  })) || [];
+  const formattedAnnouncements = (announcements ?? []).map((a: any) => ({
+    id: a.id,
+    title: a.title,
+    content: a.content,
+    publishedAt: new Date(a.createdAt || a.publishedAt),
+    author: a.authorName || a.author || 'School Administration',
+    priority: (a.priority || 'normal') as Priority,
+    category: a.category || '',
+  }));
 
-  // Filter announcements based on search term
-  const filteredAnnouncements = formattedAnnouncements.filter((announcement: any) =>
-    announcement.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    announcement.content.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = formattedAnnouncements.filter((a: any) => {
+    const matchesSearch =
+      a.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      a.content.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesPriority = filter === 'all' || a.priority === filter;
+    return matchesSearch && matchesPriority;
+  });
 
-  // Get priority color
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'destructive';
-      case 'medium':
-        return 'default';
-      default:
-        return 'secondary';
-    }
+  const counts = {
+    all: formattedAnnouncements.length,
+    high: formattedAnnouncements.filter((a: any) => a.priority === 'high').length,
+    medium: formattedAnnouncements.filter((a: any) => a.priority === 'medium').length,
+    normal: formattedAnnouncements.filter((a: any) => a.priority === 'normal').length,
   };
 
-  // Get priority label
-  const getPriorityLabel = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'Urgent';
-      case 'medium':
-        return 'Important';
-      default:
-        return 'General';
-    }
+  const toggleExpand = (id: number) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
+
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString([], { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+  };
+
+  const CHAR_LIMIT = 280;
 
   return (
-    <>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      {/* Hero header */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 p-6 text-white shadow-lg">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute -top-8 -right-8 w-48 h-48 rounded-full bg-white" />
+          <div className="absolute -bottom-12 -left-6 w-36 h-36 rounded-full bg-white" />
+        </div>
+        <div className="relative flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Announcements</h1>
-            <p className="text-muted-foreground">
-              Stay updated with school news and important information
-            </p>
+            <div className="flex items-center gap-2 mb-1">
+              <Megaphone className="h-5 w-5 text-blue-200" />
+              <span className="text-blue-200 text-sm font-medium uppercase tracking-widest">School Board</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-bold mb-1">Announcements</h1>
+            <p className="text-blue-200 text-sm">Stay informed with the latest school news and updates</p>
           </div>
-          <Button variant="outline" size="sm">
-            <Filter className="h-4 w-4 mr-2" />
-            Filter
-          </Button>
-        </div>
-
-        {/* Search and Stats */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search announcements..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-            <span>{filteredAnnouncements.length} announcement(s)</span>
+          <div className="flex-shrink-0 hidden sm:flex flex-col items-end gap-1">
+            <div className="text-4xl font-black">{counts.all}</div>
+            <div className="text-blue-200 text-xs font-medium">total posts</div>
           </div>
         </div>
+      </div>
 
-        {/* Announcements List */}
-        {isLoading ? (
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-center">Loading announcements...</div>
-            </CardContent>
-          </Card>
-        ) : filteredAnnouncements.length > 0 ? (
-          <div className="space-y-4">
-            {filteredAnnouncements.map((announcement: any) => (
-              <Card key={announcement.id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-lg mb-2">{announcement.title}</CardTitle>
-                      <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                        <div className="flex items-center space-x-1">
-                          <Calendar className="h-4 w-4" />
-                          <span>{announcement.publishedAt.toLocaleDateString()}</span>
-                        </div>
-                        <span>By {announcement.author}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant={getPriorityColor(announcement.priority)}>
-                        {getPriorityLabel(announcement.priority)}
-                      </Badge>
-                      {announcement.category && (
-                        <Badge variant="outline">
-                          {announcement.category}
-                        </Badge>
-                      )}
+      {/* Search + filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search announcements..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 bg-white dark:bg-gray-900 rounded-xl border-gray-200 dark:border-gray-700"
+            data-testid="input-search-announcements"
+          />
+        </div>
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          {(['all', 'high', 'medium', 'normal'] as FilterType[]).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
+                filter === f
+                  ? f === 'all'
+                    ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-gray-900 dark:border-gray-100'
+                    : f === 'high'
+                    ? 'bg-red-600 text-white border-red-600'
+                    : f === 'medium'
+                    ? 'bg-amber-500 text-white border-amber-500'
+                    : 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+              }`}
+              data-testid={`filter-${f}`}
+            >
+              {f === 'all' ? 'All' : PRIORITY_CONFIG[f].label}
+              <span className={`ml-1.5 text-xs ${filter === f ? 'opacity-80' : 'opacity-60'}`}>
+                ({counts[f]})
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Results count */}
+      {!isLoading && (
+        <div className="flex items-center text-sm text-muted-foreground">
+          <span>Showing <span className="font-semibold text-gray-700 dark:text-gray-300">{filtered.length}</span> announcement{filtered.length !== 1 ? 's' : ''}</span>
+          {searchTerm && (
+            <span className="ml-1"> matching "<span className="font-medium">{searchTerm}</span>"</span>
+          )}
+        </div>
+      )}
+
+      {/* Announcement cards */}
+      {isLoading ? (
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-5">
+              <div className="flex items-start justify-between gap-4 mb-3">
+                <Skeleton className="h-5 w-2/3" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+              <div className="flex gap-4 mb-3">
+                <Skeleton className="h-3.5 w-24" />
+                <Skeleton className="h-3.5 w-32" />
+              </div>
+              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-4 w-4/5" />
+            </div>
+          ))}
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-12 text-center">
+          <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Megaphone className="h-8 w-8 text-blue-400" />
+          </div>
+          <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
+            {searchTerm ? 'No matching announcements' : 'No announcements yet'}
+          </h3>
+          <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-4">
+            {searchTerm
+              ? `Try a different search term or clear your filter.`
+              : 'School announcements from teachers and administration will appear here.'}
+          </p>
+          {searchTerm && (
+            <Button variant="outline" size="sm" onClick={() => { setSearchTerm(''); setFilter('all'); }}>
+              Clear filters
+            </Button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((announcement: any) => {
+            const config = PRIORITY_CONFIG[announcement.priority as Priority] || PRIORITY_CONFIG.normal;
+            const PriorityIcon = config.icon;
+            const isExpanded = expandedIds.has(announcement.id);
+            const isLong = announcement.content.length > CHAR_LIMIT;
+            const displayContent = isLong && !isExpanded
+              ? announcement.content.slice(0, CHAR_LIMIT) + '…'
+              : announcement.content;
+
+            return (
+              <div
+                key={announcement.id}
+                className={`bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 border-l-4 ${config.borderClass} ${config.bgClass} overflow-hidden shadow-sm hover:shadow-md transition-shadow`}
+                data-testid={`card-announcement-${announcement.id}`}
+              >
+                <div className="p-5">
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <h3 className="font-bold text-gray-900 dark:text-gray-100 text-base leading-snug flex-1">
+                      {announcement.title}
+                    </h3>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <PriorityIcon className="h-3.5 w-3.5" />
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${config.badgeClass}`}>
+                        {config.label}
+                      </span>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground leading-relaxed">
-                    {announcement.content}
+
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mb-3">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="h-3.5 w-3.5" />
+                      <span data-testid={`text-announcement-date-${announcement.id}`}>{formatDate(announcement.publishedAt)}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <User className="h-3.5 w-3.5" />
+                      <span data-testid={`text-announcement-author-${announcement.id}`}>{announcement.author}</span>
+                    </div>
+                    {announcement.category && (
+                      <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full text-[11px] font-medium capitalize">
+                        {announcement.category}
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-wrap" data-testid={`text-announcement-content-${announcement.id}`}>
+                    {displayContent}
                   </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : searchTerm ? (
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-center py-8">
-                <Search className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">No matching announcements</h3>
-                <p className="text-muted-foreground mb-4">
-                  No announcements found for "{searchTerm}". Try a different search term.
-                </p>
-                <Button variant="outline" onClick={() => setSearchTerm('')}>
-                  Clear search
-                </Button>
+
+                  {isLong && (
+                    <button
+                      onClick={() => toggleExpand(announcement.id)}
+                      className="mt-2 flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                      data-testid={`button-expand-${announcement.id}`}
+                    >
+                      {isExpanded ? (
+                        <><ChevronUp className="h-3.5 w-3.5" /> Show less</>
+                      ) : (
+                        <><ChevronDown className="h-3.5 w-3.5" /> Read more</>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-center py-8">
-                <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">No announcements yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  School announcements will appear here. Check back later for updates.
-                </p>
-                <Button variant="outline" asChild>
-                  <Link href="/portal/student">
-                    Back to Dashboard
-                  </Link>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    </>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

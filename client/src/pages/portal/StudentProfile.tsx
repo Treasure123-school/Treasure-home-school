@@ -614,34 +614,6 @@ export default function StudentProfile() {
               </CardContent>
             </Card>
 
-            {/* Current Classes */}
-            <Card className="lg:col-span-3">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <School className="h-5 w-5" />
-                  <span>Current Classes</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {classes && classes.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                    {classes.map((classItem: any, index: number) => (
-                      <div key={index} className="p-3 bg-muted/50 rounded-lg">
-                        <p className="font-medium">{classItem.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {classItem.teacher || 'Teacher not assigned'}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <School className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-muted-foreground">No classes assigned yet</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </div>
         )}
 

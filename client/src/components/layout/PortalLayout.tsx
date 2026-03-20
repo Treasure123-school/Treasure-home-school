@@ -1,7 +1,7 @@
 import { useLocation } from 'wouter';
 import { 
   GraduationCap, Home, Users, Calendar, BookOpen, MessageSquare, User, Settings, 
-  Bell, LogOut, ImageIcon, FileText, Menu, ChevronLeft, ChevronRight, ClipboardCheck, 
+  Bell, LogOut, ImageIcon, FileText, Menu, PanelLeft, PanelLeftClose, ClipboardCheck, 
   ClipboardList, ChevronDown, History, UserCheck, Eye, Briefcase, Shield, Activity,
   Clock, PenTool, CheckSquare, Award, Star, Library, DollarSign, Trophy, HelpCircle,
   Inbox, Megaphone, MessagesSquare, ClipboardPen, BarChart3, FolderOpen, RotateCcw,
@@ -352,18 +352,30 @@ export default function PortalLayout({ children, userRole, userName, userInitial
 
     return (
       <div className="flex flex-col h-full">
-        <div className="flex-shrink-0 h-[100px] flex items-center border-b border-gray-200 dark:border-gray-700 px-4 bg-gradient-to-br from-blue-50 to-white dark:from-gray-800 dark:to-gray-900">
-          <div className="flex items-center w-full">
+        {/* Sidebar Header with collapse toggle for desktop */}
+        <div className="flex-shrink-0 h-[72px] flex items-center border-b border-gray-200 dark:border-gray-700 px-3 bg-gradient-to-br from-blue-50 to-white dark:from-gray-800 dark:to-gray-900">
+          <div className="flex items-center w-full gap-2">
             <img 
               src={displayLogo} 
               alt={`${schoolName} Logo`} 
-              className={`${collapsed ? 'h-10 w-10' : 'h-16 w-16'} object-contain flex-shrink-0 transition-all duration-300 ease-in-out drop-shadow-md`}
+              className={`${collapsed ? 'h-9 w-9' : 'h-12 w-12'} object-contain flex-shrink-0 transition-all duration-300 ease-in-out drop-shadow-md`}
             />
-            <div className={`overflow-hidden transition-[opacity,max-width] duration-200 ease-in-out ${collapsed ? 'opacity-0 max-w-0' : 'opacity-100 max-w-[180px]'} ml-3`}>
-              <h1 className="font-bold text-lg lg:text-xl text-blue-700 dark:text-blue-400 whitespace-nowrap leading-tight">{schoolName}</h1>
-              <p className="text-[10px] text-blue-600 dark:text-blue-300 font-semibold tracking-wide uppercase whitespace-nowrap">{schoolMotto}</p>
-              <p className="text-xs text-gray-600 dark:text-gray-400 font-semibold mt-0.5 whitespace-nowrap">{getRoleTitle()}</p>
+            <div className={`overflow-hidden transition-[opacity,max-width] duration-200 ease-in-out ${collapsed ? 'opacity-0 max-w-0' : 'opacity-100 max-w-[160px]'} flex-1 min-w-0`}>
+              <h1 className="font-bold text-base text-blue-700 dark:text-blue-400 whitespace-nowrap leading-tight truncate">{schoolName}</h1>
+              <p className="text-[9px] text-blue-600 dark:text-blue-300 font-semibold tracking-wide uppercase whitespace-nowrap truncate">{schoolMotto}</p>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium mt-0.5 whitespace-nowrap">{getRoleTitle()}</p>
             </div>
+            {/* Desktop collapse toggle — only rendered inside the real sidebar, not mobile sheet */}
+            {!isMobile && !onNavigate && (
+              <button
+                onClick={toggleSidebar}
+                className="flex-shrink-0 ml-auto p-1.5 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-300 transition-all duration-200"
+                title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                data-testid="button-toggle-sidebar"
+              >
+                {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+              </button>
+            )}
           </div>
         </div>
 
@@ -443,8 +455,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
           })}
         </nav>
         
-        {/* Logout button at the bottom */}
-        <div className={`mt-auto p-3 border-t border-gray-200 dark:border-gray-700 ${collapsed ? 'px-2' : ''}`}>
+        {/* Logout button pinned at the bottom */}
+        <div className={`flex-shrink-0 p-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 ${collapsed ? 'px-2' : ''}`}>
           <button
             key="logout"
             type="button"
@@ -460,8 +472,6 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             <span className={`whitespace-nowrap overflow-hidden transition-[opacity,max-width,margin] duration-200 ease-in-out ${collapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-[160px] ml-3'}`}>Logout</span>
           </button>
         </div>
-
-        {!isMobile && <div className="flex-shrink-0 h-20" />}
       </div>
     );
   };
@@ -474,20 +484,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex">
       {/* Desktop Sidebar - Modern Design */}
       {!isMobile && !isExamPage && (
-        <div className={`${sidebarCollapsed ? 'w-20' : 'w-64'} bg-white dark:bg-gray-900 shadow-xl border-r border-gray-200 dark:border-gray-700 h-screen sticky top-0 transition-[width] duration-300 ease-in-out overflow-hidden flex-shrink-0 relative`}>
+        <div className={`${sidebarCollapsed ? 'w-20' : 'w-64'} bg-white dark:bg-gray-900 shadow-xl border-r border-gray-200 dark:border-gray-700 h-screen sticky top-0 transition-[width] duration-300 ease-in-out overflow-hidden flex-shrink-0`}>
           <SidebarContent collapsed={sidebarCollapsed} />
-          <div className="absolute bottom-6 left-0 right-0 flex justify-center">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={toggleSidebar}
-              className="rounded-full shadow-lg hover:shadow-xl transition-all duration-200 bg-white dark:bg-gray-800 hover:scale-105 h-8 w-8"
-              data-testid="button-toggle-sidebar"
-              title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-            </Button>
-          </div>
         </div>
       )}
 
