@@ -450,17 +450,17 @@ export default function PortalLayout({ children, userRole, userName, userInitial
           })}
         </nav>
         
-        {/* Hide / Show panel button — only visible on desktop */}
+        {/* Hide / Show panel button */}
         <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700">
           <button
-            onClick={toggleSidebar}
-            className={`flex items-center gap-2 w-full px-3 py-3 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 ${collapsed ? 'justify-center' : ''}`}
+            onClick={showBrand ? onNavigate : toggleSidebar}
+            className={`flex items-center gap-2 w-full px-3 py-3 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 ${!showBrand && collapsed ? 'justify-center' : ''}`}
             data-testid="button-toggle-sidebar"
-            title={collapsed ? 'Show panel' : 'Hide this panel'}
+            title={showBrand ? 'Close sidebar' : collapsed ? 'Show panel' : 'Hide this panel'}
           >
-            {collapsed
-              ? <ChevronRight className="h-4 w-4 flex-shrink-0" />
-              : <><ChevronLeft className="h-4 w-4 flex-shrink-0" /><span className="text-xs font-medium whitespace-nowrap">Hide this panel</span></>
+            {showBrand || !collapsed
+              ? <><ChevronLeft className="h-4 w-4 flex-shrink-0" /><span className="text-xs font-medium whitespace-nowrap">Hide this panel</span></>
+              : <ChevronRight className="h-4 w-4 flex-shrink-0" />
             }
           </button>
         </div>
@@ -493,7 +493,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
                       <Menu className="h-5 w-5" />
                     </Button>
                   </SheetTrigger>
-                  <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 bg-white dark:bg-gray-900">
+                  <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 bg-white dark:bg-gray-900 [&>button]:hidden">
                     <div className="h-full overflow-y-auto">
                       <SidebarContent onNavigate={() => setMobileMenuOpen(false)} showBrand />
                     </div>
@@ -506,9 +506,9 @@ export default function PortalLayout({ children, userRole, userName, userInitial
                 <img 
                   src={displayLogo} 
                   alt={`${schoolName} Logo`} 
-                  className="h-10 w-10 object-contain flex-shrink-0 drop-shadow-md"
+                  className="hidden sm:block h-10 w-10 object-contain flex-shrink-0 drop-shadow-md"
                 />
-                <div className="hidden sm:flex flex-col min-w-0">
+                <div className="flex flex-col min-w-0">
                   <h1 className="text-base md:text-lg font-bold truncate bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-400 dark:to-blue-500 bg-clip-text text-transparent leading-tight">
                     {schoolName}
                   </h1>
