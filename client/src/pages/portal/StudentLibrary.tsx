@@ -146,18 +146,18 @@ export default function StudentLibrary() {
   return (
     <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="rounded-2xl bg-gradient-to-br from-emerald-600 via-teal-600 to-cyan-700 text-white p-5 sm:p-6 shadow-xl shadow-emerald-500/20">
+      <div className="rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 text-white p-5 sm:p-6 shadow-xl shadow-blue-500/20">
         <div className="flex items-center gap-3">
           <div className="h-11 w-11 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
             <BookOpen className="h-6 w-6" />
           </div>
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Library</h1>
-            <p className="text-emerald-200 text-sm mt-0.5">Study resources, past papers, videos & more</p>
+            <p className="text-blue-200 text-sm mt-0.5">Study resources, past papers, videos & more</p>
           </div>
           <div className="ml-auto text-right">
             <p className="text-3xl font-bold">{enriched.length}</p>
-            <p className="text-emerald-200 text-xs">resources</p>
+            <p className="text-blue-200 text-xs">resources</p>
           </div>
         </div>
       </div>
@@ -180,7 +180,7 @@ export default function StudentLibrary() {
             value={subjectFilter}
             onChange={e => setSubjectFilter(e.target.value)}
             data-testid="select-subject-filter"
-            className="flex-1 h-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            className="flex-1 h-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
             <option value="all">All Subjects</option>
             {subjects.map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
@@ -191,7 +191,7 @@ export default function StudentLibrary() {
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value)}
             data-testid="select-type-filter"
-            className="flex-1 h-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+            className="flex-1 h-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
           >
             {typeOptions.map(t => (
               <option key={t} value={t}>

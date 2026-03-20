@@ -152,14 +152,14 @@ export default function StudentHelp() {
   return (
     <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-8">
       {/* Header */}
-      <div className="rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 text-white p-5 sm:p-6 shadow-xl shadow-purple-500/20">
+      <div className="rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 text-white p-5 sm:p-6 shadow-xl shadow-blue-500/20">
         <div className="flex items-center gap-3">
           <div className="h-11 w-11 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
             <HelpCircle className="h-6 w-6" />
           </div>
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Help & Support</h1>
-            <p className="text-purple-200 text-sm mt-0.5">Find answers, guides, and contact support</p>
+            <p className="text-blue-200 text-sm mt-0.5">Find answers, guides, and contact support</p>
           </div>
         </div>
       </div>
@@ -352,7 +352,7 @@ export default function StudentHelp() {
               <Button
                 onClick={() => submitMutation.mutate()}
                 disabled={!canSubmit}
-                className="w-full bg-violet-600 hover:bg-violet-700 text-white rounded-xl h-11 font-semibold"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-11 font-semibold"
                 data-testid="button-submit-support"
               >
                 {submitMutation.isPending ? (
