@@ -140,6 +140,25 @@ After any successful exam fee payment, the system sends a confirmation email and
   - Added deduplication safety net in `getReportCardWithItems` so the UI never shows duplicate subjects even if any slip past.
   - Cleaned 21 pre-existing duplicate rows from the database (kept lowest-id item per reportCardId+subjectId).
 
+## Student Assignments Page
+
+- **Route**: `/portal/student/assignments` (accessible via "Assignments" in the student sidebar under Academic)
+- **Page**: `client/src/pages/portal/StudentAssignments.tsx`
+- **DB Tables**: `assignments`, `assignment_submissions` (new — added to `shared/schema.pg.ts`, pushed via `db:push`)
+- **APIs**:
+  - `GET /api/student/assignments` — list all class assignments with submission status (joined)
+  - `GET /api/student/assignments/:id` — full assignment detail with submission
+  - `POST /api/student/assignments/:id/submit` — multipart form submit (text + file, upserts submission)
+- **Features**:
+  - Filter tabs: All, Pending, Submitted, Late — with counts per filter
+  - Assignment cards: subject, teacher, due date, status badge (Pending/Submitted/Late/Graded), urgency alert (due within 24 h)
+  - Detail dialog with two tabs: Details (instructions, attachments, score, feedback) and Submit/My Submission
+  - File upload: PDF, DOC, DOCX, image — max 10 MB via the existing upload service
+  - Text answer field with optional file attachment
+  - Edit before deadline, locked after grading
+  - Displays teacher feedback and score after grading
+  - Empty states per filter
+
 ## Student Class Schedule Page
 
 - **Route**: `/portal/student/timetable` (accessible via "Class Schedule" in the student sidebar under Academic)
