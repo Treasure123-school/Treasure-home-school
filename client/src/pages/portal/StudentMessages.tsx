@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -303,73 +303,6 @@ export default function StudentMessages() {
               {unreadCount} unread
             </Badge>
           )}
-          <Dialog open={isComposeOpen} onOpenChange={setIsComposeOpen}>
-            <DialogTrigger asChild>
-              <Button className="shadow-sm" data-testid="button-compose">
-                <Plus className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">New Message</span>
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Mail className="h-5 w-5 text-blue-600" />
-                  Compose Message
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 pt-2">
-                <div>
-                  <Label htmlFor="recipient" className="text-sm font-medium">To</Label>
-                  <select
-                    id="recipient"
-                    className="w-full mt-1.5 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                    value={composeData.recipientId}
-                    onChange={(e) => setComposeData(prev => ({ ...prev, recipientId: e.target.value }))}
-                    data-testid="select-recipient"
-                  >
-                    <option value="">Select a teacher...</option>
-                    {teachers.map((teacher: any) => (
-                      <option key={teacher.id} value={teacher.id}>
-                        {teacher.firstName} {teacher.lastName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <Label htmlFor="subject" className="text-sm font-medium">Subject</Label>
-                  <Input
-                    id="subject"
-                    placeholder="Enter subject..."
-                    value={composeData.subject}
-                    onChange={(e) => setComposeData(prev => ({ ...prev, subject: e.target.value }))}
-                    className="mt-1.5"
-                    data-testid="input-message-subject"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="content" className="text-sm font-medium">Message</Label>
-                  <Textarea
-                    id="content"
-                    placeholder="Type your message..."
-                    rows={5}
-                    value={composeData.content}
-                    onChange={(e) => setComposeData(prev => ({ ...prev, content: e.target.value }))}
-                    className="mt-1.5 resize-none"
-                    data-testid="textarea-message-content"
-                  />
-                </div>
-                <div className="flex justify-end gap-2 pt-1">
-                  <Button variant="outline" onClick={() => setIsComposeOpen(false)} data-testid="button-cancel-compose">
-                    Cancel
-                  </Button>
-                  <Button onClick={handleSendMessage} disabled={sendMessageMutation.isPending} data-testid="button-send-message">
-                    <Send className="h-4 w-4 mr-2" />
-                    {sendMessageMutation.isPending ? 'Sending...' : 'Send Message'}
-                  </Button>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
         </div>
       </div>
 
@@ -435,6 +368,79 @@ export default function StudentMessages() {
           </div>
         </div>
       </div>
+
+      {/* Floating Action Button */}
+      <button
+        onClick={() => setIsComposeOpen(true)}
+        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+        data-testid="button-compose-fab"
+        title="New Message"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
+
+      {/* Compose Dialog */}
+      <Dialog open={isComposeOpen} onOpenChange={setIsComposeOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-blue-600" />
+              Compose Message
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label htmlFor="recipient" className="text-sm font-medium">To</Label>
+              <select
+                id="recipient"
+                className="w-full mt-1.5 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                value={composeData.recipientId}
+                onChange={(e) => setComposeData(prev => ({ ...prev, recipientId: e.target.value }))}
+                data-testid="select-recipient"
+              >
+                <option value="">Select a teacher...</option>
+                {teachers.map((teacher: any) => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {teacher.firstName} {teacher.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="subject" className="text-sm font-medium">Subject</Label>
+              <Input
+                id="subject"
+                placeholder="Enter subject..."
+                value={composeData.subject}
+                onChange={(e) => setComposeData(prev => ({ ...prev, subject: e.target.value }))}
+                className="mt-1.5"
+                data-testid="input-message-subject"
+              />
+            </div>
+            <div>
+              <Label htmlFor="content" className="text-sm font-medium">Message</Label>
+              <Textarea
+                id="content"
+                placeholder="Type your message..."
+                rows={5}
+                value={composeData.content}
+                onChange={(e) => setComposeData(prev => ({ ...prev, content: e.target.value }))}
+                className="mt-1.5 resize-none"
+                data-testid="textarea-message-content"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" onClick={() => setIsComposeOpen(false)} data-testid="button-cancel-compose">
+                Cancel
+              </Button>
+              <Button onClick={handleSendMessage} disabled={sendMessageMutation.isPending} data-testid="button-send-message">
+                <Send className="h-4 w-4 mr-2" />
+                {sendMessageMutation.isPending ? 'Sending...' : 'Send Message'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
