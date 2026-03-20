@@ -3306,7 +3306,7 @@ export default function StudentExams() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-1 max-w-3xl mx-auto w-full">
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 w-full">
             {exams.map((exam) => {
               const status = getExamStatus(exam.id);
               const subject = subjects.find(s => s.id === exam.subjectId);
