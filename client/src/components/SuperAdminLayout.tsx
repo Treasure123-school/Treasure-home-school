@@ -316,25 +316,20 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
           })}
         </nav>
 
-        {/* Logout button at the bottom */}
-        <div className={`mt-auto p-3 border-t border-gray-200 dark:border-gray-700 ${collapsed ? 'px-2' : ''}`}>
+        {/* Hide / Show panel button */}
+        <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700">
           <button
-            key="logout"
-            type="button"
-            onClick={() => {
-              onNavigate?.();
-              handleLogout();
-            }}
-            className={`flex items-center ${collapsed ? 'justify-center px-2' : 'px-3'} py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ease-in-out w-full text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300`}
-            data-testid="nav-logout"
-            title={collapsed ? "Logout" : undefined}
+            onClick={toggleSidebar}
+            className={`flex items-center gap-2 w-full px-3 py-3 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 ${collapsed ? 'justify-center' : ''}`}
+            data-testid="button-toggle-sidebar"
+            title={collapsed ? 'Show panel' : 'Hide this panel'}
           >
-            <LogOut className="h-4 w-4 flex-shrink-0 text-red-600 dark:text-red-400" />
-            <span className={`whitespace-nowrap overflow-hidden transition-[opacity,max-width,margin] duration-200 ease-in-out ${collapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-[160px] ml-3'}`}>Logout</span>
+            {collapsed
+              ? <ChevronRight className="h-4 w-4 flex-shrink-0" />
+              : <><ChevronLeft className="h-4 w-4 flex-shrink-0" /><span className="text-xs font-medium whitespace-nowrap">Hide this panel</span></>
+            }
           </button>
         </div>
-
-        <div className="flex-shrink-0 h-20" />
       </div>
     );
   };
@@ -365,18 +360,6 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
                   </div>
                 </SheetContent>
               </Sheet>
-            )}
-
-            {/* Desktop sidebar toggle */}
-            {!isMobile && (
-              <button
-                onClick={toggleSidebar}
-                className="hidden md:flex items-center justify-center h-9 w-9 flex-shrink-0 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-200 dark:hover:border-blue-800 transition-all duration-200 shadow-sm"
-                title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-                data-testid="button-toggle-sidebar"
-              >
-                {sidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-              </button>
             )}
 
             {/* School Branding */}
