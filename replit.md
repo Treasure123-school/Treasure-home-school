@@ -140,6 +140,21 @@ After any successful exam fee payment, the system sends a confirmation email and
   - Added deduplication safety net in `getReportCardWithItems` so the UI never shows duplicate subjects even if any slip past.
   - Cleaned 21 pre-existing duplicate rows from the database (kept lowest-id item per reportCardId+subjectId).
 
+## Student Class Schedule Page
+
+- **Route**: `/portal/student/timetable` (accessible via "Class Schedule" in the student sidebar under Academic)
+- **Page**: `client/src/pages/portal/StudentClassSchedule.tsx`
+- **API**: `GET /api/student/timetable` (student-only, returns timetable entries joined with subject and teacher names)
+- **Features**:
+  - Live header with student class name, current date, and a ticking clock
+  - Countdown banner showing time until next class
+  - Today View: lists all classes for the current weekday with automatic status detection (Ongoing / Upcoming / Completed)
+  - Ongoing class highlighted with a pulsing LIVE badge and a "Join Class" button
+  - Weekly View: Monday–Friday day tabs, each showing that day's schedule
+  - Class detail dialog: shows subject, teacher, time, day, location, topic (placeholder), and meeting link (placeholder)
+  - Empty state when no classes are scheduled
+  - Fully mobile-responsive with card-based layout and color-coded subjects
+
 ## Git Identity
 
 - Global git config: `user.name=Treasure123-school`, `user.email=treasurehomeschool@gmail.com`
