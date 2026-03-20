@@ -13475,6 +13475,85 @@ School Management System Administration
 
   // ==================== END MODULE 1 ROUTES ====================
 
+  // ==================== MESSAGES API ROUTES ====================
+  app.get('/api/messages/user/:userId', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.params;
+      const msgs = await storage.getMessagesByUser(userId);
+      res.json(msgs);
+    } catch (error: any) {
+      res.status(500).json({ message: 'Failed to fetch messages' });
+    }
+  });
+
+  app.post('/api/messages', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const parsed = insertMessageSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: 'Invalid message data', errors: parsed.error.errors });
+      }
+      const msg = await storage.sendMessage(parsed.data);
+      res.status(201).json(msg);
+    } catch (error: any) {
+      res.status(500).json({ message: 'Failed to send message' });
+    }
+  });
+
+  app.patch('/api/messages/:id/read', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ message: 'Invalid message ID' });
+      await storage.markMessageAsRead(id);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ message: 'Failed to mark message as read' });
+    }
+  });
+  // ==================== END MESSAGES API ROUTES ====================
+
+  // ==================== STUDENT CLASS RANK ROUTE ====================
+  app.get('/api/student/class-rank', authenticateUser, async (req: Request, res: Response) => {
+    try {
+      const authUser = (req as any).user as AuthenticatedUser;
+      const student = await storage.getStudentByUserId(authUser.id);
+      if (!student || !student.classId) {
+        return res.json({ rank: null, total: null, percentage: null });
+      }
+
+      const classStudents = await storage.getStudentsByClass(student.classId);
+      if (classStudents.length === 0) {
+        return res.json({ rank: null, total: 0, percentage: null });
+      }
+
+      const studentScores = await Promise.all(
+        classStudents.map(async (s) => {
+          const results = await db
+            .select({ score: schema.examResults.score, marksObtained: schema.examResults.marksObtained, maxScore: schema.examResults.maxScore })
+            .from(schema.examResults)
+            .where(eq(schema.examResults.studentId, s.id));
+          const valid = results.filter((r: { score: number | null; marksObtained: number | null; maxScore: number | null }) => r.score != null || r.marksObtained != null);
+          const avg = valid.length > 0
+            ? valid.reduce((sum: number, r: { score: number | null; marksObtained: number | null; maxScore: number | null }) => sum + (r.score ?? r.marksObtained ?? 0), 0) / valid.length
+            : 0;
+          return { studentId: s.id, avg };
+        })
+      );
+
+      studentScores.sort((a, b) => b.avg - a.avg);
+
+      const rankIndex = studentScores.findIndex((s) => s.studentId === authUser.id);
+      const rank = rankIndex >= 0 ? rankIndex + 1 : null;
+      const total = classStudents.length;
+      const percentage = rank !== null ? Math.round((rank / total) * 100) : null;
+
+      res.json({ rank, total, percentage });
+    } catch (error: any) {
+      console.error('Error fetching class rank:', error);
+      res.status(500).json({ message: 'Failed to fetch class rank' });
+    }
+  });
+  // ==================== END STUDENT CLASS RANK ROUTE ====================
+
   const httpServer = createServer(app);
   return httpServer;
 }
