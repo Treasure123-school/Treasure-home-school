@@ -174,59 +174,56 @@ export default function StudentClassSchedule() {
     d.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 
   return (
-    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
+    <div className="space-y-6 pb-8" data-testid="student-class-schedule">
       {/* ── Header ── */}
-      <div className="rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 text-white p-5 sm:p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-blue-200 text-sm font-medium">
-              <GraduationCap className="h-4 w-4" />
-              {isLoading ? (
-                <Skeleton className="h-4 w-28 bg-blue-500/40" />
-              ) : (
-                <span>{data?.className ?? 'My Schedule'}</span>
-              )}
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Class Schedule</h1>
-            <div className="flex items-center gap-2 text-blue-200 text-sm">
-              <Calendar className="h-4 w-4" />
-              <span data-testid="text-current-date">{formatDate(now)}</span>
-            </div>
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Class Schedule</h1>
+          <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1.5">
+            <Calendar className="h-3.5 w-3.5" />
+            <span data-testid="text-current-date">{formatDate(now)}</span>
+          </p>
+          {isLoading ? (
+            <Skeleton className="h-4 w-24 mt-1" />
+          ) : data?.className ? (
+            <span className="inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
+              <GraduationCap className="h-3 w-3" />
+              {data.className}
+            </span>
+          ) : null}
+        </div>
+
+        <div className="flex flex-col items-start sm:items-end gap-2 self-start">
+          <div
+            className="flex items-center gap-2 bg-muted rounded-xl px-4 py-2 tabular-nums font-mono text-base font-semibold text-foreground"
+            data-testid="text-live-clock"
+          >
+            <Clock className="h-4 w-4 text-primary" />
+            {formatClock(now)}
           </div>
-
-          <div className="flex flex-col items-start sm:items-end gap-2">
-            <div
-              className="flex items-center gap-2 bg-white/15 backdrop-blur-sm rounded-xl px-4 py-2.5 tabular-nums font-mono text-xl font-semibold"
-              data-testid="text-live-clock"
-            >
-              <Clock className="h-5 w-5 text-blue-200" />
-              {formatClock(now)}
-            </div>
-
-            {nextClass && countdownSeconds !== null && countdownSeconds > 0 && (
-              <div className="flex items-center gap-2 bg-amber-400/20 border border-amber-300/30 rounded-xl px-3 py-1.5 text-sm">
-                <Timer className="h-4 w-4 text-amber-300" />
-                <span className="text-amber-100 font-medium">
-                  Next class in{' '}
-                  <span className="font-bold tabular-nums" data-testid="text-countdown">
-                    {formatCountdown(countdownSeconds)}
-                  </span>
+          {nextClass && countdownSeconds !== null && countdownSeconds > 0 && (
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/20 text-xs font-semibold text-amber-700 dark:text-secondary">
+              <Timer className="h-3.5 w-3.5" />
+              <span>
+                Next in{' '}
+                <span className="font-bold tabular-nums" data-testid="text-countdown">
+                  {formatCountdown(countdownSeconds)}
                 </span>
-              </div>
-            )}
-          </div>
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
       {/* ── View Toggle ── */}
-      <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 w-fit">
+      <div className="flex items-center gap-1 bg-muted rounded-xl p-1 w-fit">
         <button
           onClick={() => setView('today')}
           data-testid="button-today-view"
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
             view === 'today'
-              ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-400 shadow-sm'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              ? 'bg-white dark:bg-card text-primary shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           <Layers className="h-4 w-4" />
@@ -237,8 +234,8 @@ export default function StudentClassSchedule() {
           data-testid="button-weekly-view"
           className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
             view === 'weekly'
-              ? 'bg-white dark:bg-gray-700 text-blue-700 dark:text-blue-400 shadow-sm'
-              : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+              ? 'bg-white dark:bg-card text-primary shadow-sm'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           <CalendarDays className="h-4 w-4" />
@@ -352,14 +349,14 @@ function WeeklyView({
               data-testid={`button-day-${day.toLowerCase()}`}
               className={`flex-shrink-0 flex flex-col items-center gap-0.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 border ${
                 isActive
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/25'
+                  ? 'bg-primary text-white border-primary shadow-sm'
                   : isToday
-                  ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-700'
-                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600'
+                  ? 'bg-primary/10 text-primary border-primary/20'
+                  : 'bg-card text-muted-foreground border-border hover:border-primary/30'
               }`}
             >
               <span>{DAY_SHORT[day]}</span>
-              <span className={`text-xs ${isActive ? 'text-blue-200' : 'text-gray-400 dark:text-gray-500'}`}>
+              <span className={`text-xs ${isActive ? 'text-white/70' : 'text-muted-foreground/60'}`}>
                 {count} {count === 1 ? 'class' : 'classes'}
               </span>
             </button>

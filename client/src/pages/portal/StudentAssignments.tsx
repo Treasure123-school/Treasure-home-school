@@ -146,35 +146,28 @@ export default function StudentAssignments() {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6 pb-8" data-testid="student-assignments">
       {/* Header */}
-      <div className="rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 text-white p-5 sm:p-6 shadow-sm">
-        <div className="flex items-center gap-3 mb-1">
-          <div className="h-10 w-10 rounded-xl bg-white/15 flex items-center justify-center">
-            <ClipboardPen className="h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Assignments</h1>
-            <p className="text-blue-200 text-sm">Track, submit, and review your work</p>
-          </div>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">Assignments</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Track, submit, and review your work</p>
       </div>
 
       {/* Filter tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
         {(['all', 'pending', 'submitted', 'late'] as FilterTab[]).map(tab => (
           <button
             key={tab}
             onClick={() => setFilter(tab)}
             data-testid={`button-filter-${tab}`}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-all duration-200 border ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 ${
               filter === tab
-                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600'
+                ? 'bg-primary text-white shadow-sm'
+                : 'bg-muted text-muted-foreground hover:text-foreground'
             }`}
           >
             {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            <span className={`px-1.5 py-0.5 rounded-full text-xs font-bold ${filter === tab ? 'bg-white/20' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'}`}>
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${filter === tab ? 'bg-white/20' : 'bg-background text-muted-foreground'}`}>
               {counts[tab]}
             </span>
           </button>

@@ -236,27 +236,25 @@ export default function StudentSubjects() {
                           )}
 
                           {/* Action Row */}
-                          <div className="flex items-center gap-1.5 pt-1 border-t border-border/60">
+                          <div className="grid grid-cols-4 divide-x divide-border/60 pt-1 border-t border-border/60">
                             <button
-                              className="flex-1 flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary py-1.5 rounded-lg hover:bg-primary/5 transition-colors"
+                              className="flex flex-col items-center gap-0.5 text-muted-foreground hover:text-primary py-2 hover:bg-primary/5 transition-colors"
                               onClick={() => navigate(`/portal/student/scheme-of-work?subject=${subjectId}`)}
                               data-testid={`button-scheme-${subjectId}`}
                             >
                               <Layers className="w-3.5 h-3.5" />
-                              Scheme
+                              <span className="text-[10px]">Scheme</span>
                             </button>
-                            <div className="w-px h-4 bg-border" />
                             <button
-                              className="flex-1 flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary py-1.5 rounded-lg hover:bg-primary/5 transition-colors"
+                              className="flex flex-col items-center gap-0.5 text-muted-foreground hover:text-primary py-2 hover:bg-primary/5 transition-colors"
                               onClick={() => navigate(`/portal/student/study-resources?subject=${subjectId}`)}
                               data-testid={`button-materials-${subjectId}`}
                             >
                               <FolderOpen className="w-3.5 h-3.5" />
-                              Materials
+                              <span className="text-[10px]">Files</span>
                             </button>
-                            <div className="w-px h-4 bg-border" />
                             <button
-                              className={`flex-1 flex items-center justify-center gap-1 text-xs py-1.5 rounded-lg transition-colors ${
+                              className={`flex flex-col items-center gap-0.5 py-2 transition-colors ${
                                 active
                                   ? 'text-amber-700 dark:text-secondary font-semibold hover:bg-secondary/10'
                                   : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
@@ -265,16 +263,15 @@ export default function StudentSubjects() {
                               data-testid={`button-exams-${subjectId}`}
                             >
                               <ClipboardList className="w-3.5 h-3.5" />
-                              Exams
+                              <span className="text-[10px]">Exams</span>
                             </button>
-                            <div className="w-px h-4 bg-border" />
                             <button
-                              className="flex-1 flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-primary py-1.5 rounded-lg hover:bg-primary/5 transition-colors"
+                              className="flex flex-col items-center gap-0.5 text-muted-foreground hover:text-primary py-2 hover:bg-primary/5 transition-colors"
                               onClick={() => navigate(`/portal/student/exam-results?subject=${subjectId}`)}
                               data-testid={`button-scores-${subjectId}`}
                             >
                               <Award className="w-3.5 h-3.5" />
-                              Scores
+                              <span className="text-[10px]">Scores</span>
                             </button>
                           </div>
                         </div>

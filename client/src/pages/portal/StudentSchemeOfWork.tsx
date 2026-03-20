@@ -1,26 +1,22 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   BookOpen,
   Layers,
-  CheckCircle2,
-  Circle,
   GraduationCap,
   BookMarked,
   Palette,
   Briefcase,
 } from 'lucide-react';
 
-const CATEGORY_CONFIG: Record<string, { color: string; icon: any }> = {
-  general:    { color: 'bg-slate-500',  icon: BookMarked },
-  science:    { color: 'bg-blue-500',   icon: GraduationCap },
-  art:        { color: 'bg-purple-500', icon: Palette },
-  commercial: { color: 'bg-amber-500',  icon: Briefcase },
+const CATEGORY_CONFIG: Record<string, { icon: any; label: string }> = {
+  general:    { icon: BookMarked,   label: 'General' },
+  science:    { icon: GraduationCap, label: 'Science' },
+  art:        { icon: Palette,      label: 'Art' },
+  commercial: { icon: Briefcase,    label: 'Commercial' },
 };
 
 export default function StudentSchemeOfWork() {
@@ -159,51 +155,40 @@ export default function StudentSchemeOfWork() {
             return (
               <section key={subject?.id || subject?.subjectId} data-testid={`scheme-subject-${subject?.id || subject?.subjectId}`}>
                 {/* Subject Heading */}
-                <div className="flex items-center gap-3 mb-4">
-                  <div className={`w-8 h-8 rounded-lg ${config.color} flex items-center justify-center flex-shrink-0`}>
-                    <CategoryIcon className="w-4 h-4 text-white" />
-                  </div>
+                <div className="flex items-center gap-2 mb-3">
+                  <CategoryIcon className="w-4 h-4 text-primary" />
                   <div className="flex-1 min-w-0">
-                    <h2 className="font-semibold text-base leading-tight">
+                    <h2 className="font-semibold text-sm leading-tight">
                       {subject?.subjectName || subject?.name || 'Unknown Subject'}
                     </h2>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wide">
-                      {subject?.subjectCode || subject?.code}
-                    </p>
                   </div>
-                  <Badge variant="secondary" className="shrink-0">
+                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/10 text-primary shrink-0">
                     {subjectTopics.length} topic{subjectTopics.length !== 1 ? 's' : ''}
-                  </Badge>
+                  </span>
                 </div>
 
                 {/* Topics Grid */}
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                   {subjectTopics
                     .sort((a: any, b: any) => (a.orderNumber || 0) - (b.orderNumber || 0))
                     .map((topic: any, index: number) => (
-                      <Card
+                      <div
                         key={topic.id}
-                        className="border hover:shadow-sm transition-shadow duration-200"
+                        className="flex items-start gap-3 p-3 rounded-xl border bg-card hover:shadow-sm transition-shadow"
                         data-testid={`topic-card-${topic.id}`}
                       >
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-3">
-                            <div className="flex-shrink-0 mt-0.5">
-                              <span className={`w-6 h-6 rounded-full ${config.color} text-white text-xs font-bold flex items-center justify-center`}>
-                                {topic.orderNumber || index + 1}
-                              </span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm leading-snug">{topic.name}</p>
-                              {topic.description && (
-                                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                                  {topic.description}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                        <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                          {topic.orderNumber || index + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm leading-snug">{topic.name}</p>
+                          {topic.description && (
+                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                              {topic.description}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     ))}
                 </div>
               </section>
