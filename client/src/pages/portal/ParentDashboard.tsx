@@ -672,8 +672,8 @@ export default function ParentDashboard() {
 
         {/* Child Progress Overview */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-blue-50/30">
-            <CardHeader className="border-b border-gray-200/50">
+          <Card className="shadow-lg border-0 bg-gradient-to-br from-white dark:from-card to-blue-50/30 dark:to-card">
+            <CardHeader className="border-b border-gray-200/50 dark:border-gray-700/50">
               <div className="flex items-center gap-3">
                 <div className="p-2 sm:p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg">
                   <Award className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
@@ -685,29 +685,29 @@ export default function ParentDashboard() {
               </div>
             </CardHeader>
             <CardContent className="pt-4 sm:pt-6 space-y-3 sm:space-y-4">
-              <div className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow">
-                <div className="p-2 rounded-lg bg-green-100">
-                  <Award className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+              <div className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-white dark:bg-muted shadow-sm hover:shadow-md transition-shadow">
+                <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/40">
+                  <Award className="h-4 w-4 sm:h-5 sm:w-5 text-green-600 dark:text-green-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm sm:text-base font-semibold text-gray-900">Excellent Math Score</p>
-                  <p className="text-xs sm:text-sm text-gray-600">95% in recent exam</p>
+                  <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">Excellent Math Score</p>
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">95% in recent exam</p>
                 </div>
               </div>
-              <div className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow">
-                <div className="p-2 rounded-lg bg-blue-100">
-                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+              <div className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-white dark:bg-muted shadow-sm hover:shadow-md transition-shadow">
+                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/40">
+                  <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm sm:text-base font-semibold text-gray-900">Perfect Attendance</p>
-                  <p className="text-xs sm:text-sm text-gray-600">This month</p>
+                  <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">Perfect Attendance</p>
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">This month</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="shadow-lg border-0 bg-gradient-to-br from-white to-blue-50/30">
-            <CardHeader className="border-b border-gray-200/50">
+          <Card className="shadow-lg border-0 bg-gradient-to-br from-white dark:from-card to-blue-50/30 dark:to-card">
+            <CardHeader className="border-b border-gray-200/50 dark:border-gray-700/50">
               <div className="flex items-center gap-3">
                 <div className="p-2 sm:p-3 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 shadow-lg">
                   <Bell className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
@@ -719,22 +719,22 @@ export default function ParentDashboard() {
               </div>
             </CardHeader>
             <CardContent className="pt-4 sm:pt-6 space-y-3 sm:space-y-4">
-              <div className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow">
-                <div className="p-2 rounded-lg bg-orange-100">
-                  <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600" />
+              <div className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-white dark:bg-muted shadow-sm hover:shadow-md transition-shadow">
+                <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/40">
+                  <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5 text-orange-600 dark:text-orange-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm sm:text-base font-semibold text-gray-900">Parent-Teacher Meeting</p>
-                  <p className="text-xs sm:text-sm text-gray-600">Scheduled for Friday, 2:00 PM</p>
+                  <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">Parent-Teacher Meeting</p>
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Scheduled for Friday, 2:00 PM</p>
                 </div>
               </div>
-              <div className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-white shadow-sm hover:shadow-md transition-shadow">
-                <div className="p-2 rounded-lg bg-purple-100">
-                  <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600" />
+              <div className="flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl bg-white dark:bg-muted shadow-sm hover:shadow-md transition-shadow">
+                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/40">
+                  <BookOpen className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 dark:text-purple-400" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm sm:text-base font-semibold text-gray-900">Exam Schedule</p>
-                  <p className="text-xs sm:text-sm text-gray-600">Mid-term exams next week</p>
+                  <p className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">Exam Schedule</p>
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Mid-term exams next week</p>
                 </div>
               </div>
             </CardContent>
