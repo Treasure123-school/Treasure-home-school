@@ -116,8 +116,14 @@ export default function StudentHelp() {
     staleTime: 10 * 60 * 1000,
   });
 
-  const schoolEmails: string[] = (() => { try { return JSON.parse(settings?.schoolEmails || '[]'); } catch { return []; } })();
-  const schoolPhones: string[] = (() => { try { return JSON.parse(settings?.schoolPhones || '[]'); } catch { return []; } })();
+  const parseStringOrArray = (val: any): string[] => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val.filter(v => typeof v === 'string' && v.trim());
+    if (typeof val === 'string') { try { const p = JSON.parse(val); return Array.isArray(p) ? p.filter(v => typeof v === 'string' && v.trim()) : []; } catch { return []; } }
+    return [];
+  };
+  const schoolEmails = parseStringOrArray(settings?.schoolEmails);
+  const schoolPhones = parseStringOrArray(settings?.schoolPhones);
   const primaryEmail = schoolEmails[0] || null;
   const primaryPhone = schoolPhones[0] || null;
 
