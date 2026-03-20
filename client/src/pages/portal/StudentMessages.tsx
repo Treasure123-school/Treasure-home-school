@@ -5,12 +5,16 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/lib/auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { MessageSquare, Send, Search, User, Calendar, Mail, ArrowLeft, Plus } from 'lucide-react';
+import {
+  MessageSquare, Send, Search, User, Calendar, Mail, ArrowLeft, Plus,
+  Inbox, Clock, CheckCircle2, X
+} from 'lucide-react';
 import { Link } from 'wouter';
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function StudentMessages() {
   const { user } = useAuth();
@@ -19,6 +23,7 @@ export default function StudentMessages() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedMessage, setSelectedMessage] = useState<any>(null);
   const [isComposeOpen, setIsComposeOpen] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
   const [composeData, setComposeData] = useState({
     recipientId: '',
     subject: '',
@@ -26,14 +31,13 @@ export default function StudentMessages() {
   });
 
   if (!user) {
-    return <div>Please log in to access your messages.</div>;
+    return <div className="p-6 text-center text-muted-foreground">Please log in to access your messages.</div>;
   }
-  const { data: messages = [], isLoading, error } = useQuery({
+
+  const { data: messages = [], isLoading } = useQuery({
     queryKey: ['messages', user.id],
     queryFn: async () => {
-      const response = await fetch(`/api/messages/user/${user.id}`, {
-        credentials: 'include'
-      });
+      const response = await fetch(`/api/messages/user/${user.id}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch messages');
       return response.json();
     }
@@ -42,9 +46,7 @@ export default function StudentMessages() {
   const { data: teachers = [] } = useQuery({
     queryKey: ['teachers'],
     queryFn: async () => {
-      const response = await fetch('/api/users?role=Teacher', {
-        credentials: 'include'
-      });
+      const response = await fetch('/api/users?role=Teacher', { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch teachers');
       return response.json();
     }
@@ -54,33 +56,21 @@ export default function StudentMessages() {
     mutationFn: async (messageData: any) => {
       const response = await fetch('/api/messages', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({
-          ...messageData,
-          senderId: user.id
-        })
+        body: JSON.stringify({ ...messageData, senderId: user.id })
       });
       if (!response.ok) throw new Error('Failed to send message');
       return response.json();
     },
     onSuccess: () => {
-      toast({
-        title: "Message Sent",
-        description: "Your message has been sent successfully.",
-      });
+      toast({ title: 'Message Sent', description: 'Your message has been sent successfully.' });
       setIsComposeOpen(false);
       setComposeData({ recipientId: '', subject: '', content: '' });
       queryClient.invalidateQueries({ queryKey: ['messages', user.id] });
     },
     onError: () => {
-      toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: 'Error', description: 'Failed to send message. Please try again.', variant: 'destructive' });
     }
   });
 
@@ -98,28 +88,16 @@ export default function StudentMessages() {
     }
   });
 
-  // Map roleId to role name - matches ROLE_IDS in lib/roles.ts
-  const getRoleName = (roleId: number): 'admin' | 'teacher' | 'parent' | 'student' => {
-    const roleMap: { [key: number]: 'admin' | 'teacher' | 'parent' | 'student' } = {
-      1: 'admin', 2: 'admin', 3: 'teacher', 4: 'student', 5: 'parent'
-    };
-    return roleMap[roleId] || 'student';
-  };
-
   const filteredMessages = messages.filter((message: any) =>
-    message.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    message.content.toLowerCase().includes(searchTerm.toLowerCase())
+    message.subject?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    message.content?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const unreadCount = messages.filter((m: any) => !m.isRead).length;
 
   const handleSendMessage = () => {
     if (!composeData.recipientId || !composeData.subject || !composeData.content) {
-      toast({
-        title: "Error",
-        description: "Please fill in all fields.",
-        variant: "destructive",
-      });
+      toast({ title: 'Error', description: 'Please fill in all fields.', variant: 'destructive' });
       return;
     }
     sendMessageMutation.mutate(composeData);
@@ -127,230 +105,342 @@ export default function StudentMessages() {
 
   const handleMessageClick = (message: any) => {
     setSelectedMessage(message);
+    setShowDetail(true);
     if (!message.isRead) {
       markAsReadMutation.mutate(message.id);
     }
   };
 
-  return (
-    <>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/portal/student">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
-              </Link>
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Messages</h1>
-              <p className="text-muted-foreground">
-                Communicate with teachers and school administration
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Mail className="h-5 w-5 text-primary" />
-            <Badge variant="secondary">{unreadCount} unread</Badge>
-            <Dialog open={isComposeOpen} onOpenChange={setIsComposeOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Message
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Compose Message</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="recipient">To</Label>
-                    <select
-                      id="recipient"
-                      className="w-full p-2 border rounded"
-                      value={composeData.recipientId}
-                      onChange={(e) => setComposeData(prev => ({ ...prev, recipientId: e.target.value }))}
-                    >
-                      <option value="">Select a teacher...</option>
-                      {teachers.map((teacher: any) => (
-                        <option key={teacher.id} value={teacher.id}>
-                          {teacher.firstName} {teacher.lastName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <Label htmlFor="subject">Subject</Label>
-                    <Input
-                      id="subject"
-                      placeholder="Enter subject..."
-                      value={composeData.subject}
-                      onChange={(e) => setComposeData(prev => ({ ...prev, subject: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="content">Message</Label>
-                    <Textarea
-                      id="content"
-                      placeholder="Type your message..."
-                      rows={4}
-                      value={composeData.content}
-                      onChange={(e) => setComposeData(prev => ({ ...prev, content: e.target.value }))}
-                    />
-                  </div>
-                  <div className="flex justify-end space-x-2">
-                    <Button variant="outline" onClick={() => setIsComposeOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleSendMessage} disabled={sendMessageMutation.isPending}>
-                      <Send className="h-4 w-4 mr-2" />
-                      {sendMessageMutation.isPending ? 'Sending...' : 'Send'}
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
+  const getInitials = (name: string) => {
+    if (!name) return 'U';
+    return name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
+  };
 
-        {/* Search */}
+  const formatDate = (date: string) => {
+    const d = new Date(date);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return d.toLocaleDateString([], { weekday: 'short' });
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
+
+  const avatarColors = [
+    'from-blue-500 to-blue-600', 'from-purple-500 to-purple-600',
+    'from-green-500 to-green-600', 'from-orange-500 to-orange-600',
+    'from-pink-500 to-pink-600', 'from-teal-500 to-teal-600',
+  ];
+
+  const getAvatarColor = (name: string) => {
+    const index = (name?.charCodeAt(0) || 0) % avatarColors.length;
+    return avatarColors[index];
+  };
+
+  const MessageList = () => (
+    <div className="flex flex-col h-full">
+      {/* List header */}
+      <div className="flex-shrink-0 p-4 border-b border-gray-100 dark:border-gray-800">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search messages..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-9 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-xl"
+            data-testid="input-search-messages"
           />
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Messages List */}
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">Inbox</h2>
-            {isLoading ? (
-              <div className="space-y-3">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Card key={i}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse"></div>
-                        <div className="flex-1 space-y-2">
-                          <div className="h-4 w-3/4 bg-gray-200 rounded animate-pulse"></div>
-                          <div className="h-3 w-1/2 bg-gray-200 rounded animate-pulse"></div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+        {isLoading ? (
+          <div className="p-4 space-y-3">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="flex items-start gap-3">
+                <Skeleton className="h-10 w-10 rounded-full flex-shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-1/2" />
+                </div>
               </div>
-            ) : filteredMessages.length > 0 ? (
-              <div className="space-y-3">
-                {filteredMessages.map((message: any) => (
-                  <Card 
-                    key={message.id} 
-                    className={`cursor-pointer transition-colors hover:bg-muted/50 ${
-                      selectedMessage?.id === message.id ? 'border-primary' : ''
-                    } ${!message.isRead ? 'border-l-4 border-l-primary' : ''}`}
-                    onClick={() => handleMessageClick(message)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start space-x-3">
-                          <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center text-white text-sm font-medium">
-                            <User className="h-5 w-5" />
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2">
-                              <h3 className={`font-medium ${!message.isRead ? 'font-bold' : ''}`}>
-                                {message.subject}
-                              </h3>
-                              {!message.isRead && (
-                                <Badge variant="default" className="text-xs">New</Badge>
-                              )}
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              From: {message.senderName || 'Teacher'}
-                            </p>
-                            <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                              {message.content}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {new Date(message.createdAt).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card>
-                <CardContent className="p-6">
-                  <div className="text-center py-8">
-                    <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No messages yet</h3>
-                    <p className="text-muted-foreground mb-4">
-                      Your messages from teachers and school administration will appear here.
-                    </p>
-                    <Button variant="outline" onClick={() => setIsComposeOpen(true)}>
-                      Send your first message
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+            ))}
+          </div>
+        ) : filteredMessages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+            <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mb-4">
+              <Inbox className="h-8 w-8 text-blue-500 dark:text-blue-400" />
+            </div>
+            <h3 className="font-semibold text-gray-700 dark:text-gray-300 mb-1">
+              {searchTerm ? 'No results found' : 'Your inbox is empty'}
+            </h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              {searchTerm ? `No messages matching "${searchTerm}"` : 'Messages from your teachers will appear here.'}
+            </p>
+            {!searchTerm && (
+              <Button size="sm" onClick={() => setIsComposeOpen(true)} data-testid="button-compose-empty">
+                <Plus className="h-4 w-4 mr-2" /> Send a message
+              </Button>
             )}
           </div>
-
-          {/* Message Details */}
-          <div>
-            <h2 className="text-lg font-semibold mb-4">Message Details</h2>
-            {selectedMessage ? (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
-                    <span>{selectedMessage.subject}</span>
-                    {!selectedMessage.isRead && (
-                      <Badge variant="default">New</Badge>
-                    )}
-                  </CardTitle>
-                  <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                    <div className="flex items-center space-x-1">
-                      <User className="h-4 w-4" />
-                      <span>From: {selectedMessage.senderName || 'Teacher'}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <Calendar className="h-4 w-4" />
-                      <span>{new Date(selectedMessage.createdAt).toLocaleString()}</span>
-                    </div>
+        ) : (
+          filteredMessages.map((message: any) => {
+            const senderName = message.senderName || 'Teacher';
+            const isSelected = selectedMessage?.id === message.id;
+            return (
+              <button
+                key={message.id}
+                onClick={() => handleMessageClick(message)}
+                className={`w-full text-left px-4 py-3.5 transition-colors hover:bg-blue-50/60 dark:hover:bg-blue-900/10 ${isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-l-2 border-l-blue-500' : ''} ${!message.isRead ? 'bg-white dark:bg-gray-900' : 'bg-gray-50/50 dark:bg-gray-800/30'}`}
+                data-testid={`button-message-${message.id}`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`h-9 w-9 rounded-full bg-gradient-to-br ${getAvatarColor(senderName)} flex items-center justify-center text-white text-xs font-bold flex-shrink-0 shadow-sm`}>
+                    {getInitials(senderName)}
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="prose prose-sm max-w-none">
-                    <p className="whitespace-pre-wrap">{selectedMessage.content}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardContent className="p-6">
-                  <div className="text-center py-8">
-                    <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">Select a message</h3>
-                    <p className="text-muted-foreground">
-                      Choose a message from the left to view its contents.
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`text-sm truncate ${!message.isRead ? 'font-bold text-gray-900 dark:text-gray-100' : 'font-medium text-gray-700 dark:text-gray-300'}`}>
+                        {senderName}
+                      </span>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        {!message.isRead && (
+                          <span className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0" />
+                        )}
+                        <span className="text-[11px] text-muted-foreground whitespace-nowrap">
+                          {formatDate(message.createdAt)}
+                        </span>
+                      </div>
+                    </div>
+                    <p className={`text-sm truncate mt-0.5 ${!message.isRead ? 'font-semibold text-gray-800 dark:text-gray-200' : 'text-gray-600 dark:text-gray-400'}`}>
+                      {message.subject}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      {message.content}
                     </p>
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                </div>
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+
+  const MessageDetail = () => (
+    <div className="flex flex-col h-full">
+      {selectedMessage ? (
+        <>
+          {/* Detail header */}
+          <div className="flex-shrink-0 p-5 border-b border-gray-100 dark:border-gray-800">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 leading-snug">
+                {selectedMessage.subject}
+              </h2>
+              <button
+                onClick={() => { setSelectedMessage(null); setShowDetail(false); }}
+                className="flex-shrink-0 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-muted-foreground transition-colors"
+                data-testid="button-close-message"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <div className={`h-7 w-7 rounded-full bg-gradient-to-br ${getAvatarColor(selectedMessage.senderName || 'Teacher')} flex items-center justify-center text-white text-xs font-bold shadow-sm`}>
+                  {getInitials(selectedMessage.senderName || 'Teacher')}
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">{selectedMessage.senderName || 'Teacher'}</p>
+                  <p className="text-[11px] text-muted-foreground">To: You</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 ml-auto">
+                <Clock className="h-3.5 w-3.5" />
+                <span className="text-xs">{new Date(selectedMessage.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}</span>
+              </div>
+            </div>
+          </div>
+          {/* Message content */}
+          <div className="flex-1 overflow-y-auto p-5">
+            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4">
+              <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
+                {selectedMessage.content}
+              </p>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-col items-center justify-center h-full py-16 px-6 text-center">
+          <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-full flex items-center justify-center mb-5 shadow-inner">
+            <Mail className="h-9 w-9 text-blue-400 dark:text-blue-500" />
+          </div>
+          <h3 className="font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Select a message</h3>
+          <p className="text-sm text-muted-foreground max-w-[240px]">
+            Choose a message from your inbox to read its contents here.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col h-full space-y-4">
+      {/* Page Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">Messages</h1>
+            <p className="text-sm text-muted-foreground">Communicate with teachers and school staff</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {unreadCount > 0 && (
+            <Badge variant="secondary" className="bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-semibold" data-testid="badge-unread-count">
+              {unreadCount} unread
+            </Badge>
+          )}
+        </div>
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-3 flex items-center gap-3 shadow-sm">
+          <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+            <Inbox className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Total</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-gray-100" data-testid="text-total-messages">{messages.length}</p>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-3 flex items-center gap-3 shadow-sm">
+          <div className="h-8 w-8 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
+            <MessageSquare className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Unread</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-gray-100" data-testid="text-unread-messages">{unreadCount}</p>
+          </div>
+        </div>
+        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-3 flex items-center gap-3 shadow-sm">
+          <div className="h-8 w-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">Read</p>
+            <p className="text-lg font-bold text-gray-900 dark:text-gray-100" data-testid="text-read-messages">{messages.length - unreadCount}</p>
           </div>
         </div>
       </div>
-    </>
+
+      {/* Main inbox area */}
+      <div className="flex-1 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+        {/* Mobile: toggle between list and detail */}
+        <div className="lg:hidden h-full">
+          {showDetail && selectedMessage ? (
+            <div className="h-full flex flex-col">
+              <div className="flex-shrink-0 flex items-center gap-2 p-3 border-b border-gray-100 dark:border-gray-800">
+                <Button variant="ghost" size="sm" onClick={() => setShowDetail(false)} data-testid="button-back-to-list">
+                  <ArrowLeft className="h-4 w-4 mr-1.5" />
+                  Back to inbox
+                </Button>
+              </div>
+              <div className="flex-1 overflow-hidden">
+                <MessageDetail />
+              </div>
+            </div>
+          ) : (
+            <MessageList />
+          )}
+        </div>
+
+        {/* Desktop: side-by-side */}
+        <div className="hidden lg:flex h-full min-h-[520px]">
+          <div className="w-80 xl:w-96 flex-shrink-0 border-r border-gray-100 dark:border-gray-800 overflow-hidden">
+            <MessageList />
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <MessageDetail />
+          </div>
+        </div>
+      </div>
+
+      {/* Floating Action Button */}
+      <button
+        onClick={() => setIsComposeOpen(true)}
+        className="fixed bottom-6 right-6 z-50 h-14 w-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-xl flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
+        data-testid="button-compose-fab"
+        title="New Message"
+      >
+        <Plus className="h-6 w-6" />
+      </button>
+
+      {/* Compose Dialog */}
+      <Dialog open={isComposeOpen} onOpenChange={setIsComposeOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mail className="h-5 w-5 text-blue-600" />
+              Compose Message
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div>
+              <Label htmlFor="recipient" className="text-sm font-medium">To</Label>
+              <select
+                id="recipient"
+                className="w-full mt-1.5 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                value={composeData.recipientId}
+                onChange={(e) => setComposeData(prev => ({ ...prev, recipientId: e.target.value }))}
+                data-testid="select-recipient"
+              >
+                <option value="">Select a teacher...</option>
+                {teachers.map((teacher: any) => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {teacher.firstName} {teacher.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="subject" className="text-sm font-medium">Subject</Label>
+              <Input
+                id="subject"
+                placeholder="Enter subject..."
+                value={composeData.subject}
+                onChange={(e) => setComposeData(prev => ({ ...prev, subject: e.target.value }))}
+                className="mt-1.5"
+                data-testid="input-message-subject"
+              />
+            </div>
+            <div>
+              <Label htmlFor="content" className="text-sm font-medium">Message</Label>
+              <Textarea
+                id="content"
+                placeholder="Type your message..."
+                rows={5}
+                value={composeData.content}
+                onChange={(e) => setComposeData(prev => ({ ...prev, content: e.target.value }))}
+                className="mt-1.5 resize-none"
+                data-testid="textarea-message-content"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-1">
+              <Button variant="outline" onClick={() => setIsComposeOpen(false)} data-testid="button-cancel-compose">
+                Cancel
+              </Button>
+              <Button onClick={handleSendMessage} disabled={sendMessageMutation.isPending} data-testid="button-send-message">
+                <Send className="h-4 w-4 mr-2" />
+                {sendMessageMutation.isPending ? 'Sending...' : 'Send Message'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

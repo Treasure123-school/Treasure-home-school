@@ -26,6 +26,54 @@
   --ring: hsl(220, 90%, 50%);
   --radius: 0.5rem;
   --font-sans: 'Montserrat', 'Open Sans', 'Inter', sans-serif;
+  --chart-1: hsl(220, 90%, 50%);
+  --chart-2: hsl(160, 60%, 45%);
+  --chart-3: hsl(30, 90%, 55%);
+  --chart-4: hsl(280, 65%, 60%);
+  --chart-5: hsl(340, 75%, 55%);
+  --sidebar: hsl(0, 0%, 100%);
+  --sidebar-foreground: hsl(222.2, 84%, 4.9%);
+  --sidebar-primary: hsl(220, 90%, 50%);
+  --sidebar-primary-foreground: hsl(0, 0%, 100%);
+  --sidebar-accent: hsl(210, 40%, 96%);
+  --sidebar-accent-foreground: hsl(222.2, 84%, 4.9%);
+  --sidebar-border: hsl(214.3, 31.8%, 91.4%);
+  --sidebar-ring: hsl(220, 90%, 50%);
+}
+
+.dark {
+  --background: hsl(222, 47%, 10%);
+  --foreground: hsl(210, 40%, 96%);
+  --card: hsl(222, 44%, 14%);
+  --card-foreground: hsl(210, 40%, 96%);
+  --popover: hsl(222, 44%, 12%);
+  --popover-foreground: hsl(210, 40%, 96%);
+  --primary: hsl(220, 90%, 58%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(45, 100%, 62%);
+  --secondary-foreground: hsl(222, 47%, 10%);
+  --muted: hsl(217, 33%, 20%);
+  --muted-foreground: hsl(215, 20%, 60%);
+  --accent: hsl(220, 90%, 58%);
+  --accent-foreground: hsl(0, 0%, 100%);
+  --destructive: hsl(0, 72%, 51%);
+  --destructive-foreground: hsl(210, 40%, 98%);
+  --border: hsl(217, 33%, 22%);
+  --input: hsl(217, 33%, 22%);
+  --ring: hsl(220, 90%, 58%);
+  --chart-1: hsl(220, 90%, 65%);
+  --chart-2: hsl(160, 60%, 55%);
+  --chart-3: hsl(30, 90%, 60%);
+  --chart-4: hsl(280, 65%, 65%);
+  --chart-5: hsl(340, 75%, 60%);
+  --sidebar: hsl(222, 44%, 14%);
+  --sidebar-foreground: hsl(210, 40%, 96%);
+  --sidebar-primary: hsl(220, 90%, 58%);
+  --sidebar-primary-foreground: hsl(0, 0%, 100%);
+  --sidebar-accent: hsl(217, 33%, 20%);
+  --sidebar-accent-foreground: hsl(210, 40%, 96%);
+  --sidebar-border: hsl(217, 33%, 22%);
+  --sidebar-ring: hsl(220, 90%, 58%);
 }
 
 @layer base {
@@ -167,15 +215,15 @@
 }
 
 .section-title {
-  @apply text-3xl font-bold text-gray-900 mb-4;
+  @apply text-3xl font-bold text-gray-900 dark:text-gray-100 mb-4;
 }
 
 .section-subtitle {
-  @apply text-[13px] text-gray-500 mb-12 max-w-2xl mx-auto leading-relaxed font-bold;
+  @apply text-[13px] text-gray-500 dark:text-gray-400 mb-12 max-w-2xl mx-auto leading-relaxed font-bold;
 }
 
 .card-value {
-  @apply bg-white p-8 rounded-xl shadow-sm border border-gray-50 flex flex-col items-center text-center transition-all hover:shadow-md;
+  @apply bg-white dark:bg-card p-8 rounded-xl shadow-sm border border-gray-50 dark:border-border flex flex-col items-center text-center transition-all hover:shadow-md;
 }
 
 .icon-gradient {

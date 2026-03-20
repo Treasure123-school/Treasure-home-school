@@ -102,6 +102,30 @@ export default function StudentDashboard() {
     }
   });
 
+  const { data: classRankData } = useQuery({
+    queryKey: ['/api/student/class-rank'],
+    queryFn: async () => {
+      const response = await fetch('/api/student/class-rank', {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch class rank');
+      return response.json();
+    },
+    enabled: !!user,
+  });
+
+  const { data: messagesData = [] } = useQuery({
+    queryKey: ['messages', user?.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/messages/user/${user!.id}`, {
+        credentials: 'include'
+      });
+      if (!response.ok) throw new Error('Failed to fetch messages');
+      return response.json();
+    },
+    enabled: !!user,
+  });
+
   const { data: exams = [], isLoading: isLoadingExams } = useQuery<Exam[]>({
     queryKey: ['exams'],
     queryFn: async () => {
@@ -192,15 +216,18 @@ export default function StudentDashboard() {
     ? Math.round((attendanceStats.present / attendanceStats.total) * 100)
     : 95;
 
-  // Calculate average GPA
+  // Calculate average score as percentage
   const averageScore = formattedGrades.length > 0
     ? formattedGrades.reduce((sum: number, g: any) => sum + g.score, 0) / formattedGrades.length
     : 0;
-  const gpa = (averageScore / 100 * 4).toFixed(2);
+  const displayScore = parseFloat(averageScore.toFixed(1));
 
-  // Sample GPA trend data (last 6 assessments)
-  const gpaTrendData = formattedGrades.slice(-6).map((g: any) => (g.score / 100 * 4));
-  const hasGpaData = gpaTrendData.length > 0;
+  // Trend data based on last 6 assessment scores (as percentages)
+  const scoreTrendData = formattedGrades.slice(-6).map((g: any) => g.score);
+  const hasScoreData = scoreTrendData.length > 0;
+
+  // Unread messages count
+  const unreadCount = Array.isArray(messagesData) ? messagesData.filter((m: any) => !m.isRead).length : 0;
 
   // Streak calculation (simple version based on attendance)
   const attendanceImprovement = attendancePercentage >= 90;
@@ -288,16 +315,17 @@ export default function StudentDashboard() {
 
       {/* Modern Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* GPA Card with Mini Chart */}
+        {/* Average Score Card with Mini Chart */}
         <Card className="relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 animate-in fade-in slide-in-from-bottom-4 duration-500" data-testid="card-gpa">
           <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/10 to-transparent rounded-full -mr-16 -mt-16"></div>
           <CardContent className="p-6 relative z-10">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Current GPA</p>
+                <p className="text-sm text-muted-foreground mb-1">Average Score</p>
                 <div className="flex items-baseline gap-2">
                   <AnimatedCounter 
-                    value={parseFloat(gpa)} 
+                    value={displayScore} 
+                    suffix="%"
                     className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent"
                   />
                   <TrendingUp className="h-4 w-4 text-green-600" />
@@ -307,7 +335,7 @@ export default function StudentDashboard() {
                 <TrendingUp className="h-6 w-6" />
               </div>
             </div>
-            {hasGpaData && <MiniLineChart data={gpaTrendData} color="#6C63FF" height={40} />}
+            {hasScoreData && <MiniLineChart data={scoreTrendData} color="#6C63FF" height={40} />}
           </CardContent>
         </Card>
 
@@ -328,9 +356,11 @@ export default function StudentDashboard() {
                     <Award className="h-5 w-5 text-green-600" />
                   )}
                 </div>
-                <p className="text-xs text-green-600 mt-1">
-                  ↗ +2% this week
-                </p>
+                {attendanceStats.total > 0 && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {attendanceStats.present} / {attendanceStats.total} days
+                  </p>
+                )}
               </div>
               <div className="flex-shrink-0">
                 {isLoadingAttendance ? (
@@ -359,12 +389,14 @@ export default function StudentDashboard() {
                 <p className="text-sm text-muted-foreground mb-1">Class Rank</p>
                 <div className="flex items-baseline gap-2">
                   <span className="text-4xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">
-                    5th
+                    {classRankData?.rank != null ? `${classRankData.rank}${classRankData.rank === 1 ? 'st' : classRankData.rank === 2 ? 'nd' : classRankData.rank === 3 ? 'rd' : 'th'}` : '—'}
                   </span>
                   <Trophy className="h-5 w-5 text-yellow-600" />
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Top 10% of class
+                <p className="text-xs text-muted-foreground mt-2" data-testid="text-class-rank-detail">
+                  {classRankData?.rank != null && classRankData?.total != null
+                    ? `${classRankData.rank} of ${classRankData.total} students`
+                    : 'No class data yet'}
                 </p>
               </div>
               <div className="p-3 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 text-white shadow-lg animate-bounce">
@@ -375,30 +407,38 @@ export default function StudentDashboard() {
         </Card>
 
         {/* Messages Card */}
-        <Card className="relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 animate-in fade-in slide-in-from-bottom-4 duration-1000" data-testid="card-messages">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-transparent rounded-full -mr-16 -mt-16"></div>
-          <CardContent className="p-6 relative z-10">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Messages</p>
-                <AnimatedCounter 
-                  value={3} 
-                  className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent"
-                />
-                <p className="text-xs text-blue-600 mt-2 flex items-center gap-1">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
-                  </span>
-                  3 unread
-                </p>
+        <Link href="/portal/student/messages">
+          <Card className="relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 animate-in fade-in slide-in-from-bottom-4 duration-1000 cursor-pointer" data-testid="card-messages">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-transparent rounded-full -mr-16 -mt-16"></div>
+            <CardContent className="p-6 relative z-10">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Messages</p>
+                  <AnimatedCounter 
+                    value={unreadCount} 
+                    className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent"
+                  />
+                  {unreadCount > 0 ? (
+                    <p className="text-xs text-blue-600 mt-2 flex items-center gap-1" data-testid="text-unread-count">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                      </span>
+                      {unreadCount} unread
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground mt-2" data-testid="text-unread-count">
+                      No new messages
+                    </p>
+                  )}
+                </div>
+                <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg">
+                  <MessageSquare className="h-6 w-6" />
+                </div>
               </div>
-              <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg">
-                <MessageSquare className="h-6 w-6" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* Main Content Grid */}
@@ -445,9 +485,9 @@ export default function StudentDashboard() {
                           {grade.score}/{grade.maxScore}
                         </span>
                         <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                          grade.grade.startsWith('A') ? 'bg-green-100 text-green-700' :
-                          grade.grade.startsWith('B') ? 'bg-blue-100 text-blue-700' :
-                          'bg-yellow-100 text-yellow-700'
+                          grade.grade.startsWith('A') ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400' :
+                          grade.grade.startsWith('B') ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400' :
+                          'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400'
                         }`}>
                           {grade.grade}
                         </span>
