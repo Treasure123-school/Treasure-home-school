@@ -174,6 +174,37 @@ After any successful exam fee payment, the system sends a confirmation email and
   - Empty state when no classes are scheduled
   - Fully mobile-responsive with card-based layout and color-coded subjects
 
+## Student Library Page
+
+- **Route**: `/portal/student/library` (accessible via "Library" in the student sidebar)
+- **Page**: `client/src/pages/portal/StudentLibrary.tsx`
+- **API**: Uses existing `/api/study-resources` + `/api/subjects`
+- **Features**:
+  - Gradient header with total resource count
+  - Search bar + subject filter + type filter with "Clear" button
+  - Resource grid (1–3 columns responsive) with styled cards per type (PDF, video, audio, image, past paper, study guide, notes)
+  - Each card: gradient icon header, title, subject badge, description, upload date, view/download action
+  - Recently Viewed section (stored in localStorage, shows last 5 viewed resources as mini-cards)
+  - Resource Viewer Dialog: PDF iframe preview, video/audio/image native players, download + external link buttons
+  - Related Resources section inside viewer (same subject, up to 4 results)
+  - Resource metadata panel (upload date, downloads, file size)
+  - Empty state with filter-aware messaging and "Clear Filters" button
+  - Skeleton loading state (6-card grid)
+
+## Student Help & Support Page
+
+- **Route**: `/portal/student/help` (accessible via "Help & Support" in the student sidebar)
+- **Page**: `client/src/pages/portal/StudentHelp.tsx`
+- **API**: Uses `/api/public/settings` for school contact info; `POST /api/contact` for support form (contactSchema extended with optional `subject` field)
+- **Features**:
+  - Gradient header
+  - Quick Help Guides section: 6 colour-coded guide cards (join class, unlock exam, download materials, etc.)
+  - FAQ accordion grouped by category (Exams, Assignments, Payments, Login & Account) — expand/collapse per question
+  - Contact options panel: Email, Phone, WhatsApp — dynamically pulled from school settings
+  - Contact support form: name (pre-filled from auth), email, subject, message — submits to `/api/contact`
+  - Success state after submission with option to send another message
+  - Mobile-responsive 2-column layout (contact info + form side-by-side on desktop)
+
 ## Git Identity
 
 - Global git config: `user.name=Treasure123-school`, `user.email=treasurehomeschool@gmail.com`

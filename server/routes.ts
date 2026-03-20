@@ -132,6 +132,7 @@ const changePasswordSchema = z.object({
 const contactSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
+  subject: z.string().optional(),
   message: z.string().min(1)
 });
 
@@ -6829,7 +6830,7 @@ School Management System Administration
         name: data.name,
         email: data.email,
         message: data.message,
-        subject: null, // Can be extended later if needed
+        subject: data.subject || null,
         isRead: false
       });
 
