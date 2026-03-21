@@ -457,8 +457,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
       className="flex-shrink-0 bg-background border-r border-border sticky top-[52px] h-[calc(100vh-52px)] flex flex-col transition-[width] duration-300 ease-in-out overflow-hidden"
       data-testid="desktop-sidebar"
     >
-      {/* Spacer — pushes Dashboard to align with welcome banner */}
-      <div className="flex-shrink-0 h-6" />
+      {/* Spacer — aligns Dashboard with welcome banner (p-6 content - py-2 nav = 16px) */}
+      <div className="flex-shrink-0 h-4" />
 
       {/* Nav */}
       <SidebarNav collapsed={sidebarCollapsed} />
