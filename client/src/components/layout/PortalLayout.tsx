@@ -489,7 +489,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
 
           {/* Search (desktop only) */}
           {!isMobile && (
-            <div className="flex-1 min-w-0 px-4 max-w-sm">
+            <div className="flex-1 min-w-0 px-4">
               <HeaderSearch userRole={userRole} />
             </div>
           )}
