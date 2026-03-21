@@ -1615,7 +1615,7 @@ export default function ExamManagement() {
             </div>
             <p className="text-xs font-medium text-primary mb-3">{EXAM_STEPS[currentStep - 1].title}</p>
 
-            <form onSubmit={handleExamSubmit(onSubmitExam, onInvalidExam)} className="space-y-4">
+            <div className="space-y-4">
 
               {/* ── Step 1: Exam Details ── */}
               {currentStep === 1 && (
@@ -1886,7 +1886,8 @@ export default function ExamManagement() {
                     Next <ChevronRight className="w-4 h-4 ml-1" />
                   </Button>
                 ) : (
-                  <Button type="submit"
+                  <Button type="button"
+                    onClick={() => handleExamSubmit(onSubmitExam, onInvalidExam)()}
                     disabled={editingExam ? updateExamMutation.isPending : createExamMutation.isPending}
                     data-testid="button-submit-exam">
                     {editingExam
@@ -1895,7 +1896,7 @@ export default function ExamManagement() {
                   </Button>
                 )}
               </div>
-            </form>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
