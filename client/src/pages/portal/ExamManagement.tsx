@@ -984,6 +984,10 @@ export default function ExamManagement() {
 
   const handleNext = async () => {
     let fieldsToValidate: (keyof ExamForm)[] = [];
+    if (currentStep === 3) {
+      setCurrentStep(4);
+      return;
+    }
     if (currentStep === 1) fieldsToValidate = ['name', 'date', 'classId', 'subjectId', 'examType'];
     if (currentStep === 2) fieldsToValidate = ['termId', 'totalMarks', 'timeLimit'];
     const valid = await triggerExam(fieldsToValidate);
