@@ -96,7 +96,7 @@ export default function TeacherClasses() {
                   <BookOpen className="h-4 w-4 flex-shrink-0 mt-0.5" />
                   <div className="flex flex-wrap gap-1">
                     {cls.subjects.length > 0 ? cls.subjects.map(s => (
-                      <Badge key={s.id} variant="secondary" className="text-xs" data-testid={`badge-subject-${s.id}`}>
+                      <Badge key={s.id} variant="outline" className="text-xs bg-muted/40 text-muted-foreground border-border font-normal" data-testid={`badge-subject-${s.id}`}>
                         {s.name}
                       </Badge>
                     )) : (
