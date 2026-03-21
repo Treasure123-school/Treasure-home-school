@@ -2005,6 +2005,203 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== EXAM ANALYTICS ENDPOINT ====================
+  app.get('/api/teacher/exam-analytics/:examId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const examId = parseInt(req.params.examId);
+      if (isNaN(examId) || examId <= 0) {
+        return res.status(400).json({ message: 'Invalid exam ID' });
+      }
+
+      const exam = await storage.getExamById(examId);
+      if (!exam) {
+        return res.status(404).json({ message: 'Exam not found' });
+      }
+
+      // Auth check for teachers
+      if (req.user!.roleId === ROLES.TEACHER) {
+        const teacherId = req.user!.id;
+        const isCreator = exam.createdBy === teacherId;
+        const isInCharge = exam.teacherInChargeId === teacherId;
+        let isAssigned = false;
+        if (exam.classId && exam.subjectId) {
+          try {
+            const teachers = await storage.getTeachersForClassSubject(exam.classId, exam.subjectId);
+            isAssigned = teachers?.some((t: any) => t.id === teacherId) || false;
+          } catch { /* silent */ }
+        }
+        if (!isCreator && !isInCharge && !isAssigned) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
+      }
+
+      // Fetch raw results
+      const rawResults = await storage.getExamResultsByExam(examId);
+
+      // Enrich with student names
+      const results = await Promise.all(rawResults.map(async (r: any) => {
+        try {
+          const student = await storage.getStudent(r.studentId);
+          const user = student ? await storage.getUser(r.studentId) : null;
+          const scoreVal = r.score ?? r.marksObtained ?? 0;
+          const maxVal = r.maxScore ?? exam.totalMarks ?? 100;
+          const pct = maxVal > 0 ? Math.round((scoreVal / maxVal) * 100) : 0;
+          const passingPct = exam.passingScore ?? 50;
+          const passed = pct >= passingPct;
+          return {
+            studentId: r.studentId,
+            studentName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username : 'Unknown',
+            admissionNumber: student?.admissionNumber ?? null,
+            score: scoreVal,
+            maxScore: maxVal,
+            scorePercent: pct,
+            grade: r.grade ?? null,
+            passed,
+            timeTaken: r.timeTaken ?? null,
+            submittedAt: r.submittedAt ?? r.createdAt ?? null,
+          };
+        } catch {
+          return null;
+        }
+      }));
+      const validResults = results.filter(Boolean) as any[];
+
+      // Overview metrics
+      const total = validResults.length;
+      const scores = validResults.map(r => r.scorePercent);
+      const avgPercent = total > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / total) : 0;
+      const highestPercent = total > 0 ? Math.max(...scores) : 0;
+      const lowestPercent = total > 0 ? Math.min(...scores) : 0;
+      const passCount = validResults.filter(r => r.passed).length;
+      const passRate = total > 0 ? Math.round((passCount / total) * 100) : 0;
+
+      // Score distribution in 10% buckets
+      const buckets = ['0-10','10-20','20-30','30-40','40-50','50-60','60-70','70-80','80-90','90-100'];
+      const scoreDistribution = buckets.map(label => {
+        const [lo, hi] = label.split('-').map(Number);
+        const count = validResults.filter(r => r.scorePercent >= lo && (hi === 100 ? r.scorePercent <= hi : r.scorePercent < hi)).length;
+        return { range: `${label}%`, count };
+      });
+
+      // Top & low performers (sorted, top 5)
+      const sorted = [...validResults].sort((a, b) => b.scorePercent - a.scorePercent);
+      const topPerformers = sorted.slice(0, 5);
+      const lowPerformers = sorted.slice(-5).reverse();
+
+      // Question analysis via SQL
+      let questionAnalysis: any[] = [];
+      try {
+        const questions = await storage.getExamQuestions(examId);
+        const sessions = await storage.getExamSessionsByExam(examId);
+        const completedSessionIds = sessions.filter((s: any) => s.status === 'submitted' || s.status === 'graded' || s.isCompleted).map((s: any) => s.id);
+        if (completedSessionIds.length > 0 && questions.length > 0) {
+          // For each question, count answers from completed sessions
+          const answerRows = await db.select({
+            questionId: schema.studentAnswers.questionId,
+            isCorrect: schema.studentAnswers.isCorrect,
+          }).from(schema.studentAnswers)
+            .where(sql`${schema.studentAnswers.sessionId} = ANY(ARRAY[${sql.join(completedSessionIds.map((id: number) => sql`${id}`), sql`, `)}]::int[])`);
+
+          const byQuestion: Record<number, { total: number; correct: number }> = {};
+          for (const row of answerRows) {
+            if (!byQuestion[row.questionId]) byQuestion[row.questionId] = { total: 0, correct: 0 };
+            byQuestion[row.questionId].total++;
+            if (row.isCorrect) byQuestion[row.questionId].correct++;
+          }
+          questionAnalysis = questions.map((q: any) => {
+            const stat = byQuestion[q.id] || { total: 0, correct: 0 };
+            return {
+              questionId: q.id,
+              questionText: q.questionText,
+              questionType: q.questionType,
+              points: q.points,
+              orderNumber: q.orderNumber,
+              totalAttempted: stat.total,
+              correctCount: stat.correct,
+              correctPercent: stat.total > 0 ? Math.round((stat.correct / stat.total) * 100) : 0,
+            };
+          }).sort((a: any, b: any) => a.orderNumber - b.orderNumber);
+        } else {
+          questionAnalysis = questions.map((q: any) => ({
+            questionId: q.id,
+            questionText: q.questionText,
+            questionType: q.questionType,
+            points: q.points,
+            orderNumber: q.orderNumber,
+            totalAttempted: 0,
+            correctCount: 0,
+            correctPercent: 0,
+          }));
+        }
+      } catch (qErr: any) {
+        console.warn('[ANALYTICS] Question analysis failed:', qErr?.message);
+      }
+
+      // Performance trends: other exams in same class/subject by this teacher
+      let trends: any[] = [];
+      try {
+        const teacherExams = await db.select({
+          id: schema.exams.id,
+          name: schema.exams.name,
+          date: schema.exams.date,
+          totalMarks: schema.exams.totalMarks,
+          passingScore: schema.exams.passingScore,
+        }).from(schema.exams)
+          .where(and(
+            eq(schema.exams.classId, exam.classId),
+            eq(schema.exams.subjectId, exam.subjectId),
+          ))
+          .orderBy(schema.exams.date);
+
+        for (const te of teacherExams) {
+          const teResults = await storage.getExamResultsByExam(te.id);
+          if (teResults.length === 0) continue;
+          const teScores = teResults.map((r: any) => {
+            const s = r.score ?? r.marksObtained ?? 0;
+            const m = r.maxScore ?? te.totalMarks ?? 100;
+            return m > 0 ? (s / m) * 100 : 0;
+          });
+          const teAvg = Math.round(teScores.reduce((a: number, b: number) => a + b, 0) / teScores.length);
+          const tePassing = te.passingScore ?? 50;
+          const tePass = Math.round((teScores.filter(s => s >= tePassing).length / teScores.length) * 100);
+          trends.push({
+            examId: te.id,
+            examName: te.name,
+            date: te.date,
+            avgPercent: teAvg,
+            passRate: tePass,
+            studentCount: teResults.length,
+          });
+        }
+      } catch (tErr: any) {
+        console.warn('[ANALYTICS] Trends failed:', tErr?.message);
+      }
+
+      return res.json({
+        exam: {
+          id: exam.id,
+          name: exam.name,
+          totalMarks: exam.totalMarks,
+          passingScore: exam.passingScore ?? 50,
+          date: exam.date,
+          classId: exam.classId,
+          subjectId: exam.subjectId,
+        },
+        overview: { totalStudents: total, avgPercent, highestPercent, lowestPercent, passRate, passCount, failCount: total - passCount },
+        scoreDistribution,
+        studentPerformance: validResults,
+        questionAnalysis,
+        topPerformers,
+        lowPerformers,
+        trends,
+      });
+    } catch (error: any) {
+      console.error('[ANALYTICS] Error:', error?.message);
+      return res.status(500).json({ message: 'Failed to fetch exam analytics' });
+    }
+  });
+  // ==================== END EXAM ANALYTICS ENDPOINT ====================
+
   // Update exam result - TEACHERS ONLY (update test score, remarks)
   app.patch('/api/teacher/exam-results/:resultId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
     try {
