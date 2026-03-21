@@ -4257,6 +4257,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET teacher's assigned classes grouped by class with student counts and subjects
+  app.get('/api/teacher/my-classes', authenticateUser, authorizeRoles(ROLES.TEACHER), async (req, res) => {
+    try {
+      const teacherId = req.user!.id;
+      const assignments = await storage.getTeacherClassAssignments(teacherId);
+      const allSubjects = await storage.getSubjects();
+      const subjectMap = new Map(allSubjects.map(s => [s.id, s]));
+
+      const classMap = new Map<number, any>();
+      for (const a of assignments) {
+        if (!classMap.has(a.classId)) {
+          const classInfo = await storage.getClass(a.classId);
+          const students = await storage.getStudentsByClass(a.classId);
+          classMap.set(a.classId, {
+            id: a.classId,
+            name: classInfo?.name || `Class ${a.classId}`,
+            level: classInfo?.level || '',
+            capacity: classInfo?.capacity,
+            studentCount: students.length,
+            subjects: [],
+          });
+        }
+        if (a.subjectId) {
+          const subject = subjectMap.get(a.subjectId);
+          const existing = classMap.get(a.classId).subjects;
+          if (!existing.some((s: any) => s.id === a.subjectId)) {
+            existing.push({ id: a.subjectId, name: subject?.name || `Subject ${a.subjectId}` });
+          }
+        }
+      }
+
+      res.json(Array.from(classMap.values()));
+    } catch (error: any) {
+      res.status(500).json({ message: 'Failed to fetch teacher classes', error: error.message });
+    }
+  });
+
+  // GET class detail with student list (joined with user info) for teacher
+  app.get('/api/teacher/classes/:classId/detail', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const classId = parseInt(req.params.classId);
+      if (isNaN(classId)) return res.status(400).json({ message: 'Invalid class ID' });
+
+      const classInfo = await storage.getClass(classId);
+      if (!classInfo) return res.status(404).json({ message: 'Class not found' });
+
+      const studentRows = await storage.getStudentsByClass(classId);
+      const studentsWithUsers = await Promise.all(
+        studentRows.map(async (s) => {
+          const user = await storage.getUser(s.id);
+          return {
+            id: s.id,
+            admissionNumber: s.admissionNumber,
+            firstName: user?.firstName || '',
+            lastName: user?.lastName || '',
+            email: user?.email || '',
+            isActive: user?.isActive ?? true,
+            profileImageUrl: user?.profileImageUrl || null,
+            department: s.department || null,
+          };
+        })
+      );
+
+      const teacherUser = classInfo.classTeacherId ? await storage.getUser(classInfo.classTeacherId) : null;
+
+      const subjectsAssigned = req.user!.role === ROLES.TEACHER
+        ? await storage.getTeacherAssignmentsForClass(req.user!.id, classId)
+        : [];
+
+      res.json({
+        class: {
+          id: classInfo.id,
+          name: classInfo.name,
+          level: classInfo.level,
+          capacity: classInfo.capacity,
+          classTeacherName: teacherUser ? `${teacherUser.firstName} ${teacherUser.lastName}` : null,
+        },
+        students: studentsWithUsers,
+        subjects: subjectsAssigned,
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: 'Failed to fetch class detail', error: error.message });
+    }
+  });
+
   // Update teacher profile (PUT endpoint for editing)
   app.put('/api/teacher/profile/me', authenticateUser, authorizeRoles(ROLES.TEACHER), upload.fields([
     { name: 'profileImage', maxCount: 1 },
@@ -5648,6 +5733,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(attendance);
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch class attendance' });
+    }
+  });
+
+  // Get attendance history by class and date range - Teacher or Admin
+  app.get('/api/attendance/class/:classId/history', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
+    try {
+      const classId = parseInt(req.params.classId);
+      const { startDate, endDate } = req.query;
+
+      if (isNaN(classId)) return res.status(400).json({ message: 'Invalid class ID' });
+      if (!startDate || !endDate) return res.status(400).json({ message: 'startDate and endDate are required' });
+
+      const records = await storage.getAttendanceByClassDateRange(classId, startDate as string, endDate as string);
+      res.json(records);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch attendance history' });
+    }
+  });
+
+  // Update a single attendance record - Teacher or Admin
+  app.put('/api/attendance/:id', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: 'Invalid attendance ID' });
+
+      const { status, notes } = req.body;
+      if (!status) return res.status(400).json({ message: 'status is required' });
+
+      const updated = await storage.updateAttendance(id, { status, notes: notes || null });
+      if (!updated) return res.status(404).json({ message: 'Attendance record not found' });
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: 'Failed to update attendance record' });
     }
   });
 

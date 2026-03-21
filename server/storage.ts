@@ -153,6 +153,8 @@ export interface IStorage {
   recordAttendance(attendance: InsertAttendance): Promise<Attendance>;
   getAttendanceByStudent(studentId: string, date?: string): Promise<Attendance[]>;
   getAttendanceByClass(classId: number, date: string): Promise<Attendance[]>;
+  updateAttendance(id: number, data: Partial<InsertAttendance>): Promise<Attendance | undefined>;
+  getAttendanceByClassDateRange(classId: number, startDate: string, endDate: string): Promise<Attendance[]>;
 
   // Exam management
   createExam(exam: InsertExam): Promise<Exam>;
@@ -2007,6 +2009,19 @@ export class DatabaseStorage implements IStorage {
   async getAttendanceByClass(classId: number, date: string): Promise<Attendance[]> {
     return await db.select().from(schema.attendance)
       .where(and(eq(schema.attendance.classId, classId), eq(schema.attendance.date, date)));
+  }
+  async updateAttendance(id: number, data: Partial<InsertAttendance>): Promise<Attendance | undefined> {
+    const result = await db.update(schema.attendance).set(data).where(eq(schema.attendance.id, id)).returning();
+    return result[0];
+  }
+  async getAttendanceByClassDateRange(classId: number, startDate: string, endDate: string): Promise<Attendance[]> {
+    return await db.select().from(schema.attendance)
+      .where(and(
+        eq(schema.attendance.classId, classId),
+        gte(schema.attendance.date, startDate),
+        lte(schema.attendance.date, endDate)
+      ))
+      .orderBy(desc(schema.attendance.date));
   }
   // Exam management
   async createExam(exam: InsertExam): Promise<Exam> {

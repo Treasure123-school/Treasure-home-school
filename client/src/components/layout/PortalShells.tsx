@@ -27,6 +27,9 @@ const PortalGallery = lazy(() => import('@/pages/portal/Gallery'));
 const PortalComingSoon = lazy(() => import('@/pages/portal/PortalComingSoon'));
 
 const TeacherDashboard = lazy(() => import('@/pages/portal/TeacherDashboard'));
+const TeacherClasses = lazy(() => import('@/pages/portal/TeacherClasses'));
+const TeacherClassDetail = lazy(() => import('@/pages/portal/TeacherClassDetail'));
+const TeacherAttendancePage = lazy(() => import('@/pages/portal/TeacherAttendancePage'));
 const TeacherMessages = lazy(() => import('@/pages/portal/TeacherMessages'));
 const TeacherAnnouncements = lazy(() => import('@/pages/portal/TeacherAnnouncements'));
 const TeacherProfile = lazy(() => import('@/pages/portal/TeacherProfile'));
@@ -128,6 +131,9 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
         {role === 'teacher' && (
           <Switch>
             <Route path="/portal/teacher" component={TeacherDashboard} />
+            <Route path="/portal/teacher/classes/:classId" component={TeacherClassDetail} />
+            <Route path="/portal/teacher/classes" component={TeacherClasses} />
+            <Route path="/portal/teacher/attendance" component={TeacherAttendancePage} />
             <Route path="/portal/teacher/profile" component={TeacherProfile} />
             <Route path="/portal/teacher/profile-assignments" component={TeacherProfileAssignmentDashboard} />
             <Route path="/portal/teacher/coming-soon" component={PortalComingSoon} />

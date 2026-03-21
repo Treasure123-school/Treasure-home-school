@@ -157,7 +157,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
         return [
           ...baseNav,
           { name: 'My Classes', href: `/portal/${userRole}/classes`, icon: Users },
-          { name: 'Attendance', href: `/portal/${userRole}/coming-soon`, icon: Calendar },
+          { name: 'Attendance', href: `/portal/${userRole}/attendance`, icon: Calendar },
           {
             type: 'group',
             label: 'Exam Management',
