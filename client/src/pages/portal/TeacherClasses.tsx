@@ -21,7 +21,7 @@ export default function TeacherClasses() {
   const [, navigate] = useLocation();
 
   const { data: classes = [], isLoading } = useQuery<TeacherClass[]>({
-    queryKey: ['/api/teacher/my-classes'],
+    queryKey: ['/api/teacher/classes-with-stats'],
   });
 
   if (isLoading) {

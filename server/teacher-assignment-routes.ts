@@ -815,6 +815,67 @@ router.get('/api/teacher/my-classes', requireAuth, async (req: Request, res: Res
   }
 });
 
+router.get('/api/teacher/classes-with-stats', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const user = req.user as { id: string; roleId: number };
+    if (user.roleId !== ROLE_IDS.TEACHER) {
+      return res.status(403).json({ message: 'Only teachers can access this endpoint' });
+    }
+
+    const now = new Date();
+    const assignments = await db
+      .select({
+        assignmentId: teacherClassAssignments.id,
+        classId: teacherClassAssignments.classId,
+        subjectId: teacherClassAssignments.subjectId,
+        className: classes.name,
+        classLevel: classes.level,
+        classCapacity: classes.capacity,
+        subjectName: subjects.name,
+      })
+      .from(teacherClassAssignments)
+      .innerJoin(classes, eq(teacherClassAssignments.classId, classes.id))
+      .innerJoin(subjects, eq(teacherClassAssignments.subjectId, subjects.id))
+      .where(and(
+        eq(teacherClassAssignments.teacherId, user.id),
+        eq(teacherClassAssignments.isActive, true),
+        or(
+          isNull(teacherClassAssignments.validUntil),
+          gte(teacherClassAssignments.validUntil, now)
+        )
+      ));
+
+    const classMap = new Map<number, { id: number; name: string; level: string; capacity: number | null; studentCount: number; subjects: { id: number; name: string }[] }>();
+    const studentCountCache = new Map<number, number>();
+
+    for (const a of assignments) {
+      if (!classMap.has(a.classId)) {
+        if (!studentCountCache.has(a.classId)) {
+          const studentRows = await storage.getStudentsByClass(a.classId);
+          studentCountCache.set(a.classId, studentRows.length);
+        }
+        classMap.set(a.classId, {
+          id: a.classId,
+          name: a.className,
+          level: a.classLevel || '',
+          capacity: a.classCapacity ?? null,
+          studentCount: studentCountCache.get(a.classId) || 0,
+          subjects: [],
+        });
+      }
+      const entry = classMap.get(a.classId)!;
+      if (!entry.subjects.some(s => s.id === a.subjectId)) {
+        entry.subjects.push({ id: a.subjectId, name: a.subjectName });
+      }
+    }
+
+    res.json(Array.from(classMap.values()));
+  } catch (error) {
+    console.error('Error fetching teacher classes with stats:', error);
+    res.status(500).json({ message: 'Failed to fetch teacher classes' });
+  }
+});
+
 router.get('/api/teacher/my-students/:classId/:subjectId', requireAuth, async (req: Request, res: Response) => {
   try {
     const user = req.user as { id: string; roleId: number };

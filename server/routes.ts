@@ -4257,43 +4257,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET teacher's assigned classes grouped by class with student counts and subjects
-  app.get('/api/teacher/my-classes', authenticateUser, authorizeRoles(ROLES.TEACHER), async (req, res) => {
-    try {
-      const teacherId = req.user!.id;
-      const assignments = await storage.getTeacherClassAssignments(teacherId);
-      const allSubjects = await storage.getSubjects();
-      const subjectMap = new Map(allSubjects.map(s => [s.id, s]));
-
-      const classMap = new Map<number, any>();
-      for (const a of assignments) {
-        if (!classMap.has(a.classId)) {
-          const classInfo = await storage.getClass(a.classId);
-          const students = await storage.getStudentsByClass(a.classId);
-          classMap.set(a.classId, {
-            id: a.classId,
-            name: classInfo?.name || `Class ${a.classId}`,
-            level: classInfo?.level || '',
-            capacity: classInfo?.capacity,
-            studentCount: students.length,
-            subjects: [],
-          });
-        }
-        if (a.subjectId) {
-          const subject = subjectMap.get(a.subjectId);
-          const existing = classMap.get(a.classId).subjects;
-          if (!existing.some((s: any) => s.id === a.subjectId)) {
-            existing.push({ id: a.subjectId, name: subject?.name || `Subject ${a.subjectId}` });
-          }
-        }
-      }
-
-      res.json(Array.from(classMap.values()));
-    } catch (error: any) {
-      res.status(500).json({ message: 'Failed to fetch teacher classes', error: error.message });
-    }
-  });
-
   // GET class detail with student list (joined with user info) for teacher
   app.get('/api/teacher/classes/:classId/detail', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
     try {

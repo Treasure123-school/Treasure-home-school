@@ -225,7 +225,7 @@ export default function TeacherAttendancePage() {
   const [saved, setSaved] = useState(false);
 
   const { data: classes = [] } = useQuery<TeacherClass[]>({
-    queryKey: ['/api/teacher/my-classes'],
+    queryKey: ['/api/teacher/classes-with-stats'],
   });
 
   const { data: classDetail, isLoading: loadingDetail } = useQuery<ClassDetail>({
