@@ -104,10 +104,15 @@ function OverviewTab({ classDetail }: { classDetail: ClassDetail }) {
     queryFn: () =>
       fetch(`/api/attendance/class/${cls.id}?date=${attendanceDate}`, {
         credentials: 'include',
-      }).then(r => r.json()),
+      }).then(r => {
+        if (!r.ok) return [];
+        return r.json().then((d: unknown) => (Array.isArray(d) ? d : []));
+      }),
   });
 
-  const presentToday = (todayAttendance as AttendanceRecord[]).filter(a => a.status === 'Present').length;
+  const presentToday = Array.isArray(todayAttendance)
+    ? (todayAttendance as AttendanceRecord[]).filter(a => a.status === 'Present').length
+    : 0;
   const attendancePct = totalStudents > 0 ? Math.round((presentToday / totalStudents) * 100) : 0;
 
   return (

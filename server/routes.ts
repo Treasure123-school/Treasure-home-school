@@ -4285,7 +4285,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const teacherUser = classInfo.classTeacherId ? await storage.getUser(classInfo.classTeacherId) : null;
 
-      const subjectsAssigned = req.user!.role === ROLES.TEACHER
+      const subjectsAssigned = req.user!.roleId === ROLES.TEACHER
         ? await storage.getTeacherAssignmentsForClass(req.user!.id, classId)
         : [];
 
