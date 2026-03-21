@@ -457,6 +457,31 @@ export default function PortalLayout({ children, userRole, userName, userInitial
       className="flex-shrink-0 bg-background border-r border-border sticky top-[52px] h-[calc(100vh-52px)] flex flex-col transition-[width] duration-300 ease-in-out overflow-hidden"
       data-testid="desktop-sidebar"
     >
+      {/* User profile card */}
+      <div className={`flex-shrink-0 border-b border-border transition-all duration-300 ${sidebarCollapsed ? 'px-0 py-3 flex justify-center' : 'px-3 py-4'}`}>
+        {sidebarCollapsed ? (
+          <div title={userName}>
+            <Avatar className="h-8 w-8 ring-2 ring-primary/20">
+              <AvatarFallback className="bg-primary/10 text-primary text-xs font-bold">
+                {userInitials}
+              </AvatarFallback>
+            </Avatar>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 px-1 py-1 rounded-xl bg-muted/60 border border-border">
+            <Avatar className="h-9 w-9 flex-shrink-0 ring-2 ring-primary/20">
+              <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold">
+                {userInitials}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold text-foreground leading-tight truncate">{userName}</p>
+              <p className="text-[10px] text-muted-foreground capitalize leading-tight">{userRole} Account</p>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Nav */}
       <SidebarNav collapsed={sidebarCollapsed} />
 
@@ -486,6 +511,21 @@ export default function PortalLayout({ children, userRole, userName, userInitial
         <div className="min-w-0 flex-1">
           <p className="text-sm font-bold text-primary leading-tight truncate">{schoolName}</p>
           <p className="text-[10px] text-muted-foreground truncate">{schoolMotto}</p>
+        </div>
+      </div>
+
+      {/* User profile card */}
+      <div className="flex-shrink-0 px-3 py-3 border-b border-border">
+        <div className="flex items-center gap-3 px-1 py-1 rounded-xl bg-muted/60 border border-border">
+          <Avatar className="h-9 w-9 flex-shrink-0 ring-2 ring-primary/20">
+            <AvatarFallback className="bg-primary/10 text-primary text-sm font-bold">
+              {userInitials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-semibold text-foreground leading-tight truncate">{userName}</p>
+            <p className="text-[10px] text-muted-foreground capitalize leading-tight">{userRole} Account</p>
+          </div>
         </div>
       </div>
 
