@@ -2202,6 +2202,163 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   // ==================== END EXAM ANALYTICS ENDPOINT ====================
 
+  // ==================== SUBMISSIONS LIST ENDPOINT ====================
+  app.get('/api/teacher/submissions', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const teacherId = req.user!.id;
+      const isTeacher = req.user!.roleId === ROLES.TEACHER;
+      const { classId, subjectId, examId, status } = req.query as Record<string, string>;
+
+      const conditions: any[] = [];
+      if (examId) conditions.push(eq(schema.exams.id, parseInt(examId)));
+      if (classId) conditions.push(eq(schema.exams.classId, parseInt(classId)));
+      if (subjectId) conditions.push(eq(schema.exams.subjectId, parseInt(subjectId)));
+      if (isTeacher) conditions.push(eq(schema.exams.createdBy, teacherId));
+
+      const rows = await db.select({
+        resultId: schema.examResults.id,
+        studentId: schema.examResults.studentId,
+        firstName: schema.users.firstName,
+        lastName: schema.users.lastName,
+        username: schema.users.username,
+        admissionNumber: schema.students.admissionNumber,
+        examId: schema.exams.id,
+        examName: schema.exams.name,
+        totalMarks: schema.exams.totalMarks,
+        passingScore: schema.exams.passingScore,
+        classId: schema.exams.classId,
+        className: schema.classes.name,
+        subjectId: schema.exams.subjectId,
+        subjectName: schema.subjects.name,
+        score: schema.examResults.score,
+        maxScore: schema.examResults.maxScore,
+        marksObtained: schema.examResults.marksObtained,
+        grade: schema.examResults.grade,
+        remarks: schema.examResults.remarks,
+        autoScored: schema.examResults.autoScored,
+        submittedAt: schema.examResults.submittedAt,
+        createdAt: schema.examResults.createdAt,
+      })
+      .from(schema.examResults)
+      .leftJoin(schema.exams, eq(schema.examResults.examId, schema.exams.id))
+      .leftJoin(schema.users, eq(schema.examResults.studentId, schema.users.id))
+      .leftJoin(schema.students, eq(schema.examResults.studentId, schema.students.id))
+      .leftJoin(schema.classes, eq(schema.exams.classId, schema.classes.id))
+      .leftJoin(schema.subjects, eq(schema.exams.subjectId, schema.subjects.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(schema.examResults.createdAt));
+
+      const submissions = rows.map((r: any) => {
+        const scoreVal = r.score ?? r.marksObtained ?? null;
+        const maxVal = r.maxScore ?? r.totalMarks ?? 100;
+        const pct = (scoreVal !== null && maxVal > 0) ? Math.round((scoreVal / maxVal) * 100) : null;
+        const isGraded = r.remarks !== null && r.remarks !== '';
+        return {
+          resultId: r.resultId,
+          studentId: r.studentId,
+          studentName: r.firstName && r.lastName ? `${r.firstName} ${r.lastName}`.trim() : r.username || 'Unknown',
+          admissionNumber: r.admissionNumber ?? null,
+          examId: r.examId,
+          examName: r.examName ?? 'Unknown Exam',
+          classId: r.classId,
+          className: r.className ?? null,
+          subjectId: r.subjectId,
+          subjectName: r.subjectName ?? null,
+          score: scoreVal,
+          maxScore: maxVal,
+          scorePercent: pct,
+          grade: r.grade ?? null,
+          remarks: r.remarks ?? null,
+          autoScored: r.autoScored ?? false,
+          submittedAt: r.submittedAt ?? r.createdAt ?? null,
+          status: isGraded ? 'graded' : 'pending',
+          passingScore: r.passingScore ?? 50,
+          passed: pct !== null ? pct >= (r.passingScore ?? 50) : null,
+        };
+      }).filter((s: any) => {
+        if (status === 'pending') return s.status === 'pending';
+        if (status === 'graded') return s.status === 'graded';
+        return true;
+      });
+
+      return res.json(submissions);
+    } catch (error: any) {
+      console.error('[SUBMISSIONS] Error:', error?.message);
+      return res.status(500).json({ message: 'Failed to fetch submissions' });
+    }
+  });
+
+  // Submission detail for grading panel
+  app.get('/api/teacher/submissions/:resultId/detail', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const resultId = parseInt(req.params.resultId);
+      if (isNaN(resultId)) return res.status(400).json({ message: 'Invalid result ID' });
+
+      const result = await storage.getExamResultById(resultId);
+      if (!result) return res.status(404).json({ message: 'Result not found' });
+
+      const exam = await storage.getExamById(result.examId);
+      if (!exam) return res.status(404).json({ message: 'Exam not found' });
+
+      // Get questions for this exam
+      const questions = await storage.getExamQuestions(result.examId);
+
+      // Get question options
+      const questionOptions = questions.length > 0 ? await db.select()
+        .from(schema.questionOptions)
+        .where(sql`${schema.questionOptions.questionId} = ANY(ARRAY[${sql.join(questions.map((q: any) => sql`${q.id}`), sql`, `)}]::int[])`)
+        : [];
+
+      // Get exam session for this student+exam
+      const sessions = await storage.getExamSessionsByExam(result.examId);
+      const session = sessions.find((s: any) => s.studentId === result.studentId);
+
+      // Get student answers for the session
+      let answers: any[] = [];
+      if (session) {
+        answers = await storage.getStudentAnswers(session.id);
+      }
+
+      // Build question breakdown
+      const questionBreakdown = questions.map((q: any) => {
+        const opts = questionOptions.filter((o: any) => o.questionId === q.id);
+        const answer = answers.find((a: any) => a.questionId === q.id);
+        return {
+          questionId: q.id,
+          questionText: q.questionText,
+          questionType: q.questionType,
+          points: q.points,
+          orderNumber: q.orderNumber,
+          options: opts.sort((a: any, b: any) => a.orderNumber - b.orderNumber),
+          answer: answer ? {
+            textAnswer: answer.textAnswer ?? null,
+            selectedOptionId: answer.selectedOptionId ?? null,
+            isCorrect: answer.isCorrect ?? null,
+            pointsEarned: answer.pointsEarned ?? 0,
+            feedbackText: answer.feedbackText ?? null,
+          } : null,
+        };
+      }).sort((a: any, b: any) => a.orderNumber - b.orderNumber);
+
+      return res.json({
+        resultId: result.id,
+        examId: result.examId,
+        studentId: result.studentId,
+        sessionId: session?.id ?? null,
+        score: result.score ?? null,
+        maxScore: result.maxScore ?? exam.totalMarks ?? null,
+        grade: result.grade ?? null,
+        remarks: result.remarks ?? null,
+        submittedAt: result.submittedAt ?? null,
+        questions: questionBreakdown,
+      });
+    } catch (error: any) {
+      console.error('[SUBMISSION DETAIL] Error:', error?.message);
+      return res.status(500).json({ message: 'Failed to fetch submission detail' });
+    }
+  });
+  // ==================== END SUBMISSIONS ENDPOINTS ====================
+
   // Update exam result - TEACHERS ONLY (update test score, remarks)
   app.patch('/api/teacher/exam-results/:resultId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
     try {

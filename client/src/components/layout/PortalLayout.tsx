@@ -166,7 +166,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'teacher-exam' : null),
             items: [
               { href: '/portal/teacher/exams', icon: PenTool, label: 'Exam System' },
-              { href: '/portal/teacher/grading-queue', icon: CheckSquare, label: 'Grading Queue' },
+              { href: '/portal/teacher/grading-queue', icon: CheckSquare, label: 'Submissions & Grading' },
               { href: '/portal/teacher/exam-analytics', icon: Award, label: 'Exam Analytics' },
               { href: '/portal/teacher/question-bank', icon: Database, label: 'Question Bank' },
             ],
