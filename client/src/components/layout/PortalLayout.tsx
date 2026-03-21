@@ -317,6 +317,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
   const isExamPage = userRole === 'student' && location.startsWith('/portal/student/exams');
 
   // ── Sidebar Nav Content ──────────────────────────────────────────────────
+  // All labels stay in the DOM at all times and fade/slide via CSS transitions —
+  // never conditionally removed — so collapse/expand is always smooth.
   const SidebarNav = ({
     collapsed = false,
     onNavigate,
@@ -332,6 +334,11 @@ export default function PortalLayout({ children, userRole, userName, userInitial
       startTransition(() => navigate(href));
     };
 
+    // Shared label transition classes
+    const labelCls = `overflow-hidden whitespace-nowrap transition-[opacity,max-width] duration-300 ease-in-out ${
+      collapsed ? 'opacity-0 max-w-0' : 'opacity-100 max-w-[160px]'
+    }`;
+
     return (
       <nav
         className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-2 px-2 space-y-0.5 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
@@ -340,42 +347,30 @@ export default function PortalLayout({ children, userRole, userName, userInitial
         {navigation.map((item) => {
           const Icon = item.icon;
 
+          // ── Group item (collapsible section) ──
           if ('type' in item && item.type === 'group') {
             const groupActive = isGroupActive(item.items);
-
-            if (collapsed) {
-              return (
-                <button
-                  key={item.label}
-                  type="button"
-                  title={item.label}
-                  onClick={() => {
-                    setSidebarCollapsed(false);
-                    localStorage.setItem('sidebarCollapsed', 'false');
-                    item.setIsOpen(true);
-                  }}
-                  className={`flex items-center justify-center w-full h-9 rounded-lg transition-all duration-200 ease-in-out ${
-                    groupActive
-                      ? 'bg-primary text-primary-foreground'
-                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                  }`}
-                  data-testid={`nav-group-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
-                >
-                  <Icon className="h-4 w-4 flex-shrink-0" />
-                </button>
-              );
-            }
 
             return (
               <Collapsible
                 key={item.label}
-                open={item.isOpen}
-                onOpenChange={item.setIsOpen}
+                open={!collapsed && item.isOpen}
+                onOpenChange={(open) => { if (!collapsed) item.setIsOpen(open); }}
               >
                 <CollapsibleTrigger asChild>
                   <button
                     type="button"
-                    className={`flex items-center gap-2.5 w-full px-2.5 h-9 rounded-lg text-sm font-medium transition-all duration-200 ease-in-out ${
+                    title={collapsed ? item.label : undefined}
+                    onClick={() => {
+                      if (collapsed) {
+                        setSidebarCollapsed(false);
+                        localStorage.setItem('sidebarCollapsed', 'false');
+                        item.setIsOpen(true);
+                      }
+                    }}
+                    className={`flex items-center w-full h-9 rounded-lg transition-colors duration-200 ease-in-out ${
+                      collapsed ? 'justify-center px-0' : 'px-2.5 gap-2.5'
+                    } ${
                       groupActive
                         ? 'text-primary bg-primary/10'
                         : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
@@ -383,15 +378,18 @@ export default function PortalLayout({ children, userRole, userName, userInitial
                     data-testid={`nav-group-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
                   >
                     <Icon className="h-4 w-4 flex-shrink-0" />
-                    <span className="flex-1 text-left text-[13px] truncate">{item.label}</span>
+                    <span className={`flex-1 text-left text-[13px] font-medium ${labelCls}`}>
+                      {item.label}
+                    </span>
                     <ChevronDown
-                      className={`h-3.5 w-3.5 flex-shrink-0 transition-transform duration-200 ${
-                        item.isOpen ? 'rotate-180' : ''
-                      }`}
+                      className={`h-3.5 w-3.5 flex-shrink-0 transition-[opacity,transform] duration-300 ease-in-out ${
+                        collapsed ? 'opacity-0 max-w-0 w-0 overflow-hidden' : 'opacity-100'
+                      } ${item.isOpen ? 'rotate-180' : 'rotate-0'}`}
                     />
                   </button>
                 </CollapsibleTrigger>
-                <CollapsibleContent>
+
+                <CollapsibleContent className="overflow-hidden">
                   <div className="ml-3 mt-0.5 mb-0.5 pl-2.5 border-l border-border space-y-0.5">
                     {item.items.map((sub) => {
                       const SubIcon = sub.icon;
@@ -401,7 +399,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
                           key={sub.href}
                           type="button"
                           onClick={() => go(sub.href)}
-                          className={`flex items-center gap-2 w-full px-2 h-8 rounded-md text-[12.5px] font-medium transition-all duration-200 ease-in-out ${
+                          className={`flex items-center gap-2 w-full px-2 h-8 rounded-md text-[12.5px] font-medium transition-colors duration-150 ${
                             active
                               ? 'bg-primary text-primary-foreground'
                               : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
@@ -420,6 +418,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             );
           }
 
+          // ── Regular nav item ──
           const navItem = item as NavItem;
           if (navItem.href === '#logout') return null;
           const active = isActive(navItem.href);
@@ -430,8 +429,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               type="button"
               onClick={() => go(navItem.href)}
               title={collapsed ? navItem.name : undefined}
-              className={`flex items-center gap-2.5 w-full rounded-lg transition-all duration-200 ease-in-out ${
-                collapsed ? 'justify-center h-9 px-0' : 'px-2.5 h-9'
+              className={`flex items-center w-full h-9 rounded-lg transition-colors duration-200 ease-in-out ${
+                collapsed ? 'justify-center px-0' : 'px-2.5 gap-2.5'
               } ${
                 active
                   ? 'bg-primary text-primary-foreground'
@@ -440,9 +439,9 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               data-testid={`nav-${navItem.name.toLowerCase().replace(/\s+/g, '-')}`}
             >
               <Icon className="h-4 w-4 flex-shrink-0" />
-              {!collapsed && (
-                <span className="text-[13px] font-medium truncate">{navItem.name}</span>
-              )}
+              <span className={`text-[13px] font-medium ${labelCls}`}>
+                {navItem.name}
+              </span>
             </button>
           );
         })}
@@ -570,7 +569,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
           {/* ── Search (desktop only) ── */}
           {!isMobile && (
             <div className="flex-1 min-w-0 px-4 max-w-sm">
-              <HeaderSearch />
+              <HeaderSearch userRole={userRole} />
             </div>
           )}
 
