@@ -354,7 +354,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
                     localStorage.setItem('sidebarCollapsed', 'false');
                     item.setIsOpen(true);
                   }}
-                  className={`flex items-center justify-center w-full h-9 rounded-lg transition-colors duration-150 ${
+                  className={`flex items-center justify-center w-full h-9 rounded-lg transition-all duration-200 ease-in-out ${
                     groupActive
                       ? 'bg-primary text-primary-foreground'
                       : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
@@ -375,7 +375,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
                 <CollapsibleTrigger asChild>
                   <button
                     type="button"
-                    className={`flex items-center gap-2.5 w-full px-2.5 h-9 rounded-lg text-sm font-medium transition-colors duration-150 ${
+                    className={`flex items-center gap-2.5 w-full px-2.5 h-9 rounded-lg text-sm font-medium transition-all duration-200 ease-in-out ${
                       groupActive
                         ? 'text-primary bg-primary/10'
                         : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
@@ -401,7 +401,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
                           key={sub.href}
                           type="button"
                           onClick={() => go(sub.href)}
-                          className={`flex items-center gap-2 w-full px-2 h-8 rounded-md text-[12.5px] font-medium transition-colors duration-150 ${
+                          className={`flex items-center gap-2 w-full px-2 h-8 rounded-md text-[12.5px] font-medium transition-all duration-200 ease-in-out ${
                             active
                               ? 'bg-primary text-primary-foreground'
                               : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
@@ -430,7 +430,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               type="button"
               onClick={() => go(navItem.href)}
               title={collapsed ? navItem.name : undefined}
-              className={`flex items-center gap-2.5 w-full rounded-lg transition-colors duration-150 ${
+              className={`flex items-center gap-2.5 w-full rounded-lg transition-all duration-200 ease-in-out ${
                 collapsed ? 'justify-center h-9 px-0' : 'px-2.5 h-9'
               } ${
                 active
@@ -467,7 +467,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
       <div className="flex-shrink-0 border-t border-border">
         <button
           onClick={toggleSidebar}
-          className={`flex items-center gap-2 w-full px-3 h-10 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors duration-150 ${sidebarCollapsed ? 'justify-center' : ''}`}
+          className={`flex items-center gap-2 w-full px-3 h-10 text-xs text-muted-foreground hover:text-primary-foreground hover:bg-primary transition-all duration-200 ease-in-out ${sidebarCollapsed ? 'justify-center' : ''}`}
           data-testid="button-toggle-sidebar"
           title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
@@ -528,20 +528,20 @@ export default function PortalLayout({ children, userRole, userName, userInitial
                 width: sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH,
                 minWidth: sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH,
               }}
-              className="flex-shrink-0 h-full flex items-center border-r border-border transition-[width,min-width] duration-300 ease-in-out overflow-hidden"
+              className="flex-shrink-0 h-full flex items-center gap-2.5 px-3 border-r border-border transition-[width,min-width] duration-300 ease-in-out overflow-hidden"
             >
-              <div className={`flex items-center w-full h-full ${sidebarCollapsed ? 'justify-center px-0' : 'px-3 gap-2.5'}`}>
-                <img
-                  src={displayLogo}
-                  alt="School logo"
-                  className={`object-contain flex-shrink-0 transition-all duration-300 ${sidebarCollapsed ? 'h-7 w-7' : 'h-8 w-8'}`}
-                />
-                {!sidebarCollapsed && (
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13px] font-bold text-primary leading-tight truncate">{schoolName}</p>
-                    <p className="text-[10px] text-muted-foreground truncate capitalize">{getRoleTitle()} Portal</p>
-                  </div>
-                )}
+              <img
+                src={displayLogo}
+                alt="School logo"
+                className={`object-contain flex-shrink-0 transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'h-7 w-7' : 'h-8 w-8'}`}
+              />
+              <div
+                className={`min-w-0 flex-1 transition-opacity duration-200 ease-in-out ${
+                  sidebarCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'
+                }`}
+              >
+                <p className="text-[13px] font-bold text-primary leading-tight truncate">{schoolName}</p>
+                <p className="text-[10px] text-muted-foreground truncate capitalize">{getRoleTitle()} Portal</p>
               </div>
             </div>
           ) : (
