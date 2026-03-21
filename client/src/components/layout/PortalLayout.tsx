@@ -1,11 +1,11 @@
 import { useLocation } from 'wouter';
-import { 
-  GraduationCap, Home, Users, Calendar, BookOpen, MessageSquare, User, Settings, 
-  Bell, LogOut, ImageIcon, FileText, Menu, ChevronLeft, ChevronRight, ClipboardCheck, 
+import {
+  GraduationCap, Home, Users, Calendar, BookOpen, MessageSquare, User, Settings,
+  Bell, LogOut, ImageIcon, FileText, Menu, ChevronLeft, ChevronRight, ClipboardCheck,
   ClipboardList, ChevronDown, History, UserCheck, Eye, Briefcase, Shield, Activity,
   Clock, PenTool, CheckSquare, Award, Star, Library, DollarSign, Trophy, HelpCircle,
   Inbox, Megaphone, MessagesSquare, ClipboardPen, BarChart3, FolderOpen, RotateCcw,
-  Layers, Database, CreditCard, Receipt, ListChecks
+  Layers, Database, CreditCard, Receipt, ListChecks, PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
@@ -26,8 +26,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { NotificationBell } from '@/components/NotificationBell';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { HeaderSearch } from '@/components/HeaderSearch';
-
-
 import { useQuery } from '@tanstack/react-query';
 import { useUserActivityTracker } from '@/hooks/useUserActivityTracker';
 
@@ -49,11 +47,7 @@ interface NavGroup {
   icon: any;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  items: Array<{
-    href: string;
-    icon: any;
-    label: string;
-  }>;
+  items: Array<{ href: string; icon: any; label: string }>;
 }
 type NavigationItem = NavItem | NavGroup;
 
@@ -63,6 +57,11 @@ interface PortalLayoutProps {
   userName: string;
   userInitials: string;
 }
+
+const SIDEBAR_EXPANDED_WIDTH = 220;
+const SIDEBAR_COLLAPSED_WIDTH = 60;
+const HEADER_HEIGHT = 52;
+
 export default function PortalLayout({ children, userRole, userName, userInitials }: PortalLayoutProps) {
   const [location] = useLocation();
   const { logout } = useAuth();
@@ -73,27 +72,46 @@ export default function PortalLayout({ children, userRole, userName, userInitial
 
   useUserActivityTracker(true);
 
-
-  // Load sidebar state from localStorage
   useEffect(() => {
-    const savedState = localStorage.getItem('sidebarCollapsed');
-    if (savedState !== null) {
-      setSidebarCollapsed(savedState === 'true');
-    }
+    const saved = localStorage.getItem('sidebarCollapsed');
+    if (saved !== null) setSidebarCollapsed(saved === 'true');
   }, []);
 
-  // Save sidebar state to localStorage
   const toggleSidebar = () => {
-    const newState = !sidebarCollapsed;
-    setSidebarCollapsed(newState);
-    localStorage.setItem('sidebarCollapsed', String(newState));
+    const next = !sidebarCollapsed;
+    setSidebarCollapsed(next);
+    localStorage.setItem('sidebarCollapsed', String(next));
   };
+
+  const { data: settings } = useQuery<SettingsData>({
+    queryKey: ['/api/public/settings'],
+    staleTime: 1000,
+    gcTime: 5000,
+    refetchInterval: 10000,
+  });
+
+  const schoolName = settings?.schoolName || '';
+  const schoolMotto = settings?.schoolMotto || '';
+  const displayLogo = settings?.schoolLogo || schoolLogo;
+
+  useEffect(() => {
+    if (settings?.favicon) {
+      const faviconUrl = settings.favicon;
+      const links = document.querySelectorAll("link[rel*='icon']");
+      links.forEach(l => { (l as HTMLLinkElement).href = faviconUrl; });
+      if (links.length === 0) {
+        const link = document.createElement('link');
+        link.rel = 'icon';
+        link.href = faviconUrl;
+        document.head.appendChild(link);
+      }
+    }
+  }, [settings?.favicon]);
 
   const getNavigation = () => {
     const baseNav = [
       { name: 'Dashboard', href: `/portal/${userRole}`, icon: Home },
     ];
-
     switch (userRole) {
       case 'student':
         return [
@@ -113,7 +131,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: `/portal/${userRole}/exams`, icon: PenTool, label: 'Exams / Tests' },
               { href: `/portal/${userRole}/grades`, icon: BarChart3, label: 'Gradebook' },
               { href: `/portal/${userRole}/report-card`, icon: FileText, label: 'Report Card' },
-            ]
+            ],
           },
           { name: 'Attendance', href: `/portal/${userRole}/attendance`, icon: Calendar },
           {
@@ -126,7 +144,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: `/portal/${userRole}/messages`, icon: Inbox, label: 'Messages' },
               { href: `/portal/${userRole}/announcements`, icon: Megaphone, label: 'Announcements' },
               { href: `/portal/${userRole}/forum`, icon: MessagesSquare, label: 'Discussion Forum' },
-            ]
+            ],
           },
           { name: 'Exam Fee Payment', href: `/portal/${userRole}/exam-payment`, icon: CreditCard },
           { name: 'Library', href: `/portal/${userRole}/library`, icon: Library },
@@ -139,7 +157,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
           ...baseNav,
           { name: 'My Classes', href: `/portal/${userRole}/classes`, icon: Users },
           { name: 'Attendance', href: `/portal/${userRole}/coming-soon`, icon: Calendar },
-          { 
+          {
             type: 'group',
             label: 'Exam Management',
             icon: ClipboardList,
@@ -150,7 +168,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: '/portal/teacher/grading-queue', icon: CheckSquare, label: 'Grading Queue' },
               { href: '/portal/teacher/exam-analytics', icon: Award, label: 'Exam Analytics' },
               { href: '/portal/teacher/question-bank', icon: Database, label: 'Question Bank' },
-            ]
+            ],
           },
           { name: 'Report Cards', href: `/portal/${userRole}/report-cards`, icon: FileText },
           { name: 'Announcements', href: `/portal/${userRole}/announcements`, icon: MessageSquare },
@@ -161,9 +179,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
         return [
           ...baseNav,
           {
-            type: 'group',
-            label: 'Student Management',
-            icon: GraduationCap,
+            type: 'group', label: 'Student Management', icon: GraduationCap,
             isOpen: openMenuKey === 'admin-students',
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-students' : null),
             items: [
@@ -171,12 +187,10 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: `/portal/${userRole}/coming-soon?page=enrollment`, icon: UserCheck, label: 'Student Enrollment' },
               { href: `/portal/${userRole}/coming-soon?page=parents`, icon: Users, label: 'Parent Linking' },
               { href: `/portal/${userRole}/coming-soon?page=attendance`, icon: Calendar, label: 'Attendance' },
-            ]
+            ],
           },
           {
-            type: 'group',
-            label: 'Staff Management',
-            icon: Users,
+            type: 'group', label: 'Staff Management', icon: Users,
             isOpen: openMenuKey === 'admin-staff',
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-staff' : null),
             items: [
@@ -185,12 +199,10 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: `/portal/${userRole}/job-vacancies`, icon: Briefcase, label: 'Job Vacancies' },
               { href: `/portal/${userRole}/profile-completion`, icon: UserCheck, label: 'Profile Verification' },
               { href: `/portal/${userRole}/recovery-tools`, icon: RotateCcw, label: 'Recovery Tools' },
-            ]
+            ],
           },
           {
-            type: 'group',
-            label: 'Academic Operations',
-            icon: BookOpen,
+            type: 'group', label: 'Academic Operations', icon: BookOpen,
             isOpen: openMenuKey === 'admin-academics',
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-academics' : null),
             items: [
@@ -201,12 +213,10 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: `/portal/${userRole}/academic-terms`, icon: Calendar, label: 'Academic Terms' },
               { href: `/portal/${userRole}/syllabus-topics`, icon: Layers, label: 'Syllabus Topics' },
               { href: `/portal/${userRole}/coming-soon?page=timetable`, icon: Clock, label: 'Timetable' },
-            ]
+            ],
           },
           {
-            type: 'group',
-            label: 'Exams & Results',
-            icon: ClipboardList,
+            type: 'group', label: 'Exams & Results', icon: ClipboardList,
             isOpen: openMenuKey === 'admin-exams',
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-exams' : null),
             items: [
@@ -216,36 +226,30 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: '/portal/admin/results/publishing', icon: Eye, label: 'Result Publishing' },
               { href: `/portal/${userRole}/coming-soon?page=ca`, icon: ClipboardList, label: 'Continuous Assessment' },
               { href: `/portal/${userRole}/coming-soon?page=processing`, icon: Activity, label: 'Result Processing' },
-            ]
+            ],
           },
           {
-            type: 'group',
-            label: 'Finance Operations',
-            icon: DollarSign,
+            type: 'group', label: 'Finance Operations', icon: DollarSign,
             isOpen: openMenuKey === 'admin-finance',
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-finance' : null),
             items: [
               { href: `/portal/${userRole}/coming-soon?page=payments`, icon: DollarSign, label: 'Fee Collection' },
               { href: `/portal/${userRole}/coming-soon?page=records`, icon: FileText, label: 'Payment Records' },
               { href: `/portal/${userRole}/coming-soon?page=outstanding`, icon: Clock, label: 'Outstanding Fees' },
-            ]
+            ],
           },
           {
-            type: 'group',
-            label: 'School Events',
-            icon: Calendar,
+            type: 'group', label: 'School Events', icon: Calendar,
             isOpen: openMenuKey === 'admin-events',
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-events' : null),
             items: [
               { href: `/portal/${userRole}/coming-soon?page=calendar`, icon: Calendar, label: 'School Calendar' },
               { href: `/portal/${userRole}/coming-soon?page=events`, icon: Bell, label: 'Events & Notices' },
               { href: `/portal/${userRole}/announcements`, icon: Megaphone, label: 'Announcements' },
-            ]
+            ],
           },
           {
-            type: 'group',
-            label: 'Content Management',
-            icon: ImageIcon,
+            type: 'group', label: 'Content Management', icon: ImageIcon,
             isOpen: openMenuKey === 'admin-content',
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-content' : null),
             items: [
@@ -254,12 +258,10 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: `/portal/${userRole}/coming-soon?page=assignments`, icon: ClipboardPen, label: 'Assignments' },
               { href: `/portal/${userRole}/coming-soon?page=lessons`, icon: BookOpen, label: 'Lesson Notes' },
               { href: `/portal/${userRole}/coming-soon?page=library`, icon: Library, label: 'E-Library' },
-            ]
+            ],
           },
           {
-            type: 'group',
-            label: 'Reports',
-            icon: FileText,
+            type: 'group', label: 'Reports', icon: FileText,
             isOpen: openMenuKey === 'admin-reports',
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-reports' : null),
             items: [
@@ -267,7 +269,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: `/portal/${userRole}/performance`, icon: Activity, label: 'Performance Analytics' },
               { href: `/portal/${userRole}/online-users`, icon: Users, label: 'Live Activity' },
               { href: `/portal/${userRole}/comment-templates`, icon: MessageSquare, label: 'Comment Templates' },
-            ]
+            ],
           },
           { name: 'Settings', href: `/portal/${userRole}/settings`, icon: Settings },
           { name: 'Profile', href: `/portal/${userRole}/profile`, icon: User },
@@ -288,22 +290,22 @@ export default function PortalLayout({ children, userRole, userName, userInitial
   };
 
   const navigation = getNavigation();
+
   const isActive = (path: string) => {
-    // Exact match for the main dashboard
-    if (path === `/portal/${userRole}`) {
-      return location === path;
-    }
-    // For other paths, check if current location starts with the path
+    if (path === `/portal/${userRole}`) return location === path;
     return location === path || location.startsWith(path + '/');
   };
 
+  const isGroupActive = (items: Array<{ href: string }>) =>
+    items.some(i => isActive(i.href));
+
   const getRoleTitle = () => {
     switch (userRole) {
-      case 'student': return 'Student Portal';
-      case 'teacher': return 'Teacher Portal';
-      case 'admin': return 'Admin Portal';
-      case 'parent': return 'Parent Portal';
-      default: return 'Portal';
+      case 'student': return 'Student';
+      case 'teacher': return 'Teacher';
+      case 'admin': return 'Admin';
+      case 'parent': return 'Parent';
+      default: return '';
     }
   };
 
@@ -312,273 +314,330 @@ export default function PortalLayout({ children, userRole, userName, userInitial
     window.location.href = '/';
   };
 
-  const { data: settings } = useQuery<SettingsData>({
-    queryKey: ["/api/public/settings"],
-    staleTime: 1000,
-    gcTime: 5000,
-    refetchInterval: 10000,
-  });
+  const isExamPage = userRole === 'student' && location.startsWith('/portal/student/exams');
 
-  const schoolName = settings?.schoolName || "";
-  const schoolMotto = settings?.schoolMotto || "";
-  const displayLogo = settings?.schoolLogo || schoolLogo;
-
-  useEffect(() => {
-    if (settings?.favicon) {
-      const faviconUrl = settings.favicon;
-      const links = document.querySelectorAll("link[rel*='icon']");
-      links.forEach(link => {
-        (link as HTMLLinkElement).href = faviconUrl;
-      });
-      
-      if (links.length === 0) {
-        const link = document.createElement('link');
-        link.rel = 'icon';
-        link.href = faviconUrl;
-        document.head.appendChild(link);
-      }
-    }
-  }, [settings?.favicon]);
-
-  // Reusable Sidebar Content Component with Modern Design
-  const SidebarContent = ({ onNavigate, collapsed = false, showBrand = false }: { onNavigate?: () => void; collapsed?: boolean; showBrand?: boolean }) => {
+  // ── Sidebar Nav Content ──────────────────────────────────────────────────
+  const SidebarNav = ({
+    collapsed = false,
+    onNavigate,
+  }: {
+    collapsed?: boolean;
+    onNavigate?: () => void;
+  }) => {
     const [, navigate] = useLocation();
-    const [isPending, startTransition] = useTransition();
+    const [, startTransition] = useTransition();
 
-    const handleNavigation = (href: string, label: string) => {
+    const go = (href: string) => {
       onNavigate?.();
       startTransition(() => navigate(href));
     };
 
     return (
-      <div className="flex flex-col h-full">
-        {/* Sidebar Brand Header — only shown on mobile (desktop header handles branding) */}
-        {showBrand && (
-          <div className="flex-shrink-0 h-[72px] flex items-center border-b border-gray-200 dark:border-gray-700 px-3 bg-gradient-to-br from-blue-50 to-white dark:from-gray-800 dark:to-gray-900">
-            <div className="flex items-center w-full gap-2">
-              <img 
-                src={displayLogo} 
-                alt={`${schoolName} Logo`} 
-                className="h-12 w-12 object-contain flex-shrink-0 drop-shadow-md"
-              />
-              <div className="flex-1 min-w-0">
-                <h1 className="font-bold text-base text-blue-700 dark:text-blue-400 whitespace-nowrap leading-tight truncate">{schoolName}</h1>
-                <p className="text-[9px] text-blue-600 dark:text-blue-300 font-semibold tracking-wide uppercase whitespace-nowrap truncate">{schoolMotto}</p>
-                <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium mt-0.5 whitespace-nowrap">{getRoleTitle()}</p>
-              </div>
-            </div>
-          </div>
-        )}
+      <nav
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-2 px-2 space-y-0.5 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+        data-testid="sidebar-nav"
+      >
+        {navigation.map((item) => {
+          const Icon = item.icon;
 
-        <nav className={`flex-1 min-h-0 p-3 space-y-1.5 transition-all duration-300 ease-in-out ${collapsed ? 'px-2' : ''} overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent hover:scrollbar-thumb-gray-400 dark:hover:scrollbar-thumb-gray-500`}>
-          {navigation.map((item) => {
-            const Icon = item.icon;
-            if ('type' in item && item.type === 'group') {
+          if ('type' in item && item.type === 'group') {
+            const groupActive = isGroupActive(item.items);
+
+            if (collapsed) {
               return (
-                <Collapsible 
-                  key={item.label} 
-                  open={item.isOpen} 
-                  onOpenChange={(open) => item.setIsOpen(open)}
+                <button
+                  key={item.label}
+                  type="button"
+                  title={item.label}
+                  onClick={() => {
+                    setSidebarCollapsed(false);
+                    localStorage.setItem('sidebarCollapsed', 'false');
+                    item.setIsOpen(true);
+                  }}
+                  className={`flex items-center justify-center w-full h-9 rounded-lg transition-colors duration-150 ${
+                    groupActive
+                      ? 'bg-primary text-primary-foreground'
+                      : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  }`}
+                  data-testid={`nav-group-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
                 >
-                  <CollapsibleTrigger asChild>
-                    <button
-                      type="button"
-                      className={`flex items-center ${
-                        collapsed ? 'justify-center px-2' : 'justify-start px-3'
-                      } py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ease-in-out w-full text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 dark:hover:from-blue-900/20 dark:hover:to-blue-800/20 hover:text-blue-700 dark:hover:text-blue-300`}
-                      title={collapsed ? item.label : undefined}
-                    >
-                      <Icon className="h-4 w-4 flex-shrink-0" />
-                      {!collapsed && (
-                        <>
-                          <span className="ml-3 whitespace-nowrap overflow-hidden flex-1 text-left">{item.label}</span>
-                          <ChevronDown className={`h-4 w-4 flex-shrink-0 transition-transform duration-200 ${item.isOpen ? 'rotate-0' : '-rotate-90'}`} />
-                        </>
-                      )}
-                    </button>
-                  </CollapsibleTrigger>
-                  {!collapsed && (
-                    <CollapsibleContent className="space-y-1 ml-2 border-l-2 border-gray-200 dark:border-gray-700 pl-2">
-                      {item.items.map((subItem) => {
-                        const SubIcon = subItem.icon;
-                        const subItemActive = isActive(subItem.href);
-                        return (
-                          <button
-                            key={subItem.href}
-                            type="button"
-                            onClick={() => handleNavigation(subItem.href, subItem.label)}
-                            className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 w-full text-left ${
-                              subItemActive 
-                                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/50 dark:shadow-blue-500/30' 
-                                : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
-                            }`}
-                            data-testid={`nav-${subItem.label.toLowerCase().replace(/\s+/g, '-')}`}
-                            title={subItem.label}
-                          >
-                            <SubIcon className="h-4 w-4 mr-3" />
-                            {subItem.label}
-                          </button>
-                        );
-                      })}
-                    </CollapsibleContent>
-                  )}
-                </Collapsible>
+                  <Icon className="h-4 w-4 flex-shrink-0" />
+                </button>
               );
             }
-            const navItem = item as NavItem;
-            const navItemActive = isActive(navItem.href);
-            const isLogout = navItem.href === '#logout';
-            if (isLogout) return null;
 
             return (
-              <button
-                key={navItem.name}
-                type="button"
-                onClick={() => handleNavigation(navItem.href, navItem.name)}
-                className={`flex items-center ${collapsed ? 'justify-center px-2' : 'px-3'} py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ease-in-out w-full ${
-                  navItemActive 
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/50 dark:shadow-blue-500/30 scale-105' 
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 dark:hover:from-blue-900/20 dark:hover:to-blue-800/20 hover:text-blue-700 dark:hover:text-blue-300 hover:scale-102'
-                }`}
-                data-testid={`nav-${navItem.name.toLowerCase().replace(/\s+/g, '-')}`}
-                title={collapsed ? navItem.name : undefined}
+              <Collapsible
+                key={item.label}
+                open={item.isOpen}
+                onOpenChange={item.setIsOpen}
               >
-                <Icon className="h-4 w-4 flex-shrink-0" />
-                <span className={`whitespace-nowrap overflow-hidden transition-[opacity,max-width,margin] duration-200 ease-in-out ${collapsed ? 'opacity-0 max-w-0 ml-0' : 'opacity-100 max-w-[160px] ml-3'}`}>{navItem.name}</span>
-              </button>
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className={`flex items-center gap-2.5 w-full px-2.5 h-9 rounded-lg text-sm font-medium transition-colors duration-150 ${
+                      groupActive
+                        ? 'text-primary bg-primary/10'
+                        : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                    }`}
+                    data-testid={`nav-group-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    <span className="flex-1 text-left text-[13px] truncate">{item.label}</span>
+                    <ChevronDown
+                      className={`h-3.5 w-3.5 flex-shrink-0 transition-transform duration-200 ${
+                        item.isOpen ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="ml-3 mt-0.5 mb-0.5 pl-2.5 border-l border-border space-y-0.5">
+                    {item.items.map((sub) => {
+                      const SubIcon = sub.icon;
+                      const active = isActive(sub.href);
+                      return (
+                        <button
+                          key={sub.href}
+                          type="button"
+                          onClick={() => go(sub.href)}
+                          className={`flex items-center gap-2 w-full px-2 h-8 rounded-md text-[12.5px] font-medium transition-colors duration-150 ${
+                            active
+                              ? 'bg-primary text-primary-foreground'
+                              : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                          }`}
+                          data-testid={`nav-${sub.label.toLowerCase().replace(/\s+/g, '-')}`}
+                          title={sub.label}
+                        >
+                          <SubIcon className="h-3.5 w-3.5 flex-shrink-0" />
+                          <span className="truncate">{sub.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
             );
-          })}
-        </nav>
-        
-        {/* Hide / Show panel button */}
-        <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-700">
-          <button
-            onClick={showBrand ? onNavigate : toggleSidebar}
-            className={`flex items-center gap-2 w-full px-3 py-3 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200 ${!showBrand && collapsed ? 'justify-center' : ''}`}
-            data-testid="button-toggle-sidebar"
-            title={showBrand ? 'Close sidebar' : collapsed ? 'Show panel' : 'Hide this panel'}
-          >
-            {showBrand || !collapsed
-              ? <><ChevronLeft className="h-4 w-4 flex-shrink-0" /><span className="text-xs font-medium whitespace-nowrap">Hide this panel</span></>
-              : <ChevronRight className="h-4 w-4 flex-shrink-0" />
-            }
-          </button>
-        </div>
-      </div>
+          }
+
+          const navItem = item as NavItem;
+          if (navItem.href === '#logout') return null;
+          const active = isActive(navItem.href);
+
+          return (
+            <button
+              key={navItem.name}
+              type="button"
+              onClick={() => go(navItem.href)}
+              title={collapsed ? navItem.name : undefined}
+              className={`flex items-center gap-2.5 w-full rounded-lg transition-colors duration-150 ${
+                collapsed ? 'justify-center h-9 px-0' : 'px-2.5 h-9'
+              } ${
+                active
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+              }`}
+              data-testid={`nav-${navItem.name.toLowerCase().replace(/\s+/g, '-')}`}
+            >
+              <Icon className="h-4 w-4 flex-shrink-0" />
+              {!collapsed && (
+                <span className="text-[13px] font-medium truncate">{navItem.name}</span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
     );
   };
 
-  const isTakingExam = location.includes('/portal/student/exams/') && (location.endsWith('/take') || location.split('/').length > 4);
-  // Hide layout for students when on ANY exam subpage
-  const isExamPage = userRole === 'student' && location.startsWith('/portal/student/exams');
+  // ── Sidebar Shell (desktop) ──────────────────────────────────────────────
+  const DesktopSidebar = () => (
+    <aside
+      style={{ width: sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH }}
+      className="flex-shrink-0 bg-background border-r border-border sticky top-[52px] h-[calc(100vh-52px)] flex flex-col transition-[width] duration-300 ease-in-out overflow-hidden"
+      data-testid="desktop-sidebar"
+    >
+      {/* Brand */}
+      <div className={`flex-shrink-0 h-14 flex items-center border-b border-border ${sidebarCollapsed ? 'justify-center px-0' : 'px-3 gap-2.5'}`}>
+        <img
+          src={displayLogo}
+          alt="School logo"
+          className={`object-contain flex-shrink-0 transition-all duration-300 ${sidebarCollapsed ? 'h-7 w-7' : 'h-8 w-8'}`}
+        />
+        {!sidebarCollapsed && (
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-bold text-primary leading-tight truncate">{schoolName}</p>
+            <p className="text-[10px] text-muted-foreground truncate capitalize">{getRoleTitle()} Portal</p>
+          </div>
+        )}
+      </div>
+
+      {/* Nav */}
+      <SidebarNav collapsed={sidebarCollapsed} />
+
+      {/* Collapse toggle */}
+      <div className="flex-shrink-0 border-t border-border">
+        <button
+          onClick={toggleSidebar}
+          className={`flex items-center gap-2 w-full px-3 h-10 text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors duration-150 ${sidebarCollapsed ? 'justify-center' : ''}`}
+          data-testid="button-toggle-sidebar"
+          title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {sidebarCollapsed
+            ? <PanelLeftOpen className="h-4 w-4" />
+            : <><PanelLeftClose className="h-4 w-4" /><span className="font-medium">Collapse</span></>
+          }
+        </button>
+      </div>
+    </aside>
+  );
+
+  // ── Mobile Sidebar (Sheet) ──────────────────────────────────────────────
+  const MobileSidebarContent = () => (
+    <div className="flex flex-col h-full bg-background">
+      {/* Brand */}
+      <div className="flex-shrink-0 h-14 flex items-center gap-3 px-4 border-b border-border">
+        <img src={displayLogo} alt="School logo" className="h-9 w-9 object-contain flex-shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold text-primary leading-tight truncate">{schoolName}</p>
+          <p className="text-[10px] text-muted-foreground truncate">{schoolMotto}</p>
+        </div>
+      </div>
+
+      {/* Nav */}
+      <div className="flex-1 min-h-0 overflow-y-auto py-2 px-2 space-y-0.5">
+        <SidebarNav onNavigate={() => setMobileMenuOpen(false)} />
+      </div>
+
+      {/* Logout */}
+      <div className="flex-shrink-0 border-t border-border p-2">
+        <button
+          onClick={handleLogout}
+          className="flex items-center gap-2.5 w-full px-2.5 h-9 rounded-lg text-[13px] font-medium text-destructive hover:bg-destructive/10 transition-colors"
+          data-testid="nav-logout"
+        >
+          <LogOut className="h-4 w-4 flex-shrink-0" />
+          <span>Sign out</span>
+        </button>
+      </div>
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex flex-col">
+    <div className="min-h-screen bg-muted/30 flex flex-col">
 
-      {/* Full-Width Header — spans above sidebar and content */}
+      {/* ── Top Header ─────────────────────────────────────────────────────── */}
       {!isExamPage && (
-        <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm h-[72px] flex items-center px-4 sm:px-5 md:px-6 flex-shrink-0">
-          <div className="flex justify-between items-center gap-2 sm:gap-3 w-full">
-            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-              {/* Mobile Menu Trigger */}
-              {isMobile && (
-                <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-                  <SheetTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      className="md:hidden h-9 w-9 flex-shrink-0 rounded-lg shadow-sm hover:shadow-md transition-all duration-200 border-gray-200 dark:border-gray-700"
-                      data-testid="button-mobile-menu"
-                    >
-                      <Menu className="h-5 w-5" />
-                    </Button>
-                  </SheetTrigger>
-                  <SheetContent side="left" className="w-[280px] sm:w-[320px] p-0 bg-white dark:bg-gray-900 [&>button]:hidden">
-                    <div className="h-full overflow-y-auto">
-                      <SidebarContent onNavigate={() => setMobileMenuOpen(false)} showBrand />
-                    </div>
-                  </SheetContent>
-                </Sheet>
-              )}
+        <header
+          style={{ height: HEADER_HEIGHT }}
+          className="sticky top-0 z-50 bg-background border-b border-border flex items-center px-3 gap-2 flex-shrink-0"
+          data-testid="portal-header"
+        >
+          {/* Mobile: hamburger */}
+          {isMobile && (
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 flex-shrink-0"
+                  data-testid="button-mobile-menu"
+                >
+                  <Menu className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-[260px] p-0 [&>button]:hidden">
+                <MobileSidebarContent />
+              </SheetContent>
+            </Sheet>
+          )}
 
-              {/* School Branding */}
-              <div className="flex items-center gap-2 min-w-0">
-                <img 
-                  src={displayLogo} 
-                  alt={`${schoolName} Logo`} 
-                  className="hidden sm:block h-10 w-10 object-contain flex-shrink-0 drop-shadow-md"
-                />
-                <div className="flex flex-col min-w-0">
-                  <h1 className="text-base md:text-lg font-bold truncate bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-400 dark:to-blue-500 bg-clip-text text-transparent leading-tight">
-                    {schoolName}
-                  </h1>
-                  <p className="text-gray-500 dark:text-gray-400 text-[10px] sm:text-xs truncate font-medium">
-                    {schoolMotto}
-                  </p>
-                </div>
-              </div>
+          {/* Mobile: compact branding */}
+          {isMobile && (
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <img src={displayLogo} alt="logo" className="h-7 w-7 object-contain flex-shrink-0" />
+              <span className="text-sm font-bold text-primary truncate">{schoolName}</span>
             </div>
+          )}
 
-            <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-3 flex-shrink-0">
-              <ThemeToggle />
-              <NotificationBell />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800 rounded-full px-2 sm:px-3 py-1.5 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 outline-none group">
-                    <Avatar className="h-7 w-7 sm:h-8 sm:w-8 ring-2 ring-white dark:ring-gray-800 group-hover:ring-blue-100 dark:group-hover:ring-blue-900 transition-all">
-                      <AvatarFallback className="bg-gradient-to-br from-blue-600 to-blue-700 text-white text-xs sm:text-sm font-bold">
-                        {userInitials}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="hidden md:flex flex-col items-start min-w-0 text-left">
-                      <span className="text-xs sm:text-sm font-semibold truncate max-w-[100px] lg:max-w-none text-gray-700 dark:text-gray-300" data-testid="text-username">
-                        {userName}
-                      </span>
-                      <span className="text-[10px] text-gray-500 dark:text-gray-400 leading-none capitalize">{userRole}</span>
-                    </div>
-                    <ChevronDown className="h-3.5 w-3.5 text-gray-400 group-hover:text-blue-500 transition-colors" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 mt-2 rounded-xl shadow-xl border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm">
-                  <DropdownMenuLabel className="font-normal p-3">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-bold leading-none text-gray-900 dark:text-gray-100">{userName}</p>
-                      <p className="text-xs leading-none text-gray-500 dark:text-gray-400 capitalize">{userRole} Account</p>
-                    </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-gray-100 dark:bg-gray-800" />
-                  <DropdownMenuItem onClick={() => window.location.href = `/portal/${userRole}/profile`} className="p-2.5 cursor-pointer focus:bg-blue-50 dark:focus:bg-blue-900/20 focus:text-blue-700 dark:focus:text-blue-300 rounded-lg mx-1 transition-colors">
-                    <User className="mr-2.5 h-4 w-4" />
-                    <span>My Profile</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => window.location.href = `/portal/${userRole}/settings`} className="p-2.5 cursor-pointer focus:bg-blue-50 dark:focus:bg-blue-900/20 focus:text-blue-700 dark:focus:text-blue-300 rounded-lg mx-1 transition-colors">
-                    <Settings className="mr-2.5 h-4 w-4" />
-                    <span>Account Settings</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-gray-100 dark:bg-gray-800" />
-                  <DropdownMenuItem onClick={handleLogout} className="px-3 py-2.5 rounded-xl cursor-pointer hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 font-bold transition-all">
-                    <LogOut className="mr-3 h-4 w-4" />
-                    <span>Sign out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+          {/* Desktop: search fills the gap */}
+          {!isMobile && (
+            <div className="flex-1 min-w-0 max-w-md">
+              <HeaderSearch />
             </div>
+          )}
+
+          {/* Right actions */}
+          <div className="flex items-center gap-1 ml-auto flex-shrink-0">
+            <ThemeToggle />
+            <NotificationBell />
+
+            {/* User dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="flex items-center gap-1.5 rounded-full pl-1 pr-2 py-1 hover:bg-accent transition-colors outline-none"
+                  data-testid="button-user-menu"
+                >
+                  <Avatar className="h-7 w-7">
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
+                      {userInitials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="hidden md:flex flex-col items-start">
+                    <span className="text-xs font-semibold leading-tight text-foreground max-w-[100px] truncate" data-testid="text-username">
+                      {userName}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground capitalize leading-tight">{userRole}</span>
+                  </div>
+                  <ChevronDown className="h-3 w-3 text-muted-foreground hidden md:block" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52 mt-1">
+                <DropdownMenuLabel className="font-normal px-3 py-2">
+                  <p className="text-sm font-semibold">{userName}</p>
+                  <p className="text-xs text-muted-foreground capitalize">{userRole} Account</p>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => window.location.href = `/portal/${userRole}/profile`}
+                  className="cursor-pointer"
+                >
+                  <User className="mr-2 h-4 w-4" />
+                  My Profile
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => window.location.href = `/portal/${userRole}/settings`}
+                  className="cursor-pointer"
+                >
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
+                  data-testid="button-logout"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
       )}
 
-      {/* Body: Sidebar + Content side by side */}
+      {/* ── Body: Sidebar + Content ─────────────────────────────────────────── */}
       <div className="flex flex-1 min-h-0">
-        {/* Desktop Sidebar — sits below the header */}
-        {!isMobile && !isExamPage && (
-          <div className={`${sidebarCollapsed ? 'w-20' : 'w-64'} bg-white dark:bg-gray-900 shadow-xl border-r border-gray-200 dark:border-gray-700 sticky top-[72px] h-[calc(100vh-72px)] transition-[width] duration-300 ease-in-out overflow-hidden flex-shrink-0`}>
-            <SidebarContent collapsed={sidebarCollapsed} />
-          </div>
-        )}
+        {!isMobile && !isExamPage && <DesktopSidebar />}
 
-        {/* Page Content */}
-        <main className={`flex-1 overflow-x-hidden ${isExamPage ? 'p-0 overflow-hidden' : 'p-3 sm:p-4 md:p-6 lg:p-8'}`}>
-          <div className={`${isExamPage ? 'max-w-none h-full w-full' : 'max-w-7xl mx-auto'}`}>
+        <main
+          className={`flex-1 overflow-x-hidden min-w-0 ${
+            isExamPage ? 'p-0 overflow-hidden' : 'p-4 sm:p-5 md:p-6'
+          }`}
+        >
+          <div className={isExamPage ? 'max-w-none h-full w-full' : 'max-w-5xl mx-auto'}>
             {children}
           </div>
         </main>
