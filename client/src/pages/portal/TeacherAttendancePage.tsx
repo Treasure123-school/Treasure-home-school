@@ -138,11 +138,15 @@ function HistorySection({ classId }: { classId: number }) {
     queryFn: () =>
       fetch(`/api/attendance/class/${classId}/history?startDate=${startDate}&endDate=${endDate}`, {
         credentials: 'include',
-      }).then(r => r.json()),
+      }).then(r => {
+        if (!r.ok) return [];
+        return r.json().then((d: unknown) => (Array.isArray(d) ? d : []));
+      }),
     enabled: showHistory,
   });
 
-  const byDate = (historyData as AttendanceRecord[]).reduce<Record<string, AttendanceRecord[]>>((acc, r) => {
+  const safeHistory = Array.isArray(historyData) ? historyData : [];
+  const byDate = safeHistory.reduce<Record<string, AttendanceRecord[]>>((acc, r) => {
     acc[r.date] = acc[r.date] || [];
     acc[r.date].push(r);
     return acc;
@@ -233,14 +237,18 @@ export default function TeacherAttendancePage() {
     enabled: !!selectedClassId,
   });
 
-  const { data: existingRecords = [] } = useQuery<AttendanceRecord[]>({
+  const { data: existingRecordsRaw = [] } = useQuery<AttendanceRecord[]>({
     queryKey: [`/api/attendance/class/${selectedClassId}`, selectedDate],
     queryFn: () =>
       fetch(`/api/attendance/class/${selectedClassId}?date=${selectedDate}`, {
         credentials: 'include',
-      }).then(r => r.json()),
+      }).then(r => {
+        if (!r.ok) return [];
+        return r.json().then((d: unknown) => (Array.isArray(d) ? d : []));
+      }),
     enabled: !!selectedClassId,
   });
+  const existingRecords: AttendanceRecord[] = Array.isArray(existingRecordsRaw) ? existingRecordsRaw : [];
 
   useEffect(() => {
     if (!classDetail) return;
