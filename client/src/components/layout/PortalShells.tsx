@@ -38,7 +38,6 @@ const TeacherGradingQueue = lazy(() => import('@/pages/portal/TeacherGradingQueu
 const TeacherClassResults = lazy(() => import('@/pages/portal/TeacherClassResults'));
 const TeacherExamResults = lazy(() => import('@/pages/portal/TeacherExamResults'));
 const ExamManagement = lazy(() => import('@/pages/portal/ExamManagement'));
-const CreateExam = lazy(() => import('@/pages/portal/CreateExam'));
 const TeacherExamAnalytics = lazy(() => import('@/pages/portal/TeacherExamAnalytics'));
 const TeacherReportCards = lazy(() => import('@/pages/portal/TeacherReportCards'));
 const TeacherRecentExamResults = lazy(() => import('@/pages/portal/TeacherRecentExamResults'));
@@ -140,7 +139,6 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/teacher/grading-queue" component={TeacherGradingQueue} />
             <Route path="/portal/teacher/results/class/:classId" component={TeacherClassResults} />
             <Route path="/portal/teacher/results/exam/:examId" component={TeacherExamResults} />
-            <Route path="/portal/teacher/exams/create" component={CreateExam} />
             <Route path="/portal/teacher/exams/manage" component={ExamManagement} />
             <Route path="/portal/teacher/exams" component={ExamManagement} />
             <Route path="/portal/teacher/exam-analytics" component={TeacherExamAnalytics} />
