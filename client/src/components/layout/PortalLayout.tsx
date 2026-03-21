@@ -356,7 +356,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
                 }}
                 className={`flex items-center w-full h-9 rounded-lg transition-colors duration-200 ease-in-out ${
                   collapsed ? 'justify-center px-0' : 'px-2.5 gap-2.5'
-                } ${groupActive ? 'text-primary bg-primary/10' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}`}
+                } ${groupActive ? 'text-primary hover:bg-accent' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}`}
                 data-testid={`nav-group-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
               >
                 <Icon className="h-4 w-4 flex-shrink-0" />
