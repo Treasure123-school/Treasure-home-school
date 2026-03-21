@@ -5471,7 +5471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update an announcement - Admin only
-  app.put('/api/announcements/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
+  app.put('/api/announcements/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.TEACHER), async (req, res) => {
     try {
       const announcementId = parseInt(req.params.id);
 
@@ -5519,8 +5519,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete an announcement - Admin only
-  app.delete('/api/announcements/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
+  // Delete an announcement - Admin and Teacher (own only)
+  app.delete('/api/announcements/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.TEACHER), async (req, res) => {
     try {
       const announcementId = parseInt(req.params.id);
 
