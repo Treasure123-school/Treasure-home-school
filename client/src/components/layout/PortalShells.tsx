@@ -27,6 +27,8 @@ const PortalGallery = lazy(() => import('@/pages/portal/Gallery'));
 const PortalComingSoon = lazy(() => import('@/pages/portal/PortalComingSoon'));
 
 const TeacherDashboard = lazy(() => import('@/pages/portal/TeacherDashboard'));
+const TeacherMessages = lazy(() => import('@/pages/portal/TeacherMessages'));
+const TeacherAnnouncements = lazy(() => import('@/pages/portal/TeacherAnnouncements'));
 const TeacherProfile = lazy(() => import('@/pages/portal/TeacherProfile'));
 const TeacherProfileAssignmentDashboard = lazy(() => import('@/pages/portal/TeacherProfileAssignmentDashboard'));
 const TeacherGradingQueue = lazy(() => import('@/pages/portal/TeacherGradingQueue'));
@@ -140,6 +142,8 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/teacher/recent-exam-results" component={TeacherRecentExamResults} />
             <Route path="/portal/teacher/syllabus-topics" component={SyllabusTopicsManager} />
             <Route path="/portal/teacher/question-bank" component={QuestionBankManager} />
+            <Route path="/portal/teacher/messages" component={TeacherMessages} />
+            <Route path="/portal/teacher/announcements" component={TeacherAnnouncements} />
             <Route path="/portal/teacher/*" component={PortalComingSoon} />
           </Switch>
         )}
