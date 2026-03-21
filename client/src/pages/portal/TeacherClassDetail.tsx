@@ -326,10 +326,14 @@ function AttendanceTab({ classId }: { classId: number }) {
     queryFn: () =>
       fetch(`/api/attendance/class/${classId}/history?startDate=${weekAgo}&endDate=${today}`, {
         credentials: 'include',
-      }).then(r => r.json()),
+      }).then(r => {
+        if (!r.ok) return [];
+        return r.json().then((d: unknown) => (Array.isArray(d) ? d : []));
+      }),
   });
 
-  const byDate = (history as AttendanceRecord[]).reduce<Record<string, AttendanceRecord[]>>((acc, r) => {
+  const safeHistory = Array.isArray(history) ? history : [];
+  const byDate = safeHistory.reduce<Record<string, AttendanceRecord[]>>((acc, r) => {
     acc[r.date] = acc[r.date] || [];
     acc[r.date].push(r);
     return acc;
