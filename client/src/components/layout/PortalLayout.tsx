@@ -356,7 +356,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
                 }}
                 className={`flex items-center w-full h-9 rounded-lg transition-colors duration-200 ease-in-out ${
                   collapsed ? 'justify-center px-0' : 'px-2.5 gap-2.5'
-                } ${groupActive ? 'text-primary hover:bg-accent' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}`}
+                } ${groupActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
                 data-testid={`nav-group-${item.label.toLowerCase().replace(/\s+/g, '-')}`}
               >
                 <Icon className="h-4 w-4 flex-shrink-0" />
@@ -381,7 +381,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
                       type="button"
                       onClick={() => goTo(sub.href, onNavigate)}
                       className={`flex items-center gap-2 w-full px-2 h-8 rounded-md text-[12.5px] font-medium transition-colors duration-150 ${
-                        active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                        active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                       }`}
                       data-testid={`nav-${sub.label.toLowerCase().replace(/\s+/g, '-')}`}
                       title={sub.label}
@@ -409,7 +409,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
           title={collapsed ? navItem.name : undefined}
           className={`flex items-center w-full h-9 rounded-lg transition-colors duration-200 ease-in-out ${
             collapsed ? 'justify-center px-0' : 'px-2.5 gap-2.5'
-          } ${active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'}`}
+          } ${active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           data-testid={`nav-${navItem.name.toLowerCase().replace(/\s+/g, '-')}`}
         >
           <Icon className="h-4 w-4 flex-shrink-0" />
