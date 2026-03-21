@@ -364,8 +364,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
                   {item.label}
                 </span>
                 <ChevronDown
-                  className={`h-3.5 w-3.5 flex-shrink-0 transition-[opacity,transform] duration-300 ease-in-out ${
-                    collapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'
+                  className={`flex-shrink-0 transition-[opacity,width,height,transform] duration-300 ease-in-out ${
+                    collapsed ? 'opacity-0 w-0 h-0 overflow-hidden' : 'opacity-100 w-3.5 h-3.5'
                   } ${item.isOpen ? 'rotate-180' : 'rotate-0'}`}
                 />
               </button>
