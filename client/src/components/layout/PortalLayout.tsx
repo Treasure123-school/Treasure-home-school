@@ -457,21 +457,6 @@ export default function PortalLayout({ children, userRole, userName, userInitial
       className="flex-shrink-0 bg-background border-r border-border sticky top-[52px] h-[calc(100vh-52px)] flex flex-col transition-[width] duration-300 ease-in-out overflow-hidden"
       data-testid="desktop-sidebar"
     >
-      {/* Brand */}
-      <div className={`flex-shrink-0 h-14 flex items-center border-b border-border ${sidebarCollapsed ? 'justify-center px-0' : 'px-3 gap-2.5'}`}>
-        <img
-          src={displayLogo}
-          alt="School logo"
-          className={`object-contain flex-shrink-0 transition-all duration-300 ${sidebarCollapsed ? 'h-7 w-7' : 'h-8 w-8'}`}
-        />
-        {!sidebarCollapsed && (
-          <div className="min-w-0 flex-1">
-            <p className="text-[13px] font-bold text-primary leading-tight truncate">{schoolName}</p>
-            <p className="text-[10px] text-muted-foreground truncate capitalize">{getRoleTitle()} Portal</p>
-          </div>
-        )}
-      </div>
-
       {/* Nav */}
       <SidebarNav collapsed={sidebarCollapsed} />
 
@@ -530,45 +515,64 @@ export default function PortalLayout({ children, userRole, userName, userInitial
       {!isExamPage && (
         <header
           style={{ height: HEADER_HEIGHT }}
-          className="sticky top-0 z-50 bg-background border-b border-border flex items-center px-3 gap-2 flex-shrink-0"
+          className="sticky top-0 z-50 bg-background border-b border-border flex items-center flex-shrink-0"
           data-testid="portal-header"
         >
-          {/* Mobile: hamburger */}
-          {isMobile && (
-            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 flex-shrink-0"
-                  data-testid="button-mobile-menu"
-                >
-                  <Menu className="h-4 w-4" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="left" className="w-[260px] p-0 [&>button]:hidden">
-                <MobileSidebarContent />
-              </SheetContent>
-            </Sheet>
-          )}
-
-          {/* Mobile: compact branding */}
-          {isMobile && (
-            <div className="flex items-center gap-2 flex-1 min-w-0">
+          {/* ── Brand section: synced width with desktop sidebar ── */}
+          {!isMobile ? (
+            <div
+              style={{
+                width: sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH,
+                minWidth: sidebarCollapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_EXPANDED_WIDTH,
+              }}
+              className="flex-shrink-0 h-full flex items-center border-r border-border transition-[width,min-width] duration-300 ease-in-out overflow-hidden"
+            >
+              <div className={`flex items-center w-full h-full ${sidebarCollapsed ? 'justify-center px-0' : 'px-3 gap-2.5'}`}>
+                <img
+                  src={displayLogo}
+                  alt="School logo"
+                  className={`object-contain flex-shrink-0 transition-all duration-300 ${sidebarCollapsed ? 'h-7 w-7' : 'h-8 w-8'}`}
+                />
+                {!sidebarCollapsed && (
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-bold text-primary leading-tight truncate">{schoolName}</p>
+                    <p className="text-[10px] text-muted-foreground truncate capitalize">{getRoleTitle()} Portal</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* Mobile: hamburger + logo + name */
+            <div className="flex items-center gap-2 px-3 flex-1 min-w-0">
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 flex-shrink-0"
+                    data-testid="button-mobile-menu"
+                  >
+                    <Menu className="h-4 w-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-[260px] p-0 [&>button]:hidden">
+                  <MobileSidebarContent />
+                </SheetContent>
+              </Sheet>
               <img src={displayLogo} alt="logo" className="h-7 w-7 object-contain flex-shrink-0" />
               <span className="text-sm font-bold text-primary truncate">{schoolName}</span>
             </div>
           )}
 
-          {/* Desktop: search fills the gap */}
+          {/* ── Search (desktop only) ── */}
           {!isMobile && (
-            <div className="flex-1 min-w-0 max-w-md">
+            <div className="flex-1 min-w-0 px-4 max-w-sm">
               <HeaderSearch />
             </div>
           )}
 
-          {/* Right actions */}
-          <div className="flex items-center gap-1 ml-auto flex-shrink-0">
+          {/* ── Right actions ── */}
+          <div className="flex items-center gap-1 px-3 ml-auto flex-shrink-0">
             <ThemeToggle />
             <NotificationBell />
 
