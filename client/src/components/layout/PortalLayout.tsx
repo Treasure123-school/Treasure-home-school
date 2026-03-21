@@ -457,12 +457,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
       className="flex-shrink-0 bg-background border-r border-border sticky top-[52px] h-[calc(100vh-52px)] flex flex-col transition-[width] duration-300 ease-in-out overflow-hidden"
       data-testid="desktop-sidebar"
     >
-      {/* Section label */}
-      {!sidebarCollapsed && (
-        <div className="flex-shrink-0 px-4 pt-4 pb-1">
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60 select-none">Navigation</p>
-        </div>
-      )}
+      {/* Spacer — pushes Dashboard to align with welcome banner */}
+      <div className="flex-shrink-0 h-6" />
 
       {/* Nav */}
       <SidebarNav collapsed={sidebarCollapsed} />
