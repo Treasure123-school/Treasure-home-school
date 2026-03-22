@@ -220,11 +220,9 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-exams' : null),
             items: [
               { href: '/portal/admin/exams', icon: PenTool, label: 'Exam Management' },
-              { href: '/portal/admin/exam-payments', icon: CreditCard, label: 'Exam Payments' },
               { href: '/portal/admin/question-bank', icon: Database, label: 'Question Bank' },
-              { href: '/portal/admin/results/publishing', icon: Eye, label: 'Result Publishing' },
-              { href: `/portal/${userRole}/coming-soon?page=ca`, icon: ClipboardList, label: 'Continuous Assessment' },
-              { href: `/portal/${userRole}/coming-soon?page=processing`, icon: Activity, label: 'Result Processing' },
+              { href: '/portal/admin/results/publishing', icon: Eye, label: 'Results Publishing' },
+              { href: '/portal/admin/exam-payments', icon: CreditCard, label: 'Exam Payment' },
             ],
           },
           {
