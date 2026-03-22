@@ -32,7 +32,6 @@ type TimetableEntry = {
   endTime: string;
   location: string | null;
   termId: number | null;
-  isActive: boolean;
   teacherFirstName: string | null;
   teacherLastName: string | null;
   className: string;
@@ -91,7 +90,7 @@ export default function AdminTimetable() {
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [activeDay, setActiveDay] = useState('Monday');
 
-  const { data: entries = [], isLoading: loadingEntries, refetch } = useQuery<TimetableEntry[]>({
+  const { data: rawEntries, isLoading: loadingEntries, refetch } = useQuery<TimetableEntry[]>({
     queryKey: ['/api/admin/timetable', filterClass, filterTeacher, filterTerm],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -99,23 +98,37 @@ export default function AdminTimetable() {
       if (filterTeacher !== 'all') params.set('teacherId', filterTeacher);
       if (filterTerm !== 'all') params.set('termId', filterTerm);
       const res = await apiRequest('GET', `/api/admin/timetable?${params}`);
-      return res.json();
+      if (!res.ok) throw new Error('Failed to fetch timetable');
+      const json = await res.json();
+      return Array.isArray(json) ? json : [];
     },
   });
+  const entries: TimetableEntry[] = Array.isArray(rawEntries) ? rawEntries : [];
 
   const { data: classes = [] } = useQuery<ClassData[]>({ queryKey: ['/api/classes'] });
   const { data: subjects = [] } = useQuery<SubjectData[]>({ queryKey: ['/api/subjects'] });
-  const { data: teachers = [] } = useQuery<TeacherData[]>({
+  const { data: rawTeachers } = useQuery<TeacherData[]>({
     queryKey: ['/api/users/teachers'],
     queryFn: async () => {
-      const res = await apiRequest('GET', '/api/users?role=teacher');
-      return res.json();
+      const res = await apiRequest('GET', '/api/users?role=Teacher');
+      if (!res.ok) return [];
+      const json = await res.json();
+      return Array.isArray(json) ? json : [];
     },
   });
+  const teachers: TeacherData[] = Array.isArray(rawTeachers) ? rawTeachers : [];
   const { data: terms = [] } = useQuery<TermData[]>({ queryKey: ['/api/academic-terms'] });
 
   const createMutation = useMutation({
-    mutationFn: (data: typeof EMPTY_FORM) => apiRequest('POST', '/api/admin/timetable', data),
+    mutationFn: async (data: typeof EMPTY_FORM) => {
+      const res = await apiRequest('POST', '/api/admin/timetable', data);
+      if (res.status === 409) {
+        const body = await res.json().catch(() => ({}));
+        throw Object.assign(new Error(body.message || 'Conflict'), { isConflict: true, body });
+      }
+      if (!res.ok) throw new Error('Failed to create entry');
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/timetable'] });
       toast({ title: 'Period added', description: 'Timetable entry created successfully.' });
@@ -123,19 +136,22 @@ export default function AdminTimetable() {
       setConflictMsg('');
       setForm({ ...EMPTY_FORM });
     },
-    onError: async (err: any) => {
-      const body = err?.response ? await err.response.json().catch(() => null) : null;
-      if (body?.message) {
-        setConflictMsg(body.message);
-      } else {
-        toast({ title: 'Error', description: 'Failed to create entry.', variant: 'destructive' });
-      }
+    onError: (err: any) => {
+      if (err.isConflict && err.message) setConflictMsg(err.message);
+      else toast({ title: 'Error', description: 'Failed to create entry.', variant: 'destructive' });
     },
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: typeof EMPTY_FORM }) =>
-      apiRequest('PUT', `/api/admin/timetable/${id}`, data),
+    mutationFn: async ({ id, data }: { id: number; data: typeof EMPTY_FORM }) => {
+      const res = await apiRequest('PUT', `/api/admin/timetable/${id}`, data);
+      if (res.status === 409) {
+        const body = await res.json().catch(() => ({}));
+        throw Object.assign(new Error(body.message || 'Conflict'), { isConflict: true, body });
+      }
+      if (!res.ok) throw new Error('Failed to update entry');
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/timetable'] });
       toast({ title: 'Period updated', description: 'Timetable entry updated successfully.' });
@@ -144,16 +160,18 @@ export default function AdminTimetable() {
       setConflictMsg('');
       setForm({ ...EMPTY_FORM });
     },
-    onError: async (err: any) => {
-      const res = err?.response;
-      const body = res ? await res.json().catch(() => null) : null;
-      if (body?.message) setConflictMsg(body.message);
+    onError: (err: any) => {
+      if (err.isConflict && err.message) setConflictMsg(err.message);
       else toast({ title: 'Error', description: 'Failed to update entry.', variant: 'destructive' });
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiRequest('DELETE', `/api/admin/timetable/${id}`),
+    mutationFn: async (id: number) => {
+      const res = await apiRequest('DELETE', `/api/admin/timetable/${id}`);
+      if (!res.ok) throw new Error('Failed to delete entry');
+      return res.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/timetable'] });
       toast({ title: 'Period removed', description: 'Timetable entry deleted.' });

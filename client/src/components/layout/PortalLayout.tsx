@@ -125,7 +125,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             isOpen: openMenuKey === 'student-academic',
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'student-academic' : null),
             items: [
-              { href: `/portal/${userRole}/timetable`, icon: Clock, label: 'Class Schedule' },
+              { href: `/portal/${userRole}/timetable`, icon: Clock, label: 'Timetable' },
               { href: `/portal/${userRole}/subjects`, icon: BookOpen, label: 'Subjects' },
               { href: `/portal/${userRole}/scheme-of-work`, icon: ListChecks, label: 'Scheme of Work' },
               { href: `/portal/${userRole}/assignments`, icon: ClipboardPen, label: 'Assignments' },

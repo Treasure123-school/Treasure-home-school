@@ -434,7 +434,7 @@ export interface IStorage {
   deleteTimetableEntry(id: number): Promise<boolean>;
   getAllTimetableEntries(filters?: { classId?: number; teacherId?: string; termId?: number }): Promise<Array<{
     id: number; teacherId: string; classId: number; subjectId: number; dayOfWeek: string;
-    startTime: string; endTime: string; location: string | null; termId: number | null; isActive: boolean;
+    startTime: string; endTime: string; location: string | null; termId: number | null;
     teacherFirstName: string | null; teacherLastName: string | null;
     className: string; subjectName: string; subjectCode: string;
   }>>;
@@ -6719,9 +6719,8 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
   async getTimetableByTeacher(teacherId: string, termId?: number): Promise<Timetable[]> {
-    const conditions = [
+    const conditions: any[] = [
       eq(schema.timetable.teacherId, teacherId),
-      eq(schema.timetable.isActive, true)
     ];
 
     if (termId) {
@@ -6760,7 +6759,6 @@ export class DatabaseStorage implements IStorage {
       endTime: schema.timetable.endTime,
       location: schema.timetable.location,
       termId: schema.timetable.termId,
-      isActive: schema.timetable.isActive,
       teacherFirstName: schema.users.firstName,
       teacherLastName: schema.users.lastName,
       className: schema.classes.name,

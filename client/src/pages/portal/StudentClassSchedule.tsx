@@ -178,7 +178,7 @@ export default function StudentClassSchedule() {
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Class Schedule</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Timetable</h1>
           <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1.5">
             <Calendar className="h-3.5 w-3.5" />
             <span data-testid="text-current-date">{formatDate(now)}</span>

@@ -128,13 +128,16 @@ export default function TeacherTimetable() {
     if (!activeDay) setActiveDay(todayName);
   }, [todayName, activeDay]);
 
-  const { data: entries = [], isLoading, error } = useQuery<TimetableEntry[]>({
+  const { data: rawEntries, isLoading, error } = useQuery<TimetableEntry[]>({
     queryKey: ['/api/teacher/timetable'],
     queryFn: async () => {
       const res = await apiRequest('GET', '/api/teacher/timetable');
-      return res.json();
+      if (!res.ok) throw new Error('Failed to fetch timetable');
+      const json = await res.json();
+      return Array.isArray(json) ? json : [];
     },
   });
+  const entries: TimetableEntry[] = Array.isArray(rawEntries) ? rawEntries : [];
 
   const getEntryStatus = useCallback(
     (e: TimetableEntry) => getStatus(e, nowMinutes, todayName),
