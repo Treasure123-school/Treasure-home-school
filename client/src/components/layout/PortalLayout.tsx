@@ -241,7 +241,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-events' : null),
             items: [
               { href: `/portal/${userRole}/coming-soon?page=calendar`, icon: Calendar, label: 'School Calendar' },
-              { href: `/portal/${userRole}/coming-soon?page=events`, icon: Bell, label: 'Events & Notices' },
+              { href: `/portal/${userRole}/coming-soon?page=events`, icon: Bell, label: 'Events' },
               { href: `/portal/${userRole}/announcements`, icon: Megaphone, label: 'Announcements' },
             ],
           },
