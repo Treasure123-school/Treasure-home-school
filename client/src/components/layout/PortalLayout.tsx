@@ -172,7 +172,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             ],
           },
           { name: 'Report Cards', href: `/portal/${userRole}/report-cards`, icon: FileText },
-          { name: 'Announcements', href: `/portal/${userRole}/announcements`, icon: MessageSquare },
+          { name: 'Announcements', href: `/portal/${userRole}/announcements`, icon: Megaphone },
           { name: 'Messages', href: `/portal/${userRole}/messages`, icon: MessageSquare },
           { name: 'Profile', href: `/portal/${userRole}/profile`, icon: User },
         ];
@@ -187,7 +187,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: `/portal/${userRole}/students`, icon: Users, label: 'All Students' },
               { href: `/portal/${userRole}/coming-soon?page=enrollment`, icon: UserCheck, label: 'Student Enrollment' },
               { href: `/portal/${userRole}/coming-soon?page=parents`, icon: Users, label: 'Parent Linking' },
-              { href: `/portal/${userRole}/coming-soon?page=attendance`, icon: Calendar, label: 'Attendance' },
+              { href: `/portal/${userRole}/attendance`, icon: Calendar, label: 'Attendance' },
             ],
           },
           {

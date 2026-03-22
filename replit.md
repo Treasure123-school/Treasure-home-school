@@ -210,6 +210,38 @@ After any successful exam fee payment, the system sends a confirmation email and
 - Global git config: `user.name=Treasure123-school`, `user.email=treasurehomeschool@gmail.com`
 - Must match the Vercel team member email to allow deployments
 
+## Attendance Management (Admin)
+
+- **Route**: `/portal/admin/attendance`
+- **Page**: `client/src/pages/portal/AttendanceManagement.tsx`
+- **APIs added**:
+  - `GET /api/attendance/overview?date=YYYY-MM-DD` — School-wide stats: total students, present, absent, late, excused, percentage, per-class breakdown with teacher accountability (Admin/SuperAdmin)
+  - `GET /api/attendance/trends?view=daily|weekly|monthly&classId=` — Aggregated trend data with period labels (Admin/SuperAdmin/Teacher)
+- **Features**:
+  - 4 stat cards: Total Students, Present, Absent, Attendance Rate
+  - 4 tabs: Summary (class table), Details (student-level), Trends (Recharts bar chart), Alerts (low-attendance + unrecorded classes)
+  - Class summary table with color-coded attendance bars, teacher accountability (who recorded, when)
+  - Per-student detail view: select class + date → student list with status badges, edit/override modal
+  - Trend chart: daily/weekly/monthly toggle with per-class or school-wide filter, color-coded bars, period breakdown table
+  - Alerts tab: classes below 80%, classes with no attendance recorded for the day
+  - CSV export for both summary and detail views
+  - Date picker applies across all tabs
+  - Mobile-responsive layout
+
+## Teacher Portal: Messages & Announcements
+
+- **Messages page**: `/portal/teacher/messages` — `client/src/pages/portal/TeacherMessages.tsx`
+  - Chat-style UI: conversation sidebar + chat window with bubbles
+  - New message dialog with student recipient selector
+  - Real-time read status (✓ sent, ✓✓ read), 15-second polling
+  - Mobile: tap conversation → full-screen chat, back arrow to return
+- **Announcements page**: `/portal/teacher/announcements` — `client/src/pages/portal/TeacherAnnouncements.tsx`
+  - Create/edit/delete announcements (uses `/api/admin/announcements` + `POST/PUT/DELETE /api/announcements/:id`)
+  - Priority (Normal/Important/Urgent), Type, Target audience (role + class toggles)
+  - Pin/unpin locally, expand/collapse content, search, filters
+  - PUT/DELETE announcement routes now allow TEACHER role (not just Admin)
+- **Navigation**: Teacher sidebar "Announcements" now uses Megaphone icon; Admin sidebar "Attendance" now links to the real page
+
 ## Database
 
 - Schema managed via `drizzle-kit push` (not migrations)

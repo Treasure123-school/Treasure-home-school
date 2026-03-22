@@ -6087,6 +6087,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // School-wide attendance overview - Admin only
+  app.get('/api/attendance/overview', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
+
+      const [allStudents, allClasses, allUsers] = await Promise.all([
+        storage.getAllStudents(),
+        storage.getAllClasses(),
+        storage.getAllUsers(),
+      ]);
+
+      const userMap: Record<string, any> = {};
+      allUsers.forEach((u: any) => { userMap[u.id] = u; });
+
+      let totalPresent = 0, totalAbsent = 0, totalLate = 0, totalExcused = 0;
+
+      const classBreakdown = await Promise.all(
+        allClasses.map(async (cls: any) => {
+          const clsStudents = allStudents.filter((s: any) => s.classId === cls.id);
+          const attendance = await storage.getAttendanceByClass(cls.id, date);
+
+          const present = attendance.filter((a: any) => a.status === 'Present').length;
+          const absent = attendance.filter((a: any) => a.status === 'Absent').length;
+          const late = attendance.filter((a: any) => a.status === 'Late').length;
+          const excused = attendance.filter((a: any) => a.status === 'Excused').length;
+
+          totalPresent += present;
+          totalAbsent += absent;
+          totalLate += late;
+          totalExcused += excused;
+
+          const firstRecord = attendance[0] as any;
+          const recorder = firstRecord?.recordedBy ? userMap[firstRecord.recordedBy] : null;
+
+          return {
+            classId: cls.id,
+            className: cls.name,
+            level: cls.level,
+            totalStudents: clsStudents.length,
+            present, absent, late, excused,
+            attendancePercentage: clsStudents.length > 0
+              ? Math.round(((present + late) / clsStudents.length) * 100)
+              : 0,
+            hasAttendance: attendance.length > 0,
+            recordedBy: recorder ? `${recorder.firstName} ${recorder.lastName}` : null,
+            recordedAt: firstRecord?.createdAt || null,
+          };
+        })
+      );
+
+      const totalStudents = allStudents.length;
+      const attendancePercentage = totalStudents > 0
+        ? Math.round(((totalPresent + totalLate) / totalStudents) * 100)
+        : 0;
+
+      res.json({
+        date,
+        totalStudents,
+        totalPresent,
+        totalAbsent,
+        totalLate,
+        totalExcused,
+        attendancePercentage,
+        classBreakdown: classBreakdown.sort((a, b) => a.className.localeCompare(b.className)),
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to fetch attendance overview' });
+    }
+  });
+
+  // Attendance trends - Admin or Teacher
+  app.get('/api/attendance/trends', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.TEACHER), async (req, res) => {
+    try {
+      const { classId, view = 'daily' } = req.query;
+      const now = new Date();
+      let startDate: string, endDate: string;
+
+      endDate = now.toISOString().split('T')[0];
+      if (view === 'monthly') {
+        startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString().split('T')[0];
+      } else if (view === 'weekly') {
+        startDate = new Date(now.getTime() - 55 * 86400000).toISOString().split('T')[0];
+      } else {
+        startDate = new Date(now.getTime() - 13 * 86400000).toISOString().split('T')[0];
+      }
+
+      let allRecords: any[] = [];
+      if (classId) {
+        allRecords = await storage.getAttendanceByClassDateRange(parseInt(classId as string), startDate, endDate);
+      } else {
+        const allClasses = await storage.getAllClasses();
+        const results = await Promise.all(
+          allClasses.map((cls: any) => storage.getAttendanceByClassDateRange(cls.id, startDate, endDate))
+        );
+        allRecords = results.flat();
+      }
+
+      const grouped: Record<string, { present: number; absent: number; late: number; excused: number; total: number }> = {};
+
+      allRecords.forEach((record: any) => {
+        const d = new Date(record.date);
+        let key: string;
+        if (view === 'monthly') {
+          key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        } else if (view === 'weekly') {
+          const ws = new Date(d);
+          ws.setDate(d.getDate() - d.getDay());
+          key = ws.toISOString().split('T')[0];
+        } else {
+          key = record.date;
+        }
+        if (!grouped[key]) grouped[key] = { present: 0, absent: 0, late: 0, excused: 0, total: 0 };
+        const g = grouped[key];
+        if (record.status === 'Present') g.present++;
+        else if (record.status === 'Absent') g.absent++;
+        else if (record.status === 'Late') g.late++;
+        else if (record.status === 'Excused') g.excused++;
+        g.total++;
+      });
+
+      const data = Object.entries(grouped)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([period, counts]) => ({
+          period,
+          label: view === 'monthly'
+            ? new Date(period + '-01').toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+            : view === 'weekly'
+              ? `Wk ${new Date(period).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
+              : new Date(period).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+          ...counts,
+          percentage: counts.total > 0 ? Math.round(((counts.present + counts.late) / counts.total) * 100) : 0,
+        }));
+
+      res.json({ view, startDate, endDate, data });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to fetch attendance trends' });
+    }
+  });
+
   // Public file serving for homepage uploads (no auth required)
   app.get('/uploads/homepage/:filename', (req, res) => {
     const { filename } = req.params;
