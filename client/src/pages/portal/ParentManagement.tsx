@@ -12,8 +12,9 @@ import {
   Users, Plus, Search, Edit2, Trash2, Eye, Link, Unlink,
   Copy, Check, Phone, Mail, GraduationCap, UserCheck, UserX,
   Filter, X, ChevronDown, Key, ShieldCheck, UserPlus, BookOpen,
-  Hash
+  Hash, CheckCircle2, ImageIcon, AlertCircle
 } from 'lucide-react';
+import { computeProfileCompletion } from '@/lib/profileCompletion';
 import { apiRequest } from '@/lib/queryClient';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -210,6 +211,7 @@ export default function ParentManagement() {
 
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('all');
+  const [completionFilter, setCompletionFilter] = useState<'all' | 'complete' | 'incomplete'>('all');
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [credentialsModal, setCredentialsModal] = useState<{ parent: any; credentials: Credentials } | null>(null);
   const [detailParent, setDetailParent] = useState<Parent | null>(null);
@@ -369,8 +371,19 @@ export default function ParentManagement() {
     if (classFilter !== 'all') {
       list = list.filter(p => p.linkedStudents.some(s => String(s.classId) === classFilter));
     }
+    if (completionFilter !== 'all') {
+      list = list.filter(p => {
+        const completion = computeProfileCompletion({
+          profileImageUrl: (p as any).profileImageUrl,
+          phone: p.phone,
+          email: p.email,
+          address: (p as any).address,
+        });
+        return completionFilter === 'complete' ? completion.isComplete : !completion.isComplete;
+      });
+    }
     return list;
-  }, [parents, search, classFilter]);
+  }, [parents, search, classFilter, completionFilter]);
 
   const handleCreate = () => {
     if (!form.firstName.trim() || !form.lastName.trim()) {
@@ -420,8 +433,8 @@ export default function ParentManagement() {
       </div>
 
       {/* Search + Filters */}
-      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 p-3 flex flex-col sm:flex-row gap-2">
-        <div className="relative flex-1">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 p-3 flex flex-col sm:flex-row gap-2 flex-wrap">
+        <div className="relative flex-1 min-w-48">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
             placeholder="Search by name, phone, email or username..."
@@ -432,7 +445,7 @@ export default function ParentManagement() {
           />
         </div>
         <Select value={classFilter} onValueChange={setClassFilter}>
-          <SelectTrigger className="w-auto sm:w-48 rounded-xl text-sm border-gray-200 dark:border-gray-700">
+          <SelectTrigger className="w-auto sm:w-44 rounded-xl text-sm border-gray-200 dark:border-gray-700">
             <Filter className="h-3.5 w-3.5 mr-1.5 text-gray-400" />
             <SelectValue placeholder="Filter by class" />
           </SelectTrigger>
@@ -441,6 +454,16 @@ export default function ParentManagement() {
             {classes.map((c: any) => (
               <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
             ))}
+          </SelectContent>
+        </Select>
+        <Select value={completionFilter} onValueChange={(v) => setCompletionFilter(v as 'all' | 'complete' | 'incomplete')}>
+          <SelectTrigger className="w-auto sm:w-48 rounded-xl text-sm border-gray-200 dark:border-gray-700" data-testid="select-completion-filter">
+            <SelectValue placeholder="Profile completion" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Profiles</SelectItem>
+            <SelectItem value="complete">Complete (100%)</SelectItem>
+            <SelectItem value="incomplete">Incomplete (&lt;100%)</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -470,10 +493,17 @@ export default function ParentManagement() {
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map(parent => (
+          {filtered.map(parent => {
+            const parentCompletion = computeProfileCompletion({
+              profileImageUrl: (parent as any).profileImageUrl,
+              phone: parent.phone,
+              email: parent.email,
+              address: (parent as any).address,
+            });
+            return (
             <div
               key={parent.id}
-              className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 hover:shadow-md transition-shadow flex flex-col gap-3"
+              className={`bg-white dark:bg-gray-900 rounded-2xl border p-4 hover:shadow-md transition-shadow flex flex-col gap-3 ${parentCompletion.isComplete ? 'border-gray-200 dark:border-gray-700' : 'border-amber-200 dark:border-amber-800/50'}`}
               data-testid={`card-parent-${parent.id}`}
             >
               {/* Card header */}
@@ -517,6 +547,39 @@ export default function ParentManagement() {
                   <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                     <Mail className="h-3 w-3 flex-shrink-0" />
                     <span className="truncate">{parent.email}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Profile Completion */}
+              <div data-testid={`completion-${parent.id}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Profile</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-xs font-semibold ${parentCompletion.isComplete ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                      {parentCompletion.percentage}%
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className={`text-[9px] px-1 py-0 h-4 ${parentCompletion.isComplete ? 'border-emerald-300 text-emerald-700 dark:text-emerald-400' : 'border-amber-300 text-amber-700 dark:text-amber-400'}`}
+                    >
+                      {parentCompletion.isComplete ? 'Complete' : 'Incomplete'}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="h-1.5 w-full bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-1.5 rounded-full transition-all ${parentCompletion.isComplete ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                    style={{ width: `${parentCompletion.percentage}%` }}
+                  />
+                </div>
+                {!parentCompletion.isComplete && parentCompletion.missingFields.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {parentCompletion.missingFields.map(f => (
+                      <span key={f.key} className="inline-flex items-center gap-0.5 text-[10px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md">
+                        {f.label} missing
+                      </span>
+                    ))}
                   </div>
                 )}
               </div>
@@ -592,7 +655,8 @@ export default function ParentManagement() {
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -837,6 +901,41 @@ export default function ParentManagement() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
+            {/* Profile Completion Status */}
+            {editParent && (() => {
+              const completion = computeProfileCompletion({
+                profileImageUrl: (editParent as any).profileImageUrl,
+                phone: editParent.phone,
+                email: editParent.email,
+                address: (editParent as any).address,
+              });
+              if (completion.isComplete) return (
+                <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                  <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                  <span className="text-sm text-green-700 dark:text-green-300 font-medium">Profile 100% complete</span>
+                </div>
+              );
+              return (
+                <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                    <span className="text-sm text-amber-700 dark:text-amber-300 font-medium">
+                      Profile {completion.percentage}% complete
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full bg-amber-100 dark:bg-amber-900/50 rounded-full mb-2">
+                    <div className="h-1.5 bg-amber-500 rounded-full" style={{ width: `${completion.percentage}%` }} />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {completion.missingFields.map(f => (
+                      <span key={f.key} className="text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-700">
+                        {f.label} missing
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">First Name</Label>

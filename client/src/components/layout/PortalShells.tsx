@@ -47,10 +47,8 @@ const AdminDashboard = lazy(() => import('@/pages/portal/AdminDashboard'));
 const VacancyManagement = lazy(() => import('@/pages/portal/VacancyManagement'));
 const UserManagement = lazy(() => import('@/pages/portal/UserManagement'));
 const AuditLogs = lazy(() => import('@/pages/portal/AuditLogs'));
-const ProfileCompletionMonitoring = lazy(() => import('@/pages/portal/ProfileCompletionMonitoring'));
 const StudentManagement = lazy(() => import('@/pages/portal/StudentManagement'));
 const TeachersManagement = lazy(() => import('@/pages/portal/TeachersManagement'));
-const TeacherProfileVerification = lazy(() => import('@/pages/portal/TeacherProfileVerification'));
 const ClassesManagement = lazy(() => import('@/pages/portal/ClassesManagement'));
 const SubjectsManagement = lazy(() => import('@/pages/portal/SubjectsManagement'));
 const StudentSubjectAssignment = lazy(() => import('@/pages/portal/StudentSubjectAssignment'));
@@ -159,10 +157,8 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/job-vacancies" component={VacancyManagement} />
             <Route path="/portal/admin/users" component={UserManagement} />
             <Route path="/portal/admin/audit-logs" component={AuditLogs} />
-            <Route path="/portal/admin/profile-completion" component={ProfileCompletionMonitoring} />
             <Route path="/portal/admin/students" component={StudentManagement} />
             <Route path="/portal/admin/teachers" component={TeachersManagement} />
-            <Route path="/portal/admin/teacher-verification" component={TeacherProfileVerification} />
             <Route path="/portal/admin/classes" component={ClassesManagement} />
             <Route path="/portal/admin/subjects" component={SubjectsManagement} />
             <Route path="/portal/admin/student-subjects" component={StudentSubjectAssignment} />

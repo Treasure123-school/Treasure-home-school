@@ -198,7 +198,6 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: `/portal/${userRole}/teachers`, icon: Users, label: 'Teachers' },
               { href: `/portal/${userRole}/users`, icon: Users, label: 'All Users' },
               { href: `/portal/${userRole}/job-vacancies`, icon: Briefcase, label: 'Job Vacancies' },
-              { href: `/portal/${userRole}/profile-completion`, icon: UserCheck, label: 'Profile Verification' },
               { href: `/portal/${userRole}/recovery-tools`, icon: RotateCcw, label: 'Recovery Tools' },
             ],
           },
