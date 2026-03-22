@@ -443,23 +443,25 @@ export default function TeacherAttendancePage() {
                   filteredStudents.map((student, idx) => (
                     <div
                       key={student.id}
-                      className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50 hover:bg-muted/50 transition-colors"
+                      className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 rounded-lg bg-muted/30 border border-border/50 hover:bg-muted/50 transition-colors"
                       data-testid={`row-student-${student.id}`}
                     >
-                      <span className="text-xs text-muted-foreground w-5 text-right flex-shrink-0">{idx + 1}</span>
-                      <Avatar className="h-9 w-9 flex-shrink-0">
-                        {student.profileImageUrl && <AvatarImage src={student.profileImageUrl} />}
-                        <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
-                          {student.firstName[0]}{student.lastName[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground leading-tight" data-testid={`text-name-${student.id}`}>
-                          {student.firstName} {student.lastName}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{student.admissionNumber}</p>
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <span className="text-xs text-muted-foreground w-5 text-right flex-shrink-0">{idx + 1}</span>
+                        <Avatar className="h-9 w-9 flex-shrink-0">
+                          {student.profileImageUrl && <AvatarImage src={student.profileImageUrl} />}
+                          <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
+                            {student.firstName[0]}{student.lastName[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground leading-tight" data-testid={`text-name-${student.id}`}>
+                            {student.firstName} {student.lastName}
+                          </p>
+                          <p className="text-xs text-muted-foreground">{student.admissionNumber}</p>
+                        </div>
                       </div>
-                      <div className="flex gap-1.5 flex-shrink-0 flex-wrap justify-end">
+                      <div className="flex gap-1.5 flex-wrap pl-8 sm:pl-0 sm:flex-shrink-0">
                         {(['Present', 'Absent', 'Late', 'Excused'] as AttendanceStatus[]).map(s => (
                           <StatusButton
                             key={s}
