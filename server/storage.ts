@@ -25,7 +25,8 @@ import type {
   Timetable, InsertTimetable,
   StudentSubjectAssignment, InsertStudentSubjectAssignment, ClassSubjectMapping, InsertClassSubjectMapping,
   SyllabusTopic, InsertSyllabusTopic, ExamQuestionBankLink, InsertExamQuestionBankLink,
-  ExamPayment, InsertExamPayment
+  ExamPayment, InsertExamPayment,
+  SchoolEvent, InsertSchoolEvent
 } from "@shared/schema";
 
 // Get centralized database instance and schema from db.ts
@@ -548,6 +549,13 @@ export interface IStorage {
   updateExamPayment(id: number, data: Partial<InsertExamPayment>): Promise<ExamPayment | undefined>;
   initiatePendingExamPayment(studentId: string, termId: number, reference: string, amountPaid: number): Promise<ExamPayment>;
   deleteExamPayment(id: number): Promise<boolean>;
+
+  // School Events / Calendar
+  getSchoolEvents(filters?: { eventType?: string; startDate?: string; endDate?: string; isActive?: boolean }): Promise<SchoolEvent[]>;
+  getSchoolEvent(id: number): Promise<SchoolEvent | undefined>;
+  createSchoolEvent(data: InsertSchoolEvent): Promise<SchoolEvent>;
+  updateSchoolEvent(id: number, data: Partial<InsertSchoolEvent>): Promise<SchoolEvent | undefined>;
+  deleteSchoolEvent(id: number): Promise<boolean>;
 
   // User recovery management
   getDeletedUsers(roleFilter?: number[]): Promise<User[]>;
@@ -7573,6 +7581,43 @@ export class DatabaseStorage implements IStorage {
     const result = await this.db.delete(schema.examPayments)
       .where(eq(schema.examPayments.id, id))
       .returning();
+    return result.length > 0;
+  }
+
+  // School Events / Calendar implementations
+  async getSchoolEvents(filters?: { eventType?: string; startDate?: string; endDate?: string; isActive?: boolean }): Promise<SchoolEvent[]> {
+    const conditions: any[] = [];
+    if (filters?.eventType) conditions.push(eq(schema.schoolEvents.eventType, filters.eventType));
+    if (filters?.startDate) conditions.push(gte(schema.schoolEvents.startDate, filters.startDate));
+    if (filters?.endDate) conditions.push(lte(schema.schoolEvents.startDate, filters.endDate));
+    if (filters?.isActive !== undefined) conditions.push(eq(schema.schoolEvents.isActive, filters.isActive));
+    const query = this.db.select().from(schema.schoolEvents);
+    if (conditions.length > 0) {
+      return await query.where(and(...conditions)).orderBy(asc(schema.schoolEvents.startDate));
+    }
+    return await query.orderBy(asc(schema.schoolEvents.startDate));
+  }
+
+  async getSchoolEvent(id: number): Promise<SchoolEvent | undefined> {
+    const rows = await this.db.select().from(schema.schoolEvents).where(eq(schema.schoolEvents.id, id)).limit(1);
+    return rows[0];
+  }
+
+  async createSchoolEvent(data: InsertSchoolEvent): Promise<SchoolEvent> {
+    const result = await this.db.insert(schema.schoolEvents).values(data).returning();
+    return result[0];
+  }
+
+  async updateSchoolEvent(id: number, data: Partial<InsertSchoolEvent>): Promise<SchoolEvent | undefined> {
+    const result = await this.db.update(schema.schoolEvents)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(schema.schoolEvents.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteSchoolEvent(id: number): Promise<boolean> {
+    const result = await this.db.delete(schema.schoolEvents).where(eq(schema.schoolEvents.id, id)).returning();
     return result.length > 0;
   }
 

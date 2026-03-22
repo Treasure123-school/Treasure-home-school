@@ -135,6 +135,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             ],
           },
           { name: 'Attendance', href: `/portal/${userRole}/attendance`, icon: Calendar },
+          { name: 'School Calendar', href: `/portal/${userRole}/calendar`, icon: Calendar },
+          { name: 'Events', href: `/portal/${userRole}/events`, icon: Bell },
           {
             type: 'group',
             label: 'Communication',
@@ -173,6 +175,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             ],
           },
           { name: 'Report Cards', href: `/portal/${userRole}/report-cards`, icon: FileText },
+          { name: 'School Calendar', href: `/portal/${userRole}/calendar`, icon: Calendar },
+          { name: 'Events', href: `/portal/${userRole}/events`, icon: Bell },
           { name: 'Announcements', href: `/portal/${userRole}/announcements`, icon: Megaphone },
           { name: 'Messages', href: `/portal/${userRole}/messages`, icon: MessageSquare },
           { name: 'Profile', href: `/portal/${userRole}/profile`, icon: User },
@@ -240,8 +244,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             isOpen: openMenuKey === 'admin-events',
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-events' : null),
             items: [
-              { href: `/portal/${userRole}/coming-soon?page=calendar`, icon: Calendar, label: 'School Calendar' },
-              { href: `/portal/${userRole}/coming-soon?page=events`, icon: Bell, label: 'Events' },
+              { href: `/portal/${userRole}/calendar`, icon: Calendar, label: 'School Calendar' },
+              { href: `/portal/${userRole}/events`, icon: Bell, label: 'Events' },
               { href: `/portal/${userRole}/announcements`, icon: Megaphone, label: 'Announcements' },
             ],
           },
@@ -278,6 +282,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
           { name: 'Report Cards', href: `/portal/${userRole}/reports`, icon: FileText },
           { name: 'Attendance', href: `/portal/${userRole}/attendance`, icon: Calendar },
           { name: 'Grades', href: `/portal/${userRole}/grades`, icon: BookOpen },
+          { name: 'School Calendar', href: `/portal/${userRole}/calendar`, icon: Calendar },
+          { name: 'Events', href: `/portal/${userRole}/events`, icon: Bell },
           { name: 'Messages', href: `/portal/${userRole}/messages`, icon: MessageSquare },
           { name: 'Profile', href: `/portal/${userRole}/profile`, icon: User },
         ];

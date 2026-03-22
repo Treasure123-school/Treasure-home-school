@@ -1301,3 +1301,31 @@ export type Assignment = typeof assignments.$inferSelect;
 export type InsertAssignment = typeof assignments.$inferInsert;
 export type AssignmentSubmission = typeof assignmentSubmissions.$inferSelect;
 export type InsertAssignmentSubmission = typeof assignmentSubmissions.$inferInsert;
+
+// School Events / Calendar
+export const schoolEvents = pgTable("school_events", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  eventType: varchar("event_type", { length: 50 }).notNull().default('event'), // 'exam', 'holiday', 'event', 'sports', 'academic', 'extracurricular'
+  startDate: varchar("start_date", { length: 10 }).notNull(), // YYYY-MM-DD
+  endDate: varchar("end_date", { length: 10 }), // optional multi-day
+  startTime: varchar("start_time", { length: 8 }), // HH:MM
+  endTime: varchar("end_time", { length: 8 }),
+  location: varchar("location", { length: 255 }),
+  imageUrl: text("image_url"),
+  color: varchar("color", { length: 20 }).default('#3b82f6'),
+  isAllDay: boolean("is_all_day").default(true).notNull(),
+  targetRoles: text("target_roles").default('["all"]').notNull(), // JSON array
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  schoolEventsTypeIdx: index("school_events_type_idx").on(table.eventType),
+  schoolEventsDateIdx: index("school_events_date_idx").on(table.startDate),
+  schoolEventsActiveIdx: index("school_events_active_idx").on(table.isActive),
+}));
+
+export type SchoolEvent = typeof schoolEvents.$inferSelect;
+export type InsertSchoolEvent = typeof schoolEvents.$inferInsert;
