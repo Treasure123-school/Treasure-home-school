@@ -124,16 +124,9 @@ export default function TeacherRecentExamResults() {
   };
 
   return (
-    <div className="container mx-auto p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-6">
+    <div className="p-3 sm:p-4 space-y-4 sm:space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-            <Button variant="outline" size="sm" asChild data-testid="button-back" className="w-fit">
-              <Link href="/portal/teacher">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Link>
-            </Button>
-            <div>
+          <div>
               <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2" data-testid="text-page-title">
                 <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6" />
                 Recent Exam Results
@@ -143,7 +136,6 @@ export default function TeacherRecentExamResults() {
               </p>
             </div>
           </div>
-        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           <Card data-testid="card-total-exams">

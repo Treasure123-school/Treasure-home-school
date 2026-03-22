@@ -412,12 +412,6 @@ export default function TeacherExamResults() {
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-          <Button variant="outline" size="sm" asChild data-testid="button-back" className="w-fit">
-            <Link href="/portal/teacher/recent-exam-results">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Link>
-          </Button>
           <div>
             <h1 className="text-xl sm:text-2xl font-bold" data-testid="text-exam-title">{currentExam.name}</h1>
             <p className="text-xs sm:text-sm text-muted-foreground" data-testid="text-exam-info">

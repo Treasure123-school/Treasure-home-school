@@ -77,12 +77,6 @@ export default function TeacherClassResults() {
         {/* Header - Mobile Responsive */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-            <Button variant="outline" size="sm" asChild data-testid="button-back" className="w-fit">
-              <Link href="/portal/teacher">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back
-              </Link>
-            </Button>
             <div>
               <h1 className="text-xl sm:text-2xl md:text-3xl font-bold" data-testid="text-page-title">
                 {currentClass?.name || 'Class'} - All Results
