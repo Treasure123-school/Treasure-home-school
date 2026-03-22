@@ -584,7 +584,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
         )}
 
         <main
-          className={`flex-1 overflow-x-hidden min-w-0 ${isExamPage ? 'p-0 overflow-hidden' : 'p-4 sm:p-5 md:p-6'}`}
+          className={`flex-1 overflow-x-hidden min-w-0 ${isExamPage ? 'p-0 overflow-hidden' : 'p-2 sm:p-4 md:p-6'}`}
         >
           <div className={isExamPage ? 'max-w-none h-full w-full' : 'max-w-5xl mx-auto'}>
             {children}
