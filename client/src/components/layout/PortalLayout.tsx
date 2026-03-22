@@ -157,6 +157,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
         return [
           ...baseNav,
           { name: 'My Classes', href: `/portal/${userRole}/classes`, icon: Users },
+          { name: 'My Timetable', href: `/portal/${userRole}/timetable`, icon: Clock },
           { name: 'Attendance', href: `/portal/${userRole}/attendance`, icon: Calendar },
           {
             type: 'group',
@@ -210,7 +211,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: `/portal/${userRole}/subject-manager/unified-assignment`, icon: ClipboardList, label: 'Subject Setup' },
               { href: `/portal/${userRole}/academic-terms`, icon: Calendar, label: 'Academic Terms' },
               { href: `/portal/${userRole}/syllabus-topics`, icon: Layers, label: 'Syllabus Topics' },
-              { href: `/portal/${userRole}/coming-soon?page=timetable`, icon: Clock, label: 'Timetable' },
+              { href: `/portal/${userRole}/academics/timetable`, icon: Clock, label: 'Timetable' },
             ],
           },
           {

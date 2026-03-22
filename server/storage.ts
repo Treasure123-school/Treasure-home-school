@@ -432,6 +432,12 @@ export interface IStorage {
   getTimetableByTeacher(teacherId: string, termId?: number): Promise<Timetable[]>;
   updateTimetableEntry(id: number, entry: Partial<InsertTimetable>): Promise<Timetable | undefined>;
   deleteTimetableEntry(id: number): Promise<boolean>;
+  getAllTimetableEntries(filters?: { classId?: number; teacherId?: string; termId?: number }): Promise<Array<{
+    id: number; teacherId: string; classId: number; subjectId: number; dayOfWeek: string;
+    startTime: string; endTime: string; location: string | null; termId: number | null; isActive: boolean;
+    teacherFirstName: string | null; teacherLastName: string | null;
+    className: string; subjectName: string; subjectCode: string;
+  }>>;
 
   // Teacher dashboard data
   getTeacherDashboardData(teacherId: string): Promise<{
@@ -6738,6 +6744,38 @@ export class DatabaseStorage implements IStorage {
       .where(eq(schema.timetable.id, id))
       .returning();
     return result.length > 0;
+  }
+  async getAllTimetableEntries(filters?: { classId?: number; teacherId?: string; termId?: number }) {
+    const conditions: any[] = [];
+    if (filters?.classId) conditions.push(eq(schema.timetable.classId, filters.classId));
+    if (filters?.teacherId) conditions.push(eq(schema.timetable.teacherId, filters.teacherId));
+    if (filters?.termId) conditions.push(eq(schema.timetable.termId, filters.termId));
+    const query = this.db.select({
+      id: schema.timetable.id,
+      teacherId: schema.timetable.teacherId,
+      classId: schema.timetable.classId,
+      subjectId: schema.timetable.subjectId,
+      dayOfWeek: schema.timetable.dayOfWeek,
+      startTime: schema.timetable.startTime,
+      endTime: schema.timetable.endTime,
+      location: schema.timetable.location,
+      termId: schema.timetable.termId,
+      isActive: schema.timetable.isActive,
+      teacherFirstName: schema.users.firstName,
+      teacherLastName: schema.users.lastName,
+      className: schema.classes.name,
+      subjectName: schema.subjects.name,
+      subjectCode: schema.subjects.code,
+    })
+      .from(schema.timetable)
+      .leftJoin(schema.users, eq(schema.timetable.teacherId, schema.users.id))
+      .innerJoin(schema.classes, eq(schema.timetable.classId, schema.classes.id))
+      .innerJoin(schema.subjects, eq(schema.timetable.subjectId, schema.subjects.id))
+      .orderBy(schema.timetable.dayOfWeek, schema.timetable.startTime);
+    if (conditions.length > 0) {
+      return await (query as any).where(and(...conditions));
+    }
+    return await query;
   }
   // Teacher dashboard data - comprehensive method
   async getTeacherDashboardData(teacherId: string): Promise<{

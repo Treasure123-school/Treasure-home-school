@@ -26,6 +26,7 @@ const StudentForum = lazy(() => import('@/pages/portal/StudentForum'));
 const PortalGallery = lazy(() => import('@/pages/portal/Gallery'));
 const PortalComingSoon = lazy(() => import('@/pages/portal/PortalComingSoon'));
 
+const TeacherTimetable = lazy(() => import('@/pages/portal/TeacherTimetable'));
 const TeacherDashboard = lazy(() => import('@/pages/portal/TeacherDashboard'));
 const TeacherClasses = lazy(() => import('@/pages/portal/TeacherClasses'));
 const TeacherClassDetail = lazy(() => import('@/pages/portal/TeacherClassDetail'));
@@ -73,6 +74,7 @@ const QuestionBankManager = lazy(() => import('@/pages/portal/QuestionBankManage
 const ExamPaymentManagement = lazy(() => import('@/pages/portal/ExamPaymentManagement'));
 const AttendanceManagement = lazy(() => import('@/pages/portal/AttendanceManagement'));
 const ParentManagement = lazy(() => import('@/pages/portal/ParentManagement'));
+const AdminTimetable = lazy(() => import('@/pages/portal/AdminTimetable'));
 
 const ParentDashboard = lazy(() => import('@/pages/portal/ParentDashboard'));
 const ParentReportCards = lazy(() => import('@/pages/portal/ParentReportCards'));
@@ -146,6 +148,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/teacher/recent-exam-results" component={TeacherRecentExamResults} />
             <Route path="/portal/teacher/syllabus-topics" component={SyllabusTopicsManager} />
             <Route path="/portal/teacher/question-bank" component={QuestionBankManager} />
+            <Route path="/portal/teacher/timetable" component={TeacherTimetable} />
             <Route path="/portal/teacher/messages" component={TeacherMessages} />
             <Route path="/portal/teacher/announcements" component={TeacherAnnouncements} />
             <Route path="/portal/teacher/*" component={PortalComingSoon} />
@@ -183,7 +186,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/results/grades" component={PortalComingSoon} />
             <Route path="/portal/admin/results/processing" component={PortalComingSoon} />
             <Route path="/portal/admin/results/publishing" component={AdminResultPublishing} />
-            <Route path="/portal/admin/academics/timetable" component={PortalComingSoon} />
+            <Route path="/portal/admin/academics/timetable" component={AdminTimetable} />
             <Route path="/portal/admin/academics/curriculum" component={PortalComingSoon} />
             <Route path="/portal/admin/profile" component={AdminProfile} />
             <Route path="/portal/admin/comment-templates" component={ReportCommentTemplates} />
