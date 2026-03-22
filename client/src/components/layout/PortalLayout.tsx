@@ -256,7 +256,6 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             items: [
               { href: `/portal/${userRole}/homepage-management`, icon: ImageIcon, label: 'Homepage' },
               { href: `/portal/${userRole}/gallery`, icon: ImageIcon, label: 'Gallery' },
-              { href: `/portal/${userRole}/coming-soon?page=assignments`, icon: ClipboardPen, label: 'Assignments' },
               { href: `/portal/${userRole}/coming-soon?page=lessons`, icon: BookOpen, label: 'Lesson Notes' },
               { href: `/portal/${userRole}/coming-soon?page=library`, icon: Library, label: 'E-Library' },
             ],
