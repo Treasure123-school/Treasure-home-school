@@ -242,6 +242,30 @@ After any successful exam fee payment, the system sends a confirmation email and
   - PUT/DELETE announcement routes now allow TEACHER role (not just Admin)
 - **Navigation**: Teacher sidebar "Announcements" now uses Megaphone icon; Admin sidebar "Attendance" now links to the real page
 
+## Parent Management (Admin)
+
+- **Route**: `/portal/admin/parents`
+- **Page**: `client/src/pages/portal/ParentManagement.tsx`
+- **Nav**: Admin sidebar "Parent Linking" now links to the real page (was coming-soon)
+- **APIs added**:
+  - `GET /api/parents` — List all parent users enriched with linked students + class info (Admin/SuperAdmin)
+  - `POST /api/parents` — Create parent user; auto-generates username (THS-PAR-###) + temp password; links selected students; returns credentials (Admin/SuperAdmin)
+  - `PUT /api/parents/:id` — Update parent name/email/phone (Admin/SuperAdmin)
+  - `POST /api/parents/:id/link-students` — Link additional students to an existing parent (Admin/SuperAdmin)
+  - `DELETE /api/parents/:id/unlink/:studentId` — Unlink a student from a parent (Admin/SuperAdmin)
+  - `GET /api/students/search?q=` — Autocomplete student search by name/username/admission number (Admin/SuperAdmin/Teacher)
+- **Features**:
+  - Card grid layout with parent avatar (initials), name, username, contact info, linked students preview
+  - Search bar (name/phone/email/username) + class filter dropdown
+  - Add Parent dialog: name, phone, email + smart student autocomplete (type-to-search, chip selection)
+  - Credentials display modal after creation (username + temp password with copy buttons)
+  - Parent detail dialog: full info, all linked students list with per-student unlink button
+  - Edit parent dialog: update name/email/phone
+  - Link more students dialog: search and add additional students to existing parent
+  - Activate/Deactivate toggle (uses suspend/unsuspend endpoints)
+  - Delete with confirmation dialog
+  - Empty state with prompt to add first parent
+
 ## Database
 
 - Schema managed via `drizzle-kit push` (not migrations)

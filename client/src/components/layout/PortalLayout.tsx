@@ -186,7 +186,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             items: [
               { href: `/portal/${userRole}/students`, icon: Users, label: 'All Students' },
               { href: `/portal/${userRole}/coming-soon?page=enrollment`, icon: UserCheck, label: 'Student Enrollment' },
-              { href: `/portal/${userRole}/coming-soon?page=parents`, icon: Users, label: 'Parent Linking' },
+              { href: `/portal/${userRole}/parents`, icon: Users, label: 'Parent Linking' },
               { href: `/portal/${userRole}/attendance`, icon: Calendar, label: 'Attendance' },
             ],
           },

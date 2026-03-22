@@ -4919,6 +4919,220 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Parent-child linking endpoint
+  // ── Parent Management Endpoints (Admin) ─────────────────────────────────────
+
+  // List all parents enriched with linked students
+  app.get('/api/parents', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const parentRole = await storage.getRoleByName('Parent');
+      if (!parentRole) return res.status(500).json({ message: 'Parent role not found' });
+
+      const parentUsers = await storage.getUsersByRole(parentRole.id);
+      const [allStudents, allClasses, allUsers] = await Promise.all([
+        storage.getAllStudents(),
+        storage.getAllClasses(),
+        storage.getAllUsers(),
+      ]);
+
+      const userMap: Record<string, any> = {};
+      allUsers.forEach((u: any) => { userMap[u.id] = u; });
+      const classMap: Record<number, any> = {};
+      allClasses.forEach((c: any) => { classMap[c.id] = c; });
+
+      const parents = parentUsers.map((parent: any) => {
+        const linkedStudents = allStudents
+          .filter((s: any) => s.parentId === parent.id)
+          .map((s: any) => {
+            const su = userMap[s.id];
+            const cls = classMap[s.classId];
+            return {
+              id: s.id,
+              admissionNumber: s.admissionNumber,
+              firstName: su?.firstName ?? '',
+              lastName: su?.lastName ?? '',
+              username: su?.username ?? '',
+              className: cls?.name ?? '',
+              classId: s.classId,
+            };
+          });
+        const { passwordHash: _, ...safeParent } = parent;
+        return { ...safeParent, linkedStudents };
+      });
+
+      res.json(parents);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to fetch parents' });
+    }
+  });
+
+  // Student autocomplete search for parent linking
+  app.get('/api/students/search', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.TEACHER), async (req, res) => {
+    try {
+      const q = (req.query.q as string || '').toLowerCase().trim();
+      if (!q || q.length < 1) return res.json([]);
+
+      const [allStudents, allUsers, allClasses] = await Promise.all([
+        storage.getAllStudents(),
+        storage.getAllUsers(),
+        storage.getAllClasses(),
+      ]);
+
+      const userMap: Record<string, any> = {};
+      allUsers.forEach((u: any) => { userMap[u.id] = u; });
+      const classMap: Record<number, any> = {};
+      allClasses.forEach((c: any) => { classMap[c.id] = c; });
+
+      const results = allStudents
+        .map((s: any) => {
+          const u = userMap[s.id];
+          if (!u) return null;
+          return {
+            id: s.id,
+            admissionNumber: s.admissionNumber ?? '',
+            firstName: u.firstName ?? '',
+            lastName: u.lastName ?? '',
+            username: u.username ?? '',
+            className: classMap[s.classId]?.name ?? '',
+            classId: s.classId,
+            parentId: s.parentId,
+          };
+        })
+        .filter((s: any): s is NonNullable<typeof s> => {
+          if (!s) return false;
+          const fullName = `${s.firstName} ${s.lastName}`.toLowerCase();
+          return (
+            fullName.includes(q) ||
+            s.username.toLowerCase().includes(q) ||
+            s.admissionNumber.toLowerCase().includes(q)
+          );
+        })
+        .slice(0, 15);
+
+      res.json(results);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to search students' });
+    }
+  });
+
+  // Create a new parent
+  app.post('/api/parents', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const { firstName, lastName, email, phone, gender, studentIds = [] } = req.body;
+      if (!firstName || !lastName) {
+        return res.status(400).json({ message: 'First name and last name are required' });
+      }
+
+      const parentRole = await storage.getRoleByName('Parent');
+      if (!parentRole) return res.status(500).json({ message: 'Parent role not found' });
+
+      const { generateParentUsername, generateTempPassword } = await import('./username-generator');
+      const username = await generateParentUsername();
+      const plainPassword = generateTempPassword();
+      const passwordHash = await bcrypt.hash(plainPassword, BCRYPT_ROUNDS);
+
+      const newUser = await storage.createUser({
+        id: crypto.randomUUID(),
+        firstName,
+        lastName,
+        email: email || null,
+        phone: phone || null,
+        gender: gender || null,
+        username,
+        passwordHash,
+        roleId: parentRole.id,
+        isActive: true,
+        status: 'active',
+        mustChangePassword: true,
+      } as any);
+
+      // Create parent profile
+      await storage.createParentProfile({
+        userId: newUser.id,
+        linkedStudents: JSON.stringify(studentIds),
+        occupation: null,
+        contactPreference: null,
+      });
+
+      // Link each student to this parent
+      if (Array.isArray(studentIds) && studentIds.length > 0) {
+        for (const sid of studentIds) {
+          await storage.updateStudent(sid, { studentPatch: { parentId: newUser.id } });
+        }
+      }
+
+      const { passwordHash: _, ...safeUser } = newUser;
+      res.status(201).json({
+        user: safeUser,
+        credentials: { username, password: plainPassword },
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to create parent' });
+    }
+  });
+
+  // Update parent info
+  app.put('/api/parents/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { firstName, lastName, email, phone, gender } = req.body;
+
+      const updated = await storage.updateUser(id, { firstName, lastName, email, phone, gender });
+      if (!updated) return res.status(404).json({ message: 'Parent not found' });
+
+      const { passwordHash: _, ...safe } = updated;
+      res.json(safe);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to update parent' });
+    }
+  });
+
+  // Link additional students to an existing parent
+  app.post('/api/parents/:id/link-students', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const parentId = req.params.id;
+      const { studentIds } = req.body;
+      if (!Array.isArray(studentIds) || studentIds.length === 0) {
+        return res.status(400).json({ message: 'studentIds array is required' });
+      }
+
+      for (const sid of studentIds) {
+        await storage.updateStudent(sid, { studentPatch: { parentId } });
+      }
+
+      // Update parent profile linkedStudents
+      const profile = await storage.getParentProfile(parentId);
+      const current: string[] = profile ? JSON.parse(profile.linkedStudents || '[]') : [];
+      const merged = Array.from(new Set([...current, ...studentIds]));
+      await storage.updateParentProfile(parentId, { linkedStudents: JSON.stringify(merged) });
+
+      res.json({ message: `Linked ${studentIds.length} student(s) successfully` });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to link students' });
+    }
+  });
+
+  // Unlink a student from a parent
+  app.delete('/api/parents/:id/unlink/:studentId', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const { id: parentId, studentId } = req.params;
+      await storage.updateStudent(studentId, { studentPatch: { parentId: null } });
+
+      // Remove from parent profile linkedStudents
+      const profile = await storage.getParentProfile(parentId);
+      if (profile) {
+        const current: string[] = JSON.parse(profile.linkedStudents || '[]');
+        const updated = current.filter(sid => sid !== studentId);
+        await storage.updateParentProfile(parentId, { linkedStudents: JSON.stringify(updated) });
+      }
+
+      res.json({ message: 'Student unlinked successfully' });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to unlink student' });
+    }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+
   app.get('/api/parents/children/:parentId', authenticateUser, async (req, res) => {
     try {
       const parentId = req.params.parentId;
