@@ -307,15 +307,6 @@ export default function TeacherDashboard() {
         </div>
       </div>
 
-      {/* Header Actions */}
-      <div className="flex justify-end mb-6">
-        <Button className="bg-primary text-primary-foreground" asChild>
-          <Link href="/portal/teacher/attendance" data-testid="button-take-attendance">
-            <ClipboardCheck className="h-4 w-4 mr-2" />
-            Take Attendance
-          </Link>
-        </Button>
-      </div>
 
       {/* Stats Cards - Student-style Design */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 animate-slide-up">
