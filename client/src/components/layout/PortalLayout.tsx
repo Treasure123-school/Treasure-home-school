@@ -185,7 +185,6 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-students' : null),
             items: [
               { href: `/portal/${userRole}/students`, icon: Users, label: 'All Students' },
-              { href: `/portal/${userRole}/coming-soon?page=enrollment`, icon: UserCheck, label: 'Student Enrollment' },
               { href: `/portal/${userRole}/parents`, icon: Users, label: 'Parents' },
               { href: `/portal/${userRole}/attendance`, icon: Calendar, label: 'Attendance' },
             ],
@@ -209,7 +208,6 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: `/portal/${userRole}/classes`, icon: BookOpen, label: 'Classes' },
               { href: `/portal/${userRole}/subjects`, icon: BookOpen, label: 'Subjects' },
               { href: `/portal/${userRole}/subject-manager/unified-assignment`, icon: ClipboardList, label: 'Subject Setup' },
-              { href: `/portal/${userRole}/subject-assignment`, icon: Users, label: 'Teacher Assignments' },
               { href: `/portal/${userRole}/academic-terms`, icon: Calendar, label: 'Academic Terms' },
               { href: `/portal/${userRole}/syllabus-topics`, icon: Layers, label: 'Syllabus Topics' },
               { href: `/portal/${userRole}/coming-soon?page=timetable`, icon: Clock, label: 'Timetable' },
