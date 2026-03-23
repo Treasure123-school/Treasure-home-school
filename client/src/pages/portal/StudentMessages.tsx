@@ -30,6 +30,9 @@ export default function StudentMessages() {
     subject: '',
     content: ''
   });
+  const [recipientIdentifier, setRecipientIdentifier] = useState('');
+  const [recipientInfo, setRecipientInfo] = useState<any>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   if (!user) {
     return <div className="p-6 text-center text-muted-foreground">Please log in to access your messages.</div>;
@@ -61,14 +64,27 @@ export default function StudentMessages() {
     }
   });
 
-  const { data: teachers = [] } = useQuery({
-    queryKey: ['teachers'],
-    queryFn: async () => {
-      const response = await fetch('/api/users?role=Teacher', { credentials: 'include' });
-      if (!response.ok) throw new Error('Failed to fetch teachers');
-      return response.json();
+  const handleVerifyRecipient = async () => {
+    if (!recipientIdentifier.trim()) return;
+    setIsVerifying(true);
+    try {
+      const response = await fetch(`/api/messages/lookup/${encodeURIComponent(recipientIdentifier.trim())}`, { credentials: 'include' });
+      if (!response.ok) {
+        setRecipientInfo(null);
+        setComposeData(prev => ({ ...prev, recipientId: '' }));
+        toast({ title: 'User Not Found', description: 'Could not find a user with that username or ID.', variant: 'destructive' });
+      } else {
+        const data = await response.json();
+        setRecipientInfo(data);
+        setComposeData(prev => ({ ...prev, recipientId: data.id }));
+        toast({ title: 'User Verified', description: `Recipient: ${data.firstName} ${data.lastName} (${data.roleName})` });
+      }
+    } catch (error) {
+      toast({ title: 'Lookup Error', description: 'Failed to verify recipient. Please try again.', variant: 'destructive' });
+    } finally {
+      setIsVerifying(false);
     }
-  });
+  };
 
   const sendMessageMutation = useMutation({
     mutationFn: async (messageData: any) => {
@@ -85,6 +101,8 @@ export default function StudentMessages() {
       toast({ title: 'Message Sent', description: 'Your message has been sent successfully.' });
       setIsComposeOpen(false);
       setComposeData({ recipientId: '', subject: '', content: '' });
+      setRecipientIdentifier('');
+      setRecipientInfo(null);
       queryClient.invalidateQueries({ queryKey: ['messages', user.id] });
     },
     onError: () => {
@@ -408,21 +426,47 @@ export default function StudentMessages() {
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
-              <Label htmlFor="recipient" className="text-sm font-medium">To</Label>
-              <select
-                id="recipient"
-                className="w-full mt-1.5 px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                value={composeData.recipientId}
-                onChange={(e) => setComposeData(prev => ({ ...prev, recipientId: e.target.value }))}
-                data-testid="select-recipient"
-              >
-                <option value="">Select a teacher...</option>
-                {teachers.map((teacher: any) => (
-                  <option key={teacher.id} value={teacher.id}>
-                    {teacher.firstName} {teacher.lastName}
-                  </option>
-                ))}
-              </select>
+              <Label htmlFor="recipient" className="text-sm font-medium">To (Username or ID)</Label>
+              <div className="flex gap-2 mt-1.5">
+                <Input
+                  id="recipient"
+                  placeholder="Enter username or ID..."
+                  value={recipientIdentifier}
+                  onChange={(e) => setRecipientIdentifier(e.target.value)}
+                  className="flex-1"
+                  disabled={!!recipientInfo}
+                  data-testid="input-recipient-identifier"
+                />
+                {recipientInfo ? (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => {
+                      setRecipientInfo(null);
+                      setRecipientIdentifier('');
+                      setComposeData(prev => ({ ...prev, recipientId: '' }));
+                    }}
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                  >
+                    Clear
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    onClick={handleVerifyRecipient}
+                    disabled={isVerifying || !recipientIdentifier.trim()}
+                  >
+                    {isVerifying ? '...' : 'Verify'}
+                  </Button>
+                )}
+              </div>
+              {recipientInfo && (
+                <div className="mt-2 text-xs p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg flex items-center gap-2">
+                  <User className="h-3 w-3" />
+                  <span>Found: <strong>{recipientInfo.firstName} {recipientInfo.lastName}</strong> ({recipientInfo.roleName})</span>
+                </div>
+              )}
             </div>
             <div>
               <Label htmlFor="subject" className="text-sm font-medium">Subject</Label>

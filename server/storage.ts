@@ -45,6 +45,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByIdentifier(identifier: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, user: Partial<InsertUser>): Promise<User | undefined>;
   deleteUser(id: string): Promise<boolean>;
@@ -749,6 +750,44 @@ export class DatabaseStorage implements IStorage {
       }
     }
     return user;
+  }
+
+  async getUserByIdentifier(identifier: string): Promise<User | undefined> {
+    // Try UUID first
+    if (normalizeUuid(identifier)) {
+      const user = await this.getUser(identifier);
+      if (user) return user;
+    }
+
+    // Try Username
+    const userByUsername = await this.getUserByUsername(identifier);
+    if (userByUsername) return userByUsername;
+
+    // Try Email
+    const userByEmail = await this.getUserByEmail(identifier);
+    if (userByEmail) return userByEmail;
+
+    // Try Admission Number (Student)
+    const [student] = await this.db.select()
+      .from(schema.students)
+      .where(eq(schema.students.admissionNumber, identifier))
+      .limit(1);
+    
+    if (student) {
+      return await this.getUser(student.id);
+    }
+
+    // Try Staff ID (Teacher)
+    const [teacher] = await this.db.select()
+      .from(schema.teacherProfiles)
+      .where(eq(schema.teacherProfiles.staffId, identifier))
+      .limit(1);
+    
+    if (teacher) {
+      return await this.getUser(teacher.userId);
+    }
+
+    return undefined;
   }
   async createPasswordResetToken(userId: string, token: string, expiresAt: Date, ipAddress?: string, resetBy?: string): Promise<any> {
     const result = await this.db.insert(schema.passwordResetTokens).values({

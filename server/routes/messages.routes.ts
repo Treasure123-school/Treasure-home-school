@@ -12,6 +12,35 @@ import { realtimeService } from "../realtime-service";
 
 const router = Router();
 
+// Lookup a user by identifier (username, ID, email, staffId, or admissionNumber)
+router.get('/lookup/:identifier', authenticateUser, async (req: any, res: Response) => {
+  try {
+    if (!req.user) {
+      return sendUnauthorized(res);
+    }
+    
+    const identifier = req.params.identifier;
+    const user = await storage.getUserByIdentifier(identifier);
+    
+    if (!user) {
+      return sendNotFound(res, 'User not found');
+    }
+    
+    // Return sanitized user info
+    const { passwordHash, ...safeUser } = user;
+    
+    // Add role name for better display
+    const role = await storage.getRole(user.roleId);
+    
+    sendSuccess(res, { 
+      ...safeUser, 
+      roleName: role?.name || 'Unknown' 
+    });
+  } catch (error) {
+    handleRouteError(res, error, 'users.lookup');
+  }
+});
+
 // Get all messages for the current user
 router.get('/user/:userId', authenticateUser, async (req: any, res: Response) => {
   try {

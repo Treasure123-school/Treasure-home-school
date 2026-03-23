@@ -78,6 +78,9 @@ export default function TeacherMessages() {
   const [newMsgSubject, setNewMsgSubject] = useState('');
   const [newMsgContent, setNewMsgContent] = useState('');
   const [showConversations, setShowConversations] = useState(true);
+  const [recipientIdentifier, setRecipientIdentifier] = useState('');
+  const [recipientInfo, setRecipientInfo] = useState<any>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const { data: messages = [], isLoading } = useQuery<Message[]>({
     queryKey: ['/api/messages/user', user?.id],
@@ -126,13 +129,27 @@ export default function TeacherMessages() {
     enabled: !!user,
   });
 
-  const allRecipients = useMemo(() => {
-    // Filter out current user from teachers list
-    const teachersList = otherTeachers.filter(t => t.id !== user?.id);
-    return [...students, ...teachersList].sort((a, b) => 
-      a.firstName.localeCompare(b.firstName)
-    );
-  }, [students, otherTeachers, user?.id]);
+  const handleVerifyRecipient = async () => {
+    if (!recipientIdentifier.trim()) return;
+    setIsVerifying(true);
+    try {
+      const response = await fetch(`/api/messages/lookup/${encodeURIComponent(recipientIdentifier.trim())}`, { credentials: 'include' });
+      if (!response.ok) {
+        setRecipientInfo(null);
+        setNewMsgRecipient('');
+        toast({ title: 'User Not Found', description: 'Could not find a user with that username or ID.', variant: 'destructive' });
+      } else {
+        const data = await response.json();
+        setRecipientInfo(data);
+        setNewMsgRecipient(data.id);
+        toast({ title: 'User Verified', description: `Recipient: ${data.firstName} ${data.lastName} (${data.roleName})` });
+      }
+    } catch (error) {
+      toast({ title: 'Lookup Error', description: 'Failed to verify recipient. Please try again.', variant: 'destructive' });
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   const sendMutation = useMutation({
     mutationFn: async (data: { recipientId: string; subject: string; content: string }) => {
@@ -169,6 +186,8 @@ export default function TeacherMessages() {
       setNewMsgRecipient('');
       setNewMsgSubject('');
       setNewMsgContent('');
+      setRecipientIdentifier('');
+      setRecipientInfo(null);
       toast({ title: 'Message Sent', description: 'Your message has been sent.' });
     },
     onError: () => toast({ title: 'Error', description: 'Failed to send message.', variant: 'destructive' }),
@@ -507,19 +526,46 @@ export default function TeacherMessages() {
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Recipient</Label>
-              <Select value={newMsgRecipient} onValueChange={setNewMsgRecipient}>
-                <SelectTrigger className="rounded-xl" data-testid="select-recipient">
-                  <SelectValue placeholder="Select a recipient..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {allRecipients.map(r => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {r.firstName} {r.lastName} ({r.role})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Recipient (Username or ID)</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter username or ID..."
+                  value={recipientIdentifier}
+                  onChange={(e) => setRecipientIdentifier(e.target.value)}
+                  className="rounded-xl flex-1"
+                  disabled={!!recipientInfo}
+                />
+                {recipientInfo ? (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => {
+                      setRecipientInfo(null);
+                      setRecipientIdentifier('');
+                      setNewMsgRecipient('');
+                    }}
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl"
+                  >
+                    Clear
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    onClick={handleVerifyRecipient}
+                    disabled={isVerifying || !recipientIdentifier.trim()}
+                    className="rounded-xl"
+                  >
+                    {isVerifying ? '...' : 'Verify'}
+                  </Button>
+                )}
+              </div>
+              {recipientInfo && (
+                <div className="mt-2 text-[11px] p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-xl flex items-center gap-2">
+                  <Inbox className="h-3 w-3" />
+                  <span>Found: <strong>{recipientInfo.firstName} {recipientInfo.lastName}</strong> ({recipientInfo.roleName})</span>
+                </div>
+              )}
             </div>
             <div>
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Subject</Label>
