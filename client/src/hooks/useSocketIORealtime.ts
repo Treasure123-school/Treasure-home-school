@@ -314,6 +314,7 @@ export function useSocketIORealtime({
         'notification',
         'upload.progress',
         'subject-assignments-updated',
+        'message:new'
       ];
 
       // Store handler references for proper cleanup

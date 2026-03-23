@@ -15,6 +15,7 @@ import {
   MessageSquare, Send, Search, Plus, ArrowLeft, Paperclip,
   Check, CheckCheck, Clock, Users, Inbox
 } from 'lucide-react';
+import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 
 interface Message {
   id: number;
@@ -86,7 +87,23 @@ export default function TeacherMessages() {
       return res.json();
     },
     enabled: !!user,
-    refetchInterval: 15000,
+  });
+
+  // Real-time updates for messages
+  useSocketIORealtime({
+    queryKey: ['/api/messages/user', user?.id],
+    onEvent: (event) => {
+      if (event.eventType === 'message:new') {
+        const msg = event.data;
+        // Show toast if message is for this user and not by them
+        if (msg.recipientId === user?.id && msg.senderId !== user?.id) {
+          toast({
+            title: `New Message from ${msg.senderName || 'Student'}`,
+            description: msg.subject || 'Click to view',
+          });
+        }
+      }
+    }
   });
 
   const { data: students = [] } = useQuery<User[]>({
@@ -98,6 +115,24 @@ export default function TeacherMessages() {
     },
     enabled: !!user,
   });
+
+  const { data: otherTeachers = [] } = useQuery<User[]>({
+    queryKey: ['/api/users', 'Teacher'],
+    queryFn: async () => {
+      const res = await fetch('/api/users?role=Teacher', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch teachers');
+      return res.json();
+    },
+    enabled: !!user,
+  });
+
+  const allRecipients = useMemo(() => {
+    // Filter out current user from teachers list
+    const teachersList = otherTeachers.filter(t => t.id !== user?.id);
+    return [...students, ...teachersList].sort((a, b) => 
+      a.firstName.localeCompare(b.firstName)
+    );
+  }, [students, otherTeachers, user?.id]);
 
   const sendMutation = useMutation({
     mutationFn: async (data: { recipientId: string; subject: string; content: string }) => {
@@ -148,10 +183,10 @@ export default function TeacherMessages() {
 
   const userMap = useMemo(() => {
     const map: Record<string, User> = {};
-    students.forEach(s => { map[s.id] = s; });
+    allRecipients.forEach(r => { map[r.id] = r; });
     if (user) map[user.id] = user as User;
     return map;
-  }, [students, user]);
+  }, [allRecipients, user]);
 
   const getName = (id: string) => {
     const u = userMap[id];
@@ -475,12 +510,12 @@ export default function TeacherMessages() {
               <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Recipient</Label>
               <Select value={newMsgRecipient} onValueChange={setNewMsgRecipient}>
                 <SelectTrigger className="rounded-xl" data-testid="select-recipient">
-                  <SelectValue placeholder="Select a student..." />
+                  <SelectValue placeholder="Select a recipient..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {students.map(s => (
-                    <SelectItem key={s.id} value={s.id}>
-                      {s.firstName} {s.lastName}
+                  {allRecipients.map(r => (
+                    <SelectItem key={r.id} value={r.id}>
+                      {r.firstName} {r.lastName} ({r.role})
                     </SelectItem>
                   ))}
                 </SelectContent>

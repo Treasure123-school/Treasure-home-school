@@ -1,4 +1,5 @@
 import { eq, and, desc, asc, sql, sql as dsql, inArray, isNull, isNotNull, ne, gte, lte, or, like } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { randomUUID } from "crypto";
 import { getDatabase, getSchema, getPgClient, getPgPool, isPostgres, isSqlite } from "./db";
 import { calculateGrade, calculateWeightedScore, getGradingConfig, getOverallGrade } from "./grading-config";
@@ -3980,19 +3981,7 @@ export class DatabaseStorage implements IStorage {
 
     return true;
   }
-  // Messages
-  async sendMessage(message: InsertMessage): Promise<Message> {
-    const result = await db.insert(schema.messages).values(message).returning();
-    return result[0];
-  }
-  async getMessagesByUser(userId: string): Promise<Message[]> {
-    return await db.select().from(schema.messages)
-      .where(eq(schema.messages.recipientId, userId))
-      .orderBy(desc(schema.messages.createdAt));
-  }
-  async markMessageAsRead(id: number): Promise<void> {
-    await db.update(schema.messages).set({ isRead: true }).where(eq(schema.messages.id, id));
-  }
+  // Messages methods moved to the end of the class for better organization
   // Gallery
   async createGalleryCategory(category: InsertGalleryCategory): Promise<GalleryCategory> {
     const result = await db.insert(schema.galleryCategories).values(category).returning();
@@ -8908,6 +8897,43 @@ export class DatabaseStorage implements IStorage {
       console.error('Error creating Monnify virtual account:', error);
       throw error;
     }
+  }
+
+  // Messages
+  async sendMessage(message: InsertMessage): Promise<Message> {
+    const result = await this.db.insert(schema.messages).values(message).returning();
+    return result[0];
+  }
+
+  async getMessagesByUser(userId: string): Promise<any[]> {
+    const sender = alias(schema.users, "sender");
+    const recipient = alias(schema.users, "recipient");
+
+    return await this.db.select({
+      id: schema.messages.id,
+      senderId: schema.messages.senderId,
+      recipientId: schema.messages.recipientId,
+      subject: schema.messages.subject,
+      content: schema.messages.content,
+      isRead: schema.messages.isRead,
+      createdAt: schema.messages.createdAt,
+      senderName: sql<string>`${sender.firstName} || ' ' || ${sender.lastName}`,
+      recipientName: sql<string>`${recipient.firstName} || ' ' || ${recipient.lastName}`
+    })
+      .from(schema.messages)
+      .leftJoin(sender, eq(schema.messages.senderId, sender.id))
+      .leftJoin(recipient, eq(schema.messages.recipientId, recipient.id))
+      .where(or(
+        eq(schema.messages.senderId, userId),
+        eq(schema.messages.recipientId, userId)
+      ))
+      .orderBy(desc(schema.messages.createdAt));
+  }
+
+  async markMessageAsRead(id: number): Promise<void> {
+    await this.db.update(schema.messages)
+      .set({ isRead: true })
+      .where(eq(schema.messages.id, id));
   }
 }
 // Initialize storage - PostgreSQL database only

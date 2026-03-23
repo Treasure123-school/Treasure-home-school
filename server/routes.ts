@@ -7697,7 +7697,7 @@ School Management System Administration
   });
 
   // User management - Admin only - OPTIMIZED for speed
-  app.get("/api/users", authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER), async (req, res) => {
+  app.get("/api/users", authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER, ROLES.STUDENT, ROLES.PARENT), async (req, res) => {
     try {
       const { role } = req.query;
       const currentUser = req.user;
@@ -7706,10 +7706,17 @@ School Management System Administration
         return res.status(401).json({ message: "Not authenticated" });
       }
 
-      // Teachers can only fetch Teacher or Student data (for exam collaboration purposes)
+      // Teachers can only fetch Teacher or Student data (for messaging/exam purposes)
       if (currentUser.roleId === ROLES.TEACHER) {
         if (!role || (role !== 'Teacher' && role !== 'Student')) {
           return res.status(403).json({ message: "Teachers can only view Teacher and Student user lists" });
+        }
+      }
+
+      // Students and Parents can only fetch Teacher data (for messaging purposes)
+      if (currentUser.roleId === ROLES.STUDENT || currentUser.roleId === ROLES.PARENT) {
+        if (!role || role !== 'Teacher') {
+          return res.status(403).json({ message: "Students and Parents can only see the Teacher list" });
         }
       }
 
@@ -14303,39 +14310,7 @@ School Management System Administration
   // ==================== END MODULE 1 ROUTES ====================
 
   // ==================== MESSAGES API ROUTES ====================
-  app.get('/api/messages/user/:userId', authenticateUser, async (req: Request, res: Response) => {
-    try {
-      const { userId } = req.params;
-      const msgs = await storage.getMessagesByUser(userId);
-      res.json(msgs);
-    } catch (error: any) {
-      res.status(500).json({ message: 'Failed to fetch messages' });
-    }
-  });
-
-  app.post('/api/messages', authenticateUser, async (req: Request, res: Response) => {
-    try {
-      const parsed = insertMessageSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ message: 'Invalid message data', errors: parsed.error.errors });
-      }
-      const msg = await storage.sendMessage(parsed.data);
-      res.status(201).json(msg);
-    } catch (error: any) {
-      res.status(500).json({ message: 'Failed to send message' });
-    }
-  });
-
-  app.patch('/api/messages/:id/read', authenticateUser, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id, 10);
-      if (isNaN(id)) return res.status(400).json({ message: 'Invalid message ID' });
-      await storage.markMessageAsRead(id);
-      res.json({ success: true });
-    } catch (error: any) {
-      res.status(500).json({ message: 'Failed to mark message as read' });
-    }
-  });
+  app.use('/api/messages', messagesRoutes);
   // ==================== END MESSAGES API ROUTES ====================
 
   // ==================== STUDENT CLASS RANK ROUTE ====================

@@ -15,6 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 
 export default function StudentMessages() {
   const { user } = useAuth();
@@ -40,6 +41,23 @@ export default function StudentMessages() {
       const response = await fetch(`/api/messages/user/${user.id}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch messages');
       return response.json();
+    }
+  });
+
+  // Real-time updates for messages
+  useSocketIORealtime({
+    queryKey: ['messages', user.id],
+    onEvent: (event) => {
+      if (event.eventType === 'message:new') {
+        const msg = event.data;
+        // Show toast if message is for this user and not currently selected
+        if (msg.recipientId === user.id && selectedMessage?.id !== msg.id) {
+          toast({
+            title: `New Message from ${msg.senderName || 'Teacher'}`,
+            description: msg.subject || 'Click to view',
+          });
+        }
+      }
     }
   });
 
