@@ -1251,3 +1251,81 @@ export type ExamQuestionBankLink = typeof examQuestionBankLinks.$inferSelect;
 export type InsertExamQuestionBankLink = typeof examQuestionBankLinks.$inferInsert;
 export type ExamPayment = typeof examPayments.$inferSelect;
 export type InsertExamPayment = typeof examPayments.$inferInsert;
+
+// Assignments table
+export const assignments = pgTable("assignments", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  instructions: text("instructions"),
+  classId: integer("class_id").notNull().references(() => classes.id),
+  subjectId: integer("subject_id").notNull().references(() => subjects.id),
+  teacherId: varchar("teacher_id", { length: 36 }).notNull().references(() => users.id, { onDelete: 'cascade' }),
+  termId: integer("term_id").references(() => academicTerms.id),
+  dueDate: varchar("due_date", { length: 10 }).notNull(),
+  dueTime: varchar("due_time", { length: 5 }).notNull().default('23:59'),
+  maxScore: integer("max_score").notNull().default(100),
+  attachments: text("attachments").notNull().default('[]'),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  assignmentsClassIdx: index("assignments_class_idx").on(table.classId),
+  assignmentsSubjectIdx: index("assignments_subject_idx").on(table.subjectId),
+  assignmentsTeacherIdx: index("assignments_teacher_idx").on(table.teacherId),
+  assignmentsDueDateIdx: index("assignments_due_date_idx").on(table.dueDate),
+}));
+
+// Assignment submissions table
+export const assignmentSubmissions = pgTable("assignment_submissions", {
+  id: serial("id").primaryKey(),
+  assignmentId: integer("assignment_id").notNull().references(() => assignments.id, { onDelete: 'cascade' }),
+  studentId: varchar("student_id", { length: 36 }).notNull().references(() => students.id, { onDelete: 'cascade' }),
+  textAnswer: text("text_answer"),
+  fileUrl: text("file_url"),
+  fileName: varchar("file_name", { length: 255 }),
+  fileType: varchar("file_type", { length: 50 }),
+  submittedAt: timestamp("submitted_at"),
+  score: integer("score"),
+  feedback: text("feedback"),
+  gradedAt: timestamp("graded_at"),
+  gradedBy: varchar("graded_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  submissionsAssignmentIdx: index("submissions_assignment_idx").on(table.assignmentId),
+  submissionsStudentIdx: index("submissions_student_idx").on(table.studentId),
+  submissionsUniqueIdx: uniqueIndex("submissions_unique_idx").on(table.assignmentId, table.studentId),
+}));
+
+export type Assignment = typeof assignments.$inferSelect;
+export type InsertAssignment = typeof assignments.$inferInsert;
+export type AssignmentSubmission = typeof assignmentSubmissions.$inferSelect;
+export type InsertAssignmentSubmission = typeof assignmentSubmissions.$inferInsert;
+
+// School Events / Calendar
+export const schoolEvents = pgTable("school_events", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  eventType: varchar("event_type", { length: 50 }).notNull().default('event'), // 'exam', 'holiday', 'event', 'sports', 'academic', 'extracurricular'
+  startDate: varchar("start_date", { length: 10 }).notNull(), // YYYY-MM-DD
+  endDate: varchar("end_date", { length: 10 }), // optional multi-day
+  startTime: varchar("start_time", { length: 8 }), // HH:MM
+  endTime: varchar("end_time", { length: 8 }),
+  location: varchar("location", { length: 255 }),
+  imageUrl: text("image_url"),
+  color: varchar("color", { length: 20 }).default('#3b82f6'),
+  isAllDay: boolean("is_all_day").default(true).notNull(),
+  targetRoles: text("target_roles").default('["all"]').notNull(), // JSON array
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  schoolEventsTypeIdx: index("school_events_type_idx").on(table.eventType),
+  schoolEventsDateIdx: index("school_events_date_idx").on(table.startDate),
+  schoolEventsActiveIdx: index("school_events_active_idx").on(table.isActive),
+}));
+
+export type SchoolEvent = typeof schoolEvents.$inferSelect;
+export type InsertSchoolEvent = typeof schoolEvents.$inferInsert;

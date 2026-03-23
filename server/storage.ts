@@ -25,7 +25,8 @@ import type {
   Timetable, InsertTimetable,
   StudentSubjectAssignment, InsertStudentSubjectAssignment, ClassSubjectMapping, InsertClassSubjectMapping,
   SyllabusTopic, InsertSyllabusTopic, ExamQuestionBankLink, InsertExamQuestionBankLink,
-  ExamPayment, InsertExamPayment
+  ExamPayment, InsertExamPayment,
+  SchoolEvent, InsertSchoolEvent
 } from "@shared/schema";
 
 // Get centralized database instance and schema from db.ts
@@ -153,6 +154,8 @@ export interface IStorage {
   recordAttendance(attendance: InsertAttendance): Promise<Attendance>;
   getAttendanceByStudent(studentId: string, date?: string): Promise<Attendance[]>;
   getAttendanceByClass(classId: number, date: string): Promise<Attendance[]>;
+  updateAttendance(id: number, data: Partial<InsertAttendance>): Promise<Attendance | undefined>;
+  getAttendanceByClassDateRange(classId: number, startDate: string, endDate: string): Promise<Attendance[]>;
 
   // Exam management
   createExam(exam: InsertExam): Promise<Exam>;
@@ -430,6 +433,12 @@ export interface IStorage {
   getTimetableByTeacher(teacherId: string, termId?: number): Promise<Timetable[]>;
   updateTimetableEntry(id: number, entry: Partial<InsertTimetable>): Promise<Timetable | undefined>;
   deleteTimetableEntry(id: number): Promise<boolean>;
+  getAllTimetableEntries(filters?: { classId?: number; teacherId?: string; termId?: number }): Promise<Array<{
+    id: number; teacherId: string; classId: number; subjectId: number; dayOfWeek: string;
+    startTime: string; endTime: string; location: string | null; termId: number | null;
+    teacherFirstName: string | null; teacherLastName: string | null;
+    className: string; subjectName: string; subjectCode: string;
+  }>>;
 
   // Teacher dashboard data
   getTeacherDashboardData(teacherId: string): Promise<{
@@ -540,6 +549,13 @@ export interface IStorage {
   updateExamPayment(id: number, data: Partial<InsertExamPayment>): Promise<ExamPayment | undefined>;
   initiatePendingExamPayment(studentId: string, termId: number, reference: string, amountPaid: number): Promise<ExamPayment>;
   deleteExamPayment(id: number): Promise<boolean>;
+
+  // School Events / Calendar
+  getSchoolEvents(filters?: { eventType?: string; startDate?: string; endDate?: string; isActive?: boolean }): Promise<SchoolEvent[]>;
+  getSchoolEvent(id: number): Promise<SchoolEvent | undefined>;
+  createSchoolEvent(data: InsertSchoolEvent): Promise<SchoolEvent>;
+  updateSchoolEvent(id: number, data: Partial<InsertSchoolEvent>): Promise<SchoolEvent | undefined>;
+  deleteSchoolEvent(id: number): Promise<boolean>;
 
   // User recovery management
   getDeletedUsers(roleFilter?: number[]): Promise<User[]>;
@@ -2007,6 +2023,19 @@ export class DatabaseStorage implements IStorage {
   async getAttendanceByClass(classId: number, date: string): Promise<Attendance[]> {
     return await db.select().from(schema.attendance)
       .where(and(eq(schema.attendance.classId, classId), eq(schema.attendance.date, date)));
+  }
+  async updateAttendance(id: number, data: Partial<InsertAttendance>): Promise<Attendance | undefined> {
+    const result = await db.update(schema.attendance).set(data).where(eq(schema.attendance.id, id)).returning();
+    return result[0];
+  }
+  async getAttendanceByClassDateRange(classId: number, startDate: string, endDate: string): Promise<Attendance[]> {
+    return await db.select().from(schema.attendance)
+      .where(and(
+        eq(schema.attendance.classId, classId),
+        gte(schema.attendance.date, startDate),
+        lte(schema.attendance.date, endDate)
+      ))
+      .orderBy(desc(schema.attendance.date));
   }
   // Exam management
   async createExam(exam: InsertExam): Promise<Exam> {
@@ -6698,9 +6727,8 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
   async getTimetableByTeacher(teacherId: string, termId?: number): Promise<Timetable[]> {
-    const conditions = [
+    const conditions: any[] = [
       eq(schema.timetable.teacherId, teacherId),
-      eq(schema.timetable.isActive, true)
     ];
 
     if (termId) {
@@ -6723,6 +6751,37 @@ export class DatabaseStorage implements IStorage {
       .where(eq(schema.timetable.id, id))
       .returning();
     return result.length > 0;
+  }
+  async getAllTimetableEntries(filters?: { classId?: number; teacherId?: string; termId?: number }) {
+    const conditions: any[] = [];
+    if (filters?.classId) conditions.push(eq(schema.timetable.classId, filters.classId));
+    if (filters?.teacherId) conditions.push(eq(schema.timetable.teacherId, filters.teacherId));
+    if (filters?.termId) conditions.push(eq(schema.timetable.termId, filters.termId));
+    const query = this.db.select({
+      id: schema.timetable.id,
+      teacherId: schema.timetable.teacherId,
+      classId: schema.timetable.classId,
+      subjectId: schema.timetable.subjectId,
+      dayOfWeek: schema.timetable.dayOfWeek,
+      startTime: schema.timetable.startTime,
+      endTime: schema.timetable.endTime,
+      location: schema.timetable.location,
+      termId: schema.timetable.termId,
+      teacherFirstName: schema.users.firstName,
+      teacherLastName: schema.users.lastName,
+      className: schema.classes.name,
+      subjectName: schema.subjects.name,
+      subjectCode: schema.subjects.code,
+    })
+      .from(schema.timetable)
+      .leftJoin(schema.users, eq(schema.timetable.teacherId, schema.users.id))
+      .innerJoin(schema.classes, eq(schema.timetable.classId, schema.classes.id))
+      .innerJoin(schema.subjects, eq(schema.timetable.subjectId, schema.subjects.id))
+      .orderBy(schema.timetable.dayOfWeek, schema.timetable.startTime);
+    if (conditions.length > 0) {
+      return await (query as any).where(and(...conditions));
+    }
+    return await query;
   }
   // Teacher dashboard data - comprehensive method
   async getTeacherDashboardData(teacherId: string): Promise<{
@@ -7522,6 +7581,43 @@ export class DatabaseStorage implements IStorage {
     const result = await this.db.delete(schema.examPayments)
       .where(eq(schema.examPayments.id, id))
       .returning();
+    return result.length > 0;
+  }
+
+  // School Events / Calendar implementations
+  async getSchoolEvents(filters?: { eventType?: string; startDate?: string; endDate?: string; isActive?: boolean }): Promise<SchoolEvent[]> {
+    const conditions: any[] = [];
+    if (filters?.eventType) conditions.push(eq(schema.schoolEvents.eventType, filters.eventType));
+    if (filters?.startDate) conditions.push(gte(schema.schoolEvents.startDate, filters.startDate));
+    if (filters?.endDate) conditions.push(lte(schema.schoolEvents.startDate, filters.endDate));
+    if (filters?.isActive !== undefined) conditions.push(eq(schema.schoolEvents.isActive, filters.isActive));
+    const query = this.db.select().from(schema.schoolEvents);
+    if (conditions.length > 0) {
+      return await query.where(and(...conditions)).orderBy(asc(schema.schoolEvents.startDate));
+    }
+    return await query.orderBy(asc(schema.schoolEvents.startDate));
+  }
+
+  async getSchoolEvent(id: number): Promise<SchoolEvent | undefined> {
+    const rows = await this.db.select().from(schema.schoolEvents).where(eq(schema.schoolEvents.id, id)).limit(1);
+    return rows[0];
+  }
+
+  async createSchoolEvent(data: InsertSchoolEvent): Promise<SchoolEvent> {
+    const result = await this.db.insert(schema.schoolEvents).values(data).returning();
+    return result[0];
+  }
+
+  async updateSchoolEvent(id: number, data: Partial<InsertSchoolEvent>): Promise<SchoolEvent | undefined> {
+    const result = await this.db.update(schema.schoolEvents)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(schema.schoolEvents.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteSchoolEvent(id: number): Promise<boolean> {
+    const result = await this.db.delete(schema.schoolEvents).where(eq(schema.schoolEvents.id, id)).returning();
     return result.length > 0;
   }
 

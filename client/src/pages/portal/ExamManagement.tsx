@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useSearch } from 'wouter';
 import ExamQuestionAdder from './ExamQuestionAdder';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -22,7 +23,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { insertExamSchema, insertExamQuestionSchema, insertQuestionOptionSchema, type Exam, type ExamQuestion, type QuestionOption, type Class, type Subject } from '@shared/schema';
 import { z } from 'zod';
-import { Plus, Edit, Search, BookOpen, Trash2, Clock, Users, FileText, Eye, Play, Upload, Save, Shield, MoreVertical, ChevronDown, ChevronUp, Settings } from 'lucide-react';
+import { Plus, Edit, Search, BookOpen, Trash2, Clock, Users, FileText, Eye, Play, Upload, Save, Shield, MoreVertical, ChevronDown, ChevronUp, Settings, ChevronLeft, ChevronRight, Check, Calendar } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 
@@ -133,6 +134,22 @@ export default function ExamManagement() {
   const [previewExam, setPreviewExam] = useState<Exam | null>(null);
   const [isSecurityExpanded, setIsSecurityExpanded] = useState(false);
   const [deletingExam, setDeletingExam] = useState<Exam | null>(null);
+  const [currentStep, setCurrentStep] = useState(1);
+
+  const searchParams = useSearch();
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (params.get('openCreate') === 'true') {
+      setCurrentStep(1);
+      resetExam();
+      const classIdParam = params.get('classId');
+      if (classIdParam) {
+        const cid = parseInt(classIdParam);
+        if (!isNaN(cid)) setExamValue('classId', cid);
+      }
+      setIsExamDialogOpen(true);
+    }
+  }, [searchParams]);
 
   // Track pending deletions to prevent race conditions with Realtime
   const pendingDeletionsRef = useRef<Set<number>>(new Set());
@@ -146,7 +163,7 @@ export default function ExamManagement() {
     togglingExamIdRef.current = togglingExamId;
   }, [togglingExamId]);
 
-  const { register: registerExam, handleSubmit: handleExamSubmit, formState: { errors: examErrors }, control: examControl, setValue: setExamValue, reset: resetExam, watch: watchExam } = useForm<ExamForm>({
+  const { register: registerExam, handleSubmit: handleExamSubmit, formState: { errors: examErrors }, control: examControl, setValue: setExamValue, reset: resetExam, watch: watchExam, trigger: triggerExam } = useForm<ExamForm>({
     resolver: zodResolver(examFormSchema),
     defaultValues: {
       examType: 'exam',
@@ -944,6 +961,7 @@ export default function ExamManagement() {
       gradingScale: (exam.gradingScale as 'standard' | 'percentage' | 'points' | 'custom') || 'standard',
     });
 
+    setCurrentStep(1);
     setIsExamDialogOpen(true);
   };
 
@@ -953,7 +971,27 @@ export default function ExamManagement() {
     if (!open) {
       setEditingExam(null);
       resetExam();
+      setCurrentStep(1);
     }
+  };
+
+  const EXAM_STEPS = [
+    { id: 1, title: 'Exam Details', icon: FileText },
+    { id: 2, title: 'Academic & Timing', icon: Calendar },
+    { id: 3, title: 'Options & Grading', icon: Settings },
+    { id: 4, title: 'Review & Create', icon: Check },
+  ];
+
+  const handleNext = async () => {
+    let fieldsToValidate: (keyof ExamForm)[] = [];
+    if (currentStep === 3) {
+      setCurrentStep(4);
+      return;
+    }
+    if (currentStep === 1) fieldsToValidate = ['name', 'date', 'classId', 'subjectId', 'examType'];
+    if (currentStep === 2) fieldsToValidate = ['termId', 'totalMarks', 'timeLimit'];
+    const valid = await triggerExam(fieldsToValidate);
+    if (valid) setCurrentStep(s => s + 1);
   };
 
   const onInvalidExam = (errors: any) => {
@@ -1553,529 +1591,312 @@ export default function ExamManagement() {
               Create New Exam
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingExam ? 'Edit Exam' : 'Create New Exam'}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleExamSubmit(onSubmitExam, onInvalidExam)} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="name">Exam Name</Label>
-                  <Input
-                    id="name"
-                    {...registerExam('name')}
-                    data-testid="input-exam-name"
-                    placeholder="e.g., Mid-term Mathematics Test"
-                  />
-                  {examErrors.name && <p className="text-sm text-red-500">{examErrors.name.message}</p>}
-                </div>
-                <div>
-                  <Label htmlFor="date">Exam Date</Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    {...registerExam('date')}
-                    data-testid="input-exam-date"
-                  />
-                  {examErrors.date && <p className="text-sm text-red-500">{examErrors.date.message}</p>}
-                </div>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="class">Class</Label>
-                  <Controller
-                    name="classId"
-                    control={examControl}
-                    render={({ field }) => (
-                      <Select
-                        onValueChange={(value) => {
-                          const numValue = Number(value);
-                          if (!isNaN(numValue)) {
-                            field.onChange(numValue);
-                          }
-                        }}
-                        value={field.value !== undefined && field.value !== null ? field.value.toString() : ''}
-                      >
-                        <SelectTrigger data-testid="select-exam-class">
-                          <SelectValue placeholder="Select class" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {classes.map((classItem: any) => (
-                            <SelectItem key={classItem.id} value={classItem.id.toString()}>
-                              {classItem.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                  {examErrors.classId && <p className="text-sm text-red-500">{examErrors.classId.message}</p>}
-                </div>
-                <div>
-                  <Label htmlFor="subject">Subject</Label>
-                  <Controller
-                    name="subjectId"
-                    control={examControl}
-                    render={({ field }) => (
-                      <Select
-                        onValueChange={(value) => {
-                          const numValue = Number(value);
-                          if (!isNaN(numValue)) {
-                            field.onChange(numValue);
-                          }
-                        }}
-                        value={field.value !== undefined && field.value !== null ? field.value.toString() : ''}
-                        disabled={subjectsLoading || !selectedClassId}
-                      >
-                        <SelectTrigger data-testid="select-exam-subject">
-                          <SelectValue placeholder={
-                            subjectsLoading ? "Loading subjects..." :
-                              !selectedClassId ? "Select a class first" :
-                                subjects.length === 0 ? (
-                                  myAssignments?.isAdmin
-                                    ? "No subjects configured for this class"
-                                    : "No subjects assigned for this class"
-                                ) :
-                                  "Select subject"
-                          } />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {subjects.map((subject: any) => (
-                            <SelectItem key={subject.id} value={subject.id.toString()}>
-                              {subject.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                  {examErrors.subjectId && <p className="text-sm text-red-500">{examErrors.subjectId.message}</p>}
-                  {myAssignments?.isAdmin && selectedClassId && !subjectsLoading && subjects.length === 0 && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Configure subjects for this class in Subject Manager &gt; Class Level Assignment
-                    </p>
+            {/* Step Indicator */}
+            <div className="flex items-center gap-0 mb-1">
+              {EXAM_STEPS.map((step, i) => (
+                <div key={step.id} className={`flex items-center ${i < EXAM_STEPS.length - 1 ? 'flex-1' : ''}`}>
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold border-2 transition-colors flex-shrink-0 ${
+                    currentStep > step.id ? 'bg-primary border-primary text-primary-foreground' :
+                    currentStep === step.id ? 'border-primary text-primary' :
+                    'border-muted-foreground/30 text-muted-foreground'
+                  }`}>
+                    {currentStep > step.id ? <Check className="h-3 w-3" /> : step.id}
+                  </div>
+                  {i < EXAM_STEPS.length - 1 && (
+                    <div className={`flex-1 h-0.5 mx-1 ${currentStep > step.id ? 'bg-primary' : 'bg-muted-foreground/20'}`} />
                   )}
                 </div>
-              </div>
+              ))}
+            </div>
+            <p className="text-xs font-medium text-primary mb-3">{EXAM_STEPS[currentStep - 1].title}</p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="examType">Assessment Type</Label>
-                  <Controller
-                    name="examType"
-                    control={examControl}
-                    render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <SelectTrigger data-testid="select-exam-type">
-                          <SelectValue placeholder="Select type" />
-                        </SelectTrigger>
+            <div className="space-y-4">
+
+              {/* ── Step 1: Exam Details ── */}
+              {currentStep === 1 && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="name">Exam Name *</Label>
+                      <Input id="name" {...registerExam('name')} data-testid="input-exam-name" placeholder="e.g., Mid-term Mathematics Test" />
+                      {examErrors.name && <p className="text-sm text-red-500 mt-1">{examErrors.name.message}</p>}
+                    </div>
+                    <div>
+                      <Label htmlFor="date">Exam Date *</Label>
+                      <Input id="date" type="date" {...registerExam('date')} data-testid="input-exam-date" />
+                      {examErrors.date && <p className="text-sm text-red-500 mt-1">{examErrors.date.message}</p>}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Class *</Label>
+                      <Controller name="classId" control={examControl} render={({ field }) => (
+                        <Select onValueChange={(v) => { const n = Number(v); if (!isNaN(n)) field.onChange(n); }}
+                          value={field.value != null ? field.value.toString() : ''}>
+                          <SelectTrigger data-testid="select-exam-class"><SelectValue placeholder="Select class" /></SelectTrigger>
+                          <SelectContent>
+                            {classes.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )} />
+                      {examErrors.classId && <p className="text-sm text-red-500 mt-1">{examErrors.classId.message}</p>}
+                    </div>
+                    <div>
+                      <Label>Subject *</Label>
+                      <Controller name="subjectId" control={examControl} render={({ field }) => (
+                        <Select onValueChange={(v) => { const n = Number(v); if (!isNaN(n)) field.onChange(n); }}
+                          value={field.value != null ? field.value.toString() : ''} disabled={subjectsLoading || !selectedClassId}>
+                          <SelectTrigger data-testid="select-exam-subject">
+                            <SelectValue placeholder={subjectsLoading ? "Loading..." : !selectedClassId ? "Select class first" : subjects.length === 0 ? "No subjects" : "Select subject"} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {subjects.map((s: any) => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )} />
+                      {examErrors.subjectId && <p className="text-sm text-red-500 mt-1">{examErrors.subjectId.message}</p>}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Assessment Type *</Label>
+                      <Controller name="examType" control={examControl} render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger data-testid="select-exam-type"><SelectValue placeholder="Select type" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="test">Test (40% weight)</SelectItem>
+                            <SelectItem value="exam">Exam (60% weight)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )} />
+                      {examErrors.examType && <p className="text-sm text-red-500 mt-1">{examErrors.examType.message}</p>}
+                      <p className="text-xs text-muted-foreground mt-1">Test (40%) + Exam (60%) = Total (100%)</p>
+                    </div>
+                    <div>
+                      <Label>Teacher In-Charge</Label>
+                      <Controller name="teacherInChargeId" control={examControl} render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value?.toString()}>
+                          <SelectTrigger data-testid="select-teacher-in-charge"><SelectValue placeholder="Select teacher (optional)" /></SelectTrigger>
+                          <SelectContent>
+                            {teachers && teachers.length > 0
+                              ? teachers.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.firstName} {t.lastName}</SelectItem>)
+                              : <SelectItem value="no-teachers" disabled>No teachers available</SelectItem>}
+                          </SelectContent>
+                        </Select>
+                      )} />
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="instructions">Instructions</Label>
+                    <Textarea id="instructions" {...registerExam('instructions')} data-testid="textarea-exam-instructions"
+                      placeholder="Enter exam instructions for students..." rows={3} />
+                    <p className="text-xs text-muted-foreground mt-1">Shown to students before they start</p>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Step 2: Academic & Timing ── */}
+              {currentStep === 2 && (
+                <div className="space-y-4">
+                  <div>
+                    <Label>Academic Term *</Label>
+                    <Controller name="termId" control={examControl} render={({ field }) => (
+                      <Select onValueChange={(v) => { const n = parseInt(v); if (!isNaN(n)) field.onChange(n); }}
+                        value={field.value != null ? field.value.toString() : ''}>
+                        <SelectTrigger data-testid="select-term"><SelectValue placeholder="Select term" /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="test">Test (40 marks weight)</SelectItem>
-                          <SelectItem value="exam">Exam (60 marks weight)</SelectItem>
+                          {terms && terms.length > 0
+                            ? terms.map((t: any) => <SelectItem key={t.id} value={t.id.toString()}>{t.name} - {t.year}</SelectItem>)
+                            : <SelectItem value="no-terms" disabled>No academic terms available</SelectItem>}
                         </SelectContent>
                       </Select>
-                    )}
-                  />
-                  {examErrors.examType && <p className="text-sm text-red-500">{examErrors.examType.message}</p>}
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Final grades are calculated as: Test (40%) + Exam (60%) = Total (100%)
-                  </p>
-                </div>
-                <div>
-                  <Label htmlFor="teacherInChargeId">Teacher In-Charge</Label>
-                  <Controller
-                    name="teacherInChargeId"
-                    control={examControl}
-                    render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value?.toString()}>
-                        <SelectTrigger data-testid="select-teacher-in-charge">
-                          <SelectValue placeholder="Select teacher (optional)" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {teachers && teachers.length > 0 ? (
-                            teachers.map((teacher: any) => (
-                              <SelectItem key={teacher.id} value={teacher.id}>
-                                {teacher.firstName} {teacher.lastName} - {teacher.department || 'No Department'}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="no-teachers" disabled>
-                              No teachers available
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Assigns grading responsibility
-                  </p>
-                  {examErrors.teacherInChargeId && <p className="text-sm text-red-500">{examErrors.teacherInChargeId.message}</p>}
-                </div>
-              </div>
+                    )} />
+                    {examErrors.termId && <p className="text-sm text-red-500 mt-1">{examErrors.termId.message}</p>}
+                  </div>
 
-              <div>
-                <Label htmlFor="instructions">Instructions</Label>
-                <Textarea
-                  id="instructions"
-                  {...registerExam('instructions')}
-                  data-testid="textarea-exam-instructions"
-                  placeholder="Enter exam instructions for students..."
-                  rows={3}
-                />
-                <p className="text-xs text-muted-foreground mt-1">
-                  These will be shown to students before they start the exam
-                </p>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="termId">Academic Term</Label>
-                  <Controller
-                    name="termId"
-                    control={examControl}
-                    render={({ field }) => (
-                      <Select
-                        onValueChange={(value) => {
-                          const numValue = parseInt(value);
-                          if (!isNaN(numValue)) {
-                            field.onChange(numValue);
-                          }
-                        }}
-                        value={field.value !== undefined && field.value !== null ? field.value.toString() : ''}
-                      >
-                        <SelectTrigger data-testid="select-term">
-                          <SelectValue placeholder="Select term" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {terms && terms.length > 0 ? (
-                            terms.map((term: any) => (
-                              <SelectItem key={term.id} value={term.id.toString()}>
-                                {term.name} - {term.year}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="no-terms" disabled>
-                              No academic terms available
-                            </SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                  {examErrors.termId && <p className="text-sm text-red-500">{examErrors.termId.message}</p>}
-                </div>
-              </div>
-
-              {/* Timer Mode Selection Section */}
-              <div className="space-y-4 p-4 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
-                <h4 className="font-medium text-sm flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  Timer Mode Selection
-                </h4>
-
-                <div>
-                  <Label htmlFor="timerMode">Choose Timer Mode</Label>
-                  <Controller
-                    name="timerMode"
-                    control={examControl}
-                    render={({ field }) => (
+                  <div className="space-y-3 p-3 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
+                    <h4 className="font-medium text-sm flex items-center gap-2"><Clock className="w-4 h-4" />Timer Mode</h4>
+                    <Controller name="timerMode" control={examControl} render={({ field }) => (
                       <Select onValueChange={field.onChange} value={field.value || 'individual'}>
-                        <SelectTrigger data-testid="select-timer-mode">
-                          <SelectValue placeholder="Select timer mode" />
-                        </SelectTrigger>
+                        <SelectTrigger data-testid="select-timer-mode"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="individual">
-                            <div className="flex flex-col">
-                              <span className="font-medium">Individual Timer</span>
-                              <span className="text-xs text-muted-foreground">Each student starts their own countdown</span>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="global">
-                            <div className="flex flex-col">
-                              <span className="font-medium">Global Timer</span>
-                              <span className="text-xs text-muted-foreground">All students start and end at the same time</span>
-                            </div>
-                          </SelectItem>
+                          <SelectItem value="individual">Individual Timer — each student starts their own</SelectItem>
+                          <SelectItem value="global">Global Timer — all students start/end together</SelectItem>
                         </SelectContent>
                       </Select>
+                    )} />
+                    {watchTimerMode === 'individual' && (
+                      <p className="text-xs text-muted-foreground">Students can start at any time; each gets the full duration from when they click Start.</p>
                     )}
-                  />
-                </div>
-
-                {watchTimerMode === 'individual' && (
-                  <div className="bg-white dark:bg-gray-900 p-3 rounded border">
-                    <p className="text-sm font-medium mb-2">Individual Timer Mode</p>
-                    <ul className="text-xs text-muted-foreground space-y-1">
-                      <li>• Students can start the exam at any time within the availability window</li>
-                      <li>• Each student gets the full duration from when they click "Start"</li>
-                      <li>• Best for flexible scheduling and different time zones</li>
-                    </ul>
+                    {watchTimerMode === 'global' && (
+                      <p className="text-xs text-muted-foreground">All students must complete within the scheduled window. Exam auto-submits at end time.</p>
+                    )}
                   </div>
-                )}
 
-                {watchTimerMode === 'global' && (
-                  <div className="bg-white dark:bg-gray-900 p-3 rounded border">
-                    <p className="text-sm font-medium mb-2">Global Timer Mode</p>
-                    <ul className="text-xs text-muted-foreground space-y-1">
-                      <li>• All students start the exam at the exact same date/time</li>
-                      <li>• The exam automatically ends at a fixed time for everyone</li>
-                      <li>• Best for proctored exams and uniform conditions</li>
-                    </ul>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="totalMarks">Total Marks *</Label>
+                      <Input id="totalMarks" type="number" {...registerExam('totalMarks', { valueAsNumber: true })}
+                        data-testid="input-exam-total-marks" placeholder="100" />
+                      {examErrors.totalMarks && <p className="text-sm text-red-500 mt-1">{examErrors.totalMarks.message}</p>}
+                    </div>
+                    <div>
+                      <Label htmlFor="timeLimit">{watchTimerMode === 'individual' ? 'Duration/Student' : 'Total Duration'} (min) *</Label>
+                      <Input id="timeLimit" type="number" {...registerExam('timeLimit', { valueAsNumber: true })}
+                        data-testid="input-exam-time-limit" placeholder="60" />
+                      {examErrors.timeLimit && <p className="text-sm text-red-500 mt-1">{examErrors.timeLimit.message}</p>}
+                    </div>
                   </div>
-                )}
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="totalMarks">Total Marks</Label>
-                  <Input
-                    id="totalMarks"
-                    type="number"
-                    {...registerExam('totalMarks', { valueAsNumber: true })}
-                    data-testid="input-exam-total-marks"
-                    placeholder="100"
-                  />
-                  {examErrors.totalMarks && <p className="text-sm text-red-500">{examErrors.totalMarks.message}</p>}
-                </div>
-                <div>
-                  <Label htmlFor="timeLimit">
-                    {watchTimerMode === 'individual' ? 'Duration per Student' : 'Exam Duration'} (minutes)
-                  </Label>
-                  <Input
-                    id="timeLimit"
-                    type="number"
-                    {...registerExam('timeLimit', { valueAsNumber: true })}
-                    data-testid="input-exam-time-limit"
-                    placeholder="60"
-                  />
-                  {examErrors.timeLimit && <p className="text-sm text-red-500">{examErrors.timeLimit.message}</p>}
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {watchTimerMode === 'individual'
-                      ? 'Each student gets this many minutes from when they start'
-                      : 'Total duration of the exam window for all students'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Scheduling Section for Global Timer */}
-              {watchTimerMode === 'global' && (
-                <div className="border rounded-lg p-4 bg-blue-50 dark:bg-blue-950/20">
-                  <h4 className="font-medium mb-3 flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    Global Timer Configuration
-                  </h4>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="startTime">Start Time</Label>
-                        <Input
-                          id="startTime"
-                          type="datetime-local"
-                          {...registerExam('startTime')}
-                          data-testid="input-exam-start-time"
-                          min={new Date().toISOString().slice(0, 16)}
-                        />
-                        {examErrors.startTime && (
-                          <p className="text-sm text-red-500 mt-1">{examErrors.startTime.message}</p>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Exam becomes available
-                        </p>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="endTime">End Time</Label>
-                        <Input
-                          id="endTime"
-                          type="datetime-local"
-                          {...registerExam('endTime')}
-                          data-testid="input-exam-end-time"
-                          min={watchGlobalStartTime ? (typeof watchGlobalStartTime === 'string' ? watchGlobalStartTime : new Date(watchGlobalStartTime).toISOString().slice(0, 16)) : new Date().toISOString().slice(0, 16)}
-                        />
-                        {examErrors.endTime && (
-                          <p className="text-sm text-red-500 mt-1">{examErrors.endTime.message}</p>
-                        )}
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Exam auto-submits at this time
-                        </p>
+                  {watchTimerMode === 'global' && (
+                    <div className="border rounded-lg p-3 bg-blue-50 dark:bg-blue-950/20 space-y-3">
+                      <h4 className="font-medium text-sm flex items-center gap-2"><Clock className="w-4 h-4" />Global Timer Window</h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <Label htmlFor="startTime">Start Time</Label>
+                          <Input id="startTime" type="datetime-local" {...registerExam('startTime')}
+                            data-testid="input-exam-start-time" min={new Date().toISOString().slice(0, 16)} />
+                          {examErrors.startTime && <p className="text-sm text-red-500 mt-1">{examErrors.startTime.message}</p>}
+                        </div>
+                        <div>
+                          <Label htmlFor="endTime">End Time</Label>
+                          <Input id="endTime" type="datetime-local" {...registerExam('endTime')}
+                            data-testid="input-exam-end-time"
+                            min={watchGlobalStartTime ? (typeof watchGlobalStartTime === 'string' ? watchGlobalStartTime : new Date(watchGlobalStartTime).toISOString().slice(0, 16)) : new Date().toISOString().slice(0, 16)} />
+                          {examErrors.endTime && <p className="text-sm text-red-500 mt-1">{examErrors.endTime.message}</p>}
+                        </div>
                       </div>
                     </div>
-                    <div className="flex items-start gap-2 p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                      <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                      <p className="text-sm text-blue-800 dark:text-blue-200">
-                        All students must complete the exam between these times. The exam will automatically submit at the end time, regardless of when students start.
+                  )}
+                </div>
+              )}
+
+              {/* ── Step 3: Options & Grading ── */}
+              {currentStep === 3 && (
+                <div className="space-y-4">
+                  <div className="space-y-3 p-3 border rounded-lg bg-green-50 dark:bg-green-950/20">
+                    <h4 className="font-medium text-sm flex items-center gap-2"><Play className="w-4 h-4" />Publishing</h4>
+                    <div className="flex items-center gap-3">
+                      <Controller name="isPublished" control={examControl} render={({ field }) => (
+                        <Switch checked={field.value || false} onCheckedChange={field.onChange} data-testid="switch-exam-published" />
+                      )} />
+                      <div>
+                        <Label>Publish Immediately</Label>
+                        <p className="text-xs text-muted-foreground">{watchTimerMode === 'global' ? 'Will publish at scheduled start time' : 'Make visible to students now'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Controller name="shuffleQuestions" control={examControl} render={({ field }) => (
+                        <Switch checked={field.value || false} onCheckedChange={field.onChange} data-testid="switch-exam-shuffle" />
+                      )} />
+                      <div>
+                        <Label>Shuffle Questions</Label>
+                        <p className="text-xs text-muted-foreground">Randomize question order per student</p>
+                      </div>
+                    </div>
+                    {!watchExam('isPublished') && (
+                      <p className="text-xs text-muted-foreground bg-white dark:bg-gray-900 p-2 rounded border">
+                        💾 Saved as draft — add questions and publish later.
                       </p>
+                    )}
+                  </div>
+
+                  <div className="space-y-3 p-3 border rounded-lg bg-muted/50">
+                    <h4 className="font-medium text-sm">Auto-Grading</h4>
+                    <div className="grid grid-cols-1 gap-3">
+                      {[
+                        { name: 'autoGradingEnabled' as keyof ExamForm, label: 'Enable Auto-Grading', testId: 'switch-auto-grading' },
+                        { name: 'instantFeedback' as keyof ExamForm, label: 'Instant Feedback', testId: 'switch-instant-feedback' },
+                        { name: 'showCorrectAnswers' as keyof ExamForm, label: 'Show Correct Answers After Submission', testId: 'switch-show-answers' },
+                      ].map(({ name, label, testId }) => (
+                        <div key={name} className="flex items-center gap-3">
+                          <Controller name={name} control={examControl} render={({ field }) => (
+                            <Switch checked={Boolean(field.value)} onCheckedChange={field.onChange} data-testid={testId} />
+                          )} />
+                          <Label>{label}</Label>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 pt-2">
+                      <div>
+                        <Label htmlFor="passingScore">Passing Score (%)</Label>
+                        <Input id="passingScore" type="number" min="0" max="100"
+                          {...registerExam('passingScore', { valueAsNumber: true })}
+                          data-testid="input-passing-score" placeholder="60" />
+                        {examErrors.passingScore && <p className="text-sm text-red-500 mt-1">{examErrors.passingScore.message}</p>}
+                      </div>
+                      <div>
+                        <Label>Grading Scale</Label>
+                        <Controller name="gradingScale" control={examControl} render={({ field }) => (
+                          <Select onValueChange={field.onChange} value={field.value || 'standard'} data-testid="select-grading-scale">
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="standard">Standard (A–F)</SelectItem>
+                              <SelectItem value="percentage">Percentage Only</SelectItem>
+                              <SelectItem value="points">Points Only</SelectItem>
+                              <SelectItem value="custom">Custom Scale</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )} />
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Publishing & Options Section */}
-              <div className="space-y-4 p-4 border rounded-lg bg-green-50 dark:bg-green-950/20">
-                <h4 className="font-medium text-sm flex items-center gap-2">
-                  <Play className="w-4 h-4" />
-                  Publishing & Options
-                </h4>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <Controller
-                      name="isPublished"
-                      control={examControl}
-                      render={({ field }) => (
-                        <Switch
-                          checked={field.value || false}
-                          onCheckedChange={field.onChange}
-                          data-testid="switch-exam-published"
-                        />
-                      )}
-                    />
-                    <div>
-                      <Label>Publish Immediately</Label>
-                      <p className="text-xs text-muted-foreground">
-                        {watchTimerMode === 'global'
-                          ? 'Will be published at scheduled start time'
-                          : 'Make exam visible to students now'}
-                      </p>
+              {/* ── Step 4: Review & Create ── */}
+              {currentStep === 4 && (
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">Review your exam before {editingExam ? 'updating' : 'creating'}.</p>
+                  {[
+                    { label: 'Exam Name', value: watchExam('name') },
+                    { label: 'Date', value: watchExam('date') },
+                    { label: 'Class', value: classes.find((c: any) => c.id === watchExam('classId'))?.name || '—' },
+                    { label: 'Subject', value: subjects.find((s: any) => s.id === watchExam('subjectId'))?.name || '—' },
+                    { label: 'Type', value: watchExam('examType') === 'exam' ? 'Exam (60%)' : 'Test (40%)' },
+                    { label: 'Term', value: (() => { const t = (terms as any[]).find((t: any) => t.id === watchExam('termId')); return t ? `${t.name} - ${t.year}` : '—'; })() },
+                    { label: 'Total Marks', value: watchExam('totalMarks') },
+                    { label: 'Duration', value: watchExam('timeLimit') ? `${watchExam('timeLimit')} min` : '—' },
+                    { label: 'Timer Mode', value: watchExam('timerMode') === 'individual' ? 'Individual' : 'Global' },
+                    { label: 'Status', value: watchExam('isPublished') ? 'Published' : 'Draft' },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="flex justify-between py-1.5 border-b last:border-0 text-sm">
+                      <span className="text-muted-foreground">{label}</span>
+                      <span className="font-medium text-right">{String(value ?? '—')}</span>
                     </div>
-                  </div>
-
-
+                  ))}
                 </div>
+              )}
 
-                <div className="flex items-center space-x-2">
-                  <Controller
-                    name="shuffleQuestions"
-                    control={examControl}
-                    render={({ field }) => (
-                      <Switch
-                        checked={field.value || false}
-                        onCheckedChange={field.onChange}
-                        data-testid="switch-exam-shuffle"
-                      />
-                    )}
-                  />
-                  <div>
-                    <Label>Shuffle Questions</Label>
-                    <p className="text-xs text-muted-foreground">Randomize question order for each student</p>
-                  </div>
-                </div>
-
-                {!watchExam('isPublished') && (
-                  <div className="bg-white dark:bg-gray-900 p-3 rounded border">
-                    <p className="text-sm font-medium mb-1">💾 Saved as Draft</p>
-                    <p className="text-xs text-muted-foreground">
-                      This exam will be saved as a draft. You can add questions and publish it later.
-                    </p>
-                  </div>
+              {/* Navigation */}
+              <div className="flex justify-between pt-4 border-t">
+                <Button type="button" variant="outline" onClick={() => currentStep > 1 ? setCurrentStep(s => s - 1) : handleExamDialogClose(false)}>
+                  {currentStep === 1 ? 'Cancel' : <><ChevronLeft className="w-4 h-4 mr-1" />Previous</>}
+                </Button>
+                {currentStep < 4 ? (
+                  <Button type="button" onClick={handleNext}>
+                    Next <ChevronRight className="w-4 h-4 ml-1" />
+                  </Button>
+                ) : (
+                  <Button type="button"
+                    onClick={() => handleExamSubmit(onSubmitExam, onInvalidExam)()}
+                    disabled={editingExam ? updateExamMutation.isPending : createExamMutation.isPending}
+                    data-testid="button-submit-exam">
+                    {editingExam
+                      ? (updateExamMutation.isPending ? 'Updating...' : 'Update Exam')
+                      : (createExamMutation.isPending ? 'Creating...' : 'Create Exam')}
+                  </Button>
                 )}
               </div>
-
-              {/* Enhanced Auto-Grading Controls */}
-              <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
-                <h4 className="font-medium text-sm">Auto-Grading Settings</h4>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <Controller
-                      name="autoGradingEnabled"
-                      control={examControl}
-                      render={({ field }) => (
-                        <Switch
-                          checked={field.value || false}
-                          onCheckedChange={field.onChange}
-                          data-testid="switch-auto-grading"
-                        />
-                      )}
-                    />
-                    <Label>Enable Auto-Grading</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Controller
-                      name="instantFeedback"
-                      control={examControl}
-                      render={({ field }) => (
-                        <Switch
-                          checked={field.value || false}
-                          onCheckedChange={field.onChange}
-                          data-testid="switch-instant-feedback"
-                        />
-                      )}
-                    />
-                    <Label>Instant Feedback</Label>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <Controller
-                      name="showCorrectAnswers"
-                      control={examControl}
-                      render={({ field }) => (
-                        <Switch
-                          checked={field.value || false}
-                          onCheckedChange={field.onChange}
-                          data-testid="switch-show-answers"
-                        />
-                      )}
-                    />
-                    <Label>Show Correct Answers</Label>
-                  </div>
-                  <div>
-                    <Label htmlFor="passingScore">Passing Score (%)</Label>
-                    <Input
-                      id="passingScore"
-                      type="number"
-                      min="0"
-                      max="100"
-                      {...registerExam('passingScore', { valueAsNumber: true })}
-                      data-testid="input-passing-score"
-                      placeholder="60"
-                    />
-                    {examErrors.passingScore && <p className="text-sm text-red-500">{examErrors.passingScore.message}</p>}
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="gradingScale">Grading Scale</Label>
-                  <Controller
-                    name="gradingScale"
-                    control={examControl}
-                    render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value || 'standard'} data-testid="select-grading-scale">
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select grading scale" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="standard">Standard (A-F)</SelectItem>
-                          <SelectItem value="percentage">Percentage Only</SelectItem>
-                          <SelectItem value="points">Points Only</SelectItem>
-                          <SelectItem value="custom">Custom Scale</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-4 border-t">
-                <Button type="button" variant="outline" onClick={() => handleExamDialogClose(false)}>
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={editingExam ? updateExamMutation.isPending : createExamMutation.isPending}
-                  data-testid="button-submit-exam"
-                >
-                  {editingExam
-                    ? (updateExamMutation.isPending ? 'Updating...' : 'Update Exam')
-                    : (createExamMutation.isPending ? 'Creating...' : 'Create Exam')
-                  }
-                </Button>
-              </div>
-            </form>
+            </div>
           </DialogContent>
         </Dialog>
       </div>

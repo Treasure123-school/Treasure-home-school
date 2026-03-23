@@ -15,7 +15,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createStudentSchema, quickCreateStudentSchema, type CreateStudentRequest, type QuickCreateStudentRequest } from '@shared/schema';
-import { UserPlus, Edit, Search, Download, Trash2, Shield, ShieldOff, Upload, FileText, Key, AlertTriangle, AlertCircle, GraduationCap, Palette, Briefcase, Info, MoreHorizontal, Users, BookOpen, Phone } from 'lucide-react';
+import { UserPlus, Edit, Search, Download, Trash2, Shield, ShieldOff, Upload, FileText, Key, AlertTriangle, AlertCircle, GraduationCap, Palette, Briefcase, Info, MoreHorizontal, Users, BookOpen, Phone, CheckCircle2, ImageIcon } from 'lucide-react';
+import { computeProfileCompletion } from '@/lib/profileCompletion';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/lib/auth';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
@@ -44,6 +45,7 @@ export default function StudentManagement() {
   const [editingStudent, setEditingStudent] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedClass, setSelectedClass] = useState<string>('all');
+  const [completionFilter, setCompletionFilter] = useState<'all' | 'complete' | 'incomplete'>('all');
   const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [uploadedStudents, setUploadedStudents] = useState<any[]>([]);
@@ -585,6 +587,17 @@ export default function StudentManagement() {
       student.admissionNumber?.toLowerCase().includes(searchTerm.toLowerCase());
 
     const matchesClass = selectedClass === 'all' || student.classId?.toString() === selectedClass;
+
+    if (completionFilter !== 'all') {
+      const completion = computeProfileCompletion({
+        profileImageUrl: student.user?.profileImageUrl,
+        phone: student.user?.phone,
+        email: student.user?.email,
+        address: student.user?.address,
+      });
+      if (completionFilter === 'complete' && !completion.isComplete) return false;
+      if (completionFilter === 'incomplete' && completion.isComplete) return false;
+    }
 
     return matchesSearch && matchesClass;
   });
@@ -1146,6 +1159,45 @@ export default function StudentManagement() {
               <DialogTitle className="text-lg sm:text-xl">Edit Student</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleEditSubmit(onEditSubmit)} className="space-y-3 sm:space-y-4">
+              {/* Profile Completion Status */}
+              {editingStudent && (() => {
+                const completion = computeProfileCompletion({
+                  profileImageUrl: editingStudent.user?.profileImageUrl,
+                  phone: editingStudent.user?.phone,
+                  email: editingStudent.user?.email,
+                  address: editingStudent.user?.address,
+                });
+                if (completion.isComplete) return (
+                  <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                    <span className="text-sm text-green-700 dark:text-green-300 font-medium">Profile 100% complete</span>
+                  </div>
+                );
+                return (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                        <span className="text-sm text-amber-700 dark:text-amber-300 font-medium">
+                          Profile {completion.percentage}% complete
+                        </span>
+                      </div>
+                    </div>
+                    <div className="h-1.5 w-full bg-amber-100 dark:bg-amber-900/50 rounded-full mb-2">
+                      <div className="h-1.5 bg-amber-500 rounded-full" style={{ width: `${completion.percentage}%` }} />
+                    </div>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mb-1.5">Missing fields — fill them in below:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {completion.missingFields.map(f => (
+                        <span key={f.key} className="inline-flex items-center gap-1 text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-700">
+                          {f.key === 'profileImageUrl' ? <ImageIcon className="h-3 w-3" /> : null}
+                          {f.label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                 <div>
                   <Label htmlFor="editFirstName" className="text-sm">First Name</Label>
@@ -1417,6 +1469,19 @@ export default function StudentManagement() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="w-full sm:w-48">
+              <Label className="text-sm">Profile Completion</Label>
+              <Select value={completionFilter} onValueChange={(v) => setCompletionFilter(v as 'all' | 'complete' | 'incomplete')}>
+                <SelectTrigger className="w-full mt-1.5" data-testid="select-completion-filter">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Profiles</SelectItem>
+                  <SelectItem value="complete">Complete (100%)</SelectItem>
+                  <SelectItem value="incomplete">Incomplete (&lt;100%)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -1486,7 +1551,7 @@ export default function StudentManagement() {
               {filteredStudents.map((student: any) => (
                 <Card
                   key={student.id}
-                  className="group hover:shadow-md transition-shadow duration-200"
+                  className={`group hover:shadow-md transition-shadow duration-200 ${!computeProfileCompletion({ profileImageUrl: student.user?.profileImageUrl, phone: student.user?.phone, email: student.user?.email, address: student.user?.address }).isComplete ? 'border-amber-200 dark:border-amber-800/50' : ''}`}
                   data-testid={`card-student-${student.id}`}
                 >
                   <CardContent className="p-5">
@@ -1596,6 +1661,50 @@ export default function StudentManagement() {
 
                     {/* Divider */}
                     <div className="border-t border-border my-3" />
+
+                    {/* Profile Completion */}
+                    {(() => {
+                      const completion = computeProfileCompletion({
+                        profileImageUrl: student.user?.profileImageUrl,
+                        phone: student.user?.phone,
+                        email: student.user?.email,
+                        address: student.user?.address,
+                      });
+                      return (
+                        <div className="mb-3" data-testid={`completion-${student.id}`}>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-xs text-muted-foreground">Profile</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className={`text-xs font-semibold ${completion.isComplete ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                                {completion.percentage}%
+                              </span>
+                              <Badge
+                                variant="outline"
+                                className={`text-[9px] px-1 py-0 h-4 ${completion.isComplete ? 'border-green-300 text-green-700 dark:text-green-400' : 'border-amber-300 text-amber-700 dark:text-amber-400'}`}
+                              >
+                                {completion.isComplete ? 'Complete' : 'Incomplete'}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={`h-1.5 rounded-full transition-all ${completion.isComplete ? 'bg-green-500' : 'bg-amber-500'}`}
+                              style={{ width: `${completion.percentage}%` }}
+                            />
+                          </div>
+                          {!completion.isComplete && completion.missingFields.length > 0 && (
+                            <div className="mt-1.5 flex flex-wrap gap-1">
+                              {completion.missingFields.map(f => (
+                                <span key={f.key} className="inline-flex items-center gap-0.5 text-[10px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md">
+                                  {f.key === 'profileImageUrl' ? <ImageIcon className="h-2.5 w-2.5" /> : null}
+                                  {f.label} missing
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Detail rows */}
                     <div className="space-y-1.5">

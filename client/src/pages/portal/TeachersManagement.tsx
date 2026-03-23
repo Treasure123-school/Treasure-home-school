@@ -16,7 +16,8 @@ import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { GraduationCap, Palette, Briefcase, UserPlus, Search, Mail, Phone, Edit, Trash2, CheckCircle, Copy, BookOpen, X, Plus, MoreHorizontal, Ban, ShieldCheck, Users } from 'lucide-react';
+import { GraduationCap, Palette, Briefcase, UserPlus, Search, Mail, Phone, Edit, Trash2, CheckCircle, Copy, BookOpen, X, Plus, MoreHorizontal, Ban, ShieldCheck, Users, CheckCircle2, ImageIcon, AlertCircle } from 'lucide-react';
+import { computeProfileCompletion } from '@/lib/profileCompletion';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 import { ROLE_IDS } from '@/lib/roles';
@@ -51,6 +52,7 @@ export default function TeachersManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDepartment, setSelectedDepartment] = useState<string>('all');
+  const [completionFilter, setCompletionFilter] = useState<'all' | 'complete' | 'incomplete'>('all');
   const [editingTeacher, setEditingTeacher] = useState<any>(null);
   const [teacherToDelete, setTeacherToDelete] = useState<any>(null);
   const [teacherToBlock, setTeacherToBlock] = useState<any>(null);
@@ -741,6 +743,17 @@ export default function TeachersManagement() {
     const matchesDepartment = selectedDepartment === 'all' || 
       (teacher.department && teacher.department === selectedDepartment);
     
+    if (completionFilter !== 'all') {
+      const completion = computeProfileCompletion({
+        profileImageUrl: teacher.profileImageUrl,
+        phone: teacher.phone,
+        email: teacher.email,
+        address: teacher.address,
+      });
+      if (completionFilter === 'complete' && !completion.isComplete) return false;
+      if (completionFilter === 'incomplete' && completion.isComplete) return false;
+    }
+
     return matchesSearch && matchesDepartment;
   });
 
@@ -772,6 +785,43 @@ export default function TeachersManagement() {
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              {/* Profile Completion Status (edit mode only) */}
+              {editingTeacher && (() => {
+                const completion = computeProfileCompletion({
+                  profileImageUrl: editingTeacher.profileImageUrl,
+                  phone: editingTeacher.phone,
+                  email: editingTeacher.email,
+                  address: editingTeacher.address,
+                });
+                if (completion.isComplete) return (
+                  <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 flex-shrink-0" />
+                    <span className="text-sm text-green-700 dark:text-green-300 font-medium">Profile 100% complete</span>
+                  </div>
+                );
+                return (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                      <span className="text-sm text-amber-700 dark:text-amber-300 font-medium">
+                        Profile {completion.percentage}% complete
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full bg-amber-100 dark:bg-amber-900/50 rounded-full mb-2">
+                      <div className="h-1.5 bg-amber-500 rounded-full" style={{ width: `${completion.percentage}%` }} />
+                    </div>
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mb-1.5">Missing fields — fill them in below:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {completion.missingFields.map(f => (
+                        <span key={f.key} className="inline-flex items-center gap-1 text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-700">
+                          {f.key === 'profileImageUrl' ? <ImageIcon className="h-3 w-3" /> : null}
+                          {f.label}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               {/* Section 1: Basic Information */}
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide border-b pb-2">
@@ -1209,6 +1259,16 @@ export default function TeachersManagement() {
                 ))}
               </SelectContent>
             </Select>
+            <Select value={completionFilter} onValueChange={(v) => setCompletionFilter(v as 'all' | 'complete' | 'incomplete')}>
+              <SelectTrigger className="w-full sm:w-48" data-testid="select-completion-filter">
+                <SelectValue placeholder="Profile Completion" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Profiles</SelectItem>
+                <SelectItem value="complete">Complete (100%)</SelectItem>
+                <SelectItem value="incomplete">Incomplete (&lt;100%)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -1257,7 +1317,7 @@ export default function TeachersManagement() {
             {filteredTeachers.map((teacher: any) => (
               <Card
                 key={teacher.id}
-                className="group hover:shadow-md transition-shadow duration-200"
+                className={`group hover:shadow-md transition-shadow duration-200 ${!computeProfileCompletion({ profileImageUrl: teacher.profileImageUrl, phone: teacher.phone, email: teacher.email, address: teacher.address }).isComplete ? 'border-amber-200 dark:border-amber-800/50' : ''}`}
                 data-testid={`card-teacher-${teacher.id}`}
               >
                 <CardContent className="p-5">
@@ -1353,6 +1413,50 @@ export default function TeachersManagement() {
 
                   {/* Divider */}
                   <div className="border-t border-border my-3" />
+
+                  {/* Profile Completion */}
+                  {(() => {
+                    const completion = computeProfileCompletion({
+                      profileImageUrl: teacher.profileImageUrl,
+                      phone: teacher.phone,
+                      email: teacher.email,
+                      address: teacher.address,
+                    });
+                    return (
+                      <div className="mb-3" data-testid={`completion-${teacher.id}`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-muted-foreground">Profile</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-xs font-semibold ${completion.isComplete ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                              {completion.percentage}%
+                            </span>
+                            <Badge
+                              variant="outline"
+                              className={`text-[9px] px-1 py-0 h-4 ${completion.isComplete ? 'border-green-300 text-green-700 dark:text-green-400' : 'border-amber-300 text-amber-700 dark:text-amber-400'}`}
+                            >
+                              {completion.isComplete ? 'Complete' : 'Incomplete'}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={`h-1.5 rounded-full transition-all ${completion.isComplete ? 'bg-green-500' : 'bg-amber-500'}`}
+                            style={{ width: `${completion.percentage}%` }}
+                          />
+                        </div>
+                        {!completion.isComplete && completion.missingFields.length > 0 && (
+                          <div className="mt-1.5 flex flex-wrap gap-1">
+                            {completion.missingFields.map(f => (
+                              <span key={f.key} className="inline-flex items-center gap-0.5 text-[10px] text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-1.5 py-0.5 rounded-md">
+                                {f.key === 'profileImageUrl' ? <ImageIcon className="h-2.5 w-2.5" /> : null}
+                                {f.label} missing
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* Contact Info */}
                   <div className="space-y-1.5">

@@ -1,7 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
 import { Search, X, Users, BookOpen, Calendar, FileText, GraduationCap } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useLocation } from 'wouter';
 
 interface SearchResult {
@@ -17,29 +15,22 @@ interface HeaderSearchProps {
 }
 
 export function HeaderSearch({ userRole }: HeaderSearchProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [, navigate] = useLocation();
 
   useEffect(() => {
-    if (isExpanded && inputRef.current) {
-      inputRef.current.focus();
-    }
-  }, [isExpanded]);
-
-  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsExpanded(false);
+        setIsFocused(false);
         setQuery('');
         setResults([]);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -63,120 +54,99 @@ export function HeaderSearch({ userRole }: HeaderSearchProps) {
         setResults([]);
       }
     }, 300);
-
     return () => clearTimeout(searchTimeout);
   }, [query, userRole]);
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'student':
-        return <GraduationCap className="h-4 w-4 text-blue-500" />;
-      case 'teacher':
-        return <Users className="h-4 w-4 text-green-500" />;
-      case 'class':
-        return <BookOpen className="h-4 w-4 text-purple-500" />;
-      case 'exam':
-        return <FileText className="h-4 w-4 text-orange-500" />;
-      case 'announcement':
-        return <Calendar className="h-4 w-4 text-pink-500" />;
-      default:
-        return <Search className="h-4 w-4 text-gray-500" />;
+      case 'student': return <GraduationCap className="h-3.5 w-3.5 text-blue-500" />;
+      case 'teacher': return <Users className="h-3.5 w-3.5 text-green-500" />;
+      case 'class': return <BookOpen className="h-3.5 w-3.5 text-purple-500" />;
+      case 'exam': return <FileText className="h-3.5 w-3.5 text-orange-500" />;
+      case 'announcement': return <Calendar className="h-3.5 w-3.5 text-pink-500" />;
+      default: return <Search className="h-3.5 w-3.5 text-muted-foreground" />;
     }
   };
 
   const handleResultClick = (result: SearchResult) => {
     navigate(result.href);
-    setIsExpanded(false);
+    setIsFocused(false);
     setQuery('');
     setResults([]);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
-      setIsExpanded(false);
+      setIsFocused(false);
       setQuery('');
       setResults([]);
+      inputRef.current?.blur();
     }
   };
 
-  return (
-    <div ref={containerRef} className="relative">
-      {!isExpanded ? (
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setIsExpanded(true)}
-          className="h-9 w-9 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
-          data-testid="button-search-expand"
-          title="Search"
-        >
-          <Search className="h-5 w-5 text-gray-600 dark:text-gray-400" />
-        </Button>
-      ) : (
-        <div className="flex items-center">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              ref={inputRef}
-              type="text"
-              placeholder="Search..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              className="w-48 sm:w-64 pl-10 pr-8 h-9 rounded-lg border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-              data-testid="input-search"
-            />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                setIsExpanded(false);
-                setQuery('');
-                setResults([]);
-              }}
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 hover:bg-gray-200 dark:hover:bg-gray-700"
-              data-testid="button-search-close"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
+  const showDropdown = isFocused && (results.length > 0 || isLoading);
 
-          {(results.length > 0 || isLoading) && (
-            <div className="absolute top-full right-0 mt-2 w-72 sm:w-80 bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
-              {isLoading ? (
-                <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-                  <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-2" />
-                  Searching...
-                </div>
-              ) : (
-                <div className="max-h-64 overflow-y-auto">
-                  {results.map((result) => (
-                    <button
-                      key={result.id}
-                      onClick={() => handleResultClick(result)}
-                      className="w-full p-3 flex items-start gap-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors text-left border-b border-gray-100 dark:border-gray-800 last:border-b-0"
-                      data-testid={`search-result-${result.id}`}
-                    >
-                      <div className="flex-shrink-0 mt-0.5">
-                        {getTypeIcon(result.type)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-                          {result.title}
-                        </p>
-                        {result.description && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                            {result.description}
-                          </p>
-                        )}
-                        <span className="text-xs text-gray-400 dark:text-gray-500 capitalize">
-                          {result.type}
-                        </span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              )}
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <div
+        className={`flex items-center gap-2 w-full h-8 px-3 rounded-lg border bg-muted/50 transition-all duration-200 ${
+          isFocused
+            ? 'border-primary/50 bg-background shadow-sm ring-1 ring-primary/20'
+            : 'border-border hover:border-border/80 hover:bg-muted/70'
+        }`}
+      >
+        <Search className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+        <input
+          ref={inputRef}
+          type="text"
+          placeholder="Search anything..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setIsFocused(true)}
+          onKeyDown={handleKeyDown}
+          className="flex-1 min-w-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none"
+          data-testid="input-search"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => { setQuery(''); setResults([]); inputRef.current?.focus(); }}
+            className="flex-shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+            data-testid="button-search-clear"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      {showDropdown && (
+        <div className="absolute top-full left-0 right-0 mt-1.5 bg-background rounded-lg shadow-lg border border-border overflow-hidden z-50">
+          {isLoading ? (
+            <div className="flex items-center gap-2 px-4 py-3 text-sm text-muted-foreground">
+              <div className="h-4 w-4 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+              Searching...
+            </div>
+          ) : (
+            <div className="max-h-60 overflow-y-auto">
+              {results.map((result) => (
+                <button
+                  key={result.id}
+                  onClick={() => handleResultClick(result)}
+                  className="w-full px-4 py-2.5 flex items-center gap-3 hover:bg-muted/60 transition-colors text-left border-b border-border last:border-b-0"
+                  data-testid={`search-result-${result.id}`}
+                >
+                  <div className="flex-shrink-0">{getTypeIcon(result.type)}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{result.title}</p>
+                    {result.description && (
+                      <p className="text-xs text-muted-foreground truncate">{result.description}</p>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground capitalize bg-muted px-1.5 py-0.5 rounded flex-shrink-0">
+                    {result.type}
+                  </span>
+                </button>
+              ))}
             </div>
           )}
         </div>

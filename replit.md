@@ -140,10 +140,131 @@ After any successful exam fee payment, the system sends a confirmation email and
   - Added deduplication safety net in `getReportCardWithItems` so the UI never shows duplicate subjects even if any slip past.
   - Cleaned 21 pre-existing duplicate rows from the database (kept lowest-id item per reportCardId+subjectId).
 
+## Student Assignments Page
+
+- **Route**: `/portal/student/assignments` (accessible via "Assignments" in the student sidebar under Academic)
+- **Page**: `client/src/pages/portal/StudentAssignments.tsx`
+- **DB Tables**: `assignments`, `assignment_submissions` (new — added to `shared/schema.pg.ts`, pushed via `db:push`)
+- **APIs**:
+  - `GET /api/student/assignments` — list all class assignments with submission status (joined)
+  - `GET /api/student/assignments/:id` — full assignment detail with submission
+  - `POST /api/student/assignments/:id/submit` — multipart form submit (text + file, upserts submission)
+- **Features**:
+  - Filter tabs: All, Pending, Submitted, Late — with counts per filter
+  - Assignment cards: subject, teacher, due date, status badge (Pending/Submitted/Late/Graded), urgency alert (due within 24 h)
+  - Detail dialog with two tabs: Details (instructions, attachments, score, feedback) and Submit/My Submission
+  - File upload: PDF, DOC, DOCX, image — max 10 MB via the existing upload service
+  - Text answer field with optional file attachment
+  - Edit before deadline, locked after grading
+  - Displays teacher feedback and score after grading
+  - Empty states per filter
+
+## Student Class Schedule Page
+
+- **Route**: `/portal/student/timetable` (accessible via "Class Schedule" in the student sidebar under Academic)
+- **Page**: `client/src/pages/portal/StudentClassSchedule.tsx`
+- **API**: `GET /api/student/timetable` (student-only, returns timetable entries joined with subject and teacher names)
+- **Features**:
+  - Live header with student class name, current date, and a ticking clock
+  - Countdown banner showing time until next class
+  - Today View: lists all classes for the current weekday with automatic status detection (Ongoing / Upcoming / Completed)
+  - Ongoing class highlighted with a pulsing LIVE badge and a "Join Class" button
+  - Weekly View: Monday–Friday day tabs, each showing that day's schedule
+  - Class detail dialog: shows subject, teacher, time, day, location, topic (placeholder), and meeting link (placeholder)
+  - Empty state when no classes are scheduled
+  - Fully mobile-responsive with card-based layout and color-coded subjects
+
+## Student Library Page
+
+- **Route**: `/portal/student/library` (accessible via "Library" in the student sidebar)
+- **Page**: `client/src/pages/portal/StudentLibrary.tsx`
+- **API**: Uses existing `/api/study-resources` + `/api/subjects`
+- **Features**:
+  - Gradient header with total resource count
+  - Search bar + subject filter + type filter with "Clear" button
+  - Resource grid (1–3 columns responsive) with styled cards per type (PDF, video, audio, image, past paper, study guide, notes)
+  - Each card: gradient icon header, title, subject badge, description, upload date, view/download action
+  - Recently Viewed section (stored in localStorage, shows last 5 viewed resources as mini-cards)
+  - Resource Viewer Dialog: PDF iframe preview, video/audio/image native players, download + external link buttons
+  - Related Resources section inside viewer (same subject, up to 4 results)
+  - Resource metadata panel (upload date, downloads, file size)
+  - Empty state with filter-aware messaging and "Clear Filters" button
+  - Skeleton loading state (6-card grid)
+
+## Student Help & Support Page
+
+- **Route**: `/portal/student/help` (accessible via "Help & Support" in the student sidebar)
+- **Page**: `client/src/pages/portal/StudentHelp.tsx`
+- **API**: Uses `/api/public/settings` for school contact info; `POST /api/contact` for support form (contactSchema extended with optional `subject` field)
+- **Features**:
+  - Gradient header
+  - Quick Help Guides section: 6 colour-coded guide cards (join class, unlock exam, download materials, etc.)
+  - FAQ accordion grouped by category (Exams, Assignments, Payments, Login & Account) — expand/collapse per question
+  - Contact options panel: Email, Phone, WhatsApp — dynamically pulled from school settings
+  - Contact support form: name (pre-filled from auth), email, subject, message — submits to `/api/contact`
+  - Success state after submission with option to send another message
+  - Mobile-responsive 2-column layout (contact info + form side-by-side on desktop)
+
 ## Git Identity
 
 - Global git config: `user.name=Treasure123-school`, `user.email=treasurehomeschool@gmail.com`
 - Must match the Vercel team member email to allow deployments
+
+## Attendance Management (Admin)
+
+- **Route**: `/portal/admin/attendance`
+- **Page**: `client/src/pages/portal/AttendanceManagement.tsx`
+- **APIs added**:
+  - `GET /api/attendance/overview?date=YYYY-MM-DD` — School-wide stats: total students, present, absent, late, excused, percentage, per-class breakdown with teacher accountability (Admin/SuperAdmin)
+  - `GET /api/attendance/trends?view=daily|weekly|monthly&classId=` — Aggregated trend data with period labels (Admin/SuperAdmin/Teacher)
+- **Features**:
+  - 4 stat cards: Total Students, Present, Absent, Attendance Rate
+  - 4 tabs: Summary (class table), Details (student-level), Trends (Recharts bar chart), Alerts (low-attendance + unrecorded classes)
+  - Class summary table with color-coded attendance bars, teacher accountability (who recorded, when)
+  - Per-student detail view: select class + date → student list with status badges, edit/override modal
+  - Trend chart: daily/weekly/monthly toggle with per-class or school-wide filter, color-coded bars, period breakdown table
+  - Alerts tab: classes below 80%, classes with no attendance recorded for the day
+  - CSV export for both summary and detail views
+  - Date picker applies across all tabs
+  - Mobile-responsive layout
+
+## Teacher Portal: Messages & Announcements
+
+- **Messages page**: `/portal/teacher/messages` — `client/src/pages/portal/TeacherMessages.tsx`
+  - Chat-style UI: conversation sidebar + chat window with bubbles
+  - New message dialog with student recipient selector
+  - Real-time read status (✓ sent, ✓✓ read), 15-second polling
+  - Mobile: tap conversation → full-screen chat, back arrow to return
+- **Announcements page**: `/portal/teacher/announcements` — `client/src/pages/portal/TeacherAnnouncements.tsx`
+  - Create/edit/delete announcements (uses `/api/admin/announcements` + `POST/PUT/DELETE /api/announcements/:id`)
+  - Priority (Normal/Important/Urgent), Type, Target audience (role + class toggles)
+  - Pin/unpin locally, expand/collapse content, search, filters
+  - PUT/DELETE announcement routes now allow TEACHER role (not just Admin)
+- **Navigation**: Teacher sidebar "Announcements" now uses Megaphone icon; Admin sidebar "Attendance" now links to the real page
+
+## Parent Management (Admin)
+
+- **Route**: `/portal/admin/parents`
+- **Page**: `client/src/pages/portal/ParentManagement.tsx`
+- **Nav**: Admin sidebar "Parent Linking" now links to the real page (was coming-soon)
+- **APIs added**:
+  - `GET /api/parents` — List all parent users enriched with linked students + class info (Admin/SuperAdmin)
+  - `POST /api/parents` — Create parent user; auto-generates username (THS-PAR-###) + temp password; links selected students; returns credentials (Admin/SuperAdmin)
+  - `PUT /api/parents/:id` — Update parent name/email/phone (Admin/SuperAdmin)
+  - `POST /api/parents/:id/link-students` — Link additional students to an existing parent (Admin/SuperAdmin)
+  - `DELETE /api/parents/:id/unlink/:studentId` — Unlink a student from a parent (Admin/SuperAdmin)
+  - `GET /api/students/search?q=` — Autocomplete student search by name/username/admission number (Admin/SuperAdmin/Teacher)
+- **Features**:
+  - Card grid layout with parent avatar (initials), name, username, contact info, linked students preview
+  - Search bar (name/phone/email/username) + class filter dropdown
+  - Add Parent dialog: name, phone, email + smart student autocomplete (type-to-search, chip selection)
+  - Credentials display modal after creation (username + temp password with copy buttons)
+  - Parent detail dialog: full info, all linked students list with per-student unlink button
+  - Edit parent dialog: update name/email/phone
+  - Link more students dialog: search and add additional students to existing parent
+  - Activate/Deactivate toggle (uses suspend/unsuspend endpoints)
+  - Delete with confirmation dialog
+  - Empty state with prompt to add first parent
 
 ## Database
 

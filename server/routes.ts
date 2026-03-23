@@ -132,6 +132,7 @@ const changePasswordSchema = z.object({
 const contactSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
+  subject: z.string().optional(),
   message: z.string().min(1)
 });
 
@@ -229,6 +230,19 @@ const uploadDocument = multer({
       cb(new Error('Only document files (PDF, DOC, DOCX, TXT) are allowed!'));
     }
   }
+});
+
+// Assignment submission upload (PDF, DOC, DOCX, images up to 10MB)
+const uploadAssignment = multer({
+  storage: storage_multer,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowedExt = /pdf|doc|docx|txt|png|jpg|jpeg|gif|webp/;
+    const extOk = allowedExt.test(path.extname(file.originalname).toLowerCase());
+    const mimeOk = /pdf|doc|word|image|text/.test(file.mimetype);
+    if (extOk || mimeOk) cb(null, true);
+    else cb(new Error('File type not allowed. Use PDF, DOC, DOCX, TXT, or images.'));
+  },
 });
 
 // CSV upload configuration for bulk user provisioning
@@ -1990,6 +2004,360 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: 'Failed to fetch exam results' });
     }
   });
+
+  // ==================== EXAM ANALYTICS ENDPOINT ====================
+  app.get('/api/teacher/exam-analytics/:examId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const examId = parseInt(req.params.examId);
+      if (isNaN(examId) || examId <= 0) {
+        return res.status(400).json({ message: 'Invalid exam ID' });
+      }
+
+      const exam = await storage.getExamById(examId);
+      if (!exam) {
+        return res.status(404).json({ message: 'Exam not found' });
+      }
+
+      // Auth check for teachers
+      if (req.user!.roleId === ROLES.TEACHER) {
+        const teacherId = req.user!.id;
+        const isCreator = exam.createdBy === teacherId;
+        const isInCharge = exam.teacherInChargeId === teacherId;
+        let isAssigned = false;
+        if (exam.classId && exam.subjectId) {
+          try {
+            const teachers = await storage.getTeachersForClassSubject(exam.classId, exam.subjectId);
+            isAssigned = teachers?.some((t: any) => t.id === teacherId) || false;
+          } catch { /* silent */ }
+        }
+        if (!isCreator && !isInCharge && !isAssigned) {
+          return res.status(403).json({ message: 'Access denied' });
+        }
+      }
+
+      // Fetch raw results
+      const rawResults = await storage.getExamResultsByExam(examId);
+
+      // Enrich with student names
+      const results = await Promise.all(rawResults.map(async (r: any) => {
+        try {
+          const student = await storage.getStudent(r.studentId);
+          const user = student ? await storage.getUser(r.studentId) : null;
+          const scoreVal = r.score ?? r.marksObtained ?? 0;
+          const maxVal = r.maxScore ?? exam.totalMarks ?? 100;
+          const pct = maxVal > 0 ? Math.round((scoreVal / maxVal) * 100) : 0;
+          const passingPct = exam.passingScore ?? 50;
+          const passed = pct >= passingPct;
+          return {
+            studentId: r.studentId,
+            studentName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username : 'Unknown',
+            admissionNumber: student?.admissionNumber ?? null,
+            score: scoreVal,
+            maxScore: maxVal,
+            scorePercent: pct,
+            grade: r.grade ?? null,
+            passed,
+            timeTaken: r.timeTaken ?? null,
+            submittedAt: r.submittedAt ?? r.createdAt ?? null,
+          };
+        } catch {
+          return null;
+        }
+      }));
+      const validResults = results.filter(Boolean) as any[];
+
+      // Overview metrics
+      const total = validResults.length;
+      const scores = validResults.map(r => r.scorePercent);
+      const avgPercent = total > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / total) : 0;
+      const highestPercent = total > 0 ? Math.max(...scores) : 0;
+      const lowestPercent = total > 0 ? Math.min(...scores) : 0;
+      const passCount = validResults.filter(r => r.passed).length;
+      const passRate = total > 0 ? Math.round((passCount / total) * 100) : 0;
+
+      // Score distribution in 10% buckets
+      const buckets = ['0-10','10-20','20-30','30-40','40-50','50-60','60-70','70-80','80-90','90-100'];
+      const scoreDistribution = buckets.map(label => {
+        const [lo, hi] = label.split('-').map(Number);
+        const count = validResults.filter(r => r.scorePercent >= lo && (hi === 100 ? r.scorePercent <= hi : r.scorePercent < hi)).length;
+        return { range: `${label}%`, count };
+      });
+
+      // Top & low performers (sorted, top 5)
+      const sorted = [...validResults].sort((a, b) => b.scorePercent - a.scorePercent);
+      const topPerformers = sorted.slice(0, 5);
+      const lowPerformers = sorted.slice(-5).reverse();
+
+      // Question analysis via SQL
+      let questionAnalysis: any[] = [];
+      try {
+        const questions = await storage.getExamQuestions(examId);
+        const sessions = await storage.getExamSessionsByExam(examId);
+        const completedSessionIds = sessions.filter((s: any) => s.status === 'submitted' || s.status === 'graded' || s.isCompleted).map((s: any) => s.id);
+        if (completedSessionIds.length > 0 && questions.length > 0) {
+          // For each question, count answers from completed sessions
+          const answerRows = await db.select({
+            questionId: schema.studentAnswers.questionId,
+            isCorrect: schema.studentAnswers.isCorrect,
+          }).from(schema.studentAnswers)
+            .where(sql`${schema.studentAnswers.sessionId} = ANY(ARRAY[${sql.join(completedSessionIds.map((id: number) => sql`${id}`), sql`, `)}]::int[])`);
+
+          const byQuestion: Record<number, { total: number; correct: number }> = {};
+          for (const row of answerRows) {
+            if (!byQuestion[row.questionId]) byQuestion[row.questionId] = { total: 0, correct: 0 };
+            byQuestion[row.questionId].total++;
+            if (row.isCorrect) byQuestion[row.questionId].correct++;
+          }
+          questionAnalysis = questions.map((q: any) => {
+            const stat = byQuestion[q.id] || { total: 0, correct: 0 };
+            return {
+              questionId: q.id,
+              questionText: q.questionText,
+              questionType: q.questionType,
+              points: q.points,
+              orderNumber: q.orderNumber,
+              totalAttempted: stat.total,
+              correctCount: stat.correct,
+              correctPercent: stat.total > 0 ? Math.round((stat.correct / stat.total) * 100) : 0,
+            };
+          }).sort((a: any, b: any) => a.orderNumber - b.orderNumber);
+        } else {
+          questionAnalysis = questions.map((q: any) => ({
+            questionId: q.id,
+            questionText: q.questionText,
+            questionType: q.questionType,
+            points: q.points,
+            orderNumber: q.orderNumber,
+            totalAttempted: 0,
+            correctCount: 0,
+            correctPercent: 0,
+          }));
+        }
+      } catch (qErr: any) {
+        console.warn('[ANALYTICS] Question analysis failed:', qErr?.message);
+      }
+
+      // Performance trends: other exams in same class/subject by this teacher
+      let trends: any[] = [];
+      try {
+        const teacherExams = await db.select({
+          id: schema.exams.id,
+          name: schema.exams.name,
+          date: schema.exams.date,
+          totalMarks: schema.exams.totalMarks,
+          passingScore: schema.exams.passingScore,
+        }).from(schema.exams)
+          .where(and(
+            eq(schema.exams.classId, exam.classId),
+            eq(schema.exams.subjectId, exam.subjectId),
+          ))
+          .orderBy(schema.exams.date);
+
+        for (const te of teacherExams) {
+          const teResults = await storage.getExamResultsByExam(te.id);
+          if (teResults.length === 0) continue;
+          const teScores = teResults.map((r: any) => {
+            const s = r.score ?? r.marksObtained ?? 0;
+            const m = r.maxScore ?? te.totalMarks ?? 100;
+            return m > 0 ? (s / m) * 100 : 0;
+          });
+          const teAvg = Math.round(teScores.reduce((a: number, b: number) => a + b, 0) / teScores.length);
+          const tePassing = te.passingScore ?? 50;
+          const tePass = Math.round((teScores.filter(s => s >= tePassing).length / teScores.length) * 100);
+          trends.push({
+            examId: te.id,
+            examName: te.name,
+            date: te.date,
+            avgPercent: teAvg,
+            passRate: tePass,
+            studentCount: teResults.length,
+          });
+        }
+      } catch (tErr: any) {
+        console.warn('[ANALYTICS] Trends failed:', tErr?.message);
+      }
+
+      return res.json({
+        exam: {
+          id: exam.id,
+          name: exam.name,
+          totalMarks: exam.totalMarks,
+          passingScore: exam.passingScore ?? 50,
+          date: exam.date,
+          classId: exam.classId,
+          subjectId: exam.subjectId,
+        },
+        overview: { totalStudents: total, avgPercent, highestPercent, lowestPercent, passRate, passCount, failCount: total - passCount },
+        scoreDistribution,
+        studentPerformance: validResults,
+        questionAnalysis,
+        topPerformers,
+        lowPerformers,
+        trends,
+      });
+    } catch (error: any) {
+      console.error('[ANALYTICS] Error:', error?.message);
+      return res.status(500).json({ message: 'Failed to fetch exam analytics' });
+    }
+  });
+  // ==================== END EXAM ANALYTICS ENDPOINT ====================
+
+  // ==================== SUBMISSIONS LIST ENDPOINT ====================
+  app.get('/api/teacher/submissions', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const teacherId = req.user!.id;
+      const isTeacher = req.user!.roleId === ROLES.TEACHER;
+      const { classId, subjectId, examId, status } = req.query as Record<string, string>;
+
+      const conditions: any[] = [];
+      if (examId) conditions.push(eq(schema.exams.id, parseInt(examId)));
+      if (classId) conditions.push(eq(schema.exams.classId, parseInt(classId)));
+      if (subjectId) conditions.push(eq(schema.exams.subjectId, parseInt(subjectId)));
+      if (isTeacher) conditions.push(eq(schema.exams.createdBy, teacherId));
+
+      const rows = await db.select({
+        resultId: schema.examResults.id,
+        studentId: schema.examResults.studentId,
+        firstName: schema.users.firstName,
+        lastName: schema.users.lastName,
+        username: schema.users.username,
+        admissionNumber: schema.students.admissionNumber,
+        examId: schema.exams.id,
+        examName: schema.exams.name,
+        totalMarks: schema.exams.totalMarks,
+        passingScore: schema.exams.passingScore,
+        classId: schema.exams.classId,
+        className: schema.classes.name,
+        subjectId: schema.exams.subjectId,
+        subjectName: schema.subjects.name,
+        score: schema.examResults.score,
+        maxScore: schema.examResults.maxScore,
+        marksObtained: schema.examResults.marksObtained,
+        grade: schema.examResults.grade,
+        remarks: schema.examResults.remarks,
+        autoScored: schema.examResults.autoScored,
+        submittedAt: schema.examResults.submittedAt,
+        createdAt: schema.examResults.createdAt,
+      })
+      .from(schema.examResults)
+      .leftJoin(schema.exams, eq(schema.examResults.examId, schema.exams.id))
+      .leftJoin(schema.users, eq(schema.examResults.studentId, schema.users.id))
+      .leftJoin(schema.students, eq(schema.examResults.studentId, schema.students.id))
+      .leftJoin(schema.classes, eq(schema.exams.classId, schema.classes.id))
+      .leftJoin(schema.subjects, eq(schema.exams.subjectId, schema.subjects.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(schema.examResults.createdAt));
+
+      const submissions = rows.map((r: any) => {
+        const scoreVal = r.score ?? r.marksObtained ?? null;
+        const maxVal = r.maxScore ?? r.totalMarks ?? 100;
+        const pct = (scoreVal !== null && maxVal > 0) ? Math.round((scoreVal / maxVal) * 100) : null;
+        const isGraded = r.remarks !== null && r.remarks !== '';
+        return {
+          resultId: r.resultId,
+          studentId: r.studentId,
+          studentName: r.firstName && r.lastName ? `${r.firstName} ${r.lastName}`.trim() : r.username || 'Unknown',
+          admissionNumber: r.admissionNumber ?? null,
+          examId: r.examId,
+          examName: r.examName ?? 'Unknown Exam',
+          classId: r.classId,
+          className: r.className ?? null,
+          subjectId: r.subjectId,
+          subjectName: r.subjectName ?? null,
+          score: scoreVal,
+          maxScore: maxVal,
+          scorePercent: pct,
+          grade: r.grade ?? null,
+          remarks: r.remarks ?? null,
+          autoScored: r.autoScored ?? false,
+          submittedAt: r.submittedAt ?? r.createdAt ?? null,
+          status: isGraded ? 'graded' : 'pending',
+          passingScore: r.passingScore ?? 50,
+          passed: pct !== null ? pct >= (r.passingScore ?? 50) : null,
+        };
+      }).filter((s: any) => {
+        if (status === 'pending') return s.status === 'pending';
+        if (status === 'graded') return s.status === 'graded';
+        return true;
+      });
+
+      return res.json(submissions);
+    } catch (error: any) {
+      console.error('[SUBMISSIONS] Error:', error?.message);
+      return res.status(500).json({ message: 'Failed to fetch submissions' });
+    }
+  });
+
+  // Submission detail for grading panel
+  app.get('/api/teacher/submissions/:resultId/detail', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const resultId = parseInt(req.params.resultId);
+      if (isNaN(resultId)) return res.status(400).json({ message: 'Invalid result ID' });
+
+      const result = await storage.getExamResultById(resultId);
+      if (!result) return res.status(404).json({ message: 'Result not found' });
+
+      const exam = await storage.getExamById(result.examId);
+      if (!exam) return res.status(404).json({ message: 'Exam not found' });
+
+      // Get questions for this exam
+      const questions = await storage.getExamQuestions(result.examId);
+
+      // Get question options
+      const questionOptions = questions.length > 0 ? await db.select()
+        .from(schema.questionOptions)
+        .where(sql`${schema.questionOptions.questionId} = ANY(ARRAY[${sql.join(questions.map((q: any) => sql`${q.id}`), sql`, `)}]::int[])`)
+        : [];
+
+      // Get exam session for this student+exam
+      const sessions = await storage.getExamSessionsByExam(result.examId);
+      const session = sessions.find((s: any) => s.studentId === result.studentId);
+
+      // Get student answers for the session
+      let answers: any[] = [];
+      if (session) {
+        answers = await storage.getStudentAnswers(session.id);
+      }
+
+      // Build question breakdown
+      const questionBreakdown = questions.map((q: any) => {
+        const opts = questionOptions.filter((o: any) => o.questionId === q.id);
+        const answer = answers.find((a: any) => a.questionId === q.id);
+        return {
+          questionId: q.id,
+          questionText: q.questionText,
+          questionType: q.questionType,
+          points: q.points,
+          orderNumber: q.orderNumber,
+          options: opts.sort((a: any, b: any) => a.orderNumber - b.orderNumber),
+          answer: answer ? {
+            textAnswer: answer.textAnswer ?? null,
+            selectedOptionId: answer.selectedOptionId ?? null,
+            isCorrect: answer.isCorrect ?? null,
+            pointsEarned: answer.pointsEarned ?? 0,
+            feedbackText: answer.feedbackText ?? null,
+          } : null,
+        };
+      }).sort((a: any, b: any) => a.orderNumber - b.orderNumber);
+
+      return res.json({
+        resultId: result.id,
+        examId: result.examId,
+        studentId: result.studentId,
+        sessionId: session?.id ?? null,
+        score: result.score ?? null,
+        maxScore: result.maxScore ?? exam.totalMarks ?? null,
+        grade: result.grade ?? null,
+        remarks: result.remarks ?? null,
+        submittedAt: result.submittedAt ?? null,
+        questions: questionBreakdown,
+      });
+    } catch (error: any) {
+      console.error('[SUBMISSION DETAIL] Error:', error?.message);
+      return res.status(500).json({ message: 'Failed to fetch submission detail' });
+    }
+  });
+  // ==================== END SUBMISSIONS ENDPOINTS ====================
 
   // Update exam result - TEACHERS ONLY (update test score, remarks)
   app.patch('/api/teacher/exam-results/:resultId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
@@ -4243,6 +4611,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET class detail with student list (joined with user info) for teacher
+  app.get('/api/teacher/classes/:classId/detail', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const classId = parseInt(req.params.classId);
+      if (isNaN(classId)) return res.status(400).json({ message: 'Invalid class ID' });
+
+      const classInfo = await storage.getClass(classId);
+      if (!classInfo) return res.status(404).json({ message: 'Class not found' });
+
+      const studentRows = await storage.getStudentsByClass(classId);
+      const studentsWithUsers = await Promise.all(
+        studentRows.map(async (s) => {
+          const user = await storage.getUser(s.id);
+          return {
+            id: s.id,
+            admissionNumber: s.admissionNumber,
+            firstName: user?.firstName || '',
+            lastName: user?.lastName || '',
+            email: user?.email || '',
+            isActive: user?.isActive ?? true,
+            profileImageUrl: user?.profileImageUrl || null,
+            department: s.department || null,
+          };
+        })
+      );
+
+      const teacherUser = classInfo.classTeacherId ? await storage.getUser(classInfo.classTeacherId) : null;
+
+      const subjectsAssigned = req.user!.roleId === ROLES.TEACHER
+        ? await storage.getTeacherAssignmentsForClass(req.user!.id, classId)
+        : [];
+
+      res.json({
+        class: {
+          id: classInfo.id,
+          name: classInfo.name,
+          level: classInfo.level,
+          capacity: classInfo.capacity,
+          classTeacherName: teacherUser ? `${teacherUser.firstName} ${teacherUser.lastName}` : null,
+        },
+        students: studentsWithUsers,
+        subjects: subjectsAssigned,
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: 'Failed to fetch class detail', error: error.message });
+    }
+  });
+
   // Update teacher profile (PUT endpoint for editing)
   app.put('/api/teacher/profile/me', authenticateUser, authorizeRoles(ROLES.TEACHER), upload.fields([
     { name: 'profileImage', maxCount: 1 },
@@ -4503,6 +4919,220 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Parent-child linking endpoint
+  // ── Parent Management Endpoints (Admin) ─────────────────────────────────────
+
+  // List all parents enriched with linked students
+  app.get('/api/parents', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const parentRole = await storage.getRoleByName('Parent');
+      if (!parentRole) return res.status(500).json({ message: 'Parent role not found' });
+
+      const parentUsers = await storage.getUsersByRole(parentRole.id);
+      const [allStudents, allClasses, allUsers] = await Promise.all([
+        storage.getAllStudents(),
+        storage.getAllClasses(),
+        storage.getAllUsers(),
+      ]);
+
+      const userMap: Record<string, any> = {};
+      allUsers.forEach((u: any) => { userMap[u.id] = u; });
+      const classMap: Record<number, any> = {};
+      allClasses.forEach((c: any) => { classMap[c.id] = c; });
+
+      const parents = parentUsers.map((parent: any) => {
+        const linkedStudents = allStudents
+          .filter((s: any) => s.parentId === parent.id)
+          .map((s: any) => {
+            const su = userMap[s.id];
+            const cls = classMap[s.classId];
+            return {
+              id: s.id,
+              admissionNumber: s.admissionNumber,
+              firstName: su?.firstName ?? '',
+              lastName: su?.lastName ?? '',
+              username: su?.username ?? '',
+              className: cls?.name ?? '',
+              classId: s.classId,
+            };
+          });
+        const { passwordHash: _, ...safeParent } = parent;
+        return { ...safeParent, linkedStudents };
+      });
+
+      res.json(parents);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to fetch parents' });
+    }
+  });
+
+  // Student autocomplete search for parent linking
+  app.get('/api/students/search', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.TEACHER), async (req, res) => {
+    try {
+      const q = (req.query.q as string || '').toLowerCase().trim();
+      if (!q || q.length < 1) return res.json([]);
+
+      const [allStudents, allUsers, allClasses] = await Promise.all([
+        storage.getAllStudents(),
+        storage.getAllUsers(),
+        storage.getAllClasses(),
+      ]);
+
+      const userMap: Record<string, any> = {};
+      allUsers.forEach((u: any) => { userMap[u.id] = u; });
+      const classMap: Record<number, any> = {};
+      allClasses.forEach((c: any) => { classMap[c.id] = c; });
+
+      const results = allStudents
+        .map((s: any) => {
+          const u = userMap[s.id];
+          if (!u) return null;
+          return {
+            id: s.id,
+            admissionNumber: s.admissionNumber ?? '',
+            firstName: u.firstName ?? '',
+            lastName: u.lastName ?? '',
+            username: u.username ?? '',
+            className: classMap[s.classId]?.name ?? '',
+            classId: s.classId,
+            parentId: s.parentId,
+          };
+        })
+        .filter((s: any): s is NonNullable<typeof s> => {
+          if (!s) return false;
+          const fullName = `${s.firstName} ${s.lastName}`.toLowerCase();
+          return (
+            fullName.includes(q) ||
+            s.username.toLowerCase().includes(q) ||
+            s.admissionNumber.toLowerCase().includes(q)
+          );
+        })
+        .slice(0, 15);
+
+      res.json(results);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to search students' });
+    }
+  });
+
+  // Create a new parent
+  app.post('/api/parents', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const { firstName, lastName, email, phone, gender, studentIds = [] } = req.body;
+      if (!firstName || !lastName) {
+        return res.status(400).json({ message: 'First name and last name are required' });
+      }
+
+      const parentRole = await storage.getRoleByName('Parent');
+      if (!parentRole) return res.status(500).json({ message: 'Parent role not found' });
+
+      const { generateParentUsername, generateTempPassword } = await import('./username-generator');
+      const username = await generateParentUsername();
+      const plainPassword = generateTempPassword();
+      const passwordHash = await bcrypt.hash(plainPassword, BCRYPT_ROUNDS);
+
+      const newUser = await storage.createUser({
+        id: crypto.randomUUID(),
+        firstName,
+        lastName,
+        email: email || null,
+        phone: phone || null,
+        gender: gender || null,
+        username,
+        passwordHash,
+        roleId: parentRole.id,
+        isActive: true,
+        status: 'active',
+        mustChangePassword: true,
+      } as any);
+
+      // Create parent profile
+      await storage.createParentProfile({
+        userId: newUser.id,
+        linkedStudents: JSON.stringify(studentIds),
+        occupation: null,
+        contactPreference: null,
+      });
+
+      // Link each student to this parent
+      if (Array.isArray(studentIds) && studentIds.length > 0) {
+        for (const sid of studentIds) {
+          await storage.updateStudent(sid, { studentPatch: { parentId: newUser.id } });
+        }
+      }
+
+      const { passwordHash: _, ...safeUser } = newUser;
+      res.status(201).json({
+        user: safeUser,
+        credentials: { username, password: plainPassword },
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to create parent' });
+    }
+  });
+
+  // Update parent info
+  app.put('/api/parents/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { firstName, lastName, email, phone, gender } = req.body;
+
+      const updated = await storage.updateUser(id, { firstName, lastName, email, phone, gender });
+      if (!updated) return res.status(404).json({ message: 'Parent not found' });
+
+      const { passwordHash: _, ...safe } = updated;
+      res.json(safe);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to update parent' });
+    }
+  });
+
+  // Link additional students to an existing parent
+  app.post('/api/parents/:id/link-students', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const parentId = req.params.id;
+      const { studentIds } = req.body;
+      if (!Array.isArray(studentIds) || studentIds.length === 0) {
+        return res.status(400).json({ message: 'studentIds array is required' });
+      }
+
+      for (const sid of studentIds) {
+        await storage.updateStudent(sid, { studentPatch: { parentId } });
+      }
+
+      // Update parent profile linkedStudents
+      const profile = await storage.getParentProfile(parentId);
+      const current: string[] = profile ? JSON.parse(profile.linkedStudents || '[]') : [];
+      const merged = Array.from(new Set([...current, ...studentIds]));
+      await storage.updateParentProfile(parentId, { linkedStudents: JSON.stringify(merged) });
+
+      res.json({ message: `Linked ${studentIds.length} student(s) successfully` });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to link students' });
+    }
+  });
+
+  // Unlink a student from a parent
+  app.delete('/api/parents/:id/unlink/:studentId', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const { id: parentId, studentId } = req.params;
+      await storage.updateStudent(studentId, { studentPatch: { parentId: null } });
+
+      // Remove from parent profile linkedStudents
+      const profile = await storage.getParentProfile(parentId);
+      if (profile) {
+        const current: string[] = JSON.parse(profile.linkedStudents || '[]');
+        const updated = current.filter(sid => sid !== studentId);
+        await storage.updateParentProfile(parentId, { linkedStudents: JSON.stringify(updated) });
+      }
+
+      res.json({ message: 'Student unlinked successfully' });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to unlink student' });
+    }
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────────
+
   app.get('/api/parents/children/:parentId', authenticateUser, async (req, res) => {
     try {
       const parentId = req.params.parentId;
@@ -5457,7 +6087,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update an announcement - Admin only
-  app.put('/api/announcements/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
+  app.put('/api/announcements/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.TEACHER), async (req, res) => {
     try {
       const announcementId = parseInt(req.params.id);
 
@@ -5505,8 +6135,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete an announcement - Admin only
-  app.delete('/api/announcements/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
+  // Delete an announcement - Admin and Teacher (own only)
+  app.delete('/api/announcements/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.TEACHER), async (req, res) => {
     try {
       const announcementId = parseInt(req.params.id);
 
@@ -5634,6 +6264,179 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(attendance);
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch class attendance' });
+    }
+  });
+
+  // Get attendance history by class and date range - Teacher or Admin
+  app.get('/api/attendance/class/:classId/history', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
+    try {
+      const classId = parseInt(req.params.classId);
+      const { startDate, endDate } = req.query;
+
+      if (isNaN(classId)) return res.status(400).json({ message: 'Invalid class ID' });
+      if (!startDate || !endDate) return res.status(400).json({ message: 'startDate and endDate are required' });
+
+      const records = await storage.getAttendanceByClassDateRange(classId, startDate as string, endDate as string);
+      res.json(records);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch attendance history' });
+    }
+  });
+
+  // Update a single attendance record - Teacher or Admin
+  app.put('/api/attendance/:id', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) return res.status(400).json({ message: 'Invalid attendance ID' });
+
+      const { status, notes } = req.body;
+      if (!status) return res.status(400).json({ message: 'status is required' });
+
+      const updated = await storage.updateAttendance(id, { status, notes: notes || null });
+      if (!updated) return res.status(404).json({ message: 'Attendance record not found' });
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ message: 'Failed to update attendance record' });
+    }
+  });
+
+  // School-wide attendance overview - Admin only
+  app.get('/api/attendance/overview', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
+
+      const [allStudents, allClasses, allUsers] = await Promise.all([
+        storage.getAllStudents(),
+        storage.getAllClasses(),
+        storage.getAllUsers(),
+      ]);
+
+      const userMap: Record<string, any> = {};
+      allUsers.forEach((u: any) => { userMap[u.id] = u; });
+
+      let totalPresent = 0, totalAbsent = 0, totalLate = 0, totalExcused = 0;
+
+      const classBreakdown = await Promise.all(
+        allClasses.map(async (cls: any) => {
+          const clsStudents = allStudents.filter((s: any) => s.classId === cls.id);
+          const attendance = await storage.getAttendanceByClass(cls.id, date);
+
+          const present = attendance.filter((a: any) => a.status === 'Present').length;
+          const absent = attendance.filter((a: any) => a.status === 'Absent').length;
+          const late = attendance.filter((a: any) => a.status === 'Late').length;
+          const excused = attendance.filter((a: any) => a.status === 'Excused').length;
+
+          totalPresent += present;
+          totalAbsent += absent;
+          totalLate += late;
+          totalExcused += excused;
+
+          const firstRecord = attendance[0] as any;
+          const recorder = firstRecord?.recordedBy ? userMap[firstRecord.recordedBy] : null;
+
+          return {
+            classId: cls.id,
+            className: cls.name,
+            level: cls.level,
+            totalStudents: clsStudents.length,
+            present, absent, late, excused,
+            attendancePercentage: clsStudents.length > 0
+              ? Math.round(((present + late) / clsStudents.length) * 100)
+              : 0,
+            hasAttendance: attendance.length > 0,
+            recordedBy: recorder ? `${recorder.firstName} ${recorder.lastName}` : null,
+            recordedAt: firstRecord?.createdAt || null,
+          };
+        })
+      );
+
+      const totalStudents = allStudents.length;
+      const attendancePercentage = totalStudents > 0
+        ? Math.round(((totalPresent + totalLate) / totalStudents) * 100)
+        : 0;
+
+      res.json({
+        date,
+        totalStudents,
+        totalPresent,
+        totalAbsent,
+        totalLate,
+        totalExcused,
+        attendancePercentage,
+        classBreakdown: classBreakdown.sort((a, b) => a.className.localeCompare(b.className)),
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to fetch attendance overview' });
+    }
+  });
+
+  // Attendance trends - Admin or Teacher
+  app.get('/api/attendance/trends', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.TEACHER), async (req, res) => {
+    try {
+      const { classId, view = 'daily' } = req.query;
+      const now = new Date();
+      let startDate: string, endDate: string;
+
+      endDate = now.toISOString().split('T')[0];
+      if (view === 'monthly') {
+        startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString().split('T')[0];
+      } else if (view === 'weekly') {
+        startDate = new Date(now.getTime() - 55 * 86400000).toISOString().split('T')[0];
+      } else {
+        startDate = new Date(now.getTime() - 13 * 86400000).toISOString().split('T')[0];
+      }
+
+      let allRecords: any[] = [];
+      if (classId) {
+        allRecords = await storage.getAttendanceByClassDateRange(parseInt(classId as string), startDate, endDate);
+      } else {
+        const allClasses = await storage.getAllClasses();
+        const results = await Promise.all(
+          allClasses.map((cls: any) => storage.getAttendanceByClassDateRange(cls.id, startDate, endDate))
+        );
+        allRecords = results.flat();
+      }
+
+      const grouped: Record<string, { present: number; absent: number; late: number; excused: number; total: number }> = {};
+
+      allRecords.forEach((record: any) => {
+        const d = new Date(record.date);
+        let key: string;
+        if (view === 'monthly') {
+          key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        } else if (view === 'weekly') {
+          const ws = new Date(d);
+          ws.setDate(d.getDate() - d.getDay());
+          key = ws.toISOString().split('T')[0];
+        } else {
+          key = record.date;
+        }
+        if (!grouped[key]) grouped[key] = { present: 0, absent: 0, late: 0, excused: 0, total: 0 };
+        const g = grouped[key];
+        if (record.status === 'Present') g.present++;
+        else if (record.status === 'Absent') g.absent++;
+        else if (record.status === 'Late') g.late++;
+        else if (record.status === 'Excused') g.excused++;
+        g.total++;
+      });
+
+      const data = Object.entries(grouped)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([period, counts]) => ({
+          period,
+          label: view === 'monthly'
+            ? new Date(period + '-01').toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
+            : view === 'weekly'
+              ? `Wk ${new Date(period).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
+              : new Date(period).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
+          ...counts,
+          percentage: counts.total > 0 ? Math.round(((counts.present + counts.late) / counts.total) * 100) : 0,
+        }));
+
+      res.json({ view, startDate, endDate, data });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to fetch attendance trends' });
     }
   });
 
@@ -6816,7 +7619,7 @@ School Management System Administration
         name: data.name,
         email: data.email,
         message: data.message,
-        subject: null, // Can be extended later if needed
+        subject: data.subject || null,
         isRead: false
       });
 
@@ -13575,6 +14378,454 @@ School Management System Administration
     }
   });
   // ==================== END STUDENT CLASS RANK ROUTE ====================
+
+  // ==================== STUDENT ASSIGNMENTS ROUTES ====================
+
+  // List assignments for the student's class with submission status
+  app.get('/api/student/assignments', authenticateUser, authorizeRoles(ROLES.STUDENT), async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const studentRecord = await storage.getStudentByUserId(userId);
+      if (!studentRecord) return res.status(404).json({ message: 'Student record not found' });
+      const classId = (studentRecord as any).classId;
+      if (!classId) return res.json([]);
+
+      const rows = await db
+        .select({
+          id: schema.assignments.id,
+          title: schema.assignments.title,
+          instructions: schema.assignments.instructions,
+          classId: schema.assignments.classId,
+          subjectId: schema.assignments.subjectId,
+          subjectName: schema.subjects.name,
+          subjectCode: schema.subjects.code,
+          teacherId: schema.assignments.teacherId,
+          teacherFirstName: schema.users.firstName,
+          teacherLastName: schema.users.lastName,
+          termId: schema.assignments.termId,
+          dueDate: schema.assignments.dueDate,
+          dueTime: schema.assignments.dueTime,
+          maxScore: schema.assignments.maxScore,
+          attachments: schema.assignments.attachments,
+          createdAt: schema.assignments.createdAt,
+          submissionId: schema.assignmentSubmissions.id,
+          textAnswer: schema.assignmentSubmissions.textAnswer,
+          fileUrl: schema.assignmentSubmissions.fileUrl,
+          fileName: schema.assignmentSubmissions.fileName,
+          fileType: schema.assignmentSubmissions.fileType,
+          submittedAt: schema.assignmentSubmissions.submittedAt,
+          score: schema.assignmentSubmissions.score,
+          feedback: schema.assignmentSubmissions.feedback,
+          gradedAt: schema.assignmentSubmissions.gradedAt,
+        })
+        .from(schema.assignments)
+        .leftJoin(schema.subjects, eq(schema.assignments.subjectId, schema.subjects.id))
+        .leftJoin(schema.users, eq(schema.assignments.teacherId, schema.users.id))
+        .leftJoin(
+          schema.assignmentSubmissions,
+          and(
+            eq(schema.assignmentSubmissions.assignmentId, schema.assignments.id),
+            eq(schema.assignmentSubmissions.studentId, userId)
+          )
+        )
+        .where(and(eq(schema.assignments.classId, classId), eq(schema.assignments.isActive, true)))
+        .orderBy(desc(schema.assignments.dueDate));
+
+      return res.json(rows);
+    } catch (error: any) {
+      console.error('Error fetching student assignments:', error);
+      return res.status(500).json({ message: 'Failed to fetch assignments', error: error.message });
+    }
+  });
+
+  // Get a single assignment with full details
+  app.get('/api/student/assignments/:id', authenticateUser, authorizeRoles(ROLES.STUDENT), async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const assignmentId = parseInt(req.params.id, 10);
+      if (isNaN(assignmentId)) return res.status(400).json({ message: 'Invalid assignment id' });
+
+      const studentRecord = await storage.getStudentByUserId(userId);
+      if (!studentRecord) return res.status(404).json({ message: 'Student record not found' });
+      const classId = (studentRecord as any).classId;
+
+      const [assignment] = await db
+        .select({
+          id: schema.assignments.id,
+          title: schema.assignments.title,
+          instructions: schema.assignments.instructions,
+          classId: schema.assignments.classId,
+          subjectId: schema.assignments.subjectId,
+          subjectName: schema.subjects.name,
+          teacherFirstName: schema.users.firstName,
+          teacherLastName: schema.users.lastName,
+          dueDate: schema.assignments.dueDate,
+          dueTime: schema.assignments.dueTime,
+          maxScore: schema.assignments.maxScore,
+          attachments: schema.assignments.attachments,
+          createdAt: schema.assignments.createdAt,
+        })
+        .from(schema.assignments)
+        .leftJoin(schema.subjects, eq(schema.assignments.subjectId, schema.subjects.id))
+        .leftJoin(schema.users, eq(schema.assignments.teacherId, schema.users.id))
+        .where(and(eq(schema.assignments.id, assignmentId), eq(schema.assignments.classId, classId)))
+        .limit(1);
+
+      if (!assignment) return res.status(404).json({ message: 'Assignment not found' });
+
+      const [submission] = await db
+        .select()
+        .from(schema.assignmentSubmissions)
+        .where(and(
+          eq(schema.assignmentSubmissions.assignmentId, assignmentId),
+          eq(schema.assignmentSubmissions.studentId, userId)
+        ))
+        .limit(1);
+
+      return res.json({ ...assignment, submission: submission || null });
+    } catch (error: any) {
+      console.error('Error fetching assignment detail:', error);
+      return res.status(500).json({ message: 'Failed to fetch assignment', error: error.message });
+    }
+  });
+
+  // Submit or update an assignment submission
+  app.post('/api/student/assignments/:id/submit', authenticateUser, authorizeRoles(ROLES.STUDENT), uploadAssignment.single('file'), async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      const assignmentId = parseInt(req.params.id, 10);
+      if (isNaN(assignmentId)) return res.status(400).json({ message: 'Invalid assignment id' });
+
+      const studentRecord = await storage.getStudentByUserId(userId);
+      if (!studentRecord) return res.status(404).json({ message: 'Student record not found' });
+      const classId = (studentRecord as any).classId;
+
+      const [assignment] = await db
+        .select()
+        .from(schema.assignments)
+        .where(and(eq(schema.assignments.id, assignmentId), eq(schema.assignments.classId, classId)))
+        .limit(1);
+      if (!assignment) return res.status(404).json({ message: 'Assignment not found' });
+
+      // Check deadline (allow submissions up to end of due date)
+      const now = new Date();
+      const dueDateTime = new Date(`${assignment.dueDate}T${assignment.dueTime || '23:59'}:00`);
+      const isLate = now > dueDateTime;
+
+      const textAnswer = req.body.textAnswer || null;
+      let fileUrl: string | null = null;
+      let fileName: string | null = null;
+      let fileType: string | null = null;
+
+      if (req.file) {
+        const result = await uploadFileToStorage(req.file, {
+          uploadType: 'general',
+          userId,
+          category: 'assignments',
+        });
+        if (result.success && result.url) {
+          fileUrl = result.url;
+          fileName = req.file.originalname;
+          fileType = req.file.mimetype;
+        }
+      }
+
+      // Upsert submission
+      const [existing] = await db
+        .select()
+        .from(schema.assignmentSubmissions)
+        .where(and(
+          eq(schema.assignmentSubmissions.assignmentId, assignmentId),
+          eq(schema.assignmentSubmissions.studentId, userId)
+        ))
+        .limit(1);
+
+      const submittedAt = now;
+
+      if (existing) {
+        if (existing.gradedAt) {
+          return res.status(403).json({ message: 'Cannot edit a graded submission' });
+        }
+        if (isLate && existing.submittedAt) {
+          return res.status(403).json({ message: 'Deadline has passed. You cannot re-submit.' });
+        }
+        await db
+          .update(schema.assignmentSubmissions)
+          .set({
+            textAnswer: textAnswer ?? existing.textAnswer,
+            fileUrl: fileUrl ?? existing.fileUrl,
+            fileName: fileName ?? existing.fileName,
+            fileType: fileType ?? existing.fileType,
+            submittedAt,
+            updatedAt: now,
+          })
+          .where(eq(schema.assignmentSubmissions.id, existing.id));
+        const [updated] = await db.select().from(schema.assignmentSubmissions).where(eq(schema.assignmentSubmissions.id, existing.id)).limit(1);
+        return res.json({ submission: updated, isLate });
+      } else {
+        const [created] = await db
+          .insert(schema.assignmentSubmissions)
+          .values({
+            assignmentId,
+            studentId: userId,
+            textAnswer,
+            fileUrl,
+            fileName,
+            fileType,
+            submittedAt,
+          })
+          .returning();
+        return res.status(201).json({ submission: created, isLate });
+      }
+    } catch (error: any) {
+      console.error('Error submitting assignment:', error);
+      return res.status(500).json({ message: 'Failed to submit assignment', error: error.message });
+    }
+  });
+
+  // ==================== END STUDENT ASSIGNMENTS ROUTES ====================
+
+  // ==================== ADMIN TIMETABLE ROUTES ====================
+  app.get('/api/admin/timetable', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+    try {
+      const classId = req.query.classId ? parseInt(req.query.classId as string) : undefined;
+      const teacherId = req.query.teacherId as string | undefined;
+      const termId = req.query.termId ? parseInt(req.query.termId as string) : undefined;
+      const entries = await storage.getAllTimetableEntries({ classId, teacherId, termId });
+      return res.json(entries);
+    } catch (error: any) {
+      console.error('Error fetching timetable:', error);
+      return res.status(500).json({ message: 'Failed to fetch timetable', error: error.message });
+    }
+  });
+
+  app.post('/api/admin/timetable', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+    try {
+      const { teacherId, classId, subjectId, dayOfWeek, startTime, endTime, location, termId } = req.body;
+      if (!teacherId || !classId || !subjectId || !dayOfWeek || !startTime || !endTime) {
+        return res.status(400).json({ message: 'Missing required fields' });
+      }
+      // Conflict check: teacher already scheduled at overlapping time on same day
+      const all = await storage.getAllTimetableEntries({ teacherId });
+      const conflict = all.find(e => {
+        if (e.dayOfWeek !== dayOfWeek) return false;
+        const eStart = e.startTime; const eEnd = e.endTime;
+        return startTime < eEnd && endTime > eStart;
+      });
+      if (conflict) {
+        return res.status(409).json({
+          message: `Teacher is already scheduled for ${conflict.subjectName} (${conflict.className}) at this time on ${dayOfWeek}.`,
+          conflict,
+        });
+      }
+      const entry = await storage.createTimetableEntry({ teacherId, classId: parseInt(classId), subjectId: parseInt(subjectId), dayOfWeek, startTime, endTime, location: location || null, termId: termId ? parseInt(termId) : null });
+      return res.status(201).json(entry);
+    } catch (error: any) {
+      console.error('Error creating timetable entry:', error);
+      return res.status(500).json({ message: 'Failed to create timetable entry', error: error.message });
+    }
+  });
+
+  app.put('/api/admin/timetable/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { teacherId, classId, subjectId, dayOfWeek, startTime, endTime, location, termId } = req.body;
+      // Conflict check: teacher already scheduled at overlapping time on same day (excluding current entry)
+      if (teacherId && dayOfWeek && startTime && endTime) {
+        const all = await storage.getAllTimetableEntries({ teacherId });
+        const conflict = all.find(e => {
+          if (e.id === id) return false;
+          if (e.dayOfWeek !== dayOfWeek) return false;
+          return startTime < e.endTime && endTime > e.startTime;
+        });
+        if (conflict) {
+          return res.status(409).json({
+            message: `Teacher is already scheduled for ${conflict.subjectName} (${conflict.className}) at this time on ${dayOfWeek}.`,
+            conflict,
+          });
+        }
+      }
+      const updated = await storage.updateTimetableEntry(id, {
+        ...(teacherId && { teacherId }),
+        ...(classId && { classId: parseInt(classId) }),
+        ...(subjectId && { subjectId: parseInt(subjectId) }),
+        ...(dayOfWeek && { dayOfWeek }),
+        ...(startTime && { startTime }),
+        ...(endTime && { endTime }),
+        location: location ?? null,
+        ...(termId !== undefined && { termId: termId ? parseInt(termId) : null }),
+      });
+      if (!updated) return res.status(404).json({ message: 'Timetable entry not found' });
+      return res.json(updated);
+    } catch (error: any) {
+      console.error('Error updating timetable entry:', error);
+      return res.status(500).json({ message: 'Failed to update timetable entry', error: error.message });
+    }
+  });
+
+  app.delete('/api/admin/timetable/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteTimetableEntry(id);
+      if (!deleted) return res.status(404).json({ message: 'Timetable entry not found' });
+      return res.json({ message: 'Timetable entry deleted successfully' });
+    } catch (error: any) {
+      console.error('Error deleting timetable entry:', error);
+      return res.status(500).json({ message: 'Failed to delete timetable entry', error: error.message });
+    }
+  });
+
+  app.get('/api/teacher/timetable', authenticateUser, authorizeRoles(ROLES.TEACHER), async (req: Request, res: Response) => {
+    try {
+      const teacherId = req.user!.id;
+      const entries = await storage.getAllTimetableEntries({ teacherId });
+      return res.json(entries);
+    } catch (error: any) {
+      console.error('Error fetching teacher timetable:', error);
+      return res.status(500).json({ message: 'Failed to fetch timetable', error: error.message });
+    }
+  });
+  // ==================== END ADMIN TIMETABLE ROUTES ====================
+
+  // ==================== STUDENT TIMETABLE ROUTE ====================
+  app.get('/api/student/timetable', authenticateUser, authorizeRoles(ROLES.STUDENT), async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+
+      const studentRecord = await storage.getStudentByUserId(userId);
+      if (!studentRecord) {
+        return res.status(404).json({ message: 'Student record not found' });
+      }
+
+      const classId = (studentRecord as any).classId;
+      if (!classId) {
+        return res.json({ schedule: [], className: null, classInfo: null });
+      }
+
+      const classInfo = await db.select().from(schema.classes).where(eq(schema.classes.id, classId)).limit(1);
+
+      const schedule = await db
+        .select({
+          id: schema.timetable.id,
+          dayOfWeek: schema.timetable.dayOfWeek,
+          startTime: schema.timetable.startTime,
+          endTime: schema.timetable.endTime,
+          location: schema.timetable.location,
+          subjectId: schema.timetable.subjectId,
+          subjectName: schema.subjects.name,
+          subjectCode: schema.subjects.code,
+          teacherId: schema.timetable.teacherId,
+          teacherFirstName: schema.users.firstName,
+          teacherLastName: schema.users.lastName,
+        })
+        .from(schema.timetable)
+        .leftJoin(schema.subjects, eq(schema.timetable.subjectId, schema.subjects.id))
+        .leftJoin(schema.users, eq(schema.timetable.teacherId, schema.users.id))
+        .where(eq(schema.timetable.classId, classId))
+        .orderBy(schema.timetable.dayOfWeek, schema.timetable.startTime);
+
+      return res.json({
+        schedule,
+        className: classInfo[0]?.name || null,
+        classInfo: classInfo[0] || null,
+      });
+    } catch (error: any) {
+      console.error('Error fetching student timetable:', error);
+      return res.status(500).json({ message: 'Failed to fetch timetable', error: error.message });
+    }
+  });
+  // ==================== END STUDENT TIMETABLE ROUTE ====================
+
+  // ==================== SCHOOL EVENTS / CALENDAR ROUTES ====================
+
+  // GET all events (authenticated - all roles can view, active only)
+  app.get('/api/events', authenticateUser, async (req, res) => {
+    try {
+      const { eventType, startDate, endDate } = req.query;
+      const filters: any = { isActive: true };
+      if (eventType && eventType !== 'all') filters.eventType = eventType as string;
+      if (startDate) filters.startDate = startDate as string;
+      if (endDate) filters.endDate = endDate as string;
+      const events = await storage.getSchoolEvents(filters);
+      return res.json(events);
+    } catch (error: any) {
+      console.error('Error fetching events:', error);
+      return res.status(500).json({ message: 'Failed to fetch events', error: error.message });
+    }
+  });
+
+  // GET all events for admin (includes inactive)
+  app.get('/api/admin/events', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const { eventType, startDate, endDate } = req.query;
+      const filters: any = {};
+      if (eventType && eventType !== 'all') filters.eventType = eventType as string;
+      if (startDate) filters.startDate = startDate as string;
+      if (endDate) filters.endDate = endDate as string;
+      const events = await storage.getSchoolEvents(filters);
+      return res.json(events);
+    } catch (error: any) {
+      console.error('Error fetching admin events:', error);
+      return res.status(500).json({ message: 'Failed to fetch events', error: error.message });
+    }
+  });
+
+  // GET single event
+  app.get('/api/events/:id', authenticateUser, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const event = await storage.getSchoolEvent(id);
+      if (!event) return res.status(404).json({ message: 'Event not found' });
+      return res.json(event);
+    } catch (error: any) {
+      return res.status(500).json({ message: 'Failed to fetch event', error: error.message });
+    }
+  });
+
+  // POST create event (admin only)
+  app.post('/api/admin/events', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const data = {
+        ...req.body,
+        createdBy: req.user!.id,
+        isActive: req.body.isActive !== undefined ? req.body.isActive : true,
+        isAllDay: req.body.isAllDay !== undefined ? req.body.isAllDay : true,
+      };
+      const event = await storage.createSchoolEvent(data);
+      return res.status(201).json(event);
+    } catch (error: any) {
+      console.error('Error creating event:', error);
+      return res.status(500).json({ message: 'Failed to create event', error: error.message });
+    }
+  });
+
+  // PUT update event (admin only)
+  app.put('/api/admin/events/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const event = await storage.updateSchoolEvent(id, req.body);
+      if (!event) return res.status(404).json({ message: 'Event not found' });
+      return res.json(event);
+    } catch (error: any) {
+      console.error('Error updating event:', error);
+      return res.status(500).json({ message: 'Failed to update event', error: error.message });
+    }
+  });
+
+  // DELETE event (admin only)
+  app.delete('/api/admin/events/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteSchoolEvent(id);
+      if (!deleted) return res.status(404).json({ message: 'Event not found' });
+      return res.json({ message: 'Event deleted successfully' });
+    } catch (error: any) {
+      console.error('Error deleting event:', error);
+      return res.status(500).json({ message: 'Failed to delete event', error: error.message });
+    }
+  });
+
+  // ==================== END SCHOOL EVENTS / CALENDAR ROUTES ====================
 
   const httpServer = createServer(app);
   return httpServer;

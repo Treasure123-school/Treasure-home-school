@@ -17,17 +17,28 @@ const StudentStudyResources = lazy(() => import('@/pages/portal/StudentStudyReso
 const StudentReportCard = lazy(() => import('@/pages/portal/StudentReportCard'));
 const StudentSubjects = lazy(() => import('@/pages/portal/StudentSubjects'));
 const StudentSchemeOfWork = lazy(() => import('@/pages/portal/StudentSchemeOfWork'));
+const StudentClassSchedule = lazy(() => import('@/pages/portal/StudentClassSchedule'));
+const StudentAssignments = lazy(() => import('@/pages/portal/StudentAssignments'));
+const StudentLibrary = lazy(() => import('@/pages/portal/StudentLibrary'));
+const StudentHelp = lazy(() => import('@/pages/portal/StudentHelp'));
+const StudentExtracurricular = lazy(() => import('@/pages/portal/StudentExtracurricular'));
+const StudentForum = lazy(() => import('@/pages/portal/StudentForum'));
 const PortalGallery = lazy(() => import('@/pages/portal/Gallery'));
 const PortalComingSoon = lazy(() => import('@/pages/portal/PortalComingSoon'));
 
+const TeacherTimetable = lazy(() => import('@/pages/portal/TeacherTimetable'));
 const TeacherDashboard = lazy(() => import('@/pages/portal/TeacherDashboard'));
+const TeacherClasses = lazy(() => import('@/pages/portal/TeacherClasses'));
+const TeacherClassDetail = lazy(() => import('@/pages/portal/TeacherClassDetail'));
+const TeacherAttendancePage = lazy(() => import('@/pages/portal/TeacherAttendancePage'));
+const TeacherMessages = lazy(() => import('@/pages/portal/TeacherMessages'));
+const TeacherAnnouncements = lazy(() => import('@/pages/portal/TeacherAnnouncements'));
 const TeacherProfile = lazy(() => import('@/pages/portal/TeacherProfile'));
 const TeacherProfileAssignmentDashboard = lazy(() => import('@/pages/portal/TeacherProfileAssignmentDashboard'));
 const TeacherGradingQueue = lazy(() => import('@/pages/portal/TeacherGradingQueue'));
 const TeacherClassResults = lazy(() => import('@/pages/portal/TeacherClassResults'));
 const TeacherExamResults = lazy(() => import('@/pages/portal/TeacherExamResults'));
 const ExamManagement = lazy(() => import('@/pages/portal/ExamManagement'));
-const CreateExam = lazy(() => import('@/pages/portal/CreateExam'));
 const TeacherExamAnalytics = lazy(() => import('@/pages/portal/TeacherExamAnalytics'));
 const TeacherReportCards = lazy(() => import('@/pages/portal/TeacherReportCards'));
 const TeacherRecentExamResults = lazy(() => import('@/pages/portal/TeacherRecentExamResults'));
@@ -37,10 +48,8 @@ const AdminDashboard = lazy(() => import('@/pages/portal/AdminDashboard'));
 const VacancyManagement = lazy(() => import('@/pages/portal/VacancyManagement'));
 const UserManagement = lazy(() => import('@/pages/portal/UserManagement'));
 const AuditLogs = lazy(() => import('@/pages/portal/AuditLogs'));
-const ProfileCompletionMonitoring = lazy(() => import('@/pages/portal/ProfileCompletionMonitoring'));
 const StudentManagement = lazy(() => import('@/pages/portal/StudentManagement'));
 const TeachersManagement = lazy(() => import('@/pages/portal/TeachersManagement'));
-const TeacherProfileVerification = lazy(() => import('@/pages/portal/TeacherProfileVerification'));
 const ClassesManagement = lazy(() => import('@/pages/portal/ClassesManagement'));
 const SubjectsManagement = lazy(() => import('@/pages/portal/SubjectsManagement'));
 const StudentSubjectAssignment = lazy(() => import('@/pages/portal/StudentSubjectAssignment'));
@@ -63,9 +72,17 @@ const ReportCommentTemplates = lazy(() => import('@/pages/portal/ReportCommentTe
 const SyllabusTopicsManager = lazy(() => import('@/pages/portal/SyllabusTopicsManager'));
 const QuestionBankManager = lazy(() => import('@/pages/portal/QuestionBankManager'));
 const ExamPaymentManagement = lazy(() => import('@/pages/portal/ExamPaymentManagement'));
+const AttendanceManagement = lazy(() => import('@/pages/portal/AttendanceManagement'));
+const ParentManagement = lazy(() => import('@/pages/portal/ParentManagement'));
+const AdminTimetable = lazy(() => import('@/pages/portal/AdminTimetable'));
 
 const ParentDashboard = lazy(() => import('@/pages/portal/ParentDashboard'));
 const ParentReportCards = lazy(() => import('@/pages/portal/ParentReportCards'));
+
+const EventsManagement = lazy(() => import('@/pages/portal/EventsManagement'));
+const AdminCalendarPage = lazy(() => import('@/pages/portal/AdminCalendarPage'));
+const SharedCalendarPage = lazy(() => import('@/pages/portal/SharedCalendarPage'));
+const SharedEventsPage = lazy(() => import('@/pages/portal/SharedEventsPage'));
 
 export function StudentPortalShell() {
   return <PortalShell role="student" />;
@@ -108,19 +125,29 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/student/study-resources" component={StudentStudyResources} />
             <Route path="/portal/student/subjects" component={StudentSubjects} />
             <Route path="/portal/student/scheme-of-work" component={StudentSchemeOfWork} />
+            <Route path="/portal/student/timetable" component={StudentClassSchedule} />
+            <Route path="/portal/student/assignments" component={StudentAssignments} />
+            <Route path="/portal/student/library" component={StudentLibrary} />
+            <Route path="/portal/student/help" component={StudentHelp} />
+            <Route path="/portal/student/extracurricular" component={StudentExtracurricular} />
+            <Route path="/portal/student/forum" component={StudentForum} />
+            <Route path="/portal/student/calendar" component={SharedCalendarPage} />
+            <Route path="/portal/student/events" component={SharedEventsPage} />
             <Route path="/portal/student/*" component={PortalComingSoon} />
           </Switch>
         )}
         {role === 'teacher' && (
           <Switch>
             <Route path="/portal/teacher" component={TeacherDashboard} />
+            <Route path="/portal/teacher/classes/:classId" component={TeacherClassDetail} />
+            <Route path="/portal/teacher/classes" component={TeacherClasses} />
+            <Route path="/portal/teacher/attendance" component={TeacherAttendancePage} />
             <Route path="/portal/teacher/profile" component={TeacherProfile} />
             <Route path="/portal/teacher/profile-assignments" component={TeacherProfileAssignmentDashboard} />
             <Route path="/portal/teacher/coming-soon" component={PortalComingSoon} />
             <Route path="/portal/teacher/grading-queue" component={TeacherGradingQueue} />
             <Route path="/portal/teacher/results/class/:classId" component={TeacherClassResults} />
             <Route path="/portal/teacher/results/exam/:examId" component={TeacherExamResults} />
-            <Route path="/portal/teacher/exams/create" component={CreateExam} />
             <Route path="/portal/teacher/exams/manage" component={ExamManagement} />
             <Route path="/portal/teacher/exams" component={ExamManagement} />
             <Route path="/portal/teacher/exam-analytics" component={TeacherExamAnalytics} />
@@ -128,6 +155,11 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/teacher/recent-exam-results" component={TeacherRecentExamResults} />
             <Route path="/portal/teacher/syllabus-topics" component={SyllabusTopicsManager} />
             <Route path="/portal/teacher/question-bank" component={QuestionBankManager} />
+            <Route path="/portal/teacher/timetable" component={TeacherTimetable} />
+            <Route path="/portal/teacher/messages" component={TeacherMessages} />
+            <Route path="/portal/teacher/announcements" component={TeacherAnnouncements} />
+            <Route path="/portal/teacher/calendar" component={SharedCalendarPage} />
+            <Route path="/portal/teacher/events" component={SharedEventsPage} />
             <Route path="/portal/teacher/*" component={PortalComingSoon} />
           </Switch>
         )}
@@ -137,10 +169,8 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/job-vacancies" component={VacancyManagement} />
             <Route path="/portal/admin/users" component={UserManagement} />
             <Route path="/portal/admin/audit-logs" component={AuditLogs} />
-            <Route path="/portal/admin/profile-completion" component={ProfileCompletionMonitoring} />
             <Route path="/portal/admin/students" component={StudentManagement} />
             <Route path="/portal/admin/teachers" component={TeachersManagement} />
-            <Route path="/portal/admin/teacher-verification" component={TeacherProfileVerification} />
             <Route path="/portal/admin/classes" component={ClassesManagement} />
             <Route path="/portal/admin/subjects" component={SubjectsManagement} />
             <Route path="/portal/admin/student-subjects" component={StudentSubjectAssignment} />
@@ -165,13 +195,17 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/results/grades" component={PortalComingSoon} />
             <Route path="/portal/admin/results/processing" component={PortalComingSoon} />
             <Route path="/portal/admin/results/publishing" component={AdminResultPublishing} />
-            <Route path="/portal/admin/academics/timetable" component={PortalComingSoon} />
+            <Route path="/portal/admin/academics/timetable" component={AdminTimetable} />
             <Route path="/portal/admin/academics/curriculum" component={PortalComingSoon} />
             <Route path="/portal/admin/profile" component={AdminProfile} />
             <Route path="/portal/admin/comment-templates" component={ReportCommentTemplates} />
             <Route path="/portal/admin/syllabus-topics" component={SyllabusTopicsManager} />
             <Route path="/portal/admin/question-bank" component={QuestionBankManager} />
             <Route path="/portal/admin/exam-payments" component={ExamPaymentManagement} />
+            <Route path="/portal/admin/attendance" component={AttendanceManagement} />
+            <Route path="/portal/admin/parents" component={ParentManagement} />
+            <Route path="/portal/admin/calendar" component={AdminCalendarPage} />
+            <Route path="/portal/admin/events" component={EventsManagement} />
             <Route path="/portal/admin/*" component={PortalComingSoon} />
           </Switch>
         )}
@@ -179,6 +213,8 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
           <Switch>
             <Route path="/portal/parent" component={ParentDashboard} />
             <Route path="/portal/parent/reports" component={ParentReportCards} />
+            <Route path="/portal/parent/calendar" component={SharedCalendarPage} />
+            <Route path="/portal/parent/events" component={SharedEventsPage} />
             <Route path="/portal/parent/*" component={PortalComingSoon} />
           </Switch>
         )}
