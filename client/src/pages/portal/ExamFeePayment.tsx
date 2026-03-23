@@ -11,8 +11,14 @@ import { useToast } from "@/hooks/use-toast";
 import {
   CreditCard, CheckCircle2, AlertCircle, Loader2, ArrowLeft,
   ShieldCheck, Receipt, GraduationCap, Calendar, DollarSign,
-  ExternalLink, KeyRound,
+  ExternalLink, KeyRound, Copy, RefreshCcw, Landmark
 } from "lucide-react";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 type PaymentStep = "recovering" | "check" | "paying" | "verifying" | "success" | "failed";
 
@@ -25,6 +31,7 @@ export default function ExamFeePayment() {
   const [manualRef, setManualRef] = useState("");
   const [manualRefError, setManualRefError] = useState("");
   const [showManualInput, setShowManualInput] = useState(false);
+  const [activeTab, setActiveTab] = useState("card");
   const popupRef = useRef<Window | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -218,6 +225,20 @@ export default function ExamFeePayment() {
     },
   });
 
+  // ── Monnify Virtual Account ────────────────────────────────────────────────
+  const monnifyAccountQuery = useQuery({
+    queryKey: ["/api/payments/monnify/create-account"],
+    enabled: activeTab === "transfer" && !isAlreadyPaid && step === "check",
+  });
+  const monnifyAccount: any = monnifyAccountQuery.data;
+
+  const handleCopyAccount = () => {
+    if (monnifyAccount?.accountNumber) {
+      navigator.clipboard.writeText(monnifyAccount.accountNumber);
+      toast({ title: "Account number copied!" });
+    }
+  };
+
   // ── Initiate mutation ───────────────────────────────────────────────────────
   const initiateMutation = useMutation({
     mutationFn: async () => {
@@ -377,7 +398,7 @@ export default function ExamFeePayment() {
         variant="ghost"
         size="sm"
         onClick={() => navigate("/portal/student/exams")}
-        className="gap-2"
+        className="gap-2 hover:bg-primary/5 transition-colors"
         data-testid="button-back-to-exams"
       >
         <ArrowLeft className="h-4 w-4" /> Back to Exams
@@ -385,63 +406,69 @@ export default function ExamFeePayment() {
 
       {/* ── Success ── */}
       {step === "success" && (
-        <Card className="border-green-200 dark:border-green-800">
-          <CardContent className="pt-8 pb-6 text-center space-y-4">
-            <div className="mx-auto w-20 h-20 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center">
-              <CheckCircle2 className="h-12 w-12 text-green-600 dark:text-green-400" />
+        <Card className="overflow-hidden border-none shadow-2xl animate-in zoom-in-95 duration-500">
+          <div className="h-2 bg-green-500" />
+          <CardContent className="pt-10 pb-8 text-center space-y-6">
+            <div className="mx-auto w-24 h-24 rounded-full bg-green-500/10 flex items-center justify-center relative">
+              <div className="absolute inset-0 bg-green-500/20 blur-2xl rounded-full animate-pulse" />
+              <CheckCircle2 className="h-14 w-14 text-green-600 relative drop-shadow-sm" />
             </div>
-            <div>
-              <p className="font-bold text-2xl text-green-700 dark:text-green-400">Payment Successful!</p>
-              <p className="text-muted-foreground text-sm mt-2">
-                Your exam access has been unlocked for this term.
+            <div className="space-y-2">
+              <p className="font-black text-3xl tracking-tight text-green-700 dark:text-green-400">Payment Successful!</p>
+              <p className="text-muted-foreground text-sm max-w-[280px] mx-auto leading-relaxed">
+                Your exam access has been unlocked. You can now take all available exams for this term.
               </p>
             </div>
-            <Button onClick={() => navigate("/portal/student/exams")} data-testid="button-go-to-exams">
-              <GraduationCap className="mr-2 h-4 w-4" /> Go to My Exams
+            <Button 
+              className="w-full h-14 text-lg font-bold shadow-lg shadow-green-500/20 hover:shadow-green-500/30 transition-all hover:scale-[1.02] active:scale-[0.98]" 
+              onClick={() => navigate("/portal/student/exams")} 
+              data-testid="button-go-to-exams"
+            >
+              <GraduationCap className="mr-2 h-6 w-6" /> Go to My Exams
             </Button>
           </CardContent>
         </Card>
       )}
 
-      {/* ── Waiting for payment ── */}
+      {/* ── Waiting for payment (Paystack Popup) ── */}
       {step === "paying" && (
-        <Card className="border-blue-200 dark:border-blue-800">
-          <CardContent className="pt-6 space-y-4 text-center">
-            <div className="mx-auto w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-600 dark:text-blue-400" />
+        <Card className="overflow-hidden border-none shadow-xl animate-in fade-in duration-300">
+          <div className="h-1.5 bg-blue-500 animate-pulse" />
+          <CardContent className="pt-8 space-y-6 text-center">
+            <div className="mx-auto w-20 h-20 rounded-full bg-blue-500/10 flex items-center justify-center">
+              <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
             </div>
-            <div>
-              <p className="font-bold text-lg">Waiting for Payment</p>
-              <p className="text-muted-foreground text-sm mt-1">
-                Complete your payment in the Paystack window that just opened.
+            <div className="space-y-1">
+              <p className="font-bold text-xl">Waiting for Payment</p>
+              <p className="text-muted-foreground text-sm max-w-xs mx-auto">
+                Please complete your payment in the secure window provided.
               </p>
             </div>
-            <div className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">
-              <p>If the payment window did not open, click the button below.</p>
+            <div className="rounded-2xl bg-muted/50 p-4 border border-blue-500/10 text-sm text-muted-foreground leading-relaxed">
+              <p>Keep this page open while you pay. We'll automatically detect your payment.</p>
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3">
               {authorizationUrl && (
                 <Button
                   onClick={handleOpenLink}
                   variant="outline"
-                  className="gap-2"
+                  className="h-12 border-blue-500/20 hover:bg-blue-500/5 gap-2 font-bold"
                   data-testid="button-open-payment"
                 >
-                  <ExternalLink className="h-4 w-4" /> Open Payment Window
+                  <ExternalLink className="h-4 w-4" /> Open Payment Window Manually
                 </Button>
               )}
               <Button
                 onClick={handleVerifyManually}
                 disabled={verifyMutation.isPending}
-                variant="outline"
-                className="gap-2"
+                className="h-12 font-bold gap-2 shadow-md shadow-primary/10"
                 data-testid="button-verify-payment"
               >
-                {verifyMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                {verifyMutation.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShieldCheck className="h-5 w-5" />}
                 I've Completed Payment — Verify Now
               </Button>
-              <Button variant="ghost" size="sm" onClick={handleRetry} className="text-muted-foreground">
-                Cancel and start over
+              <Button variant="ghost" size="sm" onClick={handleRetry} className="text-muted-foreground hover:text-red-500 transition-colors">
+                Cancel and use a different method
               </Button>
             </div>
           </CardContent>
@@ -450,114 +477,119 @@ export default function ExamFeePayment() {
 
       {/* ── Verifying ── */}
       {step === "verifying" && (
-        <Card>
-          <CardContent className="pt-8 pb-6 text-center space-y-3">
-            <Loader2 className="mx-auto h-10 w-10 animate-spin text-primary" />
-            <p className="font-semibold text-lg">Verifying Payment…</p>
-            <p className="text-muted-foreground text-sm">
-              Please wait while we confirm your payment with Paystack.
-            </p>
+        <Card className="overflow-hidden border-none shadow-xl">
+          <CardContent className="pt-12 pb-10 text-center space-y-4">
+            <div className="relative mx-auto w-16 h-16">
+              <div className="absolute inset-0 bg-primary/20 blur-xl animate-pulse rounded-full" />
+              <Loader2 className="mx-auto h-12 w-12 animate-spin text-primary relative" />
+            </div>
+            <div className="space-y-1">
+              <p className="font-bold text-xl">Verifying Transaction</p>
+              <p className="text-muted-foreground text-sm animate-pulse">
+                Talking to payment gateways...
+              </p>
+            </div>
           </CardContent>
         </Card>
       )}
 
-      {/* ── Failed ── */}
+      {/* ── Failed / Problem ── */}
       {step === "failed" && (
-        <Card className="border-red-200 dark:border-red-800">
-          <CardContent className="pt-6 space-y-4">
-            <div className="flex flex-col items-center text-center gap-3">
-              <div className="w-16 h-16 rounded-full bg-red-100 dark:bg-red-900 flex items-center justify-center">
-                <AlertCircle className="h-10 w-10 text-red-600 dark:text-red-400" />
+        <Card className="overflow-hidden border-none shadow-xl animate-in slide-in-from-top-4 duration-300">
+          <div className="h-1.5 bg-red-500" />
+          <CardContent className="pt-8 space-y-6">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center shadow-inner">
+                <AlertCircle className="h-12 w-12 text-red-600" />
               </div>
-              <div>
-                <p className="font-bold text-lg text-red-700 dark:text-red-400">Payment Not Confirmed</p>
-                <p className="text-muted-foreground text-sm mt-1">
-                  We could not automatically confirm your payment.
-                  {paymentReference && (
-                    <> Your reference was: <span className="font-mono font-semibold">{paymentReference}</span></>
-                  )}
+              <div className="space-y-1">
+                <p className="font-bold text-xl text-red-700 dark:text-red-400 uppercase tracking-tight">Payment Not Confirmed</p>
+                <p className="text-muted-foreground text-sm leading-relaxed max-w-xs mx-auto">
+                  We couldn't automatically verify your payment at this moment.
                 </p>
               </div>
-              <div className="flex gap-3 justify-center flex-wrap">
-                {paymentReference && (
-                  <Button
-                    variant="outline"
-                    onClick={handleVerifyManually}
-                    disabled={verifyMutation.isPending || verifyByRefMutation.isPending}
-                    data-testid="button-retry-verify"
-                  >
-                    {verifyMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Retry Verification
-                  </Button>
-                )}
-                <Button
-                  onClick={handleRetry}
-                  disabled={verifyMutation.isPending || verifyByRefMutation.isPending}
-                  data-testid="button-try-again"
-                >
-                  Try Again
-                </Button>
-              </div>
             </div>
+
+            <div className="flex flex-col gap-3 pt-2">
+              {paymentReference && (
+                <Button
+                  variant="outline"
+                  className="h-12 border-red-500/20 hover:bg-red-500/5 font-bold gap-2"
+                  onClick={handleVerifyManually}
+                  disabled={verifyMutation.isPending || verifyByRefMutation.isPending}
+                  data-testid="button-retry-verify"
+                >
+                  {verifyMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  <RefreshCcw className="h-4 w-4" /> Retry Automated Verification
+                </Button>
+              )}
+              <Button
+                onClick={handleRetry}
+                className="h-12 font-bold shadow-lg"
+                data-testid="button-try-again"
+              >
+                Go Back and Try a Different Method
+              </Button>
+            </div>
+
             {/* Manual Reference Entry */}
-            <div className="border-t pt-4">
+            <div className="border-t border-dashed pt-6 mt-2 space-y-4">
               <button
-                className="flex items-center gap-2 text-sm text-primary hover:underline mx-auto"
+                className="flex items-center gap-2 text-xs font-black text-primary/60 hover:text-primary tracking-widest uppercase mx-auto transition-colors"
                 onClick={() => { setShowManualInput((v) => !v); setManualRefError(""); }}
                 data-testid="button-toggle-manual-ref"
               >
                 <KeyRound className="h-4 w-4" />
-                {showManualInput ? "Hide" : "Have a different Paystack reference? Enter it manually"}
+                {showManualInput ? "Hide Manual Entry" : "I have a different Reference ID"}
               </button>
+              
               {showManualInput && (
-                <div className="mt-3 space-y-3">
-                  <div className="rounded-lg border bg-muted/40 p-3 space-y-2 text-xs">
-                    <p className="font-semibold text-foreground">Where to find your reference:</p>
-                    <ul className="space-y-2 text-muted-foreground list-disc list-inside mt-2">
-                      <li>
-                        <span className="font-medium text-foreground">Email Receipt:</span> If you received a payment confirmation email, use the <span className="font-mono bg-background rounded px-1">Paystack Reference</span> shown in the email.
-                      </li>
-                      <li>
-                        <span className="font-medium text-foreground">OPay/Bank receipt:</span> Use the <span className="font-mono bg-background rounded px-1">Merchant Order No.</span> or <span className="font-mono bg-background rounded px-1">Session ID</span>.
-                      </li>
-                    </ul>
-                    <div className="mt-3 p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-amber-800 dark:text-amber-300">
-                      <p className="font-medium">⚠️ Important</p>
-                      <p>Do NOT use the plain "Transaction No." from your bank app. Only use the Paystack Reference or Merchant Order No.</p>
+                <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="p-4 rounded-xl bg-muted/50 border space-y-3 text-xs">
+                    <div className="space-y-1">
+                      <p className="font-black uppercase tracking-wider text-foreground/70">Find your reference:</p>
+                      <ul className="space-y-1.5 text-muted-foreground list-disc list-inside mt-2 leading-relaxed">
+                        <li><span className="font-bold text-foreground">OPay:</span> Use the <span className="font-mono bg-background px-1 rounded border">Transaction ID</span></li>
+                        <li><span className="font-bold text-foreground">Bank/Email:</span> Use the <span className="font-mono bg-background px-1 rounded border">Payment Reference</span></li>
+                      </ul>
                     </div>
                   </div>
+                  
                   <div className="space-y-1.5">
-                    <Label htmlFor="manual-ref-input">Merchant Order No. / Paystack Reference</Label>
-                    <Input
-                      id="manual-ref-input"
-                      placeholder="e.g. paystack_5950722615_n86mp"
-                      value={manualRef}
-                      onChange={(e) => { setManualRef(e.target.value); setManualRefError(""); }}
-                      disabled={verifyByRefMutation.isPending}
-                      data-testid="input-manual-paystack-ref"
-                      autoComplete="off"
-                      className="font-mono"
-                    />
+                    <Label htmlFor="manual-ref-input" className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/70">Reference / ID</Label>
+                    <div className="relative">
+                      <Input
+                        id="manual-ref-input"
+                        placeholder="e.g. MNFY_12345678 or Transaction ID"
+                        value={manualRef}
+                        onChange={(e) => { setManualRef(e.target.value); setManualRefError(""); }}
+                        disabled={verifyByRefMutation.isPending}
+                        className="h-12 font-mono text-sm pl-4 pr-10 border-2 focus:border-primary/50"
+                        autoComplete="off"
+                      />
+                      {manualRef.length > 0 && <CheckCircle2 className={`absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 ${manualRef.length > 5 ? 'text-green-500' : 'text-muted-foreground/30'}`} />}
+                    </div>
                   </div>
+
                   {manualRefError && (
-                    <div className="flex items-start gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
+                    <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start gap-2 text-xs text-red-600 animate-in shake-1">
                       <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                      <span>{manualRefError}</span>
+                      <p className="font-medium leading-relaxed">{manualRefError}</p>
                     </div>
                   )}
+
                   <Button
-                    className="w-full"
+                    className="w-full h-12 font-bold shadow-md shadow-primary/10"
                     onClick={() => {
                       if (!manualRef.trim()) { setManualRefError("Please enter your reference."); return; }
                       verifyByRefMutation.mutate(manualRef.trim());
                     }}
                     disabled={verifyByRefMutation.isPending || !manualRef.trim()}
-                    data-testid="button-submit-manual-ref"
                   >
                     {verifyByRefMutation.isPending ? (
-                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying…</>
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying Reference...</>
                     ) : (
-                      <><CheckCircle2 className="mr-2 h-4 w-4" /> Verify & Unlock Exams</>
+                      <><ShieldCheck className="mr-2 h-5 w-5" /> Submit for Verification</>
                     )}
                   </Button>
                 </div>
@@ -567,86 +599,209 @@ export default function ExamFeePayment() {
         </Card>
       )}
 
-      {/* ── Initial pay screen ── */}
+      {/* ── Main Check (Initial State) ── */}
       {step === "check" && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-primary" />
-              Exam Fee Payment
+        <Card className="overflow-hidden border-none shadow-2xl bg-card transition-all duration-500">
+          <div className="h-2 bg-gradient-to-r from-primary via-primary/80 to-primary/60" />
+          <CardHeader className="pb-6">
+            <CardTitle className="text-3xl font-black tracking-tight flex items-center gap-3">
+              <Landmark className="h-8 w-8 text-primary drop-shadow-sm" />
+              Payment
             </CardTitle>
-            <CardDescription>
-              Pay your exam fee to unlock access to all exams for this term.
+            <CardDescription className="text-base text-muted-foreground font-medium leading-relaxed">
+              Unlock your exam access for the current academic term.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-5">
-            {currentTerm && (
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted">
-                <Calendar className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Current Term</p>
-                  <p className="font-semibold text-sm">
-                    {currentTerm.name} {currentTerm.year}
-                  </p>
+          
+          <CardContent className="space-y-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {currentTerm && (
+                <div className="flex items-center gap-4 p-5 rounded-2xl bg-primary/5 border border-primary/10 group hover:bg-primary/10 transition-colors">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/10 group-hover:scale-110 transition-transform shadow-sm">
+                    <Calendar className="h-6 w-6" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] font-black text-primary/60 uppercase tracking-[0.2em]">Active Term</p>
+                    <p className="font-bold text-foreground leading-tight">
+                      {currentTerm.name} {currentTerm.year}
+                    </p>
+                  </div>
                 </div>
-              </div>
-            )}
-
-            <div className="flex items-center justify-between p-4 rounded-lg border bg-card">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <DollarSign className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Exam Fee</p>
-                  <p className="font-bold text-2xl">₦{feeAmount.toLocaleString()}</p>
-                </div>
-              </div>
-              <Badge variant="secondary">One-time payment</Badge>
-            </div>
-
-            <div className="space-y-2 text-sm text-muted-foreground">
-              <div className="flex items-start gap-2">
-                <ShieldCheck className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                <span>
-                  Payment is securely processed by Paystack. Your card details are never
-                  stored on our servers.
-                </span>
-              </div>
-              <div className="flex items-start gap-2">
-                <Receipt className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                <span>Your exam access is unlocked immediately after payment confirmation.</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
-                <span>
-                  This payment covers all exams for the current term. No duplicate charges.
-                </span>
-              </div>
-            </div>
-
-            <Button
-              className="w-full h-12 text-base font-semibold"
-              onClick={handlePayNow}
-              disabled={initiateMutation.isPending}
-              data-testid="button-pay-now"
-            >
-              {initiateMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Opening Payment Gateway…
-                </>
-              ) : (
-                <>
-                  <CreditCard className="mr-2 h-4 w-4" />
-                  Pay ₦{feeAmount.toLocaleString()} Now
-                </>
               )}
-            </Button>
 
-            <p className="text-center text-xs text-muted-foreground">
-              Powered by Paystack • Secured with SSL
-            </p>
+              <div className="flex items-center gap-4 p-5 rounded-2xl bg-green-500/5 border border-green-500/10 group hover:bg-green-500/10 transition-colors">
+                <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center text-green-600 border border-green-500/10 group-hover:scale-110 transition-transform shadow-sm">
+                  <DollarSign className="h-6 w-6" />
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-black text-green-600/60 uppercase tracking-[0.2em]">Amount Due</p>
+                  <p className="font-bold text-foreground text-xl leading-tight">₦{feeAmount.toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
+              <TabsList className="grid w-full grid-cols-2 p-1.5 bg-muted/50 rounded-2xl h-[60px] border border-muted-foreground/10">
+                <TabsTrigger value="card" className="rounded-xl font-black text-xs uppercase tracking-widest data-[state=active]:bg-background data-[state=active]:shadow-lg data-[state=active]:text-primary transition-all gap-2.5">
+                  <CreditCard className="h-4 w-4" />
+                  Card Payment
+                </TabsTrigger>
+                <TabsTrigger value="transfer" className="rounded-xl font-black text-xs uppercase tracking-widest data-[state=active]:bg-background data-[state=active]:shadow-lg data-[state=active]:text-primary transition-all gap-2.5">
+                  <Landmark className="h-4 w-4" />
+                  Bank Transfer
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="card" className="space-y-6 animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
+                <div className="p-5 rounded-2xl bg-blue-500/5 border border-blue-500/10 flex items-start gap-4">
+                  <ShieldCheck className="h-6 w-6 text-blue-500 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-bold text-blue-900 dark:text-blue-300">Secure Online Payment</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Instant activation via Credit/Debit card. Your details are never stored and are fully protected by <span className="font-bold text-foreground">Paystack</span>.
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  className="w-full h-16 text-xl font-black shadow-2xl shadow-primary/20 hover:shadow-primary/40 transition-all hover:scale-[1.01] active:scale-[0.98] gap-4 rounded-2xl group"
+                  onClick={handlePayNow}
+                  disabled={initiateMutation.isPending}
+                >
+                  {initiateMutation.isPending ? (
+                    <>
+                      <Loader2 className="h-7 w-7 animate-spin opacity-50" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="h-7 w-7 group-hover:rotate-12 transition-transform" />
+                      PAY ₦{feeAmount.toLocaleString()} NOW
+                    </>
+                  )}
+                </Button>
+                
+                <div className="flex items-center justify-center gap-3 py-2 opacity-40">
+                  <div className="h-[0.5px] w-12 bg-foreground" />
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em]">SECURED BY PAYSTACK</p>
+                  <div className="h-[0.5px] w-12 bg-foreground" />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="transfer" className="space-y-6 animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
+                <div className="p-5 rounded-2xl bg-amber-500/5 border border-amber-500/10 flex items-start gap-4 shadow-sm">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 shrink-0">
+                    <AlertCircle className="h-6 w-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-bold text-amber-900 dark:text-amber-300 uppercase tracking-tight">Manual Transfer Instructions</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Transfer <span className="font-bold text-foreground">₦{feeAmount.toLocaleString()}</span> to your unique school account below. Your access will activate automatically.
+                    </p>
+                  </div>
+                </div>
+
+                {monnifyAccountQuery.isLoading ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-4">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-primary/20 blur-2xl animate-pulse rounded-full" />
+                      <Loader2 className="h-10 w-10 animate-spin text-primary relative" />
+                    </div>
+                    <p className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground/60 animate-pulse">Requesting Virtual Account...</p>
+                  </div>
+                ) : monnifyAccount ? (
+                  <div className="space-y-6">
+                    <div className="relative group">
+                      <div className="absolute -inset-1 bg-gradient-to-r from-primary/30 to-primary/5 rounded-[30px] blur-xl opacity-20 group-hover:opacity-100 transition duration-1000 group-hover:duration-200" />
+                      <div className="relative p-6 rounded-[24px] border border-primary/20 bg-card overflow-hidden shadow-xl">
+                        {/* Decorative background element */}
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
+                        
+                        <div className="space-y-5">
+                          <div className="flex justify-between items-center group/item cursor-pointer" onClick={handleCopyAccount}>
+                            <div className="space-y-1.5">
+                              <p className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-[0.2em] flex items-center gap-2">
+                                <Landmark className="h-3 w-3" /> Bank Name
+                              </p>
+                              <p className="font-black text-lg text-foreground tracking-tight underline-offset-4 decoration-primary/20">{monnifyAccount.bankName}</p>
+                            </div>
+                            <div className="h-10 w-10 rounded-full bg-muted/50 flex items-center justify-center text-muted-foreground group-hover/item:text-primary transition-colors">
+                              <ExternalLink className="h-4 w-4" />
+                            </div>
+                          </div>
+                          
+                          <div className="h-[1px] w-full bg-border" />
+                          
+                          <div className="flex justify-between items-end gap-4">
+                            <div className="space-y-2 flex-grow">
+                              <p className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-[0.2em]">Account Number</p>
+                              <code className="text-[2.75rem] font-black text-primary tracking-[-0.05em] tabular-nums leading-none block py-1">
+                                {monnifyAccount.accountNumber}
+                              </code>
+                            </div>
+                            <Button 
+                              variant="secondary" 
+                              className="h-14 px-6 rounded-2xl font-black text-xs uppercase tracking-widest bg-primary/10 text-primary border-none hover:bg-primary/20 transition-all shadow-lg active:scale-95 flex flex-col gap-0.5"
+                              onClick={handleCopyAccount}
+                            >
+                              <Copy className="h-5 w-5" />
+                              COPY
+                            </Button>
+                          </div>
+                          
+                          <div className="h-[1px] w-full bg-border" />
+
+                          <div className="space-y-1.5">
+                            <p className="text-[10px] font-black text-muted-foreground/60 uppercase tracking-[0.2em]">Account Name</p>
+                            <p className="font-bold text-foreground text-sm uppercase tracking-tight line-clamp-1">{monnifyAccount.accountName}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3 px-1">
+                      <div className="flex items-center gap-3 p-4 rounded-xl bg-muted/30 border border-muted-foreground/5 transition-all hover:bg-muted/50">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
+                        <span className="text-xs font-medium text-muted-foreground leading-relaxed">Assignment works with all Nigerian Banks & payment apps (OPay, Palmpay, Kuda).</span>
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      className="w-full h-14 text-sm font-black uppercase tracking-[0.1em] gap-3 border-2 border-primary/20 hover:border-primary/50 bg-background transition-all hover:bg-primary/5 rounded-2xl shadow-sm"
+                      onClick={() => statusQuery.refetch()}
+                      disabled={statusQuery.isRefetching}
+                    >
+                      {statusQuery.isRefetching ? (
+                        <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                      ) : (
+                        <RefreshCcw className="h-5 w-5 text-primary" />
+                      )}
+                      I'VE COMPLETED THE TRANSFER
+                    </Button>
+
+                    <p className="text-[10px] font-black text-center text-muted-foreground/40 uppercase tracking-[0.3em]">SECURED BY MONNIFY</p>
+                  </div>
+                ) : (
+                  <div className="text-center py-12 bg-red-500/5 rounded-[32px] border-2 border-dashed border-red-500/20 space-y-5">
+                    <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto">
+                      <AlertCircle className="h-8 w-8 text-red-500" />
+                    </div>
+                    <div className="space-y-2 px-6">
+                      <p className="text-lg font-black text-red-700 dark:text-red-400 leading-tight">VIRTUAL ACCOUNT ERROR</p>
+                      <p className="text-xs text-muted-foreground font-medium leading-relaxed">We encountered a temporary issue generating your unique account. Please use card payment instead or try again later.</p>
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      className="rounded-full h-12 px-8 font-black text-xs uppercase tracking-widest border-red-500/20 hover:bg-red-500/5 text-red-600"
+                      onClick={() => monnifyAccountQuery.refetch()}
+                    >
+                      Retry Generation
+                    </Button>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       )}

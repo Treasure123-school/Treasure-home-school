@@ -27,6 +27,7 @@ import teacherAssignmentRoutes from "./teacher-assignment-routes";
 import jobVacancyRoutes from "./routes/job-vacancy.routes";
 import settingsRoutes from "./routes/settings.routes";
 import examPaymentRoutes from "./routes/exam-payment.routes";
+import { monnifyPaymentRouter } from "./routes/monnify-payment.routes";
 import reportCardSkillsRoutes from "./routes/report-card-skills.routes";
 import questionBankRoutes from "./routes/question-bank.routes";
 import termsRoutes from "./routes/terms.routes";
@@ -1118,6 +1119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/terms', termsRoutes);
   app.use("/api/upload", uploadRoutes);
   app.use("/api/exam-payments", examPaymentRoutes);
+  app.use("/api/payments/monnify", monnifyPaymentRouter);
 
   // ==================== END FILE UPLOAD ROUTES ====================
 
@@ -2058,7 +2060,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             grade: r.grade ?? null,
             passed,
             timeTaken: r.timeTaken ?? null,
-            submittedAt: r.submittedAt ?? r.createdAt ?? null,
+            submitted_at: r.submitted_at ?? r.createdAt ?? null,
           };
         } catch {
           return null;
@@ -2270,7 +2272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           grade: r.grade ?? null,
           remarks: r.remarks ?? null,
           autoScored: r.autoScored ?? false,
-          submittedAt: r.submittedAt ?? r.createdAt ?? null,
+          submitted_at: r.submitted_at ?? r.createdAt ?? null,
           status: isGraded ? 'graded' : 'pending',
           passingScore: r.passingScore ?? 50,
           passed: pct !== null ? pct >= (r.passingScore ?? 50) : null,
@@ -2349,7 +2351,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         maxScore: result.maxScore ?? exam.totalMarks ?? null,
         grade: result.grade ?? null,
         remarks: result.remarks ?? null,
-        submittedAt: result.submittedAt ?? null,
+        submitted_at: result.submitted_at ?? null,
         questions: questionBreakdown,
       });
     } catch (error: any) {

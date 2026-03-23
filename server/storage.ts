@@ -26,7 +26,8 @@ import type {
   StudentSubjectAssignment, InsertStudentSubjectAssignment, ClassSubjectMapping, InsertClassSubjectMapping,
   SyllabusTopic, InsertSyllabusTopic, ExamQuestionBankLink, InsertExamQuestionBankLink,
   ExamPayment, InsertExamPayment,
-  SchoolEvent, InsertSchoolEvent
+  SchoolEvent, InsertSchoolEvent,
+  MonnifyVirtualAccount, InsertMonnifyVirtualAccount
 } from "@shared/schema";
 
 // Get centralized database instance and schema from db.ts
@@ -556,6 +557,11 @@ export interface IStorage {
   createSchoolEvent(data: InsertSchoolEvent): Promise<SchoolEvent>;
   updateSchoolEvent(id: number, data: Partial<InsertSchoolEvent>): Promise<SchoolEvent | undefined>;
   deleteSchoolEvent(id: number): Promise<boolean>;
+
+  // Monnify Virtual Accounts
+  getMonnifyVirtualAccountByUserId(userId: string): Promise<MonnifyVirtualAccount | undefined>;
+  getMonnifyVirtualAccountByReference(accountReference: string): Promise<MonnifyVirtualAccount | undefined>;
+  createMonnifyVirtualAccount(data: InsertMonnifyVirtualAccount): Promise<MonnifyVirtualAccount>;
 
   // User recovery management
   getDeletedUsers(roleFilter?: number[]): Promise<User[]>;
@@ -8861,6 +8867,45 @@ export class DatabaseStorage implements IStorage {
       }
     } catch (error: any) {
       console.error('Error saving report card skills:', error);
+      throw error;
+    }
+  }
+
+  // Monnify Virtual Accounts Methods
+  async getMonnifyVirtualAccountByUserId(userId: string): Promise<MonnifyVirtualAccount | undefined> {
+    try {
+      const result = await this.db.select()
+        .from(schema.monnifyVirtualAccounts)
+        .where(eq(schema.monnifyVirtualAccounts.userId, userId))
+        .limit(1);
+      return result[0];
+    } catch (error: any) {
+      console.error(`Error getting Monnify virtual account for user ${userId}:`, error);
+      return undefined;
+    }
+  }
+
+  async getMonnifyVirtualAccountByReference(accountReference: string): Promise<MonnifyVirtualAccount | undefined> {
+    try {
+      const result = await this.db.select()
+        .from(schema.monnifyVirtualAccounts)
+        .where(eq(schema.monnifyVirtualAccounts.accountReference, accountReference))
+        .limit(1);
+      return result[0];
+    } catch (error: any) {
+      console.error(`Error getting Monnify virtual account by ref ${accountReference}:`, error);
+      return undefined;
+    }
+  }
+
+  async createMonnifyVirtualAccount(data: InsertMonnifyVirtualAccount): Promise<MonnifyVirtualAccount> {
+    try {
+      const result = await this.db.insert(schema.monnifyVirtualAccounts)
+        .values(data)
+        .returning();
+      return result[0];
+    } catch (error: any) {
+      console.error('Error creating Monnify virtual account:', error);
       throw error;
     }
   }

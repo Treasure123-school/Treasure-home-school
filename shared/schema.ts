@@ -64,6 +64,10 @@ export const users = sqliteTable("users", {
   securityAnswerHash: text("security_answer_hash"),
   dataPolicyAgreed: integer("data_policy_agreed", { mode: "boolean" }).notNull().default(false),
   dataPolicyAgreedAt: integer("data_policy_agreed_at", { mode: "timestamp" }),
+  
+  // Custom platform fields
+  examUnlocked: integer("exam_unlocked", { mode: "boolean" }).notNull().default(false),
+
   deletedAt: integer("deleted_at", { mode: "timestamp" }),
   deletedBy: text("deleted_by"),
 
@@ -1384,6 +1388,7 @@ export const examPayments = sqliteTable("exam_payments", {
   paymentMethod: text("payment_method").notNull().default('cash'),
   paymentReference: text("payment_reference"),
   status: text("status").notNull().default('paid'),
+  provider: text("provider").default('paystack'), // 'paystack', 'monnify', etc.
   recordedBy: text("recorded_by").references(() => users.id, { onDelete: 'set null' }),
   notes: text("notes"),
   gatewayResponse: text("gateway_response"),
@@ -1391,6 +1396,42 @@ export const examPayments = sqliteTable("exam_payments", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 export const insertExamPaymentSchema = createInsertSchema(examPayments).omit({ id: true, createdAt: true });
+
+// School Events table
+export const schoolEvents = sqliteTable("school_events", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  title: text("title").notNull(),
+  description: text("description"),
+  eventType: text("event_type").notNull(), // 'exam', 'holiday', 'event', 'sports', 'academic', 'extracurricular'
+  startDate: text("start_date").notNull(), // YYYY-MM-DD
+  endDate: text("end_date"), // YYYY-MM-DD
+  startTime: text("start_time"), // HH:mm
+  endTime: text("end_time"), // HH:mm
+  location: text("location"),
+  imageUrl: text("image_url"),
+  color: text("color"),
+  isAllDay: integer("is_all_day", { mode: "boolean" }).notNull().default(false),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  createdBy: text("created_by").references(() => users.id, { onDelete: 'set null' }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+}, (table) => ({
+  schoolEventsTypeIdx: index("school_events_type_idx").on(table.eventType),
+  schoolEventsDateIdx: index("school_events_date_idx").on(table.startDate),
+}));
+
+export const insertSchoolEventSchema = createInsertSchema(schoolEvents).omit({ id: true, createdAt: true, updatedAt: true });
+
+// Monnify Virtual Accounts table
+export const monnifyVirtualAccounts = sqliteTable("monnify_virtual_accounts", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  accountReference: text("account_reference").notNull().unique(),
+  accountNumber: text("account_number").notNull(),
+  bankName: text("bank_name").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+});
+export const insertMonnifyVirtualAccountSchema = createInsertSchema(monnifyVirtualAccounts).omit({ id: true, createdAt: true });
 
 // Types
 export type Role = typeof roles.$inferSelect;
@@ -1427,6 +1468,8 @@ export type AdminProfile = typeof adminProfiles.$inferSelect;
 export type ParentProfile = typeof parentProfiles.$inferSelect;
 export type Setting = typeof settings.$inferSelect;
 export type Counter = typeof counters.$inferSelect;
+export type SchoolEvent = typeof schoolEvents.$inferSelect;
+export type MonnifyVirtualAccount = typeof monnifyVirtualAccounts.$inferSelect;
 
 export type TeacherProfileWithUser = TeacherProfile & {
   firstName: string;
@@ -1496,6 +1539,8 @@ export type InsertAdminProfile = z.infer<typeof insertAdminProfileSchema>;
 export type InsertParentProfile = z.infer<typeof insertParentProfileSchema>;
 export type InsertSetting = z.infer<typeof insertSettingSchema>;
 export type InsertCounter = z.infer<typeof insertCounterSchema>;
+export type InsertSchoolEvent = z.infer<typeof insertSchoolEventSchema>;
+export type InsertMonnifyVirtualAccount = z.infer<typeof insertMonnifyVirtualAccountSchema>;
 
 export type InsertExamQuestion = z.infer<typeof insertExamQuestionSchema>;
 export type InsertQuestionOption = z.infer<typeof insertQuestionOptionSchema>;

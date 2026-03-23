@@ -527,22 +527,19 @@ router.post("/recover", authenticateUser, authorizeRoles(ROLES.STUDENT), async (
 });
 
 // ─── POST /api/exam-payments/verify-by-ref ────────────────────────────────────
-// Student: provide their own Paystack reference to verify a payment that has
+// Student: provide their own reference to verify a payment that has
 // no pending record in our DB (e.g. session was different, cleared, or redirect failed).
 router.post("/verify-by-ref", authenticateUser, authorizeRoles(ROLES.STUDENT), async (req: Request, res: Response) => {
   try {
     const { reference } = req.body;
     if (!reference || typeof reference !== "string" || reference.trim().length < 5) {
-      return res.status(400).json({ message: "A valid Paystack reference is required" });
+      return res.status(400).json({ message: "A valid Payment Reference or Transaction ID is required" });
     }
     const ref = reference.trim();
 
     const studentId = req.user!.id;
     const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
-    if (!paystackSecretKey) {
-      return res.status(503).json({ message: "Payment gateway is not configured" });
-    }
-
+    
     const terms = await storage.getAcademicTerms();
     const currentTerm = terms.find((t: any) => t.isCurrent);
     if (!currentTerm) {
@@ -555,138 +552,134 @@ router.post("/verify-by-ref", authenticateUser, authorizeRoles(ROLES.STUDENT), a
       return res.json({ success: true, alreadyPaid: true, payment: alreadyPaid });
     }
 
-    // Verify with Paystack backend-to-backend
-    let verifyData: any;
-    try {
-      const verifyRes = await fetch(
-        `https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`,
-        { headers: { Authorization: `Bearer ${paystackSecretKey}` } },
-      );
-      const raw = await verifyRes.text();
+    let verificationResult: {
+      success: boolean,
+      amount: number,
+      reference: string,
+      gatewayResponse: any,
+      method: 'online' | 'bank_transfer',
+      provider: 'paystack' | 'monnify',
+      metaStudentId?: string,
+      metaTermId?: number
+    } | null = null;
+
+    // ── Paystack Path ────────────────────────────────────────────────────────
+    // If it looks like a Paystack ref OR we don't know yet, try Paystack
+    if (!ref.startsWith("MNFY_") && paystackSecretKey) {
       try {
-        verifyData = JSON.parse(raw);
-      } catch {
-        // Paystack returned non-JSON (HTML error page) — reference format is invalid
-        console.warn(`[PAYMENT] verify-by-ref: Paystack returned non-JSON for ref "${ref}". Likely wrong reference format.`);
-        return res.status(400).json({
-          message: "That does not look like a valid Paystack reference. Please check the Merchant Order No. on your receipt and try again.",
-        });
+        const verifyRes = await fetch(
+          `https://api.paystack.co/transaction/verify/${encodeURIComponent(ref)}`,
+          { headers: { Authorization: `Bearer ${paystackSecretKey}` } }
+        );
+        const verifyData: any = await verifyRes.json().catch(() => ({}));
+        
+        if (verifyData.status && verifyData.data?.status === "success") {
+          verificationResult = {
+            success: true,
+            amount: Math.floor(verifyData.data.amount / 100),
+            reference: verifyData.data.reference || ref,
+            gatewayResponse: verifyData.data,
+            method: 'online',
+            provider: 'paystack',
+            metaStudentId: verifyData.data.metadata?.studentId,
+            metaTermId: verifyData.data.metadata?.termId
+          };
+        }
+      } catch (e) {
+        console.warn("[PAYMENT] Paystack verify-by-ref failed partially:", e);
       }
-    } catch (fetchError: any) {
-      console.error("[PAYMENT] verify-by-ref: Paystack network error:", fetchError);
-      return res.status(502).json({ message: "Could not reach the payment gateway. Please try again in a moment." });
     }
 
-    if (!verifyData.status || verifyData.data?.status !== "success") {
-      const gwStatus = verifyData.data?.status || "not_found";
+    // ── Monnify Path ────────────────────────────────────────────────────────
+    // If Paystack failed OR it definitely looks like a Monnify ref, try Monnify
+    if (!verificationResult) {
+      try {
+        const { monnifyService } = await import("../services/monnify-service");
+        const monnifyData = await monnifyService.verifyTransaction(ref);
+        
+        if (monnifyData && monnifyData.paymentStatus === "PAID") {
+          // Monnify metadata is typically in the accountReference or custom metadata
+          // For reserved accounts, our accountReference is user_{userId}
+          let monnifyStudentId: string | undefined;
+          if (monnifyData.customer?.email) {
+            const user = await storage.getUserByEmail(monnifyData.customer.email);
+            if (user) monnifyStudentId = user.id;
+          }
+          
+          verificationResult = {
+            success: true,
+            amount: Math.floor(monnifyData.amountPaid),
+            reference: monnifyData.transactionReference || ref,
+            gatewayResponse: monnifyData,
+            method: 'bank_transfer',
+            provider: 'monnify',
+            metaStudentId: monnifyStudentId,
+            // Monnify current flow doesn't easily store termId in standard metadata for reserved accts
+            // unless we added it to the payment reference during initiation.
+            metaTermId: currentTerm.id // Assume current term for manual entry if user belongs to account
+          };
+        }
+      } catch (e) {
+        console.warn("[PAYMENT] Monnify verify-by-ref failed partially:", e);
+      }
+    }
+
+    if (!verificationResult) {
       return res.status(402).json({
-        message: gwStatus === "not_found"
-          ? "No payment found for that reference. Please double-check the Merchant Order No. on your receipt."
-          : `Payment not confirmed by Paystack (status: ${gwStatus}). If you were charged, contact your school administrator.`,
-        gatewayStatus: gwStatus,
+        message: "No successful payment found for that reference. Please double-check the ID on your receipt.",
       });
     }
 
-    // Use the canonical reference from Paystack's response (not whatever the student typed).
-    // This is our system's reference (e.g. EP-7d23e3f6-T7-...) that Paystack stored.
-    const canonicalRef: string = verifyData.data.reference || ref;
-    const paidAmountNaira = Math.floor(verifyData.data.amount / 100);
-
-    // ── Primary ownership check (metadata-based) ─────────────────────────────
-    // Our server embeds studentId and termId in Paystack's metadata at initiation time.
-    // Paystack stores this and returns it on verify. It cannot be forged by the student.
-    // This is the authoritative proof of who the payment belongs to, even when no DB
-    // record exists yet (e.g. payments from a previous server environment).
-    const metaStudentId: string | undefined = verifyData.data?.metadata?.studentId;
-    const metaTermId: number | undefined = verifyData.data?.metadata?.termId;
-
-    if (metaStudentId && metaStudentId !== studentId) {
-      console.warn(`[PAYMENT SECURITY] Student ${studentId} attempted to use reference belonging to student ${metaStudentId}. Ref: ${canonicalRef}`);
-      return res.status(403).json({
-        message: "This payment reference belongs to a different student account. Contact your school administrator if you believe this is an error.",
-      });
+    // ── Ownership Validation ────────────────────────────────────────────────
+    if (verificationResult.metaStudentId && verificationResult.metaStudentId !== studentId) {
+      console.warn(`[PAYMENT SECURITY] Student ${studentId} used ref belonging to ${verificationResult.metaStudentId}`);
+      return res.status(403).json({ message: "This payment reference belongs to a different student account." });
     }
 
-    if (metaTermId && metaTermId !== currentTerm.id) {
-      console.warn(`[PAYMENT SECURITY] Reference ${canonicalRef} is for term ${metaTermId}, but current term is ${currentTerm.id}`);
-      return res.status(409).json({
-        message: `This payment reference is for a different academic term (${verifyData.data?.metadata?.termName || "unknown"}). It cannot be used for the current term.`,
-      });
-    }
-
-    // ── Secondary ownership check (DB-based) ─────────────────────────────────
-    // Belt-and-suspenders: if the record is already in our DB, confirm the reference
-    // is not tied to a different student (covers payments without metadata, e.g. from
-    // admin-created records that went through Paystack separately).
-    const existingByRef = await storage.getExamPaymentByReference(canonicalRef);
+    // ── Apply Payment ───────────────────────────────────────────────────────
+    // Check if this reference was already used by someone else
+    const existingByRef = await storage.getExamPaymentByReference(verificationResult.reference);
     if (existingByRef && existingByRef.studentId !== studentId) {
-      console.warn(`[PAYMENT SECURITY] DB record for ref ${canonicalRef} belongs to student ${existingByRef.studentId}, not ${studentId}.`);
-      return res.status(403).json({ message: "This reference is already associated with another student account." });
+      return res.status(403).json({ message: "This reference is already associated with another student." });
     }
 
-    // Look for ANY existing record for this student+term (paid, pending, or failed)
-    // Priority: the record matching the canonical ref, then the paid record, then the pending record.
-    // This covers the case where initiation created a pending record with OUR ref, but the student
-    // submitted a different reference (e.g. OPay's Merchant Order No.) that Paystack still resolved.
-    const existingPaid = await storage.getExamPayment(studentId, currentTerm.id);
-    if (existingPaid) {
-      // Already fully paid — just return success
-      return res.json({ success: true, alreadyPaid: true, payment: existingPaid });
-    }
-
-    // Use the most thorough fallback: pending (with ref), then any record at all
-    const existingPending = existingByRef
-      || await storage.getPendingExamPayment(studentId, currentTerm.id)
-      || await storage.getAnyExamPaymentByStudentTerm(studentId, currentTerm.id);
-
-    // Create or update the payment record as paid
     const verifiedAt = new Date();
-    let payment: any;
+    const existingPending = existingByRef 
+      || await storage.getPendingExamPayment(studentId, currentTerm.id);
+
+    let finalPayment: any;
     if (existingPending) {
-      // Update the existing pending/failed record → paid
-      payment = await storage.updateExamPayment(existingPending.id, {
+      finalPayment = await storage.updateExamPayment(existingPending.id, {
         status: "paid",
-        amountPaid: paidAmountNaira,
-        paymentMethod: "online",
-        paymentReference: canonicalRef,
-        gatewayResponse: JSON.stringify(verifyData.data),
+        amountPaid: verificationResult.amount,
+        paymentMethod: verificationResult.method,
+        paymentReference: verificationResult.reference,
+        gatewayResponse: JSON.stringify(verificationResult.gatewayResponse),
         paidAt: verifiedAt,
       });
     } else {
-      // No record at all — create a fresh paid record (upsert handles unique constraint)
-      payment = await storage.createExamPayment({
+      finalPayment = await storage.createExamPayment({
         studentId,
         termId: currentTerm.id,
-        amountPaid: paidAmountNaira,
-        paymentMethod: "online",
-        paymentReference: canonicalRef,
+        amountPaid: verificationResult.amount,
+        paymentMethod: verificationResult.method,
+        paymentReference: verificationResult.reference,
         status: "paid",
         paidAt: verifiedAt,
-        gatewayResponse: JSON.stringify(verifyData.data),
+        gatewayResponse: JSON.stringify(verificationResult.gatewayResponse),
       });
     }
 
-    try {
-      await storage.createAuditLog({
-        userId: studentId,
-        action: "exam_payment_manual_ref_verified",
-        entityType: "exam_payment",
-        entityId: String(payment?.id),
-        reason: `Student manually provided Paystack reference and payment was verified. Ref: ${ref}`,
-      });
-    } catch { }
-
-    // Send email + SMS confirmation with the reference as proof
+    // Notifications
     sendPaymentConfirmationNotifications({
       studentId,
-      amount: paidAmountNaira,
-      reference: canonicalRef,
+      amount: verificationResult.amount,
+      reference: verificationResult.reference,
       termName: `${currentTerm.name} ${currentTerm.year}`,
       paidAt: verifiedAt,
     }).catch(() => {});
 
-    console.log(`[PAYMENT] Manual ref verification successful for student ${studentId}, ref: ${ref}`);
-    return res.json({ success: true, alreadyPaid: false, payment });
+    return res.json({ success: true, alreadyPaid: false, payment: finalPayment });
   } catch (error: any) {
     console.error("[PAYMENT] verify-by-ref error:", error);
     res.status(500).json({ message: error.message || "Failed to verify payment reference" });
