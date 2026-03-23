@@ -208,6 +208,7 @@ export default function StudentExams() {
   const [manualReference, setManualReference] = useState("");
   const [manualRefError, setManualRefError] = useState("");
   const recoveryAttemptedRef = useRef(false);
+  const isManualRecoveryRef = useRef(false);
 
   // Socket.IO realtime updates for exams list.
   // Subscribes to the CLASS channel (students are allowed) so that teacher edits
@@ -407,20 +408,24 @@ export default function StudentExams() {
           title: "Payment Restored",
           description: "Your previous payment was found and your exam access has been unlocked.",
         });
-      } else if (
+      } else if (isManualRecoveryRef.current && (
         data?.reason === "no_pending_payment" ||
         data?.reason === "not_paid_on_gateway" ||
         data?.reason === "no_active_term" ||
         data?.reason === "gateway_not_configured"
-      ) {
-        // No pending record in our DB — show manual reference dialog
+      )) {
+        // Only show dialog when student explicitly clicked "I have paid"
         setShowRestoreDialog(true);
       }
+      isManualRecoveryRef.current = false;
     },
     onError: () => {
       setIsRecoveringPayment(false);
-      // Network or server error — still show the dialog so student can try manual entry
-      setShowRestoreDialog(true);
+      // Only show the dialog if student manually triggered the recovery
+      if (isManualRecoveryRef.current) {
+        setShowRestoreDialog(true);
+      }
+      isManualRecoveryRef.current = false;
     },
   });
 
@@ -3404,7 +3409,8 @@ export default function StudentExams() {
                               e.stopPropagation();
                               if (verifyByRefMutation.isPending || isRecoveringPayment) return;
                               setManualRefError("");
-                              // Try auto-recovery first; if no record found, dialog opens
+                              // Mark as manual so dialog opens if auto-recovery finds nothing
+                              isManualRecoveryRef.current = true;
                               setIsRecoveringPayment(true);
                               recoverPaymentMutation.mutate();
                             }}
