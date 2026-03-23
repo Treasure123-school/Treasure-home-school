@@ -49,6 +49,7 @@ export default function StudentMessages() {
 
   // Real-time updates for messages
   useSocketIORealtime({
+    table: 'messages',
     queryKey: ['messages', user.id],
     onEvent: (event) => {
       if (event.eventType === 'message:new') {
