@@ -266,6 +266,31 @@ After any successful exam fee payment, the system sends a confirmation email and
   - Delete with confirmation dialog
   - Empty state with prompt to add first parent
 
+## Parent Portal
+
+Fully functional parent-facing portal at `/portal/parent`.
+
+### Pages
+- **Dashboard** (`/portal/parent`) — `ParentDashboard.tsx` — Real-time overview: children stats, attendance summary, recent grades, school announcements. All data from live APIs (no mock data).
+- **My Children** (`/portal/parent/children`) — `ParentChildren.tsx` — Per-child profile cards with attendance stats and avg score, quick-links to grades/attendance/reports.
+- **Report Cards** (`/portal/parent/reports`) — `ParentReportCards.tsx` — Published report cards with subject breakdown table and PDF download. Real-time via Socket.IO.
+- **Attendance** (`/portal/parent/attendance`) — `ParentAttendance.tsx` — Attendance records per child: summary (present/absent/late/excused), rate banner, full history list.
+- **Grades** (`/portal/parent/grades`) — `ParentGrades.tsx` — All exam results per child with subject filter, avg score stat, score/percentage table, grade badges.
+- **Profile** (`/portal/parent/profile`) — `ParentProfile.tsx` — Account info and linked children summary.
+- **Calendar** / **Events** — shared pages.
+
+### Backend APIs (parent-scoped)
+All require authentication as a Parent (or Admin/SuperAdmin for admin access):
+- `GET /api/parent/children` — Parent's linked children enriched with user info + class name
+- `GET /api/parent/child-reports/:childId` — Published report cards for a specific child (with subject items + term info)
+- `GET /api/parent/attendance/:childId` — Attendance records + summary (total/present/absent/late/excused/rate)
+- `GET /api/parent/grades/:childId` — Exam results enriched with exam name, subject name, type, date, percentage
+- `GET /api/parent/profile` — Parent's own user + profile data
+- `PUT /api/parent/profile` — Update parent's own profile
+
+### Sidebar Navigation
+My Children · Report Cards · Attendance · Grades · School Calendar · Events · Messages · Profile
+
 ## Database
 
 - Schema managed via `drizzle-kit push` (not migrations)

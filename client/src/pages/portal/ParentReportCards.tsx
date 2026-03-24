@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -51,13 +50,6 @@ export default function ParentReportCards() {
   // Fetch parent's children
   const { data: children = [], isLoading: loadingChildren } = useQuery<Child[]>({
     queryKey: ['/api/parent/children'],
-    queryFn: async () => {
-      const response = await apiRequest('GET', `/api/parent/${user?.id}/children`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch children');
-      }
-      return response.json();
-    },
     enabled: !!user?.id,
   });
 
@@ -65,7 +57,7 @@ export default function ParentReportCards() {
   const { data: reportCards = [], isLoading: loadingReports } = useQuery<ReportCard[]>({
     queryKey: ['/api/parent/child-reports', selectedChild],
     queryFn: async () => {
-      const response = await apiRequest('GET', `/api/parent/child-reports/${selectedChild}`);
+      const response = await fetch(`/api/parent/child-reports/${selectedChild}`, { credentials: 'include' });
       if (!response.ok) {
         throw new Error('Failed to fetch report cards');
       }

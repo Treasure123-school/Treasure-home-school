@@ -5149,6 +5149,182 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ═══════════════════════════════════════════════════════
+  // PARENT PORTAL API ROUTES
+  // ═══════════════════════════════════════════════════════
+
+  // GET /api/parent/children - Parent's own children (convenience, no ID needed)
+  app.get('/api/parent/children', authenticateUser, authorizeRoles(ROLES.PARENT, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const parentId = req.user!.id;
+      const students = await storage.getStudentsByParentId(parentId);
+      // Enrich with user info (name, etc.)
+      const enriched = await Promise.all(students.map(async (s: any) => {
+        const userInfo = await storage.getUser(s.id);
+        let className = null;
+        if (s.classId) {
+          const cls = await storage.getClass(s.classId);
+          className = cls?.name ?? null;
+        }
+        return {
+          id: s.id,
+          admissionNumber: s.admissionNumber,
+          classId: s.classId,
+          className,
+          department: s.department,
+          admissionDate: s.admissionDate,
+          firstName: userInfo?.firstName ?? '',
+          lastName: userInfo?.lastName ?? '',
+          email: userInfo?.email ?? '',
+          profileImageUrl: userInfo?.profileImageUrl ?? null,
+        };
+      }));
+      res.json(enriched);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch children' });
+    }
+  });
+
+  // GET /api/parent/child-reports/:childId - Report cards for a specific child
+  app.get('/api/parent/child-reports/:childId', authenticateUser, authorizeRoles(ROLES.PARENT, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const parentId = req.user!.id;
+      const { childId } = req.params;
+      // Verify ownership
+      const children = await storage.getStudentsByParentId(parentId);
+      const isOwner = (req.user!.roleId === ROLES.ADMIN || req.user!.roleId === ROLES.SUPER_ADMIN) ||
+        children.some((c: any) => c.id === childId);
+      if (!isOwner) return res.status(403).json({ message: 'Access denied' });
+
+      const reportCards = await db.select()
+        .from(schema.reportCards)
+        .where(and(eq(schema.reportCards.studentId, childId), eq(schema.reportCards.status, 'published')))
+        .orderBy(desc(schema.reportCards.createdAt));
+
+      const userInfo = await storage.getUser(childId);
+      const student = children.find((c: any) => c.id === childId) || await storage.getStudent(childId);
+      let className = null;
+      if (student?.classId) {
+        const cls = await storage.getClass(student.classId);
+        className = cls?.name ?? null;
+      }
+
+      const enriched = await Promise.all(reportCards.map(async (rc: any) => {
+        const items = await db.select().from(schema.reportCardItems)
+          .where(eq(schema.reportCardItems.reportCardId, rc.id));
+        const term = rc.termId ? await storage.getAcademicTerm(rc.termId) : null;
+        const enrichedItems = await Promise.all(items.map(async (item: any) => {
+          let subjectName = 'Unknown';
+          if (item.subjectId) {
+            const subj = await storage.getSubject(item.subjectId);
+            subjectName = subj?.name ?? 'Unknown';
+          }
+          return { ...item, subjectName };
+        }));
+        return {
+          ...rc,
+          studentName: userInfo ? `${userInfo.firstName} ${userInfo.lastName}` : 'Unknown',
+          className,
+          termName: term?.name ?? 'Unknown Term',
+          termYear: term?.year ?? '',
+          items: enrichedItems,
+        };
+      }));
+      res.json(enriched);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch child report cards' });
+    }
+  });
+
+  // GET /api/parent/attendance/:childId - Attendance records for a specific child
+  app.get('/api/parent/attendance/:childId', authenticateUser, authorizeRoles(ROLES.PARENT, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const parentId = req.user!.id;
+      const { childId } = req.params;
+      const children = await storage.getStudentsByParentId(parentId);
+      const isOwner = (req.user!.roleId === ROLES.ADMIN || req.user!.roleId === ROLES.SUPER_ADMIN) ||
+        children.some((c: any) => c.id === childId);
+      if (!isOwner) return res.status(403).json({ message: 'Access denied' });
+
+      const records = await storage.getAttendanceByStudent(childId);
+      const total = records.length;
+      const present = records.filter((r: any) => r.status === 'Present').length;
+      const absent = records.filter((r: any) => r.status === 'Absent').length;
+      const late = records.filter((r: any) => r.status === 'Late').length;
+      const excused = records.filter((r: any) => r.status === 'Excused').length;
+      const rate = total > 0 ? Math.round(((present + late) / total) * 100) : 0;
+
+      res.json({ records, summary: { total, present, absent, late, excused, rate } });
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch attendance' });
+    }
+  });
+
+  // GET /api/parent/grades/:childId - Exam results for a specific child
+  app.get('/api/parent/grades/:childId', authenticateUser, authorizeRoles(ROLES.PARENT, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const parentId = req.user!.id;
+      const { childId } = req.params;
+      const children = await storage.getStudentsByParentId(parentId);
+      const isOwner = (req.user!.roleId === ROLES.ADMIN || req.user!.roleId === ROLES.SUPER_ADMIN) ||
+        children.some((c: any) => c.id === childId);
+      if (!isOwner) return res.status(403).json({ message: 'Access denied' });
+
+      const results = await storage.getExamResultsByStudent(childId);
+      const enriched = await Promise.all(results.map(async (r: any) => {
+        let examName = 'Unknown Exam';
+        let subjectName = 'Unknown';
+        let examDate = null;
+        let examType = 'exam';
+        if (r.examId) {
+          const exam = await storage.getExamById(r.examId);
+          if (exam) {
+            examName = exam.name;
+            examDate = exam.date;
+            examType = exam.examType ?? 'exam';
+            if (exam.subjectId) {
+              const subj = await storage.getSubject(exam.subjectId);
+              subjectName = subj?.name ?? 'Unknown';
+            }
+          }
+        }
+        const score = r.score ?? r.marksObtained ?? 0;
+        const maxScore = r.maxScore ?? 100;
+        const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+        return { ...r, examName, subjectName, examDate, examType, score, maxScore, percentage };
+      }));
+      res.json(enriched);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch grades' });
+    }
+  });
+
+  // GET /api/parent/profile - Parent's own profile
+  app.get('/api/parent/profile', authenticateUser, authorizeRoles(ROLES.PARENT), async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const user = await storage.getUser(userId);
+      const profile = await storage.getParentProfile(userId);
+      res.json({ user, profile });
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch profile' });
+    }
+  });
+
+  // PUT /api/parent/profile - Update parent's own profile
+  app.put('/api/parent/profile', authenticateUser, authorizeRoles(ROLES.PARENT), async (req, res) => {
+    try {
+      const userId = req.user!.id;
+      const { firstName, lastName, phone, address } = req.body;
+      await storage.updateUser(userId, { firstName, lastName, phone });
+      const user = await storage.getUser(userId);
+      const profile = await storage.getParentProfile(userId);
+      res.json({ user, profile });
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to update profile' });
+    }
+  });
+
   // Notification API endpoints
   app.get('/api/notifications', authenticateUser, async (req, res) => {
     try {

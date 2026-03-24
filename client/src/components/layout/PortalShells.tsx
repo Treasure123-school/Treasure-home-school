@@ -78,6 +78,10 @@ const AdminTimetable = lazy(() => import('@/pages/portal/AdminTimetable'));
 
 const ParentDashboard = lazy(() => import('@/pages/portal/ParentDashboard'));
 const ParentReportCards = lazy(() => import('@/pages/portal/ParentReportCards'));
+const ParentChildren = lazy(() => import('@/pages/portal/ParentChildren'));
+const ParentAttendance = lazy(() => import('@/pages/portal/ParentAttendance'));
+const ParentGrades = lazy(() => import('@/pages/portal/ParentGrades'));
+const ParentProfile = lazy(() => import('@/pages/portal/ParentProfile'));
 
 const EventsManagement = lazy(() => import('@/pages/portal/EventsManagement'));
 const AdminCalendarPage = lazy(() => import('@/pages/portal/AdminCalendarPage'));
@@ -212,7 +216,11 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
         {role === 'parent' && (
           <Switch>
             <Route path="/portal/parent" component={ParentDashboard} />
+            <Route path="/portal/parent/children" component={ParentChildren} />
             <Route path="/portal/parent/reports" component={ParentReportCards} />
+            <Route path="/portal/parent/attendance" component={ParentAttendance} />
+            <Route path="/portal/parent/grades" component={ParentGrades} />
+            <Route path="/portal/parent/profile" component={ParentProfile} />
             <Route path="/portal/parent/calendar" component={SharedCalendarPage} />
             <Route path="/portal/parent/events" component={SharedEventsPage} />
             <Route path="/portal/parent/*" component={PortalComingSoon} />
