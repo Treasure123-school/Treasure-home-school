@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
@@ -65,6 +66,20 @@ const typeConfig = {
   event: { label: 'Event', icon: PartyPopper, color: 'text-green-600 dark:text-green-400' },
   emergency: { label: 'Emergency', icon: Siren, color: 'text-red-600 dark:text-red-400' },
 };
+
+function safeJsonParse(str: string | null | undefined, fallback: any = []): any {
+  if (!str) return fallback;
+  if (typeof str !== 'string') return str;
+  try {
+    return JSON.parse(str);
+  } catch (e) {
+    // If it's a plain string like "Student", wrap it in an array or return as is
+    if (Array.isArray(fallback)) {
+      return [str];
+    }
+    return str || fallback;
+  }
+}
 
 export default function AnnouncementsManagement() {
   const { toast } = useToast();
@@ -279,18 +294,10 @@ export default function AnnouncementsManagement() {
   const handleEdit = (announcement: any) => {
     setEditingAnnouncement(announcement);
     
-    const targetRoles = typeof announcement.targetRoles === 'string' 
-      ? JSON.parse(announcement.targetRoles) 
-      : announcement.targetRoles || ['All'];
-    const targetClasses = typeof announcement.targetClasses === 'string'
-      ? JSON.parse(announcement.targetClasses)
-      : announcement.targetClasses || [];
-    const attachments = typeof announcement.attachments === 'string'
-      ? JSON.parse(announcement.attachments)
-      : announcement.attachments || [];
-    const notificationSettings = typeof announcement.notificationSettings === 'string'
-      ? JSON.parse(announcement.notificationSettings)
-      : announcement.notificationSettings || { inApp: true, email: false, sms: false };
+    const targetRoles = safeJsonParse(announcement.targetRoles, ['All']);
+    const targetClasses = safeJsonParse(announcement.targetClasses, []);
+    const attachments = safeJsonParse(announcement.attachments, []);
+    const notificationSettings = safeJsonParse(announcement.notificationSettings, { inApp: true, email: false, sms: false });
     
     setValue('title', announcement.title);
     setValue('content', announcement.content);
@@ -349,9 +356,7 @@ export default function AnnouncementsManagement() {
       announcement.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       announcement.content.toLowerCase().includes(searchTerm.toLowerCase());
     
-    const announcementRoles = typeof announcement.targetRoles === 'string' 
-      ? JSON.parse(announcement.targetRoles) 
-      : announcement.targetRoles || ['All'];
+    const announcementRoles = safeJsonParse(announcement.targetRoles, ['All']);
     
     const matchesRole = selectedRole === 'all' || announcementRoles.includes(selectedRole);
     
@@ -1145,9 +1150,7 @@ export default function AnnouncementsManagement() {
                 <TableBody>
                   {filteredAnnouncements.length > 0 ? (
                     filteredAnnouncements.map((announcement: any) => {
-                      const targetRoles = typeof announcement.targetRoles === 'string'
-                        ? JSON.parse(announcement.targetRoles)
-                        : announcement.targetRoles || ['All'];
+                      const targetRoles = safeJsonParse(announcement.targetRoles, ['All']);
                       const isCurrentUserAuthor = currentUser?.id === announcement.authorId;
                       
                       return (
@@ -1299,7 +1302,7 @@ export default function AnnouncementsManagement() {
                             </div>
                             <div className="flex items-center gap-1.5 font-medium">
                               <Users className="w-3.5 h-3.5" />
-                              Target: {typeof announcement.targetRoles === 'string' ? JSON.parse(announcement.targetRoles)[0] : announcement.targetRoles[0]}
+                              Target: {safeJsonParse(announcement.targetRoles, ['All'])[0]}
                             </div>
                           </div>
                           
