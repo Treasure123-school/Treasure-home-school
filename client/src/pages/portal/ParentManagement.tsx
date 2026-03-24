@@ -99,7 +99,11 @@ function StudentSearch({
     queryKey: ['/api/students/search', q],
     queryFn: async () => {
       if (!q.trim() || q.trim().length < 1) return [];
-      const res = await fetch(`/api/students/search?q=${encodeURIComponent(q)}`, { credentials: 'include' });
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/students/search?q=${encodeURIComponent(q)}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: 'include',
+      });
       if (!res.ok) return [];
       return res.json();
     },
@@ -229,32 +233,17 @@ export default function ParentManagement() {
 
   const { data: parents = [], isLoading } = useQuery<Parent[]>({
     queryKey: ['/api/parents'],
-    queryFn: async () => {
-      const res = await fetch('/api/parents', { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch parents');
-      return res.json();
-    },
   });
 
   const { data: classes = [] } = useQuery<any[]>({
     queryKey: ['/api/classes'],
-    queryFn: async () => {
-      const res = await fetch('/api/classes', { credentials: 'include' });
-      if (!res.ok) return [];
-      return res.json();
-    },
   });
 
   // ── Mutations ─────────────────────────────────────────────────────────────────
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await fetch('/api/parents', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
+      const res = await apiRequest('POST', '/api/parents', data);
       if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
       return res.json();
     },
@@ -271,12 +260,7 @@ export default function ParentManagement() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const res = await fetch(`/api/parents/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
+      const res = await apiRequest('PUT', `/api/parents/${id}`, data);
       if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
       return res.json();
     },
@@ -290,12 +274,7 @@ export default function ParentManagement() {
 
   const linkMutation = useMutation({
     mutationFn: async ({ parentId, studentIds }: { parentId: string; studentIds: string[] }) => {
-      const res = await fetch(`/api/parents/${parentId}/link-students`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ studentIds }),
-      });
+      const res = await apiRequest('POST', `/api/parents/${parentId}/link-students`, { studentIds });
       if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
       return res.json();
     },
@@ -310,7 +289,7 @@ export default function ParentManagement() {
 
   const unlinkMutation = useMutation({
     mutationFn: async ({ parentId, studentId }: { parentId: string; studentId: string }) => {
-      const res = await fetch(`/api/parents/${parentId}/unlink/${studentId}`, { method: 'DELETE', credentials: 'include' });
+      const res = await apiRequest('DELETE', `/api/parents/${parentId}/unlink/${studentId}`);
       if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
       return res.json();
     },
@@ -330,7 +309,7 @@ export default function ParentManagement() {
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ id, active }: { id: string; active: boolean }) => {
       const endpoint = active ? 'unsuspend' : 'suspend';
-      const res = await fetch(`/api/users/${id}/${endpoint}`, { method: 'POST', credentials: 'include' });
+      const res = await apiRequest('POST', `/api/users/${id}/${endpoint}`);
       if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
       return res.json();
     },
@@ -343,7 +322,7 @@ export default function ParentManagement() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/users/${id}/smart-delete`, { method: 'DELETE', credentials: 'include' });
+      const res = await apiRequest('DELETE', `/api/users/${id}/smart-delete`);
       if (!res.ok) { const e = await res.json(); throw new Error(e.message); }
       return res.json();
     },
