@@ -8,18 +8,18 @@ import { Input } from '@/components/ui/input';
 import { useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 
-type Priority = 'high' | 'medium' | 'normal';
+type Priority = 'urgent' | 'important' | 'normal';
 type FilterType = 'all' | Priority;
 
 const PRIORITY_CONFIG: Record<Priority, { label: string; badgeClass: string; borderClass: string; bgClass: string; icon: React.ElementType }> = {
-  high: {
+  urgent: {
     label: 'Urgent',
     badgeClass: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800',
     borderClass: 'border-l-red-500',
     bgClass: 'bg-red-50/60 dark:bg-red-900/10',
     icon: AlertTriangle,
   },
-  medium: {
+  important: {
     label: 'Important',
     badgeClass: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
     borderClass: 'border-l-amber-500',
@@ -74,8 +74,8 @@ export default function StudentAnnouncements() {
 
   const counts = {
     all: formattedAnnouncements.length,
-    high: formattedAnnouncements.filter((a: any) => a.priority === 'high').length,
-    medium: formattedAnnouncements.filter((a: any) => a.priority === 'medium').length,
+    urgent: formattedAnnouncements.filter((a: any) => a.priority === 'urgent').length,
+    important: formattedAnnouncements.filter((a: any) => a.priority === 'important').length,
     normal: formattedAnnouncements.filter((a: any) => a.priority === 'normal').length,
   };
 
@@ -131,7 +131,7 @@ export default function StudentAnnouncements() {
           />
         </div>
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-          {(['all', 'high', 'medium', 'normal'] as FilterType[]).map((f) => (
+          {(['all', 'urgent', 'important', 'normal'] as FilterType[]).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -139,9 +139,9 @@ export default function StudentAnnouncements() {
                 filter === f
                   ? f === 'all'
                     ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-gray-900 dark:border-gray-100'
-                    : f === 'high'
+                    : f === 'urgent'
                     ? 'bg-red-600 text-white border-red-600'
-                    : f === 'medium'
+                    : f === 'important'
                     ? 'bg-amber-500 text-white border-amber-500'
                     : 'bg-blue-600 text-white border-blue-600'
                   : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
@@ -150,7 +150,7 @@ export default function StudentAnnouncements() {
             >
               {f === 'all' ? 'All' : PRIORITY_CONFIG[f].label}
               <span className={`ml-1.5 text-xs ${filter === f ? 'opacity-80' : 'opacity-60'}`}>
-                ({counts[f]})
+                ({counts[f === 'all' ? 'all' : f]})
               </span>
             </button>
           ))}

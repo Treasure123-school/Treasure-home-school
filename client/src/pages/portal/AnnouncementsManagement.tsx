@@ -22,7 +22,8 @@ import {
   Plus, Edit, Search, Megaphone, Calendar, Users, Trash2, 
   Bell, Mail, MessageSquare, Paperclip, Image, Clock, 
   AlertTriangle, AlertCircle, Info, FileText, GraduationCap, 
-  PartyPopper, Siren, Eye, X, Upload, Save, Send, Check
+  PartyPopper, Siren, Eye, X, Upload, Save, Send, Check,
+  LayoutGrid, List
 } from 'lucide-react';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { useAuth } from '@/lib/auth';
@@ -75,6 +76,7 @@ export default function AnnouncementsManagement() {
   const [announcementToDelete, setAnnouncementToDelete] = useState<any>(null);
   const [previewMode, setPreviewMode] = useState(false);
   const [activeTab, setActiveTab] = useState('content');
+  const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverImageInputRef = useRef<HTMLInputElement>(null);
 
@@ -397,13 +399,36 @@ export default function AnnouncementsManagement() {
     <div className="space-y-6" data-testid="announcements-management">
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Announcements Management</h1>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => open ? setIsDialogOpen(true) : handleCloseDialog()}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-add-announcement">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Announcement
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-muted rounded-lg p-1 mr-2">
+            <Button 
+              variant={viewMode === 'table' ? 'secondary' : 'ghost'} 
+              size="sm" 
+              className="h-8 px-3 rounded-md"
+              onClick={() => setViewMode('table')}
+              title="Table View"
+            >
+              <List className="w-4 h-4 mr-2" />
+              Table
             </Button>
-          </DialogTrigger>
+            <Button 
+              variant={viewMode === 'cards' ? 'secondary' : 'ghost'} 
+              size="sm" 
+              className="h-8 px-3 rounded-md"
+              onClick={() => setViewMode('cards')}
+              title="Live Card View"
+            >
+              <LayoutGrid className="w-4 h-4 mr-2" />
+              Cards
+            </Button>
+          </div>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => open ? setIsDialogOpen(true) : handleCloseDialog()}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-add-announcement">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Announcement
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[95vh] p-0 overflow-hidden">
             <DialogHeader className="p-6 pb-4 border-b">
               <div className="flex items-center justify-between pr-8">
@@ -653,44 +678,63 @@ export default function AnnouncementsManagement() {
                       </div>
 
                       <div>
-                        <Label>Attachments (Optional)</Label>
-                        <div className="mt-2 border-2 border-dashed rounded-lg p-4 text-center">
-                          <input 
-                            type="file" 
-                            ref={fileInputRef} 
-                            className="hidden" 
-                            multiple
-                            accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
-                            onChange={(e) => {
-                              const files = e.target.files;
-                              if (files && files.length > 0) {
-                                toast({ title: "Info", description: "File upload will be available soon." });
+                        <Label className="flex items-center gap-2">
+                          <Paperclip className="w-4 h-4" />
+                          Attachments (URLs)
+                        </Label>
+                        <div className="mt-2 flex gap-2">
+                          <Input 
+                            id="new-attachment-url"
+                            placeholder="https://example.com/file.pdf"
+                            className="flex-1"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                const input = e.currentTarget;
+                                const url = input.value.trim();
+                                if (url) {
+                                  const current = getValues('attachments') || [];
+                                  setValue('attachments', [...current, url]);
+                                  input.value = '';
+                                }
                               }
                             }}
                           />
-                          <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}>
-                            <Upload className="w-4 h-4 mr-2" />
-                            Upload Files
+                          <Button 
+                            type="button" 
+                            variant="secondary"
+                            onClick={() => {
+                              const input = document.getElementById('new-attachment-url') as HTMLInputElement;
+                              const url = input?.value.trim();
+                              if (url) {
+                                const current = getValues('attachments') || [];
+                                setValue('attachments', [...current, url]);
+                                input.value = '';
+                              }
+                            }}
+                          >
+                            Add Link
                           </Button>
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Supported: PDF, Word, Excel, Images (Max 10MB each)
-                          </p>
                         </div>
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          Paste a link and press Enter or click Add.
+                        </p>
+
                         {(watchedValues.attachments?.length || 0) > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-2">
+                          <div className="mt-3 flex flex-wrap gap-2">
                             {watchedValues.attachments?.map((url, idx) => (
-                              <Badge key={idx} variant="secondary" className="flex items-center gap-1">
-                                <Paperclip className="w-3 h-3" />
-                                {url.split('/').pop()}
+                              <Badge key={idx} variant="secondary" className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-800">
+                                <FileText className="w-3 h-3" />
+                                <span className="max-w-[150px] truncate">{url.split('/').pop() || url}</span>
                                 <button
                                   type="button"
                                   onClick={() => {
                                     const newAttachments = watchedValues.attachments?.filter((_, i) => i !== idx);
                                     setValue('attachments', newAttachments || []);
                                   }}
-                                  className="ml-1 hover:text-destructive"
+                                  className="ml-1 hover:text-red-500 transition-colors"
                                 >
-                                  <X className="w-3 h-3" />
+                                  <X className="w-3.5 h-3.5" />
                                 </button>
                               </Badge>
                             ))}
@@ -1058,115 +1102,240 @@ export default function AnnouncementsManagement() {
             </Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className={viewMode === 'cards' ? "bg-gray-50/30 dark:bg-gray-900/10 p-6" : ""}>
           {loadingAnnouncements ? (
-            <div className="flex justify-center py-8">
-              <div className="text-muted-foreground">Loading announcements...</div>
+            <div className={viewMode === 'table' ? "" : "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"}>
+              {viewMode === 'table' ? (
+                <div className="space-y-4 p-4">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                  ))}
+                </div>
+              ) : (
+                [1, 2, 3, 4, 5, 6].map((i) => (
+                  <Card key={i} className="overflow-hidden border-2 border-gray-100 dark:border-gray-800 shadow-sm rounded-xl">
+                    <div className="h-40 bg-gray-100 dark:bg-gray-800 animate-pulse" />
+                    <CardContent className="p-5 space-y-3">
+                      <Skeleton className="h-6 w-3/4" />
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-5/6" />
+                      <div className="flex justify-between items-center pt-2">
+                        <Skeleton className="h-8 w-20" />
+                        <Skeleton className="h-8 w-16" />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          ) : viewMode === 'table' ? (
+            <div className="rounded-md border-0 sm:border overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50 hidden sm:table-row">
+                    <TableHead className="w-[45%]">Announcement</TableHead>
+                    <TableHead>Priority</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Target</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Views</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredAnnouncements.length > 0 ? (
+                    filteredAnnouncements.map((announcement: any) => {
+                      const targetRoles = typeof announcement.targetRoles === 'string'
+                        ? JSON.parse(announcement.targetRoles)
+                        : announcement.targetRoles || ['All'];
+                      const isCurrentUserAuthor = currentUser?.id === announcement.authorId;
+                      
+                      return (
+                        <TableRow key={announcement.id} data-testid={`row-announcement-${announcement.id}`} className="hover:bg-muted/30 transition-colors">
+                          <TableCell>
+                            <div className="flex items-start space-x-3">
+                              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                                announcement.priority === 'urgent' ? 'bg-red-100 dark:bg-red-900/30 text-red-600' :
+                                announcement.priority === 'important' ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-600' :
+                                'bg-blue-100 dark:bg-blue-900/30 text-blue-600'
+                              }`}>
+                                <Megaphone className="w-5 h-5" />
+                              </div>
+                              <div className="max-w-md">
+                                <div className="font-semibold text-gray-900 dark:text-white line-clamp-1" data-testid={`text-announcement-title-${announcement.id}`}>
+                                  {announcement.title}
+                                </div>
+                                <div className="text-sm text-muted-foreground line-clamp-2 mt-0.5">
+                                  {announcement.content}
+                                </div>
+                                <div className="text-[10px] sm:text-xs text-muted-foreground mt-1.5 flex items-center gap-1">
+                                  <Users className="w-3 h-3" />
+                                  <span>by {isCurrentUserAuthor && currentUser ? 'You' : (announcement.authorName || 'School Admin')}</span>
+                                  <span className="mx-1">•</span>
+                                  <Calendar className="w-3 h-3" />
+                                  <span>{new Date(announcement.createdAt).toLocaleDateString()}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            {getPriorityBadge(announcement.priority || 'normal')}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            {getTypeBadge(announcement.announcementType || 'general')}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell" data-testid={`text-roles-${announcement.id}`}>
+                            <div className="flex flex-wrap gap-1">
+                              {targetRoles.slice(0, 2).map((role: string) => (
+                                <Badge key={role} variant="outline" className="text-[10px] px-1.5 py-0 h-5">
+                                  {role}
+                                </Badge>
+                              ))}
+                              {targetRoles.length > 2 && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5">
+                                  +{targetRoles.length - 2}
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            {getStatusBadge(announcement)}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Eye className="w-4 h-4" />
+                              {announcement.viewCount || 0}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex justify-end space-x-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-2"
+                                onClick={() => handleEdit(announcement)}
+                                data-testid={`button-edit-announcement-${announcement.id}`}
+                              >
+                                <Edit className="w-3.5 h-3.5 mr-1.5" />
+                                Edit
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="h-8 px-2"
+                                onClick={() => setAnnouncementToDelete(announcement)}
+                                data-testid={`button-delete-announcement-${announcement.id}`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                                Delete
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-12">
+                        <div className="flex flex-col items-center justify-center text-muted-foreground">
+                          <Search className="w-8 h-8 mb-2 opacity-20" />
+                          <p>No announcements found matching your filters</p>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Announcement</TableHead>
-                  <TableHead>Priority</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Target</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Views</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredAnnouncements.length > 0 ? (
-                  filteredAnnouncements.map((announcement: any) => {
-                    const targetRoles = typeof announcement.targetRoles === 'string'
-                      ? JSON.parse(announcement.targetRoles)
-                      : announcement.targetRoles || ['All'];
-                    const isCurrentUserAuthor = currentUser?.id === announcement.authorId;
-                    
-                    return (
-                      <TableRow key={announcement.id} data-testid={`row-announcement-${announcement.id}`}>
-                        <TableCell>
-                          <div className="flex items-start space-x-3">
-                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                              <Megaphone className="w-5 h-5 text-primary" />
-                            </div>
-                            <div className="max-w-md">
-                              <div className="font-medium" data-testid={`text-announcement-title-${announcement.id}`}>
-                                {announcement.title}
-                              </div>
-                              <div className="text-sm text-muted-foreground line-clamp-2">
-                                {announcement.content}
-                              </div>
-                              <div className="text-xs text-muted-foreground mt-1">
-                                by {isCurrentUserAuthor && currentUser ? `${currentUser.firstName} ${currentUser.lastName}` : 'Admin'}
-                              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredAnnouncements.length > 0 ? (
+                filteredAnnouncements.map((announcement: any) => {
+                  const priority = (announcement.priority || 'normal') as 'urgent' | 'important' | 'normal';
+                  const pConfig = {
+                    urgent: { label: 'Urgent', border: 'border-l-red-500', bg: 'bg-red-50/50 dark:bg-red-900/10', badge: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' },
+                    important: { label: 'Important', border: 'border-l-amber-500', bg: 'bg-amber-50/50 dark:bg-amber-900/10', badge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
+                    normal: { label: 'General', border: 'border-l-blue-400', bg: 'bg-white dark:bg-gray-900', badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' }
+                  }[priority];
+
+                  return (
+                    <Card key={announcement.id} className={`overflow-hidden border-2 border-gray-100 dark:border-gray-800 transition-all hover:shadow-md border-l-4 ${pConfig.border} flex flex-col rounded-xl group`}>
+                      {announcement.coverImageUrl && (
+                        <div className="h-40 overflow-hidden bg-muted relative">
+                          <img 
+                            src={announcement.coverImageUrl} 
+                            alt={announcement.title}
+                            className="w-full h-full object-cover transition-transform group-hover:scale-105 duration-500"
+                          />
+                          <div className="absolute top-3 right-3">
+                            <Badge className={`${pConfig.badge} border-none shadow-sm`}>{pConfig.label}</Badge>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <CardContent className={`p-5 flex-1 flex flex-col ${!announcement.coverImageUrl ? pConfig.bg : ''}`}>
+                        {!announcement.coverImageUrl && (
+                          <div className="flex justify-between items-start mb-3">
+                            <Badge className={`${pConfig.badge} border-none shadow-sm font-medium`}>{pConfig.label}</Badge>
+                            <div className="text-[10px] text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full">
+                              {getTypeBadge(announcement.announcementType || 'general')}
                             </div>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          {getPriorityBadge(announcement.priority || 'normal')}
-                        </TableCell>
-                        <TableCell>
-                          {getTypeBadge(announcement.announcementType || 'general')}
-                        </TableCell>
-                        <TableCell data-testid={`text-roles-${announcement.id}`}>
-                          <div className="flex flex-wrap gap-1">
-                            {targetRoles.slice(0, 2).map((role: string) => (
-                              <Badge key={role} variant="outline" className="text-xs">
-                                {role}
-                              </Badge>
-                            ))}
-                            {targetRoles.length > 2 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{targetRoles.length - 2}
-                              </Badge>
-                            )}
+                        )}
+                        
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white line-clamp-2 leading-tight mb-2 group-hover:text-primary transition-colors">
+                          {announcement.title}
+                        </h3>
+                        
+                        <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3 mb-4 flex-1">
+                          {announcement.content}
+                        </p>
+                        
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-3 border-t border-gray-100 dark:border-gray-800">
+                            <div className="flex items-center gap-1.5 font-medium">
+                              <Calendar className="w-3.5 h-3.5" />
+                              {new Date(announcement.createdAt).toLocaleDateString()}
+                            </div>
+                            <div className="flex items-center gap-1.5 font-medium">
+                              <Users className="w-3.5 h-3.5" />
+                              Target: {typeof announcement.targetRoles === 'string' ? JSON.parse(announcement.targetRoles)[0] : announcement.targetRoles[0]}
+                            </div>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          {getStatusBadge(announcement)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Eye className="w-4 h-4" />
-                            {announcement.viewCount || 0}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex space-x-2">
+                          
+                          <div className="flex gap-2">
                             <Button
                               variant="outline"
                               size="sm"
+                              className="flex-1 h-8 text-xs font-semibold rounded-lg"
                               onClick={() => handleEdit(announcement)}
-                              data-testid={`button-edit-announcement-${announcement.id}`}
                             >
-                              <Edit className="w-4 h-4 mr-1" />
+                              <Edit className="w-3 h-3 mr-1.5" />
                               Edit
                             </Button>
                             <Button
                               variant="destructive"
                               size="sm"
+                              className="flex-1 h-8 text-xs font-semibold rounded-lg"
                               onClick={() => setAnnouncementToDelete(announcement)}
-                              data-testid={`button-delete-announcement-${announcement.id}`}
                             >
-                              <Trash2 className="w-4 h-4 mr-1" />
+                              <Trash2 className="w-3 h-3 mr-1.5" />
                               Delete
                             </Button>
                           </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8">
-                      No announcements found
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              ) : (
+                <div className="col-span-full py-16 text-center border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-muted-foreground/40 bg-white/50 dark:bg-gray-900/50">
+                  <Megaphone className="w-12 h-12 mb-3 opacity-20" />
+                  <p className="text-lg font-medium opacity-60">No announcements to display</p>
+                  <p className="text-sm">Switch to Table view or try different filters</p>
+                </div>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>

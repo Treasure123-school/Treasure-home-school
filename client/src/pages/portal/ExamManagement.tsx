@@ -321,7 +321,8 @@ export default function ExamManagement() {
   // Filter subjects based on selected class - only show subjects the teacher is assigned to for that class
   const selectedClassId = watchExam('classId');
 
-  // Fetch class-subject mappings for the selected class (used for admins to filter subjects)
+  // Fetch class-subject mappings for the selected class (used for admins to filter subjects - CURRENTLY DISABLED per new requirement)
+  // We still fetch it for other potential uses, but we don't block admin subject selection on it.
   const { data: classSubjectMappings = [], isLoading: mappingsLoading } = useQuery<Array<{
     id: number;
     classId: number;
@@ -338,24 +339,19 @@ export default function ExamManagement() {
       const response = await apiRequest('GET', `/api/class-subject-mappings/${selectedClassId}`);
       return await response.json();
     },
-    enabled: !!selectedClassId && myAssignments?.isAdmin === true,
+    // Only fetch mappings if not admin, or if we specifically need them for admins later.
+    // Right now, admins can select ANY subject, so we don't strictly need it for the dropdown.
+    enabled: !!selectedClassId && !myAssignments?.isAdmin,
     staleTime: 30000,
   });
 
-  // Filter subjects based on selected class - use class_subject_mappings as source of truth for admins
+  // Filter subjects based on selected class
   const availableSubjects = (() => {
     if (!myAssignments || !selectedClassId) return [];
 
-    // For admins, use class-subject-mappings as the source of truth
+    // For admins, allow them to create an exam for ANY subject in the system
     if (myAssignments.isAdmin) {
-      if (mappingsLoading) return [];
-
-      // If no mappings configured, show empty list with clear message
-      if (classSubjectMappings.length === 0) return [];
-
-      // Return subjects from mappings - filter allSubjects to mapped subjects only
-      const mappedSubjectIds = classSubjectMappings.map(m => m.subjectId);
-      return allSubjects.filter((s: Subject) => mappedSubjectIds.includes(s.id));
+      return allSubjects;
     }
 
     // For teachers, only show subjects they are assigned to for the selected class
@@ -364,7 +360,7 @@ export default function ExamManagement() {
     );
   })();
 
-  const subjectsLoading = assignmentsLoading || (myAssignments?.isAdmin && mappingsLoading);
+  const subjectsLoading = myAssignments?.isAdmin ? (assignmentsLoading || !allSubjects.length) : (assignmentsLoading || mappingsLoading);
 
   // availableSubjects is for dropdown selections (filtered to teacher's assignments or class mappings)
   const subjects = availableSubjects;

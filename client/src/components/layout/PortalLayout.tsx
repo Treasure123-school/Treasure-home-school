@@ -241,7 +241,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             isOpen: openMenuKey === 'admin-exams',
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-exams' : null),
             items: [
-              { href: '/portal/admin/exams', icon: PenTool, label: 'Exam Management' },
+              { href: '/portal/admin/exams/manage', icon: PenTool, label: 'Exam System' },
+              { href: '/portal/admin/exams/overview', icon: BarChart3, label: 'Exam Analytics' },
               { href: '/portal/admin/question-bank', icon: Database, label: 'Question Bank' },
               { href: '/portal/admin/results/publishing', icon: Eye, label: 'Results Publishing' },
               { href: '/portal/admin/exam-payments', icon: CreditCard, label: 'Exam Payment' },
