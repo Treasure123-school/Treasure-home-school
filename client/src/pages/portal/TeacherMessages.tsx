@@ -200,6 +200,8 @@ export default function TeacherMessages() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/messages/user', user?.id] }),
   });
 
+  const allRecipients = useMemo(() => [...students, ...otherTeachers], [students, otherTeachers]);
+
   const userMap = useMemo(() => {
     const map: Record<string, User> = {};
     allRecipients.forEach(r => { map[r.id] = r; });

@@ -19,22 +19,32 @@ router.get('/lookup/:identifier', authenticateUser, async (req: any, res: Respon
       return sendUnauthorized(res);
     }
     
-    const identifier = req.params.identifier;
+    const identifier = req.params.identifier?.trim();
+    if (!identifier) {
+      return res.status(400).json({ message: 'Identifier is required' });
+    }
+
     const user = await storage.getUserByIdentifier(identifier);
     
     if (!user) {
       return sendNotFound(res, 'User not found');
     }
     
-    // Return sanitized user info
-    const { passwordHash, ...safeUser } = user;
+    // Return sanitized user info (never expose password hash)
+    const { passwordHash, ...safeUser } = user as any;
     
-    // Add role name for better display
-    const role = await storage.getRole(user.roleId);
+    // Add role name for better display — gracefully handle missing roleId
+    let roleName = 'Unknown';
+    try {
+      if (user.roleId) {
+        const role = await storage.getRole(user.roleId);
+        roleName = role?.name || 'Unknown';
+      }
+    } catch (_) {}
     
     sendSuccess(res, { 
       ...safeUser, 
-      roleName: role?.name || 'Unknown' 
+      roleName 
     });
   } catch (error) {
     handleRouteError(res, error, 'users.lookup');

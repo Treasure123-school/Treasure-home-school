@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/lib/auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import {
   MessageSquare, Send, Search, User, Calendar, Mail, ArrowLeft, Plus,
   Inbox, Clock, CheckCircle2, X
@@ -49,6 +50,7 @@ export default function StudentMessages() {
 
   // Real-time updates for messages
   useSocketIORealtime({
+    table: 'messages',
     queryKey: ['messages', user.id],
     onEvent: (event) => {
       if (event.eventType === 'message:new') {
@@ -68,7 +70,7 @@ export default function StudentMessages() {
     if (!recipientIdentifier.trim()) return;
     setIsVerifying(true);
     try {
-      const response = await fetch(`/api/messages/lookup/${encodeURIComponent(recipientIdentifier.trim())}`, { credentials: 'include' });
+      const response = await apiRequest('GET', `/api/messages/lookup/${encodeURIComponent(recipientIdentifier.trim())}`);
       if (!response.ok) {
         setRecipientInfo(null);
         setComposeData(prev => ({ ...prev, recipientId: '' }));
