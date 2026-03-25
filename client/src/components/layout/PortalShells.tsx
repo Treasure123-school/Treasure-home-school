@@ -75,6 +75,7 @@ const ExamPaymentManagement = lazy(() => import('@/pages/portal/ExamPaymentManag
 const AttendanceManagement = lazy(() => import('@/pages/portal/AttendanceManagement'));
 const ParentManagement = lazy(() => import('@/pages/portal/ParentManagement'));
 const AdminTimetable = lazy(() => import('@/pages/portal/AdminTimetable'));
+const AdminMessages = lazy(() => import('@/pages/portal/AdminMessages'));
 
 const ParentDashboard = lazy(() => import('@/pages/portal/ParentDashboard'));
 const ParentReportCards = lazy(() => import('@/pages/portal/ParentReportCards'));
@@ -208,6 +209,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/parents" component={ParentManagement} />
             <Route path="/portal/admin/calendar" component={AdminCalendarPage} />
             <Route path="/portal/admin/events" component={EventsManagement} />
+            <Route path="/portal/admin/messages" component={TeacherMessages} />
             <Route path="/portal/admin/*" component={PortalComingSoon} />
           </Switch>
         )}

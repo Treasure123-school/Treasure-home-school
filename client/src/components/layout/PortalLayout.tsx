@@ -259,13 +259,14 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             ],
           },
           {
-            type: 'group', label: 'School Events', icon: Calendar,
+            type: 'group', label: 'Communication & Events', icon: Calendar,
             isOpen: openMenuKey === 'admin-events',
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-events' : null),
             items: [
               { href: `/portal/${userRole}/calendar`, icon: Calendar, label: 'School Calendar' },
               { href: `/portal/${userRole}/events`, icon: Bell, label: 'Events' },
               { href: `/portal/${userRole}/announcements`, icon: Megaphone, label: 'Announcements' },
+              { href: `/portal/${userRole}/messages`, icon: MessageSquare, label: 'Messages', unreadCount: unreadMessagesCount },
             ],
           },
           {

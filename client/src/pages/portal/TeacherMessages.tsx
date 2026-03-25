@@ -13,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   MessageSquare, Send, Search, Plus, ArrowLeft, Paperclip,
-  Check, CheckCheck, Clock, Users, Inbox
+  Check, CheckCheck, Clock, Users, Inbox, Loader2, CheckCircle2
 } from 'lucide-react';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 
@@ -558,14 +558,18 @@ export default function TeacherMessages() {
                     disabled={isVerifying || !recipientIdentifier.trim()}
                     className="rounded-xl"
                   >
-                    {isVerifying ? '...' : 'Verify'}
+                    {isVerifying ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      'Verify'
+                    )}
                   </Button>
                 )}
               </div>
               {recipientInfo && (
                 <div className="mt-2 text-[11px] p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-xl flex items-center gap-2">
-                  <Inbox className="h-3 w-3" />
-                  <span>Found: <strong>{recipientInfo.firstName} {recipientInfo.lastName}</strong> ({recipientInfo.roleName})</span>
+                  <CheckCircle2 className="h-3 w-3" />
+                  <span>Verified: <strong>{recipientInfo.firstName} {recipientInfo.lastName}</strong> ({recipientInfo.roleName})</span>
                 </div>
               )}
             </div>
