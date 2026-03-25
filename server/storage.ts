@@ -8192,22 +8192,13 @@ export class DatabaseStorage implements IStorage {
 
         for (const item of items) {
           if (!allowedSubjectIds.has(item.subjectId)) {
-            // IMPORTANT: Only remove items that have NO recorded scores.
-            // If a student has an actual exam score for a subject, preserve it even
-            // if the subject is no longer in the class-subject mappings.
-            // This protects historical grade data from being accidentally wiped.
-            const hasTestScore = item.testScore !== null && item.testScore !== undefined && item.testScore > 0;
-            const hasExamScore = item.examScore !== null && item.examScore !== undefined && item.examScore > 0;
-
-            if (!hasTestScore && !hasExamScore) {
-              await db.delete(schema.reportCardItems)
-                .where(eq(schema.reportCardItems.id, item.id));
-              totalRemoved++;
-            } else {
-              // Keep the item – it has real scores. Log it for visibility.
-              console.log(`[CLEANUP] Student ${studentId}: keeping item ${item.id} (subject ${item.subjectId}) because it has scores (test: ${item.testScore}, exam: ${item.examScore})`);
-              totalKept++;
-            }
+            // Subject is no longer mapped to this class/department in the subject setup page.
+            // The subject setup page is the single source of truth — remove the report card
+            // item unconditionally, even if it has scores recorded.
+            console.log(`[CLEANUP] Student ${studentId}: removing item ${item.id} (subject ${item.subjectId}) — subject deselected in setup page (test: ${item.testScore}, exam: ${item.examScore})`);
+            await db.delete(schema.reportCardItems)
+              .where(eq(schema.reportCardItems.id, item.id));
+            totalRemoved++;
           } else {
             totalKept++;
           }
