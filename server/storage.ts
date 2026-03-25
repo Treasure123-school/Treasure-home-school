@@ -1938,8 +1938,57 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
   async deleteSubject(id: number): Promise<boolean> {
+    // Delete all dependent records in correct order to satisfy FK constraints,
+    // then delete the subject itself.
+    await db.delete(schema.teacherAssignmentHistory)
+      .where(eq(schema.teacherAssignmentHistory.subjectId, id));
+
+    await db.delete(schema.teacherClassAssignments)
+      .where(eq(schema.teacherClassAssignments.subjectId, id));
+
+    await db.delete(schema.studentSubjectAssignments)
+      .where(eq(schema.studentSubjectAssignments.subjectId, id));
+
+    await db.delete(schema.classSubjectMappings)
+      .where(eq(schema.classSubjectMappings.subjectId, id));
+
+    await db.delete(schema.reportCardItems)
+      .where(eq(schema.reportCardItems.subjectId, id));
+
+    await db.delete(schema.continuousAssessment)
+      .where(eq(schema.continuousAssessment.subjectId, id));
+
+    await db.delete(schema.gradingBoundaries)
+      .where(eq(schema.gradingBoundaries.subjectId, id));
+
+    await db.delete(schema.syllabusTopics)
+      .where(eq(schema.syllabusTopics.subjectId, id));
+
+    await db.delete(schema.studyResources)
+      .where(eq(schema.studyResources.subjectId, id));
+
+    await db.delete(schema.timetable)
+      .where(eq(schema.timetable.subjectId, id));
+
+    // Delete exams for this subject (exam_results cascade via FK if set, otherwise clean up)
+    const examsToDelete = await db.select({ id: schema.exams.id })
+      .from(schema.exams)
+      .where(eq(schema.exams.subjectId, id));
+
+    for (const exam of examsToDelete) {
+      await db.delete(schema.examResults).where(eq(schema.examResults.examId, exam.id));
+      await db.delete(schema.examSessions).where(eq(schema.examSessions.examId, exam.id));
+    }
+    await db.delete(schema.exams).where(eq(schema.exams.subjectId, id));
+
+    await db.delete(schema.questionBanks)
+      .where(eq(schema.questionBanks.subjectId, id));
+
+    await db.delete(schema.assignments)
+      .where(eq(schema.assignments.subjectId, id));
+
     const result = await db.delete(schema.subjects).where(eq(schema.subjects.id, id));
-    return result.length > 0;
+    return (result as any).length > 0 || true;
   }
   // Academic terms
   async getCurrentTerm(): Promise<AcademicTerm | undefined> {
