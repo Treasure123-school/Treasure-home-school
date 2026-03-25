@@ -188,7 +188,9 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/academic-terms" component={AcademicTermsManagement} />
             <Route path="/portal/admin/settings" component={SettingsManagement} />
             <Route path="/portal/admin/recovery-tools" component={AdminRecoveryTools} />
-            <Route path="/portal/admin/exams" component={AdminExamOverview} />
+            <Route path="/portal/admin/exams/overview" component={AdminExamOverview} />
+            <Route path="/portal/admin/exams/manage" component={ExamManagement} />
+            <Route path="/portal/admin/exams" component={ExamManagement} />
             <Route path="/portal/exam-sessions" component={ExamSessions} />
             <Route path="/portal/exam-reports" component={ExamReports} />
             <Route path="/portal/admin/subject-manager/subjects" component={SubjectsManagement} />

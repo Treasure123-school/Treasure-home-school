@@ -27,10 +27,12 @@ import teacherAssignmentRoutes from "./teacher-assignment-routes";
 import jobVacancyRoutes from "./routes/job-vacancy.routes";
 import settingsRoutes from "./routes/settings.routes";
 import examPaymentRoutes from "./routes/exam-payment.routes";
+import { monnifyPaymentRouter } from "./routes/monnify-payment.routes";
 import reportCardSkillsRoutes from "./routes/report-card-skills.routes";
 import questionBankRoutes from "./routes/question-bank.routes";
 import termsRoutes from "./routes/terms.routes";
 import uploadRoutes from "./routes/upload.routes";
+import messagesRoutes from "./routes/messages.routes";
 import { validateTeacherCanCreateExam, validateTeacherCanEnterScores, validateTeacherCanViewResults, getTeacherAssignments, validateExamTimeWindow, logExamAccess } from "./teacher-auth-middleware";
 import { getVisibleExamsForStudent, getVisibleExamsForParent, invalidateVisibilityCache, warmVisibilityCache } from "./exam-visibility";
 import { calculateClassTeacherPermissions, getClassTeacherPermissionDeniedMessage } from "@shared/class-teacher-permissions";
@@ -1118,6 +1120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/terms', termsRoutes);
   app.use("/api/upload", uploadRoutes);
   app.use("/api/exam-payments", examPaymentRoutes);
+  app.use("/api/payments/monnify", monnifyPaymentRouter);
 
   // ==================== END FILE UPLOAD ROUTES ====================
 
@@ -2058,7 +2061,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             grade: r.grade ?? null,
             passed,
             timeTaken: r.timeTaken ?? null,
-            submittedAt: r.submittedAt ?? r.createdAt ?? null,
+            submitted_at: r.submitted_at ?? r.createdAt ?? null,
           };
         } catch {
           return null;
@@ -2270,7 +2273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           grade: r.grade ?? null,
           remarks: r.remarks ?? null,
           autoScored: r.autoScored ?? false,
-          submittedAt: r.submittedAt ?? r.createdAt ?? null,
+          submitted_at: r.submitted_at ?? r.createdAt ?? null,
           status: isGraded ? 'graded' : 'pending',
           passingScore: r.passingScore ?? 50,
           passed: pct !== null ? pct >= (r.passingScore ?? 50) : null,
@@ -2349,7 +2352,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         maxScore: result.maxScore ?? exam.totalMarks ?? null,
         grade: result.grade ?? null,
         remarks: result.remarks ?? null,
-        submittedAt: result.submittedAt ?? null,
+        submitted_at: result.submitted_at ?? null,
         questions: questionBreakdown,
       });
     } catch (error: any) {
@@ -7871,7 +7874,7 @@ School Management System Administration
   });
 
   // User management - Admin only - OPTIMIZED for speed
-  app.get("/api/users", authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER), async (req, res) => {
+  app.get("/api/users", authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER, ROLES.STUDENT, ROLES.PARENT), async (req, res) => {
     try {
       const { role } = req.query;
       const currentUser = req.user;
@@ -7880,10 +7883,17 @@ School Management System Administration
         return res.status(401).json({ message: "Not authenticated" });
       }
 
-      // Teachers can only fetch Teacher or Student data (for exam collaboration purposes)
+      // Teachers can only fetch Teacher or Student data (for messaging/exam purposes)
       if (currentUser.roleId === ROLES.TEACHER) {
         if (!role || (role !== 'Teacher' && role !== 'Student')) {
           return res.status(403).json({ message: "Teachers can only view Teacher and Student user lists" });
+        }
+      }
+
+      // Students and Parents can only fetch Teacher data (for messaging purposes)
+      if (currentUser.roleId === ROLES.STUDENT || currentUser.roleId === ROLES.PARENT) {
+        if (!role || role !== 'Teacher') {
+          return res.status(403).json({ message: "Students and Parents can only see the Teacher list" });
         }
       }
 
@@ -14477,39 +14487,7 @@ School Management System Administration
   // ==================== END MODULE 1 ROUTES ====================
 
   // ==================== MESSAGES API ROUTES ====================
-  app.get('/api/messages/user/:userId', authenticateUser, async (req: Request, res: Response) => {
-    try {
-      const { userId } = req.params;
-      const msgs = await storage.getMessagesByUser(userId);
-      res.json(msgs);
-    } catch (error: any) {
-      res.status(500).json({ message: 'Failed to fetch messages' });
-    }
-  });
-
-  app.post('/api/messages', authenticateUser, async (req: Request, res: Response) => {
-    try {
-      const parsed = insertMessageSchema.safeParse(req.body);
-      if (!parsed.success) {
-        return res.status(400).json({ message: 'Invalid message data', errors: parsed.error.errors });
-      }
-      const msg = await storage.sendMessage(parsed.data);
-      res.status(201).json(msg);
-    } catch (error: any) {
-      res.status(500).json({ message: 'Failed to send message' });
-    }
-  });
-
-  app.patch('/api/messages/:id/read', authenticateUser, async (req: Request, res: Response) => {
-    try {
-      const id = parseInt(req.params.id, 10);
-      if (isNaN(id)) return res.status(400).json({ message: 'Invalid message ID' });
-      await storage.markMessageAsRead(id);
-      res.json({ success: true });
-    } catch (error: any) {
-      res.status(500).json({ message: 'Failed to mark message as read' });
-    }
-  });
+  app.use('/api/messages', messagesRoutes);
   // ==================== END MESSAGES API ROUTES ====================
 
   // ==================== STUDENT CLASS RANK ROUTE ====================

@@ -28,6 +28,8 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { HeaderSearch } from '@/components/HeaderSearch';
 import { useQuery } from '@tanstack/react-query';
 import { useUserActivityTracker } from '@/hooks/useUserActivityTracker';
+import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
+import { Badge } from '@/components/ui/badge';
 
 interface SettingsData {
   schoolName: string;
@@ -91,6 +93,22 @@ export default function PortalLayout({ children, userRole, userName, userInitial
     refetchInterval: 10000,
   });
 
+  const { user } = useAuth();
+  const { data: unreadMessagesCount = 0 } = useQuery<number>({
+    queryKey: ['messages', 'unread', user?.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/messages/user/${user?.id}`, { credentials: 'include' });
+      if (!response.ok) return 0;
+      const messages = await response.json();
+      return messages.filter((m: any) => !m.isRead).length;
+    },
+    enabled: !!user,
+  });
+
+  useSocketIORealtime({
+    queryKey: ['messages', 'unread', user?.id],
+  });
+
   const schoolName = settings?.schoolName || '';
   const schoolMotto = settings?.schoolMotto || '';
   const displayLogo = settings?.schoolLogo || schoolLogo;
@@ -144,7 +162,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             isOpen: openMenuKey === 'student-communication',
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'student-communication' : null),
             items: [
-              { href: `/portal/${userRole}/messages`, icon: Inbox, label: 'Messages' },
+              { href: `/portal/${userRole}/messages`, icon: Inbox, label: 'Messages', unreadCount: unreadMessagesCount },
               { href: `/portal/${userRole}/announcements`, icon: Megaphone, label: 'Announcements' },
               { href: `/portal/${userRole}/forum`, icon: MessagesSquare, label: 'Discussion Forum' },
             ],
@@ -178,7 +196,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
           { name: 'School Calendar', href: `/portal/${userRole}/calendar`, icon: Calendar },
           { name: 'Events', href: `/portal/${userRole}/events`, icon: Bell },
           { name: 'Announcements', href: `/portal/${userRole}/announcements`, icon: Megaphone },
-          { name: 'Messages', href: `/portal/${userRole}/messages`, icon: MessageSquare },
+          { name: 'Messages', href: `/portal/${userRole}/messages`, icon: MessageSquare, unreadCount: unreadMessagesCount },
           { name: 'Profile', href: `/portal/${userRole}/profile`, icon: User },
         ];
       case 'admin':
@@ -223,7 +241,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             isOpen: openMenuKey === 'admin-exams',
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-exams' : null),
             items: [
-              { href: '/portal/admin/exams', icon: PenTool, label: 'Exam Management' },
+              { href: '/portal/admin/exams/manage', icon: PenTool, label: 'Exam System' },
+              { href: '/portal/admin/exams/overview', icon: BarChart3, label: 'Exam Analytics' },
               { href: '/portal/admin/question-bank', icon: Database, label: 'Question Bank' },
               { href: '/portal/admin/results/publishing', icon: Eye, label: 'Results Publishing' },
               { href: '/portal/admin/exam-payments', icon: CreditCard, label: 'Exam Payment' },
@@ -283,7 +302,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
           { name: 'Grades', href: `/portal/${userRole}/grades`, icon: BookOpen },
           { name: 'School Calendar', href: `/portal/${userRole}/calendar`, icon: Calendar },
           { name: 'Events', href: `/portal/${userRole}/events`, icon: Bell },
-          { name: 'Messages', href: `/portal/${userRole}/messages`, icon: MessageSquare },
+          { name: 'Messages', href: `/portal/${userRole}/messages`, icon: MessageSquare, unreadCount: unreadMessagesCount },
           { name: 'Profile', href: `/portal/${userRole}/profile`, icon: User },
         ];
       default:
@@ -364,6 +383,11 @@ export default function PortalLayout({ children, userRole, userName, userInitial
                 <span className={`flex-1 text-left text-[13px] font-medium ${labelCls(collapsed)}`}>
                   {item.label}
                 </span>
+                {!collapsed && item.items.some((sub: any) => sub.unreadCount > 0) && (
+                  <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[10px] flex items-center justify-center font-bold">
+                    {item.items.reduce((sum: number, sub: any) => sum + (sub.unreadCount || 0), 0)}
+                  </Badge>
+                )}
                 <ChevronDown
                   className={`flex-shrink-0 transition-[opacity,width,height,transform] duration-300 ease-in-out ${
                     collapsed ? 'opacity-0 w-0 h-0 overflow-hidden' : 'opacity-100 w-3.5 h-3.5'
@@ -373,7 +397,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             </CollapsibleTrigger>
             <CollapsibleContent className="overflow-hidden">
               <div className="ml-3 mt-0.5 mb-0.5 pl-2.5 border-l border-border space-y-0.5">
-                {item.items.map((sub) => {
+                {item.items.map((sub: any) => {
                   const SubIcon = sub.icon;
                   const active = isActive(sub.href);
                   return (
@@ -388,7 +412,12 @@ export default function PortalLayout({ children, userRole, userName, userInitial
                       title={sub.label}
                     >
                       <SubIcon className="h-3.5 w-3.5 flex-shrink-0" />
-                      <span className="truncate">{sub.label}</span>
+                      <span className="truncate flex-1 text-left">{sub.label}</span>
+                      {sub.unreadCount > 0 && (
+                        <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[10px] flex items-center justify-center font-bold">
+                          {sub.unreadCount}
+                        </Badge>
+                      )}
                     </button>
                   );
                 })}
@@ -397,9 +426,9 @@ export default function PortalLayout({ children, userRole, userName, userInitial
           </Collapsible>
         );
       }
-
+ 
       // ── Regular item ──
-      const navItem = item as NavItem;
+      const navItem = item as any;
       if (navItem.href === '#logout') return null;
       const active = isActive(navItem.href);
       return (
@@ -413,10 +442,23 @@ export default function PortalLayout({ children, userRole, userName, userInitial
           } ${active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           data-testid={`nav-${navItem.name.toLowerCase().replace(/\s+/g, '-')}`}
         >
-          <Icon className="h-4 w-4 flex-shrink-0" />
-          <span className={`text-[13px] font-medium ${labelCls(collapsed)}`}>
+          <div className="relative">
+            <Icon className="h-4 w-4 flex-shrink-0" />
+            {collapsed && navItem.unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
+              </span>
+            )}
+          </div>
+          <span className={`text-[13px] font-medium flex-1 text-left ${labelCls(collapsed)}`}>
             {navItem.name}
           </span>
+          {!collapsed && navItem.unreadCount > 0 && (
+            <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[10px] flex items-center justify-center font-bold">
+              {navItem.unreadCount}
+            </Badge>
+          )}
         </button>
       );
     });

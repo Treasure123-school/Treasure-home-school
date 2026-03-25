@@ -3466,17 +3466,17 @@ export default function StudentExams() {
             <div className="rounded-lg border bg-muted/40 p-3 space-y-2 text-xs">
               <p className="font-semibold text-foreground">Where to find your reference:</p>
               <ul className="space-y-1 text-muted-foreground list-disc list-inside">
-                <li><span className="font-medium text-foreground">OPay receipt:</span> use the <span className="font-mono bg-background rounded px-1">Merchant Order No.</span> (e.g. <span className="font-mono">paystack_123_abc</span>)</li>
-                <li><span className="font-medium text-foreground">Paystack email:</span> use the reference in the subject or body</li>
-                <li><span className="font-medium text-foreground">Paystack checkout page:</span> copy the ref shown after payment</li>
+                <li><span className="font-medium text-foreground">OPay receipt:</span> use the <span className="font-mono bg-background rounded px-1">Transaction ID</span> (found on your payment receipt)</li>
+                <li><span className="font-medium text-foreground">Monnify/Paystack email:</span> use the reference in the subject or body</li>
+                <li><span className="font-medium text-foreground">Payment page:</span> copy the reference shown after payment</li>
               </ul>
-              <p className="text-amber-700 dark:text-amber-400 font-medium">Do NOT enter the plain Transaction No. — it must be the Merchant Order No. or Paystack reference.</p>
+              <p className="text-amber-700 dark:text-amber-400 font-medium">Do NOT enter the plain Bank Account No. — it must be the Payment Reference or Transaction ID.</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="paystack-ref">Paystack Reference / Merchant Order No.</Label>
+              <Label htmlFor="paystack-ref">Payment Reference / Transaction ID</Label>
               <Input
                 id="paystack-ref"
-                placeholder="e.g. paystack_5950722615_n86mp"
+                placeholder="e.g. MNFY_12345678 or Transaction ID"
                 value={manualReference}
                 onChange={(e) => { setManualReference(e.target.value); setManualRefError(""); }}
                 disabled={verifyByRefMutation.isPending}

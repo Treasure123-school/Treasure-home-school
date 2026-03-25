@@ -1,4 +1,5 @@
 import { eq, and, desc, asc, sql, sql as dsql, inArray, isNull, isNotNull, ne, gte, lte, or, like } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { randomUUID } from "crypto";
 import { getDatabase, getSchema, getPgClient, getPgPool, isPostgres, isSqlite } from "./db";
 import { calculateGrade, calculateWeightedScore, getGradingConfig, getOverallGrade } from "./grading-config";
@@ -26,7 +27,8 @@ import type {
   StudentSubjectAssignment, InsertStudentSubjectAssignment, ClassSubjectMapping, InsertClassSubjectMapping,
   SyllabusTopic, InsertSyllabusTopic, ExamQuestionBankLink, InsertExamQuestionBankLink,
   ExamPayment, InsertExamPayment,
-  SchoolEvent, InsertSchoolEvent
+  SchoolEvent, InsertSchoolEvent,
+  MonnifyVirtualAccount, InsertMonnifyVirtualAccount
 } from "@shared/schema";
 
 // Get centralized database instance and schema from db.ts
@@ -43,6 +45,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByIdentifier(identifier: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, user: Partial<InsertUser>): Promise<User | undefined>;
   deleteUser(id: string): Promise<boolean>;
@@ -557,6 +560,11 @@ export interface IStorage {
   updateSchoolEvent(id: number, data: Partial<InsertSchoolEvent>): Promise<SchoolEvent | undefined>;
   deleteSchoolEvent(id: number): Promise<boolean>;
 
+  // Monnify Virtual Accounts
+  getMonnifyVirtualAccountByUserId(userId: string): Promise<MonnifyVirtualAccount | undefined>;
+  getMonnifyVirtualAccountByReference(accountReference: string): Promise<MonnifyVirtualAccount | undefined>;
+  createMonnifyVirtualAccount(data: InsertMonnifyVirtualAccount): Promise<MonnifyVirtualAccount>;
+
   // User recovery management
   getDeletedUsers(roleFilter?: number[]): Promise<User[]>;
   restoreUser(userId: string, restoredBy: string): Promise<User | undefined>;
@@ -742,6 +750,44 @@ export class DatabaseStorage implements IStorage {
       }
     }
     return user;
+  }
+
+  async getUserByIdentifier(identifier: string): Promise<User | undefined> {
+    // Try UUID first
+    if (normalizeUuid(identifier)) {
+      const user = await this.getUser(identifier);
+      if (user) return user;
+    }
+
+    // Try Username
+    const userByUsername = await this.getUserByUsername(identifier);
+    if (userByUsername) return userByUsername;
+
+    // Try Email
+    const userByEmail = await this.getUserByEmail(identifier);
+    if (userByEmail) return userByEmail;
+
+    // Try Admission Number (Student)
+    const [student] = await this.db.select()
+      .from(schema.students)
+      .where(eq(schema.students.admissionNumber, identifier))
+      .limit(1);
+    
+    if (student) {
+      return await this.getUser(student.id);
+    }
+
+    // Try Staff ID (Teacher)
+    const [teacher] = await this.db.select()
+      .from(schema.teacherProfiles)
+      .where(eq(schema.teacherProfiles.staffId, identifier))
+      .limit(1);
+    
+    if (teacher) {
+      return await this.getUser(teacher.userId);
+    }
+
+    return undefined;
   }
   async createPasswordResetToken(userId: string, token: string, expiresAt: Date, ipAddress?: string, resetBy?: string): Promise<any> {
     const result = await this.db.insert(schema.passwordResetTokens).values({
@@ -3974,19 +4020,7 @@ export class DatabaseStorage implements IStorage {
 
     return true;
   }
-  // Messages
-  async sendMessage(message: InsertMessage): Promise<Message> {
-    const result = await db.insert(schema.messages).values(message).returning();
-    return result[0];
-  }
-  async getMessagesByUser(userId: string): Promise<Message[]> {
-    return await db.select().from(schema.messages)
-      .where(eq(schema.messages.recipientId, userId))
-      .orderBy(desc(schema.messages.createdAt));
-  }
-  async markMessageAsRead(id: number): Promise<void> {
-    await db.update(schema.messages).set({ isRead: true }).where(eq(schema.messages.id, id));
-  }
+  // Messages methods moved to the end of the class for better organization
   // Gallery
   async createGalleryCategory(category: InsertGalleryCategory): Promise<GalleryCategory> {
     const result = await db.insert(schema.galleryCategories).values(category).returning();
@@ -8863,6 +8897,82 @@ export class DatabaseStorage implements IStorage {
       console.error('Error saving report card skills:', error);
       throw error;
     }
+  }
+
+  // Monnify Virtual Accounts Methods
+  async getMonnifyVirtualAccountByUserId(userId: string): Promise<MonnifyVirtualAccount | undefined> {
+    try {
+      const result = await this.db.select()
+        .from(schema.monnifyVirtualAccounts)
+        .where(eq(schema.monnifyVirtualAccounts.userId, userId))
+        .limit(1);
+      return result[0];
+    } catch (error: any) {
+      console.error(`Error getting Monnify virtual account for user ${userId}:`, error);
+      return undefined;
+    }
+  }
+
+  async getMonnifyVirtualAccountByReference(accountReference: string): Promise<MonnifyVirtualAccount | undefined> {
+    try {
+      const result = await this.db.select()
+        .from(schema.monnifyVirtualAccounts)
+        .where(eq(schema.monnifyVirtualAccounts.accountReference, accountReference))
+        .limit(1);
+      return result[0];
+    } catch (error: any) {
+      console.error(`Error getting Monnify virtual account by ref ${accountReference}:`, error);
+      return undefined;
+    }
+  }
+
+  async createMonnifyVirtualAccount(data: InsertMonnifyVirtualAccount): Promise<MonnifyVirtualAccount> {
+    try {
+      const result = await this.db.insert(schema.monnifyVirtualAccounts)
+        .values(data)
+        .returning();
+      return result[0];
+    } catch (error: any) {
+      console.error('Error creating Monnify virtual account:', error);
+      throw error;
+    }
+  }
+
+  // Messages
+  async sendMessage(message: InsertMessage): Promise<Message> {
+    const result = await this.db.insert(schema.messages).values(message).returning();
+    return result[0];
+  }
+
+  async getMessagesByUser(userId: string): Promise<any[]> {
+    const sender = alias(schema.users, "sender");
+    const recipient = alias(schema.users, "recipient");
+
+    return await this.db.select({
+      id: schema.messages.id,
+      senderId: schema.messages.senderId,
+      recipientId: schema.messages.recipientId,
+      subject: schema.messages.subject,
+      content: schema.messages.content,
+      isRead: schema.messages.isRead,
+      createdAt: schema.messages.createdAt,
+      senderName: sql<string>`${sender.firstName} || ' ' || ${sender.lastName}`,
+      recipientName: sql<string>`${recipient.firstName} || ' ' || ${recipient.lastName}`
+    })
+      .from(schema.messages)
+      .leftJoin(sender, eq(schema.messages.senderId, sender.id))
+      .leftJoin(recipient, eq(schema.messages.recipientId, recipient.id))
+      .where(or(
+        eq(schema.messages.senderId, userId),
+        eq(schema.messages.recipientId, userId)
+      ))
+      .orderBy(desc(schema.messages.createdAt));
+  }
+
+  async markMessageAsRead(id: number): Promise<void> {
+    await this.db.update(schema.messages)
+      .set({ isRead: true })
+      .where(eq(schema.messages.id, id));
   }
 }
 // Initialize storage - PostgreSQL database only

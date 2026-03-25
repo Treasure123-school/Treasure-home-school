@@ -1432,6 +1432,12 @@ class RealtimeService {
     this.io?.emit('system_settings_update', settings);
   }
 
+  broadcastNewMessage(recipientId: string, message: any) {
+    if (!this.io) return;
+    this.io.to(`user:${recipientId}`).emit('message:new', message);
+    console.log(`📡 Broadcasted new message to user:${recipientId}`);
+  }
+
   shutdown() {
     if (this.eventIdCleanupInterval) {
       clearInterval(this.eventIdCleanupInterval);

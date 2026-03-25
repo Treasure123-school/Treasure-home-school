@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Trash2, Edit, Database, Search, Filter, BookOpen, BarChart3, Sparkles, CheckCircle2, XCircle, Upload, Download, FileUp, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Edit, Database, Search, Filter, BookOpen, BarChart3, Sparkles, CheckCircle2, XCircle, Upload, Download, FileUp, AlertTriangle, Clipboard, Eye, FileText } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function QuestionBankManager() {
@@ -32,6 +32,8 @@ export default function QuestionBankManager() {
     const [isCsvDialogOpen, setIsCsvDialogOpen] = useState(false);
     const [csvPreview, setCsvPreview] = useState<any[]>([]);
     const [csvErrors, setCsvErrors] = useState<string[]>([]);
+    const [csvInputMode, setCsvInputMode] = useState<'file' | 'paste'>('file');
+    const [csvPasteText, setCsvPasteText] = useState('');
 
     // Form state
     const [questionText, setQuestionText] = useState('');
@@ -340,6 +342,111 @@ export default function QuestionBankManager() {
         return result;
     };
 
+    // Shared CSV parser — handles both simple format (question,optionA…correctAnswer)
+    // and extended format (QuestionText,Type,OptionA…Difficulty)
+    const parseCSVContent = (csvText: string): { questions: any[]; errors: string[] } => {
+        const lines = csvText.trim().split('\n').filter(l => l.trim());
+        if (lines.length < 2) throw new Error('CSV must have a header row and at least one data row.');
+        const rawHeaders = parseCSVLine(lines[0]);
+        const headers = rawHeaders.map(h => h.trim().toLowerCase().replace(/\s+/g, ''));
+        const questions: any[] = [];
+        const errors: string[] = [];
+
+        // Detect format: simple if "question" or "optiona" header present, extended if "questiontext"
+        const isSimple = headers.includes('question') || (headers.includes('optiona') && !headers.includes('questiontext'));
+
+        for (let i = 1; i < lines.length; i++) {
+            const row = parseCSVLine(lines[i]);
+            const get = (name: string) => {
+                const idx = headers.indexOf(name.toLowerCase().replace(/\s+/g, ''));
+                return idx >= 0 ? (row[idx] || '').trim() : '';
+            };
+
+            if (isSimple) {
+                // Simple format: question, optionA, optionB, optionC, optionD, correctAnswer
+                const questionText = get('question');
+                const optA = get('optiona');
+                const optB = get('optionb');
+                const optC = get('optionc');
+                const optD = get('optiond');
+                const correctAnswer = get('correctanswer').toUpperCase();
+
+                if (!questionText || questionText.length < 3) {
+                    errors.push(`Row ${i + 1}: Question text is missing or too short`);
+                    continue;
+                }
+                if (!optA) { errors.push(`Row ${i + 1}: Missing option A`); continue; }
+                if (!optB) { errors.push(`Row ${i + 1}: Missing option B`); continue; }
+                if (!['A', 'B', 'C', 'D'].includes(correctAnswer)) {
+                    errors.push(`Row ${i + 1}: Invalid correct answer "${correctAnswer || '(empty)'}" — must be A, B, C, or D`);
+                    continue;
+                }
+                const allOpts = [
+                    { optionText: optA, isCorrect: correctAnswer === 'A' },
+                    { optionText: optB, isCorrect: correctAnswer === 'B' },
+                    ...(optC ? [{ optionText: optC, isCorrect: correctAnswer === 'C' }] : []),
+                    ...(optD ? [{ optionText: optD, isCorrect: correctAnswer === 'D' }] : []),
+                ];
+                if (!allOpts.some(o => o.isCorrect)) {
+                    errors.push(`Row ${i + 1}: Correct answer "${correctAnswer}" refers to a missing option`);
+                    continue;
+                }
+                questions.push({
+                    questionText,
+                    questionType: 'multiple_choice',
+                    points: 1,
+                    difficulty: 'medium',
+                    options: allOpts,
+                    _preview: { optA, optB, optC, optD, correctAnswer },
+                });
+            } else {
+                // Extended format: QuestionText, Type, OptionA, OptionB, OptionC, OptionD, CorrectAnswer, Points, Difficulty
+                const questionText = get('questiontext');
+                const questionType = (get('type') || 'multiple_choice').toLowerCase().replace(/[-\s]/g, '_');
+                const points = parseInt(get('points')) || 1;
+                const difficulty = get('difficulty') || 'medium';
+                const optA = get('optiona');
+                const optB = get('optionb');
+                const optC = get('optionc');
+                const optD = get('optiond');
+                const correctAnswer = get('correctanswer').toUpperCase();
+
+                if (!questionText || questionText.length < 3) {
+                    errors.push(`Row ${i + 1}: Question text is missing or too short`);
+                    continue;
+                }
+                if (!['multiple_choice', 'text', 'essay', 'true_false', 'fill_blank'].includes(questionType)) {
+                    errors.push(`Row ${i + 1}: Invalid question type "${questionType}"`);
+                    continue;
+                }
+                const q: any = { questionText, questionType, points, difficulty, _preview: { optA, optB, optC, optD, correctAnswer } };
+                if (questionType === 'multiple_choice') {
+                    if (!optA) { errors.push(`Row ${i + 1}: Missing option A`); continue; }
+                    if (!optB) { errors.push(`Row ${i + 1}: Missing option B`); continue; }
+                    if (!['A', 'B', 'C', 'D'].includes(correctAnswer)) {
+                        errors.push(`Row ${i + 1}: Invalid correct answer "${correctAnswer || '(empty)'}" — must be A, B, C, or D`);
+                        continue;
+                    }
+                    const allOpts = [
+                        { optionText: optA, isCorrect: correctAnswer === 'A' },
+                        { optionText: optB, isCorrect: correctAnswer === 'B' },
+                        ...(optC ? [{ optionText: optC, isCorrect: correctAnswer === 'C' }] : []),
+                        ...(optD ? [{ optionText: optD, isCorrect: correctAnswer === 'D' }] : []),
+                    ];
+                    if (!allOpts.some(o => o.isCorrect)) {
+                        errors.push(`Row ${i + 1}: Correct answer "${correctAnswer}" refers to a missing option`);
+                        continue;
+                    }
+                    q.options = allOpts;
+                } else if (['fill_blank', 'text', 'essay'].includes(questionType)) {
+                    if (correctAnswer) q.expectedAnswer = correctAnswer;
+                }
+                questions.push(q);
+            }
+        }
+        return { questions, errors };
+    };
+
     const handleBankCSVFile = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
@@ -351,41 +458,35 @@ export default function QuestionBankManager() {
         reader.onload = (e) => {
             try {
                 const csv = e.target?.result as string;
-                const lines = csv.trim().split('\n').filter(l => l.trim());
-                if (lines.length < 2) throw new Error('CSV must have a header row and at least one question.');
-                const headers = parseCSVLine(lines[0]);
-                const normalizedHeaders = headers.map(h => h.trim().toLowerCase());
-                const questions: any[] = []; const errors: string[] = [];
-                for (let i = 1; i < lines.length; i++) {
-                    const row = parseCSVLine(lines[i]);
-                    const get = (name: string) => { const idx = normalizedHeaders.indexOf(name.toLowerCase()); return idx >= 0 ? row[idx]?.trim() : ''; };
-                    const questionText = get('QuestionText');
-                    const questionType = get('Type')?.toLowerCase().replace(/[-\s]/g, '_') || 'text';
-                    const points = parseInt(get('Points')) || 1;
-                    const difficulty = get('Difficulty') || 'medium';
-                    if (!questionText || questionText.length < 5) { errors.push(`Row ${i + 1}: Question text too short`); continue; }
-                    const q: any = { questionText, questionType, points, difficulty };
-                    if (questionType === 'multiple_choice') {
-                        const opts = ['OptionA', 'OptionB', 'OptionC', 'OptionD'].map(get).filter(Boolean);
-                        const correct = get('CorrectAnswer')?.toUpperCase();
-                        if (opts.length < 2) { errors.push(`Row ${i + 1}: MCQ needs at least 2 options`); continue; }
-                        q.options = opts.map((text, idx) => ({ optionText: text, isCorrect: String.fromCharCode(65 + idx) === correct }));
-                        if (!q.options.some((o: any) => o.isCorrect)) { errors.push(`Row ${i + 1}: No correct answer marked`); continue; }
-                    } else if (questionType === 'fill_blank' || questionType === 'text') {
-                        const answer = get('CorrectAnswer');
-                        if (answer) q.expectedAnswer = answer;
-                    }
-                    questions.push(q);
-                }
-                setCsvPreview(questions); setCsvErrors(errors);
+                const { questions, errors } = parseCSVContent(csv);
+                setCsvPreview(questions);
+                setCsvErrors(errors);
                 if (questions.length === 0 && errors.length > 0) {
-                    toast({ title: 'All rows failed', description: errors.slice(0, 3).join('; '), variant: 'destructive' });
+                    toast({ title: 'All rows failed', description: `${errors.length} error(s) found. Fix them and try again.`, variant: 'destructive' });
+                } else if (questions.length > 0) {
+                    toast({ title: `${questions.length} questions parsed`, description: errors.length ? `${errors.length} rows had errors and were skipped.` : 'All rows valid. Review and import.' });
                 }
             } catch (err: any) {
                 toast({ title: 'CSV Parse Error', description: err.message, variant: 'destructive' });
             }
         };
         reader.readAsText(file);
+    };
+
+    const handlePasteCSVParse = () => {
+        if (!csvPasteText.trim()) return;
+        try {
+            const { questions, errors } = parseCSVContent(csvPasteText);
+            setCsvPreview(questions);
+            setCsvErrors(errors);
+            if (questions.length === 0 && errors.length > 0) {
+                toast({ title: 'All rows failed', description: `${errors.length} error(s) found. Fix your CSV and try again.`, variant: 'destructive' });
+            } else if (questions.length > 0) {
+                toast({ title: `${questions.length} questions parsed`, description: errors.length ? `${errors.length} rows skipped due to errors.` : 'All rows valid. Review and import.' });
+            }
+        } catch (err: any) {
+            toast({ title: 'Parse Error', description: err.message, variant: 'destructive' });
+        }
     };
 
     const handleCsvSubmit = () => {
@@ -773,26 +874,90 @@ export default function QuestionBankManager() {
                 </Dialog>
             )}
 
-            {/* CSV Upload Dialog */}
-            <Dialog open={isCsvDialogOpen} onOpenChange={setIsCsvDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader><DialogTitle className="flex items-center gap-2"><FileUp className="w-5 h-5" /> CSV Bulk Upload</DialogTitle></DialogHeader>
+            {/* CSV Import Dialog */}
+            <Dialog open={isCsvDialogOpen} onOpenChange={(open) => {
+                setIsCsvDialogOpen(open);
+                if (!open) { setCsvPreview([]); setCsvErrors([]); setCsvPasteText(''); setCsvInputMode('file'); }
+            }}>
+                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <FileUp className="w-5 h-5" /> CSV Bulk Import
+                        </DialogTitle>
+                    </DialogHeader>
                     <div className="space-y-4">
-                        <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={downloadBankCSVTemplate}>
-                                <Download className="w-4 h-4 mr-1" /> Download Template
-                            </Button>
-                            <label className="cursor-pointer">
-                                <Button variant="outline" size="sm" asChild>
-                                    <span><Upload className="w-4 h-4 mr-1" /> Choose CSV File</span>
-                                </Button>
-                                <input type="file" accept=".csv" className="hidden" onChange={handleBankCSVFile} />
-                            </label>
+
+                        {/* Mode selector */}
+                        <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+                            <button
+                                className={`px-3 py-1.5 text-sm rounded-md flex items-center gap-1.5 transition-colors ${csvInputMode === 'file' ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'}`}
+                                onClick={() => { setCsvInputMode('file'); setCsvPreview([]); setCsvErrors([]); }}
+                                data-testid="button-csv-mode-file"
+                            >
+                                <Upload className="w-3.5 h-3.5" /> Upload File
+                            </button>
+                            <button
+                                className={`px-3 py-1.5 text-sm rounded-md flex items-center gap-1.5 transition-colors ${csvInputMode === 'paste' ? 'bg-background shadow-sm font-medium' : 'text-muted-foreground hover:text-foreground'}`}
+                                onClick={() => { setCsvInputMode('paste'); setCsvPreview([]); setCsvErrors([]); }}
+                                data-testid="button-csv-mode-paste"
+                            >
+                                <Clipboard className="w-3.5 h-3.5" /> Paste CSV Text
+                            </button>
                         </div>
 
-                        {/* Optional curriculum binding for all uploaded questions */}
+                        {/* File Upload Mode */}
+                        {csvInputMode === 'file' && (
+                            <div className="space-y-3">
+                                <div className="flex gap-2 flex-wrap">
+                                    <Button variant="outline" size="sm" onClick={downloadBankCSVTemplate}>
+                                        <Download className="w-4 h-4 mr-1" /> Download Template
+                                    </Button>
+                                    <label className="cursor-pointer">
+                                        <Button variant="outline" size="sm" asChild>
+                                            <span><Upload className="w-4 h-4 mr-1" /> Choose CSV File</span>
+                                        </Button>
+                                        <input type="file" accept=".csv" className="hidden" onChange={handleBankCSVFile} data-testid="input-csv-file" />
+                                    </label>
+                                </div>
+                                <div className="bg-muted/40 rounded-lg p-3 text-xs space-y-1.5">
+                                    <p className="font-medium text-muted-foreground flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> Supported formats:</p>
+                                    <p className="text-muted-foreground"><span className="font-medium text-foreground">Simple:</span> question, optionA, optionB, optionC, optionD, correctAnswer</p>
+                                    <p className="text-muted-foreground"><span className="font-medium text-foreground">Extended:</span> QuestionText, Type, OptionA, OptionB, OptionC, OptionD, CorrectAnswer, Points, Difficulty</p>
+                                    <p className="text-[11px] text-muted-foreground/70">correctAnswer must be A, B, C, or D for multiple choice questions</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Paste Mode */}
+                        {csvInputMode === 'paste' && (
+                            <div className="space-y-3">
+                                <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-xs space-y-2">
+                                    <p className="font-medium text-amber-800 dark:text-amber-200 flex items-center gap-1"><FileText className="w-3.5 h-3.5" /> Sample CSV format (copy and adapt):</p>
+                                    <pre className="font-mono text-[11px] leading-relaxed text-amber-900 dark:text-amber-100 whitespace-pre-wrap bg-amber-100/50 dark:bg-amber-900/20 rounded p-2">{`question,optionA,optionB,optionC,optionD,correctAnswer\nWhat is 2 + 2?,2,3,4,5,C\nCapital of Nigeria?,Accra,Lagos,Abuja,Kano,C\nLargest planet in solar system?,Earth,Mars,Jupiter,Venus,C`}</pre>
+                                </div>
+                                <Textarea
+                                    placeholder="Paste your CSV content here (including the header row)..."
+                                    value={csvPasteText}
+                                    onChange={(e) => { setCsvPasteText(e.target.value); setCsvPreview([]); setCsvErrors([]); }}
+                                    rows={8}
+                                    className="font-mono text-xs resize-none"
+                                    data-testid="input-csv-paste"
+                                />
+                                <Button
+                                    onClick={handlePasteCSVParse}
+                                    disabled={!csvPasteText.trim()}
+                                    className="w-full"
+                                    variant="outline"
+                                    data-testid="button-parse-csv"
+                                >
+                                    <Eye className="w-4 h-4 mr-2" /> Parse &amp; Preview
+                                </Button>
+                            </div>
+                        )}
+
+                        {/* Curriculum binding */}
                         <div className="border rounded-lg p-3 bg-muted/30">
-                            <p className="text-xs font-medium mb-2 text-muted-foreground">Apply curriculum to all uploaded questions (optional)</p>
+                            <p className="text-xs font-medium mb-2 text-muted-foreground">Apply curriculum to all imported questions (optional)</p>
                             <div className="grid grid-cols-3 gap-2">
                                 <Select value={formClassId} onValueChange={handleFormClassChange}>
                                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Class" /></SelectTrigger>
@@ -809,40 +974,98 @@ export default function QuestionBankManager() {
                             </div>
                         </div>
 
-                        {/* CSV Preview */}
+                        {/* Preview Table */}
                         {csvPreview.length > 0 && (
-                            <div className="border rounded-lg">
-                                <div className="p-2 bg-muted/50 flex items-center justify-between rounded-t-lg">
-                                    <span className="text-sm font-medium">{csvPreview.length} question{csvPreview.length !== 1 ? 's' : ''} ready</span>
-                                    <Badge variant="secondary">{csvPreview.filter(q => q.questionType === 'multiple_choice').length} MCQ, {csvPreview.filter(q => q.questionType !== 'multiple_choice').length} Theory</Badge>
+                            <div className="border rounded-lg overflow-hidden">
+                                <div className="px-3 py-2 bg-muted/50 flex items-center justify-between">
+                                    <span className="text-sm font-medium flex items-center gap-2">
+                                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                        {csvPreview.length} question{csvPreview.length !== 1 ? 's' : ''} ready to import
+                                    </span>
+                                    <div className="flex gap-1.5">
+                                        <Badge variant="secondary" className="text-[10px]">{csvPreview.filter(q => q.questionType === 'multiple_choice').length} MCQ</Badge>
+                                        {csvPreview.filter(q => q.questionType !== 'multiple_choice').length > 0 && (
+                                            <Badge variant="outline" className="text-[10px]">{csvPreview.filter(q => q.questionType !== 'multiple_choice').length} Theory</Badge>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="max-h-48 overflow-y-auto divide-y">
-                                    {csvPreview.slice(0, 10).map((q: any, i: number) => (
-                                        <div key={i} className="p-2 text-xs flex items-center gap-2">
-                                            <Badge variant="outline" className="shrink-0 text-[10px]">{q.questionType === 'multiple_choice' ? 'MCQ' : q.questionType}</Badge>
-                                            <span className="line-clamp-1 flex-1">{q.questionText}</span>
-                                            <Badge variant="secondary" className="shrink-0 text-[10px]">{q.points}pt</Badge>
-                                        </div>
-                                    ))}
-                                    {csvPreview.length > 10 && <div className="p-2 text-xs text-muted-foreground text-center">...and {csvPreview.length - 10} more</div>}
+                                <div className="max-h-64 overflow-y-auto">
+                                    <table className="w-full text-xs">
+                                        <thead className="bg-muted/30 sticky top-0">
+                                            <tr>
+                                                <th className="p-2 text-left font-medium text-muted-foreground w-8">#</th>
+                                                <th className="p-2 text-left font-medium text-muted-foreground">Question</th>
+                                                <th className="p-2 text-left font-medium text-muted-foreground">Options</th>
+                                                <th className="p-2 text-left font-medium text-muted-foreground w-20">Answer</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y">
+                                            {csvPreview.map((q: any, i: number) => (
+                                                <tr key={i} className="hover:bg-muted/20 align-top">
+                                                    <td className="p-2 text-muted-foreground font-mono">{i + 1}</td>
+                                                    <td className="p-2 max-w-[220px]">
+                                                        <span className="line-clamp-2 text-foreground">{q.questionText}</span>
+                                                        <Badge variant="outline" className="text-[9px] mt-0.5 capitalize">{q.questionType === 'multiple_choice' ? 'MCQ' : q.questionType}</Badge>
+                                                    </td>
+                                                    <td className="p-2">
+                                                        {q.options ? (
+                                                            <div className="space-y-0.5">
+                                                                {q.options.map((o: any, oi: number) => (
+                                                                    <div key={oi} className={`flex items-start gap-1 ${o.isCorrect ? 'text-green-600 dark:text-green-400 font-semibold' : 'text-muted-foreground'}`}>
+                                                                        <span className="shrink-0 font-mono">{String.fromCharCode(65 + oi)}.</span>
+                                                                        <span className="line-clamp-1">{o.optionText}</span>
+                                                                        {o.isCorrect && <CheckCircle2 className="w-3 h-3 shrink-0 mt-0.5" />}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-muted-foreground italic">{q.expectedAnswer || '—'}</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-2">
+                                                        {q._preview?.correctAnswer && (
+                                                            <Badge className="text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border-green-300 dark:border-green-700">
+                                                                {q._preview.correctAnswer}
+                                                            </Badge>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         )}
 
-                        {/* CSV Errors */}
+                        {/* Validation Errors */}
                         {csvErrors.length > 0 && (
                             <div className="border border-destructive/30 rounded-lg p-3 bg-destructive/5">
-                                <p className="text-sm font-medium text-destructive flex items-center gap-1 mb-1"><AlertTriangle className="w-4 h-4" /> {csvErrors.length} Error{csvErrors.length !== 1 ? 's' : ''}</p>
-                                <div className="max-h-32 overflow-y-auto space-y-1">
-                                    {csvErrors.map((err, i) => <p key={i} className="text-xs text-destructive/80">{err}</p>)}
+                                <p className="text-sm font-medium text-destructive flex items-center gap-1.5 mb-2">
+                                    <AlertTriangle className="w-4 h-4" />
+                                    {csvErrors.length} validation error{csvErrors.length !== 1 ? 's' : ''} — these rows were skipped
+                                </p>
+                                <div className="max-h-36 overflow-y-auto space-y-1">
+                                    {csvErrors.map((err, i) => (
+                                        <p key={i} className="text-xs text-destructive/80 flex items-start gap-1.5">
+                                            <XCircle className="w-3 h-3 shrink-0 mt-0.5" />
+                                            {err}
+                                        </p>
+                                    ))}
                                 </div>
                             </div>
                         )}
 
-                        <div className="flex justify-end gap-2">
-                            <Button variant="outline" onClick={() => { setIsCsvDialogOpen(false); setCsvPreview([]); setCsvErrors([]); }}>Cancel</Button>
-                            <Button onClick={handleCsvSubmit} disabled={csvPreview.length === 0 || csvUploadMutation.isPending}>
-                                {csvUploadMutation.isPending ? 'Uploading...' : `Upload ${csvPreview.length} Question${csvPreview.length !== 1 ? 's' : ''}`}
+                        {/* Actions */}
+                        <div className="flex justify-end gap-2 pt-1">
+                            <Button variant="outline" onClick={() => { setIsCsvDialogOpen(false); setCsvPreview([]); setCsvErrors([]); setCsvPasteText(''); }}>
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={handleCsvSubmit}
+                                disabled={csvPreview.length === 0 || csvUploadMutation.isPending}
+                                data-testid="button-import-csv"
+                            >
+                                {csvUploadMutation.isPending ? 'Importing...' : `Import ${csvPreview.length} Question${csvPreview.length !== 1 ? 's' : ''}`}
                             </Button>
                         </div>
                     </div>
