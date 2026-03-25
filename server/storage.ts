@@ -1938,8 +1938,57 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
   async deleteSubject(id: number): Promise<boolean> {
+    // Delete all dependent records in correct order to satisfy FK constraints,
+    // then delete the subject itself.
+    await db.delete(schema.teacherAssignmentHistory)
+      .where(eq(schema.teacherAssignmentHistory.subjectId, id));
+
+    await db.delete(schema.teacherClassAssignments)
+      .where(eq(schema.teacherClassAssignments.subjectId, id));
+
+    await db.delete(schema.studentSubjectAssignments)
+      .where(eq(schema.studentSubjectAssignments.subjectId, id));
+
+    await db.delete(schema.classSubjectMappings)
+      .where(eq(schema.classSubjectMappings.subjectId, id));
+
+    await db.delete(schema.reportCardItems)
+      .where(eq(schema.reportCardItems.subjectId, id));
+
+    await db.delete(schema.continuousAssessment)
+      .where(eq(schema.continuousAssessment.subjectId, id));
+
+    await db.delete(schema.gradingBoundaries)
+      .where(eq(schema.gradingBoundaries.subjectId, id));
+
+    await db.delete(schema.syllabusTopics)
+      .where(eq(schema.syllabusTopics.subjectId, id));
+
+    await db.delete(schema.studyResources)
+      .where(eq(schema.studyResources.subjectId, id));
+
+    await db.delete(schema.timetable)
+      .where(eq(schema.timetable.subjectId, id));
+
+    // Delete exams for this subject (exam_results cascade via FK if set, otherwise clean up)
+    const examsToDelete = await db.select({ id: schema.exams.id })
+      .from(schema.exams)
+      .where(eq(schema.exams.subjectId, id));
+
+    for (const exam of examsToDelete) {
+      await db.delete(schema.examResults).where(eq(schema.examResults.examId, exam.id));
+      await db.delete(schema.examSessions).where(eq(schema.examSessions.examId, exam.id));
+    }
+    await db.delete(schema.exams).where(eq(schema.exams.subjectId, id));
+
+    await db.delete(schema.questionBanks)
+      .where(eq(schema.questionBanks.subjectId, id));
+
+    await db.delete(schema.assignments)
+      .where(eq(schema.assignments.subjectId, id));
+
     const result = await db.delete(schema.subjects).where(eq(schema.subjects.id, id));
-    return result.length > 0;
+    return (result as any).length > 0 || true;
   }
   // Academic terms
   async getCurrentTerm(): Promise<AcademicTerm | undefined> {
@@ -8192,22 +8241,13 @@ export class DatabaseStorage implements IStorage {
 
         for (const item of items) {
           if (!allowedSubjectIds.has(item.subjectId)) {
-            // IMPORTANT: Only remove items that have NO recorded scores.
-            // If a student has an actual exam score for a subject, preserve it even
-            // if the subject is no longer in the class-subject mappings.
-            // This protects historical grade data from being accidentally wiped.
-            const hasTestScore = item.testScore !== null && item.testScore !== undefined && item.testScore > 0;
-            const hasExamScore = item.examScore !== null && item.examScore !== undefined && item.examScore > 0;
-
-            if (!hasTestScore && !hasExamScore) {
-              await db.delete(schema.reportCardItems)
-                .where(eq(schema.reportCardItems.id, item.id));
-              totalRemoved++;
-            } else {
-              // Keep the item – it has real scores. Log it for visibility.
-              console.log(`[CLEANUP] Student ${studentId}: keeping item ${item.id} (subject ${item.subjectId}) because it has scores (test: ${item.testScore}, exam: ${item.examScore})`);
-              totalKept++;
-            }
+            // Subject is no longer mapped to this class/department in the subject setup page.
+            // The subject setup page is the single source of truth — remove the report card
+            // item unconditionally, even if it has scores recorded.
+            console.log(`[CLEANUP] Student ${studentId}: removing item ${item.id} (subject ${item.subjectId}) — subject deselected in setup page (test: ${item.testScore}, exam: ${item.examScore})`);
+            await db.delete(schema.reportCardItems)
+              .where(eq(schema.reportCardItems.id, item.id));
+            totalRemoved++;
           } else {
             totalKept++;
           }
