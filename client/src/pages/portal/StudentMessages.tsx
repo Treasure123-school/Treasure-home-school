@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import {
   MessageSquare, Send, Search, User, Calendar, Mail, ArrowLeft, Plus,
-  Inbox, Clock, CheckCircle2, X
+  Inbox, Clock, CheckCircle2, X, Loader2
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { useState } from 'react';
@@ -459,14 +459,18 @@ export default function StudentMessages() {
                     onClick={handleVerifyRecipient}
                     disabled={isVerifying || !recipientIdentifier.trim()}
                   >
-                    {isVerifying ? '...' : 'Verify'}
+                    {isVerifying ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      'Verify'
+                    )}
                   </Button>
                 )}
               </div>
               {recipientInfo && (
                 <div className="mt-2 text-xs p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-lg flex items-center gap-2">
-                  <User className="h-3 w-3" />
-                  <span>Found: <strong>{recipientInfo.firstName} {recipientInfo.lastName}</strong> ({recipientInfo.roleName})</span>
+                  <CheckCircle2 className="h-3 w-3" />
+                  <span>Verified: <strong>{recipientInfo.firstName} {recipientInfo.lastName}</strong> ({recipientInfo.roleName})</span>
                 </div>
               )}
             </div>

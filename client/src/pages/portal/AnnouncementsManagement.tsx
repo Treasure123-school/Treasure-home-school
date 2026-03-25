@@ -87,6 +87,8 @@ export default function AnnouncementsManagement() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('all');
+  const [selectedPriority, setSelectedPriority] = useState<string>('all');
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [editingAnnouncement, setEditingAnnouncement] = useState<any>(null);
   const [announcementToDelete, setAnnouncementToDelete] = useState<any>(null);
   const [previewMode, setPreviewMode] = useState(false);
@@ -360,7 +362,12 @@ export default function AnnouncementsManagement() {
     
     const matchesRole = selectedRole === 'all' || announcementRoles.includes(selectedRole);
     
-    return matchesSearch && matchesRole;
+    const matchesPriority = selectedPriority === 'all' || announcement.priority === selectedPriority;
+    
+    const status = announcement.status || (announcement.isPublished ? 'published' : 'draft');
+    const matchesStatus = selectedStatus === 'all' || status === selectedStatus;
+    
+    return matchesSearch && matchesRole && matchesPriority && matchesStatus;
   });
 
   const availableRoles = ['All', 'Student', 'Teacher', 'Parent', 'Admin'];
@@ -1067,6 +1074,7 @@ export default function AnnouncementsManagement() {
           </DialogContent>
         </Dialog>
       </div>
+    </div>
 
       <Card>
         <CardContent className="py-4">
@@ -1083,17 +1091,45 @@ export default function AnnouncementsManagement() {
                 />
               </div>
             </div>
-            <Select value={selectedRole} onValueChange={setSelectedRole}>
-              <SelectTrigger className="w-full sm:w-[180px]" data-testid="select-role-filter">
-                <SelectValue placeholder="Filter by role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                {availableRoles.map((role) => (
-                  <SelectItem key={role} value={role}>{role}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            
+            <div className="flex flex-wrap gap-2 sm:gap-4">
+              <Select value={selectedRole} onValueChange={setSelectedRole}>
+                <SelectTrigger className="w-[140px] sm:w-[160px]" data-testid="select-role-filter">
+                  <SelectValue placeholder="Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Roles</SelectItem>
+                  {availableRoles.map((role) => (
+                    <SelectItem key={role} value={role}>{role}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedPriority} onValueChange={setSelectedPriority}>
+                <SelectTrigger className="w-[140px] sm:w-[160px]" data-testid="select-priority-filter">
+                  <SelectValue placeholder="Priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Priorities</SelectItem>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="important">Important</SelectItem>
+                  <SelectItem value="urgent">Urgent</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                <SelectTrigger className="w-[140px] sm:w-[160px]" data-testid="select-status-filter">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="published">Published</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="scheduled">Scheduled</SelectItem>
+                  <SelectItem value="expired">Expired</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -1376,6 +1412,5 @@ export default function AnnouncementsManagement() {
         </Dialog>
       )}
     </div>
-  </div>
   );
 }

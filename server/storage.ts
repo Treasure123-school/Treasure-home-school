@@ -1,4 +1,4 @@
-import { eq, and, desc, asc, sql, sql as dsql, inArray, isNull, isNotNull, ne, gte, lte, or, like } from "drizzle-orm";
+import { eq, and, desc, asc, sql, sql as dsql, inArray, isNull, isNotNull, ne, gte, lte, or, like, ilike } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { randomUUID } from "crypto";
 import { getDatabase, getSchema, getPgClient, getPgPool, isPostgres, isSqlite } from "./db";
@@ -729,7 +729,7 @@ export class DatabaseStorage implements IStorage {
       status: schema.users.status,
       createdAt: schema.users.createdAt,
       updatedAt: schema.users.updatedAt,
-    }).from(schema.users).where(eq(schema.users.email, email)).limit(1);
+    }).from(schema.users).where(ilike(schema.users.email, email)).limit(1);
 
     const user = result[0];
     if (user && user.id) {
@@ -741,7 +741,7 @@ export class DatabaseStorage implements IStorage {
     return user as User | undefined;
   }
   async getUserByUsername(username: string): Promise<User | undefined> {
-    const result = await this.db.select().from(schema.users).where(eq(schema.users.username, username)).limit(1);
+    const result = await this.db.select().from(schema.users).where(ilike(schema.users.username, username)).limit(1);
     const user = result[0];
     if (user && user.id) {
       const normalizedId = normalizeUuid(user.id);
@@ -770,7 +770,7 @@ export class DatabaseStorage implements IStorage {
     // Try Admission Number (Student)
     const [student] = await this.db.select()
       .from(schema.students)
-      .where(eq(schema.students.admissionNumber, identifier))
+      .where(ilike(schema.students.admissionNumber, identifier))
       .limit(1);
     
     if (student) {
@@ -780,7 +780,7 @@ export class DatabaseStorage implements IStorage {
     // Try Staff ID (Teacher)
     const [teacher] = await this.db.select()
       .from(schema.teacherProfiles)
-      .where(eq(schema.teacherProfiles.staffId, identifier))
+      .where(ilike(schema.teacherProfiles.staffId, identifier))
       .limit(1);
     
     if (teacher) {
@@ -8996,8 +8996,8 @@ export class DatabaseStorage implements IStorage {
       content: schema.messages.content,
       isRead: schema.messages.isRead,
       createdAt: schema.messages.createdAt,
-      senderName: sql<string>`${sender.firstName} || ' ' || ${sender.lastName}`,
-      recipientName: sql<string>`${recipient.firstName} || ' ' || ${recipient.lastName}`
+      senderName: sql<string>`COALESCE(${sender.firstName}, '') || ' ' || COALESCE(${sender.lastName}, '')`,
+      recipientName: sql<string>`COALESCE(${recipient.firstName}, '') || ' ' || COALESCE(${recipient.lastName}, '')`
     })
       .from(schema.messages)
       .leftJoin(sender, eq(schema.messages.senderId, sender.id))
