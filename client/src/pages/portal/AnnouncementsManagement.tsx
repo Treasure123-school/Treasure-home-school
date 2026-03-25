@@ -1412,6 +1412,5 @@ export default function AnnouncementsManagement() {
         </Dialog>
       )}
     </div>
-  </div>
   );
 }
