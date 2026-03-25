@@ -11,7 +11,8 @@ import {
   subjects,
   users,
   academicTerms,
-  students
+  students,
+  classSubjectMappings
 } from '@shared/schema.pg';
 import { eq, and, desc, sql, isNull, or, gte, inArray } from 'drizzle-orm';
 import { ROLE_IDS } from '@shared/role-constants';
@@ -823,6 +824,10 @@ router.get('/api/teacher/classes-with-stats', requireAuth, async (req: Request, 
     }
 
     const now = new Date();
+    // Join with class_subject_mappings so each class card only shows subjects
+    // that are BOTH assigned to this teacher AND currently active in the
+    // subject setup page. This ensures the subject setup page is the
+    // single source of truth for what appears on class cards.
     const assignments = await db
       .select({
         assignmentId: teacherClassAssignments.id,
@@ -832,10 +837,25 @@ router.get('/api/teacher/classes-with-stats', requireAuth, async (req: Request, 
         classLevel: classes.level,
         classCapacity: classes.capacity,
         subjectName: subjects.name,
+        teacherDept: teacherClassAssignments.department,
       })
       .from(teacherClassAssignments)
       .innerJoin(classes, eq(teacherClassAssignments.classId, classes.id))
       .innerJoin(subjects, eq(teacherClassAssignments.subjectId, subjects.id))
+      // Only include subjects that exist in the class subject setup for this class.
+      // Department matching: include if csm.department is null (general) OR matches teacher's dept.
+      .innerJoin(
+        classSubjectMappings,
+        and(
+          eq(classSubjectMappings.classId, teacherClassAssignments.classId),
+          eq(classSubjectMappings.subjectId, teacherClassAssignments.subjectId),
+          or(
+            isNull(classSubjectMappings.department),
+            isNull(teacherClassAssignments.department),
+            eq(classSubjectMappings.department, teacherClassAssignments.department)
+          )
+        )
+      )
       .where(and(
         eq(teacherClassAssignments.teacherId, user.id),
         eq(teacherClassAssignments.isActive, true),
