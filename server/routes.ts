@@ -1924,7 +1924,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           date: exam.date,
           subjectId: exam.subjectId,
           classId: exam.classId
-        }
+        },
+        showCorrectAnswers: exam.showCorrectAnswers ?? true,
       };
 
       console.log(`[STRICT-EXAM-RESULT] Returning result: exam="${exam.name}", subject="${subjectName}", score=${score}/${maxScore}`);
@@ -3243,6 +3244,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           timeTakenFormatted: formatTimeTaken(timeTakenSeconds),
           submissionReason: reason,
           violationCount: violationCount || 0,
+          showCorrectAnswers: exam.showCorrectAnswers ?? true,
           questionDetails,
           breakdown: {
             totalQuestions: examQuestions.length,

@@ -173,7 +173,7 @@ export default function ExamManagement() {
       shuffleQuestions: false,
       autoGradingEnabled: true,
       instantFeedback: false,
-      showCorrectAnswers: false,
+      showCorrectAnswers: true,
       passingScore: 60,
       gradingScale: 'standard',
     }
