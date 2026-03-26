@@ -5357,6 +5357,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let subjectName = 'Unknown';
         let examDate = null;
         let examType = 'exam';
+        let termId: number | null = null;
+        let termName: string | null = null;
+        let termYear: string | null = null;
         if (r.examId) {
           const exam = await storage.getExamById(r.examId);
           if (exam) {
@@ -5367,12 +5370,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
               const subj = await storage.getSubject(exam.subjectId);
               subjectName = subj?.name ?? 'Unknown';
             }
+            if (exam.termId) {
+              termId = exam.termId;
+              const term = await storage.getAcademicTerm(exam.termId);
+              if (term) {
+                termName = term.name ?? null;
+                termYear = (term as any).year ?? null;
+              }
+            }
           }
         }
         const score = r.score ?? r.marksObtained ?? 0;
         const maxScore = r.maxScore ?? 100;
         const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-        return { ...r, examName, subjectName, examDate, examType, score, maxScore, percentage };
+        return { ...r, examName, subjectName, examDate, examType, score, maxScore, percentage, termId, termName, termYear };
       }));
       res.json(enriched);
     } catch (error) {
