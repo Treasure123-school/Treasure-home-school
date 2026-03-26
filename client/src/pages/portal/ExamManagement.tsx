@@ -952,7 +952,7 @@ export default function ExamManagement() {
       shuffleQuestions: exam.shuffleQuestions || false,
       autoGradingEnabled: exam.autoGradingEnabled !== false,
       instantFeedback: exam.instantFeedback || false,
-      showCorrectAnswers: exam.showCorrectAnswers || false,
+      showCorrectAnswers: exam.showCorrectAnswers ?? true,
       passingScore: exam.passingScore || 60,
       gradingScale: (exam.gradingScale as 'standard' | 'percentage' | 'points' | 'custom') || 'standard',
     });

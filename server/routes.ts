@@ -2666,7 +2666,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Only pass allowed fields to prevent unexpected field updates
       const allowedFields = ['name', 'description', 'date', 'timeLimit', 'totalMarks',
         'classId', 'subjectId', 'teacherInChargeId', 'isPublished', 'instructions',
-        'passingScore', 'maxAttempts', 'showResults', 'shuffleQuestions', 'shuffleOptions'];
+        'passingScore', 'maxAttempts', 'showResults', 'shuffleQuestions', 'shuffleOptions',
+        'showCorrectAnswers', 'autoGradingEnabled', 'instantFeedback', 'gradingScale',
+        'timerMode'];
       const sanitizedData: Record<string, any> = {};
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {
