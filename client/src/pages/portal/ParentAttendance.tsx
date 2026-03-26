@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth';
+import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -70,7 +71,7 @@ export default function ParentAttendance() {
   const { data: attendanceData, isLoading: loadingAttendance } = useQuery<AttendanceData>({
     queryKey: ['/api/parent/attendance', selectedChild],
     queryFn: async () => {
-      const res = await fetch(`/api/parent/attendance/${selectedChild}`, { credentials: 'include' });
+      const res = await apiRequest('GET', `/api/parent/attendance/${selectedChild}`);
       if (!res.ok) throw new Error('Failed to fetch attendance');
       return res.json();
     },

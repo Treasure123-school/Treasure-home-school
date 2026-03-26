@@ -1,20 +1,38 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/lib/auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download, FileText, TrendingUp, Award, Calendar, User, Clock, Wifi } from 'lucide-react';
+import { Download, FileText, TrendingUp, Award, Calendar, User, Clock, GraduationCap, BookOpen } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
+import { apiRequest } from '@/lib/queryClient';
 
 interface Child {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   admissionNumber: string;
-  className: string;
+  className: string | null;
 }
+
+interface ReportCardItem {
+  subjectName: string;
+  testScore: number;
+  testMaxScore: number;
+  testWeightedScore: number;
+  examScore: number;
+  examMaxScore: number;
+  examWeightedScore: number;
+  obtainedMarks: number;
+  percentage: number;
+  grade: string;
+  teacherRemarks: string;
+}
+
 interface ReportCard {
   id: number;
   studentId: string;
@@ -29,57 +47,52 @@ interface ReportCard {
   generatedAt: string;
   items: ReportCardItem[];
 }
-interface ReportCardItem {
-  subjectName: string;
-  testScore: number;
-  testMaxScore: number;
-  testWeightedScore: number;
-  examScore: number;
-  examMaxScore: number;
-  examWeightedScore: number;
-  obtainedMarks: number;
-  percentage: number;
-  grade: string;
-  teacherRemarks: string;
+
+function gradeColor(grade: string) {
+  if (grade === 'A+' || grade === 'A') return 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300';
+  if (grade === 'B+' || grade === 'B') return 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300';
+  if (grade === 'C+' || grade === 'C') return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300';
+  return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
 }
+
 export default function ParentReportCards() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selectedChild, setSelectedChild] = useState<string>('');
+  const [downloading, setDownloading] = useState<number | null>(null);
 
-  // Fetch parent's children
   const { data: children = [], isLoading: loadingChildren } = useQuery<Child[]>({
     queryKey: ['/api/parent/children'],
     enabled: !!user?.id,
   });
 
-  // Fetch selected child's report cards
+  useEffect(() => {
+    if (children.length > 0 && !selectedChild) {
+      setSelectedChild(children[0].id);
+    }
+  }, [children, selectedChild]);
+
   const { data: reportCards = [], isLoading: loadingReports } = useQuery<ReportCard[]>({
     queryKey: ['/api/parent/child-reports', selectedChild],
     queryFn: async () => {
-      const response = await fetch(`/api/parent/child-reports/${selectedChild}`, { credentials: 'include' });
-      if (!response.ok) {
-        throw new Error('Failed to fetch report cards');
-      }
+      const response = await apiRequest('GET', `/api/parent/child-reports/${selectedChild}`);
+      if (!response.ok) throw new Error('Failed to fetch report cards');
       return response.json();
     },
     enabled: !!selectedChild,
   });
 
-  // Real-time subscription for when report cards are published for the selected child
-  // The hook automatically invalidates the queryKey when events are received
-  const { isConnected: realtimeConnected } = useSocketIORealtime({
+  useSocketIORealtime({
     table: 'report_cards',
     queryKey: ['/api/parent/child-reports', selectedChild],
     enabled: !!selectedChild,
   });
 
   const handleDownloadPDF = async (reportId: number) => {
+    setDownloading(reportId);
     try {
       const response = await apiRequest('GET', `/api/report-cards/${reportId}/pdf`);
-      if (!response.ok) {
-        throw new Error('Failed to download PDF');
-      }
+      if (!response.ok) throw new Error('Failed to download PDF');
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -89,250 +102,236 @@ export default function ParentReportCards() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
-      toast({
-        title: "Success",
-        description: "Report card downloaded successfully",
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to download report card",
-        variant: "destructive",
-      });
+      toast({ title: 'Downloaded', description: 'Report card downloaded successfully.' });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to download report card.', variant: 'destructive' });
+    } finally {
+      setDownloading(null);
     }
   };
 
-  const getGradeColor = (grade: string) => {
-    if (grade === 'A' || grade === 'A+') return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-    if (grade === 'B' || grade === 'B+') return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-    if (grade === 'C' || grade === 'C+') return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-    return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
-  };
-
   if (!user) {
-    return (
-        <div className="text-center py-12">Please log in to access parent portal.</div>
-    );
+    return <div className="text-center py-12 text-muted-foreground">Please log in to access the parent portal.</div>;
   }
-  return (
-      <div className="space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold" data-testid="text-page-title">Report Cards</h1>
-            <div className="flex items-center gap-2">
-              <p className="text-muted-foreground">View your children's academic performance</p>
-              {realtimeConnected && (
-                <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                  Live
-                </span>
-              )}
-            </div>
-          </div>
 
-          {children.length > 0 && (
-            <div className="w-full md:w-64">
-              <Select value={selectedChild} onValueChange={setSelectedChild}>
-                <SelectTrigger data-testid="select-child">
-                  <SelectValue placeholder="Select a child" />
-                </SelectTrigger>
-                <SelectContent>
-                  {children.map((child) => (
-                    <SelectItem key={child.id} value={child.id}>
-                      {child.name} - {child.className}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
+  return (
+    <div className="space-y-6" data-testid="page-parent-report-cards">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2" data-testid="text-page-title">
+            <FileText className="h-6 w-6 text-primary" />
+            Report Cards
+          </h1>
+          <p className="text-muted-foreground mt-1">View your child's published academic report cards</p>
         </div>
 
-        {loadingChildren ? (
-          <div className="text-center py-12">Loading children...</div>
-        ) : children.length === 0 ? (
-          <Card>
-            <CardContent className="py-12">
-              <div className="text-center text-muted-foreground">
-                <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>No children found. Please contact the school administration.</p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : !selectedChild ? (
-          <Card>
-            <CardContent className="py-12">
-              <div className="text-center text-muted-foreground">
-                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Please select a child to view their report cards</p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : loadingReports ? (
-          <div className="text-center py-12">Loading report cards...</div>
-        ) : reportCards.length === 0 ? (
-          <Card>
-            <CardContent className="py-12">
-              <div className="text-center">
-                <Clock className="h-12 w-12 mx-auto mb-4 text-amber-500" />
-                <h3 className="text-lg font-medium mb-2">No Published Report Cards Yet</h3>
-                <p className="text-muted-foreground mb-2">
-                  Report cards for this child haven't been published yet.
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Report cards become available once teachers finalize and publish them. Please check back later.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-6">
-            {reportCards.map((report) => (
-              <Card key={report.id} className="overflow-hidden">
-                <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900">
-                  <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div className="space-y-1">
-                      <CardTitle className="text-xl" data-testid={`text-report-title-${report.id}`}>
-                        {report.studentName} - {report.className}
-                      </CardTitle>
-                      <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          {report.termName} {report.termYear}
-                        </span>
-                        <span>•</span>
-                        <Badge variant="outline" className={getGradeColor(report.overallGrade)}>
-                          Grade: {report.overallGrade}
-                        </Badge>
-                        <Badge variant="outline">
-                          Average: {report.averagePercentage}%
-                        </Badge>
-                      </div>
+        {children.length > 0 && (
+          <div className="w-full sm:w-64">
+            <Select value={selectedChild} onValueChange={setSelectedChild}>
+              <SelectTrigger data-testid="select-child">
+                <SelectValue placeholder="Select a child" />
+              </SelectTrigger>
+              <SelectContent>
+                {children.map((child) => (
+                  <SelectItem key={child.id} value={child.id}>
+                    <div className="flex items-center gap-2">
+                      <GraduationCap className="h-4 w-4 text-muted-foreground" />
+                      <span>{child.firstName} {child.lastName}</span>
+                      {child.className && <span className="text-xs text-muted-foreground">({child.className})</span>}
                     </div>
-                    <Button
-                      onClick={() => handleDownloadPDF(report.id)}
-                      className="gap-2"
-                      data-testid={`button-download-pdf-${report.id}`}
-                    >
-                      <Download className="h-4 w-4" />
-                      Download PDF
-                    </Button>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="p-6">
-                  {/* Subject Breakdown */}
-                  <div className="space-y-4">
-                    <h3 className="font-semibold text-lg flex items-center gap-2">
-                      <Award className="h-5 w-5" />
-                      Subject Performance
-                    </h3>
-
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-2 px-3 font-medium">Subject</th>
-                            <th className="text-center py-2 px-3 font-medium">Test (40)</th>
-                            <th className="text-center py-2 px-3 font-medium">Exam (60)</th>
-                            <th className="text-center py-2 px-3 font-medium">Total (100)</th>
-                            <th className="text-center py-2 px-3 font-medium">Grade</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {report.items.map((item, index) => (
-                            <tr key={index} className="border-b hover:bg-muted/50">
-                              <td className="py-3 px-3 font-medium">{item.subjectName}</td>
-                              <td className="text-center py-3 px-3">
-                                <div className="space-y-1">
-                                  <div className="font-medium">{item.testWeightedScore}/40</div>
-                                  <div className="text-xs text-muted-foreground">
-                                    ({item.testScore}/{item.testMaxScore})
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="text-center py-3 px-3">
-                                <div className="space-y-1">
-                                  <div className="font-medium">{item.examWeightedScore}/60</div>
-                                  <div className="text-xs text-muted-foreground">
-                                    ({item.examScore}/{item.examMaxScore})
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="text-center py-3 px-3">
-                                <div className="font-bold text-lg">{item.obtainedMarks}/100</div>
-                                <div className="text-xs text-muted-foreground">{item.percentage}%</div>
-                              </td>
-                              <td className="text-center py-3 px-3">
-                                <Badge className={getGradeColor(item.grade)}>
-                                  {item.grade}
-                                </Badge>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-
-                  {/* Teacher's Remarks */}
-                  {report.teacherRemarks && (
-                    <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                      <h4 className="font-semibold mb-2">Teacher's Remarks</h4>
-                      <p className="text-sm text-muted-foreground">{report.teacherRemarks}</p>
-                    </div>
-                  )}
-
-                  {/* Performance Summary */}
-                  <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card>
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                            <TrendingUp className="h-5 w-5 text-green-600 dark:text-green-400" />
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Average Score</p>
-                            <p className="text-xl font-bold">{report.averagePercentage}%</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                            <Award className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Overall Grade</p>
-                            <p className="text-xl font-bold">{report.overallGrade}</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                            <FileText className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                          </div>
-                          <div>
-                            <p className="text-sm text-muted-foreground">Subjects</p>
-                            <p className="text-xl font-bold">{report.items.length}</p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         )}
       </div>
+
+      {/* Loading */}
+      {loadingChildren && (
+        <div className="space-y-4">
+          <Skeleton className="h-64 rounded-xl" />
+          <Skeleton className="h-64 rounded-xl" />
+        </div>
+      )}
+
+      {/* No children */}
+      {!loadingChildren && children.length === 0 && (
+        <Card>
+          <CardContent className="py-16 text-center">
+            <User className="h-12 w-12 mx-auto mb-4 opacity-40" />
+            <h3 className="font-semibold mb-2">No Children Linked</h3>
+            <p className="text-sm text-muted-foreground">Please contact the school administration to link your children.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* No child selected (edge case) */}
+      {!loadingChildren && children.length > 0 && !selectedChild && (
+        <Card>
+          <CardContent className="py-16 text-center">
+            <FileText className="h-12 w-12 mx-auto mb-4 opacity-40" />
+            <p className="text-muted-foreground">Select a child to view their report cards.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Loading report cards */}
+      {selectedChild && loadingReports && (
+        <div className="space-y-4">
+          <Skeleton className="h-72 rounded-xl" />
+          <Skeleton className="h-72 rounded-xl" />
+        </div>
+      )}
+
+      {/* No report cards published */}
+      {selectedChild && !loadingReports && reportCards.length === 0 && (
+        <Card>
+          <CardContent className="py-16 text-center">
+            <Clock className="h-12 w-12 mx-auto mb-4 text-amber-500 opacity-60" />
+            <h3 className="font-semibold mb-2">No Published Report Cards Yet</h3>
+            <p className="text-sm text-muted-foreground max-w-xs mx-auto">
+              Report cards for this child haven't been published yet. They will appear here once the school releases them.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Report Cards List */}
+      {selectedChild && !loadingReports && reportCards.length > 0 && (
+        <div className="space-y-6">
+          {reportCards.map((report) => (
+            <Card key={report.id} className="overflow-hidden border border-border shadow-sm" data-testid={`card-report-${report.id}`}>
+              {/* Card Header */}
+              <CardHeader className="pb-4 border-b border-border bg-muted/30">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                  <div className="space-y-1.5">
+                    <CardTitle className="text-lg" data-testid={`text-report-title-${report.id}`}>
+                      {report.studentName}
+                    </CardTitle>
+                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <GraduationCap className="h-3.5 w-3.5" />
+                        {report.className}
+                      </span>
+                      <span>·</span>
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3.5 w-3.5" />
+                        {report.termName} {report.termYear}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 pt-1">
+                      <Badge className={`${gradeColor(report.overallGrade)} border-0 text-xs font-semibold`}>
+                        Overall Grade: {report.overallGrade}
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        Average: {report.averagePercentage}%
+                      </Badge>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => handleDownloadPDF(report.id)}
+                    disabled={downloading === report.id}
+                    size="sm"
+                    className="gap-2 self-start"
+                    data-testid={`button-download-pdf-${report.id}`}
+                  >
+                    <Download className="h-4 w-4" />
+                    {downloading === report.id ? 'Downloading…' : 'Download PDF'}
+                  </Button>
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-5 space-y-5">
+                {/* Subject breakdown */}
+                <div>
+                  <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                    <BookOpen className="h-4 w-4 text-primary" />
+                    Subject Performance
+                  </h3>
+                  <div className="overflow-x-auto rounded-lg border border-border">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="bg-muted/50">
+                          <th className="text-left py-2.5 px-4 font-medium text-muted-foreground">Subject</th>
+                          <th className="text-center py-2.5 px-3 font-medium text-muted-foreground">Test (40)</th>
+                          <th className="text-center py-2.5 px-3 font-medium text-muted-foreground">Exam (60)</th>
+                          <th className="text-center py-2.5 px-3 font-medium text-muted-foreground">Total</th>
+                          <th className="text-center py-2.5 px-3 font-medium text-muted-foreground">Grade</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {report.items.map((item, index) => (
+                          <tr key={index} className="hover:bg-muted/20 transition-colors">
+                            <td className="py-3 px-4 font-medium">{item.subjectName}</td>
+                            <td className="text-center py-3 px-3">
+                              <div className="font-semibold">{item.testWeightedScore}/40</div>
+                              <div className="text-xs text-muted-foreground">({item.testScore}/{item.testMaxScore})</div>
+                            </td>
+                            <td className="text-center py-3 px-3">
+                              <div className="font-semibold">{item.examWeightedScore}/60</div>
+                              <div className="text-xs text-muted-foreground">({item.examScore}/{item.examMaxScore})</div>
+                            </td>
+                            <td className="text-center py-3 px-3">
+                              <div className="font-bold text-base">{item.obtainedMarks}/100</div>
+                              <div className="text-xs text-muted-foreground">{item.percentage}%</div>
+                            </td>
+                            <td className="text-center py-3 px-3">
+                              <Badge className={`${gradeColor(item.grade)} border-0 font-semibold text-xs`}>
+                                {item.grade}
+                              </Badge>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Summary row */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                      <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Average Score</p>
+                      <p className="text-lg font-bold">{report.averagePercentage}%</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <Award className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Overall Grade</p>
+                      <p className="text-lg font-bold">{report.overallGrade}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
+                    <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                      <FileText className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Subjects</p>
+                      <p className="text-lg font-bold">{report.items.length}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Teacher remarks */}
+                {report.teacherRemarks && (
+                  <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-lg">
+                    <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-1">Teacher's Remarks</h4>
+                    <p className="text-sm text-amber-800 dark:text-amber-300">{report.teacherRemarks}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

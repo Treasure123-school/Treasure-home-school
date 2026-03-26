@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth';
+import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -40,7 +41,7 @@ function ChildCard({ child }: { child: Child }) {
   const { data: attendance } = useQuery<{ summary: AttendanceSummary }>({
     queryKey: ['/api/parent/attendance', child.id],
     queryFn: async () => {
-      const res = await fetch(`/api/parent/attendance/${child.id}`, { credentials: 'include' });
+      const res = await apiRequest('GET', `/api/parent/attendance/${child.id}`);
       if (!res.ok) throw new Error('Failed');
       return res.json();
     },
@@ -49,7 +50,7 @@ function ChildCard({ child }: { child: Child }) {
   const { data: grades = [] } = useQuery<any[]>({
     queryKey: ['/api/parent/grades', child.id],
     queryFn: async () => {
-      const res = await fetch(`/api/parent/grades/${child.id}`, { credentials: 'include' });
+      const res = await apiRequest('GET', `/api/parent/grades/${child.id}`);
       if (!res.ok) throw new Error('Failed');
       return res.json();
     },

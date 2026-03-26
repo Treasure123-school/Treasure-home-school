@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/auth';
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import {
   Users, Calendar, BookOpen, MessageSquare, Heart, FileText,
   GraduationCap, Bell, TrendingUp, CheckCircle, XCircle, Clock
@@ -88,7 +89,7 @@ export default function ParentDashboard() {
   const { data: gradesData = [], isLoading: loadingGrades } = useQuery<GradeResult[]>({
     queryKey: ['/api/parent/grades', selectedChildId],
     queryFn: async () => {
-      const res = await fetch(`/api/parent/grades/${selectedChildId}`, { credentials: 'include' });
+      const res = await apiRequest('GET', `/api/parent/grades/${selectedChildId}`);
       if (!res.ok) throw new Error('Failed');
       return res.json();
     },
@@ -98,7 +99,7 @@ export default function ParentDashboard() {
   const { data: attendanceData, isLoading: loadingAttendance } = useQuery<AttendanceData>({
     queryKey: ['/api/parent/attendance', selectedChildId],
     queryFn: async () => {
-      const res = await fetch(`/api/parent/attendance/${selectedChildId}`, { credentials: 'include' });
+      const res = await apiRequest('GET', `/api/parent/attendance/${selectedChildId}`);
       if (!res.ok) throw new Error('Failed');
       return res.json();
     },
