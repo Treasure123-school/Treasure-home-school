@@ -1585,6 +1585,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           examTitle: string;
           subjectName: string;
           className: string;
+          showCorrectAnswers: boolean;
           exam: {
             id: number;
             title: string;
@@ -1608,6 +1609,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           examTitle: `Exam #${result.examId}`,
           subjectName: 'Unknown Subject',
           className: 'Unknown Class',
+          showCorrectAnswers: true,
           exam: {
             id: result.examId,
             title: `Exam #${result.examId}`,
@@ -1631,6 +1633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             baseResult.examTitle = exam.name;
             baseResult.maxScore = result.maxScore || exam.totalMarks || 100;
             baseResult.percentage = baseResult.maxScore > 0 ? Math.round((score / baseResult.maxScore) * 100) : 0;
+            baseResult.showCorrectAnswers = exam.showCorrectAnswers ?? true;
             baseResult.exam = {
               id: exam.id,
               title: exam.name,
