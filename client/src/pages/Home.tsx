@@ -143,7 +143,7 @@ export default function Home() {
   return (
     <PublicLayout>
       {/* Hero Section */}
-      <section className="relative h-[70vh] flex items-center justify-center overflow-hidden">
+      <section className="relative h-[70vh] lg:h-screen flex items-center justify-center overflow-hidden">
         <AnimatePresence>
           {isAtTop && (
             <motion.div
