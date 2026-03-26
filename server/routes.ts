@@ -1873,6 +1873,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
+          const showAnswers = exam.showCorrectAnswers ?? true;
           return {
             questionId: q.id,
             questionText: q.questionText,
@@ -1880,10 +1881,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             pointsAwarded: pointsEarned,
             maxPoints: q.points,
             studentAnswer: studentAnswerText,
-            correctAnswer: correctAnswerText,
-            explanation: q.explanationText
+            // Only expose correct answer if the teacher has enabled it
+            correctAnswer: showAnswers ? correctAnswerText : undefined,
           };
         }));
+
+        // If showCorrectAnswers is off, send empty questionDetails so no breakdown is rendered
+        if (!(exam.showCorrectAnswers ?? true)) {
+          questionDetails = [];
+        }
       }
 
       // Format time taken for display
@@ -2937,6 +2943,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
 
+            const showAnswers = exam.showCorrectAnswers ?? true;
             return {
               questionId: q.id,
               questionText: q.questionText,
@@ -2946,11 +2953,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               selectedOptionId: answer?.selectedOptionId || null,
               isCorrect: isCorrect,
               pointsAwarded: pointsAwarded,
-              correctAnswer: correctAnswerText,
-              explanation: q.explanationText,
+              correctAnswer: showAnswers ? correctAnswerText : undefined,
+              explanation: showAnswers ? q.explanationText : undefined,
               feedback: answer?.feedbackText || null
             };
           }));
+
+          const filteredQuestionDetailsExisting = (exam.showCorrectAnswers ?? true) ? questionDetails : [];
 
           return res.json({
             submitted: true,
@@ -2966,7 +2975,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   ? ((completedSession.score || 0) / completedSession.maxScore) * 100
                   : 0,
               submittedAt: completedSession.submittedAt?.toISOString() || new Date().toISOString(),
-              questionDetails,
+              showCorrectAnswers: exam.showCorrectAnswers ?? true,
+              questionDetails: filteredQuestionDetailsExisting,
               breakdown: {
                 totalQuestions: examQuestions.length,
                 answered: studentAnswers.filter(a => a.textAnswer || a.selectedOptionId).length,
@@ -3132,6 +3142,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
+        const showAnswers = exam.showCorrectAnswers ?? true;
         return {
           questionId: q.id,
           questionText: q.questionText,
@@ -3141,11 +3152,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           selectedOptionId: answer?.selectedOptionId || null,
           isCorrect: isCorrect,
           pointsAwarded: pointsAwarded,
-          correctAnswer: correctAnswerText,
-          explanation: q.explanationText,
+          // Only expose the correct answer if the teacher has enabled it
+          correctAnswer: showAnswers ? correctAnswerText : undefined,
+          explanation: showAnswers ? q.explanationText : undefined,
           feedback: answer?.feedbackText || null
         };
       }));
+
+      // If showCorrectAnswers is off, clear the details so no breakdown is sent
+      const filteredQuestionDetails = (exam.showCorrectAnswers ?? true) ? questionDetails : [];
 
       const totalTime = Date.now() - startTime;
       const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
@@ -3248,7 +3263,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           submissionReason: reason,
           violationCount: violationCount || 0,
           showCorrectAnswers: exam.showCorrectAnswers ?? true,
-          questionDetails,
+          questionDetails: filteredQuestionDetails,
           breakdown: {
             totalQuestions: examQuestions.length,
             answered: studentAnswers.filter(a => a.textAnswer || a.selectedOptionId).length,

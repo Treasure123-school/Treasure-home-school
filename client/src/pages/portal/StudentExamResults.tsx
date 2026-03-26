@@ -500,7 +500,7 @@ export default function StudentExamResults() {
           </Card>
         </div>
 
-        {result.showCorrectAnswers !== false && result.questionDetails && result.questionDetails.length > 0 && (
+        {result.showCorrectAnswers === true && result.questionDetails && result.questionDetails.length > 0 && (
           <Card className="bg-white dark:bg-gray-800 shadow-lg" data-testid="card-question-breakdown">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
