@@ -1585,6 +1585,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           examTitle: string;
           subjectName: string;
           className: string;
+          showCorrectAnswers: boolean;
           exam: {
             id: number;
             title: string;
@@ -1608,6 +1609,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           examTitle: `Exam #${result.examId}`,
           subjectName: 'Unknown Subject',
           className: 'Unknown Class',
+          showCorrectAnswers: true,
           exam: {
             id: result.examId,
             title: `Exam #${result.examId}`,
@@ -1631,6 +1633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             baseResult.examTitle = exam.name;
             baseResult.maxScore = result.maxScore || exam.totalMarks || 100;
             baseResult.percentage = baseResult.maxScore > 0 ? Math.round((score / baseResult.maxScore) * 100) : 0;
+            baseResult.showCorrectAnswers = exam.showCorrectAnswers ?? true;
             baseResult.exam = {
               id: exam.id,
               title: exam.name,
@@ -1870,6 +1873,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           }
 
+          const showAnswers = exam.showCorrectAnswers ?? true;
           return {
             questionId: q.id,
             questionText: q.questionText,
@@ -1877,10 +1881,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             pointsAwarded: pointsEarned,
             maxPoints: q.points,
             studentAnswer: studentAnswerText,
-            correctAnswer: correctAnswerText,
-            explanation: q.explanationText
+            // Only expose correct answer if the teacher has enabled it
+            correctAnswer: showAnswers ? correctAnswerText : undefined,
           };
         }));
+
+        // If showCorrectAnswers is off, send empty questionDetails so no breakdown is rendered
+        if (!(exam.showCorrectAnswers ?? true)) {
+          questionDetails = [];
+        }
       }
 
       // Format time taken for display
@@ -1924,7 +1933,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           date: exam.date,
           subjectId: exam.subjectId,
           classId: exam.classId
-        }
+        },
+        showCorrectAnswers: exam.showCorrectAnswers ?? true,
       };
 
       console.log(`[STRICT-EXAM-RESULT] Returning result: exam="${exam.name}", subject="${subjectName}", score=${score}/${maxScore}`);
@@ -2656,7 +2666,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Only pass allowed fields to prevent unexpected field updates
       const allowedFields = ['name', 'description', 'date', 'timeLimit', 'totalMarks',
         'classId', 'subjectId', 'teacherInChargeId', 'isPublished', 'instructions',
-        'passingScore', 'maxAttempts', 'showResults', 'shuffleQuestions', 'shuffleOptions'];
+        'passingScore', 'maxAttempts', 'showResults', 'shuffleQuestions', 'shuffleOptions',
+        'showCorrectAnswers', 'autoGradingEnabled', 'instantFeedback', 'gradingScale',
+        'timerMode'];
       const sanitizedData: Record<string, any> = {};
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {
@@ -2852,7 +2864,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const examId = parseInt(req.params.examId);
       const studentId = req.user!.id;
-      const { forceSubmit, violationCount, clientTimeRemaining, submissionReason } = req.body;
+      const { forceSubmit, violationCount, clientTimeRemaining, submissionReason, pendingAnswers } = req.body;
 
       // Validate submission reason
       const validReasons = ['manual', 'timeout', 'violation'];
@@ -2890,6 +2902,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Check if already submitted - return existing results
         const completedSession = sessions.find(s => s.examId === examId && s.isCompleted);
         if (completedSession) {
+          // If the client sent pending answers, upsert them and re-score.
+          // This handles the case where network failed mid-submission and some answers
+          // never reached the server before the session was marked complete.
+          if (Array.isArray(pendingAnswers) && pendingAnswers.length > 0) {
+            try {
+              let flushedCount = 0;
+              for (const pa of pendingAnswers) {
+                try {
+                  const { questionId, answer, questionType } = pa;
+                  if (!questionId || answer === undefined || answer === null || answer === '') continue;
+                  const answerData: any = {};
+                  if (questionType === 'multiple_choice') {
+                    const optId = typeof answer === 'number' ? answer : parseInt(answer);
+                    if (!isNaN(optId)) answerData.selectedOptionId = optId;
+                  } else {
+                    answerData.textAnswer = String(answer);
+                  }
+                  await storage.upsertStudentAnswer(completedSession.id, questionId, answerData);
+                  flushedCount++;
+                } catch (_) {}
+              }
+              if (flushedCount > 0) {
+                console.log(`[SUBMIT] Flushed ${flushedCount} late answers for already-completed session ${completedSession.id}. Re-scoring...`);
+                await autoScoreExamSession(completedSession.id, storage);
+              }
+            } catch (flushErr) {
+              console.warn(`[SUBMIT] Late-answer flush failed for session ${completedSession.id}:`, flushErr);
+            }
+          }
+
           const existingResult = await storage.getExamResultByExamAndStudent(examId, studentId);
           const studentAnswers = await storage.getStudentAnswers(completedSession.id);
           const examQuestions = await storage.getExamQuestions(examId);
@@ -2933,6 +2975,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             }
 
+            const showAnswers = exam.showCorrectAnswers ?? true;
             return {
               questionId: q.id,
               questionText: q.questionText,
@@ -2942,11 +2985,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               selectedOptionId: answer?.selectedOptionId || null,
               isCorrect: isCorrect,
               pointsAwarded: pointsAwarded,
-              correctAnswer: correctAnswerText,
-              explanation: q.explanationText,
+              correctAnswer: showAnswers ? correctAnswerText : undefined,
+              explanation: showAnswers ? q.explanationText : undefined,
               feedback: answer?.feedbackText || null
             };
           }));
+
+          const filteredQuestionDetailsExisting = (exam.showCorrectAnswers ?? true) ? questionDetails : [];
 
           return res.json({
             submitted: true,
@@ -2962,7 +3007,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   ? ((completedSession.score || 0) / completedSession.maxScore) * 100
                   : 0,
               submittedAt: completedSession.submittedAt?.toISOString() || new Date().toISOString(),
-              questionDetails,
+              showCorrectAnswers: exam.showCorrectAnswers ?? true,
+              questionDetails: filteredQuestionDetailsExisting,
               breakdown: {
                 totalQuestions: examQuestions.length,
                 answered: studentAnswers.filter(a => a.textAnswer || a.selectedOptionId).length,
@@ -3001,6 +3047,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: reason === 'manual' ? 'submitted' : `auto_${reason}`,
         metadata: JSON.stringify(sessionMetadata)
       });
+
+      // PENDING ANSWER FLUSH: Upsert any answers the client sent in the submit payload.
+      // These are the full localStorage snapshot, acting as a safety net for answers that
+      // hadn't finished syncing to the server before submission (e.g. after network recovery).
+      // We do this BEFORE reading studentAnswers so scoring sees the complete set.
+      if (Array.isArray(pendingAnswers) && pendingAnswers.length > 0) {
+        let flushedCount = 0;
+        for (const pa of pendingAnswers) {
+          try {
+            const { questionId, answer, questionType } = pa;
+            if (!questionId || answer === undefined || answer === null || answer === '') continue;
+            const answerData: any = {};
+            if (questionType === 'multiple_choice') {
+              const optId = typeof answer === 'number' ? answer : parseInt(answer);
+              if (!isNaN(optId)) answerData.selectedOptionId = optId;
+            } else {
+              answerData.textAnswer = String(answer);
+            }
+            await storage.upsertStudentAnswer(activeSession.id, questionId, answerData);
+            flushedCount++;
+          } catch (_) {}
+        }
+        if (flushedCount > 0) {
+          console.log(`[SUBMIT] Flushed ${flushedCount} pending answers for session ${activeSession.id} before scoring.`);
+        }
+      }
 
       // Calculate correct answers count manually - ensure accuracy
       const studentAnswers = await storage.getStudentAnswers(activeSession.id);
@@ -3128,6 +3200,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
+        const showAnswers = exam.showCorrectAnswers ?? true;
         return {
           questionId: q.id,
           questionText: q.questionText,
@@ -3137,11 +3210,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           selectedOptionId: answer?.selectedOptionId || null,
           isCorrect: isCorrect,
           pointsAwarded: pointsAwarded,
-          correctAnswer: correctAnswerText,
-          explanation: q.explanationText,
+          // Only expose the correct answer if the teacher has enabled it
+          correctAnswer: showAnswers ? correctAnswerText : undefined,
+          explanation: showAnswers ? q.explanationText : undefined,
           feedback: answer?.feedbackText || null
         };
       }));
+
+      // If showCorrectAnswers is off, clear the details so no breakdown is sent
+      const filteredQuestionDetails = (exam.showCorrectAnswers ?? true) ? questionDetails : [];
 
       const totalTime = Date.now() - startTime;
       const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
@@ -3243,7 +3320,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           timeTakenFormatted: formatTimeTaken(timeTakenSeconds),
           submissionReason: reason,
           violationCount: violationCount || 0,
-          questionDetails,
+          showCorrectAnswers: exam.showCorrectAnswers ?? true,
+          questionDetails: filteredQuestionDetails,
           breakdown: {
             totalQuestions: examQuestions.length,
             answered: studentAnswers.filter(a => a.textAnswer || a.selectedOptionId).length,

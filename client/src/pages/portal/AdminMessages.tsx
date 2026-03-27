@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -84,11 +85,6 @@ export default function AdminMessages() {
 
   const { data: messages = [], isLoading } = useQuery<Message[]>({
     queryKey: ['/api/messages/user', user?.id],
-    queryFn: async () => {
-      const res = await fetch(`/api/messages/user/${user!.id}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch messages');
-      return res.json();
-    },
     enabled: !!user,
   });
 
@@ -121,8 +117,8 @@ export default function AdminMessages() {
   // Mark as read when opening a conversation
   const markAsReadMutation = useMutation({
     mutationFn: async (messageIds: number[]) => {
-      await Promise.all(messageIds.map(id => 
-        fetch(`/api/messages/${id}/read`, { method: 'POST', credentials: 'include' })
+      await Promise.all(messageIds.map(id =>
+        apiRequest('POST', `/api/messages/${id}/read`)
       ));
     },
     onSuccess: () => {
@@ -198,12 +194,7 @@ export default function AdminMessages() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await fetch('/api/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
+      const res = await apiRequest('POST', '/api/messages', data);
       if (!res.ok) throw new Error('Failed to send message');
       return res.json();
     },
@@ -237,7 +228,7 @@ export default function AdminMessages() {
     if (!recipientIdentifier.trim()) return;
     setIsVerifying(true);
     try {
-      const response = await fetch(`/api/messages/lookup/${encodeURIComponent(recipientIdentifier.trim())}`);
+      const response = await apiRequest('GET', `/api/messages/lookup/${encodeURIComponent(recipientIdentifier.trim())}`);
       if (!response.ok) {
         setRecipientInfo(null);
         setNewMsgRecipient('');

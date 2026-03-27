@@ -1893,6 +1893,16 @@ export default function StudentExams() {
           }
         }
 
+        // Collect ALL answers from localStorage to send as a safety net payload.
+        // This guarantees the server has the complete picture even if individual
+        // answer sync calls hadn't finished before the network was restored.
+        const localStore = lsGetAll(session.id);
+        const pendingAnswers = Object.entries(localStore).map(([qIdStr, { answer, questionType }]) => ({
+          questionId: parseInt(qIdStr),
+          answer,
+          questionType,
+        }));
+
         // Use the synchronous submit endpoint with violation info and submission reason
         // Ensure clientTimeRemaining is always numeric (fallback to 0)
         const response = await apiRequest('POST', `/api/exams/${session.examId}/submit`, {
@@ -1900,7 +1910,8 @@ export default function StudentExams() {
           violationCount: violations ?? 0,
           violationPenalty: penalty ?? 0,
           clientTimeRemaining: remaining ?? 0,
-          submissionReason
+          submissionReason,
+          pendingAnswers,
         });
 
         // Handle response

@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -114,7 +115,7 @@ export default function TeacherAnnouncements() {
   const { data: announcements = [], isLoading } = useQuery<Announcement[]>({
     queryKey: ['/api/admin/announcements'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/announcements?includeDrafts=true', { credentials: 'include' });
+      const res = await apiRequest('GET', '/api/admin/announcements?includeDrafts=true');
       if (!res.ok) throw new Error('Failed to fetch announcements');
       return res.json();
     },
@@ -123,22 +124,12 @@ export default function TeacherAnnouncements() {
 
   const { data: classes = [] } = useQuery<Class[]>({
     queryKey: ['/api/classes'],
-    queryFn: async () => {
-      const res = await fetch('/api/classes', { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch classes');
-      return res.json();
-    },
     enabled: !!user,
   });
 
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
-      const res = await fetch('/api/announcements', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
+      const res = await apiRequest('POST', '/api/announcements', data);
       if (!res.ok) throw new Error('Failed to create announcement');
       return res.json();
     },
@@ -153,12 +144,7 @@ export default function TeacherAnnouncements() {
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
-      const res = await fetch(`/api/announcements/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
+      const res = await apiRequest('PUT', `/api/announcements/${id}`, data);
       if (!res.ok) throw new Error('Failed to update announcement');
       return res.json();
     },
@@ -173,7 +159,7 @@ export default function TeacherAnnouncements() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`/api/announcements/${id}`, { method: 'DELETE', credentials: 'include' });
+      const res = await apiRequest('DELETE', `/api/announcements/${id}`);
       if (!res.ok) throw new Error('Failed to delete announcement');
     },
     onSuccess: () => {

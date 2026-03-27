@@ -172,7 +172,7 @@ export default function CreateExam() {
       shuffleQuestions: false,
       autoGradingEnabled: true,
       instantFeedback: false,
-      showCorrectAnswers: false,
+      showCorrectAnswers: true,
       gradingScale: 'standard',
     },
   });

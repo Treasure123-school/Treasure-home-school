@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useAuth } from '@/lib/auth';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -84,11 +85,6 @@ export default function TeacherMessages() {
 
   const { data: messages = [], isLoading } = useQuery<Message[]>({
     queryKey: ['/api/messages/user', user?.id],
-    queryFn: async () => {
-      const res = await fetch(`/api/messages/user/${user!.id}`, { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to fetch messages');
-      return res.json();
-    },
     enabled: !!user,
   });
 
@@ -112,7 +108,7 @@ export default function TeacherMessages() {
   const { data: students = [] } = useQuery<User[]>({
     queryKey: ['/api/users', 'Student'],
     queryFn: async () => {
-      const res = await fetch('/api/users?role=Student', { credentials: 'include' });
+      const res = await apiRequest('GET', '/api/users?role=Student');
       if (!res.ok) throw new Error('Failed to fetch students');
       return res.json();
     },
@@ -122,7 +118,7 @@ export default function TeacherMessages() {
   const { data: otherTeachers = [] } = useQuery<User[]>({
     queryKey: ['/api/users', 'Teacher'],
     queryFn: async () => {
-      const res = await fetch('/api/users?role=Teacher', { credentials: 'include' });
+      const res = await apiRequest('GET', '/api/users?role=Teacher');
       if (!res.ok) throw new Error('Failed to fetch teachers');
       return res.json();
     },
@@ -133,7 +129,7 @@ export default function TeacherMessages() {
     if (!recipientIdentifier.trim()) return;
     setIsVerifying(true);
     try {
-      const response = await fetch(`/api/messages/lookup/${encodeURIComponent(recipientIdentifier.trim())}`, { credentials: 'include' });
+      const response = await apiRequest('GET', `/api/messages/lookup/${encodeURIComponent(recipientIdentifier.trim())}`);
       if (!response.ok) {
         setRecipientInfo(null);
         setNewMsgRecipient('');
@@ -153,12 +149,7 @@ export default function TeacherMessages() {
 
   const sendMutation = useMutation({
     mutationFn: async (data: { recipientId: string; subject: string; content: string }) => {
-      const res = await fetch('/api/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ ...data, senderId: user!.id }),
-      });
+      const res = await apiRequest('POST', '/api/messages', data);
       if (!res.ok) throw new Error('Failed to send message');
       return res.json();
     },
@@ -171,12 +162,7 @@ export default function TeacherMessages() {
 
   const newMessageMutation = useMutation({
     mutationFn: async (data: { recipientId: string; subject: string; content: string }) => {
-      const res = await fetch('/api/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ ...data, senderId: user!.id }),
-      });
+      const res = await apiRequest('POST', '/api/messages', data);
       if (!res.ok) throw new Error('Failed to send message');
       return res.json();
     },
@@ -195,7 +181,7 @@ export default function TeacherMessages() {
 
   const markReadMutation = useMutation({
     mutationFn: async (messageId: number) => {
-      await fetch(`/api/messages/${messageId}/read`, { method: 'POST', credentials: 'include' });
+      await apiRequest('POST', `/api/messages/${messageId}/read`);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/messages/user', user?.id] }),
   });

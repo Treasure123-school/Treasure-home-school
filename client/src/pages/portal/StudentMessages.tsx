@@ -40,18 +40,14 @@ export default function StudentMessages() {
   }
 
   const { data: messages = [], isLoading } = useQuery({
-    queryKey: ['messages', user.id],
-    queryFn: async () => {
-      const response = await fetch(`/api/messages/user/${user.id}`, { credentials: 'include' });
-      if (!response.ok) throw new Error('Failed to fetch messages');
-      return response.json();
-    }
+    queryKey: ['/api/messages/user', user.id],
+    enabled: !!user,
   });
 
   // Real-time updates for messages
   useSocketIORealtime({
     table: 'messages',
-    queryKey: ['messages', user.id],
+    queryKey: ['/api/messages/user', user.id],
     onEvent: (event) => {
       if (event.eventType === 'message:new') {
         const msg = event.data;
@@ -90,12 +86,7 @@ export default function StudentMessages() {
 
   const sendMessageMutation = useMutation({
     mutationFn: async (messageData: any) => {
-      const response = await fetch('/api/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ ...messageData, senderId: user.id })
-      });
+      const response = await apiRequest('POST', '/api/messages', messageData);
       if (!response.ok) throw new Error('Failed to send message');
       return response.json();
     },
@@ -105,7 +96,7 @@ export default function StudentMessages() {
       setComposeData({ recipientId: '', subject: '', content: '' });
       setRecipientIdentifier('');
       setRecipientInfo(null);
-      queryClient.invalidateQueries({ queryKey: ['messages', user.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/messages/user', user.id] });
     },
     onError: () => {
       toast({ title: 'Error', description: 'Failed to send message. Please try again.', variant: 'destructive' });
@@ -114,15 +105,12 @@ export default function StudentMessages() {
 
   const markAsReadMutation = useMutation({
     mutationFn: async (messageId: number) => {
-      const response = await fetch(`/api/messages/${messageId}/read`, {
-        method: 'POST',
-        credentials: 'include'
-      });
+      const response = await apiRequest('POST', `/api/messages/${messageId}/read`);
       if (!response.ok) throw new Error('Failed to mark as read');
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['messages', user.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/messages/user', user.id] });
     }
   });
 
