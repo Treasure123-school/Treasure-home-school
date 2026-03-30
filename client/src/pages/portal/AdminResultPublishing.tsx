@@ -5,7 +5,7 @@ import JSZip from 'jszip';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
-import { toCanvas } from 'html-to-image';
+import { toCanvas, toPng } from 'html-to-image';
 import { BaileysReportTemplate } from '@/components/ui/baileys-report-template';
 import { exportToPDF, exportToImage, printElement } from '@/lib/report-export-utils';
 
@@ -825,15 +825,50 @@ export default function AdminResultPublishing() {
   };
 
   /**
+   * Wait for all <img> elements inside a node to be fully loaded.
+   * Enforces a minimum wait (minMs) so React's useEffect base64 conversions
+   * for photo and logo inside BaileysReportTemplate have time to complete,
+   * and a hard ceiling (maxMs) so we never hang indefinitely.
+   */
+  const waitForImages = (node: HTMLElement, minMs = 1800, maxMs = 7000): Promise<void> => {
+    return new Promise(resolve => {
+      let resolved = false;
+      const done = () => { if (!resolved) { resolved = true; resolve(); } };
+
+      // Hard ceiling: always resolve by maxMs no matter what
+      const ceiling = setTimeout(done, maxMs);
+
+      // After the minimum wait, check images and either resolve or wait for load events
+      setTimeout(() => {
+        const imgs = Array.from(node.querySelectorAll<HTMLImageElement>('img'));
+        const allReady = imgs.every(img => img.complete && img.naturalWidth > 0);
+        if (allReady || imgs.length === 0) {
+          clearTimeout(ceiling);
+          done();
+        } else {
+          // Attach load/error listeners on any still-loading images
+          let pending = imgs.filter(img => !img.complete || img.naturalWidth === 0).length;
+          imgs.forEach(img => {
+            if (!img.complete || img.naturalWidth === 0) {
+              const cb = () => { pending--; if (pending <= 0) { clearTimeout(ceiling); done(); } };
+              img.addEventListener('load', cb, { once: true });
+              img.addEventListener('error', cb, { once: true });
+            }
+          });
+        }
+      }, minMs);
+    });
+  };
+
+  /**
    * Capture the currently-rendered off-screen template as a PNG data URL.
-   * Waits for image effects in BaileysReportTemplate to settle first.
+   * Waits for ALL images (photo + logo) to be fully loaded before capturing.
    */
   const captureOffscreenTemplate = async (): Promise<string | null> => {
     if (!bulkTemplateRef.current) return null;
-    // Wait for React's useEffect image-to-base64 conversions to complete
-    await new Promise(r => setTimeout(r, 1500));
+    // Wait for React's useEffect image-to-base64 conversions + img load events
+    await waitForImages(bulkTemplateRef.current, 1500, 6000);
     try {
-      const { toPng } = await import('html-to-image');
       return await toPng(bulkTemplateRef.current, {
         pixelRatio: 2,
         backgroundColor: '#ffffff',
