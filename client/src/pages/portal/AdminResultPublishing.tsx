@@ -826,34 +826,44 @@ export default function AdminResultPublishing() {
 
   /**
    * Wait for all <img> elements inside a node to be fully loaded.
-   * Enforces a minimum wait (minMs) so React's useEffect base64 conversions
-   * for photo and logo inside BaileysReportTemplate have time to complete,
-   * and a hard ceiling (maxMs) so we never hang indefinitely.
+   *
+   * Strategy:
+   *  1. Always pause at least `minMs` ms so React's useEffect base64
+   *     conversions (studentPhoto + logo in BaileysReportTemplate) have time
+   *     to fetch, convert, and re-render.
+   *  2. After minMs, check which images are still loading (complete=false).
+   *     Images with src="" or data: URLs are already complete — skip them.
+   *  3. For any still-loading images, listen for load/error events.
+   *  4. Hard ceiling `maxMs` prevents hanging if an image never responds.
    */
   const waitForImages = (node: HTMLElement, minMs = 1800, maxMs = 7000): Promise<void> => {
     return new Promise(resolve => {
       let resolved = false;
       const done = () => { if (!resolved) { resolved = true; resolve(); } };
 
-      // Hard ceiling: always resolve by maxMs no matter what
+      // Hard ceiling — never block longer than maxMs total
       const ceiling = setTimeout(done, maxMs);
 
-      // After the minimum wait, check images and either resolve or wait for load events
       setTimeout(() => {
-        const imgs = Array.from(node.querySelectorAll<HTMLImageElement>('img'));
-        const allReady = imgs.every(img => img.complete && img.naturalWidth > 0);
-        if (allReady || imgs.length === 0) {
+        // Only consider network-loading images (src is a real URL, not complete yet)
+        const imgs = Array.from(node.querySelectorAll<HTMLImageElement>('img'))
+          .filter(img => img.src && !img.src.startsWith('data:') && img.src !== window.location.href);
+
+        const stillLoading = imgs.filter(img => !img.complete);
+
+        if (stillLoading.length === 0) {
+          // All network images are already complete (or there are none)
           clearTimeout(ceiling);
           done();
         } else {
-          // Attach load/error listeners on any still-loading images
-          let pending = imgs.filter(img => !img.complete || img.naturalWidth === 0).length;
-          imgs.forEach(img => {
-            if (!img.complete || img.naturalWidth === 0) {
-              const cb = () => { pending--; if (pending <= 0) { clearTimeout(ceiling); done(); } };
-              img.addEventListener('load', cb, { once: true });
-              img.addEventListener('error', cb, { once: true });
-            }
+          let pending = stillLoading.length;
+          const cb = () => {
+            pending--;
+            if (pending <= 0) { clearTimeout(ceiling); done(); }
+          };
+          stillLoading.forEach(img => {
+            img.addEventListener('load', cb, { once: true });
+            img.addEventListener('error', cb, { once: true }); // error still counts as "done"
           });
         }
       }, minMs);
@@ -923,9 +933,9 @@ export default function AdminResultPublishing() {
 
         // 3. Capture the rendered DOM element
         if (type === 'print') {
-          // For print: collect outerHTML (images already base64 from template's useEffect)
-          await new Promise(r => setTimeout(r, 1200)); // let image effects settle
+          // For print: wait for images then grab outerHTML (images will be base64 by then)
           if (bulkTemplateRef.current) {
+            await waitForImages(bulkTemplateRef.current, 1800, 7000);
             htmlParts.push(bulkTemplateRef.current.outerHTML);
             successCount++;
           } else {
