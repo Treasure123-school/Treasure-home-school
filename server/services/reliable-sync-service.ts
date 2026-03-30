@@ -161,7 +161,8 @@ export class ReliableSyncService {
         examData,
         student[0],
         auditLogId,
-        options.triggeredBy
+        options.triggeredBy,
+        options.syncType
       );
 
       // Update audit log OUTSIDE the transaction (it's okay if this fails after success)
@@ -229,7 +230,8 @@ export class ReliableSyncService {
     examData: any,
     studentData: any,
     auditLogId?: number,
-    triggeredBy?: string
+    triggeredBy?: string,
+    syncType?: SyncType
   ): Promise<SyncResult> {
     const { subjectId, classId, termId, examType, gradingScale: examGradingScale, createdBy: examCreatedBy } = examData;
 
@@ -309,8 +311,12 @@ export class ReliableSyncService {
           reportCardItem = newItem;
         }
 
-        if (reportCardItem[0].isOverridden) {
-          console.log(`[RELIABLE-SYNC-TX] Item ${reportCardItem[0].id} is manually overridden, skipping`);
+        // For auto-syncs (exam_submit, retry): respect the override flag
+        // For explicit teacher/admin syncs (manual_sync, bulk_sync, admin_repair): 
+        //   force the update and clear the override so the exam score goes through
+        const forceOverride = syncType === 'manual_sync' || syncType === 'bulk_sync' || syncType === 'admin_repair';
+        if (reportCardItem[0].isOverridden && !forceOverride) {
+          console.log(`[RELIABLE-SYNC-TX] Item ${reportCardItem[0].id} is manually overridden, skipping (auto-sync)`);
           return {
             success: true,
             reportCardId,
@@ -319,15 +325,25 @@ export class ReliableSyncService {
             isNewReportCard
           };
         }
-
-        const isTest = ['test', 'quiz', 'assignment'].includes(examType);
-        const isMainExam = ['exam', 'final', 'midterm'].includes(examType);
+        if (reportCardItem[0].isOverridden && forceOverride) {
+          console.log(`[RELIABLE-SYNC-TX] Item ${reportCardItem[0].id} was overridden but force-sync requested — clearing override`);
+        }
 
         const safeScore = typeof score === 'number' ? score : parseInt(String(score), 10) || 0;
         const safeMaxScore = typeof maxScore === 'number' ? maxScore : parseInt(String(maxScore), 10) || 0;
         const safeExamId = typeof examId === 'number' ? examId : parseInt(String(examId), 10);
 
+        const isTest = ['test', 'quiz', 'assignment'].includes(examType);
+        const isMainExam = ['exam', 'final', 'midterm'].includes(examType);
+
         const updateData: any = { updatedAt: new Date() };
+
+        // If force-syncing, clear the override flag so future auto-syncs also work
+        if (forceOverride && reportCardItem[0].isOverridden) {
+          updateData.isOverridden = false;
+          updateData.overriddenBy = null;
+          updateData.overriddenAt = null;
+        }
 
         if (isTest) {
           updateData.testExamId = safeExamId;

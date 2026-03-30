@@ -14058,6 +14058,75 @@ School Management System Administration
     }
   });
 
+  // ADMIN: Force re-sync ALL exam results for a term to report cards, clearing any override flags
+  // This is the recovery tool for fixing historical data where scores were blocked by isOverridden
+  app.post('/api/admin/force-resync-all-exams', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+    try {
+      const { termId } = req.body;
+      const adminId = req.user!.id;
+
+      console.log(`[ADMIN-FORCE-RESYNC] User ${adminId} triggered force re-sync for term ${termId || 'all'}`);
+
+      // Get all exam results (with scores) for the given term
+      const conditions: any[] = [sql`${schema.examResults.score} IS NOT NULL`];
+      if (termId) {
+        conditions.push(eq(schema.exams.termId, Number(termId)));
+      }
+
+      const examResults = await db.select({
+        id: schema.examResults.id,
+        studentId: schema.examResults.studentId,
+        examId: schema.examResults.examId,
+        score: schema.examResults.score,
+        maxScore: schema.examResults.maxScore,
+        totalMarks: schema.exams.totalMarks
+      })
+        .from(schema.examResults)
+        .innerJoin(schema.exams, eq(schema.examResults.examId, schema.exams.id))
+        .where(and(...conditions));
+
+      console.log(`[ADMIN-FORCE-RESYNC] Found ${examResults.length} exam results to force-sync`);
+
+      let synced = 0;
+      let failed = 0;
+      const errors: string[] = [];
+
+      for (const result of examResults) {
+        try {
+          const syncResult = await storage.syncExamScoreToReportCard(
+            result.studentId,
+            result.examId,
+            result.score || 0,
+            result.maxScore || result.totalMarks || 100,
+            true  // forceSync = true: clears overrides and forces update
+          );
+          if (syncResult.success) {
+            synced++;
+          } else {
+            failed++;
+            if (errors.length < 20) errors.push(`Student ${result.studentId} / Exam ${result.examId}: ${syncResult.message}`);
+          }
+        } catch (err: any) {
+          failed++;
+          if (errors.length < 20) errors.push(`Student ${result.studentId} / Exam ${result.examId}: ${err.message}`);
+        }
+      }
+
+      console.log(`[ADMIN-FORCE-RESYNC] Done: ${synced} synced, ${failed} failed`);
+
+      res.json({
+        message: `Force re-sync complete: ${synced} scores synced, ${failed} failed`,
+        total: examResults.length,
+        synced,
+        failed,
+        errors: errors.length > 0 ? errors : undefined
+      });
+    } catch (error: any) {
+      console.error('[ADMIN-FORCE-RESYNC] Error:', error);
+      res.status(500).json({ message: error.message || 'Force re-sync failed' });
+    }
+  });
+
   // TEACHER: Bulk sync all results from a specific exam to report cards
   // This allows teachers to sync all their exam results at once
   app.post('/api/teacher/exams/:examId/sync-all-to-reportcards', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {

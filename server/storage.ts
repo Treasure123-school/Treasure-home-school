@@ -391,7 +391,7 @@ export interface IStorage {
   recalculateReportCard(reportCardId: number, gradingScale: string): Promise<ReportCard | undefined>;
 
   // Auto-sync exam score to report card (called after exam submission)
-  syncExamScoreToReportCard(studentId: string, examId: number, score: number, maxScore: number): Promise<{ success: boolean; reportCardId?: number; message: string; isNewReportCard?: boolean }>;
+  syncExamScoreToReportCard(studentId: string, examId: number, score: number, maxScore: number, forceSync?: boolean): Promise<{ success: boolean; reportCardId?: number; message: string; isNewReportCard?: boolean }>;
 
   // Bulk sync all missing exam scores to existing report card items
   syncAllMissingExamScores(termId?: number): Promise<{ synced: number; failed: number; errors: string[] }>;
@@ -5857,7 +5857,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Auto-sync exam score to report card (called immediately after exam submission)
-  async syncExamScoreToReportCard(studentId: string, examId: number, score: number, maxScore: number): Promise<{ success: boolean; reportCardId?: number; message: string; isNewReportCard?: boolean }> {
+  async syncExamScoreToReportCard(studentId: string, examId: number, score: number, maxScore: number, forceSync: boolean = false): Promise<{ success: boolean; reportCardId?: number; message: string; isNewReportCard?: boolean }> {
     try {
       console.log(`[REPORT-CARD-SYNC] Starting sync for student ${studentId}, exam ${examId}, score ${score}/${maxScore}`);
 
@@ -6087,10 +6087,17 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
-      // 5. Skip if manually overridden
-      if (reportCardItem[0].isOverridden) {
+      // 5. Skip if manually overridden — unless forceSync is true (explicit teacher/admin sync)
+      if (reportCardItem[0].isOverridden && !forceSync) {
         console.log(`[REPORT-CARD-SYNC] Item ${reportCardItem[0].id} is manually overridden, skipping auto-update`);
         return { success: true, reportCardId, message: 'Skipped - item manually overridden' };
+      }
+      // If force-syncing an overridden item, clear the override flag first
+      if (reportCardItem[0].isOverridden && forceSync) {
+        console.log(`[REPORT-CARD-SYNC] Item ${reportCardItem[0].id} was overridden — clearing override for force-sync`);
+        await db.update(schema.reportCardItems)
+          .set({ isOverridden: false, overriddenBy: null, overriddenAt: null })
+          .where(eq(schema.reportCardItems.id, reportCardItem[0].id));
       }
 
       // 6. Determine if this is a test or exam and update accordingly
@@ -8844,7 +8851,8 @@ export class DatabaseStorage implements IStorage {
             result.studentId,
             examId,
             result.score || 0,
-            result.maxScore || exam.totalMarks || 100
+            result.maxScore || exam.totalMarks || 100,
+            true  // forceSync = true: explicit teacher bulk sync bypasses isOverridden
           );
 
           if (syncResult.success) {
