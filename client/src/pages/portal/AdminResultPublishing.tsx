@@ -1,5 +1,7 @@
 import { useState, useRef, useCallback, useEffect, MutableRefObject } from 'react';
+import { flushSync } from 'react-dom';
 import jsPDF from 'jspdf';
+import JSZip from 'jszip';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
@@ -92,19 +94,9 @@ export default function AdminResultPublishing() {
   const [isBulkExporting, setIsBulkExporting] = useState(false);
   const [bulkExportProgress, setBulkExportProgress] = useState(0);
   const [bulkExportTotal, setBulkExportTotal] = useState(0);
-  const [bulkExportType, setBulkExportType] = useState<'pdf' | 'print'>('pdf');
-  const [bulkRenderSlot, setBulkRenderSlot] = useState<{ data: any; seq: number } | null>(null);
+  const [bulkExportType, setBulkExportType] = useState<'pdf' | 'zip' | 'print'>('zip');
+  const [bulkRenderData, setBulkRenderData] = useState<any>(null);
   const bulkTemplateRef = useRef<HTMLDivElement>(null);
-  const bulkStateRef = useRef<{
-    queue: number[];
-    type: 'pdf' | 'print';
-    pdf: jsPDF | null;
-    htmlParts: string[];
-    isFirst: boolean;
-    currentIndex: number;
-    filename: string;
-    errors: number;
-  } | null>(null);
 
   const handleDownloadAsImage = async () => {
     if (!baileysTemplateRef.current || !viewingReportCard) return;
@@ -809,18 +801,14 @@ export default function AdminResultPublishing() {
       toast({ title: 'Popup Blocked', description: 'Please allow popups to print all report cards.', variant: 'destructive' });
       return;
     }
-
     const inlineStyles = Array.from(document.styleSheets)
       .map(ss => { try { return Array.from(ss.cssRules).map(r => r.cssText).join('\n'); } catch { return ''; } })
       .join('\n');
-
     const fontLinks = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
       .map(l => l.outerHTML).join('\n');
-
     const pagesHtml = htmlParts.map((html, i) =>
       `<div style="page-break-after:${i < htmlParts.length - 1 ? 'always' : 'avoid'};break-after:${i < htmlParts.length - 1 ? 'page' : 'avoid'}">${html}</div>`
     ).join('');
-
     printWindow.document.write(`<!DOCTYPE html><html><head>
       <meta charset="UTF-8"><title>${filename}</title>
       ${fontLinks}
@@ -830,93 +818,40 @@ export default function AdminResultPublishing() {
         ${inlineStyles}
       </style></head><body>${pagesHtml}</body></html>`);
     printWindow.document.close();
-
     const imgs = printWindow.document.querySelectorAll('img');
-    const imgPromises = Array.from(imgs).map(img =>
-      new Promise<void>(resolve => { if (img.complete) resolve(); else { img.onload = () => resolve(); img.onerror = () => resolve(); } })
-    );
-    Promise.all(imgPromises).then(() => {
-      setTimeout(() => { printWindow.focus(); printWindow.print(); }, 500);
-    });
+    Promise.all(Array.from(imgs).map(img =>
+      new Promise<void>(r => { if (img.complete) r(); else { img.onload = () => r(); img.onerror = () => r(); } })
+    )).then(() => setTimeout(() => { printWindow.focus(); printWindow.print(); }, 500));
   };
 
-  const advanceBulkQueue = useCallback(async () => {
-    const state = bulkStateRef.current;
-    if (!state) return;
-
-    state.currentIndex++;
-    setBulkExportProgress(state.currentIndex);
-
-    if (state.currentIndex >= state.queue.length) {
-      if (state.type === 'pdf' && state.pdf) {
-        state.pdf.save(`${state.filename}.pdf`);
-        toast({
-          title: 'Bulk Download Complete',
-          description: `${state.queue.length - state.errors} report card(s) saved as PDF${state.errors > 0 ? ` (${state.errors} failed)` : ''}.`,
-        });
-      } else if (state.type === 'print') {
-        openBulkPrintWindow(state.htmlParts, state.filename);
-        toast({ title: 'Print Ready', description: `${state.htmlParts.length} report card(s) sent to print.` });
-      }
-      setBulkRenderSlot(null);
-      setIsBulkExporting(false);
-      bulkStateRef.current = null;
-    } else {
-      try {
-        const nextId = state.queue[state.currentIndex];
-        const response = await apiRequest('GET', `/api/reports/${nextId}/full`);
-        if (response.ok) {
-          const data = await response.json();
-          setBulkRenderSlot({ data, seq: Date.now() });
-        } else {
-          state.errors++;
-          await advanceBulkQueue();
-        }
-      } catch {
-        state.errors++;
-        await advanceBulkQueue();
-      }
+  /**
+   * Capture the currently-rendered off-screen template as a PNG data URL.
+   * Waits for image effects in BaileysReportTemplate to settle first.
+   */
+  const captureOffscreenTemplate = async (): Promise<string | null> => {
+    if (!bulkTemplateRef.current) return null;
+    // Wait for React's useEffect image-to-base64 conversions to complete
+    await new Promise(r => setTimeout(r, 1500));
+    try {
+      const { toPng } = await import('html-to-image');
+      return await toPng(bulkTemplateRef.current, {
+        pixelRatio: 2,
+        backgroundColor: '#ffffff',
+        cacheBust: true,
+        filter: (node: HTMLElement) => node.tagName !== 'SCRIPT',
+      });
+    } catch (e) {
+      console.error('Capture failed:', e);
+      return null;
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    if (!bulkRenderSlot || !bulkStateRef.current) return;
-    const state = bulkStateRef.current;
-    let cancelled = false;
-
-    const capture = async () => {
-      await new Promise(r => setTimeout(r, 1000));
-      if (cancelled || !bulkStateRef.current || !bulkTemplateRef.current) {
-        await advanceBulkQueue();
-        return;
-      }
-      try {
-        if (state.type === 'pdf' && state.pdf) {
-          const canvas = await toCanvas(bulkTemplateRef.current, {
-            pixelRatio: 2, backgroundColor: '#ffffff', cacheBust: true,
-            filter: (node: HTMLElement) => node.tagName !== 'SCRIPT',
-          });
-          const imgData = canvas.toDataURL('image/png', 1.0);
-          const imgWidth = 210;
-          const imgHeight = (canvas.height * imgWidth) / canvas.width;
-          if (!state.isFirst) state.pdf.addPage();
-          state.pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-          state.isFirst = false;
-        } else if (state.type === 'print') {
-          state.htmlParts.push(bulkTemplateRef.current.outerHTML);
-        }
-      } catch (e) {
-        console.error(`Failed to capture report card:`, e);
-        state.errors++;
-      }
-      if (!cancelled) await advanceBulkQueue();
-    };
-
-    capture();
-    return () => { cancelled = true; };
-  }, [bulkRenderSlot, advanceBulkQueue]);
-
-  const handleBulkExport = async (ids: number[], type: 'pdf' | 'print') => {
+  /**
+   * Main bulk export driver.
+   * Uses flushSync to force each card into the DOM synchronously before capture.
+   * This is the only reliable way to sequence React renders with async capture.
+   */
+  const handleBulkExport = async (ids: number[], type: 'pdf' | 'zip' | 'print') => {
     if (ids.length === 0 || isBulkExporting) return;
 
     const classLabel = selectedClass !== 'all'
@@ -925,35 +860,98 @@ export default function AdminResultPublishing() {
     const termLabel = selectedTerm !== 'all'
       ? (terms as any[]).find((t: any) => t.id.toString() === selectedTerm)?.name || 'Term'
       : 'All-Terms';
-    const filename = `Report-Cards-${classLabel}-${termLabel}`.replace(/\s+/g, '-');
+    const baseFilename = `Report-Cards-${classLabel}-${termLabel}`.replace(/\s+/g, '-');
 
     setBulkExportType(type);
     setIsBulkExporting(true);
     setBulkExportProgress(0);
     setBulkExportTotal(ids.length);
 
-    bulkStateRef.current = {
-      queue: ids,
-      type,
-      pdf: type === 'pdf' ? new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' }) : null,
-      htmlParts: [],
-      isFirst: true,
-      currentIndex: 0,
-      filename,
-      errors: 0,
-    };
+    const pdf = type === 'pdf' ? new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' }) : null;
+    const zip = type === 'zip' ? new JSZip() : null;
+    const htmlParts: string[] = [];
+    let pdfIsFirst = true;
+    let successCount = 0;
+    let errorCount = 0;
 
-    try {
-      const firstId = ids[0];
-      const response = await apiRequest('GET', `/api/reports/${firstId}/full`);
-      if (!response.ok) throw new Error('Failed to load first report card');
-      const data = await response.json();
-      setBulkRenderSlot({ data, seq: Date.now() });
-    } catch (e) {
-      toast({ title: 'Error', description: 'Failed to start bulk export.', variant: 'destructive' });
-      setIsBulkExporting(false);
-      bulkStateRef.current = null;
+    for (let i = 0; i < ids.length; i++) {
+      const id = ids[i];
+
+      try {
+        // 1. Fetch the full report card data
+        const response = await apiRequest('GET', `/api/reports/${id}/full`);
+        if (!response.ok) { errorCount++; setBulkExportProgress(i + 1); continue; }
+        const data = await response.json();
+
+        // 2. Force a synchronous React render of the off-screen template
+        flushSync(() => setBulkRenderData(data));
+
+        // 3. Capture the rendered DOM element
+        if (type === 'print') {
+          // For print: collect outerHTML (images already base64 from template's useEffect)
+          await new Promise(r => setTimeout(r, 1200)); // let image effects settle
+          if (bulkTemplateRef.current) {
+            htmlParts.push(bulkTemplateRef.current.outerHTML);
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } else {
+          // For PDF / ZIP: capture as high-res PNG
+          const dataUrl = await captureOffscreenTemplate();
+          if (!dataUrl) { errorCount++; setBulkExportProgress(i + 1); continue; }
+
+          if (type === 'zip' && zip) {
+            const studentName = (data.studentName || `student-${id}`).replace(/\s+/g, '-');
+            const termName = (data.termName || 'term').replace(/\s+/g, '-');
+            const fname = `${studentName}_${termName}.png`;
+            zip.file(fname, dataUrl.split(',')[1], { base64: true });
+            successCount++;
+          } else if (type === 'pdf' && pdf) {
+            const img = new Image();
+            img.src = dataUrl;
+            await new Promise<void>(r => { img.onload = () => r(); img.onerror = () => r(); });
+            const imgWidthMm = 210;
+            const imgHeightMm = (img.height * imgWidthMm) / img.width;
+            if (!pdfIsFirst) pdf.addPage();
+            pdf.addImage(dataUrl, 'PNG', 0, 0, imgWidthMm, imgHeightMm);
+            pdfIsFirst = false;
+            successCount++;
+          }
+        }
+      } catch (e) {
+        console.error(`Error processing report card ${id}:`, e);
+        errorCount++;
+      }
+
+      setBulkExportProgress(i + 1);
     }
+
+    // 4. Finalise output
+    flushSync(() => setBulkRenderData(null));
+
+    const errSuffix = errorCount > 0 ? ` (${errorCount} failed)` : '';
+
+    if (type === 'zip' && zip && successCount > 0) {
+      const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${baseFilename}.zip`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      toast({ title: 'ZIP Downloaded', description: `${successCount} report card image(s) in the ZIP file${errSuffix}.` });
+    } else if (type === 'pdf' && pdf && successCount > 0) {
+      pdf.save(`${baseFilename}.pdf`);
+      toast({ title: 'PDF Downloaded', description: `${successCount} report card(s) saved as a single PDF${errSuffix}.` });
+    } else if (type === 'print' && htmlParts.length > 0) {
+      openBulkPrintWindow(htmlParts, baseFilename);
+      toast({ title: 'Print Ready', description: `${htmlParts.length} report card(s) sent to print${errSuffix}.` });
+    } else {
+      toast({ title: 'Nothing to export', description: 'No report cards could be processed.', variant: 'destructive' });
+    }
+
+    setIsBulkExporting(false);
   };
 
   const handleSelectAll = (checked: boolean) => {
@@ -1128,6 +1126,13 @@ export default function AdminResultPublishing() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
+                          onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'zip')}
+                          data-testid="menu-download-all-zip-mobile"
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Download All as ZIP ({reportCards.length} images)
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
                           onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'pdf')}
                           data-testid="menu-download-all-pdf-mobile"
                         >
@@ -1160,6 +1165,13 @@ export default function AdminResultPublishing() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'zip')}
+                          data-testid="menu-download-all-zip"
+                        >
+                          <Download className="w-4 h-4 mr-2" />
+                          Download All as ZIP ({reportCards.length} images)
+                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'pdf')}
                           data-testid="menu-download-all-pdf"
@@ -1233,7 +1245,7 @@ export default function AdminResultPublishing() {
               <Loader2 className="w-4 h-4 animate-spin text-blue-600 shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-300">
-                  {bulkExportType === 'pdf' ? 'Generating PDF' : 'Preparing Print'}… {bulkExportProgress} of {bulkExportTotal} report cards
+                  {bulkExportType === 'pdf' ? 'Generating PDF' : bulkExportType === 'zip' ? 'Building ZIP' : 'Preparing Print'}… {bulkExportProgress} of {bulkExportTotal} report cards
                 </p>
                 <div className="mt-1 w-full bg-blue-200 dark:bg-blue-900 rounded-full h-1.5">
                   <div
@@ -1268,6 +1280,10 @@ export default function AdminResultPublishing() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleBulkExport(selectedReportCards, 'zip')} data-testid="menu-bulk-zip-selected">
+                      <Download className="w-4 h-4 mr-2" />
+                      Download as ZIP ({selectedReportCards.length} images)
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => handleBulkExport(selectedReportCards, 'pdf')} data-testid="menu-bulk-pdf-selected">
                       <FileText className="w-4 h-4 mr-2" />
                       Download as PDF ({selectedReportCards.length})
@@ -1845,15 +1861,15 @@ export default function AdminResultPublishing() {
         </DialogContent>
       </Dialog>
 
-      {/* Hidden Bailey's Template for BULK Export/Print - off-screen, always mounted when exporting */}
-      {bulkRenderSlot && (
+      {/* Hidden Bailey's Template for BULK Export/Print - off-screen, mounted when exporting */}
+      {bulkRenderData && (
         <div
           aria-hidden="true"
-          style={{ position: 'fixed', left: '-9999px', top: 0, zIndex: -10, pointerEvents: 'none' }}
+          style={{ position: 'fixed', left: '-9999px', top: 0, zIndex: -10, pointerEvents: 'none', width: '210mm' }}
         >
           <BaileysReportTemplate
             ref={bulkTemplateRef}
-            reportCard={mapToReportCardProps(bulkRenderSlot.data)}
+            reportCard={mapToReportCardProps(bulkRenderData)}
             testWeight={40}
             examWeight={60}
           />
