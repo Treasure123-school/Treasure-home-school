@@ -46,28 +46,31 @@ export class ReliableSyncService {
     let auditLogId: number | undefined;
 
     try {
-      // Check for existing successful sync with same stable key (any time)
-      const existingSuccessSync = await db.select()
-        .from(schema.syncAuditLogs)
-        .where(and(
-          eq(schema.syncAuditLogs.studentId, studentId),
-          eq(schema.syncAuditLogs.examId, examId),
-          eq(schema.syncAuditLogs.status, 'success')
-        ))
-        .orderBy(desc(schema.syncAuditLogs.createdAt))
-        .limit(1);
+      // For non-manual syncs: skip if there was a successful sync within the last 5 seconds
+      // (prevents duplicate processing from rapid double-submits)
+      // Manual syncs always force a re-sync — teachers explicitly want to re-push the score.
+      if (options.syncType !== 'manual_sync') {
+        const recentSuccessSync = await db.select()
+          .from(schema.syncAuditLogs)
+          .where(and(
+            eq(schema.syncAuditLogs.studentId, studentId),
+            eq(schema.syncAuditLogs.examId, examId),
+            eq(schema.syncAuditLogs.status, 'success')
+          ))
+          .orderBy(desc(schema.syncAuditLogs.createdAt))
+          .limit(1);
 
-      // If there's a recent successful sync (within 1 minute), skip
-      if (existingSuccessSync.length > 0) {
-        const syncTime = existingSuccessSync[0].syncedAt;
-        if (syncTime && (Date.now() - new Date(syncTime).getTime()) < 60000) {
-          console.log(`[RELIABLE-SYNC] Idempotent skip: recent sync completed for student ${studentId}, exam ${examId}`);
-          return {
-            success: true,
-            reportCardId: existingSuccessSync[0].reportCardId ?? undefined,
-            message: 'Sync already completed (idempotent)',
-            auditLogId: existingSuccessSync[0].id
-          };
+        if (recentSuccessSync.length > 0) {
+          const syncTime = recentSuccessSync[0].syncedAt;
+          if (syncTime && (Date.now() - new Date(syncTime).getTime()) < 5000) {
+            console.log(`[RELIABLE-SYNC] Idempotent skip: sync just completed for student ${studentId}, exam ${examId}`);
+            return {
+              success: true,
+              reportCardId: recentSuccessSync[0].reportCardId ?? undefined,
+              message: 'Sync already completed (idempotent)',
+              auditLogId: recentSuccessSync[0].id
+            };
+          }
         }
       }
 
@@ -96,21 +99,22 @@ export class ReliableSyncService {
         return this.createFailedResult('Student not found', 'STUDENT_NOT_FOUND');
       }
 
-      // Check for existing pending/failed audit log to reuse (upsert-like behavior)
+      // Find or reuse the audit log entry for this sync attempt.
+      // We look for ANY existing entry (any status) to avoid unique-key constraint violations
+      // when the same syncType+student+exam is retried after a previous attempt.
       if (!options.skipAuditLog) {
         const existingAuditLog = await db.select()
           .from(schema.syncAuditLogs)
           .where(and(
             eq(schema.syncAuditLogs.studentId, studentId),
             eq(schema.syncAuditLogs.examId, examId),
-            eq(schema.syncAuditLogs.syncType, options.syncType),
-            inArray(schema.syncAuditLogs.status, ['pending', 'failed', 'retrying'])
+            eq(schema.syncAuditLogs.syncType, options.syncType)
           ))
           .orderBy(desc(schema.syncAuditLogs.createdAt))
           .limit(1);
 
         if (existingAuditLog.length > 0) {
-          // Reuse existing audit log entry for retry
+          // Reuse existing audit log entry (update it to retrying)
           auditLogId = existingAuditLog[0].id;
           await db.update(schema.syncAuditLogs)
             .set({
@@ -121,9 +125,9 @@ export class ReliableSyncService {
               updatedAt: new Date()
             })
             .where(eq(schema.syncAuditLogs.id, auditLogId));
-          console.log(`[RELIABLE-SYNC] Reusing audit log ${auditLogId} for retry`);
+          console.log(`[RELIABLE-SYNC] Reusing audit log ${auditLogId} for ${options.syncType} (retry/re-sync)`);
         } else {
-          // Create new audit log entry
+          // Create new audit log entry (first time for this syncType+student+exam)
           const auditEntry = await db.insert(schema.syncAuditLogs)
             .values({
               syncType: options.syncType,
@@ -548,19 +552,18 @@ export class ReliableSyncService {
     if (itemsWithScores.length === 0) return;
 
     const totalObtained = itemsWithScores.reduce((sum: number, item: any) => sum + (item.obtainedMarks || 0), 0);
-    const totalMarks = itemsWithScores.length * 100;
-    const averagePercentage = totalMarks > 0 ? Math.round((totalObtained / totalMarks) * 100) : 0;
+    const averageScore = Math.round(totalObtained / itemsWithScores.length);
+    const averagePercentage = Math.round((totalObtained / (itemsWithScores.length * 100)) * 100);
 
     const gradeInfo = calculateGrade(averagePercentage, gradingScale);
 
+    // Use the actual reportCards column names: totalScore, averageScore, averagePercentage, overallGrade
     await tx.update(schema.reportCards)
       .set({
-        totalMarks,
-        obtainedMarks: totalObtained,
-        percentage: averagePercentage,
-        grade: gradeInfo.grade,
-        remarks: gradeInfo.remarks,
-        subjectsCount: itemsWithScores.length,
+        totalScore: totalObtained,
+        averageScore,
+        averagePercentage,
+        overallGrade: gradeInfo.grade,
         updatedAt: new Date()
       })
       .where(eq(schema.reportCards.id, reportCardId));
