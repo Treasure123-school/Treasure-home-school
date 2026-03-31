@@ -210,6 +210,12 @@ export default function ParentReportCards() {
                     <CardTitle className="text-lg" data-testid={`text-report-title-${report.id}`}>
                       {report.studentName}
                     </CardTitle>
+                    {report.admissionNumber && (
+                      <p className="text-xs text-muted-foreground font-mono flex items-center gap-1" data-testid={`text-admission-report-${report.id}`}>
+                        <User className="h-3 w-3" />
+                        Admission No: {report.admissionNumber}
+                      </p>
+                    )}
                     <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <GraduationCap className="h-3.5 w-3.5" />

@@ -44,6 +44,11 @@ export default function TeacherClassResults() {
     queryKey: ['/api/users'],
   });
 
+  // Fetch students to get admission numbers
+  const { data: students = [] } = useQuery<{ id: string; admissionNumber: string }[]>({
+    queryKey: ['/api/students'],
+  });
+
   // Fetch subjects for subject names
   const { data: subjects = [] } = useQuery<Subject[]>({
     queryKey: ['/api/subjects'],
@@ -184,6 +189,7 @@ export default function TeacherClassResults() {
                       <div className="block sm:hidden space-y-3">
                         {examResultsList.map((result, index) => {
                           const student = users.find((u) => u.id === result.studentId);
+                          const studentRecord = students.find((s) => s.id === result.studentId);
                           const percentage = (result.maxScore ?? 0) > 0 
                             ? (((result.score ?? 0) / (result.maxScore ?? 0)) * 100).toFixed(1)
                             : '0';
@@ -195,9 +201,14 @@ export default function TeacherClassResults() {
                               data-testid={`card-result-mobile-${result.id}`}
                             >
                               <div className="flex items-center justify-between mb-2">
-                                <span className="font-medium text-sm" data-testid={`text-student-mobile-${index}`}>
-                                  {student ? `${student.firstName} ${student.lastName}` : 'Unknown Student'}
-                                </span>
+                                <div>
+                                  <span className="font-medium text-sm" data-testid={`text-student-mobile-${index}`}>
+                                    {student ? `${student.firstName} ${student.lastName}` : 'Unknown Student'}
+                                  </span>
+                                  {studentRecord?.admissionNumber && (
+                                    <p className="text-xs text-muted-foreground font-mono" data-testid={`text-admission-mobile-${index}`}>{studentRecord.admissionNumber}</p>
+                                  )}
+                                </div>
                                 <Badge 
                                   variant={result.autoScored ? 'secondary' : 'default'}
                                   className="text-xs"
@@ -229,7 +240,7 @@ export default function TeacherClassResults() {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="text-xs">Student</TableHead>
+                              <TableHead className="text-xs">Student / Admission No.</TableHead>
                               <TableHead className="text-xs">Score</TableHead>
                               <TableHead className="text-xs hidden md:table-cell">Percentage</TableHead>
                               <TableHead className="text-xs">Grade</TableHead>
@@ -240,6 +251,7 @@ export default function TeacherClassResults() {
                           <TableBody>
                             {examResultsList.map((result, index) => {
                               const student = users.find((u) => u.id === result.studentId);
+                              const studentRecord = students.find((s) => s.id === result.studentId);
                               const percentage = (result.maxScore ?? 0) > 0 
                                 ? (((result.score ?? 0) / (result.maxScore ?? 0)) * 100).toFixed(1)
                                 : '0';
@@ -247,7 +259,10 @@ export default function TeacherClassResults() {
                               return (
                                 <TableRow key={result.id} data-testid={`row-result-${result.id}`}>
                                   <TableCell className="text-xs sm:text-sm py-2" data-testid={`text-student-${index}`}>
-                                    {student ? `${student.firstName} ${student.lastName}` : 'Unknown Student'}
+                                    <div>{student ? `${student.firstName} ${student.lastName}` : 'Unknown Student'}</div>
+                                    {studentRecord?.admissionNumber && (
+                                      <div className="text-xs text-muted-foreground font-mono" data-testid={`text-admission-result-${index}`}>{studentRecord.admissionNumber}</div>
+                                    )}
                                   </TableCell>
                                   <TableCell className="text-xs sm:text-sm py-2" data-testid={`text-score-${index}`}>
                                     {result.score || 0} / {result.maxScore || 0}

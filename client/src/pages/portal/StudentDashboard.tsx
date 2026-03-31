@@ -65,6 +65,16 @@ export default function StudentDashboard() {
   const profileCompletion = useProfileCompletion();
 
 
+  const { data: studentData } = useQuery({
+    queryKey: ['student', user.id],
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/students/${user.id}`);
+      if (!response.ok) return null;
+      return response.json();
+    },
+    enabled: !!user,
+  });
+
   const { data: examResults, isLoading: isLoadingGrades } = useQuery({
     queryKey: ['examResults', user.id],
     queryFn: async () => {
@@ -308,6 +318,11 @@ export default function StudentDashboard() {
               <p className="text-blue-100 text-sm">
                 Here's what's happening with your academics today
               </p>
+              {studentData?.admissionNumber && (
+                <p className="text-blue-200 text-xs mt-1 font-mono" data-testid="text-admission-number-dashboard">
+                  Admission No: {studentData.admissionNumber}
+                </p>
+              )}
             </div>
           </div>
         </div>

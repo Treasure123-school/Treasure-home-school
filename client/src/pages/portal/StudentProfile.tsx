@@ -361,6 +361,15 @@ export default function StudentProfile() {
                 </div>
 
                 <div className="space-y-3">
+                  {student?.admissionNumber && (
+                    <div className="flex items-center space-x-3">
+                      <School className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm font-medium">Admission Number</p>
+                        <p className="text-sm text-muted-foreground font-mono" data-testid="text-admission-number-profile">{student.admissionNumber}</p>
+                      </div>
+                    </div>
+                  )}
                   <div className="flex items-center space-x-3">
                     <School className="h-4 w-4 text-muted-foreground" />
                     <div>

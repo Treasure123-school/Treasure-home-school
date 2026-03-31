@@ -1538,7 +1538,7 @@ export default function TeacherReportCards() {
                       studentId: fullReportCard.studentId,
                       studentName: fullReportCard.studentName,
                       studentPhoto: fullReportCard.studentPhoto,
-                      admissionNumber: fullReportCard.studentUsername || fullReportCard.admissionNumber,
+                      admissionNumber: fullReportCard.admissionNumber || fullReportCard.studentUsername,
                       className: fullReportCard.className,
                       department: fullReportCard.department,
                       isSSS: fullReportCard.isSSS,
@@ -1757,7 +1757,7 @@ export default function TeacherReportCards() {
             ref={baileysTemplateRef}
             reportCard={{
               studentName: fullReportCard.studentName,
-              admissionNumber: fullReportCard.studentUsername || fullReportCard.admissionNumber || 'N/A',
+              admissionNumber: fullReportCard.admissionNumber || fullReportCard.studentUsername || 'N/A',
               className: fullReportCard.className,
               classArm: fullReportCard.classArm,
               department: fullReportCard.department,

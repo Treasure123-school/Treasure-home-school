@@ -364,6 +364,9 @@ export default function TeacherGradingQueue() {
             </button>
             <div className="min-w-0">
               <h3 className="font-semibold text-sm truncate">{selectedSub.studentName}</h3>
+              {selectedSub.admissionNumber && (
+                <p className="text-xs text-muted-foreground font-mono" data-testid="text-admission-review-panel">{selectedSub.admissionNumber}</p>
+              )}
               <p className="text-xs text-muted-foreground truncate">{selectedSub.examName}</p>
             </div>
           </div>
@@ -633,6 +636,9 @@ export default function TeacherGradingQueue() {
                           <span className="text-sm font-medium truncate">{sub.studentName}</span>
                           <StatusBadge status={sub.status} />
                         </div>
+                        {sub.admissionNumber && (
+                          <p className="text-xs text-muted-foreground font-mono" data-testid={`text-admission-grading-${sub.resultId}`}>{sub.admissionNumber}</p>
+                        )}
                         <p className="text-xs text-muted-foreground truncate">{sub.examName}</p>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <Clock className="h-3 w-3" />
