@@ -5300,7 +5300,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const subj = await storage.getSubject(item.subjectId);
             subjectName = subj?.name ?? 'Unknown';
           }
-          return { ...item, subjectName };
+          // Normalize scores: use testScore as primary (matches admin view), falling back to testWeightedScore
+          // Use || so that a stored 0 in weighted fields falls back to the raw score
+          const testScore = item.testScore || item.testWeightedScore || 0;
+          const testWeightedScore = item.testWeightedScore || item.testScore || 0;
+          const examScore = item.examScore || item.examWeightedScore || 0;
+          const examWeightedScore = item.examWeightedScore || item.examScore || 0;
+          return { ...item, subjectName, testScore, testWeightedScore, examScore, examWeightedScore };
         }));
         return {
           ...rc,
@@ -10881,16 +10887,18 @@ School Management System Administration
           id: item.id,
           subjectId: item.subjectId,
           subjectName: item.subjectName,
-          testScore: item.testWeightedScore ?? item.testScore ?? 0,
+          testScore: item.testScore ?? item.testWeightedScore ?? 0,
+          testWeightedScore: item.testWeightedScore ?? item.testScore ?? 0,
           testMaxScore: item.testMaxScore || 40,
-          examScore: item.examWeightedScore ?? item.examScore ?? 0,
+          examScore: item.examScore ?? item.examWeightedScore ?? 0,
+          examWeightedScore: item.examWeightedScore ?? item.examScore ?? 0,
           examMaxScore: item.examMaxScore || 60,
           totalMarks: item.totalMarks || 100,
           obtainedMarks: item.obtainedMarks ?? 0,
           percentage: item.percentage ?? 0,
           grade: item.grade || '-',
           remarks: item.remarks || item.teacherRemarks || '-',
-          hasData: (item.obtainedMarks ?? 0) > 0 || (item.testWeightedScore ?? 0) > 0 || (item.examWeightedScore ?? 0) > 0
+          hasData: (item.obtainedMarks ?? 0) > 0 || (item.testScore ?? 0) > 0 || (item.testWeightedScore ?? 0) > 0 || (item.examScore ?? 0) > 0 || (item.examWeightedScore ?? 0) > 0
         }));
 
         // Calculate total score from items
@@ -10905,6 +10913,7 @@ School Management System Administration
           status: dbReportCard.status,
           // Flat fields for easy frontend access
           studentName: `${user.firstName} ${user.lastName}`,
+          studentPhoto: user.profileImageUrl || null,
           admissionNumber: student.admissionNumber,
           className: studentClass?.name || 'Unknown',
           classLevel: studentClass?.level || 'Unknown',

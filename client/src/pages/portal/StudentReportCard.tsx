@@ -468,6 +468,7 @@ export default function StudentReportCard() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <div className="flex justify-center sm:justify-start">
                   <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-2 border-primary/20">
+                    <AvatarImage src={reportCard.studentPhoto || user?.profileImageUrl || ''} alt={`${user?.firstName} ${user?.lastName}`} />
                     <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-bold text-xl">
                       {user.firstName?.[0]}{user.lastName?.[0]}
                     </AvatarFallback>
