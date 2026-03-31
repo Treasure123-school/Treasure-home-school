@@ -259,6 +259,9 @@ export function ProfessionalReportCard({
   // Pre-convert student photo to base64 so it renders in html-to-image,
   // PDF, and print windows (relative URLs fail in SVG/blank window contexts).
   const [photoSrc, setPhotoSrc] = useState<string>('');
+  const [teacherSigSrc, setTeacherSigSrc] = useState<string>('');
+  const [principalSigSrc, setPrincipalSigSrc] = useState<string>('');
+
   useEffect(() => {
     if (reportCard.studentPhoto) {
       imageUrlToBase64(reportCard.studentPhoto).then(setPhotoSrc);
@@ -266,6 +269,22 @@ export function ProfessionalReportCard({
       setPhotoSrc('');
     }
   }, [reportCard.studentPhoto]);
+
+  useEffect(() => {
+    if (reportCard.teacherSignatureUrl) {
+      imageUrlToBase64(reportCard.teacherSignatureUrl).then(setTeacherSigSrc);
+    } else {
+      setTeacherSigSrc('');
+    }
+  }, [reportCard.teacherSignatureUrl]);
+
+  useEffect(() => {
+    if (reportCard.principalSignatureUrl) {
+      imageUrlToBase64(reportCard.principalSignatureUrl).then(setPrincipalSigSrc);
+    } else {
+      setPrincipalSigSrc('');
+    }
+  }, [reportCard.principalSignatureUrl]);
   
   // Track the current report card ID to detect when switching to a different student
   const currentReportCardIdRef = useRef<number>(reportCard.id);
@@ -1067,9 +1086,9 @@ export function ProfessionalReportCard({
             {/* Teacher's Signature */}
             <div className="text-center">
               <div className="border-b-2 border-dashed border-muted-foreground/30 mb-2 h-16 flex items-end justify-center pb-1">
-                {reportCard.teacherSignatureUrl ? (
+                {teacherSigSrc ? (
                   <img 
-                    src={reportCard.teacherSignatureUrl} 
+                    src={teacherSigSrc} 
                     alt="Class Teacher's Signature" 
                     className="h-14 max-w-full object-contain"
                     data-testid="img-teacher-signature"
@@ -1089,9 +1108,9 @@ export function ProfessionalReportCard({
             {/* Principal's Signature */}
             <div className="text-center">
               <div className="border-b-2 border-dashed border-muted-foreground/30 mb-2 h-16 flex items-end justify-center pb-1">
-                {reportCard.principalSignatureUrl ? (
+                {principalSigSrc ? (
                   <img 
-                    src={reportCard.principalSignatureUrl} 
+                    src={principalSigSrc} 
                     alt="Principal's Signature" 
                     className="h-14 max-w-full object-contain"
                     data-testid="img-principal-signature"

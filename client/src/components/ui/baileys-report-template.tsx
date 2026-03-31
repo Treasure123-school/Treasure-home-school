@@ -207,11 +207,13 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
   const schoolMotto = propSchoolMotto || settings?.schoolMotto || "";
   const displayLogo = customLogo || settings?.schoolLogo || "";
 
-  // Pre-convert photo and logo to base64 so they render correctly in
+  // Pre-convert photo, logo, and signatures to base64 so they render correctly in
   // html-to-image exports, PDF captures, and print windows (all of which
   // cannot resolve relative URLs once the DOM is serialised / captured).
   const [photoSrc, setPhotoSrc] = useState<string>('');
   const [logoSrc, setLogoSrc] = useState<string>('');
+  const [teacherSigSrc, setTeacherSigSrc] = useState<string>('');
+  const [principalSigSrc, setPrincipalSigSrc] = useState<string>('');
 
   useEffect(() => {
     if (reportCard.studentPhoto) {
@@ -228,6 +230,22 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
       setLogoSrc('');
     }
   }, [displayLogo]);
+
+  useEffect(() => {
+    if (reportCard.teacherSignatureUrl) {
+      imageUrlToBase64(reportCard.teacherSignatureUrl).then(setTeacherSigSrc);
+    } else {
+      setTeacherSigSrc('');
+    }
+  }, [reportCard.teacherSignatureUrl]);
+
+  useEffect(() => {
+    if (reportCard.principalSignatureUrl) {
+      imageUrlToBase64(reportCard.principalSignatureUrl).then(setPrincipalSigSrc);
+    } else {
+      setPrincipalSigSrc('');
+    }
+  }, [reportCard.principalSignatureUrl]);
 
   const subjects = reportCard.items || reportCard.subjects || [];
   const totalObtained = subjects.reduce((sum, s) => sum + (s.obtainedMarks || 0), 0);
@@ -684,8 +702,8 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
             </td>
             <td style={labelCell}>Sign:</td>
             <td style={{ ...valueCell, minHeight: 20 }}>
-              {reportCard.teacherSignatureUrl ? (
-                <img src={reportCard.teacherSignatureUrl} alt="" style={{ height: 20, objectFit: 'contain' }} crossOrigin="anonymous" />
+              {teacherSigSrc ? (
+                <img src={teacherSigSrc} alt="" style={{ height: 20, objectFit: 'contain' }} />
               ) : ''}
             </td>
           </tr></tbody>
@@ -717,8 +735,8 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
             </td>
             <td style={labelCell}>Sign:</td>
             <td style={{ ...valueCell, minHeight: 20 }}>
-              {reportCard.principalSignatureUrl ? (
-                <img src={reportCard.principalSignatureUrl} alt="" style={{ height: 20, objectFit: 'contain' }} crossOrigin="anonymous" />
+              {principalSigSrc ? (
+                <img src={principalSigSrc} alt="" style={{ height: 20, objectFit: 'contain' }} />
               ) : ''}
             </td>
           </tr></tbody>
