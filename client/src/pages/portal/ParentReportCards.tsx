@@ -6,7 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/lib/auth';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Download, FileText, TrendingUp, Award, Calendar, User, Clock, GraduationCap, BookOpen } from 'lucide-react';
+import { Download, FileText, TrendingUp, Award, Calendar, User, Clock, GraduationCap, BookOpen, PenLine } from 'lucide-react';
+import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { apiRequest } from '@/lib/queryClient';
@@ -37,15 +38,23 @@ interface ReportCard {
   id: number;
   studentId: string;
   studentName: string;
+  admissionNumber?: string;
   className: string;
   termName: string;
   termYear: string;
   averagePercentage: number;
   overallGrade: string;
   teacherRemarks: string;
+  principalRemarks?: string;
   status: string;
   generatedAt: string;
   items: ReportCardItem[];
+  teacherSignatureUrl?: string | null;
+  teacherSignedAt?: string | null;
+  teacherSignedBy?: string | null;
+  principalSignatureUrl?: string | null;
+  principalSignedAt?: string | null;
+  principalSignedBy?: string | null;
 }
 
 function gradeColor(grade: string) {
@@ -329,8 +338,71 @@ export default function ParentReportCards() {
                 {/* Teacher remarks */}
                 {report.teacherRemarks && (
                   <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/30 rounded-lg">
-                    <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-1">Teacher's Remarks</h4>
+                    <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-200 mb-1">Class Teacher's Remarks</h4>
                     <p className="text-sm text-amber-800 dark:text-amber-300">{report.teacherRemarks}</p>
+                  </div>
+                )}
+
+                {/* Principal remarks */}
+                {report.principalRemarks && (
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-lg">
+                    <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-1">Principal's Remarks</h4>
+                    <p className="text-sm text-blue-800 dark:text-blue-300">{report.principalRemarks}</p>
+                  </div>
+                )}
+
+                {/* Signatures */}
+                {(report.teacherSignatureUrl || report.principalSignatureUrl) && (
+                  <div className="border border-border rounded-lg p-4">
+                    <h4 className="text-sm font-semibold flex items-center gap-2 mb-4">
+                      <PenLine className="h-4 w-4 text-primary" />
+                      Official Signatures
+                    </h4>
+                    <div className="grid grid-cols-2 gap-6">
+                      {/* Teacher Signature */}
+                      <div className="flex flex-col items-center gap-2" data-testid={`sig-teacher-${report.id}`}>
+                        <div className="w-full h-16 border-b-2 border-dashed border-border flex items-end justify-center pb-1">
+                          {report.teacherSignatureUrl ? (
+                            <img
+                              src={report.teacherSignatureUrl}
+                              alt="Class Teacher's Signature"
+                              className="max-h-14 max-w-full object-contain"
+                              data-testid={`img-teacher-signature-${report.id}`}
+                            />
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic">Not yet signed</span>
+                          )}
+                        </div>
+                        <p className="text-xs font-medium text-center">Class Teacher's Signature</p>
+                        {report.teacherSignedAt && (
+                          <p className="text-xs text-muted-foreground text-center">
+                            Signed: {format(new Date(report.teacherSignedAt), 'MMM d, yyyy')}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Principal Signature */}
+                      <div className="flex flex-col items-center gap-2" data-testid={`sig-principal-${report.id}`}>
+                        <div className="w-full h-16 border-b-2 border-dashed border-border flex items-end justify-center pb-1">
+                          {report.principalSignatureUrl ? (
+                            <img
+                              src={report.principalSignatureUrl}
+                              alt="Principal's Signature"
+                              className="max-h-14 max-w-full object-contain"
+                              data-testid={`img-principal-signature-${report.id}`}
+                            />
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic">Not yet signed</span>
+                          )}
+                        </div>
+                        <p className="text-xs font-medium text-center">Principal's Signature</p>
+                        {report.principalSignedAt && (
+                          <p className="text-xs text-muted-foreground text-center">
+                            Signed: {format(new Date(report.principalSignedAt), 'MMM d, yyyy')}
+                          </p>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </CardContent>
