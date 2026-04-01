@@ -20,13 +20,12 @@ export const STANDARD_GRADING_SCALE: GradingConfig = {
   testWeight: 40,
   examWeight: 60,
   ranges: [
-    { min: 90, max: 100, grade: 'A+', points: 4.0, remarks: 'Excellent' },
-    { min: 80, max: 89, grade: 'A', points: 3.7, remarks: 'Very Good' },
-    { min: 70, max: 79, grade: 'B+', points: 3.3, remarks: 'Good' },
-    { min: 60, max: 69, grade: 'B', points: 3.0, remarks: 'Satisfactory' },
-    { min: 50, max: 59, grade: 'C', points: 2.0, remarks: 'Pass' },
-    { min: 40, max: 49, grade: 'D', points: 1.0, remarks: 'Below Average' },
-    { min: 0, max: 39, grade: 'F', points: 0.0, remarks: 'Fail' },
+    { min: 70, max: 100, grade: 'A', points: 4.0, remarks: 'Excellent' },
+    { min: 60, max: 69, grade: 'B', points: 3.0, remarks: 'Very Good' },
+    { min: 50, max: 59, grade: 'C', points: 2.0, remarks: 'Good' },
+    { min: 40, max: 49, grade: 'D', points: 1.0, remarks: 'Pass' },
+    { min: 30, max: 39, grade: 'E', points: 0.5, remarks: 'Fair' },
+    { min: 0, max: 29, grade: 'F', points: 0.0, remarks: 'Weak' },
   ]
 };
 

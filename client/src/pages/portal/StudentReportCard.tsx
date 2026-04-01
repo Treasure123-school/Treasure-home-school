@@ -65,9 +65,9 @@ const getRemarkFromGrade = (grade: string): string => {
   if (gradeUpper === 'A' || gradeUpper === 'A+') return 'Excellent';
   if (gradeUpper === 'B' || gradeUpper === 'B+') return 'Very Good';
   if (gradeUpper === 'C' || gradeUpper === 'C+') return 'Good';
-  if (gradeUpper === 'D' || gradeUpper === 'D+') return 'Fair';
-  if (gradeUpper === 'E') return 'Pass';
-  return 'Needs Improvement';
+  if (gradeUpper === 'D' || gradeUpper === 'D+') return 'Pass';
+  if (gradeUpper === 'E') return 'Fair';
+  return 'Weak';
 };
 
 const getPositionSuffix = (pos: number): string => {
@@ -655,7 +655,7 @@ export default function StudentReportCard() {
                               </td>
                               <td className="p-2 text-xs border-b">
                                 <span className={getGradeColor(subject.grade).replace('bg-', 'text-').replace('-100', '-700')}>
-                                  {subject.remarks || subject.teacherRemarks || getRemarkFromGrade(subject.grade)}
+                                  {getRemarkFromGrade(subject.grade) || subject.remarks || subject.teacherRemarks}
                                 </span>
                               </td>
                             </tr>
@@ -697,7 +697,7 @@ export default function StudentReportCard() {
                             </div>
                           </div>
                           <p className="text-xs mt-2 text-muted-foreground">
-                            <span className="font-medium">Remarks:</span> {subject.remarks || subject.teacherRemarks || getRemarkFromGrade(subject.grade)}
+                            <span className="font-medium">Remarks:</span> {getRemarkFromGrade(subject.grade) || subject.remarks || subject.teacherRemarks}
                           </p>
                         </div>
                       );
@@ -960,7 +960,7 @@ export default function StudentReportCard() {
                 examScore: s.examScore ?? s.examWeightedScore ?? null,
                 obtainedMarks: s.obtainedMarks ?? s.totalScore ?? 0,
                 grade: s.grade || '-',
-                remarks: s.remarks || s.teacherRemarks || getRemarkFromGrade(s.grade),
+                remarks: getRemarkFromGrade(s.grade) || s.remarks || s.teacherRemarks,
                 subjectPosition: s.subjectPosition || null,
               })),
               teacherRemarks: reportCard.teacherRemarks || reportCard.teacherComment,

@@ -171,9 +171,9 @@ const getRemarkFromGrade = (grade: string): string => {
   if (gradeUpper === 'A' || gradeUpper === 'A+') return 'Excellent';
   if (gradeUpper === 'B' || gradeUpper === 'B+') return 'Very Good';
   if (gradeUpper === 'C' || gradeUpper === 'C+') return 'Good';
-  if (gradeUpper === 'D' || gradeUpper === 'D+') return 'Fair';
-  if (gradeUpper === 'E') return 'Pass';
-  return 'Needs Improvement';
+  if (gradeUpper === 'D' || gradeUpper === 'D+') return 'Pass';
+  if (gradeUpper === 'E') return 'Fair';
+  return 'Weak';
 };
 
 const getPositionSuffix = (pos: number): string => {
@@ -774,7 +774,7 @@ export function ProfessionalReportCard({
                         </td>
                         <td className="p-2 text-xs border-b max-w-[120px]">
                           <span className={getGradeColor(item.grade).replace('bg-', 'text-').replace('-100', '-700')}>
-                            {item.remarks || item.teacherRemarks || getRemarkFromGrade(item.grade)}
+                            {getRemarkFromGrade(item.grade) || item.remarks || item.teacherRemarks}
                           </span>
                         </td>
                         <td className="text-center p-2 border-b print:hidden">
@@ -836,7 +836,7 @@ export function ProfessionalReportCard({
                       </div>
                     </div>
                     <p className="text-xs mt-2 text-muted-foreground">
-                      <span className="font-medium">Remarks:</span> {item.remarks || item.teacherRemarks || getRemarkFromGrade(item.grade)}
+                      <span className="font-medium">Remarks:</span> {getRemarkFromGrade(item.grade) || item.remarks || item.teacherRemarks}
                     </p>
                   </div>
                 ))}
