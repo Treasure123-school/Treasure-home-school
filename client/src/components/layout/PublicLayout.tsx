@@ -163,7 +163,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                   className="h-20 w-auto object-contain" 
                 />
               ) : null}
-              <p className="text-[13px] text-gray-600 font-bold leading-relaxed">{settings?.schoolName || ""} has a rich history of educational excellence.</p>
+              <p className="text-[13px] text-gray-600 font-bold leading-relaxed">Nurturing young minds with quality education, strong values, and a lifelong love for learning — one student at a time.</p>
             </div>
             <div className="space-y-6">
               <h4 className="text-gray-800 font-black uppercase tracking-widest text-[11px] border-b border-blue-200 pb-2">Useful Links</h4>
