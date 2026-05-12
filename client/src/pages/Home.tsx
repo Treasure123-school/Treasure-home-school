@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowRight, User } from "lucide-react";
+import { ArrowRight, User, ShieldCheck, BookOpen, Lightbulb, Users, Globe, GraduationCap } from "lucide-react";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import girlsImage from "@/assets/girls-image.png";
 import gallery1 from "@/assets/gallery-1.png";
@@ -71,32 +71,32 @@ export default function Home() {
     {
       title: "Uprightness",
       desc: "Promoting honesty, integrity, and moral values in all aspects of school life.",
-      icon: "/images/01.png",
+      Icon: ShieldCheck,
     },
     {
       title: "Academic Excellence",
-      desc: "Striving for high academic standards and continuous improvement in teaching and learning.",
-      icon: "/images/02.png",
+      desc: "Striving for high academic standards and continuous improvement in teaching.",
+      Icon: BookOpen,
     },
     {
       title: "Innovation",
-      desc: "Encouraging creativity, critical thinking, and problem-solving skills among students.",
-      icon: "/images/03.png",
+      desc: "Encouraging creativity, critical thinking, and advanced problem-solving skills.",
+      Icon: Lightbulb,
     },
     {
       title: "Inclusivity",
       desc: "Embracing diversity and ensuring that all students have equal access to quality education.",
-      icon: "/images/04.png",
+      Icon: Users,
     },
     {
       title: "Community Engagement",
       desc: "Fostering a sense of social responsibility and active involvement in the local community.",
-      icon: "/images/05.png",
+      Icon: Globe,
     },
     {
       title: "Lifelong Learning",
       desc: "Instilling a passion for learning that extends beyond the classroom.",
-      icon: "/images/06.png",
+      Icon: GraduationCap,
     },
   ];
 
@@ -285,26 +285,32 @@ export default function Home() {
       </section>
 
       {/* Core Values */}
-      <section className="py-24 bg-white">
-        <div className="container px-4 max-w-6xl mx-auto text-center">
-          <h2 className="section-title">{schoolName} Core Values</h2>
-          <p className="section-subtitle">
-            At {schoolName}, we are guided by six core values that form the
-            foundation of our educational philosophy.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <section className="py-16 md:py-24 bg-white">
+        <div className="container px-6 max-w-3xl mx-auto">
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+              Our Foundation
+            </h2>
+            <p className="text-[14px] md:text-[15px] text-gray-500 font-normal leading-relaxed">
+              Guiding principles that shape every Treasure-Home student.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-4">
             {features.map((f, i) => (
-              <motion.div key={i} {...fadeIn}>
-                <div className="card-value h-full">
-                  <div
-                    className="icon-gradient mb-6"
-                    style={{
-                      WebkitMaskImage: `url(${f.icon})`,
-                      maskImage: `url(${f.icon})`,
-                    }}
-                  />
-                  <h3 className="text-lg font-bold mb-3">{f.title}</h3>
-                  <p className="text-[14px] text-gray-500 leading-relaxed">
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.07, duration: 0.4 }}
+              >
+                <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-7 md:p-9 text-center">
+                  <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-5">
+                    <f.Icon className="w-6 h-6 text-[#0000FF]" />
+                  </div>
+                  <h3 className="text-[17px] font-bold text-gray-900 mb-3">{f.title}</h3>
+                  <p className="text-[14px] text-gray-500 leading-relaxed font-normal">
                     {f.desc}
                   </p>
                 </div>
