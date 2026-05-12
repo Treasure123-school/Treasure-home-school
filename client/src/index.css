@@ -92,14 +92,12 @@
 }
 
 .btn-primary {
-  @apply relative overflow-hidden bg-gradient-to-r from-[#0000FF] to-[#00BFFF] text-white border-none shadow-lg transition-all flex items-center justify-center gap-2 font-bold uppercase tracking-widest px-8 py-3 text-[10px] rounded-sm;
-  background-size: 100% 100%;
+  @apply relative overflow-hidden bg-[#0000FF] text-white border-none shadow-lg transition-all flex items-center justify-center gap-2 font-bold uppercase tracking-widest px-8 py-3 text-[10px] rounded-sm;
 }
 
-/* Ensure background remains gradient on hover */
 .btn-primary:hover {
-  background-image: linear-gradient(to right, #0000FF, #00BFFF);
-  opacity: 0.95;
+  background-color: #0000cc;
+  opacity: 1;
 }
 
 .btn-primary::before {
@@ -109,12 +107,7 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(
-    120deg,
-    transparent,
-    rgba(255, 255, 255, 0.3),
-    transparent
-  );
+  background: rgba(255, 255, 255, 0.15);
   transition: all 0.6s ease;
   z-index: 1;
 }
@@ -173,7 +166,7 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(to right, #0000FF, #00BFFF) !important;
+  background: #0000FF !important;
   transition: all 0.4s ease-in-out;
   z-index: -1;
 }
@@ -183,11 +176,12 @@
 }
 
 .btn-hero-contact {
-  @apply relative overflow-hidden bg-gradient-to-r from-[#0000FF] to-[#00BFFF] text-white border-none shadow-lg transition-all font-bold uppercase tracking-widest rounded-sm !important;
+  @apply relative overflow-hidden bg-[#0000FF] text-white border-none shadow-lg transition-all font-bold uppercase tracking-widest rounded-sm !important;
   transform: none !important;
 }
 
 .btn-hero-contact:hover {
+  background-color: #0000cc !important;
   @apply opacity-100 !important;
   transform: none !important;
   box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1) !important;
@@ -200,12 +194,7 @@
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(
-    120deg,
-    transparent,
-    rgba(255, 255, 255, 0.4),
-    transparent
-  );
+  background: rgba(255, 255, 255, 0.15);
   transition: all 0.6s ease;
   z-index: 1;
 }
@@ -230,7 +219,7 @@
   display: inline-block;
   width: 3rem;
   height: 3rem;
-  background: linear-gradient(to bottom right, #0000FF, #00BFFF);
+  background: #0000FF;
   -webkit-mask-size: contain;
   mask-size: contain;
   -webkit-mask-repeat: no-repeat;
@@ -241,40 +230,29 @@
 
 .enroll-button-custom {
   background-color: white !important;
-  background-image: none !important;
-  border: 2px solid transparent !important;
-  background-image: linear-gradient(white, white), linear-gradient(to right, #0000FF, #00BFFF) !important;
-  background-origin: border-box !important;
-  background-clip: padding-box, border-box !important;
+  border: 2px solid #0000FF !important;
   position: relative;
   z-index: 1;
-  color: #0000FF !important; /* Fallback */
+  color: #0000FF !important;
 }
 
 .enroll-button-custom span {
-  background: linear-gradient(to right, #0000FF, #00BFFF) !important;
-  -webkit-background-clip: text !important;
-  background-clip: text !important;
-  -webkit-text-fill-color: transparent !important;
+  color: #0000FF !important;
   display: inline-flex;
   align-items: center;
   gap: 0.75rem;
 }
 
 .enroll-button-custom svg {
-  color: #00BFFF !important;
+  color: #0000FF !important;
 }
 
 .enroll-button-custom:hover {
-  background-image: linear-gradient(to right, #0000FF, #00BFFF) !important;
-  background-origin: border-box !important;
-  background-clip: border-box !important;
-  border-color: transparent !important;
+  background-color: #0000FF !important;
+  border-color: #0000FF !important;
 }
 
 .enroll-button-custom:hover span {
-  -webkit-text-fill-color: white !important;
-  background: none !important;
   color: white !important;
 }
 
@@ -283,7 +261,7 @@
 }
 
 .footer-dark {
-  @apply bg-gradient-to-r from-[#0000AA] to-[#0099DD] text-white py-16;
+  @apply bg-[#0000AA] text-white py-16;
 }
 
 .typed-cursor {

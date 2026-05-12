@@ -239,19 +239,19 @@ export default function Home() {
         <div className="container px-4 max-w-6xl mx-auto">
           <div className="flex flex-col lg:flex-row gap-12 items-center lg:items-start">
             <motion.div {...fadeIn} className="flex-1 text-left">
-              <div className="flex flex-col items-start gap-4 mb-8">
-                <h2 className="text-3xl md:text-5xl font-bold mb-2">
-                  {schoolName}
+              <div className="flex flex-col items-start gap-3 mb-8">
+                <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
+                  Excellence in<br />the Foundation
                 </h2>
-                <div className="w-12 h-[2px] bg-gradient-to-r from-[#0000FF] to-[#00BFFF]" />
+                <div className="w-12 h-[3px] bg-[#0000FF]" />
               </div>
-              <p className="text-[16px] md:text-[18px] text-gray-600 leading-relaxed mb-6">
+              <p className="text-[16px] md:text-[17px] text-gray-600 leading-relaxed mb-6">
                 Treasure Home School is a private educational institution
                 committed to providing quality education and strong moral
                 upbringing. We believe every child is unique and deserves
                 careful guidance to discover their full potential.
               </p>
-              <p className="text-[16px] md:text-[18px] text-gray-600 leading-relaxed mb-8">
+              <p className="text-[16px] md:text-[17px] text-gray-600 leading-relaxed mb-8">
                 Our teaching approach combines sound academics, discipline,
                 creativity, and life skills to prepare pupils for future
                 challenges.
@@ -268,7 +268,7 @@ export default function Home() {
               <img
                 src={schoolBuilding}
                 alt="Treasure Home School Building"
-                className="rounded-lg shadow-lg w-full h-[300px] md:h-[400px] lg:h-[450px] object-cover"
+                className="rounded-xl shadow-md w-full h-[300px] md:h-[400px] lg:h-[450px] object-cover"
               />
             </motion.div>
           </div>
@@ -307,7 +307,6 @@ export default function Home() {
 
       {/* Stats Section */}
       <section className="py-24 bg-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(0,191,255,0.05),transparent_70%),radial-gradient(circle_at_bottom_left,rgba(0,0,255,0.03),transparent_70%)] pointer-events-none" />
 
         <div className="container px-4 max-w-6xl mx-auto relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
@@ -316,7 +315,7 @@ export default function Home() {
                 <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight text-[#1a1a1a]">
                   Why Choose
                   <br />
-                  <span className="bg-gradient-to-r from-[#0000FF] to-[#00BFFF] bg-clip-text text-transparent">
+                  <span className="text-[#0000FF]">
                     Treasure-Home
                   </span>
                   <br />
@@ -367,7 +366,7 @@ export default function Home() {
                   className="group relative p-8 md:p-10 bg-white border border-gray-100 rounded-xl shadow-[0_10px_30px_-15px_rgba(0,0,0,0.05)] hover:shadow-[0_20px_50px_-15px_rgba(0,0,0,0.1)] transition-all duration-500 hover:-translate-y-1 text-center"
                 >
                   <div className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-1 bg-[#0000FF]/10 group-hover:bg-[#0000FF] transition-colors duration-500 rounded-b-full" />
-                  <div className="text-4xl md:text-5xl font-black mb-3 text-gray-900 group-hover:bg-gradient-to-r group-hover:from-[#0000FF] group-hover:to-[#00BFFF] group-hover:bg-clip-text group-hover:text-transparent transition-all duration-500">
+                  <div className="text-4xl md:text-5xl font-black mb-3 text-gray-900 group-hover:text-[#0000FF] transition-all duration-500">
                     {s.value}
                   </div>
                   <div className="w-8 h-[2px] bg-gray-100 mx-auto mb-4 group-hover:bg-[#0000FF]/30 transition-colors" />
@@ -388,7 +387,6 @@ export default function Home() {
 
       {/* Testimonials */}
       <section className="py-24 bg-gray-50 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(at_0%_0%,rgba(0,0,255,0.02)_0px,transparent_50%),radial-gradient(at_100%_100%,rgba(0,191,255,0.02)_0px,transparent_50%)] pointer-events-none" />
         <div className="container px-4 max-w-4xl mx-auto text-center relative z-10">
           <h2 className="section-title">School Testimonial</h2>
           <div className="w-12 h-[2px] bg-[#0000FF] mx-auto mb-6" />
