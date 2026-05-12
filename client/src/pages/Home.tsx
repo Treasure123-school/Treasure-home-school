@@ -235,43 +235,46 @@ export default function Home() {
       </section>
 
       {/* About Section */}
-      <section className="py-24 bg-white">
-        <div className="container px-4 max-w-6xl mx-auto">
-          <div className="flex flex-col lg:flex-row gap-12 items-center lg:items-start">
-            <motion.div {...fadeIn} className="flex-1 text-left">
-              <div className="flex flex-col items-start gap-3 mb-8">
-                <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight">
-                  Excellence in<br />the Foundation
-                </h2>
-                <div className="w-12 h-[3px] bg-[#0000FF]" />
-              </div>
-              <p className="text-[16px] md:text-[17px] text-gray-600 leading-relaxed mb-6">
-                Treasure Home School is a private educational institution
-                committed to providing quality education and strong moral
-                upbringing. We believe every child is unique and deserves
-                careful guidance to discover their full potential.
-              </p>
-              <p className="text-[16px] md:text-[17px] text-gray-600 leading-relaxed mb-8">
-                Our teaching approach combines sound academics, discipline,
-                creativity, and life skills to prepare pupils for future
-                challenges.
-              </p>
-              <Button asChild className="btn-primary">
-                <Link href="/about" className="flex items-center gap-2">
-                  <span>Learn More</span>
-                  <ArrowRight className="w-3 h-3" />
-                </Link>
-              </Button>
-            </motion.div>
+      <section className="py-16 md:py-24 bg-white">
+        <div className="container px-6 max-w-3xl mx-auto">
+          <motion.div {...fadeIn}>
+            {/* Label */}
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-8 h-[2px] bg-[#0000FF]" />
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#0000FF]">About Us</span>
+            </div>
 
-            <motion.div {...fadeIn} className="flex-1 w-full lg:w-1/2">
+            {/* Heading */}
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight mb-6">
+              Excellence in Education
+            </h2>
+
+            {/* Body text */}
+            <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed mb-5 font-normal">
+              Treasure Home School is a sanctuary of brilliance committed to providing quality education and strong
+              moral upbringing. We believe every child is unique and deserves careful guidance to discover their full
+              potential.
+            </p>
+            <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed mb-8 font-normal">
+              Our holistic teaching approach combines sound academics, discipline, creativity, and life skills to
+              prepare pupils for the global stage.
+            </p>
+
+            {/* Text link CTA */}
+            <Link href="/about" className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.15em] text-[#0000FF] hover:opacity-75 transition-opacity mb-10">
+              Discover Our Mission
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+
+            {/* Building image */}
+            <div className="w-full">
               <img
                 src={schoolBuilding}
                 alt="Treasure Home School Building"
-                className="rounded-xl shadow-md w-full h-[300px] md:h-[400px] lg:h-[450px] object-cover"
+                className="rounded-xl w-full h-[280px] md:h-[380px] object-cover"
               />
-            </motion.div>
-          </div>
+            </div>
+          </motion.div>
         </div>
       </section>
 
