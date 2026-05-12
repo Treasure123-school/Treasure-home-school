@@ -109,15 +109,21 @@ export default function Home() {
 
   const testimonials = [
     {
-      name: "Adebayo Daniel",
-      role: "Student",
-      text: `${schoolName} has not only prepared me academically but has also taught me important life skills. The school's focus on values and ethics has shaped my perspective on the world.`,
+      name: "Abubakar Karede",
+      role: "Satisfied Parent",
+      text: "Treasure-Home School has completely transformed my daughter's approach to learning. The emphasis on character alongside academics is truly what sets this school apart. I couldn't be happier.",
       img: "",
     },
     {
-      name: "Abubakar Korede",
-      role: "Student",
-      text: `At ${schoolName}, I've learned the value of leadership and teamwork. The school's emphasis on character development has empowered me to take on responsibilities.`,
+      name: "Adebayo Daniel",
+      role: "Satisfied Parent",
+      text: "Choosing Treasure-Home School was the best decision for our family. The teachers are dedicated, the environment is nurturing, and my son has grown tremendously both academically and in character.",
+      img: "",
+    },
+    {
+      name: "Folake Ogundimu",
+      role: "Satisfied Parent",
+      text: "The level of care and attention each child receives here is exceptional. My children look forward to going to school every day, and their results speak for themselves.",
       img: "",
     },
   ];
@@ -349,89 +355,72 @@ export default function Home() {
       </section>
 
       {/* Testimonials */}
-      <section className="py-24 bg-gray-50 relative overflow-hidden">
-        <div className="container px-4 max-w-4xl mx-auto text-center relative z-10">
-          <h2 className="section-title">School Testimonial</h2>
-          <div className="w-12 h-[2px] bg-[#0000FF] mx-auto mb-6" />
-          <p className="section-subtitle mb-12">
-            Our education brings satisfaction to our students. Here are a few
-            testimonials.
-          </p>
+      <section className="py-16 md:py-24 bg-gray-50">
+        <div className="container px-6 max-w-3xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-10">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+              Voices of Treasure
+            </h2>
+            <p className="text-[14px] md:text-[15px] text-gray-500 font-normal">
+              Hear from the families that call us home.
+            </p>
+          </div>
 
-          <div className="relative h-[400px] md:h-[300px]">
+          {/* Card */}
+          <div className="mb-6">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentTestimonial}
-                initial={{ opacity: 0, x: 100 }}
+                initial={{ opacity: 0, x: 60 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -100 }}
-                transition={{ duration: 0.5, ease: "easeInOut" }}
-                className="absolute inset-0"
+                exit={{ opacity: 0, x: -60 }}
+                transition={{ duration: 0.4, ease: "easeInOut" }}
               >
-                <Card className="p-10 text-left bg-white border-none shadow-xl rounded-2xl h-full flex flex-col justify-center">
-                  <div className="text-[#0000FF] mb-6">
-                    <svg
-                      width="30"
-                      height="30"
-                      viewBox="0 0 24 24"
-                      fill="currentColor"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M14.017 21L14.017 18C14.017 16.8954 14.9124 16 16.017 16H19.017C20.1216 16 21.017 16.8954 21.017 18V21M14.017 21H21.017M14.017 21C12.9124 21 12.017 20.1046 12.017 19V15C12.017 13.8954 12.9124 13 14.017 13H15.017C15.017 10.2386 12.7784 8 10.017 8V5C14.4353 5 18.017 8.58172 18.017 13V13.017"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        fill="none"
-                      />
-                      <path
-                        d="M5.017 21L5.017 18C5.017 16.8954 5.91243 16 7.017 16H10.017C11.1216 16 12.017 16.8954 12.017 18V21M5.017 21H12.017M5.017 21C3.91243 21 3.017 20.1046 3.017 19V15C3.017 13.8954 3.91243 13 5.017 13H6.017C6.017 10.2386 3.77843 8 1.017 8V5C5.43528 5 9.017 8.58172 9.017 13V13.017"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        fill="none"
-                      />
-                    </svg>
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-7 md:p-9">
+                  {/* Quote text + closing mark */}
+                  <div className="relative mb-7">
+                    <p className="text-[15px] md:text-[16px] text-gray-700 leading-relaxed italic font-normal pr-12">
+                      "{testimonials[currentTestimonial].text}"
+                    </p>
+                    <span className="absolute top-0 right-0 text-6xl font-black text-gray-200 leading-none select-none" style={{ lineHeight: 1 }}>
+                      "
+                    </span>
                   </div>
-                  <p className="text-[16px] md:text-[18px] text-gray-600 leading-relaxed mb-8">
-                    {testimonials[currentTestimonial].text}
-                  </p>
+
+                  {/* Divider */}
+                  <div className="w-full h-px bg-gray-100 mb-6" />
+
+                  {/* Author */}
                   <div className="flex items-center gap-4">
-                    {testimonials[currentTestimonial].img ? (
-                      <img
-                        src={testimonials[currentTestimonial].img}
-                        alt={testimonials[currentTestimonial].name}
-                        className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-md"
-                      />
-                    ) : (
-                      <div className="w-14 h-14 rounded-full bg-blue-100 flex items-center justify-center border-2 border-white shadow-md">
-                        <User className="w-8 h-8 text-blue-600" />
-                      </div>
-                    )}
+                    <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                      <User className="w-6 h-6 text-gray-500" />
+                    </div>
                     <div>
-                      <div className="w-8 h-[2px] bg-[#0000FF] mb-2" />
-                      <h4 className="font-bold text-base text-gray-900">
+                      <h4 className="font-bold text-[15px] text-gray-900 mb-0.5">
                         {testimonials[currentTestimonial].name}
                       </h4>
-                      <p className="text-[12px] text-gray-400 uppercase tracking-widest">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0000FF]">
                         {testimonials[currentTestimonial].role}
                       </p>
                     </div>
                   </div>
-                </Card>
+                </div>
               </motion.div>
             </AnimatePresence>
           </div>
 
-          <div className="flex justify-center gap-2 mt-8">
+          {/* Dots */}
+          <div className="flex justify-center gap-2">
             {testimonials.map((_, i) => (
               <button
                 key={i}
                 onClick={() => setCurrentTestimonial(i)}
-                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${currentTestimonial === i ? "bg-[#0000FF] w-6" : "bg-gray-300"
-                  }`}
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  currentTestimonial === i
+                    ? "bg-[#0000FF] w-7"
+                    : "bg-gray-300 w-2.5"
+                }`}
                 aria-label={`Go to testimonial ${i + 1}`}
               />
             ))}
