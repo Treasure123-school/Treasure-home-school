@@ -154,7 +154,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
 
       <footer className="footer-dark mt-auto">
         <div className="container max-w-7xl mx-auto px-4">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-16 mb-12">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
             <div className="space-y-6">
               {settings?.schoolLogo ? (
                 <img 
@@ -163,7 +163,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                   className="h-20 w-auto object-contain" 
                 />
               ) : null}
-              <p className="text-[13px] text-gray-600 font-bold leading-relaxed">Nurturing young minds with quality education, strong values, and a lifelong love for learning — one student at a time.</p>
+              <p className="text-[13px] text-gray-600 font-bold leading-relaxed">{settings?.schoolName || "Treasure-Home School"} — nurturing young minds with quality education, strong values, and a lifelong love for learning, one student at a time.</p>
             </div>
             <div className="space-y-6">
               <h4 className="text-gray-800 font-black uppercase tracking-widest text-[11px] border-b border-blue-200 pb-2">Useful Links</h4>
