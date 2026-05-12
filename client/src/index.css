@@ -261,7 +261,7 @@
 }
 
 .footer-dark {
-  @apply bg-[#0000AA] text-white py-16;
+  @apply bg-[#EEF2FF] text-gray-800 py-16;
 }
 
 .typed-cursor {
