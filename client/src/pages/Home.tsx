@@ -142,7 +142,7 @@ export default function Home() {
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
-    }, 5000);
+    }, 7000);
     return () => clearInterval(timer);
   }, [testimonials.length]);
 
@@ -374,7 +374,7 @@ export default function Home() {
           </div>
 
           {/* Card */}
-          <div className="mb-6">
+          <div className="mb-6 overflow-hidden">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentTestimonial}
