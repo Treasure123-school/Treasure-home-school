@@ -247,12 +247,12 @@ export default function Home() {
             {/* Label */}
             <div className="flex items-center gap-3 mb-5">
               <div className="w-8 h-[2px] bg-[#0000FF]" />
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#0000FF]">About Us</span>
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#0000FF]">About Our School</span>
             </div>
 
             {/* Heading */}
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight mb-6">
-              Excellence in Education
+              Qualitative Education and moral excellence
             </h2>
 
             {/* Body text */}
@@ -284,15 +284,15 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Core Values */}
-      <section className="py-16 md:py-24 bg-white">
+      {/* Core Pillars */}
+      <section className="py-16 md:py-24 bg-gray-50">
         <div className="container px-6 max-w-3xl mx-auto">
           <div className="text-center mb-10">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-              Our Foundation
+              Our Core Pillars
             </h2>
             <p className="text-[14px] md:text-[15px] text-gray-500 font-normal leading-relaxed">
-              Guiding principles that shape every Treasure-Home student.
+              These foundational values guide every interaction and lesson at Treasure-Home School.
             </p>
           </div>
 
@@ -305,9 +305,9 @@ export default function Home() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.07, duration: 0.4 }}
               >
-                <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-7 md:p-9 text-center">
-                  <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center mx-auto mb-5">
-                    <f.Icon className="w-6 h-6 text-[#0000FF]" />
+                <div className="group bg-white border border-gray-100 rounded-2xl shadow-sm p-7 md:p-9 hover:border-blue-600 transition-all duration-300 cursor-default">
+                  <div className="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center mb-5 group-hover:bg-blue-600 transition-colors duration-300">
+                    <f.Icon className="w-6 h-6 text-[#0000FF] group-hover:text-white transition-colors duration-300" />
                   </div>
                   <h3 className="text-[17px] font-bold text-gray-900 mb-3">{f.title}</h3>
                   <p className="text-[14px] text-gray-500 leading-relaxed font-normal">
