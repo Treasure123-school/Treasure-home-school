@@ -1,4 +1,6 @@
 import PublicLayout from '@/components/layout/PublicLayout';
+import { motion } from 'framer-motion';
+import heroStudents from "@/assets/hero-students.png";
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -157,15 +159,34 @@ export default function Admissions() {
 
   return (
     <PublicLayout>
-      {/* Hero Section */}
-      <section className="hero-gradient py-16">
-        <div className="container mx-auto px-4 text-center">
-          <h1 className="mb-6 text-4xl font-bold text-white lg:text-5xl" data-testid="text-admissions-title">
-            Join {schoolName}
-          </h1>
-          <p className="mx-auto max-w-3xl text-xl text-white/90" data-testid="text-admissions-subtitle">
+      {/* Hero Section with Background Image */}
+      <section className="relative h-[40vh] flex items-center justify-center overflow-hidden">
+        <div className="absolute inset-0 z-0">
+          <img
+            src={heroStudents}
+            alt="School Banner"
+            className="w-full h-full object-cover object-center"
+          />
+          <div className="absolute inset-0 bg-black/60" />
+        </div>
+        <div className="container relative z-10 text-center text-white px-4">
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-4xl md:text-6xl font-bold mb-4"
+            data-testid="text-admissions-title"
+          >
+            Admissions
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-lg md:text-xl text-gray-200"
+            data-testid="text-admissions-subtitle"
+          >
             Begin your child's journey to academic excellence and moral development
-          </p>
+          </motion.p>
         </div>
       </section>
 
