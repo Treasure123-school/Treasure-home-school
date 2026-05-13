@@ -36,10 +36,8 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
         if (currentScrollY <= 100) {
           setShowHeader(true);
         } else if (currentScrollY > lastScrollY) {
-          // Scrolling down
           setShowHeader(false);
         } else {
-          // Scrolling up
           setShowHeader(true);
         }
         
@@ -52,6 +50,17 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
       window.removeEventListener('scroll', controlNavbar);
     };
   }, [lastScrollY]);
+
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileMenuOpen]);
 
   const schoolName = settings?.schoolName || "";
   const schoolAddress = settings?.schoolAddress || "";
@@ -128,24 +137,38 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
       >
         <div className="flex flex-col h-full pt-44 px-10">
           <nav className="flex flex-col gap-8">
-            {navigation.map((item) => (
+            {navigation.map((item, index) => (
               <Link 
                 key={item.name} 
                 href={item.href} 
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`text-2xl font-black uppercase tracking-[0.2em] transition-colors ${
-                  isActive(item.href) ? 'text-blue-600' : 'text-gray-900'
-                }`}
+                style={{
+                  transitionDelay: isMobileMenuOpen ? `${index * 70 + 80}ms` : '0ms',
+                }}
+                className={`text-2xl font-black uppercase tracking-[0.2em] transition-all duration-500 ease-out ${
+                  isMobileMenuOpen
+                    ? 'opacity-100 translate-x-0'
+                    : 'opacity-0 -translate-x-10'
+                } ${isActive(item.href) ? 'text-blue-600' : 'text-gray-900'}`}
               >
                 {item.name}
               </Link>
             ))}
-            <Button asChild className="btn-primary w-full mt-6 h-14 text-sm font-black uppercase tracking-widest">
-              <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-3">
-                <span>Contact Us</span>
-                <ArrowRight className="w-5 h-5" />
-              </Link>
-            </Button>
+            <div
+              style={{
+                transitionDelay: isMobileMenuOpen ? `${navigation.length * 70 + 80}ms` : '0ms',
+              }}
+              className={`transition-all duration-500 ease-out ${
+                isMobileMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
+              }`}
+            >
+              <Button asChild className="btn-primary w-full mt-2 h-14 text-sm font-black uppercase tracking-widest">
+                <Link href="/contact" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center justify-center gap-3">
+                  <span>Contact Us</span>
+                  <ArrowRight className="w-5 h-5" />
+                </Link>
+              </Button>
+            </div>
           </nav>
         </div>
       </div>
