@@ -325,6 +325,17 @@ export default function Login() {
         <div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-blue-100/30 dark:bg-blue-900/10 rounded-full blur-[100px]" />
       </div>
 
+      <div className="relative z-10 p-4">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors group"
+          data-testid="link-back-home"
+        >
+          <ArrowLeft className="h-3.5 w-3.5 group-hover:-translate-x-0.5 transition-transform" />
+          Back to Home
+        </Link>
+      </div>
+
       <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8 relative z-10">
         <div className="w-full max-w-md">
           <Card 
