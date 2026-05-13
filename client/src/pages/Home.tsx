@@ -374,16 +374,17 @@ export default function Home() {
           </div>
 
           {/* Card */}
-          <div className="mb-6 overflow-hidden">
+          <div className="relative mb-6 min-h-[300px] sm:min-h-[260px]">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentTestimonial}
-                initial={{ opacity: 0, x: 60 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -60 }}
-                transition={{ duration: 0.4, ease: "easeInOut" }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+                className="absolute inset-0"
               >
-                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-7 md:p-9">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-7 md:p-9 h-full">
                   {/* Quote text + closing mark */}
                   <div className="relative mb-7">
                     <p className="text-[15px] md:text-[16px] text-gray-700 leading-relaxed italic font-normal pr-12">
