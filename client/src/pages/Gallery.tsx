@@ -98,22 +98,16 @@ export default function Gallery() {
           <section className="mt-24 py-16 border-t border-gray-100">
             <div className="flex flex-col lg:flex-row items-center gap-12">
               <div className="flex-1 w-full lg:w-1/2 rounded-lg overflow-hidden shadow-md h-[400px]">
-                {settings?.schoolAddress ? (
-                  <iframe
-                    src={`https://www.google.com/maps/embed/v1/place?key=REPLACE_WITH_API_KEY&q=${encodeURIComponent(settings.schoolAddress)}`}
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    allowFullScreen={true}
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    title={`${schoolName} Location`}
-                  ></iframe>
-                ) : (
-                  <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground">
-                    Map location not configured
-                  </div>
-                )}
+                <iframe
+                  src="https://maps.google.com/maps?q=Treasure-Home+School,+Seriki,+Ifo+112104,+Ogun+State,+Nigeria&output=embed&z=15"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen={true}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title={`${schoolName} Location`}
+                ></iframe>
               </div>
 
               <div className="flex-1 text-left space-y-6">

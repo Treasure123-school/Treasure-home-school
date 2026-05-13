@@ -249,13 +249,14 @@ export default function Contact() {
                 </h2>
                 <div className="aspect-video w-full rounded-lg overflow-hidden border border-border mb-6">
                   <iframe 
-                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3962.774577134375!2d3.197!3d6.674!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNsKwNDAnMjYuNCJOIDPCsDExJzQ5LjIiRQ!5e0!3m2!1sen!2sng!4v1700000000000!5m2!1sen!2sng" 
+                    src="https://maps.google.com/maps?q=Treasure-Home+School,+Seriki,+Ifo+112104,+Ogun+State,+Nigeria&output=embed&z=15"
                     width="100%" 
                     height="100%" 
                     style={{ border: 0 }} 
                     allowFullScreen={true} 
                     loading="lazy" 
                     referrerPolicy="no-referrer-when-downgrade"
+                    title="Treasure-Home School Location"
                   ></iframe>
                 </div>
                 <div className="space-y-4">
