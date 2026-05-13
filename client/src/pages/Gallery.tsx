@@ -9,7 +9,6 @@ import gallery1 from "@/assets/gallery-1.png";
 import gallery2 from "@/assets/gallery-2.png";
 import gallery3 from "@/assets/gallery-3.png";
 import gallery4 from "@/assets/gallery-4.png";
-import gallery5 from "@/assets/gallery-5.png";
 import gallery6 from "@/assets/gallery-6.png";
 
 interface SettingsData {
@@ -30,7 +29,6 @@ export default function Gallery() {
     { id: 2, src: gallery2, alt: 'School Activity 2' },
     { id: 3, src: gallery3, alt: 'School Activity 3' },
     { id: 4, src: gallery4, alt: 'School Activity 4' },
-    { id: 5, src: gallery5, alt: 'School Activity 5' },
     { id: 6, src: gallery6, alt: 'School Activity 6' },
   ];
 
