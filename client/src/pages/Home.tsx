@@ -103,8 +103,8 @@ export default function Home() {
   const stats = [
     { label: "Satisfied Parents", value: "100%" },
     { label: "Expert Teachers", value: "20+" },
-    { label: "Students", value: "900+" },
-    { label: "University Rate", value: "99%" },
+    { label: "Avg. Class Size", value: "15" },
+    { label: "Uni Acceptance", value: "98%" },
   ];
 
   const testimonials = [
@@ -321,37 +321,22 @@ export default function Home() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 md:py-24 bg-white">
+      <section className="bg-[#0033CC] py-14 md:py-20">
         <div className="container px-6 max-w-3xl mx-auto">
-          <motion.div {...fadeIn} className="mb-10">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight mb-6">
-              Why Choose{" "}
-              <span className="text-[#0000FF]">Treasure-Home?</span>
-            </h2>
-            <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed mb-5 font-normal">
-              At Treasure-Home School, we don't just teach — we inspire academic excellence and deep-rooted moral
-              values. Our vision is to be a sanctuary of brilliance and character development in Ogun State and beyond.
-            </p>
-            <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed font-normal">
-              We are dedicated to equipping our students with critical thinking skills, technological savvy, and
-              unwavering integrity needed to thrive in the 21st century.
-            </p>
-          </motion.div>
-
-          <div className="grid grid-cols-2 gap-3 md:gap-4">
+          <div className="grid grid-cols-2 gap-x-8 gap-y-10 md:gap-x-16 md:gap-y-12">
             {stats.map((s, i) => (
               <motion.div
                 key={i}
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 16 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.08, duration: 0.4 }}
-                className="bg-gray-50 border border-gray-100 rounded-xl p-6 md:p-8 text-center"
+                className="text-center"
               >
-                <div className="text-2xl md:text-3xl font-black text-[#0000FF] mb-2">
+                <div className="text-4xl md:text-5xl font-black text-white mb-2 leading-none">
                   {s.value}
                 </div>
-                <div className="text-[10px] md:text-[11px] text-gray-500 uppercase tracking-[0.18em] font-bold">
+                <div className="text-[10px] md:text-[11px] text-blue-200 uppercase tracking-[0.22em] font-bold">
                   {s.label}
                 </div>
               </motion.div>
