@@ -374,7 +374,29 @@ export default function Home() {
           </div>
 
           {/* Card */}
-          <div className="relative mb-6 min-h-[300px] sm:min-h-[260px]">
+          <div className="relative mb-6">
+            {/* Ghost spacer: invisible copy of the longest card — sets the container height
+                so all animated cards always have enough room and nothing ever gets clipped */}
+            <div aria-hidden="true" className="invisible pointer-events-none">
+              <div className="bg-white rounded-2xl p-7 md:p-9">
+                <div className="relative mb-7">
+                  <p className="text-[15px] md:text-[16px] leading-relaxed italic font-normal pr-12">
+                    "{testimonials.reduce((a, b) => a.text.length >= b.text.length ? a : b).text}"
+                  </p>
+                  <span className="absolute top-0 right-0 text-6xl font-black leading-none select-none" style={{ lineHeight: 1 }}>"</span>
+                </div>
+                <div className="w-full h-px mb-6" />
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full flex-shrink-0" />
+                  <div>
+                    <h4 className="font-bold text-[15px] mb-0.5">Name</h4>
+                    <p className="text-[10px]">Role</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Animated cards — absolutely stacked on top of the ghost */}
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentTestimonial}
