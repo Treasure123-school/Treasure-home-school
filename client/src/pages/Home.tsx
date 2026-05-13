@@ -109,22 +109,22 @@ export default function Home() {
 
   const testimonials = [
     {
-      name: "Abubakar Karede",
-      role: "Satisfied Parent",
-      text: "Treasure-Home School has completely transformed my daughter's approach to learning. The emphasis on character alongside academics is truly what sets this school apart. I couldn't be happier.",
-      img: "",
+      name: "Mrs. Sarah Williams",
+      role: "Parent of 3",
+      initials: "SW",
+      text: "Choosing Treasure-Home School was the best decision we ever made for our children's education. The progress in their confidence and academic scores is just remarkable.",
     },
     {
       name: "Adebayo Daniel",
       role: "Satisfied Parent",
+      initials: "AD",
       text: "Choosing Treasure-Home School was the best decision for our family. The teachers are dedicated, the environment is nurturing, and my son has grown tremendously both academically and in character.",
-      img: "",
     },
     {
       name: "Folake Ogundimu",
       role: "Satisfied Parent",
+      initials: "FO",
       text: "The level of care and attention each child receives here is exceptional. My children look forward to going to school every day, and their results speak for themselves.",
-      img: "",
     },
   ];
 
@@ -348,40 +348,39 @@ export default function Home() {
       {/* Testimonials */}
       <section className="py-16 md:py-24 bg-gray-50">
         <div className="container px-6 max-w-3xl mx-auto">
-          {/* Header */}
-          <div className="text-center mb-10">
+          {/* Header — left-aligned */}
+          <div className="mb-10">
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#0000FF] mb-3 block">
+              Testimonials
+            </span>
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-              Voices of Treasure
+              Voices from Our Community
             </h2>
-            <p className="text-[14px] md:text-[15px] text-gray-500 font-normal">
-              Hear from the families that call us home.
+            <p className="text-[14px] md:text-[15px] text-gray-500 font-normal leading-relaxed">
+              Hear from parents and alumni about how Treasure-Home School has made a difference in their lives.
             </p>
           </div>
 
           {/* Card */}
           <div className="relative mb-6">
-            {/* Ghost spacer: invisible copy of the longest card — sets the container height
-                so all animated cards always have enough room and nothing ever gets clipped */}
+            {/* Ghost spacer — sizes container to tallest card */}
             <div aria-hidden="true" className="invisible pointer-events-none">
               <div className="bg-white rounded-2xl p-7 md:p-9">
-                <div className="relative mb-7">
-                  <p className="text-[15px] md:text-[16px] leading-relaxed italic font-normal pr-12">
-                    "{testimonials.reduce((a, b) => a.text.length >= b.text.length ? a : b).text}"
-                  </p>
-                  <span className="absolute top-0 right-0 text-6xl font-black leading-none select-none" style={{ lineHeight: 1 }}>"</span>
-                </div>
-                <div className="w-full h-px mb-6" />
+                <div className="flex gap-1 mb-5">{"★★★★★".split("").map((s, i) => <span key={i}>{s}</span>)}</div>
+                <p className="text-[15px] md:text-[16px] leading-relaxed italic font-normal mb-7">
+                  "{testimonials.reduce((a, b) => a.text.length >= b.text.length ? a : b).text}"
+                </p>
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full flex-shrink-0" />
+                  <div className="w-11 h-11 rounded-full flex-shrink-0" />
                   <div>
                     <h4 className="font-bold text-[15px] mb-0.5">Name</h4>
-                    <p className="text-[10px]">Role</p>
+                    <p className="text-[13px]">Role</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Animated cards — absolutely stacked on top of the ghost */}
+            {/* Animated cards */}
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentTestimonial}
@@ -392,29 +391,28 @@ export default function Home() {
                 className="absolute inset-0"
               >
                 <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-7 md:p-9 h-full">
-                  {/* Quote text + closing mark */}
-                  <div className="relative mb-7">
-                    <p className="text-[15px] md:text-[16px] text-gray-700 leading-relaxed italic font-normal pr-12">
-                      "{testimonials[currentTestimonial].text}"
-                    </p>
-                    <span className="absolute top-0 right-0 text-6xl font-black text-gray-200 leading-none select-none" style={{ lineHeight: 1 }}>
-                      "
-                    </span>
+                  {/* Five stars */}
+                  <div className="flex gap-1 mb-5 text-[#0033CC] text-xl">
+                    {"★★★★★".split("").map((s, i) => <span key={i}>{s}</span>)}
                   </div>
 
-                  {/* Divider */}
-                  <div className="w-full h-px bg-gray-100 mb-6" />
+                  {/* Quote */}
+                  <p className="text-[15px] md:text-[16px] text-gray-700 leading-relaxed italic font-normal mb-7">
+                    "{testimonials[currentTestimonial].text}"
+                  </p>
 
                   {/* Author */}
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                      <User className="w-6 h-6 text-gray-500" />
+                    <div className="w-11 h-11 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                      <span className="text-[13px] font-black text-[#0033CC]">
+                        {testimonials[currentTestimonial].initials}
+                      </span>
                     </div>
                     <div>
                       <h4 className="font-bold text-[15px] text-gray-900 mb-0.5">
                         {testimonials[currentTestimonial].name}
                       </h4>
-                      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#0000FF]">
+                      <p className="text-[13px] text-gray-500 font-normal">
                         {testimonials[currentTestimonial].role}
                       </p>
                     </div>
@@ -431,9 +429,7 @@ export default function Home() {
                 key={i}
                 onClick={() => setCurrentTestimonial(i)}
                 className={`h-2 rounded-full transition-all duration-300 ${
-                  currentTestimonial === i
-                    ? "bg-[#0000FF] w-7"
-                    : "bg-gray-300 w-2.5"
+                  currentTestimonial === i ? "bg-[#0033CC] w-7" : "bg-gray-300 w-2.5"
                 }`}
                 aria-label={`Go to testimonial ${i + 1}`}
               />
@@ -477,28 +473,35 @@ export default function Home() {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-24 bg-gray-50">
-        <div className="container px-4 max-w-4xl mx-auto">
-          <h2 className="section-title text-center">Frequently Asked Questions</h2>
-          <p className="section-subtitle text-center">Find answers to common questions about Treasure-Home School.</p>
+      <section className="py-20 md:py-28 bg-white">
+        <div className="container px-6 max-w-3xl mx-auto">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 text-center mb-10">
+            Frequently Asked Questions
+          </h2>
 
-          <Accordion type="single" collapsible className="w-full space-y-4">
-            <AccordionItem value="item-1" className="border border-gray-200 rounded-lg bg-white px-6">
-              <AccordionTrigger className="text-left font-bold py-6 hover:no-underline">What is the school curriculum?</AccordionTrigger>
-              <AccordionContent className="text-gray-600 pb-6">
-                We follow a comprehensive curriculum that blends national standards with international best practices, focusing on academic excellence and character development.
+          <Accordion type="single" collapsible defaultValue="item-1" className="w-full space-y-3">
+            <AccordionItem value="item-1" className="border border-gray-200 rounded-2xl bg-white px-6 shadow-sm">
+              <AccordionTrigger className="text-left font-semibold text-[15px] text-gray-900 py-5 hover:no-underline">
+                What is the enrollment process?
+              </AccordionTrigger>
+              <AccordionContent className="text-[14px] text-gray-500 leading-relaxed pb-5">
+                The process begins with an inquiry form, followed by a campus tour and a student assessment to ensure we are the right fit for your child's learning style.
               </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="item-2" className="border border-gray-200 rounded-lg bg-white px-6">
-              <AccordionTrigger className="text-left font-bold py-6 hover:no-underline">How do I enroll my child?</AccordionTrigger>
-              <AccordionContent className="text-gray-600 pb-6">
-                You can start the enrollment process by visiting our Admissions page or clicking the "ENROLL" button on the home page to fill out the registration form.
+            <AccordionItem value="item-2" className="border border-gray-200 rounded-2xl bg-white px-6 shadow-sm">
+              <AccordionTrigger className="text-left font-semibold text-[15px] text-gray-900 py-5 hover:no-underline">
+                Do you offer extracurricular activities?
+              </AccordionTrigger>
+              <AccordionContent className="text-[14px] text-gray-500 leading-relaxed pb-5">
+                Yes! We offer a wide range of extracurricular activities including sports, arts, music, debate clubs, and STEM programs to support students' all-round development.
               </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="item-3" className="border border-gray-200 rounded-lg bg-white px-6">
-              <AccordionTrigger className="text-left font-bold py-6 hover:no-underline">What are the school hours?</AccordionTrigger>
-              <AccordionContent className="text-gray-600 pb-6">
-                Our standard school hours are from 8:00 AM to 3:30 PM, Monday through Friday. Extracurricular activities may extend these hours for participating students.
+            <AccordionItem value="item-3" className="border border-gray-200 rounded-2xl bg-white px-6 shadow-sm">
+              <AccordionTrigger className="text-left font-semibold text-[15px] text-gray-900 py-5 hover:no-underline">
+                Is your curriculum accredited?
+              </AccordionTrigger>
+              <AccordionContent className="text-[14px] text-gray-500 leading-relaxed pb-5">
+                Absolutely. Our curriculum is fully accredited and aligned with national standards while incorporating internationally recognised best practices in education.
               </AccordionContent>
             </AccordionItem>
           </Accordion>
