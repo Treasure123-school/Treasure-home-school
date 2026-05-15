@@ -22,6 +22,7 @@ import NotFound from "@/pages/not-found";
 import About from "@/pages/About";
 import Contact from "@/pages/Contact";
 import Gallery from "@/pages/Gallery";
+import News from "@/pages/News";
 import Admissions from "@/pages/Admissions";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
@@ -129,6 +130,7 @@ function Router() {
         <Route path="/about" component={About} />
         <Route path="/contact" component={Contact} />
         <Route path="/gallery" component={Gallery} />
+        <Route path="/news" component={News} />
         <Route path="/admissions" component={Admissions} />
         <Route path="/job-vacancy" component={JobVacancy} />
         <Route path="/login" component={Login} />

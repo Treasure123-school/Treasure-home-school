@@ -6,6 +6,7 @@ import {
   Clock, PenTool, CheckSquare, Award, Star, Library, DollarSign, Trophy, HelpCircle,
   Inbox, Megaphone, MessagesSquare, ClipboardPen, BarChart3, FolderOpen, RotateCcw,
   Layers, Database, CreditCard, Receipt, ListChecks, PanelLeftClose, PanelLeftOpen,
+  Globe, Newspaper, Images,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
@@ -270,14 +271,18 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             ],
           },
           {
-            type: 'group', label: 'Content Management', icon: ImageIcon,
+            type: 'group', label: 'Website Management', icon: Globe,
             isOpen: openMenuKey === 'admin-content',
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-content' : null),
             items: [
+              { href: `/portal/${userRole}/website`, icon: Globe, label: 'Overview' },
               { href: `/portal/${userRole}/homepage-management`, icon: ImageIcon, label: 'Homepage' },
-              { href: `/portal/${userRole}/gallery`, icon: ImageIcon, label: 'Gallery' },
-              { href: `/portal/${userRole}/coming-soon?page=lessons`, icon: BookOpen, label: 'Lesson Notes' },
-              { href: `/portal/${userRole}/coming-soon?page=library`, icon: Library, label: 'E-Library' },
+              { href: `/portal/${userRole}/website/gallery`, icon: Images, label: 'Gallery' },
+              { href: `/portal/${userRole}/website/news`, icon: Newspaper, label: 'News & Blog' },
+              { href: `/portal/${userRole}/website/faq`, icon: HelpCircle, label: 'FAQ' },
+              { href: `/portal/${userRole}/website/about`, icon: BookOpen, label: 'About Page' },
+              { href: `/portal/${userRole}/website/contact-inbox`, icon: Inbox, label: 'Contact Inbox' },
+              { href: `/portal/${userRole}/website/admissions`, icon: GraduationCap, label: 'Admissions' },
             ],
           },
           {

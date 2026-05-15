@@ -77,6 +77,14 @@ const ParentManagement = lazy(() => import('@/pages/portal/ParentManagement'));
 const AdminTimetable = lazy(() => import('@/pages/portal/AdminTimetable'));
 const AdminMessages = lazy(() => import('@/pages/portal/AdminMessages'));
 
+const WebsiteOverview = lazy(() => import('@/pages/portal/website/WebsiteOverview'));
+const GalleryManagement = lazy(() => import('@/pages/portal/website/GalleryManagement'));
+const NewsManagement = lazy(() => import('@/pages/portal/website/NewsManagement'));
+const FaqManagement = lazy(() => import('@/pages/portal/website/FaqManagement'));
+const AboutPageManagement = lazy(() => import('@/pages/portal/website/AboutPageManagement'));
+const ContactInbox = lazy(() => import('@/pages/portal/website/ContactInbox'));
+const AdmissionsManagement = lazy(() => import('@/pages/portal/website/AdmissionsManagement'));
+
 const ParentDashboard = lazy(() => import('@/pages/portal/ParentDashboard'));
 const ParentReportCards = lazy(() => import('@/pages/portal/ParentReportCards'));
 const ParentChildren = lazy(() => import('@/pages/portal/ParentChildren'));
@@ -214,6 +222,13 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/calendar" component={AdminCalendarPage} />
             <Route path="/portal/admin/events" component={EventsManagement} />
             <Route path="/portal/admin/messages" component={TeacherMessages} />
+            <Route path="/portal/admin/website" component={WebsiteOverview} />
+            <Route path="/portal/admin/website/gallery" component={GalleryManagement} />
+            <Route path="/portal/admin/website/news" component={NewsManagement} />
+            <Route path="/portal/admin/website/faq" component={FaqManagement} />
+            <Route path="/portal/admin/website/about" component={AboutPageManagement} />
+            <Route path="/portal/admin/website/contact-inbox" component={ContactInbox} />
+            <Route path="/portal/admin/website/admissions" component={AdmissionsManagement} />
             <Route path="/portal/admin/*" component={PortalComingSoon} />
           </Switch>
         )}

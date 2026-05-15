@@ -618,12 +618,21 @@ export const galleryCategories = pgTable("gallery_categories", {
 // Gallery table
 export const gallery = pgTable("gallery", {
   id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }),
+  eventName: varchar("event_name", { length: 255 }),
   imageUrl: text("image_url").notNull(),
+  altText: varchar("alt_text", { length: 255 }),
   caption: text("caption"),
   categoryId: integer("category_id").references(() => galleryCategories.id),
   uploadedBy: varchar("uploaded_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  isActive: boolean("is_active").notNull().default(true),
+  displayOrder: integer("display_order").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  galleryActiveIdx: index("gallery_active_idx").on(table.isActive),
+  galleryCategoryIdx: index("gallery_category_idx").on(table.categoryId),
+  galleryOrderIdx: index("gallery_order_idx").on(table.displayOrder),
+}));
 
 // Home page content table
 export const homePageContent = pgTable("home_page_content", {
@@ -1329,3 +1338,91 @@ export const schoolEvents = pgTable("school_events", {
 
 export type SchoolEvent = typeof schoolEvents.$inferSelect;
 export type InsertSchoolEvent = typeof schoolEvents.$inferInsert;
+
+// News / Blog posts table
+export const newsPosts = pgTable("news_posts", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  content: text("content").notNull(),
+  excerpt: text("excerpt"),
+  coverImageUrl: text("cover_image_url"),
+  category: varchar("category", { length: 100 }).notNull().default('general'),
+  tags: text("tags").notNull().default('[]'), // JSON array
+  status: varchar("status", { length: 20 }).notNull().default('draft'), // 'draft' | 'published'
+  publishedAt: timestamp("published_at"),
+  authorId: varchar("author_id", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  newsPostsSlugIdx: uniqueIndex("news_posts_slug_idx").on(table.slug),
+  newsPostsStatusIdx: index("news_posts_status_idx").on(table.status),
+  newsPostsCategoryIdx: index("news_posts_category_idx").on(table.category),
+  newsPostsPublishedAtIdx: index("news_posts_published_at_idx").on(table.publishedAt),
+}));
+
+// FAQ table
+export const faqs = pgTable("faqs", {
+  id: serial("id").primaryKey(),
+  question: text("question").notNull(),
+  answer: text("answer").notNull(),
+  category: varchar("category", { length: 100 }).notNull().default('general'),
+  displayOrder: integer("display_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  faqsActiveIdx: index("faqs_active_idx").on(table.isActive),
+  faqsCategoryIdx: index("faqs_category_idx").on(table.category),
+  faqsOrderIdx: index("faqs_order_idx").on(table.displayOrder),
+}));
+
+// About page sections table
+export const aboutSections = pgTable("about_sections", {
+  id: serial("id").primaryKey(),
+  sectionKey: varchar("section_key", { length: 100 }).notNull().unique(), // 'mission','vision','history','principal','facilities','values'
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content").notNull(),
+  imageUrl: text("image_url"),
+  displayOrder: integer("display_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  aboutSectionsKeyIdx: uniqueIndex("about_sections_key_idx").on(table.sectionKey),
+  aboutSectionsActiveIdx: index("about_sections_active_idx").on(table.isActive),
+}));
+
+// Admissions enquiries table
+export const admissionsEnquiries = pgTable("admissions_enquiries", {
+  id: serial("id").primaryKey(),
+  studentName: varchar("student_name", { length: 255 }).notNull(),
+  dateOfBirth: varchar("date_of_birth", { length: 10 }),
+  gender: varchar("gender", { length: 10 }),
+  classApplying: varchar("class_applying", { length: 100 }),
+  parentName: varchar("parent_name", { length: 255 }).notNull(),
+  parentEmail: varchar("parent_email", { length: 255 }).notNull(),
+  parentPhone: varchar("parent_phone", { length: 50 }).notNull(),
+  address: text("address"),
+  previousSchool: varchar("previous_school", { length: 255 }),
+  medicalInfo: text("medical_info"),
+  additionalInfo: text("additional_info"),
+  status: varchar("status", { length: 20 }).notNull().default('new'), // 'new','reviewing','accepted','rejected','waitlisted'
+  notes: text("notes"),
+  reviewedBy: varchar("reviewed_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  enquiriesStatusIdx: index("enquiries_status_idx").on(table.status),
+  enquiriesEmailIdx: index("enquiries_email_idx").on(table.parentEmail),
+  enquiriesCreatedAtIdx: index("enquiries_created_at_idx").on(table.createdAt),
+}));
+
+export type NewsPost = typeof newsPosts.$inferSelect;
+export type InsertNewsPost = typeof newsPosts.$inferInsert;
+export type Faq = typeof faqs.$inferSelect;
+export type InsertFaq = typeof faqs.$inferInsert;
+export type AboutSection = typeof aboutSections.$inferSelect;
+export type InsertAboutSection = typeof aboutSections.$inferInsert;
+export type AdmissionsEnquiry = typeof admissionsEnquiries.$inferSelect;
+export type InsertAdmissionsEnquiry = typeof admissionsEnquiries.$inferInsert;

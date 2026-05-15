@@ -28,7 +28,9 @@ import type {
   SyllabusTopic, InsertSyllabusTopic, ExamQuestionBankLink, InsertExamQuestionBankLink,
   ExamPayment, InsertExamPayment,
   SchoolEvent, InsertSchoolEvent,
-  MonnifyVirtualAccount, InsertMonnifyVirtualAccount
+  MonnifyVirtualAccount, InsertMonnifyVirtualAccount,
+  NewsPost, InsertNewsPost, Faq, InsertFaq, AboutSection, InsertAboutSection,
+  AdmissionsEnquiry, InsertAdmissionsEnquiry,
 } from "@shared/schema";
 
 // Get centralized database instance and schema from db.ts
@@ -306,10 +308,43 @@ export interface IStorage {
   // Gallery
   createGalleryCategory(category: InsertGalleryCategory): Promise<GalleryCategory>;
   getGalleryCategories(): Promise<GalleryCategory[]>;
+  deleteGalleryCategory(id: number): Promise<boolean>;
   uploadGalleryImage(image: InsertGallery): Promise<Gallery>;
   getGalleryImages(categoryId?: number): Promise<Gallery[]>;
   getGalleryImageById(id: string): Promise<Gallery | undefined>;
+  updateGalleryImage(id: string, data: Partial<InsertGallery>): Promise<Gallery | undefined>;
   deleteGalleryImage(id: string): Promise<boolean>;
+
+  // News Posts
+  createNewsPost(post: InsertNewsPost): Promise<NewsPost>;
+  getNewsPosts(filters: { status?: string; category?: string }): Promise<NewsPost[]>;
+  getNewsPostById(id: number): Promise<NewsPost | undefined>;
+  getNewsPostBySlug(slug: string): Promise<NewsPost | undefined>;
+  updateNewsPost(id: number, data: Partial<InsertNewsPost>): Promise<NewsPost | undefined>;
+  deleteNewsPost(id: number): Promise<boolean>;
+
+  // FAQs
+  createFaq(faq: InsertFaq): Promise<Faq>;
+  getFaqs(filters: { isActive?: boolean; category?: string }): Promise<Faq[]>;
+  getFaqById(id: number): Promise<Faq | undefined>;
+  updateFaq(id: number, data: Partial<InsertFaq>): Promise<Faq | undefined>;
+  deleteFaq(id: number): Promise<boolean>;
+
+  // About Sections
+  createAboutSection(section: InsertAboutSection): Promise<AboutSection>;
+  getAboutSections(filters: { isActive?: boolean }): Promise<AboutSection[]>;
+  getAboutSectionById(id: number): Promise<AboutSection | undefined>;
+  updateAboutSection(id: number, data: Partial<InsertAboutSection>): Promise<AboutSection | undefined>;
+  deleteAboutSection(id: number): Promise<boolean>;
+
+  // Admissions Enquiries
+  createAdmissionsEnquiry(enquiry: InsertAdmissionsEnquiry): Promise<AdmissionsEnquiry>;
+  getAdmissionsEnquiries(status?: string): Promise<AdmissionsEnquiry[]>;
+  updateAdmissionsEnquiry(id: number, data: Partial<AdmissionsEnquiry>): Promise<AdmissionsEnquiry | undefined>;
+  deleteAdmissionsEnquiry(id: number): Promise<boolean>;
+
+  // Contact Messages (extended)
+  deleteContactMessage(id: number): Promise<boolean>;
 
   // Study resources management
   createStudyResource(resource: InsertStudyResource): Promise<StudyResource>;
@@ -9021,6 +9056,153 @@ export class DatabaseStorage implements IStorage {
     await this.db.update(schema.messages)
       .set({ isRead: true })
       .where(eq(schema.messages.id, id));
+  }
+
+  // ─── Gallery extensions ──────────────────────────────────────
+  async deleteGalleryCategory(id: number): Promise<boolean> {
+    const result = await db.delete(schema.galleryCategories)
+      .where(eq(schema.galleryCategories.id, id))
+      .returning({ id: schema.galleryCategories.id });
+    return result.length > 0;
+  }
+
+  async updateGalleryImage(id: string, data: Partial<InsertGallery>): Promise<Gallery | undefined> {
+    const result = await db.update(schema.gallery)
+      .set(data as any)
+      .where(eq(schema.gallery.id, parseInt(id)))
+      .returning();
+    return result[0];
+  }
+
+  // ─── News Posts ───────────────────────────────────────────────
+  async createNewsPost(post: InsertNewsPost): Promise<NewsPost> {
+    const result = await db.insert(schema.newsPosts).values(post as any).returning();
+    return result[0] as unknown as NewsPost;
+  }
+
+  async getNewsPosts(filters: { status?: string; category?: string }): Promise<NewsPost[]> {
+    const conditions: any[] = [];
+    if (filters.status) conditions.push(eq(schema.newsPosts.status, filters.status));
+    if (filters.category) conditions.push(eq(schema.newsPosts.category, filters.category));
+    const query = db.select().from(schema.newsPosts).orderBy(desc(schema.newsPosts.createdAt));
+    const result = conditions.length > 0
+      ? await query.where(conditions.length === 1 ? conditions[0] : and(...conditions))
+      : await query;
+    return result as unknown as NewsPost[];
+  }
+
+  async getNewsPostById(id: number): Promise<NewsPost | undefined> {
+    const result = await db.select().from(schema.newsPosts).where(eq(schema.newsPosts.id, id)).limit(1);
+    return result[0] as unknown as NewsPost | undefined;
+  }
+
+  async getNewsPostBySlug(slug: string): Promise<NewsPost | undefined> {
+    const result = await db.select().from(schema.newsPosts).where(eq(schema.newsPosts.slug, slug)).limit(1);
+    return result[0] as unknown as NewsPost | undefined;
+  }
+
+  async updateNewsPost(id: number, data: Partial<InsertNewsPost>): Promise<NewsPost | undefined> {
+    const result = await db.update(schema.newsPosts).set(data as any).where(eq(schema.newsPosts.id, id)).returning();
+    return result[0] as unknown as NewsPost | undefined;
+  }
+
+  async deleteNewsPost(id: number): Promise<boolean> {
+    const result = await db.delete(schema.newsPosts).where(eq(schema.newsPosts.id, id)).returning({ id: schema.newsPosts.id });
+    return result.length > 0;
+  }
+
+  // ─── FAQs ─────────────────────────────────────────────────────
+  async createFaq(faq: InsertFaq): Promise<Faq> {
+    const result = await db.insert(schema.faqs).values(faq as any).returning();
+    return result[0] as unknown as Faq;
+  }
+
+  async getFaqs(filters: { isActive?: boolean; category?: string }): Promise<Faq[]> {
+    const conditions: any[] = [];
+    if (filters.isActive !== undefined) conditions.push(eq(schema.faqs.isActive, filters.isActive));
+    if (filters.category) conditions.push(eq(schema.faqs.category, filters.category));
+    const query = db.select().from(schema.faqs).orderBy(asc(schema.faqs.displayOrder), asc(schema.faqs.id));
+    const result = conditions.length > 0
+      ? await query.where(conditions.length === 1 ? conditions[0] : and(...conditions))
+      : await query;
+    return result as unknown as Faq[];
+  }
+
+  async getFaqById(id: number): Promise<Faq | undefined> {
+    const result = await db.select().from(schema.faqs).where(eq(schema.faqs.id, id)).limit(1);
+    return result[0] as unknown as Faq | undefined;
+  }
+
+  async updateFaq(id: number, data: Partial<InsertFaq>): Promise<Faq | undefined> {
+    const result = await db.update(schema.faqs).set(data as any).where(eq(schema.faqs.id, id)).returning();
+    return result[0] as unknown as Faq | undefined;
+  }
+
+  async deleteFaq(id: number): Promise<boolean> {
+    const result = await db.delete(schema.faqs).where(eq(schema.faqs.id, id)).returning({ id: schema.faqs.id });
+    return result.length > 0;
+  }
+
+  // ─── About Sections ───────────────────────────────────────────
+  async createAboutSection(section: InsertAboutSection): Promise<AboutSection> {
+    const result = await db.insert(schema.aboutSections).values(section as any).returning();
+    return result[0] as unknown as AboutSection;
+  }
+
+  async getAboutSections(filters: { isActive?: boolean }): Promise<AboutSection[]> {
+    const conditions: any[] = [];
+    if (filters.isActive !== undefined) conditions.push(eq(schema.aboutSections.isActive, filters.isActive));
+    const query = db.select().from(schema.aboutSections).orderBy(asc(schema.aboutSections.displayOrder));
+    const result = conditions.length > 0 ? await query.where(conditions[0]) : await query;
+    return result as unknown as AboutSection[];
+  }
+
+  async getAboutSectionById(id: number): Promise<AboutSection | undefined> {
+    const result = await db.select().from(schema.aboutSections).where(eq(schema.aboutSections.id, id)).limit(1);
+    return result[0] as unknown as AboutSection | undefined;
+  }
+
+  async updateAboutSection(id: number, data: Partial<InsertAboutSection>): Promise<AboutSection | undefined> {
+    const result = await db.update(schema.aboutSections).set(data as any).where(eq(schema.aboutSections.id, id)).returning();
+    return result[0] as unknown as AboutSection | undefined;
+  }
+
+  async deleteAboutSection(id: number): Promise<boolean> {
+    const result = await db.delete(schema.aboutSections).where(eq(schema.aboutSections.id, id)).returning({ id: schema.aboutSections.id });
+    return result.length > 0;
+  }
+
+  // ─── Admissions Enquiries ─────────────────────────────────────
+  async createAdmissionsEnquiry(enquiry: InsertAdmissionsEnquiry): Promise<AdmissionsEnquiry> {
+    const result = await db.insert(schema.admissionsEnquiries).values(enquiry as any).returning();
+    return result[0] as unknown as AdmissionsEnquiry;
+  }
+
+  async getAdmissionsEnquiries(status?: string): Promise<AdmissionsEnquiry[]> {
+    if (status) {
+      const result = await db.select().from(schema.admissionsEnquiries)
+        .where(eq(schema.admissionsEnquiries.status, status))
+        .orderBy(desc(schema.admissionsEnquiries.createdAt));
+      return result as unknown as AdmissionsEnquiry[];
+    }
+    const result = await db.select().from(schema.admissionsEnquiries).orderBy(desc(schema.admissionsEnquiries.createdAt));
+    return result as unknown as AdmissionsEnquiry[];
+  }
+
+  async updateAdmissionsEnquiry(id: number, data: Partial<AdmissionsEnquiry>): Promise<AdmissionsEnquiry | undefined> {
+    const result = await db.update(schema.admissionsEnquiries).set(data as any).where(eq(schema.admissionsEnquiries.id, id)).returning();
+    return result[0] as unknown as AdmissionsEnquiry | undefined;
+  }
+
+  async deleteAdmissionsEnquiry(id: number): Promise<boolean> {
+    const result = await db.delete(schema.admissionsEnquiries).where(eq(schema.admissionsEnquiries.id, id)).returning({ id: schema.admissionsEnquiries.id });
+    return result.length > 0;
+  }
+
+  // ─── Contact Messages (extended) ─────────────────────────────
+  async deleteContactMessage(id: number): Promise<boolean> {
+    const result = await db.delete(schema.contactMessages).where(eq(schema.contactMessages.id, id)).returning({ id: schema.contactMessages.id });
+    return result.length > 0;
   }
 }
 // Initialize storage - PostgreSQL database only
