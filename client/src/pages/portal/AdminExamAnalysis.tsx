@@ -232,7 +232,7 @@ function OverviewTab({ analytics }: { analytics: AnalyticsData }) {
     { icon: BookOpen, label: 'Subject', value: exam.subjectName },
     { icon: Layers, label: 'Term', value: `${exam.termName}${exam.termYear ? ` (${exam.termYear})` : ''}` },
     { icon: User, label: 'Teacher', value: exam.teacherName },
-    { icon: FileText, label: 'Exam Type', value: exam.examType.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()) },
+    { icon: FileText, label: 'Exam Type', value: (exam.examType ?? 'exam').replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase()) },
     { icon: Target, label: 'Total Marks', value: exam.totalMarks },
     { icon: Activity, label: 'Questions', value: exam.totalQuestions || '—' },
     { icon: Clock, label: 'Duration', value: exam.timeLimit ? `${exam.timeLimit} min` : 'Untimed' },
@@ -705,7 +705,7 @@ function QuestionsTab({ analytics }: { analytics: AnalyticsData }) {
                       {q.questionText}
                     </p>
                     <div className="flex flex-wrap items-center gap-2 mt-2">
-                      <Badge variant="outline" className="text-xs capitalize">{q.questionType.replace('_', ' ')}</Badge>
+                      <Badge variant="outline" className="text-xs capitalize">{(q.questionType ?? '').replace('_', ' ')}</Badge>
                       <span className="text-xs text-muted-foreground">{q.points} pt{q.points !== 1 ? 's' : ''}</span>
                       {q.totalAttempted > 0 && (
                         <span className="text-xs text-muted-foreground">{q.totalAttempted} attempted · {q.correctCount} correct</span>
