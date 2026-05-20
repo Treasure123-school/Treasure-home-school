@@ -62,6 +62,7 @@ const HomepageManagement = lazy(() => import('@/pages/portal/HomepageManagement'
 const AcademicTermsManagement = lazy(() => import('@/pages/portal/AcademicTermsManagement'));
 const SettingsManagement = lazy(() => import('@/pages/portal/SettingsManagement'));
 const AdminExamOverview = lazy(() => import('@/pages/portal/AdminExamOverview'));
+const AdminExamAnalysis = lazy(() => import('@/pages/portal/AdminExamAnalysis'));
 const ExamSessions = lazy(() => import('@/pages/portal/ExamSessions'));
 const UnifiedSubjectAssignment = lazy(() => import('@/pages/portal/UnifiedSubjectAssignment'));
 const AssignSubjectTeachers = lazy(() => import('@/pages/portal/AssignSubjectTeachers'));
@@ -198,6 +199,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/settings" component={SettingsManagement} />
             <Route path="/portal/admin/recovery-tools" component={AdminRecoveryTools} />
             <Route path="/portal/admin/exams/overview" component={AdminExamOverview} />
+            <Route path="/portal/admin/exams/analysis/:examId" component={AdminExamAnalysis} />
             <Route path="/portal/admin/exams/manage" component={ExamManagement} />
             <Route path="/portal/admin/exams" component={ExamManagement} />
             <Route path="/portal/exam-sessions" component={ExamSessions} />

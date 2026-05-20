@@ -7,12 +7,14 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/lib/auth';
 import { useState } from 'react';
-import { Search, Eye, BookOpen, Clock, Users, CheckCircle, XCircle, AlertCircle, Calendar, FileText } from 'lucide-react';
+import { useLocation } from 'wouter';
+import { Search, Eye, BookOpen, Clock, CheckCircle, XCircle, AlertCircle, Calendar, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import type { Exam, Class, Subject } from '@shared/schema';
 
 export default function AdminExamOverview() {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterClass, setFilterClass] = useState<string>('all');
   const [filterSubject, setFilterSubject] = useState<string>('all');
@@ -222,7 +224,12 @@ export default function AdminExamOverview() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <Button variant="ghost" size="sm" data-testid={`button-view-${exam.id}`}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => navigate(`/portal/admin/exams/analysis/${exam.id}`)}
+                            data-testid={`button-view-${exam.id}`}
+                          >
                             <Eye className="h-4 w-4 mr-2" />
                             View Details
                           </Button>

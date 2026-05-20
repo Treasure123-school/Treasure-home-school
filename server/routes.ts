@@ -2192,6 +2192,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.warn('[ANALYTICS] Trends failed:', tErr?.message);
       }
 
+      // Enrich exam metadata: class, subject, term, teacher names
+      let className = 'Unknown';
+      let subjectName = 'Unknown';
+      let termName = 'Unknown';
+      let termYear = '';
+      let teacherName = 'Not assigned';
+      let totalClassStudents = 0;
+      let totalQuestions = 0;
+
+      try {
+        const [classInfo, subjectInfo, termInfo] = await Promise.all([
+          storage.getClass(exam.classId),
+          storage.getSubject(exam.subjectId),
+          storage.getAcademicTerm(exam.termId),
+        ]);
+        if (classInfo) className = classInfo.name;
+        if (subjectInfo) subjectName = subjectInfo.name;
+        if (termInfo) { termName = termInfo.name; termYear = termInfo.year ?? ''; }
+
+        if (exam.createdBy) {
+          const teacher = await storage.getUser(exam.createdBy);
+          if (teacher) teacherName = `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || teacher.username;
+        }
+
+        const classStudents = await storage.getStudentsByClass(exam.classId);
+        totalClassStudents = classStudents.length;
+
+        const questions = await storage.getExamQuestions(exam.id);
+        totalQuestions = questions.length;
+      } catch (metaErr: any) {
+        console.warn('[ANALYTICS] Metadata enrichment error:', metaErr?.message);
+      }
+
+      // Grade distribution
+      const gradeDistribution = [
+        { grade: 'A', label: '≥70%', count: validResults.filter(r => r.scorePercent >= 70).length },
+        { grade: 'B', label: '60–69%', count: validResults.filter(r => r.scorePercent >= 60 && r.scorePercent < 70).length },
+        { grade: 'C', label: '50–59%', count: validResults.filter(r => r.scorePercent >= 50 && r.scorePercent < 60).length },
+        { grade: 'D', label: '40–49%', count: validResults.filter(r => r.scorePercent >= 40 && r.scorePercent < 50).length },
+        { grade: 'F', label: '<40%', count: validResults.filter(r => r.scorePercent < 40).length },
+      ];
+
+      const notAttempted = Math.max(0, totalClassStudents - total);
+
       return res.json({
         exam: {
           id: exam.id,
@@ -2201,8 +2245,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           date: exam.date,
           classId: exam.classId,
           subjectId: exam.subjectId,
+          examType: exam.examType,
+          timeLimit: exam.timeLimit,
+          isPublished: exam.isPublished,
+          createdAt: exam.createdAt,
+          // enriched
+          className,
+          subjectName,
+          termName,
+          termYear,
+          teacherName,
+          totalQuestions,
         },
         overview: { totalStudents: total, avgPercent, highestPercent, lowestPercent, passRate, passCount, failCount: total - passCount },
+        participation: { totalClassStudents, attempted: total, notAttempted, participationRate: totalClassStudents > 0 ? Math.round((total / totalClassStudents) * 100) : 0 },
+        gradeDistribution,
         scoreDistribution,
         studentPerformance: validResults,
         questionAnalysis,
