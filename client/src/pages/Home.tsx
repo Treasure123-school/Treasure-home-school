@@ -477,7 +477,7 @@ export default function Home() {
             Frequently Asked Questions
           </h2>
 
-          <Accordion type="single" collapsible defaultValue="item-1" className="w-full space-y-3">
+          <Accordion type="single" collapsible className="w-full space-y-3">
             <AccordionItem value="item-1" className="border border-gray-200 rounded-2xl bg-white px-6 shadow-sm">
               <AccordionTrigger className="text-left font-semibold text-[15px] text-gray-900 py-5 hover:no-underline">
                 What is the enrollment process?
