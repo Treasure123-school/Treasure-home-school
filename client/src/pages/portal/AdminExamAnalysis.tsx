@@ -837,15 +837,60 @@ function AnalysisSkeleton() {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
+// Normalize raw API response to ensure all fields have safe defaults,
+// guarding against stale cache data from the old API shape.
+function normalizeAnalytics(raw: any): AnalyticsData {
+  const exam = raw?.exam ?? {};
+  const overview = raw?.overview ?? {
+    totalStudents: 0, avgPercent: 0, highestPercent: 0,
+    lowestPercent: 0, passRate: 0, passCount: 0, failCount: 0,
+  };
+  const participation = raw?.participation ?? {
+    totalClassStudents: 0, attempted: 0, notAttempted: 0, participationRate: 0,
+  };
+  return {
+    exam: {
+      id: exam.id ?? 0,
+      name: exam.name ?? '',
+      totalMarks: exam.totalMarks ?? 0,
+      passingScore: exam.passingScore ?? 50,
+      date: exam.date ?? '',
+      classId: exam.classId ?? 0,
+      subjectId: exam.subjectId ?? 0,
+      examType: exam.examType ?? 'exam',
+      timeLimit: exam.timeLimit ?? null,
+      isPublished: exam.isPublished ?? false,
+      createdAt: exam.createdAt ?? '',
+      className: exam.className ?? '',
+      subjectName: exam.subjectName ?? '',
+      termName: exam.termName ?? '',
+      termYear: exam.termYear ?? '',
+      teacherName: exam.teacherName ?? '',
+      totalQuestions: exam.totalQuestions ?? 0,
+    },
+    overview,
+    participation,
+    gradeDistribution: Array.isArray(raw?.gradeDistribution) ? raw.gradeDistribution : [],
+    scoreDistribution: Array.isArray(raw?.scoreDistribution) ? raw.scoreDistribution : [],
+    studentPerformance: Array.isArray(raw?.studentPerformance) ? raw.studentPerformance : [],
+    questionAnalysis: Array.isArray(raw?.questionAnalysis) ? raw.questionAnalysis : [],
+    topPerformers: Array.isArray(raw?.topPerformers) ? raw.topPerformers : [],
+    lowPerformers: Array.isArray(raw?.lowPerformers) ? raw.lowPerformers : [],
+    trends: Array.isArray(raw?.trends) ? raw.trends : [],
+  };
+}
+
 export default function AdminExamAnalysis() {
   const [, params] = useRoute('/portal/admin/exams/analysis/:examId');
   const [, navigate] = useLocation();
   const examId = params?.examId;
 
-  const { data: analytics, isLoading, isError } = useQuery<AnalyticsData>({
+  const { data: rawAnalytics, isLoading, isError } = useQuery<AnalyticsData>({
     queryKey: ['/api/teacher/exam-analytics', examId],
     enabled: !!examId,
   });
+
+  const analytics = rawAnalytics ? normalizeAnalytics(rawAnalytics) : null;
 
   const statusBadge = analytics
     ? analytics.exam.isPublished
