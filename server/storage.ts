@@ -2168,8 +2168,16 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(schema.attendance.date));
   }
   async getAttendanceByClass(classId: number, date: string): Promise<Attendance[]> {
-    return await db.select().from(schema.attendance)
-      .where(and(eq(schema.attendance.classId, classId), eq(schema.attendance.date, date)));
+    // DISTINCT ON student_id keeps only the most-recent (highest id) record per student
+    // for this date — eliminates stale duplicates that could cause the form to revert.
+    const result = await db.execute(sql`
+      SELECT DISTINCT ON (student_id) *
+      FROM attendance
+      WHERE class_id = ${classId}
+        AND date = ${date}
+      ORDER BY student_id, id DESC
+    `);
+    return result.rows as Attendance[];
   }
   async updateAttendance(id: number, data: Partial<InsertAttendance>): Promise<Attendance | undefined> {
     const result = await db.update(schema.attendance).set(data).where(eq(schema.attendance.id, id)).returning();

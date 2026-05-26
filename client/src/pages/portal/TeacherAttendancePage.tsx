@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useSearch } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -253,6 +253,8 @@ export default function TeacherAttendancePage() {
   const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>({});
   const [studentSearch, setStudentSearch] = useState('');
   const [saved, setSaved] = useState(false);
+  // Prevents the useEffect from re-initializing form statuses after a save-triggered refetch
+  const skipNextReinitRef = useRef(false);
 
   const { data: classes = [] } = useQuery<TeacherClass[]>({
     queryKey: ['/api/teacher/classes-with-stats'],
@@ -281,6 +283,12 @@ export default function TeacherAttendancePage() {
 
   useEffect(() => {
     if (!classDetail) return;
+    // After a save, invalidateQueries causes existingRecords to change — skip that re-init
+    // so the teacher's just-saved selections are not overwritten by the refetch.
+    if (skipNextReinitRef.current) {
+      skipNextReinitRef.current = false;
+      return;
+    }
     const initial: Record<string, AttendanceStatus> = {};
     classDetail.students.forEach(s => {
       const existing = (existingRecords as AttendanceRecord[]).find(r => r.studentId === s.id);
@@ -306,11 +314,18 @@ export default function TeacherAttendancePage() {
       });
     },
     onSuccess: async () => {
+      // Set the skip flag BEFORE triggering any cache changes so the useEffect guard
+      // is already in place when existingRecords updates from the refetch below.
+      skipNextReinitRef.current = true;
       setSaved(true);
       toast({ title: 'Attendance saved', description: `Attendance for ${selectedDate} has been recorded.` });
-      // Invalidate the current-date query so existing records reload fresh
-      await queryClient.invalidateQueries({ queryKey: [`/api/attendance/class/${selectedClassId}`] });
-      // Immediately refetch history — prefix match covers [url, startDate, endDate]
+      // Use exact key (not prefix) so only the current-date query is invalidated.
+      // A prefix match would also hit the history query unnecessarily.
+      await queryClient.invalidateQueries({
+        queryKey: [`/api/attendance/class/${selectedClassId}`, selectedDate],
+        exact: true,
+      });
+      // Immediately refetch history so counts update right away
       await queryClient.refetchQueries({ queryKey: [`/api/attendance/class/${selectedClassId}/history`] });
     },
     onError: () => {
