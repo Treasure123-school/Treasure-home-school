@@ -31,6 +31,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useUserActivityTracker } from '@/hooks/useUserActivityTracker';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { Badge } from '@/components/ui/badge';
+import PortalBreadcrumb from './PortalBreadcrumb';
 
 interface SettingsData {
   schoolName: string;
@@ -635,6 +636,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
           className={`flex-1 overflow-x-hidden min-w-0 ${isExamPage ? 'p-0 overflow-hidden' : 'p-2 sm:p-4 md:p-6'}`}
         >
           <div className={isExamPage ? 'max-w-none h-full w-full' : 'max-w-5xl mx-auto'}>
+            {!isExamPage && <PortalBreadcrumb />}
             {children}
           </div>
         </main>

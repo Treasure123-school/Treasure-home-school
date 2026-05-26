@@ -88,7 +88,7 @@ function StatusButton({
     <button
       onClick={onClick}
       title={status}
-      className={`flex-1 flex items-center justify-center gap-1 py-1.5 px-1 text-xs font-medium transition-all border-y border-r first:border-l first:rounded-l-md last:rounded-r-md focus:z-10 focus:outline-none ${
+      className={`flex items-center justify-center gap-1 py-1.5 px-2 text-xs font-medium transition-all rounded-lg border focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary/40 ${
         selected
           ? STATUS_SELECTED[status]
           : 'border-border text-muted-foreground hover:bg-muted/60 bg-background'
@@ -473,7 +473,7 @@ export default function TeacherAttendancePage() {
                         </p>
                         <p className="text-xs text-muted-foreground truncate">{student.admissionNumber}</p>
                       </div>
-                      <div className="flex flex-shrink-0">
+                      <div className="flex flex-shrink-0 gap-1">
                         {(['Present', 'Absent', 'Late', 'Excused'] as AttendanceStatus[]).map(s => (
                           <StatusButton
                             key={s}
