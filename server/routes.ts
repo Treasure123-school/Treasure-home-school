@@ -6578,26 +6578,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'classId, date, and records array are required' });
       }
 
-      const createdRecords = [];
-      for (const record of records) {
-        const attendanceData = {
-          studentId: record.studentId,
-          classId,
-          date,
-          status: record.status,
-          recordedBy: req.user!.id,
-          notes: record.notes || null
-        };
-        const newAttendance = await storage.recordAttendance(attendanceData);
-        createdRecords.push(newAttendance);
+      // Single batch operation: 1 SELECT + 1 UPDATE + 1 INSERT max (3 round-trips total)
+      // vs the old sequential loop which did 2 × N round-trips (44 for a 22-student class).
+      await storage.batchUpsertAttendance(classId, date, req.user!.id, records);
 
-        // Emit realtime event for each attendance record
-        realtimeService.emitAttendanceEvent(classId.toString(), 'marked', { ...newAttendance, recordedBy: req.user!.id });
-      }
+      // Emit one realtime event for the whole batch
+      realtimeService.emitAttendanceEvent(classId.toString(), 'marked', {
+        classId, date, count: records.length, recordedBy: req.user!.id,
+      });
 
       res.status(201).json({
-        message: `Successfully recorded ${createdRecords.length} attendance records`,
-        records: createdRecords
+        message: `Successfully recorded ${records.length} attendance records`,
+        records: [],
       });
     } catch (error: any) {
       res.status(500).json({ message: error.message || 'Failed to record bulk attendance' });

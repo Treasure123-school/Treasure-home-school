@@ -157,6 +157,7 @@ export interface IStorage {
 
   // Attendance management
   recordAttendance(attendance: InsertAttendance): Promise<Attendance>;
+  batchUpsertAttendance(classId: number, date: string, recordedBy: string, records: Array<{ studentId: string; status: string }>): Promise<void>;
   getAttendanceByStudent(studentId: string, date?: string): Promise<Attendance[]>;
   getAttendanceByClass(classId: number, date: string): Promise<Attendance[]>;
   updateAttendance(id: number, data: Partial<InsertAttendance>): Promise<Attendance | undefined>;
@@ -2167,6 +2168,65 @@ export class DatabaseStorage implements IStorage {
       .where(eq(schema.attendance.studentId, studentId))
       .orderBy(desc(schema.attendance.date));
   }
+  async batchUpsertAttendance(
+    classId: number,
+    date: string,
+    recordedBy: string,
+    records: Array<{ studentId: string; status: string }>,
+  ): Promise<void> {
+    if (records.length === 0) return;
+    const studentIds = records.map(r => r.studentId);
+
+    // 1. ONE SELECT — find which students already have a record for this class+date.
+    //    Keep only the highest-id row per student (handles any stale duplicates).
+    const existing = await db.execute(sql`
+      SELECT DISTINCT ON (student_id) id, student_id
+      FROM attendance
+      WHERE class_id = ${classId}
+        AND date = ${date}
+        AND student_id = ANY(${studentIds}::varchar[])
+      ORDER BY student_id, id DESC
+    `);
+    const existingMap = new Map<string, number>(
+      (existing.rows as { id: number; student_id: string }[]).map(r => [r.student_id, r.id]),
+    );
+
+    const toUpdate = records.filter(r => existingMap.has(r.studentId));
+    const toInsert = records.filter(r => !existingMap.has(r.studentId));
+
+    // 2. ONE raw-SQL UPDATE for all existing rows — single round-trip regardless of class size.
+    if (toUpdate.length > 0) {
+      const ids = toUpdate.map(r => existingMap.get(r.studentId)!);
+      const statuses = toUpdate.map(r => r.status);
+      const recorderIds = toUpdate.map(() => recordedBy);
+      await db.execute(sql`
+        UPDATE attendance SET
+          status      = v.status,
+          recorded_by = v.recorded_by
+        FROM unnest(
+          ${ids}::int[],
+          ${statuses}::varchar[],
+          ${recorderIds}::varchar[]
+        ) AS v(target_id, status, recorded_by)
+        WHERE attendance.id = v.target_id
+      `);
+    }
+
+    // 3. ONE batch INSERT for any new students — single round-trip.
+    if (toInsert.length > 0) {
+      await db.insert(schema.attendance).values(
+        toInsert.map(r => ({
+          studentId: r.studentId,
+          classId,
+          date,
+          status: r.status,
+          recordedBy,
+          notes: null,
+        })),
+      );
+    }
+  }
+
   async getAttendanceByClass(classId: number, date: string): Promise<Attendance[]> {
     // DISTINCT ON student_id keeps only the most-recent (highest id) record per student
     // for this date — eliminates stale duplicates that could cause the form to revert.
