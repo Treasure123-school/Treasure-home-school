@@ -1,4 +1,4 @@
-import { useLocation } from 'wouter';
+ import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { CircleAlert, X } from 'lucide-react';
 

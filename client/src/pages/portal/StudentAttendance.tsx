@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth';
 import { useQuery } from '@tanstack/react-query';
 import {
   Calendar, CheckCircle, XCircle, Clock, AlertTriangle,
-  ChevronLeft, ChevronRight, BookOpen, User, TrendingUp
+  ChevronLeft, ChevronRight, BookOpen, User, TrendingUp, CircleAlert
 } from 'lucide-react';
 import { Link } from 'wouter';
 import { useState, useMemo } from 'react';
@@ -57,8 +57,20 @@ export default function StudentAttendance() {
     return Array.from(s);
   }, [attendance]);
 
+  const dedupedAttendance = useMemo(() => {
+    const latest = new Map<string, any>();
+    for (const r of attendance as any[]) {
+      const key = String(r.date).slice(0, 10);
+      const existing = latest.get(key);
+      if (!existing || (r.id ?? 0) > (existing.id ?? 0)) {
+        latest.set(key, r);
+      }
+    }
+    return Array.from(latest.values());
+  }, [attendance]);
+
   const filteredRecords = useMemo(() => {
-    let records = [...attendance];
+    let records = [...dedupedAttendance];
     if (filterSubject !== 'all') records = records.filter((r: any) => r.subject === filterSubject);
     if (filterPeriod === 'week') {
       const now = new Date();
@@ -66,15 +78,17 @@ export default function StudentAttendance() {
       records = records.filter((r: any) => new Date(r.date) >= weekAgo);
     }
     return records.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [attendance, filterSubject, filterPeriod]);
+  }, [dedupedAttendance, filterSubject, filterPeriod]);
 
   const stats = useMemo(() => {
-    const s = { total: 0, present: 0, absent: 0, late: 0 };
+    const s = { total: 0, present: 0, absent: 0, late: 0, excused: 0 };
     filteredRecords.forEach((r: any) => {
       s.total++;
-      if (r.status === 'present') s.present++;
-      else if (r.status === 'absent') s.absent++;
-      else if (r.status === 'late') s.late++;
+      const st = (r.status ?? '').toLowerCase();
+      if (st === 'present') s.present++;
+      else if (st === 'absent') s.absent++;
+      else if (st === 'late') s.late++;
+      else if (st === 'excused') s.excused++;
     });
     return s;
   }, [filteredRecords]);
@@ -159,6 +173,7 @@ export default function StudentAttendance() {
           { label: 'Present', value: stats.present, icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/40' },
           { label: 'Absent', value: stats.absent, icon: XCircle, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-950/40' },
           { label: 'Late', value: stats.late, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/40' },
+          ...(stats.excused > 0 ? [{ label: 'Excused', value: stats.excused, icon: CircleAlert, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/40' }] : []),
         ].map(({ label, value, icon: Icon, color, bg }) => (
           <Card key={label} className="border border-gray-200 dark:border-gray-700 shadow-sm">
             <CardContent className="p-4">

@@ -325,7 +325,7 @@ export default function TeacherAttendancePage() {
       setSaved(true);
       toast({ title: 'Attendance saved', description: `Attendance for ${selectedDate} has been recorded.` });
       queryClient.invalidateQueries({ queryKey: [`/api/attendance/class/${selectedClassId}`] });
-      queryClient.invalidateQueries({ queryKey: [`/api/attendance/class/${selectedClassId}/history`] });
+      queryClient.refetchQueries({ queryKey: [`/api/attendance/class/${selectedClassId}/history`] });
     },
     onError: () => {
       toast({ title: 'Failed to save', description: 'Please try again.', variant: 'destructive' });
@@ -365,9 +365,6 @@ export default function TeacherAttendancePage() {
     a.click();
     URL.revokeObjectURL(url);
   };
-
-  const present = Object.values(statuses).filter(s => s === 'Present').length;
-  const absent = Object.values(statuses).filter(s => s === 'Absent').length;
 
   return (
     <div className="p-4 md:p-6 space-y-5">
@@ -506,10 +503,7 @@ export default function TeacherAttendancePage() {
                 )}
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t">
-                <p className="text-xs text-muted-foreground">
-                  {filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''} · {present} present, {absent} absent
-                </p>
+              <div className="flex items-center justify-end pt-3 border-t">
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
