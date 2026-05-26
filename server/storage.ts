@@ -2176,13 +2176,20 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
   async getAttendanceByClassDateRange(classId: number, startDate: string, endDate: string): Promise<Attendance[]> {
-    return await db.select().from(schema.attendance)
-      .where(and(
-        eq(schema.attendance.classId, classId),
-        gte(schema.attendance.date, startDate),
-        lte(schema.attendance.date, endDate)
-      ))
-      .orderBy(desc(schema.attendance.date));
+    // DISTINCT ON eliminates duplicate rows (same student + date) that may exist from
+    // concurrent or repeated saves. We keep the highest-id (most recent) record per pair.
+    const result = await db.execute(sql`
+      SELECT DISTINCT ON (student_id, date) *
+      FROM attendance
+      WHERE class_id = ${classId}
+        AND date >= ${startDate}
+        AND date <= ${endDate}
+      ORDER BY student_id, date, id DESC
+    `);
+    // Sort final result by date descending for the UI
+    const rows = (result.rows as Attendance[]);
+    rows.sort((a, b) => b.date.localeCompare(a.date));
+    return rows;
   }
   // Exam management
   async createExam(exam: InsertExam): Promise<Exam> {

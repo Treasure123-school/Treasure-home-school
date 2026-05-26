@@ -293,39 +293,25 @@ export default function TeacherAttendancePage() {
   const submitMutation = useMutation({
     mutationFn: async () => {
       if (!selectedClassId || !classDetail) throw new Error('No class selected');
-      const existing = existingRecords as AttendanceRecord[];
-
-      const updates: Promise<any>[] = [];
-      const creates: { studentId: string; classId: number; date: string; status: string }[] = [];
-
-      classDetail.students.forEach(s => {
-        const status = statuses[s.id] || 'Present';
-        const existingRec = existing.find(r => r.studentId === s.id);
-        if (existingRec) {
-          if (existingRec.status !== status) {
-            updates.push(
-              apiRequest('PUT', `/api/attendance/${existingRec.id}`, { status })
-            );
-          }
-        } else {
-          creates.push({ studentId: s.id, classId: parseInt(selectedClassId), date: selectedDate, status });
-        }
+      // Always bulk-upsert every student — server handles insert-or-update per student+date.
+      // This avoids the old split update/create logic that left stale duplicate rows behind.
+      const records = classDetail.students.map(s => ({
+        studentId: s.id,
+        status: statuses[s.id] || 'Present',
+      }));
+      await apiRequest('POST', '/api/attendance/bulk', {
+        classId: parseInt(selectedClassId),
+        date: selectedDate,
+        records,
       });
-
-      await Promise.all(updates);
-      if (creates.length > 0) {
-        await apiRequest('POST', '/api/attendance/bulk', {
-          classId: parseInt(selectedClassId),
-          date: selectedDate,
-          records: creates.map(c => ({ studentId: c.studentId, status: c.status })),
-        });
-      }
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       setSaved(true);
       toast({ title: 'Attendance saved', description: `Attendance for ${selectedDate} has been recorded.` });
-      queryClient.invalidateQueries({ queryKey: [`/api/attendance/class/${selectedClassId}`] });
-      queryClient.refetchQueries({ queryKey: [`/api/attendance/class/${selectedClassId}/history`] });
+      // Invalidate the current-date query so existing records reload fresh
+      await queryClient.invalidateQueries({ queryKey: [`/api/attendance/class/${selectedClassId}`] });
+      // Immediately refetch history — prefix match covers [url, startDate, endDate]
+      await queryClient.refetchQueries({ queryKey: [`/api/attendance/class/${selectedClassId}/history`] });
     },
     onError: () => {
       toast({ title: 'Failed to save', description: 'Please try again.', variant: 'destructive' });
