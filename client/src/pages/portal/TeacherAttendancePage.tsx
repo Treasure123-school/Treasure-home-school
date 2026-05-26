@@ -134,8 +134,20 @@ function SummaryBar({ statuses }: { statuses: Record<string, AttendanceStatus> }
   );
 }
 
+function deduplicateByStudentDate(records: AttendanceRecord[]): AttendanceRecord[] {
+  const latest = new Map<string, AttendanceRecord>();
+  for (const r of records) {
+    const key = `${r.studentId}::${r.date}`;
+    const existing = latest.get(key);
+    if (!existing || r.id > existing.id) {
+      latest.set(key, r);
+    }
+  }
+  return Array.from(latest.values());
+}
+
 function HistorySection({ classId }: { classId: number }) {
-  const [showHistory, setShowHistory] = useState(false);
+  const [showHistory, setShowHistory] = useState(true);
   const [search, setSearch] = useState('');
 
   const endDate = format(new Date(), 'yyyy-MM-dd');
@@ -153,11 +165,12 @@ function HistorySection({ classId }: { classId: number }) {
         return r.json().then((d: unknown) => (Array.isArray(d) ? d : []));
       });
     },
-    enabled: showHistory,
+    enabled: !!classId,
   });
 
   const safeHistory = Array.isArray(historyData) ? historyData : [];
-  const byDate = safeHistory.reduce<Record<string, AttendanceRecord[]>>((acc, r) => {
+  const deduped = deduplicateByStudentDate(safeHistory);
+  const byDate = deduped.reduce<Record<string, AttendanceRecord[]>>((acc, r) => {
     acc[r.date] = acc[r.date] || [];
     acc[r.date].push(r);
     return acc;
@@ -199,6 +212,7 @@ function HistorySection({ classId }: { classId: number }) {
               const present = records.filter(r => r.status === 'Present').length;
               const absent = records.filter(r => r.status === 'Absent').length;
               const late = records.filter(r => r.status === 'Late').length;
+              const excused = records.filter(r => r.status === 'Excused').length;
               const total = records.length;
               const pct = total > 0 ? Math.round((present / total) * 100) : 0;
 
@@ -206,10 +220,11 @@ function HistorySection({ classId }: { classId: number }) {
                 <div key={date} className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border" data-testid={`row-history-${date}`}>
                   <div>
                     <p className="text-sm font-medium">{format(parseISO(date), 'EEEE, MMMM d, yyyy')}</p>
-                    <div className="flex gap-3 text-xs text-muted-foreground mt-0.5">
+                    <div className="flex gap-3 text-xs mt-0.5">
                       <span className="text-green-600">{present} present</span>
                       <span className="text-red-500">{absent} absent</span>
                       {late > 0 && <span className="text-orange-500">{late} late</span>}
+                      {excused > 0 && <span className="text-blue-500">{excused} excused</span>}
                     </div>
                   </div>
                   <span className={`text-sm font-bold ${pct >= 80 ? 'text-green-600' : pct >= 60 ? 'text-orange-500' : 'text-red-500'}`}>
@@ -516,7 +531,7 @@ export default function TeacherAttendancePage() {
                   <Button
                     size="sm"
                     onClick={() => submitMutation.mutate()}
-                    disabled={submitMutation.isPending || saved}
+                    disabled={submitMutation.isPending}
                     className="min-w-24"
                     data-testid="button-save-attendance"
                   >

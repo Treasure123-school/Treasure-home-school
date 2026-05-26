@@ -16,6 +16,7 @@ import type { Exam } from '@shared/schema';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { useLoginSuccess } from '@/hooks/use-login-success';
 import { useProfileCompletion } from '@/hooks/useProfileCompletion';
+import ProfileIncompleteBanner from '@/components/ProfileIncompleteBanner';
 
 export default function StudentDashboard() {
   const { user, updateUser } = useAuth();
@@ -253,55 +254,12 @@ export default function StudentDashboard() {
     <>
       {/* Profile Completion Banner */}
       {!profileCompletion.isLoading && !profileCompletion.isComplete && !bannerDismissed && (
-        <div
-          className="mb-4 sm:mb-6 relative overflow-hidden rounded-xl border border-amber-200 dark:border-amber-700/60 bg-gradient-to-r from-amber-50 via-yellow-50 to-orange-50 dark:from-amber-950/40 dark:via-yellow-950/30 dark:to-orange-950/30 shadow-sm animate-in fade-in slide-in-from-top-3 duration-500"
-          data-testid="profile-incomplete-banner"
-        >
-          {/* Decorative accent bar */}
-          <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-amber-400 to-orange-400 rounded-l-xl" />
-
-          <div className="pl-5 pr-3 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-            {/* Icon + text */}
-            <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
-              <div className="flex-shrink-0 mt-0.5 sm:mt-0 bg-amber-100 dark:bg-amber-900/50 rounded-full p-2">
-                <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm sm:text-base font-semibold text-amber-900 dark:text-amber-200 leading-snug">
-                  Your profile is incomplete
-                </p>
-                <p className="text-xs sm:text-sm text-amber-700 dark:text-amber-300/90 mt-0.5">
-                  Complete your profile to unlock exams, report cards, and other academic features.
-                  {profileCompletion.percentage > 0 && (
-                    <span className="ml-1 font-semibold text-amber-800 dark:text-amber-200">
-                      {profileCompletion.percentage}% done
-                    </span>
-                  )}
-                </p>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <Button
-                onClick={() => navigate('/portal/student/profile')}
-                size="sm"
-                className="bg-amber-500 hover:bg-amber-600 text-white shadow-sm text-xs sm:text-sm font-medium h-8 sm:h-9 px-3 sm:px-4"
-                data-testid="button-complete-profile"
-              >
-                Complete Profile
-              </Button>
-              <button
-                onClick={dismissBanner}
-                aria-label="Dismiss banner"
-                data-testid="button-dismiss-banner"
-                className="flex-shrink-0 rounded-full p-1.5 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        </div>
+        <ProfileIncompleteBanner
+          message="Complete your profile to unlock exams, report cards, and other academic features."
+          percentage={profileCompletion.percentage > 0 ? profileCompletion.percentage : undefined}
+          profilePath="/portal/student/profile"
+          onDismiss={dismissBanner}
+        />
       )}
 
       {/* Smart Dashboard Welcome Box */}

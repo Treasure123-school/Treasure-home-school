@@ -2,10 +2,8 @@ import { ReactNode } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, Lock } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Lock, ArrowLeft, CircleAlert } from 'lucide-react';
 import { ROLE_IDS } from '@/lib/roles';
 import { useAuth } from '@/lib/auth';
 import { useProfileCompletion } from '@/hooks/useProfileCompletion';
@@ -24,7 +22,6 @@ export default function RequireCompleteProfile({
 
   const isTeacher = user?.roleId === ROLE_IDS.TEACHER;
 
-  // ── Teachers: use server-side endpoint (different tracked fields) ──────────
   const { data: teacherStatus, isLoading: teacherLoading } = useQuery({
     queryKey: ['/api/teacher/profile/status'],
     queryFn: async () => {
@@ -35,10 +32,8 @@ export default function RequireCompleteProfile({
     staleTime: 0,
   });
 
-  // ── Students: compute INSTANTLY from cached student data — zero round-trip ─
   const studentCompletion = useProfileCompletion();
 
-  // Show a spinner only on true first load (nothing cached yet)
   const isLoading = isTeacher
     ? teacherLoading
     : studentCompletion.isLoading && studentCompletion.percentage === 0;
@@ -63,65 +58,53 @@ export default function RequireCompleteProfile({
     ? teacherStatus?.percentage
     : studentCompletion.percentage;
 
+  const profilePath = isTeacher ? '/portal/teacher/profile' : '/portal/student/profile';
+  const dashboardPath = isTeacher ? '/portal/teacher' : '/portal/student';
+
   return (
-    <div className="container mx-auto px-4 py-8 max-w-3xl" data-testid="profile-required-gate">
-      <Card className="border-destructive">
-        <CardContent className="pt-6">
-          <Alert variant="destructive">
-            <Lock className="h-5 w-5" />
-            <AlertTitle className="text-lg font-semibold mb-2">
-              Profile Completion Required
-            </AlertTitle>
-            <AlertDescription className="space-y-4">
-              <p className="text-base">
-                You need to complete your profile to access {feature}. This helps us
-                provide you with the best experience and ensures all features work correctly.
-              </p>
+    <div className="container mx-auto px-4 py-10 max-w-md" data-testid="profile-required-gate">
+      <div className="rounded-xl border border-border bg-card p-6 space-y-5 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="rounded-full bg-muted p-2 flex-shrink-0 mt-0.5">
+            <Lock className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-semibold text-foreground leading-snug">
+              Profile Required
+            </h2>
+            <p className="text-sm text-muted-foreground mt-1">
+              You need to complete your profile to access {feature}.
+            </p>
+          </div>
+        </div>
 
-              <div className="bg-destructive/10 dark:bg-destructive/20 rounded-lg p-4 space-y-2">
-                <p className="font-medium text-sm">Restricted Features:</p>
-                <ul className="list-disc pl-5 text-sm space-y-1">
-                  <li>Taking exams and assessments</li>
-                  <li>Viewing grades and report cards</li>
-                  <li>Accessing study resources</li>
-                  <li>Messaging teachers and students</li>
-                  <li>Submitting assignments</li>
-                </ul>
-              </div>
+        {displayPercentage > 0 && (
+          <div className="flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-2">
+            <CircleAlert className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+            <p className="text-xs text-muted-foreground">
+              Your profile is <span className="font-semibold text-foreground">{displayPercentage}% complete</span>
+            </p>
+          </div>
+        )}
 
-              <div className="flex gap-3 pt-2">
-                <Button
-                  onClick={() =>
-                    navigate(
-                      isTeacher ? '/portal/teacher/profile' : '/portal/student/profile'
-                    )
-                  }
-                  className="flex-1"
-                  data-testid="button-goto-profile"
-                >
-                  <AlertCircle className="w-4 h-4 mr-2" />
-                  Complete Profile Now
-                </Button>
-                <Button
-                  onClick={() =>
-                    navigate(isTeacher ? '/portal/teacher' : '/portal/student')
-                  }
-                  variant="outline"
-                  data-testid="button-back-to-dashboard"
-                >
-                  Back to Dashboard
-                </Button>
-              </div>
-
-              {displayPercentage > 0 && (
-                <p className="text-sm text-center pt-2 text-muted-foreground">
-                  Your profile is <strong>{displayPercentage}%</strong> complete
-                </p>
-              )}
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
+        <div className="flex gap-2 pt-1">
+          <Button
+            onClick={() => navigate(profilePath)}
+            className="flex-1"
+            data-testid="button-goto-profile"
+          >
+            Complete Profile
+          </Button>
+          <Button
+            onClick={() => navigate(dashboardPath)}
+            variant="outline"
+            data-testid="button-back-to-dashboard"
+          >
+            <ArrowLeft className="h-4 w-4 mr-1.5" />
+            Back
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

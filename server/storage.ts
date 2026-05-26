@@ -2138,6 +2138,23 @@ export class DatabaseStorage implements IStorage {
 
   // Attendance management
   async recordAttendance(attendance: InsertAttendance): Promise<Attendance> {
+    const existing = await db.select()
+      .from(schema.attendance)
+      .where(and(
+        eq(schema.attendance.studentId, attendance.studentId),
+        eq(schema.attendance.classId, attendance.classId),
+        eq(schema.attendance.date, attendance.date),
+      ))
+      .limit(1);
+
+    if (existing.length > 0) {
+      const result = await db.update(schema.attendance)
+        .set({ status: attendance.status, notes: attendance.notes ?? null, recordedBy: attendance.recordedBy ?? null })
+        .where(eq(schema.attendance.id, existing[0].id))
+        .returning();
+      return result[0];
+    }
+
     const result = await db.insert(schema.attendance).values(attendance).returning();
     return result[0];
   }
