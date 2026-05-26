@@ -2177,42 +2177,39 @@ export class DatabaseStorage implements IStorage {
     if (records.length === 0) return;
     const studentIds = records.map(r => r.studentId);
 
-    // 1. ONE SELECT — find which students already have a record for this class+date.
-    //    Keep only the highest-id row per student (handles any stale duplicates).
-    const existing = await db.execute(sql`
-      SELECT DISTINCT ON (student_id) id, student_id
-      FROM attendance
-      WHERE class_id = ${classId}
-        AND date = ${date}
-        AND student_id = ANY(${studentIds}::varchar[])
-      ORDER BY student_id, id DESC
-    `);
-    const existingMap = new Map<string, number>(
-      (existing.rows as { id: number; student_id: string }[]).map(r => [r.student_id, r.id]),
-    );
+    // 1. ONE SELECT using Drizzle ORM — returns camelCase fields, no raw-SQL array binding issues.
+    //    Order by id DESC so the first occurrence per studentId is the most-recent (highest id).
+    const existingRaw = await db
+      .select({ id: schema.attendance.id, studentId: schema.attendance.studentId })
+      .from(schema.attendance)
+      .where(and(
+        eq(schema.attendance.classId, classId),
+        eq(schema.attendance.date, date),
+        inArray(schema.attendance.studentId, studentIds),
+      ))
+      .orderBy(desc(schema.attendance.id));
+
+    // Keep only the highest-id record per student (dedup any stale duplicates)
+    const existingMap = new Map<string, number>();
+    for (const r of existingRaw) {
+      if (!existingMap.has(r.studentId)) existingMap.set(r.studentId, r.id);
+    }
 
     const toUpdate = records.filter(r => existingMap.has(r.studentId));
     const toInsert = records.filter(r => !existingMap.has(r.studentId));
 
-    // 2. ONE raw-SQL UPDATE for all existing rows — single round-trip regardless of class size.
+    // 2. Parallel UPDATEs — all fire concurrently, not sequentially.
     if (toUpdate.length > 0) {
-      const ids = toUpdate.map(r => existingMap.get(r.studentId)!);
-      const statuses = toUpdate.map(r => r.status);
-      const recorderIds = toUpdate.map(() => recordedBy);
-      await db.execute(sql`
-        UPDATE attendance SET
-          status      = v.status,
-          recorded_by = v.recorded_by
-        FROM unnest(
-          ${ids}::int[],
-          ${statuses}::varchar[],
-          ${recorderIds}::varchar[]
-        ) AS v(target_id, status, recorded_by)
-        WHERE attendance.id = v.target_id
-      `);
+      await Promise.all(
+        toUpdate.map(r =>
+          db.update(schema.attendance)
+            .set({ status: r.status, recordedBy })
+            .where(eq(schema.attendance.id, existingMap.get(r.studentId)!)),
+        ),
+      );
     }
 
-    // 3. ONE batch INSERT for any new students — single round-trip.
+    // 3. ONE batch INSERT for students with no existing record.
     if (toInsert.length > 0) {
       await db.insert(schema.attendance).values(
         toInsert.map(r => ({
@@ -2228,36 +2225,41 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAttendanceByClass(classId: number, date: string): Promise<Attendance[]> {
-    // DISTINCT ON student_id keeps only the most-recent (highest id) record per student
-    // for this date — eliminates stale duplicates that could cause the form to revert.
-    const result = await db.execute(sql`
-      SELECT DISTINCT ON (student_id) *
-      FROM attendance
-      WHERE class_id = ${classId}
-        AND date = ${date}
-      ORDER BY student_id, id DESC
-    `);
-    return result.rows as Attendance[];
+    // Fetch all records for the class+date then deduplicate in JS.
+    // Using Drizzle ORM (not raw SQL) ensures camelCase field names that the frontend expects.
+    const all = await db
+      .select()
+      .from(schema.attendance)
+      .where(and(eq(schema.attendance.classId, classId), eq(schema.attendance.date, date)))
+      .orderBy(desc(schema.attendance.id)); // highest id first for easy dedup
+    const seen = new Map<string, Attendance>();
+    for (const r of all) {
+      if (!seen.has(r.studentId)) seen.set(r.studentId, r);
+    }
+    return Array.from(seen.values());
   }
   async updateAttendance(id: number, data: Partial<InsertAttendance>): Promise<Attendance | undefined> {
     const result = await db.update(schema.attendance).set(data).where(eq(schema.attendance.id, id)).returning();
     return result[0];
   }
   async getAttendanceByClassDateRange(classId: number, startDate: string, endDate: string): Promise<Attendance[]> {
-    // DISTINCT ON eliminates duplicate rows (same student + date) that may exist from
-    // concurrent or repeated saves. We keep the highest-id (most recent) record per pair.
-    const result = await db.execute(sql`
-      SELECT DISTINCT ON (student_id, date) *
-      FROM attendance
-      WHERE class_id = ${classId}
-        AND date >= ${startDate}
-        AND date <= ${endDate}
-      ORDER BY student_id, date, id DESC
-    `);
-    // Sort final result by date descending for the UI
-    const rows = (result.rows as Attendance[]);
-    rows.sort((a, b) => b.date.localeCompare(a.date));
-    return rows;
+    // Drizzle ORM query (camelCase fields) + JS dedup: keeps highest-id record per student+date.
+    const all = await db
+      .select()
+      .from(schema.attendance)
+      .where(and(
+        eq(schema.attendance.classId, classId),
+        gte(schema.attendance.date, startDate),
+        lte(schema.attendance.date, endDate),
+      ))
+      .orderBy(desc(schema.attendance.id)); // highest id first for easy dedup
+    const seen = new Map<string, Attendance>();
+    for (const r of all) {
+      const key = `${r.studentId}::${r.date}`;
+      if (!seen.has(key)) seen.set(key, r);
+    }
+    // Return sorted by date descending for the UI
+    return Array.from(seen.values()).sort((a, b) => b.date.localeCompare(a.date));
   }
   // Exam management
   async createExam(exam: InsertExam): Promise<Exam> {
