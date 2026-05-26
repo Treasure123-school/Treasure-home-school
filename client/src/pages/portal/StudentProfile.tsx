@@ -105,7 +105,6 @@ export default function StudentProfile() {
     { key: 'gender',           label: 'Gender',                 value: student?.gender },
     { key: 'emergencyContact', label: 'Emergency Contact Name', value: student?.emergencyContact },
     { key: 'medicalInfo',      label: 'Medical Information',    value: student?.medicalInfo },
-    { key: 'recoveryEmail',    label: 'Recovery Email',         value: student?.recoveryEmail || user?.recoveryEmail },
     { key: 'profileImageUrl',  label: 'Profile Photo',          value: student?.profileImageUrl || user?.profileImageUrl },
   ], [student, user]);
 
@@ -237,9 +236,9 @@ export default function StudentProfile() {
                 </Button>
               </>
             ) : (
-              <Button onClick={() => setIsEditing(true)} size="sm" className="sm:size-auto">
-                <Edit className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Edit Profile</span>
+              <Button onClick={() => setIsEditing(true)} className="px-4 py-2">
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Profile
               </Button>
             )}
           </div>
@@ -599,7 +598,7 @@ export default function StudentProfile() {
                   <div>
                     <Label htmlFor="recoveryEmail">
                       Recovery Email
-                      {!(student?.recoveryEmail || user?.recoveryEmail) && <span className="ml-1 text-xs text-amber-600 font-normal">(required for completion)</span>}
+                      <span className="ml-1 text-xs text-muted-foreground font-normal">(optional)</span>
                     </Label>
                     <p className="text-xs text-muted-foreground mb-2">
                       Used to recover your account if you forget your password
@@ -613,11 +612,6 @@ export default function StudentProfile() {
                       placeholder="Enter recovery email address"
                       data-testid="input-recovery-email"
                     />
-                    {!(student?.recoveryEmail || user?.recoveryEmail) && (
-                      <p className="text-xs text-orange-600 mt-1">
-                        ⚠️ No recovery email set. Add one to protect your account.
-                      </p>
-                    )}
                   </div>
                 </div>
               </CardContent>

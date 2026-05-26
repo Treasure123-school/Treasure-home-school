@@ -143,13 +143,16 @@ function HistorySection({ classId }: { classId: number }) {
 
   const { data: historyData = [], isLoading } = useQuery<AttendanceRecord[]>({
     queryKey: [`/api/attendance/class/${classId}/history`, startDate, endDate],
-    queryFn: () =>
-      fetch(`/api/attendance/class/${classId}/history?startDate=${startDate}&endDate=${endDate}`, {
+    queryFn: () => {
+      const token = localStorage.getItem('token');
+      return fetch(`/api/attendance/class/${classId}/history?startDate=${startDate}&endDate=${endDate}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         credentials: 'include',
       }).then(r => {
         if (!r.ok) return [];
         return r.json().then((d: unknown) => (Array.isArray(d) ? d : []));
-      }),
+      });
+    },
     enabled: showHistory,
   });
 
@@ -247,13 +250,16 @@ export default function TeacherAttendancePage() {
 
   const { data: existingRecordsRaw = [] } = useQuery<AttendanceRecord[]>({
     queryKey: [`/api/attendance/class/${selectedClassId}`, selectedDate],
-    queryFn: () =>
-      fetch(`/api/attendance/class/${selectedClassId}?date=${selectedDate}`, {
+    queryFn: () => {
+      const token = localStorage.getItem('token');
+      return fetch(`/api/attendance/class/${selectedClassId}?date=${selectedDate}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         credentials: 'include',
       }).then(r => {
         if (!r.ok) return [];
         return r.json().then((d: unknown) => (Array.isArray(d) ? d : []));
-      }),
+      });
+    },
     enabled: !!selectedClassId,
   });
   const existingRecords: AttendanceRecord[] = Array.isArray(existingRecordsRaw) ? existingRecordsRaw : [];

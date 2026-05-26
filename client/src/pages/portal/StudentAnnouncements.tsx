@@ -11,26 +11,23 @@ import { Skeleton } from '@/components/ui/skeleton';
 type Priority = 'urgent' | 'important' | 'normal';
 type FilterType = 'all' | Priority;
 
-const PRIORITY_CONFIG: Record<Priority, { label: string; badgeClass: string; borderClass: string; bgClass: string; icon: React.ElementType }> = {
+const PRIORITY_CONFIG: Record<Priority, { label: string; badgeClass: string; iconClass: string; icon: React.ElementType }> = {
   urgent: {
     label: 'Urgent',
-    badgeClass: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800',
-    borderClass: 'border-l-red-500',
-    bgClass: 'bg-red-50/60 dark:bg-red-900/10',
+    badgeClass: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800',
+    iconClass: 'text-red-500',
     icon: AlertTriangle,
   },
   important: {
     label: 'Important',
-    badgeClass: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
-    borderClass: 'border-l-amber-500',
-    bgClass: 'bg-amber-50/60 dark:bg-amber-900/10',
+    badgeClass: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800',
+    iconClass: 'text-amber-500',
     icon: Bell,
   },
   normal: {
     label: 'General',
-    badgeClass: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
-    borderClass: 'border-l-blue-400',
-    bgClass: '',
+    badgeClass: 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700',
+    iconClass: 'text-slate-400',
     icon: Info,
   },
 };
@@ -218,17 +215,17 @@ export default function StudentAnnouncements() {
             return (
               <div
                 key={announcement.id}
-                className={`bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 border-l-4 ${config.borderClass} ${config.bgClass} overflow-hidden shadow-sm hover:shadow-md transition-shadow`}
+                className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                 data-testid={`card-announcement-${announcement.id}`}
               >
                 <div className="p-5">
                   <div className="flex items-start justify-between gap-3 mb-2">
-                    <h3 className="font-bold text-gray-900 dark:text-gray-100 text-base leading-snug flex-1">
+                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 text-base leading-snug flex-1">
                       {announcement.title}
                     </h3>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <PriorityIcon className="h-3.5 w-3.5" />
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${config.badgeClass}`}>
+                      <PriorityIcon className={`h-3.5 w-3.5 ${config.iconClass}`} />
+                      <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${config.badgeClass}`}>
                         {config.label}
                       </span>
                     </div>

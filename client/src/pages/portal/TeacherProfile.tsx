@@ -424,9 +424,9 @@ export default function TeacherProfile() {
               </Button>
             </>
           ) : (
-            <Button onClick={() => setIsEditing(true)} size="sm" className="sm:size-auto">
-              <Edit className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Edit Profile</span>
+            <Button onClick={() => setIsEditing(true)} className="px-4 py-2">
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Profile
             </Button>
           )}
         </div>
