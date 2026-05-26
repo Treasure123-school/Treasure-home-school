@@ -272,10 +272,10 @@ export default function AdminProfile() {
       // Update auth context
       updateUser({ profileImageUrl: undefined });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-    } catch (error) {
+    } catch (error: any) {
       toast({
-        title: "Error",
-        description: "Failed to remove profile image. Please try again.",
+        title: "Removal Failed",
+        description: error?.message || "Could not remove profile image. Please try again.",
         variant: "destructive",
       });
     } finally {

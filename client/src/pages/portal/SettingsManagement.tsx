@@ -134,8 +134,8 @@ function GradingBoundariesSection() {
       setIsDialogOpen(false);
       resetForm();
     },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to create grading boundary', variant: 'destructive' });
+    onError: (error: any) => {
+      toast({ title: 'Failed to Create', description: error.message || 'Could not create grading boundary. Please try again.', variant: 'destructive' });
     },
   });
 
@@ -149,8 +149,8 @@ function GradingBoundariesSection() {
       setIsDialogOpen(false);
       resetForm();
     },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to update grading boundary', variant: 'destructive' });
+    onError: (error: any) => {
+      toast({ title: 'Failed to Update', description: error.message || 'Could not update grading boundary. Please try again.', variant: 'destructive' });
     },
   });
 
@@ -164,8 +164,8 @@ function GradingBoundariesSection() {
       setDeleteConfirmOpen(false);
       setBoundaryToDelete(null);
     },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to delete grading boundary', variant: 'destructive' });
+    onError: (error: any) => {
+      toast({ title: 'Failed to Delete', description: error.message || 'Could not delete grading boundary. Please try again.', variant: 'destructive' });
     },
   });
 
@@ -492,8 +492,8 @@ function ClassPositionSettings() {
       queryClient.invalidateQueries({ queryKey: ['/api/settings/positioning-method'] });
       toast({ title: 'Success', description: 'Class position calculation method updated successfully' });
     },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to update positioning method', variant: 'destructive' });
+    onError: (error: any) => {
+      toast({ title: 'Failed to Update', description: error.message || 'Could not update positioning method. Please try again.', variant: 'destructive' });
     },
   });
 
@@ -649,8 +649,8 @@ export default function SettingsManagement() {
     onSuccess: () => {
       toast({ title: "Success", description: "School settings updated successfully" });
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to update school settings", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "Failed to Save", description: error.message || "Could not update school settings. Please try again.", variant: "destructive" });
     },
   });
 
@@ -661,8 +661,8 @@ export default function SettingsManagement() {
     onSuccess: () => {
       toast({ title: "Success", description: "Notification settings updated successfully" });
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to update notification settings", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "Failed to Save", description: error.message || "Could not update notification settings. Please try again.", variant: "destructive" });
     },
   });
 

@@ -10,9 +10,48 @@ interface ErrorBoundaryState {
   error: Error | null;
 }
 
+function getErrorContext(error: Error | null): { heading: string; description: string } {
+  if (!error) {
+    return {
+      heading: 'Page failed to load',
+      description: 'An unexpected error occurred. Try again or reload the page.',
+    };
+  }
+  const msg = error.message.toLowerCase();
+
+  if (msg.includes('network') || msg.includes('fetch') || msg.includes('connection')) {
+    return {
+      heading: 'Connection error',
+      description: 'Unable to reach the server. Please check your internet connection and reload.',
+    };
+  }
+  if (msg.includes('session') || msg.includes('log in') || msg.includes('401')) {
+    return {
+      heading: 'Session expired',
+      description: 'Your session has expired. Please reload the page and log in again.',
+    };
+  }
+  if (msg.includes('permission') || msg.includes('403') || msg.includes('forbidden')) {
+    return {
+      heading: 'Access denied',
+      description: 'You don\'t have permission to view this page.',
+    };
+  }
+  if (msg.includes('not found') || msg.includes('404')) {
+    return {
+      heading: 'Page not found',
+      description: 'The content you\'re looking for could not be found.',
+    };
+  }
+  return {
+    heading: 'Something went wrong',
+    description: 'An unexpected error occurred. Please try again or reload the page.',
+  };
+}
+
 /**
  * Global React Error Boundary — catches unhandled React rendering errors
- * and displays a recovery UI instead of a white screen of death.
+ * and displays a recovery UI instead of a white screen.
  */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
@@ -25,7 +64,6 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Log the error for debugging (sensitive data is not included)
     console.error("[ErrorBoundary] Uncaught error:", error.message);
     console.error("[ErrorBoundary] Component stack:", errorInfo.componentStack);
   }
@@ -43,6 +81,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       if (this.props.fallback) {
         return this.props.fallback;
       }
+
+      const { heading, description } = getErrorContext(this.state.error);
 
       return (
         <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
@@ -65,14 +105,14 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
             <div>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Something went wrong
+                {heading}
               </h2>
               <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-                An unexpected error occurred. Please try again or reload the page.
+                {description}
               </p>
             </div>
 
-            {process.env.NODE_ENV === "development" && this.state.error && (
+            {import.meta.env.DEV && this.state.error && (
               <pre className="text-left text-xs bg-gray-100 dark:bg-gray-800 p-3 rounded-lg overflow-auto max-h-40 text-red-600 dark:text-red-400">
                 {this.state.error.message}
               </pre>

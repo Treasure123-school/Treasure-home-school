@@ -60,8 +60,8 @@ export default function PaymentCallback() {
         {status === "error" && (
           <>
             <XCircle className="mx-auto h-12 w-12 text-red-500" />
-            <p className="font-semibold text-lg">Something went wrong</p>
-            <p className="text-sm text-muted-foreground">Redirecting you back to the payment page…</p>
+            <p className="font-semibold text-lg">No payment reference found</p>
+            <p className="text-sm text-muted-foreground">We couldn't find a payment reference. Redirecting you back to the payment page…</p>
           </>
         )}
       </div>

@@ -157,13 +157,16 @@ export default function TeacherMessages() {
       queryClient.invalidateQueries({ queryKey: ['/api/messages/user', user?.id] });
       setMessageText('');
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to send message.', variant: 'destructive' }),
+    onError: (error: any) => toast({ title: 'Failed to Send', description: error.message || 'Could not send message. Please try again.', variant: 'destructive' }),
   });
 
   const newMessageMutation = useMutation({
     mutationFn: async (data: { recipientId: string; subject: string; content: string }) => {
       const res = await apiRequest('POST', '/api/messages', data);
-      if (!res.ok) throw new Error('Failed to send message');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || 'Failed to send message');
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -176,7 +179,7 @@ export default function TeacherMessages() {
       setRecipientInfo(null);
       toast({ title: 'Message Sent', description: 'Your message has been sent.' });
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to send message.', variant: 'destructive' }),
+    onError: (error: any) => toast({ title: 'Failed to Send', description: error.message || 'Could not send message. Please try again.', variant: 'destructive' }),
   });
 
   const markReadMutation = useMutation({

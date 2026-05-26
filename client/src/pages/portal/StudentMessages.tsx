@@ -98,8 +98,8 @@ export default function StudentMessages() {
       setRecipientInfo(null);
       queryClient.invalidateQueries({ queryKey: ['/api/messages/user', user.id] });
     },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to send message. Please try again.', variant: 'destructive' });
+    onError: (error: any) => {
+      toast({ title: 'Failed to Send', description: error.message || 'Could not send message. Please try again.', variant: 'destructive' });
     }
   });
 

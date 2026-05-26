@@ -237,7 +237,7 @@ export default function AttendanceManagement() {
       setEditRecord(null);
       toast({ title: 'Updated', description: 'Attendance record has been updated.' });
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to update record.', variant: 'destructive' }),
+    onError: (error: any) => toast({ title: 'Update Failed', description: error.message || 'Could not update attendance record. Please try again.', variant: 'destructive' }),
   });
 
   // ── Derived data ─────────────────────────────────────────────────────────────

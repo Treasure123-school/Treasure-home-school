@@ -139,13 +139,16 @@ export default function TeacherAnnouncements() {
       setForm(DEFAULT_FORM);
       toast({ title: 'Announcement Created', description: 'Your announcement has been published.' });
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to create announcement.', variant: 'destructive' }),
+    onError: (error: any) => toast({ title: 'Failed to Create', description: error.message || 'Could not create announcement. Please try again.', variant: 'destructive' }),
   });
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: any }) => {
       const res = await apiRequest('PUT', `/api/announcements/${id}`, data);
-      if (!res.ok) throw new Error('Failed to update announcement');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || 'Failed to update announcement');
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -154,20 +157,23 @@ export default function TeacherAnnouncements() {
       setForm(DEFAULT_FORM);
       toast({ title: 'Announcement Updated', description: 'Your changes have been saved.' });
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to update announcement.', variant: 'destructive' }),
+    onError: (error: any) => toast({ title: 'Failed to Update', description: error.message || 'Could not update announcement. Please try again.', variant: 'destructive' }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
       const res = await apiRequest('DELETE', `/api/announcements/${id}`);
-      if (!res.ok) throw new Error('Failed to delete announcement');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || 'Failed to delete announcement');
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/announcements'] });
       setDeleteConfirmId(null);
       toast({ title: 'Deleted', description: 'Announcement removed.' });
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to delete announcement.', variant: 'destructive' }),
+    onError: (error: any) => toast({ title: 'Failed to Delete', description: error.message || 'Could not delete announcement. Please try again.', variant: 'destructive' }),
   });
 
   const myAnnouncements = useMemo(() =>

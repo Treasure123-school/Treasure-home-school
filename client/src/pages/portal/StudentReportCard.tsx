@@ -207,11 +207,11 @@ export default function StudentReportCard() {
         title: "Export Complete",
         description: "Report card PDF has been downloaded.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('PDF export error:', error);
       toast({
         title: "Export Failed",
-        description: "Failed to generate PDF report card",
+        description: error?.message || "Could not generate the PDF. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -254,11 +254,11 @@ export default function StudentReportCard() {
         title: "Export Complete",
         description: "Report card image has been downloaded.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Image export error:', error);
       toast({
         title: "Export Failed",
-        description: "Failed to generate image",
+        description: error?.message || "Could not generate the image. Please try again.",
         variant: "destructive",
       });
     } finally {

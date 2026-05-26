@@ -208,8 +208,8 @@ export default function AdminMessages() {
       setRecipientIdentifier('');
       setRecipientInfo(null);
     },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to send message', variant: 'destructive' });
+    onError: (error: any) => {
+      toast({ title: 'Failed to Send', description: error.message || 'Could not send message. Please try again.', variant: 'destructive' });
     }
   });
 

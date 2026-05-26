@@ -196,14 +196,34 @@ export default function Login() {
     if (statusType === 'suspended_staff' || statusType === 'suspended_parent' || statusType === 'suspended_student') {
       return 'Your account has been suspended. Please contact the school administrator.';
     }
-    if (statusType === 'invalid_credentials' || !message || 
-        message.toLowerCase().includes('invalid') || 
+    if (statusType === 'invalid_credentials' || !message ||
+        message.toLowerCase().includes('invalid') ||
         message.toLowerCase().includes('incorrect') ||
         message.toLowerCase().includes('password') ||
-        message.toLowerCase().includes('user')) {
+        message.toLowerCase().includes('user not found') ||
+        message.toLowerCase().includes('no user')) {
       return 'Incorrect username or password.';
     }
-    return 'An error occurred. Please try again.';
+    if (
+      message.toLowerCase().includes('network') ||
+      message.toLowerCase().includes('fetch') ||
+      message.toLowerCase().includes('connection') ||
+      message.toLowerCase().includes('offline') ||
+      message === 'Network Error' ||
+      message === 'Connection Failed'
+    ) {
+      return 'Network error. Please check your connection and try again.';
+    }
+    if (message.toLowerCase().includes('timeout') || message.toLowerCase().includes('timed out')) {
+      return 'The request timed out. Please try again.';
+    }
+    if (message.toLowerCase().includes('server error') || message.toLowerCase().includes('500')) {
+      return 'A server error occurred. Please try again later.';
+    }
+    if (message.toLowerCase().includes('session') || message.toLowerCase().includes('expired')) {
+      return 'Your session has expired. Please log in again.';
+    }
+    return message || 'An error occurred. Please try again.';
   };
 
   const loginMutation = useMutation({

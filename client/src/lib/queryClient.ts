@@ -129,7 +129,43 @@ async function makeRequest(
       // Check for HTTP errors and classify them properly
       if (!res.ok) {
         const text = (await res.text()) || res.statusText;
-        const error = new Error(`${res.status}: ${text}`) as ClassifiedError;
+
+        // Try to extract a clean message from the JSON body
+        let serverMessage: string | undefined;
+        try {
+          const json = JSON.parse(text);
+          serverMessage = json.message || json.error || undefined;
+        } catch {
+          // body isn't JSON — ignore
+        }
+
+        // Build a user-friendly message (never expose raw stack traces)
+        let userMessage: string;
+        if (res.status === 401) {
+          userMessage = 'Your session has expired. Please log in again.';
+        } else if (res.status === 403) {
+          userMessage = serverMessage || 'You don\'t have permission to perform this action.';
+        } else if (res.status === 404) {
+          userMessage = serverMessage || 'The requested item was not found.';
+        } else if (res.status === 408) {
+          userMessage = 'The request timed out. Please try again.';
+        } else if (res.status === 409) {
+          userMessage = serverMessage || 'This action conflicts with existing data. Please refresh and try again.';
+        } else if (res.status === 413) {
+          userMessage = 'The file you\'re uploading is too large. Please try a smaller file.';
+        } else if (res.status === 422) {
+          userMessage = serverMessage || 'Invalid data submitted. Please check your inputs.';
+        } else if (res.status === 429) {
+          userMessage = 'Too many requests. Please wait a moment and try again.';
+        } else if (res.status >= 500) {
+          userMessage = 'A server error occurred. Please try again later.';
+        } else if (serverMessage) {
+          userMessage = serverMessage;
+        } else {
+          userMessage = `Request failed (${res.status}). Please try again.`;
+        }
+
+        const error = new Error(userMessage) as ClassifiedError;
 
         // Classify the error type based on HTTP status
         if (res.status === 401 || res.status === 403) {
@@ -146,7 +182,6 @@ async function makeRequest(
         } else if (res.status >= 500 || res.status === 429) {
           error.errorType = 'server';
         }
-        // Add specific properties for easier identification
         error.status = res.status;
         error.statusText = res.statusText;
 
@@ -160,14 +195,19 @@ async function makeRequest(
       const classifiedError = error as ClassifiedError;
       classifiedError.originalError = error;
 
-      // Classify network/timeout errors properly
+      // Classify network/timeout errors with user-friendly messages
       if (error.name === 'AbortError') {
         classifiedError.errorType = 'timeout';
-        classifiedError.message = 'Request timeout - please try again';
-      } else if (error.name === 'TypeError' || error.name === 'NetworkError' || 
-                 error.message?.includes('fetch') || error.message?.includes('network')) {
+        classifiedError.message = 'The request timed out. Please try again.';
+      } else if (
+        error.name === 'TypeError' ||
+        error.name === 'NetworkError' ||
+        error.message?.includes('fetch') ||
+        error.message?.includes('network') ||
+        error.message?.includes('Failed to fetch')
+      ) {
         classifiedError.errorType = 'network';
-        classifiedError.message = 'Network connection failed - please check your internet connection';
+        classifiedError.message = 'Network error. Please check your connection and try again.';
       }
       throw classifiedError;
     }

@@ -98,10 +98,10 @@ export default function Admissions() {
       });
       form.reset();
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
-        title: 'Error',
-        description: 'Failed to submit application. Please try again.',
+        title: 'Submission Failed',
+        description: error?.message || 'Could not submit your application. Please check your connection and try again.',
         variant: 'destructive',
       });
     },

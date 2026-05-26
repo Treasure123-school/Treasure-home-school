@@ -138,7 +138,7 @@ export default function AdminTimetable() {
     },
     onError: (err: any) => {
       if (err.isConflict && err.message) setConflictMsg(err.message);
-      else toast({ title: 'Error', description: 'Failed to create entry.', variant: 'destructive' });
+      else toast({ title: 'Failed to Create', description: err.message || 'Could not create timetable entry. Please try again.', variant: 'destructive' });
     },
   });
 
@@ -162,7 +162,7 @@ export default function AdminTimetable() {
     },
     onError: (err: any) => {
       if (err.isConflict && err.message) setConflictMsg(err.message);
-      else toast({ title: 'Error', description: 'Failed to update entry.', variant: 'destructive' });
+      else toast({ title: 'Failed to Update', description: err.message || 'Could not update timetable entry. Please try again.', variant: 'destructive' });
     },
   });
 
@@ -177,7 +177,7 @@ export default function AdminTimetable() {
       toast({ title: 'Period removed', description: 'Timetable entry deleted.' });
       setDeleteEntry(null);
     },
-    onError: () => toast({ title: 'Error', description: 'Failed to delete entry.', variant: 'destructive' }),
+    onError: (error: any) => toast({ title: 'Failed to Delete', description: error.message || 'Could not delete timetable entry. Please try again.', variant: 'destructive' }),
   });
 
   function openAdd() {

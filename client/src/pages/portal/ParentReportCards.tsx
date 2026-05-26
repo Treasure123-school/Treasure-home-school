@@ -112,8 +112,8 @@ export default function ParentReportCards() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       toast({ title: 'Downloaded', description: 'Report card downloaded successfully.' });
-    } catch {
-      toast({ title: 'Error', description: 'Failed to download report card.', variant: 'destructive' });
+    } catch (error: any) {
+      toast({ title: 'Download Failed', description: error?.message || 'Could not download the report card. Please try again.', variant: 'destructive' });
     } finally {
       setDownloading(null);
     }

@@ -1,5 +1,6 @@
 import { queryClient } from '@/lib/queryClient';
 import { toast } from '@/hooks/use-toast';
+import { parseApiError, getErrorTitle } from '@/lib/error-utils';
 
 /**
  * Optimistic Mutation Utilities
@@ -145,10 +146,11 @@ export function handleMutationError(
   if (context?.previousData) {
     queryClient.setQueryData(context.queryKey, context.previousData);
   }
+  const description = parseApiError(error);
   // Show error toast
   toast({
-    title: errorMessage || "Error",
-    description: error?.message || "An error occurred. Please try again.",
+    title: errorMessage || getErrorTitle(error),
+    description,
     variant: "destructive",
   });
 }

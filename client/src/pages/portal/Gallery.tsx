@@ -64,10 +64,10 @@ export default function Gallery() {
       } else {
         throw new Error('Failed to delete image');
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
-        title: "Delete failed",
-        description: "Failed to delete the image. Please try again.",
+        title: "Delete Failed",
+        description: error?.message || "Could not delete the image. Please try again.",
         variant: "destructive",
       });
     }

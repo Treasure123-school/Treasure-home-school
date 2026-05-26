@@ -126,8 +126,8 @@ export default function StudentProfile() {
       }
       queryClient.invalidateQueries({ queryKey: ['student', user.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-    } catch (error) {
-      toast({ title: "Error", description: "Failed to remove profile image. Please try again.", variant: "destructive" });
+    } catch (error: any) {
+      toast({ title: "Removal Failed", description: error?.message || "Could not remove profile image. Please try again.", variant: "destructive" });
     } finally {
       setShowRemoveConfirm(false);
     }

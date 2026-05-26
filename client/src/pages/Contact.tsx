@@ -65,10 +65,10 @@ export default function Contact() {
       });
       reset();
     },
-    onError: () => {
+    onError: (error: any) => {
       toast({
-        title: 'Error',
-        description: 'Failed to send message. Please try again.',
+        title: 'Message Not Sent',
+        description: error?.message || 'Could not send your message. Please check your connection and try again.',
         variant: 'destructive',
       });
     },
