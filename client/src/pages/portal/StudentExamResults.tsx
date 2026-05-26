@@ -14,7 +14,6 @@ import {
   FileText, 
   Calendar, 
   AlertCircle, 
-  ArrowLeft, 
   GraduationCap,
   Timer,
   Target,
@@ -290,7 +289,6 @@ export default function StudentExamResults() {
               }
             </p>
             <Button onClick={() => setLocation('/portal/student/exams')} data-testid="button-go-to-exams">
-              <ArrowLeft className="w-4 h-4 mr-2" />
               Go to Exams
             </Button>
           </CardContent>
@@ -601,7 +599,6 @@ export default function StudentExamResults() {
             className="flex items-center gap-2"
             data-testid="button-view-more-exams"
           >
-            <ArrowLeft className="w-4 h-4" />
             View Available Exams
           </Button>
           <Button 

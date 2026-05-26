@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
-  CreditCard, CheckCircle2, AlertCircle, Loader2, ArrowLeft,
+  CreditCard, CheckCircle2, AlertCircle, Loader2,
   ShieldCheck, Receipt, GraduationCap, Calendar, DollarSign,
   ExternalLink, KeyRound, Copy, RefreshCcw, Landmark
 } from "lucide-react";
@@ -354,7 +354,7 @@ export default function ExamFeePayment() {
               Exam fee payment is not currently required. You can access all exams freely.
             </p>
             <Button variant="outline" onClick={() => navigate("/portal/student/exams")}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> Go to My Exams
+              Go to My Exams
             </Button>
           </CardContent>
         </Card>
@@ -394,15 +394,6 @@ export default function ExamFeePayment() {
   // ── Main UI ─────────────────────────────────────────────────────────────────
   return (
     <div className="max-w-lg mx-auto p-4 space-y-4">
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => navigate("/portal/student/exams")}
-        className="gap-2 hover:bg-primary/5 transition-colors"
-        data-testid="button-back-to-exams"
-      >
-        <ArrowLeft className="h-4 w-4" /> Back to Exams
-      </Button>
 
       {/* ── Success ── */}
       {step === "success" && (

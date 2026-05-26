@@ -1,5 +1,5 @@
 import { useLocation } from 'wouter';
-import { ChevronRight, ChevronLeft, Home } from 'lucide-react';
+import { ChevronRight, Home } from 'lucide-react';
 import { Link } from 'wouter';
 
 interface BreadcrumbSegment {
@@ -144,7 +144,7 @@ function getParentHref(crumbs: BreadcrumbSegment[]): string | null {
 }
 
 export default function PortalBreadcrumb() {
-  const [location, navigate] = useLocation();
+  const [location] = useLocation();
 
   const crumbs = matchRoute(location);
   if (!crumbs || crumbs.length <= 1) return null;
@@ -157,24 +157,6 @@ export default function PortalBreadcrumb() {
       className="flex items-center gap-2 mb-4 sm:mb-5"
       data-testid="breadcrumb-nav"
     >
-      {/* Back button */}
-      {parentHref && (
-        <button
-          onClick={() => navigate(parentHref)}
-          className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors rounded-md px-2 py-1 hover:bg-muted/60 flex-shrink-0 -ml-1"
-          aria-label="Go back"
-          data-testid="button-breadcrumb-back"
-        >
-          <ChevronLeft className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Back</span>
-        </button>
-      )}
-
-      {/* Separator */}
-      {parentHref && (
-        <div className="w-px h-4 bg-border flex-shrink-0" />
-      )}
-
       {/* Breadcrumb trail */}
       <ol className="flex items-center gap-1 overflow-hidden min-w-0" aria-label="breadcrumb">
         <li className="flex-shrink-0 hidden sm:flex items-center">

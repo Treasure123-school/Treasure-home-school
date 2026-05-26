@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/lib/auth';
 import { useQuery } from '@tanstack/react-query';
-import { Download, Search, FileText, BookOpen, ArrowLeft, Filter } from 'lucide-react';
+import { Download, Search, FileText, BookOpen, Filter } from 'lucide-react';
 import { Link } from 'wouter';
 import { useState } from 'react';
 export default function StudentStudyResources() {
@@ -133,12 +133,6 @@ function StudentStudyResourcesContent({ user }: { user: any }) {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Button variant="outline" size="sm" asChild>
-              <Link href="/portal/student">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Dashboard
-              </Link>
-            </Button>
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Study Resources</h1>
               <p className="text-muted-foreground">

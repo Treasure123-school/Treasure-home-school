@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { 
-  ArrowLeft, 
   Download, 
   Users, 
   TrendingUp, 
@@ -400,8 +399,7 @@ export default function TeacherExamResults() {
         <p className="text-muted-foreground mb-4">The exam you're looking for could not be found.</p>
         <Button variant="outline" asChild>
           <Link href="/portal/teacher/recent-exam-results">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Results
+            View Results
           </Link>
         </Button>
       </div>

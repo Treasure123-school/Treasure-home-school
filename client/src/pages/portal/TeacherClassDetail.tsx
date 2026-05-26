@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Users, BookOpen, Search, ArrowLeft, UserCheck, MessageSquare,
+  Users, BookOpen, Search, UserCheck, MessageSquare,
   ClipboardCheck, Bell, PenTool, TrendingUp, Calendar, Eye,
   GraduationCap, CheckCircle2, XCircle, Clock, Filter,
 } from 'lucide-react';
@@ -516,11 +516,6 @@ export default function TeacherClassDetail() {
   return (
     <div className="p-4 md:p-6 space-y-5">
       <div className="flex items-start gap-3">
-        <Link href="/portal/teacher/classes">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 mt-0.5" data-testid="button-back">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
         <div className="flex-1 min-w-0">
           <h1 className="text-xl font-bold text-foreground leading-tight" data-testid="heading-class-name">{cls.name}</h1>
           <div className="flex flex-wrap gap-2 mt-1">

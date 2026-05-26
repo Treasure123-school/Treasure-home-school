@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Construction, ArrowLeft, Sparkles, Rocket, Shield, Bell } from "lucide-react";
+import { Construction, Sparkles, Rocket, Shield, Bell } from "lucide-react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/lib/auth";
 import { getPortalByRoleId, getRoleNameById } from "@/lib/roles";
@@ -58,7 +58,6 @@ export default function PortalComingSoon() {
               className="gap-2"
               data-testid="button-return-dashboard"
             >
-              <ArrowLeft className="h-4 w-4" />
               Return to Dashboard
             </Button>
           </div>

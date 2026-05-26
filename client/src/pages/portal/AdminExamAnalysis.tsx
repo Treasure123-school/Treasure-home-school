@@ -13,7 +13,7 @@ import {
   LineChart, Line, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import {
-  ArrowLeft, Users, TrendingUp, TrendingDown, Award, Target, CheckCircle2,
+  Users, TrendingUp, TrendingDown, Award, Target, CheckCircle2,
   XCircle, Download, Search, ChevronUp, ChevronDown, ChevronsUpDown,
   BookOpen, Clock, Calendar, User, FileText, BarChart2, AlertCircle,
   Activity, GraduationCap, Layers,
@@ -903,15 +903,6 @@ export default function AdminExamAnalysis() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate('/portal/admin/exams/overview')}
-            className="gap-1.5 -ml-2"
-            data-testid="button-back"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back
-          </Button>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid="heading-exam-analysis">
