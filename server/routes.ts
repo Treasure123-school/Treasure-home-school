@@ -10551,27 +10551,31 @@ School Management System Administration
   // GET /api/superadmin/principal — return current designated principal + all admin users for selection
   app.get('/api/superadmin/principal', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
     try {
-      const settings = await storage.getSystemSettings();
-      const designatedPrincipalId = (settings as any)?.designatedPrincipalId || null;
+      const [sysSettings] = await db.select().from(schema.systemSettings).limit(1);
+      const designatedPrincipalId = (sysSettings as any)?.designatedPrincipalId || null;
 
-      // Fetch all admin users for the dropdown
+      // Direct JOIN — no reliance on storage.getUser()
       const adminRows = await db
-        .select({ userId: schema.adminProfiles.userId })
-        .from(schema.adminProfiles);
-      const admins = await Promise.all(
-        adminRows.map(async (row) => {
-          const u = await storage.getUser(row.userId);
-          if (!u) return null;
-          return { id: u.id, name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username, username: u.username };
+        .select({
+          id: schema.users.id,
+          username: schema.users.username,
+          firstName: schema.users.firstName,
+          lastName: schema.users.lastName,
         })
-      );
+        .from(schema.adminProfiles)
+        .innerJoin(schema.users, eq(schema.adminProfiles.userId, schema.users.id))
+        .orderBy(schema.users.firstName);
 
-      res.json({
-        designatedPrincipalId,
-        admins: admins.filter(Boolean),
-      });
-    } catch (error) {
-      res.status(500).json({ message: 'Failed to fetch principal settings' });
+      const admins = adminRows.map((row) => ({
+        id: row.id,
+        username: row.username,
+        name: `${row.firstName || ''} ${row.lastName || ''}`.trim() || row.username,
+      }));
+
+      res.json({ designatedPrincipalId, admins });
+    } catch (error: any) {
+      console.error('[principal route] error:', error);
+      res.status(500).json({ message: 'Failed to fetch principal settings', detail: error?.message });
     }
   });
 
@@ -10579,12 +10583,10 @@ School Management System Administration
   app.put('/api/superadmin/principal', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
     try {
       const { designatedPrincipalId } = req.body;
-      // Validate the user exists and is an admin (or clear with null)
+      // Validate: must be an existing admin (or null to clear)
       if (designatedPrincipalId) {
-        const user = await storage.getUser(designatedPrincipalId);
-        if (!user) return res.status(404).json({ message: 'User not found' });
         const [adminProfile] = await db
-          .select()
+          .select({ userId: schema.adminProfiles.userId })
           .from(schema.adminProfiles)
           .where(eq(schema.adminProfiles.userId, designatedPrincipalId))
           .limit(1);
