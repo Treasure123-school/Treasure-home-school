@@ -6,7 +6,7 @@ import { ChangePasswordCard } from '@/components/ChangePasswordCard';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useAuth } from '@/lib/auth';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import { User, Mail, Phone, MapPin, Save, Edit, Camera, GraduationCap, BookOpen, Users, CheckCircle, Clock, Award, FileText, Pen, X } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Save, Edit, Camera, GraduationCap, BookOpen, Users, CheckCircle, Clock, Award, FileText, Pen, X, ShieldAlert, CheckCircle2, Circle } from 'lucide-react';
 import { Link } from 'wouter';
 import React, { useState } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -406,108 +406,93 @@ export default function TeacherProfile() {
                 variant="outline"
                 onClick={() => setIsEditing(false)}
                 disabled={isSaving}
-                size="sm"
-                className="sm:size-auto"
+                className="gap-2"
               >
-                <X className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Cancel</span>
+                <X className="h-4 w-4" />
+                Cancel
               </Button>
               <Button
                 onClick={handleSave}
                 disabled={isSaving}
-                size="sm"
-                className="sm:size-auto transition-all duration-200 hover:scale-105 active:scale-95 hover:shadow-lg"
+                className="gap-2"
                 data-testid="button-save-changes"
               >
-                <Save className={`h-4 w-4 sm:mr-2 ${isSaving ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline">{isSaving ? 'Saving...' : 'Save Changes'}</span>
+                <Save className={`h-4 w-4 ${isSaving ? 'animate-spin' : ''}`} />
+                {isSaving ? 'Saving...' : 'Save Changes'}
               </Button>
             </>
           ) : (
-            <Button onClick={() => setIsEditing(true)} className="px-4 py-2">
-              <Edit className="h-4 w-4 mr-2" />
+            <Button onClick={() => setIsEditing(true)} className="gap-2">
+              <Edit className="h-4 w-4" />
               Edit Profile
             </Button>
           )}
         </div>
       </div>
 
-      {/* Profile Completion Progress */}
-      {teacherProfile && (
-        <Card className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900 border-blue-200 dark:border-blue-800" data-testid="card-progress">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-2">
+      {/* Profile Completion Banner — unified design matching student portal */}
+      {!isLoading && teacherProfile && (() => {
+        const bannerFields = [
+          { key: 'phone',           label: 'Phone Number',      filled: !!teacherProfile.phone },
+          { key: 'gender',          label: 'Gender',            filled: !!teacherProfile.gender },
+          { key: 'dateOfBirth',     label: 'Date of Birth',     filled: !!teacherProfile.dateOfBirth },
+          { key: 'nationalId',      label: 'National ID (NIN)', filled: !!teacherProfile.nationalId },
+          { key: 'profileImageUrl', label: 'Profile Photo',     filled: !!teacherProfile.profileImageUrl },
+          { key: 'staffId',         label: 'Staff ID',          filled: !!teacherProfile.staffId },
+          { key: 'qualification',   label: 'Qualification',     filled: !!teacherProfile.qualification },
+          { key: 'department',      label: 'Department',        filled: !!teacherProfile.department },
+        ];
+        const filledCount = bannerFields.filter(f => f.filled).length;
+        const pct = Math.round((filledCount / bannerFields.length) * 100);
+        const allDone = filledCount === bannerFields.length;
+
+        if (allDone) {
+          return (
+            <div className="rounded-xl border border-green-200 dark:border-green-800/60 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/20 px-5 py-3 flex items-center gap-3 shadow-sm animate-in fade-in duration-500" data-testid="profile-complete-banner">
+              <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-green-600 dark:text-green-400" />
               <div>
-                <h3 className="text-lg font-semibold" data-testid="text-completion-title">Profile Completion</h3>
-                <p className="text-sm text-muted-foreground">
-                  {profileCompletion === 100 ? 'Your profile is complete! ✅' : 'Complete your profile for better visibility'}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-3xl font-bold text-primary" data-testid="text-completion-percentage">{profileCompletion}%</p>
+                <p className="font-semibold text-green-900 dark:text-green-200 text-sm">Profile complete!</p>
+                <p className="text-xs text-green-700 dark:text-green-300/90">All key fields are filled. Your profile is fully set up.</p>
               </div>
             </div>
-            <Progress value={profileCompletion} className="h-2" data-testid="progress-completion" />
-            {profileCompletion < 100 && (
-              <p className="text-xs text-muted-foreground mt-2" data-testid="text-missing-info">
-                {(() => {
-                  const missing = [];
-                  if (!teacherProfile?.staffId) missing.push('Staff ID');
-                  if (!teacherProfile?.qualification) missing.push('Qualification');
-                  if (!teacherProfile?.department) missing.push('Department');
-                  // Use actual assignments for subjects/classes check
-                  if (uniqueAssignedSubjects.length === 0) missing.push('Subjects (Admin assigns)');
-                  if (uniqueAssignedClasses.length === 0) missing.push('Classes (Admin assigns)');
-                  if (!teacherProfile?.gender) missing.push('Gender');
-                  if (!teacherProfile?.dateOfBirth) missing.push('Date of Birth');
-                  if (!teacherProfile?.phone) missing.push('Phone');
-                  if (!teacherProfile?.profileImageUrl) missing.push('Profile Photo');
-                  if (!teacherProfile?.signatureUrl) missing.push('Digital Signature (Optional)');
+          );
+        }
 
-                  return missing.length > 0
-                    ? `Missing: ${missing.slice(0, 3).join(', ')}${missing.length > 3 ? ` +${missing.length - 3} more` : ''}`
-                    : 'Complete your profile to reach 100%';
-                })()}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Critical Missing Fields Alert */}
-      {teacherProfile && getMissingCriticalFields().length > 0 && !isEditing && (
-        <Card className="border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-950" data-testid="card-missing-fields">
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-orange-600 dark:text-orange-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
+        return (
+          <div className="rounded-xl border border-blue-200 dark:border-blue-800/60 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/30 overflow-hidden shadow-sm animate-in fade-in slide-in-from-top-3 duration-500" data-testid="profile-completion-banner">
+            <div className="px-5 pt-4 pb-3">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="flex-shrink-0 bg-blue-100 dark:bg-blue-900/50 rounded-full p-2 mt-0.5">
+                  <ShieldAlert className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-blue-900 dark:text-blue-200 text-sm sm:text-base" data-testid="text-completion-title">
+                    Complete your profile — {pct}% done ({filledCount} of {bannerFields.length} fields)
+                  </p>
+                  <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300/90 mt-0.5">
+                    Fill in the fields below to get the most out of your teacher profile.
+                  </p>
+                </div>
               </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-semibold text-orange-900 dark:text-orange-100">Complete Your Profile</h3>
-                <p className="text-sm text-orange-800 dark:text-orange-200 mt-1">
-                  You're missing some important information:
-                </p>
-                <ul className="mt-2 text-sm text-orange-700 dark:text-orange-300 list-disc list-inside">
-                  {getMissingCriticalFields().map(item => (
-                    <li key={item.key}>{item.field}</li>
-                  ))}
-                </ul>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-3 border-orange-300 dark:border-orange-700 hover:bg-orange-100 dark:hover:bg-orange-900"
-                  onClick={() => setIsEditing(true)}
-                  data-testid="button-complete-profile"
-                >
-                  Complete Profile Now
-                </Button>
+              <Progress value={pct} className="h-2 mb-3 bg-blue-100 dark:bg-blue-900/40" data-testid="progress-completion" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
+                {bannerFields.map(field => (
+                  <div key={field.key} className="flex items-center gap-2 py-0.5">
+                    {field.filled ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0 text-green-500 dark:text-green-400" />
+                    ) : (
+                      <Circle className="h-3.5 w-3.5 flex-shrink-0 text-blue-400 dark:text-blue-500" />
+                    )}
+                    <span className={`text-xs font-medium ${field.filled ? 'text-green-700 dark:text-green-400 line-through decoration-green-400/70' : 'text-blue-800 dark:text-blue-200'}`}>
+                      {field.label}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </div>
+        );
+      })()}
 
       {isLoading ? (
         <Card>

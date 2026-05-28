@@ -309,18 +309,18 @@ export default function AdminProfile() {
         <div className="flex shrink-0 gap-2">
           {isEditing ? (
             <>
-              <Button variant="outline" onClick={() => setIsEditing(false)} size="sm" className="sm:size-auto">
-                <X className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Cancel</span>
+              <Button variant="outline" onClick={() => setIsEditing(false)} className="gap-2">
+                <X className="h-4 w-4" />
+                Cancel
               </Button>
-              <Button onClick={handleProfileUpdate} disabled={isSaving} size="sm" className="sm:size-auto">
-                <Save className="h-4 w-4 sm:mr-2" />
-                <span className="hidden sm:inline">{isSaving ? "Saving..." : "Save Changes"}</span>
+              <Button onClick={handleProfileUpdate} disabled={isSaving} className="gap-2">
+                <Save className="h-4 w-4" />
+                {isSaving ? "Saving..." : "Save Changes"}
               </Button>
             </>
           ) : (
-            <Button onClick={() => setIsEditing(true)} className="px-4 py-2">
-              <Pen className="h-4 w-4 mr-2" />
+            <Button onClick={() => setIsEditing(true)} className="gap-2">
+              <Pen className="h-4 w-4" />
               Edit Profile
             </Button>
           )}
