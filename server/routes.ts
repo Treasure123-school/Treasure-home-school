@@ -12172,7 +12172,88 @@ School Management System Administration
         }
       }
 
-      res.json({ ...reportCard, items: enhancedItems, classStatistics });
+      // Resolve teacher name, principal name, DOB, gender, and signatures for PDF/export
+      let teacherName = '';
+      let principalName = '';
+      let dateOfBirth = (reportCard as any).dateOfBirth || null;
+      let gender = (reportCard as any).gender || null;
+      let teacherSignatureUrl = (reportCard as any).teacherSignatureUrl || null;
+      let principalSignatureUrl = (reportCard as any).principalSignatureUrl || null;
+
+      // Get student's DOB and gender from user record
+      if (reportCard.studentId) {
+        const studentUser = await storage.getUser(reportCard.studentId as any);
+        if (studentUser) {
+          dateOfBirth = studentUser.dateOfBirth || null;
+          gender = studentUser.gender || null;
+        }
+      }
+
+      // Resolve teacher name and signature from class teacher
+      if (reportCard.classId) {
+        const classInfo = await storage.getClass(reportCard.classId);
+        if (classInfo?.classTeacherId) {
+          const teacherUser = await storage.getUser(classInfo.classTeacherId);
+          if (teacherUser) {
+            teacherName = `${teacherUser.firstName || ''} ${teacherUser.lastName || ''}`.trim();
+          }
+          if (!teacherSignatureUrl) {
+            const teacherProfile = await storage.getTeacherProfile(classInfo.classTeacherId);
+            if (teacherProfile?.signatureUrl) teacherSignatureUrl = teacherProfile.signatureUrl;
+          }
+        }
+      }
+
+      // Resolve principal signature and name from superadmin/admin profiles
+      if (!principalSignatureUrl) {
+        const superAdminsWithSig = await db.select({ signatureUrl: schema.superAdminProfiles.signatureUrl, userId: schema.superAdminProfiles.userId })
+          .from(schema.superAdminProfiles)
+          .where(and(isNotNull(schema.superAdminProfiles.signatureUrl), ne(schema.superAdminProfiles.signatureUrl, '')))
+          .limit(1);
+        if (superAdminsWithSig.length > 0) {
+          principalSignatureUrl = superAdminsWithSig[0].signatureUrl;
+          const principalUser = await storage.getUser(superAdminsWithSig[0].userId);
+          if (principalUser) principalName = `${principalUser.firstName || ''} ${principalUser.lastName || ''}`.trim();
+        } else {
+          const adminsWithSig = await db.select({ signatureUrl: schema.adminProfiles.signatureUrl, userId: schema.adminProfiles.userId })
+            .from(schema.adminProfiles)
+            .where(and(isNotNull(schema.adminProfiles.signatureUrl), ne(schema.adminProfiles.signatureUrl, '')))
+            .limit(1);
+          if (adminsWithSig.length > 0) {
+            principalSignatureUrl = adminsWithSig[0].signatureUrl;
+            const principalUser = await storage.getUser(adminsWithSig[0].userId);
+            if (principalUser) principalName = `${principalUser.firstName || ''} ${principalUser.lastName || ''}`.trim();
+          }
+        }
+      }
+
+      // Fallback: get principal name from any superadmin/admin even without a signature
+      if (!principalName) {
+        const [anySA] = await db.select({ userId: schema.superAdminProfiles.userId }).from(schema.superAdminProfiles).limit(1);
+        if (anySA?.userId) {
+          const su = await storage.getUser(anySA.userId);
+          if (su) principalName = `${su.firstName || ''} ${su.lastName || ''}`.trim();
+        }
+      }
+      if (!principalName) {
+        const [anyAdmin] = await db.select({ userId: schema.adminProfiles.userId }).from(schema.adminProfiles).limit(1);
+        if (anyAdmin?.userId) {
+          const adm = await storage.getUser(anyAdmin.userId);
+          if (adm) principalName = `${adm.firstName || ''} ${adm.lastName || ''}`.trim();
+        }
+      }
+
+      res.json({
+        ...reportCard,
+        items: enhancedItems,
+        classStatistics,
+        teacherName,
+        principalName,
+        dateOfBirth,
+        gender,
+        teacherSignatureUrl,
+        principalSignatureUrl,
+      });
     } catch (error: any) {
       console.error('Error getting report card:', error);
       res.status(500).json({ message: error.message || 'Failed to get report card' });

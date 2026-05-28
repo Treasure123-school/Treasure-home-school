@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { calculateAge } from '@/lib/report-card-utils';
+import { calculateAge, getGradeColor, getRemarkFromGrade, formatPosition } from '@/lib/report-card-utils';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,43 +49,6 @@ import {
 import RequireCompleteProfile from '@/components/RequireCompleteProfile';
 
 const RATING_LABELS = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
-
-const getGradeColor = (grade: string) => {
-  if (!grade) return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
-  const gradeUpper = grade.toUpperCase();
-  if (gradeUpper.startsWith('A')) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-  if (gradeUpper.startsWith('B')) return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-  if (gradeUpper.startsWith('C')) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-  if (gradeUpper.startsWith('D') || gradeUpper.startsWith('E')) return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
-  return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-};
-
-const getRemarkFromGrade = (grade: string): string => {
-  if (!grade) return '-';
-  const gradeUpper = grade.toUpperCase();
-  if (gradeUpper === 'A' || gradeUpper === 'A+') return 'Excellent';
-  if (gradeUpper === 'B' || gradeUpper === 'B+') return 'Very Good';
-  if (gradeUpper === 'C' || gradeUpper === 'C+') return 'Good';
-  if (gradeUpper === 'D' || gradeUpper === 'D+') return 'Pass';
-  if (gradeUpper === 'E') return 'Fair';
-  return 'Weak';
-};
-
-const getPositionSuffix = (pos: number): string => {
-  if (!pos) return '';
-  if (pos >= 11 && pos <= 13) return 'th';
-  switch (pos % 10) {
-    case 1: return 'st';
-    case 2: return 'nd';
-    case 3: return 'rd';
-    default: return 'th';
-  }
-};
-
-const formatPosition = (pos: number): string => {
-  if (!pos) return '-';
-  return `${pos}${getPositionSuffix(pos)}`;
-};
 
 const RatingDisplay = ({ value, label }: { value: number; label: string }) => {
   const ratingText = value > 0 ? RATING_LABELS[value] : '-';

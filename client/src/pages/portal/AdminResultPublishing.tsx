@@ -46,6 +46,7 @@ import {
   Undo2
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { calculateAge } from '@/lib/report-card-utils';
 import { ProfessionalReportCard } from '@/components/ui/professional-report-card';
 
 interface FinalizedReportCard {
@@ -790,6 +791,13 @@ export default function AdminResultPublishing() {
       timesAbsent: d.attendance?.timesAbsent || 0,
     },
     studentPhoto: d.studentPhoto,
+    teacherSignatureUrl: d.teacherSignatureUrl || null,
+    principalSignatureUrl: d.principalSignatureUrl || null,
+    teacherName: d.teacherName || '',
+    principalName: d.principalName || '',
+    gender: d.gender || '',
+    dateOfBirth: d.dateOfBirth ? format(new Date(d.dateOfBirth), 'dd-MMM-yyyy') : '',
+    age: calculateAge(d.dateOfBirth),
     dateIssued: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
     affectiveTraits: d.affectiveTraits,
     psychomotorSkills: d.psychomotorSkills,
@@ -1956,6 +1964,15 @@ export default function AdminResultPublishing() {
                 timesAbsent: fullReportCard.attendance?.timesAbsent || 0,
               },
               studentPhoto: fullReportCard.studentPhoto,
+              teacherSignatureUrl: fullReportCard.teacherSignatureUrl || null,
+              principalSignatureUrl: fullReportCard.principalSignatureUrl || null,
+              teacherName: fullReportCard.teacherName || '',
+              principalName: fullReportCard.principalName || '',
+              gender: fullReportCard.gender || '',
+              dateOfBirth: fullReportCard.dateOfBirth
+                ? format(new Date(fullReportCard.dateOfBirth), 'dd-MMM-yyyy')
+                : '',
+              age: calculateAge(fullReportCard.dateOfBirth),
               dateIssued: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
               affectiveTraits: fullReportCard.affectiveTraits,
               psychomotorSkills: fullReportCard.psychomotorSkills

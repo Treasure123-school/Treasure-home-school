@@ -13,7 +13,7 @@ import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { apiRequest } from '@/lib/queryClient';
 import { BaileysReportTemplate } from '@/components/ui/baileys-report-template';
 import { exportToPDF } from '@/lib/report-export-utils';
-import { calculateAge } from '@/lib/report-card-utils';
+import { calculateAge, getGradeColor } from '@/lib/report-card-utils';
 
 interface Child {
   id: string;
@@ -74,13 +74,6 @@ interface ReportCard {
     timesAbsent: number;
     attendancePercentage: number;
   };
-}
-
-function gradeColor(grade: string) {
-  if (grade === 'A+' || grade === 'A') return 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300';
-  if (grade === 'B+' || grade === 'B') return 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300';
-  if (grade === 'C+' || grade === 'C') return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300';
-  return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300';
 }
 
 export default function ParentReportCards() {
@@ -259,7 +252,7 @@ export default function ParentReportCards() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2 pt-1">
-                      <Badge className={`${gradeColor(report.overallGrade)} border-0 text-xs font-semibold`}>
+                      <Badge className={`${getGradeColor(report.overallGrade)} border-0 text-xs font-semibold`}>
                         Overall Grade: {report.overallGrade}
                       </Badge>
                       <Badge variant="secondary" className="text-xs">
@@ -315,7 +308,7 @@ export default function ParentReportCards() {
                               <div className="text-xs text-muted-foreground">{item.percentage}%</div>
                             </td>
                             <td className="text-center py-3 px-3">
-                              <Badge className={`${gradeColor(item.grade)} border-0 font-semibold text-xs`}>
+                              <Badge className={`${getGradeColor(item.grade)} border-0 font-semibold text-xs`}>
                                 {item.grade}
                               </Badge>
                             </td>

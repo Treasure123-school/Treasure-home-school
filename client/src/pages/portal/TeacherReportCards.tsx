@@ -67,6 +67,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { STANDARD_GRADING_SCALE, GRADING_SCALES, formatPosition, calculateWeightedScore, calculateGradeFromPercentage, getGradingConfig } from '@shared/grading-utils';
+import { calculateAge } from '@/lib/report-card-utils';
 import { ProfessionalReportCard } from '@/components/ui/professional-report-card';
 import { ContactUtils } from '@shared/contact-utils';
 
@@ -1785,6 +1786,15 @@ export default function TeacherReportCards() {
                 timesAbsent: 0,
               },
               studentPhoto: fullReportCard.studentPhoto,
+              teacherSignatureUrl: fullReportCard.teacherSignatureUrl || null,
+              principalSignatureUrl: fullReportCard.principalSignatureUrl || null,
+              teacherName: fullReportCard.teacherName || '',
+              principalName: fullReportCard.principalName || '',
+              gender: fullReportCard.gender || '',
+              dateOfBirth: fullReportCard.dateOfBirth
+                ? format(new Date(fullReportCard.dateOfBirth), 'dd-MMM-yyyy')
+                : '',
+              age: calculateAge(fullReportCard.dateOfBirth),
               dateIssued: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
               affectiveTraits: fullReportCard.affectiveTraits || {
                 punctuality: 0,

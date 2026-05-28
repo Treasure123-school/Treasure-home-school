@@ -43,6 +43,7 @@ import {
 } from '@/components/ui/collapsible';
 import { SkillsSection } from '@/components/ui/skill-rating';
 import { imageUrlToBase64 } from '@/lib/report-export-utils';
+import { getGradeColor, getRemarkFromGrade, formatPosition } from '@/lib/report-card-utils';
 
 interface SubjectScore {
   id: number;
@@ -131,9 +132,11 @@ interface ReportCardData {
   teacherSignatureUrl?: string | null;
   teacherSignedAt?: string | null;
   teacherSignedBy?: string | null;
+  teacherName?: string | null;
   principalSignatureUrl?: string | null;
   principalSignedAt?: string | null;
   principalSignedBy?: string | null;
+  principalName?: string | null;
 }
 
 interface ProfessionalReportCardProps {
@@ -155,47 +158,7 @@ interface ProfessionalReportCardProps {
 
 // Ratings are now in skill-rating.tsx component
 
-const getGradeColor = (grade: string) => {
-  if (!grade) return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
-  const gradeUpper = grade.toUpperCase();
-  if (gradeUpper.startsWith('A')) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-  if (gradeUpper.startsWith('B')) return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-  if (gradeUpper.startsWith('C')) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-  if (gradeUpper.startsWith('D') || gradeUpper.startsWith('E')) return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
-  return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-};
-
-const getRemarkFromGrade = (grade: string): string => {
-  if (!grade) return '-';
-  const gradeUpper = grade.toUpperCase();
-  if (gradeUpper === 'A' || gradeUpper === 'A+') return 'Excellent';
-  if (gradeUpper === 'B' || gradeUpper === 'B+') return 'Very Good';
-  if (gradeUpper === 'C' || gradeUpper === 'C+') return 'Good';
-  if (gradeUpper === 'D' || gradeUpper === 'D+') return 'Pass';
-  if (gradeUpper === 'E') return 'Fair';
-  return 'Weak';
-};
-
-const getPositionSuffix = (pos: number): string => {
-  if (!pos) return '';
-  if (pos >= 11 && pos <= 13) return 'th';
-  switch (pos % 10) {
-    case 1: return 'st';
-    case 2: return 'nd';
-    case 3: return 'rd';
-    default: return 'th';
-  }
-};
-
-const formatPosition = (pos: number): string => {
-  if (!pos) return '-';
-  return `${pos}${getPositionSuffix(pos)}`;
-};
-
-
 import { ContactUtils } from '@shared/contact-utils';
-
-// ... existing imports ...
 
 export function ProfessionalReportCard({
   reportCard,
@@ -1098,6 +1061,9 @@ export function ProfessionalReportCard({
                 )}
               </div>
               <p className="text-sm font-medium">Class Teacher's Signature</p>
+              {reportCard.teacherName && (
+                <p className="text-xs font-semibold text-foreground mt-0.5" data-testid="text-teacher-name">{reportCard.teacherName}</p>
+              )}
               {reportCard.teacherSignedAt && (
                 <p className="text-xs text-muted-foreground mt-1" data-testid="text-teacher-signed-date">
                   Signed: {format(new Date(reportCard.teacherSignedAt), 'MMM d, yyyy')}
@@ -1120,6 +1086,9 @@ export function ProfessionalReportCard({
                 )}
               </div>
               <p className="text-sm font-medium">Principal's Signature</p>
+              {reportCard.principalName && (
+                <p className="text-xs font-semibold text-foreground mt-0.5" data-testid="text-principal-name">{reportCard.principalName}</p>
+              )}
               {reportCard.principalSignedAt && (
                 <p className="text-xs text-muted-foreground mt-1" data-testid="text-principal-signed-date">
                   Signed: {format(new Date(reportCard.principalSignedAt), 'MMM d, yyyy')}
