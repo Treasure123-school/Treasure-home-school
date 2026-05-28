@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,9 @@ import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { apiRequest } from '@/lib/queryClient';
+import { BaileysReportTemplate } from '@/components/ui/baileys-report-template';
+import { exportToPDF } from '@/lib/report-export-utils';
+import { calculateAge } from '@/lib/report-card-utils';
 
 interface Child {
   id: string;
@@ -38,23 +41,39 @@ interface ReportCard {
   id: number;
   studentId: string;
   studentName: string;
-  admissionNumber?: string;
+  admissionNumber?: string | null;
   className: string;
   termName: string;
   termYear: string;
+  academicSession?: string;
   averagePercentage: number;
   overallGrade: string;
   teacherRemarks: string;
   principalRemarks?: string;
   status: string;
   generatedAt: string;
+  position?: number;
+  totalStudentsInClass?: number;
   items: ReportCardItem[];
   teacherSignatureUrl?: string | null;
   teacherSignedAt?: string | null;
   teacherSignedBy?: string | null;
+  teacherName?: string | null;
   principalSignatureUrl?: string | null;
   principalSignedAt?: string | null;
   principalSignedBy?: string | null;
+  principalName?: string | null;
+  studentPhoto?: string | null;
+  dateOfBirth?: string | null;
+  gender?: string | null;
+  affectiveTraits?: { [key: string]: number };
+  psychomotorSkills?: { [key: string]: number };
+  attendance?: {
+    timesSchoolOpened: number;
+    timesPresent: number;
+    timesAbsent: number;
+    attendancePercentage: number;
+  };
 }
 
 function gradeColor(grade: string) {
@@ -69,6 +88,8 @@ export default function ParentReportCards() {
   const { toast } = useToast();
   const [selectedChild, setSelectedChild] = useState<string>('');
   const [downloading, setDownloading] = useState<number | null>(null);
+  const [activeExportReport, setActiveExportReport] = useState<ReportCard | null>(null);
+  const printTemplateRef = useRef<HTMLDivElement>(null);
 
   const { data: children = [], isLoading: loadingChildren } = useQuery<Child[]>({
     queryKey: ['/api/parent/children'],
@@ -97,26 +118,27 @@ export default function ParentReportCards() {
     enabled: !!selectedChild,
   });
 
-  const handleDownloadPDF = async (reportId: number) => {
-    setDownloading(reportId);
-    try {
-      const response = await apiRequest('GET', `/api/report-cards/${reportId}/pdf`);
-      if (!response.ok) throw new Error('Failed to download PDF');
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `report-card-${reportId}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-      toast({ title: 'Downloaded', description: 'Report card downloaded successfully.' });
-    } catch (error: any) {
-      toast({ title: 'Download Failed', description: error?.message || 'Could not download the report card. Please try again.', variant: 'destructive' });
-    } finally {
-      setDownloading(null);
-    }
+  useEffect(() => {
+    if (!activeExportReport) return;
+    const timer = setTimeout(async () => {
+      if (!printTemplateRef.current) return;
+      try {
+        const filename = `report-card-${(activeExportReport.studentName || 'student').replace(/\s+/g, '-')}-${(activeExportReport.termName || 'term').replace(/\s+/g, '-')}`;
+        await exportToPDF(printTemplateRef.current, { filename });
+        toast({ title: 'Downloaded', description: 'Report card downloaded successfully.' });
+      } catch (e: any) {
+        toast({ title: 'Download Failed', description: e?.message || 'Could not download the report card. Please try again.', variant: 'destructive' });
+      } finally {
+        setDownloading(null);
+        setActiveExportReport(null);
+      }
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [activeExportReport]);
+
+  const handleDownloadPDF = (report: ReportCard) => {
+    setDownloading(report.id);
+    setActiveExportReport(report);
   };
 
   if (!user) {
@@ -246,7 +268,7 @@ export default function ParentReportCards() {
                     </div>
                   </div>
                   <Button
-                    onClick={() => handleDownloadPDF(report.id)}
+                    onClick={() => handleDownloadPDF(report)}
                     disabled={downloading === report.id}
                     size="sm"
                     className="gap-2 self-start"
@@ -408,6 +430,59 @@ export default function ParentReportCards() {
               </CardContent>
             </Card>
           ))}
+        </div>
+      )}
+
+      {/* Hidden BaileysReportTemplate used for PDF export — never visible to the user */}
+      {activeExportReport && (
+        <div className="fixed left-[-9999px] top-0 z-[-1]" aria-hidden="true">
+          <BaileysReportTemplate
+            ref={printTemplateRef}
+            reportCard={{
+              studentName: activeExportReport.studentName || 'Student',
+              admissionNumber: activeExportReport.admissionNumber || 'N/A',
+              className: activeExportReport.className || 'N/A',
+              termName: activeExportReport.termName || 'N/A',
+              academicSession: activeExportReport.academicSession || activeExportReport.termYear || '2024/2025',
+              averagePercentage: activeExportReport.averagePercentage || 0,
+              overallGrade: activeExportReport.overallGrade || '-',
+              position: activeExportReport.position || 0,
+              totalStudentsInClass: activeExportReport.totalStudentsInClass || 0,
+              items: (activeExportReport.items || []).map((s: any) => ({
+                subjectName: s.subjectName,
+                testScore: s.testScore ?? s.testWeightedScore ?? null,
+                examScore: s.examScore ?? s.examWeightedScore ?? null,
+                obtainedMarks: s.obtainedMarks ?? s.totalScore ?? ((Number(s.testScore) || 0) + (Number(s.examScore) || 0)),
+                grade: s.grade || '-',
+                remarks: s.teacherRemarks || s.remarks || '',
+                subjectPosition: s.subjectPosition || null,
+                classAverage: s.classAverage || null,
+              })),
+              teacherRemarks: activeExportReport.teacherRemarks || '',
+              principalRemarks: activeExportReport.principalRemarks || '',
+              teacherSignatureUrl: activeExportReport.teacherSignatureUrl || null,
+              principalSignatureUrl: activeExportReport.principalSignatureUrl || null,
+              teacherName: activeExportReport.teacherName || '',
+              principalName: activeExportReport.principalName || '',
+              studentPhoto: activeExportReport.studentPhoto || undefined,
+              gender: activeExportReport.gender || '',
+              dateOfBirth: activeExportReport.dateOfBirth
+                ? format(new Date(activeExportReport.dateOfBirth), 'dd-MMM-yyyy')
+                : '',
+              age: calculateAge(activeExportReport.dateOfBirth),
+              attendance: activeExportReport.attendance || {
+                timesSchoolOpened: 0,
+                timesPresent: 0,
+                timesAbsent: 0,
+                attendancePercentage: 0,
+              },
+              affectiveTraits: activeExportReport.affectiveTraits as any,
+              psychomotorSkills: activeExportReport.psychomotorSkills as any,
+              dateIssued: format(new Date(), 'dd-MMM-yyyy'),
+            }}
+            testWeight={40}
+            examWeight={60}
+          />
         </div>
       )}
     </div>

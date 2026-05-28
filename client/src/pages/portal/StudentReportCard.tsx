@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { calculateAge } from '@/lib/report-card-utils';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -971,7 +972,12 @@ export default function StudentReportCard() {
               studentPhoto: reportCard.studentPhoto || user?.profileImageUrl,
               gender: user?.gender || studentDetails?.gender || '',
               dateOfBirth: studentDetails?.dateOfBirth ? format(new Date(studentDetails?.dateOfBirth), 'dd-MMM-yyyy') : '',
+              age: calculateAge(studentDetails?.dateOfBirth),
               dateIssued: format(new Date(), 'dd-MMM-yyyy'),
+              teacherSignatureUrl: (reportCard as any).teacherSignatureUrl || null,
+              principalSignatureUrl: (reportCard as any).principalSignatureUrl || null,
+              teacherName: (reportCard as any).teacherName || '',
+              principalName: (reportCard as any).principalName || '',
             }}
             testWeight={40}
             examWeight={60}

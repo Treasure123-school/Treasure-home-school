@@ -5349,21 +5349,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
         className = cls?.name ?? null;
       }
 
-      // Pre-fetch principal signature for all report cards (single query)
+      // Pre-fetch principal signature + name for all report cards (single query set)
       let parentPrincipalSignature: string | null = null;
-      const parentSuperAdminsWithSig = await db.select({ signatureUrl: schema.superAdminProfiles.signatureUrl })
+      let parentPrincipalName = '';
+
+      const parentSuperAdminsWithSig = await db.select({
+        userId: schema.superAdminProfiles.userId,
+        signatureUrl: schema.superAdminProfiles.signatureUrl
+      })
         .from(schema.superAdminProfiles)
         .where(and(isNotNull(schema.superAdminProfiles.signatureUrl), ne(schema.superAdminProfiles.signatureUrl, '')))
         .limit(1);
+
       if (parentSuperAdminsWithSig.length > 0) {
         parentPrincipalSignature = parentSuperAdminsWithSig[0].signatureUrl;
+        const principalUser = await storage.getUser(parentSuperAdminsWithSig[0].userId);
+        if (principalUser) {
+          parentPrincipalName = `${principalUser.firstName || ''} ${principalUser.lastName || ''}`.trim();
+        }
       } else {
-        const parentAdminsWithSig = await db.select({ signatureUrl: schema.adminProfiles.signatureUrl })
+        const parentAdminsWithSig = await db.select({
+          userId: schema.adminProfiles.userId,
+          signatureUrl: schema.adminProfiles.signatureUrl
+        })
           .from(schema.adminProfiles)
           .where(and(isNotNull(schema.adminProfiles.signatureUrl), ne(schema.adminProfiles.signatureUrl, '')))
           .limit(1);
         if (parentAdminsWithSig.length > 0) {
           parentPrincipalSignature = parentAdminsWithSig[0].signatureUrl;
+          const adminUser = await storage.getUser(parentAdminsWithSig[0].userId);
+          if (adminUser) {
+            parentPrincipalName = `${adminUser.firstName || ''} ${adminUser.lastName || ''}`.trim();
+          }
+        }
+      }
+
+      // Fallback principal name if no signature found (first superadmin or admin user)
+      if (!parentPrincipalName) {
+        const [anySA] = await db.select({ userId: schema.superAdminProfiles.userId }).from(schema.superAdminProfiles).limit(1);
+        if (anySA?.userId) {
+          const su = await storage.getUser(anySA.userId);
+          if (su) parentPrincipalName = `${su.firstName || ''} ${su.lastName || ''}`.trim();
+        }
+      }
+      if (!parentPrincipalName) {
+        const [anyAdmin] = await db.select({ userId: schema.adminProfiles.userId }).from(schema.adminProfiles).limit(1);
+        if (anyAdmin?.userId) {
+          const adm = await storage.getUser(anyAdmin.userId);
+          if (adm) parentPrincipalName = `${adm.firstName || ''} ${adm.lastName || ''}`.trim();
         }
       }
 
@@ -5386,32 +5419,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return { ...item, subjectName, testScore, testWeightedScore, examScore, examWeightedScore };
         }));
 
-        // Resolve teacher signature: stored value or dynamic fetch from class teacher profile
+        // Resolve teacher signature + name
         let teacherSignatureUrl = rc.teacherSignatureUrl || null;
-        if (!teacherSignatureUrl && rc.classId) {
+        let teacherName = '';
+        if (rc.classId) {
           const rcClass = await storage.getClass(rc.classId);
           if (rcClass?.classTeacherId) {
-            const teacherProf = await storage.getTeacherProfile(rcClass.classTeacherId);
-            if (teacherProf?.signatureUrl) teacherSignatureUrl = teacherProf.signatureUrl;
+            if (!teacherSignatureUrl) {
+              const teacherProf = await storage.getTeacherProfile(rcClass.classTeacherId);
+              if (teacherProf?.signatureUrl) teacherSignatureUrl = teacherProf.signatureUrl;
+            }
+            const teacherUser = await storage.getUser(rcClass.classTeacherId);
+            if (teacherUser) {
+              teacherName = `${teacherUser.firstName || ''} ${teacherUser.lastName || ''}`.trim();
+            }
           }
         }
 
         // Resolve principal signature: stored value or pre-fetched admin signature
         const principalSignatureUrl = rc.principalSignatureUrl || parentPrincipalSignature || null;
 
+        // Fetch affective / psychomotor skills
+        const skills = await storage.getReportCardSkills(rc.id);
+
         return {
           ...rc,
           studentName: userInfo ? `${userInfo.firstName} ${userInfo.lastName}` : 'Unknown',
+          admissionNumber: (student as any)?.admissionNumber || null,
+          studentPhoto: userInfo?.profileImageUrl || null,
+          dateOfBirth: userInfo?.dateOfBirth || null,
+          gender: userInfo?.gender || null,
           className,
+          academicSession: term?.year ?? '',
           termName: term?.name ?? 'Unknown Term',
           termYear: term?.year ?? '',
+          position: rc.position || 0,
+          totalStudentsInClass: rc.totalStudentsInClass || 0,
           items: enrichedItems,
           teacherSignatureUrl,
           teacherSignedAt: rc.teacherSignedAt ? new Date(rc.teacherSignedAt).toISOString() : null,
           teacherSignedBy: rc.teacherSignedBy || null,
+          teacherName,
           principalSignatureUrl,
           principalSignedAt: rc.principalSignedAt ? new Date(rc.principalSignedAt).toISOString() : null,
           principalSignedBy: rc.principalSignedBy || null,
+          principalName: parentPrincipalName,
+          affectiveTraits: {
+            punctuality: skills?.punctuality || 0,
+            neatness: skills?.neatness || 0,
+            attentiveness: skills?.attentiveness || 0,
+            teamwork: skills?.teamwork || 0,
+            leadership: skills?.leadership || 0,
+            assignments: skills?.assignments || 0,
+            classParticipation: skills?.classParticipation || 0,
+            honesty: (skills as any)?.honesty || 0,
+            politeness: (skills as any)?.politeness || 0,
+            selfControl: (skills as any)?.selfControl || 0,
+            obedience: (skills as any)?.obedience || 0,
+            reliability: (skills as any)?.reliability || 0,
+            senseOfResponsibility: (skills as any)?.senseOfResponsibility || 0,
+            relationshipWithOthers: (skills as any)?.relationshipWithOthers || 0,
+          },
+          psychomotorSkills: {
+            sports: skills?.sports || 0,
+            handwriting: skills?.handwriting || 0,
+            musicalSkills: skills?.musicalSkills || 0,
+            creativity: skills?.creativity || 0,
+            handlingOfTools: (skills as any)?.handlingOfTools || 0,
+            drawingPainting: (skills as any)?.drawingPainting || 0,
+            publicSpeaking: (skills as any)?.publicSpeaking || 0,
+            speechFluency: (skills as any)?.speechFluency || 0,
+          },
+          attendance: {
+            timesSchoolOpened: 0,
+            timesPresent: 0,
+            timesAbsent: 0,
+            attendancePercentage: 0,
+          },
         };
       }));
       res.json(enriched);
@@ -11082,6 +11166,10 @@ School Management System Administration
           principalSignatureUrl: dbReportCard.principalSignatureUrl || null,
           principalSignedAt: dbReportCard.principalSignedAt ? new Date(dbReportCard.principalSignedAt).toISOString() : null,
           principalSignedBy: dbReportCard.principalSignedBy || null,
+          teacherName: '',
+          principalName: '',
+          dateOfBirth: user.dateOfBirth || null,
+          gender: user.gender || null,
         };
 
         // Dynamically fetch teacher signature if not stored on report card
@@ -11112,6 +11200,42 @@ School Management System Administration
             if (adminsWithSig.length > 0) {
               reportCard.principalSignatureUrl = adminsWithSig[0].signatureUrl;
             }
+          }
+        }
+
+        // Resolve teacher name (the assigned class teacher)
+        if (studentClass?.classTeacherId) {
+          const teacherUser = await storage.getUser(studentClass.classTeacherId);
+          if (teacherUser) {
+            reportCard.teacherName = `${teacherUser.firstName || ''} ${teacherUser.lastName || ''}`.trim();
+          }
+        }
+
+        // Resolve principal name: prefer the user who signed, else first super-admin, else first admin
+        if (dbReportCard.principalSignedBy) {
+          const principalUser = await storage.getUser(dbReportCard.principalSignedBy);
+          if (principalUser) {
+            reportCard.principalName = `${principalUser.firstName || ''} ${principalUser.lastName || ''}`.trim();
+          }
+        }
+        if (!reportCard.principalName) {
+          const [firstSuperAdmin] = await db
+            .select({ userId: schema.superAdminProfiles.userId })
+            .from(schema.superAdminProfiles)
+            .limit(1);
+          if (firstSuperAdmin?.userId) {
+            const su = await storage.getUser(firstSuperAdmin.userId);
+            if (su) reportCard.principalName = `${su.firstName || ''} ${su.lastName || ''}`.trim();
+          }
+        }
+        if (!reportCard.principalName) {
+          const [firstAdmin] = await db
+            .select({ userId: schema.adminProfiles.userId })
+            .from(schema.adminProfiles)
+            .limit(1);
+          if (firstAdmin?.userId) {
+            const adm = await storage.getUser(firstAdmin.userId);
+            if (adm) reportCard.principalName = `${adm.firstName || ''} ${adm.lastName || ''}`.trim();
           }
         }
 

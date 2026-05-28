@@ -93,6 +93,7 @@ interface ReportCardData {
   principalName?: string;
   gender?: string;
   dateOfBirth?: string;
+  age?: number | string | null;
   height?: string;
   weight?: string;
   club?: string;
@@ -391,7 +392,7 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
                 <td style={labelCell}>D.O.B.:</td>
                 <td style={valueCell}>{reportCard.dateOfBirth || '-'}</td>
                 <td style={labelCell}>AGE:</td>
-                <td style={valueCell}>-</td>
+                <td style={valueCell}>{reportCard.age != null ? `${reportCard.age} yrs` : '-'}</td>
                 <td style={labelCell}>HT:</td>
                 <td style={valueCell}>{reportCard.height || '-'}</td>
                 <td style={labelCell}>WT:</td>
