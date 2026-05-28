@@ -917,6 +917,74 @@ function generateTeacherComment(studentName: string, percentage: number): string
   }
 }
 
+// ── Resolve the designated principal (name + signature) ──────────────────────
+// Priority: 1) designated principal in system settings → 2) admin who signed the
+// specific report card (passed as signedById) → 3) first admin → (never superadmin)
+async function resolveDesignatedPrincipal(
+  dbParam: typeof db,
+  storageParam: IStorage,
+  signedById?: string | null
+): Promise<{ principalName: string; principalSignatureUrl: string | null }> {
+  // 1. Designated principal from system settings
+  const settings = await storageParam.getSystemSettings();
+  const designatedId = (settings as any)?.designatedPrincipalId as string | null | undefined;
+  if (designatedId) {
+    const u = await storageParam.getUser(designatedId);
+    if (u) {
+      const [profile] = await dbParam.select({ signatureUrl: schema.adminProfiles.signatureUrl })
+        .from(schema.adminProfiles)
+        .where(eq(schema.adminProfiles.userId, designatedId))
+        .limit(1);
+      return {
+        principalName: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
+        principalSignatureUrl: profile?.signatureUrl || null,
+      };
+    }
+  }
+
+  // 2. Admin who signed this specific report card
+  if (signedById) {
+    const u = await storageParam.getUser(signedById);
+    if (u) {
+      const [profile] = await dbParam.select({ signatureUrl: schema.adminProfiles.signatureUrl })
+        .from(schema.adminProfiles)
+        .where(eq(schema.adminProfiles.userId, signedById))
+        .limit(1);
+      return {
+        principalName: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
+        principalSignatureUrl: profile?.signatureUrl || null,
+      };
+    }
+  }
+
+  // 3. First admin with a signature
+  const [adminWithSig] = await dbParam.select({ userId: schema.adminProfiles.userId, signatureUrl: schema.adminProfiles.signatureUrl })
+    .from(schema.adminProfiles)
+    .where(and(isNotNull(schema.adminProfiles.signatureUrl), ne(schema.adminProfiles.signatureUrl, '')))
+    .limit(1);
+  if (adminWithSig) {
+    const u = await storageParam.getUser(adminWithSig.userId);
+    return {
+      principalName: u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username : '',
+      principalSignatureUrl: adminWithSig.signatureUrl || null,
+    };
+  }
+
+  // 4. Any admin (no signature)
+  const [anyAdmin] = await dbParam.select({ userId: schema.adminProfiles.userId })
+    .from(schema.adminProfiles)
+    .limit(1);
+  if (anyAdmin) {
+    const u = await storageParam.getUser(anyAdmin.userId);
+    return {
+      principalName: u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username : '',
+      principalSignatureUrl: null,
+    };
+  }
+
+  return { principalName: '', principalSignatureUrl: null };
+}
+
 // Generate encouraging principal comments based on performance level
 // Uses lastName as per school convention
 function generatePrincipalComment(studentName: string, percentage: number): string {
@@ -5349,56 +5417,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         className = cls?.name ?? null;
       }
 
-      // Pre-fetch principal signature + name for all report cards (single query set)
-      let parentPrincipalSignature: string | null = null;
-      let parentPrincipalName = '';
-
-      const parentSuperAdminsWithSig = await db.select({
-        userId: schema.superAdminProfiles.userId,
-        signatureUrl: schema.superAdminProfiles.signatureUrl
-      })
-        .from(schema.superAdminProfiles)
-        .where(and(isNotNull(schema.superAdminProfiles.signatureUrl), ne(schema.superAdminProfiles.signatureUrl, '')))
-        .limit(1);
-
-      if (parentSuperAdminsWithSig.length > 0) {
-        parentPrincipalSignature = parentSuperAdminsWithSig[0].signatureUrl;
-        const principalUser = await storage.getUser(parentSuperAdminsWithSig[0].userId);
-        if (principalUser) {
-          parentPrincipalName = `${principalUser.firstName || ''} ${principalUser.lastName || ''}`.trim();
-        }
-      } else {
-        const parentAdminsWithSig = await db.select({
-          userId: schema.adminProfiles.userId,
-          signatureUrl: schema.adminProfiles.signatureUrl
-        })
-          .from(schema.adminProfiles)
-          .where(and(isNotNull(schema.adminProfiles.signatureUrl), ne(schema.adminProfiles.signatureUrl, '')))
-          .limit(1);
-        if (parentAdminsWithSig.length > 0) {
-          parentPrincipalSignature = parentAdminsWithSig[0].signatureUrl;
-          const adminUser = await storage.getUser(parentAdminsWithSig[0].userId);
-          if (adminUser) {
-            parentPrincipalName = `${adminUser.firstName || ''} ${adminUser.lastName || ''}`.trim();
-          }
-        }
-      }
-
-      // Fallback principal name if no signature found (first superadmin or admin user)
-      if (!parentPrincipalName) {
-        const [anySA] = await db.select({ userId: schema.superAdminProfiles.userId }).from(schema.superAdminProfiles).limit(1);
-        if (anySA?.userId) {
-          const su = await storage.getUser(anySA.userId);
-          if (su) parentPrincipalName = `${su.firstName || ''} ${su.lastName || ''}`.trim();
-        }
-      }
-      if (!parentPrincipalName) {
-        const [anyAdmin] = await db.select({ userId: schema.adminProfiles.userId }).from(schema.adminProfiles).limit(1);
-        if (anyAdmin?.userId) {
-          const adm = await storage.getUser(anyAdmin.userId);
-          if (adm) parentPrincipalName = `${adm.firstName || ''} ${adm.lastName || ''}`.trim();
-        }
-      }
+      // Pre-fetch principal signature + name for all report cards using designated principal
+      const { principalName: parentPrincipalName, principalSignatureUrl: parentPrincipalSignatureUrl } =
+        await resolveDesignatedPrincipal(db, storage);
+      const parentPrincipalSignature: string | null = parentPrincipalSignatureUrl;
 
       const enriched = await Promise.all(reportCards.map(async (rc: any) => {
         const items = await db.select().from(schema.reportCardItems)
@@ -10524,6 +10546,64 @@ School Management System Administration
     }
   });
 
+  // ==================== PRINCIPAL DESIGNATION ROUTES ====================
+
+  // GET /api/superadmin/principal — return current designated principal + all admin users for selection
+  app.get('/api/superadmin/principal', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+    try {
+      const settings = await storage.getSystemSettings();
+      const designatedPrincipalId = (settings as any)?.designatedPrincipalId || null;
+
+      // Fetch all admin users for the dropdown
+      const adminRows = await db
+        .select({ userId: schema.adminProfiles.userId })
+        .from(schema.adminProfiles);
+      const admins = await Promise.all(
+        adminRows.map(async (row) => {
+          const u = await storage.getUser(row.userId);
+          if (!u) return null;
+          return { id: u.id, name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username, username: u.username };
+        })
+      );
+
+      res.json({
+        designatedPrincipalId,
+        admins: admins.filter(Boolean),
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch principal settings' });
+    }
+  });
+
+  // PUT /api/superadmin/principal — set the designated principal
+  app.put('/api/superadmin/principal', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+    try {
+      const { designatedPrincipalId } = req.body;
+      // Validate the user exists and is an admin (or clear with null)
+      if (designatedPrincipalId) {
+        const user = await storage.getUser(designatedPrincipalId);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+        const [adminProfile] = await db
+          .select()
+          .from(schema.adminProfiles)
+          .where(eq(schema.adminProfiles.userId, designatedPrincipalId))
+          .limit(1);
+        if (!adminProfile) return res.status(400).json({ message: 'Selected user is not an admin' });
+      }
+      await storage.updateSystemSettings({ designatedPrincipalId: designatedPrincipalId || null } as any);
+      await storage.createAuditLog({
+        userId: req.user!.id,
+        action: 'principal_designated',
+        entityType: 'system_settings',
+        entityId: designatedPrincipalId || 'none',
+        reason: `Principal designation updated by Super Admin`,
+      });
+      res.json({ success: true, designatedPrincipalId: designatedPrincipalId || null });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to update principal designation' });
+    }
+  });
+
   // ==================== USER RECOVERY ROUTES ====================
 
   // Get deleted users (Admin can see Teachers/Students/Parents, Super Admin can see all including Admins)
@@ -11180,29 +11260,6 @@ School Management System Administration
           }
         }
 
-        // Dynamically fetch principal signature if not stored on report card
-        if (!reportCard.principalSignatureUrl) {
-          const superAdminsWithSig = await db.select({
-            signatureUrl: schema.superAdminProfiles.signatureUrl
-          })
-            .from(schema.superAdminProfiles)
-            .where(and(isNotNull(schema.superAdminProfiles.signatureUrl), ne(schema.superAdminProfiles.signatureUrl, '')))
-            .limit(1);
-          if (superAdminsWithSig.length > 0) {
-            reportCard.principalSignatureUrl = superAdminsWithSig[0].signatureUrl;
-          } else {
-            const adminsWithSig = await db.select({
-              signatureUrl: schema.adminProfiles.signatureUrl
-            })
-              .from(schema.adminProfiles)
-              .where(and(isNotNull(schema.adminProfiles.signatureUrl), ne(schema.adminProfiles.signatureUrl, '')))
-              .limit(1);
-            if (adminsWithSig.length > 0) {
-              reportCard.principalSignatureUrl = adminsWithSig[0].signatureUrl;
-            }
-          }
-        }
-
         // Resolve teacher name (the assigned class teacher)
         if (studentClass?.classTeacherId) {
           const teacherUser = await storage.getUser(studentClass.classTeacherId);
@@ -11211,32 +11268,12 @@ School Management System Administration
           }
         }
 
-        // Resolve principal name: prefer the user who signed, else first super-admin, else first admin
-        if (dbReportCard.principalSignedBy) {
-          const principalUser = await storage.getUser(dbReportCard.principalSignedBy);
-          if (principalUser) {
-            reportCard.principalName = `${principalUser.firstName || ''} ${principalUser.lastName || ''}`.trim();
-          }
-        }
-        if (!reportCard.principalName) {
-          const [firstSuperAdmin] = await db
-            .select({ userId: schema.superAdminProfiles.userId })
-            .from(schema.superAdminProfiles)
-            .limit(1);
-          if (firstSuperAdmin?.userId) {
-            const su = await storage.getUser(firstSuperAdmin.userId);
-            if (su) reportCard.principalName = `${su.firstName || ''} ${su.lastName || ''}`.trim();
-          }
-        }
-        if (!reportCard.principalName) {
-          const [firstAdmin] = await db
-            .select({ userId: schema.adminProfiles.userId })
-            .from(schema.adminProfiles)
-            .limit(1);
-          if (firstAdmin?.userId) {
-            const adm = await storage.getUser(firstAdmin.userId);
-            if (adm) reportCard.principalName = `${adm.firstName || ''} ${adm.lastName || ''}`.trim();
-          }
+        // Resolve principal name + signature using designated principal helper
+        const { principalName: resolvedPrincipalName, principalSignatureUrl: resolvedPrincipalSigUrl } =
+          await resolveDesignatedPrincipal(db, storage, dbReportCard.principalSignedBy);
+        if (resolvedPrincipalName) reportCard.principalName = resolvedPrincipalName;
+        if (!reportCard.principalSignatureUrl && resolvedPrincipalSigUrl) {
+          reportCard.principalSignatureUrl = resolvedPrincipalSigUrl;
         }
 
         return res.json(reportCard);
@@ -12204,43 +12241,11 @@ School Management System Administration
         }
       }
 
-      // Resolve principal signature and name from superadmin/admin profiles
-      if (!principalSignatureUrl) {
-        const superAdminsWithSig = await db.select({ signatureUrl: schema.superAdminProfiles.signatureUrl, userId: schema.superAdminProfiles.userId })
-          .from(schema.superAdminProfiles)
-          .where(and(isNotNull(schema.superAdminProfiles.signatureUrl), ne(schema.superAdminProfiles.signatureUrl, '')))
-          .limit(1);
-        if (superAdminsWithSig.length > 0) {
-          principalSignatureUrl = superAdminsWithSig[0].signatureUrl;
-          const principalUser = await storage.getUser(superAdminsWithSig[0].userId);
-          if (principalUser) principalName = `${principalUser.firstName || ''} ${principalUser.lastName || ''}`.trim();
-        } else {
-          const adminsWithSig = await db.select({ signatureUrl: schema.adminProfiles.signatureUrl, userId: schema.adminProfiles.userId })
-            .from(schema.adminProfiles)
-            .where(and(isNotNull(schema.adminProfiles.signatureUrl), ne(schema.adminProfiles.signatureUrl, '')))
-            .limit(1);
-          if (adminsWithSig.length > 0) {
-            principalSignatureUrl = adminsWithSig[0].signatureUrl;
-            const principalUser = await storage.getUser(adminsWithSig[0].userId);
-            if (principalUser) principalName = `${principalUser.firstName || ''} ${principalUser.lastName || ''}`.trim();
-          }
-        }
-      }
-
-      // Fallback: get principal name from any superadmin/admin even without a signature
-      if (!principalName) {
-        const [anySA] = await db.select({ userId: schema.superAdminProfiles.userId }).from(schema.superAdminProfiles).limit(1);
-        if (anySA?.userId) {
-          const su = await storage.getUser(anySA.userId);
-          if (su) principalName = `${su.firstName || ''} ${su.lastName || ''}`.trim();
-        }
-      }
-      if (!principalName) {
-        const [anyAdmin] = await db.select({ userId: schema.adminProfiles.userId }).from(schema.adminProfiles).limit(1);
-        if (anyAdmin?.userId) {
-          const adm = await storage.getUser(anyAdmin.userId);
-          if (adm) principalName = `${adm.firstName || ''} ${adm.lastName || ''}`.trim();
-        }
+      // Resolve principal name + signature using designated principal helper
+      {
+        const resolved = await resolveDesignatedPrincipal(db, storage, (reportCard as any).principalSignedBy);
+        if (!principalName) principalName = resolved.principalName;
+        if (!principalSignatureUrl) principalSignatureUrl = resolved.principalSignatureUrl;
       }
 
       res.json({

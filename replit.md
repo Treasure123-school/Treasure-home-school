@@ -291,6 +291,20 @@ All require authentication as a Parent (or Admin/SuperAdmin for admin access):
 ### Sidebar Navigation
 My Children · Report Cards · Attendance · Grades · School Calendar · Events · Messages · Profile
 
+## Designated Principal
+
+- `system_settings.designated_principal_id` — nullable FK to `users.id`; identifies which admin is the official school principal
+- **Super Admin settings page** → "Designate School Principal" card: dropdown of all admin users, save with Confirm button, shows current designation with green badge
+- **API**: `GET/PUT /api/superadmin/principal` (Super Admin only)
+- **Resolution priority** (used everywhere report cards show principal info):
+  1. Designated principal from system settings
+  2. Admin who signed that specific report card
+  3. First admin with a saved signature
+  4. Any admin (no signature)
+  - **Never** falls back to superadmin — principal is always an admin
+- `resolveDesignatedPrincipal(db, storage, signedById?)` helper in `server/routes.ts` — single source of truth used by all three principal-resolution blocks
+- `storage.ts` `getReportCardWithDetails` also updated to use the same priority order
+
 ## Database
 
 - Schema managed via `drizzle-kit push` (not migrations)

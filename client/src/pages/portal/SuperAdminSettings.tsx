@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -25,7 +26,9 @@ import {
   Plus,
   Phone,
   Mail,
-  Trash2
+  Trash2,
+  UserCheck,
+  CheckCircle2
 } from "lucide-react";
 import {
   Select,
@@ -51,6 +54,34 @@ export default function SuperAdminSettings() {
 
   const { data: settings, isLoading } = useQuery<SystemSettings>({
     queryKey: ["/api/superadmin/settings"],
+  });
+
+  // Principal designation
+  const { data: principalData, isLoading: principalLoading } = useQuery<{
+    designatedPrincipalId: string | null;
+    admins: Array<{ id: string; name: string; username: string }>;
+  }>({
+    queryKey: ["/api/superadmin/principal"],
+  });
+
+  const [selectedPrincipalId, setSelectedPrincipalId] = useState<string>("");
+
+  useEffect(() => {
+    if (principalData) {
+      setSelectedPrincipalId(principalData.designatedPrincipalId || "");
+    }
+  }, [principalData]);
+
+  const designatePrincipalMutation = useMutation({
+    mutationFn: async (id: string) =>
+      apiRequest("PUT", "/api/superadmin/principal", { designatedPrincipalId: id || null }),
+    onSuccess: () => {
+      toast({ title: "Principal Designated", description: "The school principal has been updated successfully." });
+      queryClient.invalidateQueries({ queryKey: ["/api/superadmin/principal"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
   });
 
   const [formData, setFormData] = useState({
@@ -468,6 +499,79 @@ export default function SuperAdminSettings() {
                 placeholder="e.g. © 2026 Treasure Home School. All Rights Reserved."
               />
             </div>
+          </CardContent>
+        </Card>
+
+        {/* 5. DESIGNATE PRINCIPAL */}
+        <Card className="shadow-sm border-blue-100 dark:border-blue-900">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <UserCheck className="h-5 w-5 text-blue-600" />
+              Designate School Principal
+            </CardTitle>
+            <CardDescription>
+              Choose which admin account is the official school principal. Their name and signature will appear on all report cards.
+              If no one is designated, the system falls back to the first admin with a signature on file.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {principalLoading ? (
+              <p className="text-sm text-muted-foreground">Loading admin accounts…</p>
+            ) : (principalData?.admins?.length ?? 0) === 0 ? (
+              <p className="text-sm text-muted-foreground">No admin accounts found. Create an admin user first.</p>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Principal</Label>
+                  <div className="flex gap-3 items-center">
+                    <Select
+                      value={selectedPrincipalId}
+                      onValueChange={setSelectedPrincipalId}
+                    >
+                      <SelectTrigger className="w-full max-w-xs" data-testid="select-principal">
+                        <SelectValue placeholder="— Select an admin —" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {principalData?.admins.map((admin) => (
+                          <SelectItem key={admin.id} value={admin.id} data-testid={`option-principal-${admin.id}`}>
+                            {admin.name || admin.username}
+                            <span className="ml-2 text-muted-foreground text-xs">(@{admin.username})</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      onClick={() => designatePrincipalMutation.mutate(selectedPrincipalId)}
+                      disabled={designatePrincipalMutation.isPending || selectedPrincipalId === (principalData?.designatedPrincipalId || "")}
+                      data-testid="button-save-principal"
+                    >
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      {designatePrincipalMutation.isPending ? "Saving…" : "Confirm"}
+                    </Button>
+                  </div>
+                </div>
+
+                {principalData?.designatedPrincipalId && (
+                  <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-950/30 rounded-md px-3 py-2">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span>
+                      Current principal:{" "}
+                      <span className="font-semibold">
+                        {principalData.admins.find(a => a.id === principalData.designatedPrincipalId)?.name ||
+                          principalData.admins.find(a => a.id === principalData.designatedPrincipalId)?.username ||
+                          "Unknown"}
+                      </span>
+                    </span>
+                  </div>
+                )}
+
+                {!principalData?.designatedPrincipalId && (
+                  <p className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 rounded-md px-3 py-2">
+                    No principal designated yet. The system will use the first admin with a saved signature.
+                  </p>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
