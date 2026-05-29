@@ -151,11 +151,23 @@ export default function SyllabusTopicsManager() {
       if (!r.ok) throw new Error('Failed to update visibility');
       return r.json();
     },
+    onMutate: async ({ id, isPublished }) => {
+      const key = ['/api/syllabus-topics', selectedClassId, selectedSubjectId, selectedTermId];
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData(key);
+      queryClient.setQueryData(key, (old: any[]) =>
+        (old ?? []).map((t: any) => t.id === id ? { ...t, isPublished } : t)
+      );
+      return { previous, key };
+    },
     onSuccess: (_, v) => {
       toast({ title: v.isPublished ? 'Published to students' : 'Hidden from students' });
-      invalidate();
     },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onError: (e: any, _, ctx: any) => {
+      if (ctx?.previous) queryClient.setQueryData(ctx.key, ctx.previous);
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    },
+    onSettled: () => invalidate(),
   });
 
   const deleteMutation = useMutation({
@@ -352,7 +364,6 @@ export default function SyllabusTopicsManager() {
                                 <Switch
                                   checked={!!topic.isPublished}
                                   onCheckedChange={(checked) => publishMutation.mutate({ id: topic.id, isPublished: checked })}
-                                  disabled={publishMutation.isPending}
                                   data-testid={`switch-publish-${topic.id}`}
                                 />
                                 <span className={`text-xs font-medium ${topic.isPublished ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
