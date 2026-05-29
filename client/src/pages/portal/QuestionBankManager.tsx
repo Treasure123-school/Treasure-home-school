@@ -1298,7 +1298,7 @@ export default function QuestionBankManager() {
       {/* ── Header ─────────────────────────────────────────── */}
       <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background border-b">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
                 <Database className="w-5 h-5 text-primary" />
@@ -1313,7 +1313,7 @@ export default function QuestionBankManager() {
               </div>
             </div>
             {isAdminRole && (
-              <Button onClick={() => setCreateBankOpen(true)} data-testid="btn-create-bank" className="flex-shrink-0">
+              <Button onClick={() => setCreateBankOpen(true)} data-testid="btn-create-bank" className="w-full sm:w-auto sm:flex-shrink-0">
                 <Plus className="w-4 h-4 mr-1.5" /> New Bank
               </Button>
             )}
