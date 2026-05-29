@@ -228,9 +228,11 @@ router.get('/api/question-bank/items', authenticateUser, authorizeRoles(...STAFF
         const user    = req.user!;
 
         // bankId is required unless teacher is fetching their own questions
-        if (!myOnly && !bankId)  return sendBadRequest(res, 'bankId is required');
-        if (!classId) return sendBadRequest(res, 'classId is required');
-        if (!termId)  return sendBadRequest(res, 'termId is required');
+        if (!myOnly && !bankId) return sendBadRequest(res, 'bankId is required');
+        if (!classId)           return sendBadRequest(res, 'classId is required');
+        // termId is required for myOnly path (no bankId to scope the query)
+        // when bankId is present, termId is optional — the bank already implies its term
+        if (myOnly && !termId)  return sendBadRequest(res, 'termId is required for my questions view');
 
         const page     = clamp(parseInt((req.query.page as string) || '1', 10) || 1, 1, 9999);
         const pageSize = clamp(parseInt((req.query.pageSize as string) || '20', 10) || 20, 1, 100);
