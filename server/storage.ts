@@ -245,11 +245,19 @@ export interface IStorage {
   getQuestionBankItemsFiltered(filters: { bankId?: number; classId?: number; subjectId?: number; termId?: number; topicId?: number; difficulty?: string; questionType?: string; status?: string; createdBy?: string; statuses?: string[] }): Promise<QuestionBankItem[]>;
   generateQuestionsFromBank(criteria: { bankId?: number; classId?: number; subjectId?: number; termId?: number; distribution: Array<{ topicId?: number; difficulty?: string; count: number }> }): Promise<{ questions: QuestionBankItem[]; shortfalls: string[] }>;
 
+  // Paginated question bank query (used by API routes — requires bankId)
+  getQuestionBankItemsPaginated(filters: {
+    bankId: number; classId?: number; termId?: number; topicId?: number;
+    difficulty?: string; questionType?: string; status?: string;
+    createdBy?: string; statuses?: string[];
+    page: number; pageSize: number;
+  }): Promise<{ items: QuestionBankItem[]; total: number; page: number; pageSize: number; totalPages: number }>;
+
   // Approval Workflow
   approveQuestionBankItem(id: number, approvedBy: string): Promise<QuestionBankItem | undefined>;
   rejectQuestionBankItem(id: number, rejectedBy: string, reason: string): Promise<QuestionBankItem | undefined>;
   publishQuestionBankItem(id: number): Promise<QuestionBankItem | undefined>;
-  getPendingQuestionBankItems(filters?: { subjectId?: number; classId?: number; createdBy?: string }): Promise<QuestionBankItem[]>;
+  getPendingQuestionBankItems(filters?: { subjectId?: number; classId?: number; createdBy?: string; page?: number; pageSize?: number }): Promise<{ items: QuestionBankItem[]; total: number; totalPages: number }>;
 
   // Exam-Question Bank Links
   createExamQuestionBankLink(link: InsertExamQuestionBankLink): Promise<ExamQuestionBankLink>;
@@ -3315,6 +3323,49 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(schema.questionBankItems.createdAt));
   }
 
+  async getQuestionBankItemsPaginated(filters: {
+    bankId: number; classId?: number; termId?: number; topicId?: number;
+    difficulty?: string; questionType?: string; status?: string;
+    createdBy?: string; statuses?: string[];
+    page: number; pageSize: number;
+  }): Promise<{ items: QuestionBankItem[]; total: number; page: number; pageSize: number; totalPages: number }> {
+    const conditions: any[] = [eq(schema.questionBankItems.bankId, filters.bankId)];
+    if (filters.classId) conditions.push(eq(schema.questionBankItems.classId, filters.classId));
+    if (filters.termId) conditions.push(eq(schema.questionBankItems.termId, filters.termId));
+    if (filters.topicId) conditions.push(eq(schema.questionBankItems.topicId, filters.topicId));
+    if (filters.difficulty) conditions.push(eq(schema.questionBankItems.difficulty, filters.difficulty));
+    if (filters.questionType) conditions.push(eq(schema.questionBankItems.questionType, filters.questionType));
+    if (filters.createdBy) conditions.push(eq(schema.questionBankItems.createdBy, filters.createdBy));
+    if (filters.statuses && filters.statuses.length > 0) {
+      conditions.push(inArray(schema.questionBankItems.status, filters.statuses));
+    } else if (filters.status) {
+      conditions.push(eq(schema.questionBankItems.status, filters.status));
+    }
+
+    const whereClause = and(...conditions);
+    const offset = (filters.page - 1) * filters.pageSize;
+
+    const [countResult, items] = await Promise.all([
+      db.select({ count: sql<number>`cast(count(*) as int)` })
+        .from(schema.questionBankItems)
+        .where(whereClause),
+      db.select().from(schema.questionBankItems)
+        .where(whereClause)
+        .orderBy(desc(schema.questionBankItems.createdAt))
+        .limit(filters.pageSize)
+        .offset(offset),
+    ]);
+
+    const total = countResult[0]?.count ?? 0;
+    return {
+      items,
+      total,
+      page: filters.page,
+      pageSize: filters.pageSize,
+      totalPages: Math.ceil(total / filters.pageSize),
+    };
+  }
+
   async approveQuestionBankItem(id: number, approvedBy: string): Promise<QuestionBankItem | undefined> {
     const result = await db.update(schema.questionBankItems)
       .set({ status: 'approved', approvedBy, approvedAt: new Date(), rejectionReason: null, updatedAt: new Date() })
@@ -3339,7 +3390,7 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async getPendingQuestionBankItems(filters?: { subjectId?: number; classId?: number; createdBy?: string }): Promise<QuestionBankItem[]> {
+  async getPendingQuestionBankItems(filters?: { subjectId?: number; classId?: number; createdBy?: string; page?: number; pageSize?: number }): Promise<{ items: QuestionBankItem[]; total: number; totalPages: number }> {
     const conditions: any[] = [eq(schema.questionBankItems.status, 'submitted')];
     if (filters?.classId) conditions.push(eq(schema.questionBankItems.classId, filters.classId));
     if (filters?.createdBy) conditions.push(eq(schema.questionBankItems.createdBy, filters.createdBy));
@@ -3350,12 +3401,26 @@ export class DatabaseStorage implements IStorage {
       if (bankIds.length > 0) {
         conditions.push(inArray(schema.questionBankItems.bankId, bankIds.map((b: { id: number }) => b.id)));
       } else {
-        return [];
+        return { items: [], total: 0, totalPages: 0 };
       }
     }
-    return await db.select().from(schema.questionBankItems)
-      .where(and(...conditions))
-      .orderBy(asc(schema.questionBankItems.createdAt));
+
+    const whereClause = and(...conditions);
+    const page = filters?.page ?? 1;
+    const pageSize = filters?.pageSize ?? 25;
+    const offset = (page - 1) * pageSize;
+
+    const [countResult, items] = await Promise.all([
+      db.select({ count: sql<number>`cast(count(*) as int)` })
+        .from(schema.questionBankItems).where(whereClause),
+      db.select().from(schema.questionBankItems)
+        .where(whereClause)
+        .orderBy(asc(schema.questionBankItems.createdAt))
+        .limit(pageSize).offset(offset),
+    ]);
+
+    const total = countResult[0]?.count ?? 0;
+    return { items, total, totalPages: Math.ceil(total / pageSize) };
   }
 
   // Smart random generation: Pull questions based on distribution criteria
