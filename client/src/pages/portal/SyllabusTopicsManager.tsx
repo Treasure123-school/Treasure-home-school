@@ -115,14 +115,40 @@ export default function SyllabusTopicsManager() {
     queryClient.invalidateQueries({ queryKey: ['/api/syllabus-topics'] });
   };
 
+  const topicsKey = () => ['/api/syllabus-topics', selectedClassId, selectedSubjectId, selectedTermId];
+
   const createMutation = useMutation({
     mutationFn: async (data: any) => {
       const r = await apiRequest('POST', '/api/syllabus-topics', data);
       if (!r.ok) { const e = await r.json(); throw new Error(e.error || e.message || 'Failed'); }
       return r.json();
     },
-    onSuccess: () => { toast({ title: 'Topic created' }); invalidate(); resetForm(); },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onMutate: async (data: any) => {
+      const key = topicsKey();
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData(key);
+      const tempId = `_temp_${Date.now()}`;
+      const optimistic = {
+        id: tempId, name: data.name, description: data.description || null,
+        orderNumber: data.orderNumber || 0, isPublished: false, _optimistic: true,
+      };
+      queryClient.setQueryData(key, (old: any[]) => [...(old ?? []), optimistic]);
+      return { previous, key };
+    },
+    onSuccess: (created, _vars, ctx: any) => {
+      // Replace temp item with real server item
+      queryClient.setQueryData(ctx.key, (old: any[]) =>
+        (old ?? []).map((t: any) => t._optimistic ? created : t)
+      );
+      toast({ title: 'Topic created' });
+      resetForm();
+      // Background sync to ensure consistency
+      queryClient.invalidateQueries({ queryKey: ['/api/syllabus-topics/stats'] });
+    },
+    onError: (e: any, _vars, ctx: any) => {
+      if (ctx?.previous) queryClient.setQueryData(ctx.key, ctx.previous);
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    },
   });
 
   const bulkMutation = useMutation({
@@ -131,8 +157,29 @@ export default function SyllabusTopicsManager() {
       if (!r.ok) { const e = await r.json(); throw new Error(e.error || e.message || 'Failed'); }
       return r.json();
     },
-    onSuccess: (res) => { toast({ title: `${res.created} topics created` }); invalidate(); resetForm(); },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onMutate: async (data: any) => {
+      const key = topicsKey();
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData(key);
+      const names: string[] = data.topics ?? [];
+      const optimisticItems = names.map((name, i) => ({
+        id: `_temp_${Date.now()}_${i}`, name, description: null,
+        orderNumber: i, isPublished: false, _optimistic: true,
+      }));
+      queryClient.setQueryData(key, (old: any[]) => [...(old ?? []), ...optimisticItems]);
+      return { previous, key };
+    },
+    onSuccess: (_res, _vars, ctx: any) => {
+      // Refetch to get real items (bulk response doesn't return full objects)
+      queryClient.invalidateQueries({ queryKey: ctx.key });
+      queryClient.invalidateQueries({ queryKey: ['/api/syllabus-topics/stats'] });
+      toast({ title: `${_res.created} topics created` });
+      resetForm();
+    },
+    onError: (e: any, _vars, ctx: any) => {
+      if (ctx?.previous) queryClient.setQueryData(ctx.key, ctx.previous);
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    },
   });
 
   const updateMutation = useMutation({
@@ -141,8 +188,26 @@ export default function SyllabusTopicsManager() {
       if (!r.ok) throw new Error('Failed to update');
       return r.json();
     },
-    onSuccess: () => { toast({ title: 'Topic updated' }); invalidate(); resetForm(); },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onMutate: async ({ id, data }) => {
+      const key = topicsKey();
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData(key);
+      queryClient.setQueryData(key, (old: any[]) =>
+        (old ?? []).map((t: any) => t.id === id ? { ...t, ...data } : t)
+      );
+      return { previous, key };
+    },
+    onSuccess: (updated, vars, ctx: any) => {
+      queryClient.setQueryData(ctx.key, (old: any[]) =>
+        (old ?? []).map((t: any) => t.id === vars.id ? { ...t, ...updated } : t)
+      );
+      toast({ title: 'Topic updated' });
+      resetForm();
+    },
+    onError: (e: any, _vars, ctx: any) => {
+      if (ctx?.previous) queryClient.setQueryData(ctx.key, ctx.previous);
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    },
   });
 
   const publishMutation = useMutation({
@@ -180,8 +245,22 @@ export default function SyllabusTopicsManager() {
       if (!r.ok) throw new Error('Failed to delete');
       return r.json();
     },
-    onSuccess: () => { toast({ title: 'Topic deleted' }); invalidate(); setTopicToDelete(null); },
-    onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
+    onMutate: async (id: number) => {
+      const key = topicsKey();
+      await queryClient.cancelQueries({ queryKey: key });
+      const previous = queryClient.getQueryData(key);
+      queryClient.setQueryData(key, (old: any[]) => (old ?? []).filter((t: any) => t.id !== id));
+      return { previous, key };
+    },
+    onSuccess: (_res, _id, ctx: any) => {
+      toast({ title: 'Topic deleted' });
+      setTopicToDelete(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/syllabus-topics/stats'] });
+    },
+    onError: (e: any, _id, ctx: any) => {
+      if (ctx?.previous) queryClient.setQueryData(ctx.key, ctx.previous);
+      toast({ title: 'Error', description: e.message, variant: 'destructive' });
+    },
   });
 
   const handleSubmit = () => {

@@ -416,15 +416,71 @@ function QuestionFormDialog({
   );
 
   const mutation = useMutation({
-    mutationFn: (data: any) => isEdit
-      ? apiRequest("PUT",  `/api/question-bank/items/${editItem.id}`, data)
-      : apiRequest("POST", `/api/question-bank/items`, data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
+    mutationFn: async (data: any) => {
+      const res = isEdit
+        ? await apiRequest("PUT",  `/api/question-bank/items/${editItem.id}`, data)
+        : await apiRequest("POST", `/api/question-bank/items`, data);
+      if (!res.ok) {
+        let msg = "Failed to save question";
+        try { const b = await res.json(); msg = b.message || msg; } catch { /* ignore */ }
+        throw new Error(msg);
+      }
+      return res.json();
+    },
+    onMutate: async (data: any) => {
+      await qc.cancelQueries({ queryKey: ["/api/question-bank/items"] });
+      const snapshot = qc.getQueriesData({ queryKey: ["/api/question-bank/items"] });
+
+      if (isEdit) {
+        // Optimistically update the edited item in all cached pages
+        qc.setQueriesData({ queryKey: ["/api/question-bank/items"] }, (old: any) => {
+          if (!old?.items) return old;
+          return { ...old, items: old.items.map((it: any) =>
+            it.id === editItem.id ? { ...it, ...data } : it
+          )};
+        });
+      } else {
+        // Optimistically prepend a temporary new question on the first cached page
+        const tempItem = {
+          id: `_temp_${Date.now()}`,
+          ...data,
+          status: "draft",
+          createdAt: new Date().toISOString(),
+          _optimistic: true,
+        };
+        qc.setQueriesData({ queryKey: ["/api/question-bank/items"] }, (old: any) => {
+          if (!old) return old;
+          return { ...old, items: [tempItem, ...(old.items ?? [])], total: (old.total ?? 0) + 1 };
+        });
+      }
+      return { snapshot };
+    },
+    onSuccess: (savedItem: any) => {
+      // Replace temp / stale item with confirmed server data
+      qc.setQueriesData({ queryKey: ["/api/question-bank/items"] }, (old: any) => {
+        if (!old?.items) return old;
+        if (isEdit) {
+          return { ...old, items: old.items.map((it: any) =>
+            it.id === editItem.id ? { ...it, ...savedItem } : it
+          )};
+        }
+        return { ...old, items: old.items.map((it: any) =>
+          it._optimistic ? savedItem : it
+        )};
+      });
       toast({ title: isEdit ? "Question updated" : "Question created" });
       onClose();
+      // Background sync for stats and full consistency
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: any, _vars, context: any) => {
+      // Roll back to pre-mutation state
+      if (context?.snapshot) {
+        context.snapshot.forEach(([key, data]: [any, any]) => qc.setQueryData(key, data));
+      }
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
   });
 
   const handleSave = () => {
