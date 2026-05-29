@@ -22,8 +22,12 @@ import {
   BookOpen, Clock, AlertTriangle, ChevronLeft, ChevronRight,
   Filter, Eye, EyeOff, Globe, Layers, Info,
   Search, ListChecks, BarChart3, Database, FileQuestion,
-  ChevronDown, ChevronUp, Check, GraduationCap,
+  ChevronDown, ChevronUp, Check, GraduationCap, MoreVertical,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // ─────────────────────────────────────────────────────────────
 //  Constants
@@ -656,11 +660,97 @@ function QuestionCard({
     >
       <div className="p-4 space-y-3">
         {/* Header row */}
-        <div className="flex items-start gap-3 justify-between">
+        <div className="flex items-start gap-2 justify-between">
           <p className="text-sm font-medium leading-snug flex-1 text-foreground">
             {item.questionText}
           </p>
-          <StatusBadge status={item.status} />
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <StatusBadge status={item.status} />
+            {(canEditDelete || canSubmit || canWithdraw || canApproveReject || canPublish || canUnpublish) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost" size="icon"
+                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                    disabled={anyPending}
+                    data-testid={`btn-actions-${item.id}`}
+                  >
+                    {anyPending
+                      ? <RotateCcw className="w-3.5 h-3.5 animate-spin" />
+                      : <MoreVertical className="w-3.5 h-3.5" />}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  {canEditDelete && (
+                    <>
+                      <DropdownMenuItem onClick={onEdit} data-testid={`btn-edit-${item.id}`}>
+                        <Edit className="w-3.5 h-3.5 mr-2" /> Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={onDelete}
+                        className="text-destructive focus:text-destructive"
+                        data-testid={`btn-delete-${item.id}`}
+                      >
+                        <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {canEditDelete && (canSubmit || canWithdraw || canApproveReject || canPublish || canUnpublish) && (
+                    <DropdownMenuSeparator />
+                  )}
+                  {canSubmit && (
+                    <DropdownMenuItem onClick={() => onWorkflow("submit", item)} data-testid={`btn-submit-${item.id}`}>
+                      <Send className="w-3.5 h-3.5 mr-2" /> Submit for Review
+                    </DropdownMenuItem>
+                  )}
+                  {canWithdraw && (
+                    <DropdownMenuItem onClick={() => onWorkflow("withdraw", item)} data-testid={`btn-withdraw-${item.id}`}>
+                      <RotateCcw className="w-3.5 h-3.5 mr-2" /> Withdraw
+                    </DropdownMenuItem>
+                  )}
+                  {canApproveReject && (
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => onWorkflow("approve", item)}
+                        className="text-emerald-600 focus:text-emerald-700"
+                        data-testid={`btn-approve-${item.id}`}
+                      >
+                        <CheckCircle className="w-3.5 h-3.5 mr-2" /> Approve
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => onWorkflow("reject", item)}
+                        className="text-destructive focus:text-destructive"
+                        data-testid={`btn-reject-${item.id}`}
+                      >
+                        <XCircle className="w-3.5 h-3.5 mr-2" /> Reject
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {(canPublish || canUnpublish) && (canEditDelete || canSubmit || canWithdraw || canApproveReject) && (
+                    <DropdownMenuSeparator />
+                  )}
+                  {canPublish && (
+                    <DropdownMenuItem
+                      onClick={() => onWorkflow("publish", item)}
+                      className="text-purple-600 focus:text-purple-700"
+                      data-testid={`btn-publish-${item.id}`}
+                    >
+                      <Globe className="w-3.5 h-3.5 mr-2" /> Publish
+                    </DropdownMenuItem>
+                  )}
+                  {canUnpublish && (
+                    <DropdownMenuItem
+                      onClick={() => onWorkflow("unpublish", item)}
+                      className="text-purple-600 focus:text-purple-700"
+                      data-testid={`btn-unpublish-${item.id}`}
+                    >
+                      <Globe className="w-3.5 h-3.5 mr-2" /> Unpublish
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </div>
 
         {/* Meta row */}
@@ -717,96 +807,6 @@ function QuestionCard({
           </div>
         )}
 
-        {/* Actions */}
-        {(canEditDelete || canSubmit || canWithdraw || canApproveReject || canPublish || canUnpublish) && (
-          <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border/50">
-            {canEditDelete && (
-              <>
-                <Button
-                  size="sm" variant="outline" className="h-7 text-xs px-2.5"
-                  onClick={onEdit} disabled={anyPending} data-testid={`btn-edit-${item.id}`}
-                >
-                  <Edit className="w-3 h-3 mr-1" /> Edit
-                </Button>
-                <Button
-                  size="sm" variant="outline"
-                  className="h-7 text-xs px-2.5 text-destructive border-destructive/30 hover:bg-destructive/5"
-                  onClick={onDelete} disabled={anyPending} data-testid={`btn-delete-${item.id}`}
-                >
-                  <Trash2 className="w-3 h-3 mr-1" /> Delete
-                </Button>
-              </>
-            )}
-            {canSubmit && (
-              <Button
-                size="sm" className="h-7 text-xs px-2.5"
-                onClick={() => onWorkflow("submit", item)}
-                disabled={anyPending}
-                data-testid={`btn-submit-${item.id}`}
-              >
-                {isThisPending("submit") ? <><RotateCcw className="w-3 h-3 mr-1 animate-spin" /> Submitting…</> : <><Send className="w-3 h-3 mr-1" /> Submit for Review</>}
-              </Button>
-            )}
-            {canWithdraw && (
-              <Button
-                size="sm" variant="outline" className="h-7 text-xs px-2.5"
-                onClick={() => onWorkflow("withdraw", item)}
-                disabled={anyPending}
-                data-testid={`btn-withdraw-${item.id}`}
-              >
-                {isThisPending("withdraw") ? <><RotateCcw className="w-3 h-3 mr-1 animate-spin" /> Withdrawing…</> : <><RotateCcw className="w-3 h-3 mr-1" /> Withdraw</>}
-              </Button>
-            )}
-            {canApproveReject && (
-              <>
-                <Button
-                  size="sm" variant="outline"
-                  className="h-7 text-xs px-2.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
-                  onClick={() => onWorkflow("approve", item)}
-                  disabled={anyPending}
-                  data-testid={`btn-approve-${item.id}`}
-                >
-                  {isThisPending("approve") ? <><RotateCcw className="w-3 h-3 mr-1 animate-spin" /> Approving…</> : <><CheckCircle className="w-3 h-3 mr-1" /> Approve</>}
-                </Button>
-                <Button
-                  size="sm" variant="outline"
-                  className="h-7 text-xs px-2.5 text-destructive border-destructive/30 hover:bg-destructive/5"
-                  onClick={() => onWorkflow("reject", item)}
-                  disabled={anyPending}
-                  data-testid={`btn-reject-${item.id}`}
-                >
-                  {isThisPending("reject") ? <><RotateCcw className="w-3 h-3 mr-1 animate-spin" /> Rejecting…</> : <><XCircle className="w-3 h-3 mr-1" /> Reject</>}
-                </Button>
-              </>
-            )}
-            {canPublish && (
-              <Button
-                size="sm"
-                className="h-7 text-xs px-2.5 bg-purple-600 hover:bg-purple-700 text-white"
-                onClick={() => onWorkflow("publish", item)}
-                disabled={anyPending}
-                data-testid={`btn-publish-${item.id}`}
-              >
-                {isThisPending("publish")
-                  ? <><RotateCcw className="w-3 h-3 mr-1 animate-spin" /> Publishing…</>
-                  : <><Globe className="w-3 h-3 mr-1" /> Publish</>}
-              </Button>
-            )}
-            {canUnpublish && (
-              <Button
-                size="sm" variant="outline"
-                className="h-7 text-xs px-2.5 text-purple-700 border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20"
-                onClick={() => onWorkflow("unpublish", item)}
-                disabled={anyPending}
-                data-testid={`btn-unpublish-${item.id}`}
-              >
-                {isThisPending("unpublish")
-                  ? <><RotateCcw className="w-3 h-3 mr-1 animate-spin" /> Unpublishing…</>
-                  : <><Globe className="w-3 h-3 mr-1" /> Unpublish</>}
-              </Button>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -1212,39 +1212,45 @@ export default function QuestionBankManager() {
   // ── Mutations
   const workflowMutation = useMutation({
     mutationFn: ({ action, id, reason }: { action: string; id: number; reason?: string }) =>
-      apiRequest("POST", `/api/question-bank/items/${id}/${action}`, reason ? { reason } : undefined),
+      apiRequest("POST", `/api/question-bank/items/${id}/${action}`, reason ? { reason } : undefined)
+        .then(r => r.json()),
 
     onMutate: async ({ action, id }) => {
       const newStatus = ACTION_STATUS[action];
       if (!newStatus) return;
-      // Cancel any in-flight fetches so they don't overwrite the optimistic update
       await qc.cancelQueries({ queryKey: ["/api/question-bank/items"] });
-      // Snapshot existing data for rollback
       const snapshot = qc.getQueriesData({ queryKey: ["/api/question-bank/items"] });
-      // Optimistically patch the item in every cached query
       qc.setQueriesData({ queryKey: ["/api/question-bank/items"] }, (old: any) => {
         if (!old?.items) return old;
-        return { ...old, items: old.items.map((item: any) =>
-          item.id === id ? { ...item, status: newStatus } : item
+        return { ...old, items: old.items.map((it: any) =>
+          it.id === id ? { ...it, status: newStatus } : it
         )};
       });
       return { snapshot };
     },
 
     onError: (e: any, _vars, context: any) => {
-      // Roll back optimistic update
       if (context?.snapshot) {
         context.snapshot.forEach(([key, data]: [any, any]) => qc.setQueryData(key, data));
       }
       toast({ title: "Action failed", description: e.message, variant: "destructive" });
     },
 
-    onSuccess: (_d, vars) => {
+    onSuccess: (serverItem: any, vars) => {
+      // Stamp server-confirmed item into cache so the subsequent invalidation
+      // refetch never briefly shows stale data (eliminates the unpublish flicker).
+      if (serverItem?.id) {
+        qc.setQueriesData({ queryKey: ["/api/question-bank/items"] }, (old: any) => {
+          if (!old?.items) return old;
+          return { ...old, items: old.items.map((it: any) =>
+            it.id === serverItem.id ? { ...it, ...serverItem } : it
+          )};
+        });
+      }
       toast({ title: ACTION_LABEL[vars.action] ?? "Action complete" });
     },
 
     onSettled: () => {
-      // Always re-sync from server after any outcome
       qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
       qc.invalidateQueries({ queryKey: ["/api/question-bank/pending"] });
       qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
