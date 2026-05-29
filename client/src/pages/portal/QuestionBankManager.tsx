@@ -463,8 +463,8 @@ function QuestionFormDialog({
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-foreground/70">Question Bank</Label>
               <Select
-                value={String(form.bankId || "")}
-                onValueChange={(v) => setForm((p: any) => ({ ...p, bankId: v ? Number(v) : undefined }))}
+                value={form.bankId ? String(form.bankId) : "_none"}
+                onValueChange={(v) => setForm((p: any) => ({ ...p, bankId: v === "_none" ? undefined : Number(v) }))}
                 disabled={banks.length === 0}
               >
                 <SelectTrigger data-testid="form-select-bank" className="h-9">
@@ -477,7 +477,7 @@ function QuestionFormDialog({
                     </div>
                   ) : (
                     <>
-                      <SelectItem value="">
+                      <SelectItem value="_none">
                         <span className="text-muted-foreground">— Select bank —</span>
                       </SelectItem>
                       {banks.map((b: any) => (
