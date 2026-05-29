@@ -1081,8 +1081,9 @@ export default function QuestionBankManager() {
   const { data: allClasses = [] } = useQuery<any[]>({ queryKey: ["/api/classes"] });
 
   // ── Workflow dialogs
-  const [rejectTarget, setRejectTarget] = useState<any>(null);
-  const [rejectReason, setRejectReason] = useState("");
+  const [rejectTarget,    setRejectTarget]    = useState<any>(null);
+  const [rejectReason,    setRejectReason]    = useState("");
+  const [deleteBankTarget, setDeleteBankTarget] = useState<any>(null);
 
   // ── Context change handlers
   const handleBrowseCtxChange = useCallback((v: ContextFilters) => {
@@ -1135,12 +1136,26 @@ export default function QuestionBankManager() {
     mutationFn: (data: any) => apiRequest("POST", `/api/question-banks`, data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/question-banks"] });
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
       toast({ title: "Question bank created successfully" });
       setCreateBankOpen(false);
       setNewBankName(""); setNewBankDesc(""); setBankSubjectId("");
       setBankClassId(""); setBankTermId("");
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const deleteBankMutation = useMutation({
+    mutationFn: (id: number) => apiRequest("DELETE", `/api/question-banks/${id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["/api/question-banks"] });
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
+      toast({ title: "Bank deleted", description: "The question bank and all its questions have been removed." });
+      setDeleteBankTarget(null);
+      setBrowseCtx(prev => ({ ...prev, bankId: undefined }));
+    },
+    onError: (e: any) => toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
   });
 
   const handleWorkflow = (action: string, item: any) => {
@@ -1340,6 +1355,28 @@ export default function QuestionBankManager() {
               </div>
             ) : (
               <Card className="shadow-sm">
+                {isAdminRole && (
+                  <CardHeader className="pb-2 pt-4 px-5 border-b flex-row items-center justify-between space-y-0">
+                    <div className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded bg-primary/10 flex items-center justify-center">
+                        <Database className="w-3 h-3 text-primary" />
+                      </div>
+                      <span className="text-sm font-semibold">
+                        {(browseBanks as any[]).find((b: any) => b.id === browseCtx.bankId)?.name ?? "Selected Bank"}
+                      </span>
+                    </div>
+                    <Button
+                      size="sm" variant="outline"
+                      className="h-7 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+                      onClick={() => setDeleteBankTarget(
+                        (browseBanks as any[]).find((b: any) => b.id === browseCtx.bankId)
+                      )}
+                      data-testid="btn-delete-bank"
+                    >
+                      <Trash2 className="w-3 h-3 mr-1" /> Delete Bank
+                    </Button>
+                  </CardHeader>
+                )}
                 <CardContent className="p-5">
                   <QuestionList
                     paramObj={browseParams}
@@ -1611,6 +1648,35 @@ export default function QuestionBankManager() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* ── Delete Bank Confirm ─────────────────────────── */}
+      <AlertDialog open={!!deleteBankTarget} onOpenChange={(v) => !v && setDeleteBankTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Trash2 className="w-4 h-4" /> Delete Question Bank
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                Are you sure you want to delete <strong>"{deleteBankTarget?.name}"</strong>?
+              </span>
+              <span className="block text-destructive font-medium">
+                This will permanently remove the bank and ALL questions inside it. This cannot be undone.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              onClick={() => deleteBankTarget && deleteBankMutation.mutate(deleteBankTarget.id)}
+              data-testid="btn-confirm-delete-bank"
+            >
+              {deleteBankMutation.isPending ? "Deleting…" : "Delete Bank"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
