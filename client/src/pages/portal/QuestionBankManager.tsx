@@ -623,7 +623,7 @@ function QuestionFormDialog({
 // ─────────────────────────────────────────────────────────────
 
 function QuestionCard({
-  item, isAdmin, isOwner, onEdit, onDelete, onWorkflow,
+  item, isAdmin, isOwner, onEdit, onDelete, onWorkflow, pendingId, pendingAction,
 }: {
   item: any;
   isAdmin: boolean;
@@ -631,7 +631,11 @@ function QuestionCard({
   onEdit?:   () => void;
   onDelete?: () => void;
   onWorkflow: (action: string, item: any) => void;
+  pendingId?:     number;
+  pendingAction?: string;
 }) {
+  const isThisPending = (action: string) => pendingId === item.id && pendingAction === action;
+  const anyPending    = pendingId === item.id;
   const [optionsOpen, setOptionsOpen] = useState(false);
 
   const canEditDelete =
@@ -719,14 +723,14 @@ function QuestionCard({
               <>
                 <Button
                   size="sm" variant="outline" className="h-7 text-xs px-2.5"
-                  onClick={onEdit} data-testid={`btn-edit-${item.id}`}
+                  onClick={onEdit} disabled={anyPending} data-testid={`btn-edit-${item.id}`}
                 >
                   <Edit className="w-3 h-3 mr-1" /> Edit
                 </Button>
                 <Button
                   size="sm" variant="outline"
                   className="h-7 text-xs px-2.5 text-destructive border-destructive/30 hover:bg-destructive/5"
-                  onClick={onDelete} data-testid={`btn-delete-${item.id}`}
+                  onClick={onDelete} disabled={anyPending} data-testid={`btn-delete-${item.id}`}
                 >
                   <Trash2 className="w-3 h-3 mr-1" /> Delete
                 </Button>
@@ -736,18 +740,20 @@ function QuestionCard({
               <Button
                 size="sm" className="h-7 text-xs px-2.5"
                 onClick={() => onWorkflow("submit", item)}
+                disabled={anyPending}
                 data-testid={`btn-submit-${item.id}`}
               >
-                <Send className="w-3 h-3 mr-1" /> Submit for Review
+                {isThisPending("submit") ? <><RotateCcw className="w-3 h-3 mr-1 animate-spin" /> Submitting…</> : <><Send className="w-3 h-3 mr-1" /> Submit for Review</>}
               </Button>
             )}
             {canWithdraw && (
               <Button
                 size="sm" variant="outline" className="h-7 text-xs px-2.5"
                 onClick={() => onWorkflow("withdraw", item)}
+                disabled={anyPending}
                 data-testid={`btn-withdraw-${item.id}`}
               >
-                <RotateCcw className="w-3 h-3 mr-1" /> Withdraw
+                {isThisPending("withdraw") ? <><RotateCcw className="w-3 h-3 mr-1 animate-spin" /> Withdrawing…</> : <><RotateCcw className="w-3 h-3 mr-1" /> Withdraw</>}
               </Button>
             )}
             {canApproveReject && (
@@ -756,17 +762,19 @@ function QuestionCard({
                   size="sm" variant="outline"
                   className="h-7 text-xs px-2.5 text-emerald-700 border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20"
                   onClick={() => onWorkflow("approve", item)}
+                  disabled={anyPending}
                   data-testid={`btn-approve-${item.id}`}
                 >
-                  <CheckCircle className="w-3 h-3 mr-1" /> Approve
+                  {isThisPending("approve") ? <><RotateCcw className="w-3 h-3 mr-1 animate-spin" /> Approving…</> : <><CheckCircle className="w-3 h-3 mr-1" /> Approve</>}
                 </Button>
                 <Button
                   size="sm" variant="outline"
                   className="h-7 text-xs px-2.5 text-destructive border-destructive/30 hover:bg-destructive/5"
                   onClick={() => onWorkflow("reject", item)}
+                  disabled={anyPending}
                   data-testid={`btn-reject-${item.id}`}
                 >
-                  <XCircle className="w-3 h-3 mr-1" /> Reject
+                  {isThisPending("reject") ? <><RotateCcw className="w-3 h-3 mr-1 animate-spin" /> Rejecting…</> : <><XCircle className="w-3 h-3 mr-1" /> Reject</>}
                 </Button>
               </>
             )}
@@ -775,9 +783,12 @@ function QuestionCard({
                 size="sm"
                 className="h-7 text-xs px-2.5 bg-purple-600 hover:bg-purple-700 text-white"
                 onClick={() => onWorkflow("publish", item)}
+                disabled={anyPending}
                 data-testid={`btn-publish-${item.id}`}
               >
-                <Globe className="w-3 h-3 mr-1" /> Publish
+                {isThisPending("publish")
+                  ? <><RotateCcw className="w-3 h-3 mr-1 animate-spin" /> Publishing…</>
+                  : <><Globe className="w-3 h-3 mr-1" /> Publish</>}
               </Button>
             )}
           </div>
@@ -793,6 +804,7 @@ function QuestionCard({
 
 function QuestionList({
   paramObj, isAdmin, userId, banks, context, page, onPageChange, onWorkflow,
+  pendingId, pendingAction,
 }: {
   paramObj:     Record<string, string>;
   isAdmin:      boolean;
@@ -802,6 +814,8 @@ function QuestionList({
   page:         number;
   onPageChange: (p: number) => void;
   onWorkflow:   (action: string, item: any) => void;
+  pendingId?:     number;
+  pendingAction?: string;
 }) {
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -914,6 +928,8 @@ function QuestionList({
               onEdit={() => { setEditItem(item); setFormOpen(true); }}
               onDelete={() => setDeleteTarget(item)}
               onWorkflow={onWorkflow}
+              pendingId={pendingId}
+              pendingAction={pendingAction}
             />
           ))}
         </div>
@@ -1167,21 +1183,58 @@ export default function QuestionBankManager() {
     ...(myStatus ? { status: myStatus } : {}),
   } : {};
 
+  // ── Status map for optimistic updates
+  const ACTION_STATUS: Record<string, string> = {
+    submit: "submitted", withdraw: "draft", approve: "approved",
+    reject: "rejected",  publish: "published",
+  };
+
+  const ACTION_LABEL: Record<string, string> = {
+    submit: "Submitted for review", withdraw: "Withdrawn to draft",
+    approve: "Question approved",   reject: "Question rejected",
+    publish: "Question published",
+  };
+
   // ── Mutations
   const workflowMutation = useMutation({
     mutationFn: ({ action, id, reason }: { action: string; id: number; reason?: string }) =>
       apiRequest("POST", `/api/question-bank/items/${id}/${action}`, reason ? { reason } : undefined),
+
+    onMutate: async ({ action, id }) => {
+      const newStatus = ACTION_STATUS[action];
+      if (!newStatus) return;
+      // Cancel any in-flight fetches so they don't overwrite the optimistic update
+      await qc.cancelQueries({ queryKey: ["/api/question-bank/items"] });
+      // Snapshot existing data for rollback
+      const snapshot = qc.getQueriesData({ queryKey: ["/api/question-bank/items"] });
+      // Optimistically patch the item in every cached query
+      qc.setQueriesData({ queryKey: ["/api/question-bank/items"] }, (old: any) => {
+        if (!old?.items) return old;
+        return { ...old, items: old.items.map((item: any) =>
+          item.id === id ? { ...item, status: newStatus } : item
+        )};
+      });
+      return { snapshot };
+    },
+
+    onError: (e: any, _vars, context: any) => {
+      // Roll back optimistic update
+      if (context?.snapshot) {
+        context.snapshot.forEach(([key, data]: [any, any]) => qc.setQueryData(key, data));
+      }
+      toast({ title: "Action failed", description: e.message, variant: "destructive" });
+    },
+
     onSuccess: (_d, vars) => {
+      toast({ title: ACTION_LABEL[vars.action] ?? "Action complete" });
+    },
+
+    onSettled: () => {
+      // Always re-sync from server after any outcome
       qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
       qc.invalidateQueries({ queryKey: ["/api/question-bank/pending"] });
-      const labels: Record<string, string> = {
-        submit: "Submitted for review", withdraw: "Withdrawn to draft",
-        approve: "Question approved",   reject: "Question rejected",
-        publish: "Question published",
-      };
-      toast({ title: labels[vars.action] ?? "Action complete" });
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
     },
-    onError: (e: any) => toast({ title: "Action failed", description: e.message, variant: "destructive" }),
   });
 
   const createBankMutation = useMutation({
@@ -1439,6 +1492,8 @@ export default function QuestionBankManager() {
                     page={browsePage}
                     onPageChange={setBrowsePage}
                     onWorkflow={handleWorkflow}
+                    pendingId={workflowMutation.isPending ? workflowMutation.variables?.id : undefined}
+                    pendingAction={workflowMutation.isPending ? workflowMutation.variables?.action : undefined}
                   />
                 </CardContent>
               </Card>
@@ -1511,6 +1566,8 @@ export default function QuestionBankManager() {
                     page={myPage}
                     onPageChange={setMyPage}
                     onWorkflow={handleWorkflow}
+                    pendingId={workflowMutation.isPending ? workflowMutation.variables?.id : undefined}
+                    pendingAction={workflowMutation.isPending ? workflowMutation.variables?.action : undefined}
                   />
                 </CardContent>
               </Card>
