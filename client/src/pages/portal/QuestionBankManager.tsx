@@ -789,11 +789,11 @@ function QuestionList({
 
   const qs = new URLSearchParams({ ...paramObj, page: String(page) }).toString();
 
-  // termId is only required for myOnly path; bankId path is self-scoped
+  // term is optional; classId + bankId (browse) or classId + subjectId (myOnly) are required
   const enabled =
     !!paramObj.classId &&
     (paramObj.myOnly === "true"
-      ? !!paramObj.termId
+      ? true
       : !!paramObj.bankId);
 
   const { data, isLoading, isError } = useQuery<any>({
@@ -822,7 +822,7 @@ function QuestionList({
         </div>
         <div className="text-center space-y-1">
           <p className="text-sm font-semibold">Context not complete</p>
-          <p className="text-xs max-w-xs">Select Class, Subject, Term and Bank to load questions.</p>
+          <p className="text-xs max-w-xs">Select Class, Subject and Bank to load questions. Term is optional.</p>
         </div>
       </div>
     );
@@ -1125,7 +1125,7 @@ export default function QuestionBankManager() {
   // ── Ready flags + params
   // Term is optional — bank already scopes the term context
   const browseReady = !!browseCtx.classId && !!browseCtx.subjectId && !!browseCtx.bankId;
-  const myReady     = !!myCtx.classId    && !!myCtx.subjectId && !!myCtx.termId;
+  const myReady     = !!myCtx.classId    && !!myCtx.subjectId;
 
   const browseParams: Record<string, string> = browseReady ? {
     bankId:   String(browseCtx.bankId),
@@ -1139,9 +1139,9 @@ export default function QuestionBankManager() {
 
   const myParams: Record<string, string> = myReady ? {
     classId:  String(myCtx.classId),
-    termId:   String(myCtx.termId),
     myOnly:   "true",
     pageSize: String(PAGE_SIZE),
+    ...(myCtx.termId ? { termId: String(myCtx.termId) } : {}),
     ...(myStatus ? { status: myStatus } : {}),
   } : {};
 
@@ -1356,7 +1356,7 @@ export default function QuestionBankManager() {
             )}
 
             {/* Question list or empty state */}
-            {!browseCtx.classId || !browseCtx.subjectId || !browseCtx.termId ? (
+            {!browseCtx.classId || !browseCtx.subjectId ? (
               <div className="flex flex-col items-center gap-4 py-20 text-muted-foreground rounded-2xl border-2 border-dashed">
                 <div className="w-14 h-14 rounded-2xl bg-primary/5 flex items-center justify-center">
                   <GraduationCap className="w-7 h-7 text-primary/40" />
@@ -1364,7 +1364,7 @@ export default function QuestionBankManager() {
                 <div className="text-center space-y-1.5">
                   <p className="text-sm font-semibold">Start by selecting your context above</p>
                   <p className="text-xs max-w-sm text-center">
-                    Choose Class → Subject → Term → Bank to load questions. This keeps the page fast and questions scoped correctly.
+                    Choose Class → Subject → Bank to load questions. Term is optional — leave it as All Terms to see banks from any term.
                   </p>
                 </div>
               </div>
@@ -1433,7 +1433,7 @@ export default function QuestionBankManager() {
                   </div>
                   Filter Context
                   <span className="text-xs font-normal text-muted-foreground ml-1">
-                    — Class, Subject &amp; Term required
+                    — Class &amp; Subject required, Term optional
                   </span>
                 </CardTitle>
               </CardHeader>
@@ -1465,15 +1465,15 @@ export default function QuestionBankManager() {
               </div>
             )}
 
-            {!myCtx.classId || !myCtx.termId ? (
+            {!myCtx.classId || !myCtx.subjectId ? (
               <div className="flex flex-col items-center gap-4 py-20 text-muted-foreground rounded-2xl border-2 border-dashed">
                 <div className="w-14 h-14 rounded-2xl bg-primary/5 flex items-center justify-center">
                   <BarChart3 className="w-7 h-7 text-primary/40" />
                 </div>
                 <div className="text-center space-y-1.5">
-                  <p className="text-sm font-semibold">Select Class, Subject and Term</p>
+                  <p className="text-sm font-semibold">Select Class and Subject</p>
                   <p className="text-xs max-w-xs">
-                    This scopes the list to one class-term at a time, keeping it organised and fast to load.
+                    Choose a class and subject to load your questions. Term is optional — leave it as All Terms to see questions from any term.
                   </p>
                 </div>
               </div>
