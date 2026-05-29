@@ -120,7 +120,20 @@ router.delete('/api/syllabus-topics/:id', authenticateUser, authorizeRoles(...AD
 router.get('/api/question-banks', authenticateUser, authorizeRoles(...STAFF_ROLES), async (req: any, res: Response) => {
     try {
         const subjectId = parseIntParam(req.query.subjectId as string);
-        const banks = await storage.getQuestionBanks(subjectId ? { subjectId } : undefined);
+        const classId   = parseIntParam(req.query.classId   as string);
+        const termId    = parseIntParam(req.query.termId    as string);
+
+        // Require at least classId to prevent unbounded queries returning all banks
+        if (!classId && !subjectId) {
+            return sendBadRequest(res, 'classId or subjectId is required to filter question banks');
+        }
+
+        const filters: { subjectId?: number; classId?: number; termId?: number } = {};
+        if (classId)   filters.classId   = classId;
+        if (subjectId) filters.subjectId = subjectId;
+        if (termId)    filters.termId    = termId;
+
+        const banks = await storage.getQuestionBanks(filters);
         sendSuccess(res, banks);
     } catch (error) { handleRouteError(res, error, 'questionBanks.list'); }
 });
@@ -137,12 +150,16 @@ router.get('/api/question-banks/:id', authenticateUser, authorizeRoles(...STAFF_
 
 router.post('/api/question-banks', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
     try {
-        const { name, description, subjectId } = req.body;
+        const { name, description, subjectId, classId, termId } = req.body;
         if (!name || !subjectId) return sendBadRequest(res, 'name and subjectId are required');
+        if (!classId) return sendBadRequest(res, 'classId is required');
         const bank = await storage.createQuestionBankRecord({
             name: name.trim(), description: description || null,
-            subjectId: parseInt(subjectId), createdBy: req.user!.id,
-        });
+            subjectId: parseInt(subjectId),
+            classId:   parseInt(classId),
+            termId:    termId ? parseInt(termId) : null,
+            createdBy: req.user!.id,
+        } as any);
         sendCreated(res, bank);
     } catch (error: any) {
         if (error.code === '23505') return sendBadRequest(res, 'A question bank with this name already exists');

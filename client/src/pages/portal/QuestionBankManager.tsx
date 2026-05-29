@@ -138,14 +138,35 @@ function ContextFilterBar({
   showBank?: boolean;
   bankOptional?: boolean;
 }) {
-  const { data: classes  = [] } = useQuery<any[]>({ queryKey: ["/api/classes"] });
-  const { data: subjects = [] } = useQuery<any[]>({ queryKey: ["/api/subjects"] });
-  const { data: terms    = [] } = useQuery<any[]>({ queryKey: ["/api/terms"] });
+  const { data: classes = [] } = useQuery<any[]>({ queryKey: ["/api/classes"] });
+  const { data: terms   = [] } = useQuery<any[]>({ queryKey: ["/api/terms"] });
 
-  const { data: banks = [] } = useQuery({
-    queryKey: ["/api/question-banks", "by-subject", value.subjectId],
-    queryFn:  (): Promise<any[]> => apiRequest("GET", `/api/question-banks?subjectId=${value.subjectId}`).then(r => r.json()),
-    enabled:  !!value.subjectId,
+  // Subjects are filtered to only those mapped to the selected class
+  const { data: classSubjects = [], isLoading: subjectsLoading } = useQuery<any[]>({
+    queryKey:  ["/api/classes", value.classId, "available-subjects"],
+    queryFn:   () => apiRequest("GET", `/api/classes/${value.classId}/available-subjects`).then(r => r.json()),
+    enabled:   !!value.classId,
+    staleTime: 60_000,
+  });
+
+  // Banks are filtered by class + subject (required) + term (optional refinement)
+  // They load as soon as class AND subject are selected — term is not needed to list banks
+  const canLoadBanks = !!value.classId && !!value.subjectId;
+  const bankParams = useMemo(() => {
+    if (!canLoadBanks) return null;
+    const p = new URLSearchParams({
+      classId:   String(value.classId!),
+      subjectId: String(value.subjectId!),
+    });
+    if (value.termId) p.set("termId", String(value.termId));
+    return p.toString();
+  }, [canLoadBanks, value.classId, value.subjectId, value.termId]);
+
+  const { data: banks = [], isLoading: banksLoading } = useQuery<any[]>({
+    queryKey:  ["/api/question-banks", "filtered", value.classId, value.subjectId, value.termId ?? null],
+    queryFn:   (): Promise<any[]> => apiRequest("GET", `/api/question-banks?${bankParams}`).then(r => r.json()),
+    enabled:   canLoadBanks && !!bankParams,
+    staleTime: 30_000,
   });
 
   const contextOk = !!value.classId && !!value.subjectId && !!value.termId;
@@ -178,7 +199,7 @@ function ContextFilterBar({
           </Select>
         </div>
 
-        {/* Subject */}
+        {/* Subject — only subjects mapped to the selected class */}
         <div className="space-y-1">
           <Label className="text-xs font-medium">Subject <span className="text-destructive">*</span></Label>
           <Select
@@ -187,10 +208,15 @@ function ContextFilterBar({
             disabled={!value.classId}
           >
             <SelectTrigger data-testid="ctx-select-subject" className="h-8 text-xs">
-              <SelectValue placeholder={value.classId ? "Select subject…" : "Select class first"} />
+              <SelectValue placeholder={
+                !value.classId      ? "Select class first" :
+                subjectsLoading     ? "Loading subjects…" :
+                classSubjects.length === 0 ? "No subjects for this class" :
+                                     "Select subject…"
+              } />
             </SelectTrigger>
             <SelectContent>
-              {(subjects as any[]).map((s) => (
+              {classSubjects.map((s: any) => (
                 <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
               ))}
             </SelectContent>
@@ -216,7 +242,7 @@ function ContextFilterBar({
           </Select>
         </div>
 
-        {/* Bank */}
+        {/* Bank — loads after class + subject selected; narrows when term is selected */}
         {showBank && (
           <div className="space-y-1">
             <Label className="text-xs font-medium">
@@ -225,21 +251,34 @@ function ContextFilterBar({
             <Select
               value={value.bankId ? String(value.bankId) : ""}
               onValueChange={(v) => onChange({ ...value, bankId: Number(v) })}
-              disabled={!contextOk}
+              disabled={!canLoadBanks}
             >
               <SelectTrigger data-testid="ctx-select-bank" className="h-8 text-xs">
                 <SelectValue placeholder={
-                  !contextOk             ? "Complete steps 1–3 first" :
-                  (banks as any[]).length === 0  ? "No banks for this subject" :
+                  !canLoadBanks          ? "Select class & subject first" :
+                  banksLoading           ? "Loading banks…" :
+                  banks.length === 0     ? "No banks found" :
                                           "Select bank…"
                 } />
               </SelectTrigger>
               <SelectContent>
-                {(banks as any[]).map((b) => (
-                  <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
+                {banks.map((b: any) => (
+                  <SelectItem key={b.id} value={String(b.id)}>
+                    {b.name}
+                    {!value.termId && b.termId && (
+                      <span className="ml-1.5 text-[10px] text-muted-foreground opacity-70">
+                        (term filtered)
+                      </span>
+                    )}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {canLoadBanks && !value.termId && banks.length > 0 && (
+              <p className="text-[10px] text-muted-foreground">
+                Showing banks across all terms. Select term to narrow.
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -247,7 +286,7 @@ function ContextFilterBar({
       {!contextOk && (
         <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Info className="w-3 h-3 flex-shrink-0" />
-          Select <strong>Class</strong>, <strong>Subject</strong>, and <strong>Term</strong> first — this keeps questions organised and prevents slow page loads.
+          Select <strong>Class</strong>, <strong>Subject</strong>, and <strong>Term</strong> to load questions. Banks become available after Class + Subject.
         </p>
       )}
     </div>
@@ -945,16 +984,32 @@ export default function QuestionBankManager() {
   const [myStatus, setMyStatus] = useState("");
   const [myPage,   setMyPage]   = useState(1);
 
-  // ── Banks for current subject contexts ──────────────────
+  // ── Banks for current filter contexts (class + subject + optional term) ──────
+  const browseBankParams = useMemo(() => {
+    if (!browseCtx.classId || !browseCtx.subjectId) return null;
+    const p = new URLSearchParams({ classId: String(browseCtx.classId), subjectId: String(browseCtx.subjectId) });
+    if (browseCtx.termId) p.set("termId", String(browseCtx.termId));
+    return p.toString();
+  }, [browseCtx.classId, browseCtx.subjectId, browseCtx.termId]);
+
+  const myBankParams = useMemo(() => {
+    if (!myCtx.classId || !myCtx.subjectId) return null;
+    const p = new URLSearchParams({ classId: String(myCtx.classId), subjectId: String(myCtx.subjectId) });
+    if (myCtx.termId) p.set("termId", String(myCtx.termId));
+    return p.toString();
+  }, [myCtx.classId, myCtx.subjectId, myCtx.termId]);
+
   const { data: browseBanks = [] } = useQuery({
-    queryKey: ["/api/question-banks", "by-subject", browseCtx.subjectId],
-    queryFn:  (): Promise<any[]> => apiRequest("GET", `/api/question-banks?subjectId=${browseCtx.subjectId}`).then(r => r.json()),
-    enabled:  !!browseCtx.subjectId,
+    queryKey: ["/api/question-banks", "filtered", browseCtx.classId, browseCtx.subjectId, browseCtx.termId ?? null],
+    queryFn:  (): Promise<any[]> => apiRequest("GET", `/api/question-banks?${browseBankParams}`).then(r => r.json()),
+    enabled:  !!browseCtx.classId && !!browseCtx.subjectId && !!browseBankParams,
+    staleTime: 30_000,
   });
   const { data: myBanks = [] } = useQuery({
-    queryKey: ["/api/question-banks", "by-subject", myCtx.subjectId],
-    queryFn:  (): Promise<any[]> => apiRequest("GET", `/api/question-banks?subjectId=${myCtx.subjectId}`).then(r => r.json()),
-    enabled:  !!myCtx.subjectId,
+    queryKey: ["/api/question-banks", "filtered", myCtx.classId, myCtx.subjectId, myCtx.termId ?? null],
+    queryFn:  (): Promise<any[]> => apiRequest("GET", `/api/question-banks?${myBankParams}`).then(r => r.json()),
+    enabled:  !!myCtx.classId && !!myCtx.subjectId && !!myBankParams,
+    staleTime: 30_000,
   });
   const { data: allSubjects = [] } = useQuery<any[]>({ queryKey: ["/api/subjects"] });
 
@@ -965,6 +1020,18 @@ export default function QuestionBankManager() {
   const [newBankName, setNewBankName] = useState("");
   const [newBankDesc, setNewBankDesc] = useState("");
   const [bankSubjectId, setBankSubjectId] = useState("");
+  const [bankClassId,   setBankClassId]   = useState("");
+  const [bankTermId,    setBankTermId]    = useState("");
+
+  // Subjects for the bank creation dialog (filtered by selected class)
+  const { data: bankDialogSubjects = [] } = useQuery<any[]>({
+    queryKey:  ["/api/classes", bankClassId, "available-subjects"],
+    queryFn:   () => apiRequest("GET", `/api/classes/${bankClassId}/available-subjects`).then(r => r.json()),
+    enabled:   !!bankClassId,
+    staleTime: 60_000,
+  });
+  const { data: allTerms = [] } = useQuery<any[]>({ queryKey: ["/api/terms"] });
+  const { data: allClasses = [] } = useQuery<any[]>({ queryKey: ["/api/classes"] });
 
   // ── Context change handlers — reset page + downstream ──
   const handleBrowseCtxChange = useCallback((v: ContextFilters) => {
@@ -1022,6 +1089,7 @@ export default function QuestionBankManager() {
       toast({ title: "Question bank created" });
       setCreateBankOpen(false);
       setNewBankName(""); setNewBankDesc(""); setBankSubjectId("");
+      setBankClassId(""); setBankTermId("");
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
@@ -1300,33 +1368,76 @@ export default function QuestionBankManager() {
 
       {/* ── Create Bank dialog (Admin) ─────────────────────── */}
       {isAdminRole && (
-        <Dialog open={createBankOpen} onOpenChange={setCreateBankOpen}>
+        <Dialog open={createBankOpen} onOpenChange={(v) => {
+          setCreateBankOpen(v);
+          if (!v) { setNewBankName(""); setNewBankDesc(""); setBankSubjectId(""); setBankClassId(""); setBankTermId(""); }
+        }}>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Create Question Bank</DialogTitle>
             </DialogHeader>
             <div className="space-y-3 py-2">
+              {/* Step hint */}
+              <p className="text-xs text-muted-foreground bg-muted/40 rounded px-3 py-2">
+                A bank is scoped to a specific <strong>class</strong>, <strong>subject</strong>, and optionally a <strong>term</strong> — this keeps banks organised and filterable.
+              </p>
+
+              <div className="grid grid-cols-2 gap-3">
+                {/* Class (required) */}
+                <div className="space-y-1">
+                  <Label className="text-xs">Class <span className="text-destructive">*</span></Label>
+                  <Select value={bankClassId} onValueChange={(v) => { setBankClassId(v); setBankSubjectId(""); }}>
+                    <SelectTrigger data-testid="select-bank-class" className="text-sm">
+                      <SelectValue placeholder="Select class…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(allClasses as any[]).map((c: any) => (
+                        <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Subject — filtered by selected class */}
+                <div className="space-y-1">
+                  <Label className="text-xs">Subject <span className="text-destructive">*</span></Label>
+                  <Select value={bankSubjectId} onValueChange={setBankSubjectId} disabled={!bankClassId}>
+                    <SelectTrigger data-testid="select-bank-subject" className="text-sm">
+                      <SelectValue placeholder={bankClassId ? "Select subject…" : "Select class first"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(bankDialogSubjects as any[]).map((s: any) => (
+                        <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Term (optional) */}
+              <div className="space-y-1">
+                <Label className="text-xs">Term <span className="text-muted-foreground">(optional — leave blank to apply to all terms)</span></Label>
+                <Select value={bankTermId} onValueChange={setBankTermId}>
+                  <SelectTrigger data-testid="select-bank-term" className="text-sm">
+                    <SelectValue placeholder="All terms…" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">All terms (no specific term)</SelectItem>
+                    {(allTerms as any[]).map((t: any) => (
+                      <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <div className="space-y-1">
                 <Label className="text-xs">Bank Name <span className="text-destructive">*</span></Label>
                 <Input
                   data-testid="input-bank-name"
                   value={newBankName}
                   onChange={(e) => setNewBankName(e.target.value)}
-                  placeholder="e.g. Mathematics SS2 — First Term 2025"
+                  placeholder="e.g. JSS 1 Computer Studies — First Term"
                 />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Subject <span className="text-destructive">*</span></Label>
-                <Select value={bankSubjectId} onValueChange={setBankSubjectId}>
-                  <SelectTrigger data-testid="select-bank-subject" className="text-sm">
-                    <SelectValue placeholder="Select subject…" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(allSubjects as any[]).map((s) => (
-                      <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Description</Label>
@@ -1342,10 +1453,12 @@ export default function QuestionBankManager() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setCreateBankOpen(false)}>Cancel</Button>
               <Button
-                disabled={!newBankName.trim() || !bankSubjectId || createBankMutation.isPending}
+                disabled={!newBankName.trim() || !bankSubjectId || !bankClassId || createBankMutation.isPending}
                 onClick={() => createBankMutation.mutate({
-                  name: newBankName.trim(),
+                  name:      newBankName.trim(),
                   subjectId: Number(bankSubjectId),
+                  classId:   Number(bankClassId),
+                  termId:    bankTermId && bankTermId !== "_none" ? Number(bankTermId) : null,
                   description: newBankDesc || null,
                 })}
                 data-testid="btn-confirm-create-bank"

@@ -228,7 +228,7 @@ export interface IStorage {
   importQuestionsFromBank(examId: number, questionItemIds: number[], randomize?: boolean, maxQuestions?: number): Promise<{ imported: number; questions: ExamQuestion[] }>;
 
   // Enhanced Question Bank (Container) management
-  getQuestionBanks(filters?: { subjectId?: number }): Promise<QuestionBank[]>;
+  getQuestionBanks(filters?: { subjectId?: number; classId?: number; termId?: number }): Promise<QuestionBank[]>;
   createQuestionBankRecord(data: InsertQuestionBank): Promise<QuestionBank>;
   updateQuestionBankRecord(id: number, data: Partial<InsertQuestionBank>): Promise<QuestionBank>;
   deleteQuestionBankRecord(id: number): Promise<boolean>;
@@ -3212,9 +3212,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ═══════════ QUESTION BANKS (Container CRUD) ═══════════
-  async getQuestionBanks(filters?: { subjectId?: number }): Promise<QuestionBank[]> {
+  async getQuestionBanks(filters?: { subjectId?: number; classId?: number; termId?: number }): Promise<QuestionBank[]> {
     const conditions: any[] = [];
     if (filters?.subjectId) conditions.push(eq(schema.questionBanks.subjectId, filters.subjectId));
+    if (filters?.classId)   conditions.push(eq(schema.questionBanks.classId,   filters.classId));
+    if (filters?.termId)    conditions.push(eq(schema.questionBanks.termId,     filters.termId));
     if (conditions.length > 0) {
       return await db.select().from(schema.questionBanks).where(and(...conditions)).orderBy(desc(schema.questionBanks.createdAt));
     }

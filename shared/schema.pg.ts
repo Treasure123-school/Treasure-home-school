@@ -53,6 +53,7 @@ export const users = pgTable("users", {
   securityAnswerHash: text("security_answer_hash"),
   dataPolicyAgreed: boolean("data_policy_agreed").notNull().default(false),
   dataPolicyAgreedAt: timestamp("data_policy_agreed_at"),
+  examUnlocked: boolean("exam_unlocked").notNull().default(false),
   deletedAt: timestamp("deleted_at"),
   deletedBy: varchar("deleted_by", { length: 36 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -469,6 +470,8 @@ export const questionBanks = pgTable("question_banks", {
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   subjectId: integer("subject_id").notNull().references(() => subjects.id),
+  classId: integer("class_id").references(() => classes.id, { onDelete: 'set null' }),
+  termId: integer("term_id").references(() => academicTerms.id, { onDelete: 'set null' }),
   classLevel: varchar("class_level", { length: 50 }),
   createdBy: varchar("created_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
   isPublic: boolean("is_public").notNull().default(false),
@@ -476,6 +479,9 @@ export const questionBanks = pgTable("question_banks", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
   questionBanksSubjectIdx: index("question_banks_subject_idx").on(table.subjectId),
+  questionBanksClassIdx: index("question_banks_class_idx").on(table.classId),
+  questionBanksTermIdx: index("question_banks_term_idx").on(table.termId),
+  questionBanksClassSubjectIdx: index("question_banks_class_subject_idx").on(table.classId, table.subjectId),
   questionBanksCreatedByIdx: index("question_banks_created_by_idx").on(table.createdBy),
 }));
 
