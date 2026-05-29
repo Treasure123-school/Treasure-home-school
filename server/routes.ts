@@ -15027,12 +15027,14 @@ School Management System Administration
         return res.json([]);
       }
       const subjectId = req.query.subjectId ? parseInt(req.query.subjectId as string) : undefined;
-      const filters: { classId?: number; subjectId?: number; isActive?: boolean; isPublished?: boolean } = {
+      const termId    = req.query.termId    ? parseInt(req.query.termId    as string) : undefined;
+      const filters: { classId?: number; subjectId?: number; termId?: number; isActive?: boolean; isPublished?: boolean } = {
         classId: student.classId,
         isActive: true,
         isPublished: true,
       };
       if (subjectId && !isNaN(subjectId)) filters.subjectId = subjectId;
+      if (termId    && !isNaN(termId))    filters.termId    = termId;
       const topics = await storage.getSyllabusTopics(filters);
       res.json(topics);
     } catch (error: any) {

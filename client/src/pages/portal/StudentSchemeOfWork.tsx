@@ -5,104 +5,149 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BookOpen, Layers, GraduationCap, BookMarked, Palette, Briefcase } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { BookOpen, Layers, ChevronRight, GraduationCap, Filter } from 'lucide-react';
 
-const CATEGORY_CONFIG: Record<string, { icon: any; color: string }> = {
-  general:    { icon: BookMarked,    color: 'bg-blue-50 dark:bg-blue-950/40 text-blue-600' },
-  science:    { icon: GraduationCap, color: 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600' },
-  art:        { icon: Palette,       color: 'bg-violet-50 dark:bg-violet-950/40 text-violet-600' },
-  commercial: { icon: Briefcase,     color: 'bg-amber-50 dark:bg-amber-950/40 text-amber-600' },
-};
+// ─── hooks ──────────────────────────────────────────────────────────────────
 
-export default function StudentSchemeOfWork() {
-  const [selectedSubjectId, setSelectedSubjectId] = useState<string>('all');
-
-  const { data: subjects = [], isLoading: subjectsLoading } = useQuery({
-    queryKey: ['/api/my-subjects'],
-    queryFn: async () => (await apiRequest('GET', '/api/my-subjects')).json(),
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const { data: topics = [], isLoading: topicsLoading } = useQuery({
-    queryKey: ['/api/my-syllabus-topics', selectedSubjectId],
-    queryFn: async () => {
-      const url = selectedSubjectId !== 'all'
-        ? `/api/my-syllabus-topics?subjectId=${selectedSubjectId}`
-        : '/api/my-syllabus-topics';
-      return (await apiRequest('GET', url)).json();
-    },
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const { data: studentInfo } = useQuery({
+function useStudentInfo() {
+  return useQuery({
     queryKey: ['/api/students/me'],
     queryFn: async () => (await apiRequest('GET', '/api/students/me')).json(),
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+function useMySubjects(enabled: boolean) {
+  return useQuery<any[]>({
+    queryKey: ['/api/my-subjects'],
+    queryFn: async () => (await apiRequest('GET', '/api/my-subjects')).json(),
+    staleTime: 10 * 60 * 1000,
+    enabled,
+  });
+}
+
+function useTerms() {
+  return useQuery<any[]>({
+    queryKey: ['/api/terms'],
+    queryFn: async () => (await apiRequest('GET', '/api/terms')).json(),
+    staleTime: 10 * 60 * 1000,
+  });
+}
+
+function useSchemeTopics(subjectId: string, termId: string, enabled: boolean) {
+  return useQuery<any[]>({
+    queryKey: ['/api/my-syllabus-topics', subjectId, termId],
+    queryFn: async () => {
+      const params = new URLSearchParams({ subjectId, termId });
+      return (await apiRequest('GET', `/api/my-syllabus-topics?${params}`)).json();
+    },
     staleTime: 5 * 60 * 1000,
+    enabled,
   });
+}
 
-  const isLoading = subjectsLoading || topicsLoading;
+// ─── helpers ─────────────────────────────────────────────────────────────────
 
-  const grouped: Record<number, { subject: any; topics: any[] }> = {};
-  (topics as any[]).forEach((topic: any) => {
-    if (!grouped[topic.subjectId]) {
-      const subject = (subjects as any[]).find((s: any) => (s.id || s.subjectId) === topic.subjectId);
-      grouped[topic.subjectId] = { subject, topics: [] };
-    }
-    grouped[topic.subjectId].topics.push(topic);
-  });
+function getSubjectName(subjects: any[], id: string) {
+  const s = subjects.find((s: any) => String(s.subjectId) === id);
+  return s?.subjectName || s?.name || 'Unknown Subject';
+}
 
-  const totalTopics = (topics as any[]).length;
-  const subjectCount = Object.keys(grouped).length;
+function getTermName(terms: any[], id: string) {
+  const t = terms.find((t: any) => String(t.id) === id);
+  return t?.name || 'Unknown Term';
+}
+
+// ─── sub-components ──────────────────────────────────────────────────────────
+
+function TopicCard({ topic, index }: { topic: any; index: number }) {
+  return (
+    <div
+      className="flex items-start gap-3 p-3.5 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
+      data-testid={`topic-card-${topic.id}`}
+    >
+      <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+        {topic.orderNumber || index + 1}
+      </span>
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-sm leading-snug">{topic.name}</p>
+        {topic.description && (
+          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{topic.description}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TopicsLoadingSkeleton() {
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}
+    </div>
+  );
+}
+
+// ─── main page ───────────────────────────────────────────────────────────────
+
+export default function StudentSchemeOfWork() {
+  const [selectedSubjectId, setSelectedSubjectId] = useState('');
+  const [selectedTermId, setSelectedTermId]       = useState('');
+
+  const { data: studentInfo, isLoading: loadingStudent } = useStudentInfo();
+  const { data: subjects = [], isLoading: loadingSubjects } = useMySubjects(!!studentInfo);
+  const { data: terms = [],    isLoading: loadingTerms   } = useTerms();
+
+  const filtersComplete = !!(selectedSubjectId && selectedTermId);
+
+  const { data: topics = [], isLoading: loadingTopics } = useSchemeTopics(
+    selectedSubjectId,
+    selectedTermId,
+    filtersComplete,
+  );
+
+  const handleSubjectChange = (v: string) => {
+    setSelectedSubjectId(v);
+    setSelectedTermId(''); // reset term when subject changes
+  };
+
+  const subjectName = selectedSubjectId ? getSubjectName(subjects, selectedSubjectId) : '';
+  const termName    = selectedTermId    ? getTermName(terms, selectedTermId)           : '';
+  const className   = (studentInfo as any)?.className || '';
+  const sortedTopics = [...topics].sort((a: any, b: any) => (a.orderNumber || 0) - (b.orderNumber || 0));
 
   return (
     <div className="min-h-screen bg-background" data-testid="student-scheme-of-work">
 
       {/* ── Header ──────────────────────────────────────── */}
       <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background border-b">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                <BookOpen className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-foreground">Scheme of Work</h1>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {(studentInfo as any)?.className
-                    ? `Published topics for ${(studentInfo as any).className}`
-                    : 'Your class curriculum topics this term'}
-                </p>
-              </div>
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <BookOpen className="w-5 h-5 text-primary" />
             </div>
-            {(subjects as any[]).length > 0 && (
-              <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
-                <SelectTrigger className="w-full sm:w-52" data-testid="select-subject-filter">
-                  <SelectValue placeholder="All Subjects" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Subjects</SelectItem>
-                  {(subjects as any[]).map((s: any) => (
-                    <SelectItem key={s.id || s.subjectId} value={String(s.id || s.subjectId)}>
-                      {s.subjectName || s.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            <div>
+              <h1 className="text-xl font-bold text-foreground">Scheme of Work</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {loadingStudent ? (
+                  <Skeleton className="h-4 w-32 inline-block" />
+                ) : className ? (
+                  <>Published curriculum topics for <span className="font-medium text-foreground">{className}</span></>
+                ) : (
+                  'Your class curriculum topics'
+                )}
+              </p>
+            </div>
           </div>
 
-          {/* Stats */}
-          {!isLoading && (
-            <div className="flex flex-wrap gap-2 mt-4">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background/60 border text-sm">
-                <Layers className="w-3.5 h-3.5 text-primary" />
-                <span className="text-muted-foreground">Topics:</span>
-                <span className="font-semibold">{totalTopics}</span>
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background/60 border text-sm">
-                <BookOpen className="w-3.5 h-3.5 text-primary" />
-                <span className="text-muted-foreground">Subjects:</span>
-                <span className="font-semibold">{subjectCount}</span>
+          {/* Class chip */}
+          {className && (
+            <div className="mt-4 flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background/60 border text-xs font-medium">
+                <GraduationCap className="w-3.5 h-3.5 text-primary" />
+                <span className="text-muted-foreground">Class:</span>
+                <span className="text-foreground">{className}</span>
+                <span className="ml-0.5 text-[10px] text-emerald-600 font-semibold">AUTO</span>
               </div>
             </div>
           )}
@@ -110,99 +155,157 @@ export default function StudentSchemeOfWork() {
       </div>
 
       {/* ── Content ─────────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
 
-        {/* Loading skeleton */}
-        {isLoading && (
-          <div className="space-y-5">
-            {[1, 2].map(i => (
-              <Card key={i} className="shadow-sm">
-                <CardHeader className="pb-3">
-                  <Skeleton className="h-5 w-36" />
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {[1, 2, 3].map(j => <Skeleton key={j} className="h-16 rounded-lg" />)}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!isLoading && totalTopics === 0 && (
-          <Card className="shadow-sm">
-            <CardContent className="py-16 text-center">
-              <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
-                <Layers className="w-7 h-7 text-muted-foreground/30" />
+        {/* Filter Card */}
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3 pt-5 px-5">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
+                <Filter className="w-3.5 h-3.5 text-primary" />
               </div>
-              <p className="font-medium text-sm">No Topics Available</p>
-              <p className="text-xs text-muted-foreground mt-1.5 max-w-xs mx-auto">
-                {selectedSubjectId !== 'all'
-                  ? 'No topics have been published for this subject yet.'
-                  : 'Your class scheme of work has not been published yet. Check back later.'}
-              </p>
+              Browse Topics
+              <span className="text-xs font-normal text-muted-foreground ml-0.5">— choose subject then term</span>
+            </div>
+          </CardHeader>
+          <CardContent className="px-5 pb-5 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+              {/* Subject selector */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Subject <span className="text-destructive">*</span>
+                </Label>
+                {loadingSubjects ? (
+                  <Skeleton className="h-10 rounded-md" />
+                ) : (
+                  <Select value={selectedSubjectId} onValueChange={handleSubjectChange}>
+                    <SelectTrigger data-testid="select-subject">
+                      <SelectValue placeholder={subjects.length === 0 ? 'No subjects assigned' : 'Select subject…'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subjects.map((s: any) => (
+                        <SelectItem key={s.subjectId} value={String(s.subjectId)}>
+                          {s.subjectName || s.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+
+              {/* Term selector */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Term <span className="text-destructive">*</span>
+                </Label>
+                {loadingTerms ? (
+                  <Skeleton className="h-10 rounded-md" />
+                ) : (
+                  <Select value={selectedTermId} onValueChange={setSelectedTermId} disabled={!selectedSubjectId}>
+                    <SelectTrigger data-testid="select-term">
+                      <SelectValue placeholder={!selectedSubjectId ? 'Select subject first' : 'Select term…'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {terms.map((t: any) => (
+                        <SelectItem key={t.id} value={String(t.id)}>
+                          {t.name}{t.year ? ` — ${t.year}` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            </div>
+
+            {/* Step indicator */}
+            {!filtersComplete && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1">
+                <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold shrink-0 ${selectedSubjectId ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>1</span>
+                <ChevronRight className="w-3 h-3 shrink-0" />
+                <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold shrink-0 ${selectedTermId ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>2</span>
+                <span className="ml-1">
+                  {!selectedSubjectId ? 'Select a subject to start' : 'Now select a term to view topics'}
+                </span>
+              </div>
+            )}
+
+            {/* Active filter breadcrumb */}
+            {filtersComplete && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-xs text-muted-foreground">Showing:</span>
+                <Badge variant="secondary" className="text-xs">{className}</Badge>
+                <ChevronRight className="w-3 h-3 text-muted-foreground/50" />
+                <Badge variant="secondary" className="text-xs">{subjectName}</Badge>
+                <ChevronRight className="w-3 h-3 text-muted-foreground/50" />
+                <Badge variant="secondary" className="text-xs">{termName}</Badge>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Topics Results */}
+        {filtersComplete && (
+          <Card className="shadow-sm" data-testid="topics-results-card">
+            <CardHeader className="pb-3 pt-4 px-5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center shrink-0">
+                    <Layers className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <h2 className="font-semibold text-sm truncate">{subjectName}</h2>
+                  <span className="text-xs text-muted-foreground shrink-0">· {termName}</span>
+                </div>
+                {!loadingTopics && sortedTopics.length > 0 && (
+                  <Badge variant="secondary" className="text-xs shrink-0">
+                    {sortedTopics.length} topic{sortedTopics.length !== 1 ? 's' : ''}
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+
+            <CardContent className="px-5 pb-5">
+              {/* Loading */}
+              {loadingTopics && <TopicsLoadingSkeleton />}
+
+              {/* Empty — no topics for this combination */}
+              {!loadingTopics && sortedTopics.length === 0 && (
+                <div className="text-center py-10">
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                    <BookOpen className="w-6 h-6 text-muted-foreground/30" />
+                  </div>
+                  <p className="font-medium text-sm">No Topics Published Yet</p>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto">
+                    Topics for <strong>{subjectName}</strong> in <strong>{termName}</strong> haven't been published yet. Check back later.
+                  </p>
+                </div>
+              )}
+
+              {/* Topics grid */}
+              {!loadingTopics && sortedTopics.length > 0 && (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {sortedTopics.map((topic: any, index: number) => (
+                    <TopicCard key={topic.id} topic={topic} index={index} />
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
 
-        {/* Topics grouped by subject */}
-        {!isLoading && totalTopics > 0 && (
-          <div className="space-y-5">
-            {Object.values(grouped).map(({ subject, topics: subjectTopics }) => {
-              const category = (subject?.category || subject?.subjectCategory || 'general').toLowerCase();
-              const cfg = CATEGORY_CONFIG[category] || CATEGORY_CONFIG.general;
-              const Icon = cfg.icon;
-
-              return (
-                <Card
-                  key={subject?.id || subject?.subjectId}
-                  className="shadow-sm"
-                  data-testid={`scheme-subject-${subject?.id || subject?.subjectId}`}
-                >
-                  <CardHeader className="pb-3 pt-4 px-5">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${cfg.color}`}>
-                          <Icon className="w-3.5 h-3.5" />
-                        </div>
-                        <h2 className="font-semibold text-sm truncate">
-                          {subject?.subjectName || subject?.name || 'Unknown Subject'}
-                        </h2>
-                      </div>
-                      <Badge variant="secondary" className="text-xs shrink-0">
-                        {subjectTopics.length} topic{subjectTopics.length !== 1 ? 's' : ''}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="px-5 pb-4">
-                    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                      {[...subjectTopics]
-                        .sort((a: any, b: any) => (a.orderNumber || 0) - (b.orderNumber || 0))
-                        .map((topic: any, index: number) => (
-                          <div
-                            key={topic.id}
-                            className="flex items-start gap-2.5 p-3 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
-                            data-testid={`topic-card-${topic.id}`}
-                          >
-                            <span className="w-5 h-5 rounded-full bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
-                              {topic.orderNumber || index + 1}
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm leading-snug">{topic.name}</p>
-                              {topic.description && (
-                                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{topic.description}</p>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+        {/* Prompt — nothing selected yet */}
+        {!filtersComplete && !loadingStudent && (
+          <Card className="shadow-sm">
+            <CardContent className="py-14 text-center">
+              <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                <Layers className="w-7 h-7 text-muted-foreground/30" />
+              </div>
+              <p className="font-medium text-sm">Select Subject & Term</p>
+              <p className="text-xs text-muted-foreground mt-1.5 max-w-xs mx-auto">
+                Choose a subject and term above to view the published topics for that combination.
+              </p>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
