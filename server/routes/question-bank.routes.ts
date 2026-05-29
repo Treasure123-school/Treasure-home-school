@@ -117,6 +117,29 @@ router.delete('/api/syllabus-topics/:id', authenticateUser, authorizeRoles(...AD
 //  QUESTION BANKS (Container CRUD)
 // ═══════════════════════════════════════════════════════
 
+// Stats summary for the dashboard header (admin only)
+router.get('/api/question-bank/stats', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (_req: any, res: Response) => {
+    try {
+        const { db } = await import('../db');
+        const { questionBanks, questionBankItems } = await import('../../shared/schema.pg');
+        const { count, eq } = await import('drizzle-orm');
+
+        const [banksRow]     = await db.select({ n: count() }).from(questionBanks);
+        const [totalRow]     = await db.select({ n: count() }).from(questionBankItems);
+        const [publishedRow] = await db.select({ n: count() }).from(questionBankItems)
+            .where(eq(questionBankItems.status, 'published'));
+        const [pendingRow]   = await db.select({ n: count() }).from(questionBankItems)
+            .where(eq(questionBankItems.status, 'submitted'));
+
+        sendSuccess(res, {
+            totalBanks:          Number(banksRow?.n   ?? 0),
+            totalQuestions:      Number(totalRow?.n    ?? 0),
+            publishedQuestions:  Number(publishedRow?.n ?? 0),
+            pendingReview:       Number(pendingRow?.n   ?? 0),
+        });
+    } catch (error) { handleRouteError(res, error, 'questionBanks.stats'); }
+});
+
 router.get('/api/question-banks', authenticateUser, authorizeRoles(...STAFF_ROLES), async (req: any, res: Response) => {
     try {
         const subjectId = parseIntParam(req.query.subjectId as string);
