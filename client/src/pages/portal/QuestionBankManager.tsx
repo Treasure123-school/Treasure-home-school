@@ -644,7 +644,8 @@ function QuestionCard({
     (isOwner || isAdmin) && ["draft", "rejected"].includes(item.status);
   const canWithdraw = isOwner && item.status === "submitted";
   const canApproveReject = isAdmin && item.status === "submitted";
-  const canPublish = isAdmin && ["approved", "active"].includes(item.status);
+  const canPublish   = isAdmin && ["approved", "active"].includes(item.status);
+  const canUnpublish = isAdmin && item.status === "published";
 
   const borderColor = DIFFICULTY_LEFT[item.difficulty] ?? "border-l-gray-300";
 
@@ -717,7 +718,7 @@ function QuestionCard({
         )}
 
         {/* Actions */}
-        {(canEditDelete || canSubmit || canWithdraw || canApproveReject || canPublish) && (
+        {(canEditDelete || canSubmit || canWithdraw || canApproveReject || canPublish || canUnpublish) && (
           <div className="flex flex-wrap gap-1.5 pt-1 border-t border-border/50">
             {canEditDelete && (
               <>
@@ -789,6 +790,19 @@ function QuestionCard({
                 {isThisPending("publish")
                   ? <><RotateCcw className="w-3 h-3 mr-1 animate-spin" /> Publishing…</>
                   : <><Globe className="w-3 h-3 mr-1" /> Publish</>}
+              </Button>
+            )}
+            {canUnpublish && (
+              <Button
+                size="sm" variant="outline"
+                className="h-7 text-xs px-2.5 text-purple-700 border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                onClick={() => onWorkflow("unpublish", item)}
+                disabled={anyPending}
+                data-testid={`btn-unpublish-${item.id}`}
+              >
+                {isThisPending("unpublish")
+                  ? <><RotateCcw className="w-3 h-3 mr-1 animate-spin" /> Unpublishing…</>
+                  : <><Globe className="w-3 h-3 mr-1" /> Unpublish</>}
               </Button>
             )}
           </div>
@@ -1186,13 +1200,13 @@ export default function QuestionBankManager() {
   // ── Status map for optimistic updates
   const ACTION_STATUS: Record<string, string> = {
     submit: "submitted", withdraw: "draft", approve: "approved",
-    reject: "rejected",  publish: "published",
+    reject: "rejected",  publish: "published", unpublish: "approved",
   };
 
   const ACTION_LABEL: Record<string, string> = {
     submit: "Submitted for review", withdraw: "Withdrawn to draft",
     approve: "Question approved",   reject: "Question rejected",
-    publish: "Question published",
+    publish: "Question published",  unpublish: "Question unpublished",
   };
 
   // ── Mutations

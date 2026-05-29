@@ -475,6 +475,20 @@ router.post('/api/question-bank/items/:id/publish', authenticateUser, authorizeR
     } catch (error) { handleRouteError(res, error, 'questionBank.items.publish'); }
 });
 
+router.post('/api/question-bank/items/:id/unpublish', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
+    try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) return sendBadRequest(res, 'Invalid ID');
+        const existing = await storage.getQuestionBankItemById(id);
+        if (!existing) return sendNotFound(res, 'Question not found');
+        if (existing.status !== 'published')
+            return sendBadRequest(res, 'Only published questions can be unpublished');
+
+        const updated = await storage.unpublishQuestionBankItem(id);
+        sendSuccess(res, updated);
+    } catch (error) { handleRouteError(res, error, 'questionBank.items.unpublish'); }
+});
+
 // ═══════════════════════════════════════════════════════
 //  BULK CSV IMPORT
 // ═══════════════════════════════════════════════════════

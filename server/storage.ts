@@ -257,6 +257,7 @@ export interface IStorage {
   approveQuestionBankItem(id: number, approvedBy: string): Promise<QuestionBankItem | undefined>;
   rejectQuestionBankItem(id: number, rejectedBy: string, reason: string): Promise<QuestionBankItem | undefined>;
   publishQuestionBankItem(id: number): Promise<QuestionBankItem | undefined>;
+  unpublishQuestionBankItem(id: number): Promise<QuestionBankItem | undefined>;
   getPendingQuestionBankItems(filters?: { subjectId?: number; classId?: number; createdBy?: string; page?: number; pageSize?: number }): Promise<{ items: QuestionBankItem[]; total: number; totalPages: number }>;
 
   // Exam-Question Bank Links
@@ -3387,6 +3388,14 @@ export class DatabaseStorage implements IStorage {
   async publishQuestionBankItem(id: number): Promise<QuestionBankItem | undefined> {
     const result = await db.update(schema.questionBankItems)
       .set({ status: 'published', updatedAt: new Date() })
+      .where(eq(schema.questionBankItems.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async unpublishQuestionBankItem(id: number): Promise<QuestionBankItem | undefined> {
+    const result = await db.update(schema.questionBankItems)
+      .set({ status: 'approved', updatedAt: new Date() })
       .where(eq(schema.questionBankItems.id, id))
       .returning();
     return result[0];
