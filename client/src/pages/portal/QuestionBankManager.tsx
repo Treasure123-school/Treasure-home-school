@@ -464,15 +464,27 @@ function QuestionFormDialog({
               <Label className="text-xs font-semibold text-foreground/70">Question Bank</Label>
               <Select
                 value={String(form.bankId || "")}
-                onValueChange={(v) => setForm((p: any) => ({ ...p, bankId: Number(v) }))}
+                onValueChange={(v) => setForm((p: any) => ({ ...p, bankId: v ? Number(v) : undefined }))}
+                disabled={banks.length === 0}
               >
                 <SelectTrigger data-testid="form-select-bank" className="h-9">
-                  <SelectValue placeholder="Select bank…" />
+                  <SelectValue placeholder={banks.length === 0 ? "No bank available" : "Select bank…"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {banks.map((b: any) => (
-                    <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
-                  ))}
+                  {banks.length === 0 ? (
+                    <div className="px-3 py-4 text-center text-xs text-muted-foreground">
+                      No banks available — create a bank first
+                    </div>
+                  ) : (
+                    <>
+                      <SelectItem value="">
+                        <span className="text-muted-foreground">— Select bank —</span>
+                      </SelectItem>
+                      {banks.map((b: any) => (
+                        <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>
+                      ))}
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -572,6 +584,16 @@ function QuestionFormDialog({
                       placeholder={`Option ${i + 1}`}
                       className="h-8 border-0 bg-transparent p-0 focus-visible:ring-0 text-sm"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setOptions(prev => prev.filter((_, j) => j !== i))}
+                      disabled={options.length <= 2}
+                      data-testid={`form-opt-delete-${i}`}
+                      className="flex-shrink-0 w-6 h-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                      title={options.length <= 2 ? "Minimum 2 options required" : "Remove option"}
+                    >
+                      <XCircle className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 ))}
               </div>
