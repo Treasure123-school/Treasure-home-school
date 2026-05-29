@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 // ─────────────────────────────────────────────────────────────
@@ -682,21 +682,18 @@ function QuestionCard({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   {canEditDelete && (
-                    <>
-                      <DropdownMenuItem onClick={onEdit} data-testid={`btn-edit-${item.id}`}>
-                        <Edit className="w-3.5 h-3.5 mr-2" /> Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={onDelete}
-                        className="text-destructive focus:text-destructive"
-                        data-testid={`btn-delete-${item.id}`}
-                      >
-                        <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
-                      </DropdownMenuItem>
-                    </>
+                    <DropdownMenuItem onClick={onEdit} data-testid={`btn-edit-${item.id}`}>
+                      <Edit className="w-3.5 h-3.5 mr-2" /> Edit
+                    </DropdownMenuItem>
                   )}
-                  {canEditDelete && (canSubmit || canWithdraw || canApproveReject || canPublish || canUnpublish) && (
-                    <DropdownMenuSeparator />
+                  {canEditDelete && (
+                    <DropdownMenuItem
+                      onClick={onDelete}
+                      className="text-destructive focus:text-destructive"
+                      data-testid={`btn-delete-${item.id}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
+                    </DropdownMenuItem>
                   )}
                   {canSubmit && (
                     <DropdownMenuItem onClick={() => onWorkflow("submit", item)} data-testid={`btn-submit-${item.id}`}>
@@ -709,25 +706,22 @@ function QuestionCard({
                     </DropdownMenuItem>
                   )}
                   {canApproveReject && (
-                    <>
-                      <DropdownMenuItem
-                        onClick={() => onWorkflow("approve", item)}
-                        className="text-emerald-600 focus:text-emerald-700"
-                        data-testid={`btn-approve-${item.id}`}
-                      >
-                        <CheckCircle className="w-3.5 h-3.5 mr-2" /> Approve
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => onWorkflow("reject", item)}
-                        className="text-destructive focus:text-destructive"
-                        data-testid={`btn-reject-${item.id}`}
-                      >
-                        <XCircle className="w-3.5 h-3.5 mr-2" /> Reject
-                      </DropdownMenuItem>
-                    </>
+                    <DropdownMenuItem
+                      onClick={() => onWorkflow("approve", item)}
+                      className="text-emerald-600 focus:text-emerald-700"
+                      data-testid={`btn-approve-${item.id}`}
+                    >
+                      <CheckCircle className="w-3.5 h-3.5 mr-2" /> Approve
+                    </DropdownMenuItem>
                   )}
-                  {(canPublish || canUnpublish) && (canEditDelete || canSubmit || canWithdraw || canApproveReject) && (
-                    <DropdownMenuSeparator />
+                  {canApproveReject && (
+                    <DropdownMenuItem
+                      onClick={() => onWorkflow("reject", item)}
+                      className="text-destructive focus:text-destructive"
+                      data-testid={`btn-reject-${item.id}`}
+                    >
+                      <XCircle className="w-3.5 h-3.5 mr-2" /> Reject
+                    </DropdownMenuItem>
                   )}
                   {canPublish && (
                     <DropdownMenuItem
@@ -1211,9 +1205,15 @@ export default function QuestionBankManager() {
 
   // ── Mutations
   const workflowMutation = useMutation({
-    mutationFn: ({ action, id, reason }: { action: string; id: number; reason?: string }) =>
-      apiRequest("POST", `/api/question-bank/items/${id}/${action}`, reason ? { reason } : undefined)
-        .then(r => r.json()),
+    mutationFn: async ({ action, id, reason }: { action: string; id: number; reason?: string }) => {
+      const res = await apiRequest("POST", `/api/question-bank/items/${id}/${action}`, reason ? { reason } : undefined);
+      if (!res.ok) {
+        let msg = "Action failed. Please try again.";
+        try { const body = await res.json(); msg = body.message || msg; } catch { /* ignore */ }
+        throw new Error(msg);
+      }
+      return res.json();
+    },
 
     onMutate: async ({ action, id }) => {
       const newStatus = ACTION_STATUS[action];
