@@ -144,7 +144,7 @@ function ContextFilterBar({
 
   const { data: banks = [] } = useQuery({
     queryKey: ["/api/question-banks", "by-subject", value.subjectId],
-    queryFn:  (): Promise<any[]> => apiRequest("GET", `/api/question-banks?subjectId=${value.subjectId}`),
+    queryFn:  (): Promise<any[]> => apiRequest("GET", `/api/question-banks?subjectId=${value.subjectId}`).then(r => r.json()),
     enabled:  !!value.subjectId,
   });
 
@@ -694,7 +694,7 @@ function QuestionList({
 
   const { data, isLoading, isError } = useQuery<any>({
     queryKey:  ["/api/question-bank/items", { ...paramObj, page: String(page) }],
-    queryFn:   () => apiRequest("GET", `/api/question-bank/items?${qs}`),
+    queryFn:   () => apiRequest("GET", `/api/question-bank/items?${qs}`).then(r => r.json()),
     enabled,
     staleTime: 30_000,
     placeholderData: (prev: any) => prev,
@@ -830,7 +830,7 @@ function ApprovalQueue({ onWorkflow }: { onWorkflow: (action: string, item: any)
 
   const { data, isLoading } = useQuery<any>({
     queryKey:  ["/api/question-bank/pending", page],
-    queryFn:   () => apiRequest("GET", `/api/question-bank/pending?page=${page}&pageSize=${PAGE_SIZE}`),
+    queryFn:   () => apiRequest("GET", `/api/question-bank/pending?page=${page}&pageSize=${PAGE_SIZE}`).then(r => r.json()),
     staleTime: 20_000,
   });
 
@@ -948,12 +948,12 @@ export default function QuestionBankManager() {
   // ── Banks for current subject contexts ──────────────────
   const { data: browseBanks = [] } = useQuery({
     queryKey: ["/api/question-banks", "by-subject", browseCtx.subjectId],
-    queryFn:  (): Promise<any[]> => apiRequest("GET", `/api/question-banks?subjectId=${browseCtx.subjectId}`),
+    queryFn:  (): Promise<any[]> => apiRequest("GET", `/api/question-banks?subjectId=${browseCtx.subjectId}`).then(r => r.json()),
     enabled:  !!browseCtx.subjectId,
   });
   const { data: myBanks = [] } = useQuery({
     queryKey: ["/api/question-banks", "by-subject", myCtx.subjectId],
-    queryFn:  (): Promise<any[]> => apiRequest("GET", `/api/question-banks?subjectId=${myCtx.subjectId}`),
+    queryFn:  (): Promise<any[]> => apiRequest("GET", `/api/question-banks?subjectId=${myCtx.subjectId}`).then(r => r.json()),
     enabled:  !!myCtx.subjectId,
   });
   const { data: allSubjects = [] } = useQuery<any[]>({ queryKey: ["/api/subjects"] });
