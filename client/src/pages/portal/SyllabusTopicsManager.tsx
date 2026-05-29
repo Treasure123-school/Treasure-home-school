@@ -160,14 +160,18 @@ export default function SyllabusTopicsManager() {
       );
       return { previous, key };
     },
-    onSuccess: (_, v) => {
-      toast({ title: v.isPublished ? 'Published to students' : 'Hidden from students' });
+    onSuccess: (updated, vars, ctx: any) => {
+      // Patch just this one item from server response — no full refetch needed
+      queryClient.setQueryData(ctx.key, (old: any[]) =>
+        (old ?? []).map((t: any) => t.id === vars.id ? { ...t, ...updated } : t)
+      );
+      toast({ title: vars.isPublished ? 'Published to students' : 'Hidden from students' });
     },
     onError: (e: any, _, ctx: any) => {
       if (ctx?.previous) queryClient.setQueryData(ctx.key, ctx.previous);
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
     },
-    onSettled: () => invalidate(),
+    // No onSettled invalidate — cache is kept in sync above, avoiding any refetch flicker
   });
 
   const deleteMutation = useMutation({
