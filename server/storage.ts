@@ -234,7 +234,8 @@ export interface IStorage {
   deleteQuestionBankRecord(id: number): Promise<boolean>;
 
   // Syllabus Topics management
-  getSyllabusTopics(filters: { classId?: number; subjectId?: number; termId?: number; isActive?: boolean }): Promise<SyllabusTopic[]>;
+  getSyllabusTopics(filters: { classId?: number; subjectId?: number; termId?: number; isActive?: boolean; isPublished?: boolean }): Promise<SyllabusTopic[]>;
+  getSyllabusTopicsStats(): Promise<{ total: number; published: number; draft: number; subjects: number }>;
   getSyllabusTopicById(id: number): Promise<SyllabusTopic | undefined>;
   createSyllabusTopic(topic: InsertSyllabusTopic): Promise<SyllabusTopic>;
   createSyllabusTopicsBulk(topics: InsertSyllabusTopic[]): Promise<{ created: number; topics: SyllabusTopic[]; errors: string[] }>;
@@ -3255,12 +3256,13 @@ export class DatabaseStorage implements IStorage {
     }
     return { created: created.length, topics: created, errors };
   }
-  async getSyllabusTopics(filters: { classId?: number; subjectId?: number; termId?: number; isActive?: boolean }): Promise<SyllabusTopic[]> {
+  async getSyllabusTopics(filters: { classId?: number; subjectId?: number; termId?: number; isActive?: boolean; isPublished?: boolean }): Promise<SyllabusTopic[]> {
     const conditions: any[] = [];
     if (filters.classId) conditions.push(eq(schema.syllabusTopics.classId, filters.classId));
     if (filters.subjectId) conditions.push(eq(schema.syllabusTopics.subjectId, filters.subjectId));
     if (filters.termId) conditions.push(eq(schema.syllabusTopics.termId, filters.termId));
     if (filters.isActive !== undefined) conditions.push(eq(schema.syllabusTopics.isActive, filters.isActive));
+    if (filters.isPublished !== undefined) conditions.push(eq(schema.syllabusTopics.isPublished, filters.isPublished));
 
     if (conditions.length === 0) {
       return await db.select().from(schema.syllabusTopics).orderBy(asc(schema.syllabusTopics.orderNumber));
@@ -3268,6 +3270,12 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(schema.syllabusTopics)
       .where(and(...conditions))
       .orderBy(asc(schema.syllabusTopics.orderNumber));
+  }
+  async getSyllabusTopicsStats(): Promise<{ total: number; published: number; draft: number; subjects: number }> {
+    const all = await db.select().from(schema.syllabusTopics);
+    const published = all.filter(t => t.isPublished).length;
+    const subjectIds = new Set(all.map(t => t.subjectId));
+    return { total: all.length, published, draft: all.length - published, subjects: subjectIds.size };
   }
   async getSyllabusTopicById(id: number): Promise<SyllabusTopic | undefined> {
     const result = await db.select().from(schema.syllabusTopics).where(eq(schema.syllabusTopics.id, id));

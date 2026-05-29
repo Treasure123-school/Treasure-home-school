@@ -550,6 +550,7 @@ export const syllabusTopics = pgTable("syllabus_topics", {
   description: text("description"),
   orderNumber: integer("order_number").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
+  isPublished: boolean("is_published").notNull().default(false),
   createdBy: varchar("created_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

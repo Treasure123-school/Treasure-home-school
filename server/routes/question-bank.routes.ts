@@ -34,13 +34,21 @@ const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n
 //  SYLLABUS TOPICS
 // ═══════════════════════════════════════════════════════
 
+router.get('/api/syllabus-topics/stats', authenticateUser, authorizeRoles(...STAFF_ROLES), async (_req: Request, res: Response) => {
+    try {
+        const stats = await storage.getSyllabusTopicsStats();
+        sendSuccess(res, stats);
+    } catch (error) { handleRouteError(res, error, 'syllabusTopics.stats'); }
+});
+
 router.get('/api/syllabus-topics', authenticateUser, async (req: Request, res: Response) => {
     try {
-        const classId   = parseIntParam(req.query.classId as string);
-        const subjectId = parseIntParam(req.query.subjectId as string);
-        const termId    = parseIntParam(req.query.termId as string);
-        const isActive  = parseBoolParam(req.query.isActive as string);
-        const topics    = await storage.getSyllabusTopics({ classId, subjectId, termId, isActive });
+        const classId     = parseIntParam(req.query.classId as string);
+        const subjectId   = parseIntParam(req.query.subjectId as string);
+        const termId      = parseIntParam(req.query.termId as string);
+        const isActive    = parseBoolParam(req.query.isActive as string);
+        const isPublished = parseBoolParam(req.query.isPublished as string);
+        const topics      = await storage.getSyllabusTopics({ classId, subjectId, termId, isActive, isPublished });
         sendSuccess(res, topics);
     } catch (error) { handleRouteError(res, error, 'syllabusTopics.list'); }
 });
@@ -100,6 +108,19 @@ router.put('/api/syllabus-topics/:id', authenticateUser, authorizeRoles(...ADMIN
         const updated = await storage.updateSyllabusTopic(id, req.body);
         sendSuccess(res, updated);
     } catch (error) { handleRouteError(res, error, 'syllabusTopics.update'); }
+});
+
+router.patch('/api/syllabus-topics/:id/publish', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
+    try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) return sendBadRequest(res, 'Invalid ID');
+        const { isPublished } = req.body;
+        if (typeof isPublished !== 'boolean') return sendBadRequest(res, 'isPublished (boolean) is required');
+        const existing = await storage.getSyllabusTopicById(id);
+        if (!existing) return sendNotFound(res, 'Syllabus topic not found');
+        const updated = await storage.updateSyllabusTopic(id, { isPublished });
+        sendSuccess(res, updated);
+    } catch (error) { handleRouteError(res, error, 'syllabusTopics.publish'); }
 });
 
 router.delete('/api/syllabus-topics/:id', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
