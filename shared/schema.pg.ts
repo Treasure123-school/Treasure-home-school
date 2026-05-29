@@ -479,7 +479,7 @@ export const questionBanks = pgTable("question_banks", {
   questionBanksCreatedByIdx: index("question_banks_created_by_idx").on(table.createdBy),
 }));
 
-// Question bank items — enhanced with class/term/topic hierarchy
+// Question bank items — enhanced with class/term/topic hierarchy + approval workflow
 export const questionBankItems = pgTable("question_bank_items", {
   id: serial("id").primaryKey(),
   bankId: integer("bank_id").notNull().references(() => questionBanks.id, { onDelete: 'cascade' }),
@@ -501,7 +501,13 @@ export const questionBankItems = pgTable("question_bank_items", {
   termId: integer("term_id").references(() => academicTerms.id),
   topicId: integer("topic_id"), // references syllabusTopics.id (defined below)
   usageCount: integer("usage_count").notNull().default(0),
-  status: varchar("status", { length: 20 }).notNull().default('active'), // 'active', 'archived', 'draft'
+  // status: 'draft' | 'submitted' | 'approved' | 'rejected' | 'published' | 'active' (legacy=published) | 'archived'
+  status: varchar("status", { length: 20 }).notNull().default('draft'),
+  // ── Ownership & approval workflow ──
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  approvedBy: varchar("approved_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
@@ -512,6 +518,7 @@ export const questionBankItems = pgTable("question_bank_items", {
   questionBankItemsTermIdx: index("question_bank_items_term_idx").on(table.termId),
   questionBankItemsTopicIdx: index("question_bank_items_topic_idx").on(table.topicId),
   questionBankItemsStatusIdx: index("question_bank_items_status_idx").on(table.status),
+  questionBankItemsCreatedByIdx: index("question_bank_items_created_by_idx").on(table.createdBy),
 }));
 
 // Question bank item options

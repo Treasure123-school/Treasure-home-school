@@ -242,8 +242,14 @@ export interface IStorage {
   deleteSyllabusTopic(id: number): Promise<boolean>;
 
   // Enhanced Question Bank Queries
-  getQuestionBankItemsFiltered(filters: { bankId?: number; classId?: number; subjectId?: number; termId?: number; topicId?: number; difficulty?: string; questionType?: string; status?: string }): Promise<QuestionBankItem[]>;
+  getQuestionBankItemsFiltered(filters: { bankId?: number; classId?: number; subjectId?: number; termId?: number; topicId?: number; difficulty?: string; questionType?: string; status?: string; createdBy?: string; statuses?: string[] }): Promise<QuestionBankItem[]>;
   generateQuestionsFromBank(criteria: { bankId?: number; classId?: number; subjectId?: number; termId?: number; distribution: Array<{ topicId?: number; difficulty?: string; count: number }> }): Promise<{ questions: QuestionBankItem[]; shortfalls: string[] }>;
+
+  // Approval Workflow
+  approveQuestionBankItem(id: number, approvedBy: string): Promise<QuestionBankItem | undefined>;
+  rejectQuestionBankItem(id: number, rejectedBy: string, reason: string): Promise<QuestionBankItem | undefined>;
+  publishQuestionBankItem(id: number): Promise<QuestionBankItem | undefined>;
+  getPendingQuestionBankItems(filters?: { subjectId?: number; classId?: number; createdBy?: string }): Promise<QuestionBankItem[]>;
 
   // Exam-Question Bank Links
   createExamQuestionBankLink(link: InsertExamQuestionBankLink): Promise<ExamQuestionBankLink>;
@@ -3272,6 +3278,7 @@ export class DatabaseStorage implements IStorage {
   async getQuestionBankItemsFiltered(filters: {
     bankId?: number; classId?: number; subjectId?: number; termId?: number;
     topicId?: number; difficulty?: string; questionType?: string; status?: string;
+    createdBy?: string; statuses?: string[];
   }): Promise<QuestionBankItem[]> {
     const conditions: any[] = [];
     if (filters.bankId) conditions.push(eq(schema.questionBankItems.bankId, filters.bankId));
@@ -3280,7 +3287,12 @@ export class DatabaseStorage implements IStorage {
     if (filters.topicId) conditions.push(eq(schema.questionBankItems.topicId, filters.topicId));
     if (filters.difficulty) conditions.push(eq(schema.questionBankItems.difficulty, filters.difficulty));
     if (filters.questionType) conditions.push(eq(schema.questionBankItems.questionType, filters.questionType));
-    if (filters.status) conditions.push(eq(schema.questionBankItems.status, filters.status));
+    if (filters.createdBy) conditions.push(eq(schema.questionBankItems.createdBy, filters.createdBy));
+    if (filters.statuses && filters.statuses.length > 0) {
+      conditions.push(inArray(schema.questionBankItems.status, filters.statuses));
+    } else if (filters.status) {
+      conditions.push(eq(schema.questionBankItems.status, filters.status));
+    }
 
     // If subjectId is specified, join via the bank to filter by subject
     if (filters.subjectId) {
@@ -3303,6 +3315,49 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(schema.questionBankItems.createdAt));
   }
 
+  async approveQuestionBankItem(id: number, approvedBy: string): Promise<QuestionBankItem | undefined> {
+    const result = await db.update(schema.questionBankItems)
+      .set({ status: 'approved', approvedBy, approvedAt: new Date(), rejectionReason: null, updatedAt: new Date() })
+      .where(eq(schema.questionBankItems.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async rejectQuestionBankItem(id: number, rejectedBy: string, reason: string): Promise<QuestionBankItem | undefined> {
+    const result = await db.update(schema.questionBankItems)
+      .set({ status: 'rejected', approvedBy: rejectedBy, approvedAt: new Date(), rejectionReason: reason, updatedAt: new Date() })
+      .where(eq(schema.questionBankItems.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async publishQuestionBankItem(id: number): Promise<QuestionBankItem | undefined> {
+    const result = await db.update(schema.questionBankItems)
+      .set({ status: 'published', updatedAt: new Date() })
+      .where(eq(schema.questionBankItems.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async getPendingQuestionBankItems(filters?: { subjectId?: number; classId?: number; createdBy?: string }): Promise<QuestionBankItem[]> {
+    const conditions: any[] = [eq(schema.questionBankItems.status, 'submitted')];
+    if (filters?.classId) conditions.push(eq(schema.questionBankItems.classId, filters.classId));
+    if (filters?.createdBy) conditions.push(eq(schema.questionBankItems.createdBy, filters.createdBy));
+    if (filters?.subjectId) {
+      const bankIds = await db.select({ id: schema.questionBanks.id })
+        .from(schema.questionBanks)
+        .where(eq(schema.questionBanks.subjectId, filters.subjectId));
+      if (bankIds.length > 0) {
+        conditions.push(inArray(schema.questionBankItems.bankId, bankIds.map((b: { id: number }) => b.id)));
+      } else {
+        return [];
+      }
+    }
+    return await db.select().from(schema.questionBankItems)
+      .where(and(...conditions))
+      .orderBy(asc(schema.questionBankItems.createdAt));
+  }
+
   // Smart random generation: Pull questions based on distribution criteria
   async generateQuestionsFromBank(criteria: {
     bankId?: number; classId?: number; subjectId?: number; termId?: number;
@@ -3313,7 +3368,7 @@ export class DatabaseStorage implements IStorage {
     const usedIds = new Set<number>();
 
     for (const dist of criteria.distribution) {
-      const conditions: any[] = [eq(schema.questionBankItems.status, 'active')];
+      const conditions: any[] = [inArray(schema.questionBankItems.status, ['active', 'published', 'approved'])];
       if (criteria.bankId) conditions.push(eq(schema.questionBankItems.bankId, criteria.bankId));
       if (criteria.classId) conditions.push(eq(schema.questionBankItems.classId, criteria.classId));
       if (criteria.termId) conditions.push(eq(schema.questionBankItems.termId, criteria.termId));

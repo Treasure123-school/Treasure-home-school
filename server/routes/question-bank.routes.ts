@@ -1,34 +1,38 @@
 /**
  * Question Bank & Syllabus Routes
- * 
- * Modular routes for:
- * - Syllabus Topics CRUD (Class × Subject × Term → Topics)
- * - Question Bank enhanced queries (filter by class/term/topic)
- * - Smart exam generation from question bank
+ *
+ * Role-based access control:
+ * - Super Admin / Admin: full control — view all, approve, reject, publish, edit any
+ * - Teacher: create (draft), edit own draft/rejected, submit for approval, view own
+ * - Student/Parent: no access
  */
 
 import { Router, Request, Response } from "express";
 import { storage } from "../storage";
 import { authenticateUser, authorizeRoles, ROLES } from "./middleware";
 import {
-    sendSuccess, sendCreated, sendBadRequest, sendNotFound,
+    sendSuccess, sendCreated, sendBadRequest, sendNotFound, sendForbidden,
     handleRouteError, parseIntParam, parseBoolParam
 } from "../utils/response-helpers";
 
 const router = Router();
 
+const ADMIN_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
+const TEACHER_AND_ADMIN = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER];
+
+const isAdmin = (roleId: number) => ADMIN_ROLES.includes(roleId);
+const isTeacher = (roleId: number) => roleId === ROLES.TEACHER;
+
 // ═══════════════════════════════════════════
 //  SYLLABUS TOPICS
 // ═══════════════════════════════════════════
 
-// GET /api/syllabus-topics — List with filters
 router.get('/api/syllabus-topics', authenticateUser, async (req: Request, res: Response) => {
     try {
         const classId = parseIntParam(req.query.classId as string);
         const subjectId = parseIntParam(req.query.subjectId as string);
         const termId = parseIntParam(req.query.termId as string);
         const isActive = parseBoolParam(req.query.isActive as string);
-
         const topics = await storage.getSyllabusTopics({ classId, subjectId, termId, isActive });
         sendSuccess(res, topics);
     } catch (error) {
@@ -36,29 +40,23 @@ router.get('/api/syllabus-topics', authenticateUser, async (req: Request, res: R
     }
 });
 
-// GET /api/syllabus-topics/:id
 router.get('/api/syllabus-topics/:id', authenticateUser, async (req: Request, res: Response) => {
     try {
         const id = parseInt(req.params.id);
         if (isNaN(id)) return sendBadRequest(res, 'Invalid ID');
-
         const topic = await storage.getSyllabusTopicById(id);
         if (!topic) return sendNotFound(res, 'Syllabus topic not found');
-
         sendSuccess(res, topic);
     } catch (error) {
         handleRouteError(res, error, 'syllabusTopics.getById');
     }
 });
 
-// POST /api/syllabus-topics — Create single topic (admin/super-admin)
-router.post('/api/syllabus-topics', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+router.post('/api/syllabus-topics', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
     try {
         const { classId, subjectId, termId, name, description, orderNumber } = req.body;
-        if (!classId || !subjectId || !termId || !name) {
+        if (!classId || !subjectId || !termId || !name)
             return sendBadRequest(res, 'classId, subjectId, termId, and name are required');
-        }
-
         const topic = await storage.createSyllabusTopic({
             classId, subjectId, termId, name,
             description: description || null,
@@ -66,24 +64,19 @@ router.post('/api/syllabus-topics', authenticateUser, authorizeRoles(ROLES.ADMIN
             isActive: true,
             createdBy: req.user!.id,
         });
-
         sendCreated(res, topic);
     } catch (error: any) {
-        if (error.message?.includes('UNIQUE') || error.code === '23505') {
-            return sendBadRequest(res, 'A topic with this name already exists for this class/subject/term combination');
-        }
+        if (error.message?.includes('UNIQUE') || error.code === '23505')
+            return sendBadRequest(res, 'A topic with this name already exists for this class/subject/term');
         handleRouteError(res, error, 'syllabusTopics.create');
     }
 });
 
-// POST /api/syllabus-topics/bulk — Bulk create topics
-router.post('/api/syllabus-topics/bulk', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+router.post('/api/syllabus-topics/bulk', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
     try {
         const { classId, subjectId, termId, topics } = req.body;
-        if (!classId || !subjectId || !termId || !Array.isArray(topics) || topics.length === 0) {
+        if (!classId || !subjectId || !termId || !Array.isArray(topics) || topics.length === 0)
             return sendBadRequest(res, 'classId, subjectId, termId, and topics array are required');
-        }
-
         const topicsToCreate = topics.map((t: any, i: number) => ({
             classId, subjectId, termId,
             name: typeof t === 'string' ? t : t.name,
@@ -92,7 +85,6 @@ router.post('/api/syllabus-topics/bulk', authenticateUser, authorizeRoles(ROLES.
             isActive: true,
             createdBy: req.user!.id,
         }));
-
         const result = await storage.createSyllabusTopicsBulk(topicsToCreate);
         sendSuccess(res, result);
     } catch (error) {
@@ -100,55 +92,42 @@ router.post('/api/syllabus-topics/bulk', authenticateUser, authorizeRoles(ROLES.
     }
 });
 
-// POST /api/syllabus-topics/bulk-csv — Bulk create topics from CSV (pre-resolved IDs)
-router.post('/api/syllabus-topics/bulk-csv', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+router.post('/api/syllabus-topics/bulk-csv', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
     try {
         const { topics } = req.body;
-        if (!Array.isArray(topics) || topics.length === 0) {
+        if (!Array.isArray(topics) || topics.length === 0)
             return sendBadRequest(res, 'topics array is required');
-        }
-
         let created = 0;
         const errors: string[] = [];
-
         for (let i = 0; i < topics.length; i++) {
             const t = topics[i];
             if (!t.classId || !t.subjectId || !t.termId || !t.name || t.name.length < 2) {
-                errors.push(`Item ${i + 1}: Missing required fields (classId, subjectId, termId, name)`);
+                errors.push(`Item ${i + 1}: Missing required fields`);
                 continue;
             }
             try {
                 await storage.createSyllabusTopic({
-                    classId: t.classId,
-                    subjectId: t.subjectId,
-                    termId: t.termId,
-                    name: t.name,
-                    description: t.description || null,
-                    orderNumber: t.orderNumber || 0,
-                    isActive: true,
-                    createdBy: req.user!.id,
+                    classId: t.classId, subjectId: t.subjectId, termId: t.termId,
+                    name: t.name, description: t.description || null,
+                    orderNumber: t.orderNumber || 0, isActive: true, createdBy: req.user!.id,
                 });
                 created++;
             } catch (err: any) {
                 errors.push(`"${t.name}": ${err.message || 'Creation failed'}`);
             }
         }
-
         sendSuccess(res, { created, errors: errors.length > 0 ? errors : undefined, total: topics.length });
     } catch (error) {
         handleRouteError(res, error, 'syllabusTopics.bulkCsv');
     }
 });
 
-// PUT /api/syllabus-topics/:id — Update topic
-router.put('/api/syllabus-topics/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+router.put('/api/syllabus-topics/:id', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
     try {
         const id = parseInt(req.params.id);
         if (isNaN(id)) return sendBadRequest(res, 'Invalid ID');
-
         const existing = await storage.getSyllabusTopicById(id);
         if (!existing) return sendNotFound(res, 'Syllabus topic not found');
-
         const updated = await storage.updateSyllabusTopic(id, req.body);
         sendSuccess(res, updated);
     } catch (error) {
@@ -156,15 +135,12 @@ router.put('/api/syllabus-topics/:id', authenticateUser, authorizeRoles(ROLES.AD
     }
 });
 
-// DELETE /api/syllabus-topics/:id
-router.delete('/api/syllabus-topics/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+router.delete('/api/syllabus-topics/:id', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
     try {
         const id = parseInt(req.params.id);
         if (isNaN(id)) return sendBadRequest(res, 'Invalid ID');
-
         const existing = await storage.getSyllabusTopicById(id);
         if (!existing) return sendNotFound(res, 'Syllabus topic not found');
-
         await storage.deleteSyllabusTopic(id);
         sendSuccess(res, { message: 'Syllabus topic deleted', id });
     } catch (error) {
@@ -176,8 +152,7 @@ router.delete('/api/syllabus-topics/:id', authenticateUser, authorizeRoles(ROLES
 //  QUESTION BANKS (Container CRUD)
 // ═══════════════════════════════════════════
 
-// GET /api/question-banks — List all question banks
-router.get('/api/question-banks', authenticateUser, async (req: Request, res: Response) => {
+router.get('/api/question-banks', authenticateUser, authorizeRoles(...TEACHER_AND_ADMIN), async (req: any, res: Response) => {
     try {
         const subjectId = parseIntParam(req.query.subjectId as string);
         const banks = await storage.getQuestionBanks(subjectId ? { subjectId } : undefined);
@@ -187,8 +162,7 @@ router.get('/api/question-banks', authenticateUser, async (req: Request, res: Re
     }
 });
 
-// GET /api/question-banks/:id — Get single bank
-router.get('/api/question-banks/:id', authenticateUser, async (req: Request, res: Response) => {
+router.get('/api/question-banks/:id', authenticateUser, authorizeRoles(...TEACHER_AND_ADMIN), async (req: any, res: Response) => {
     try {
         const id = parseInt(req.params.id);
         if (isNaN(id)) return sendBadRequest(res, 'Invalid ID');
@@ -200,30 +174,24 @@ router.get('/api/question-banks/:id', authenticateUser, async (req: Request, res
     }
 });
 
-// POST /api/question-banks — Create new question bank
-router.post('/api/question-banks', authenticateUser, async (req: any, res: Response) => {
+// Only admins can create/manage question bank containers
+router.post('/api/question-banks', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
     try {
         const { name, description, subjectId } = req.body;
-        if (!name || !subjectId) {
-            return sendBadRequest(res, 'name and subjectId are required');
-        }
+        if (!name || !subjectId) return sendBadRequest(res, 'name and subjectId are required');
         const bank = await storage.createQuestionBankRecord({
-            name: name.trim(),
-            description: description || null,
-            subjectId: parseInt(subjectId),
-            createdBy: req.user!.id,
+            name: name.trim(), description: description || null,
+            subjectId: parseInt(subjectId), createdBy: req.user!.id,
         });
         sendCreated(res, bank);
     } catch (error: any) {
-        if (error.message?.includes('UNIQUE') || error.code === '23505') {
+        if (error.message?.includes('UNIQUE') || error.code === '23505')
             return sendBadRequest(res, 'A question bank with this name already exists');
-        }
         handleRouteError(res, error, 'questionBanks.create');
     }
 });
 
-// PUT /api/question-banks/:id — Update bank
-router.put('/api/question-banks/:id', authenticateUser, async (req: any, res: Response) => {
+router.put('/api/question-banks/:id', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
     try {
         const id = parseInt(req.params.id);
         if (isNaN(id)) return sendBadRequest(res, 'Invalid ID');
@@ -236,8 +204,7 @@ router.put('/api/question-banks/:id', authenticateUser, async (req: any, res: Re
     }
 });
 
-// DELETE /api/question-banks/:id
-router.delete('/api/question-banks/:id', authenticateUser, async (req: any, res: Response) => {
+router.delete('/api/question-banks/:id', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
     try {
         const id = parseInt(req.params.id);
         if (isNaN(id)) return sendBadRequest(res, 'Invalid ID');
@@ -251,13 +218,16 @@ router.delete('/api/question-banks/:id', authenticateUser, async (req: any, res:
 });
 
 // ═══════════════════════════════════════════
-//  QUESTION BANK — Enhanced Queries
+//  QUESTION ITEMS — CRUD with RBAC
 // ═══════════════════════════════════════════
 
 // GET /api/question-bank/items — Filtered list
-router.get('/api/question-bank/items', authenticateUser, async (req: Request, res: Response) => {
+// Admin: sees all items (or filtered by status)
+// Teacher: sees own items + published/approved items
+router.get('/api/question-bank/items', authenticateUser, authorizeRoles(...TEACHER_AND_ADMIN), async (req: any, res: Response) => {
     try {
-        const filters = {
+        const user = req.user!;
+        const filters: any = {
             bankId: parseIntParam(req.query.bankId as string),
             classId: parseIntParam(req.query.classId as string),
             subjectId: parseIntParam(req.query.subjectId as string),
@@ -265,13 +235,27 @@ router.get('/api/question-bank/items', authenticateUser, async (req: Request, re
             topicId: parseIntParam(req.query.topicId as string),
             difficulty: req.query.difficulty as string | undefined,
             questionType: req.query.questionType as string | undefined,
-            status: req.query.status as string | undefined,
         };
 
-        const items = await storage.getQuestionBankItemsFiltered(filters);
+        const requestedStatus = req.query.status as string | undefined;
+        const myOnly = req.query.myOnly === 'true';
 
-        // For each item, fetch its options
-        const itemsWithOptions = await Promise.all(items.map(async (item) => {
+        if (isAdmin(user.roleId)) {
+            // Admin: respect explicit status filter; default = all
+            if (requestedStatus) filters.status = requestedStatus;
+        } else if (isTeacher(user.roleId)) {
+            if (myOnly) {
+                // Teacher fetching own questions
+                filters.createdBy = user.id;
+                if (requestedStatus) filters.status = requestedStatus;
+            } else {
+                // Teacher browsing bank: only see published/active/approved
+                filters.statuses = ['published', 'active', 'approved'];
+            }
+        }
+
+        const items = await storage.getQuestionBankItemsFiltered(filters);
+        const itemsWithOptions = await Promise.all(items.map(async (item: any) => {
             const options = await storage.getQuestionBankItemOptions(item.id);
             return { ...item, options };
         }));
@@ -282,14 +266,33 @@ router.get('/api/question-bank/items', authenticateUser, async (req: Request, re
     }
 });
 
-// POST /api/question-bank/items — Create question with hierarchy
-router.post('/api/question-bank/items', authenticateUser, async (req: any, res: Response) => {
+// GET /api/question-bank/pending — Admin approval queue
+router.get('/api/question-bank/pending', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
+    try {
+        const subjectId = parseIntParam(req.query.subjectId as string);
+        const classId = parseIntParam(req.query.classId as string);
+        const items = await storage.getPendingQuestionBankItems({ subjectId, classId });
+        const itemsWithOptions = await Promise.all(items.map(async (item: any) => {
+            const options = await storage.getQuestionBankItemOptions(item.id);
+            return { ...item, options };
+        }));
+        sendSuccess(res, itemsWithOptions);
+    } catch (error) {
+        handleRouteError(res, error, 'questionBank.pending');
+    }
+});
+
+// POST /api/question-bank/items — Create question
+// Admin: creates as 'active' (published immediately)
+// Teacher: creates as 'draft'
+router.post('/api/question-bank/items', authenticateUser, authorizeRoles(...TEACHER_AND_ADMIN), async (req: any, res: Response) => {
     try {
         const { bankId, questionText, questionType, points, difficulty, classId, termId, topicId, options, ...rest } = req.body;
-
-        if (!bankId || !questionText || !questionType) {
+        if (!bankId || !questionText || !questionType)
             return sendBadRequest(res, 'bankId, questionText, and questionType are required');
-        }
+
+        const user = req.user!;
+        const initialStatus = isAdmin(user.roleId) ? 'active' : 'draft';
 
         const item = await storage.createQuestionBankItem({
             bankId, questionText, questionType,
@@ -298,16 +301,16 @@ router.post('/api/question-bank/items', authenticateUser, async (req: any, res: 
             classId: classId || null,
             termId: termId || null,
             topicId: topicId || null,
-            status: 'active',
+            status: initialStatus,
+            createdBy: user.id,
             ...rest,
-        }, options?.map((o: any, i: number) => ({
+        } as any, options?.map((o: any, i: number) => ({
             optionText: o.optionText || o.text,
             isCorrect: o.isCorrect || false,
             orderNumber: o.orderNumber || i + 1,
             explanationText: o.explanationText || null,
         })));
 
-        // Fetch options back
         const savedOptions = await storage.getQuestionBankItemOptions(item.id);
         sendCreated(res, { ...item, options: savedOptions });
     } catch (error) {
@@ -316,7 +319,9 @@ router.post('/api/question-bank/items', authenticateUser, async (req: any, res: 
 });
 
 // PUT /api/question-bank/items/:id — Update question
-router.put('/api/question-bank/items/:id', authenticateUser, async (req: any, res: Response) => {
+// Admin: can edit any question
+// Teacher: can only edit own draft or rejected questions
+router.put('/api/question-bank/items/:id', authenticateUser, authorizeRoles(...TEACHER_AND_ADMIN), async (req: any, res: Response) => {
     try {
         const id = parseInt(req.params.id);
         if (isNaN(id)) return sendBadRequest(res, 'Invalid ID');
@@ -324,7 +329,17 @@ router.put('/api/question-bank/items/:id', authenticateUser, async (req: any, re
         const existing = await storage.getQuestionBankItemById(id);
         if (!existing) return sendNotFound(res, 'Question not found');
 
-        const updated = await storage.updateQuestionBankItem(id, req.body);
+        const user = req.user!;
+        if (isTeacher(user.roleId)) {
+            if (existing.createdBy !== user.id)
+                return sendForbidden(res, 'You can only edit your own questions');
+            if (!['draft', 'rejected'].includes(existing.status))
+                return sendForbidden(res, 'Only draft or rejected questions can be edited. Withdraw the submission first.');
+        }
+
+        // Strip workflow fields from teacher edits
+        const { status, approvedBy, approvedAt, rejectionReason, createdBy, ...safeData } = req.body;
+        const updated = await storage.updateQuestionBankItem(id, safeData);
         sendSuccess(res, updated);
     } catch (error) {
         handleRouteError(res, error, 'questionBank.items.update');
@@ -332,10 +347,23 @@ router.put('/api/question-bank/items/:id', authenticateUser, async (req: any, re
 });
 
 // DELETE /api/question-bank/items/:id
-router.delete('/api/question-bank/items/:id', authenticateUser, async (req: any, res: Response) => {
+// Admin: can delete any question
+// Teacher: can only delete own draft questions
+router.delete('/api/question-bank/items/:id', authenticateUser, authorizeRoles(...TEACHER_AND_ADMIN), async (req: any, res: Response) => {
     try {
         const id = parseInt(req.params.id);
         if (isNaN(id)) return sendBadRequest(res, 'Invalid ID');
+
+        const existing = await storage.getQuestionBankItemById(id);
+        if (!existing) return sendNotFound(res, 'Question not found');
+
+        const user = req.user!;
+        if (isTeacher(user.roleId)) {
+            if (existing.createdBy !== user.id)
+                return sendForbidden(res, 'You can only delete your own questions');
+            if (existing.status !== 'draft' && existing.status !== 'rejected')
+                return sendForbidden(res, 'Only draft or rejected questions can be deleted');
+        }
 
         await storage.deleteQuestionBankItem(id);
         sendSuccess(res, { message: 'Question deleted', id });
@@ -344,18 +372,128 @@ router.delete('/api/question-bank/items/:id', authenticateUser, async (req: any,
     }
 });
 
-// POST /api/question-bank/items/bulk-csv — Bulk upload questions to a bank
-router.post('/api/question-bank/items/bulk-csv', authenticateUser, async (req: any, res: Response) => {
+// ═══════════════════════════════════════════
+//  APPROVAL WORKFLOW ACTIONS
+// ═══════════════════════════════════════════
+
+// POST /api/question-bank/items/:id/submit — Teacher submits for admin approval
+router.post('/api/question-bank/items/:id/submit', authenticateUser, authorizeRoles(...TEACHER_AND_ADMIN), async (req: any, res: Response) => {
+    try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) return sendBadRequest(res, 'Invalid ID');
+
+        const existing = await storage.getQuestionBankItemById(id);
+        if (!existing) return sendNotFound(res, 'Question not found');
+
+        const user = req.user!;
+        if (isTeacher(user.roleId) && existing.createdBy !== user.id)
+            return sendForbidden(res, 'You can only submit your own questions');
+
+        if (!['draft', 'rejected'].includes(existing.status))
+            return sendBadRequest(res, `Cannot submit a question with status "${existing.status}"`);
+
+        const updated = await storage.updateQuestionBankItem(id, { status: 'submitted' } as any);
+        sendSuccess(res, updated);
+    } catch (error) {
+        handleRouteError(res, error, 'questionBank.items.submit');
+    }
+});
+
+// POST /api/question-bank/items/:id/withdraw — Teacher withdraws submission back to draft
+router.post('/api/question-bank/items/:id/withdraw', authenticateUser, authorizeRoles(...TEACHER_AND_ADMIN), async (req: any, res: Response) => {
+    try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) return sendBadRequest(res, 'Invalid ID');
+
+        const existing = await storage.getQuestionBankItemById(id);
+        if (!existing) return sendNotFound(res, 'Question not found');
+
+        const user = req.user!;
+        if (isTeacher(user.roleId) && existing.createdBy !== user.id)
+            return sendForbidden(res, 'You can only withdraw your own questions');
+
+        if (existing.status !== 'submitted')
+            return sendBadRequest(res, 'Only submitted questions can be withdrawn');
+
+        const updated = await storage.updateQuestionBankItem(id, { status: 'draft' } as any);
+        sendSuccess(res, updated);
+    } catch (error) {
+        handleRouteError(res, error, 'questionBank.items.withdraw');
+    }
+});
+
+// POST /api/question-bank/items/:id/approve — Admin approves
+router.post('/api/question-bank/items/:id/approve', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
+    try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) return sendBadRequest(res, 'Invalid ID');
+
+        const existing = await storage.getQuestionBankItemById(id);
+        if (!existing) return sendNotFound(res, 'Question not found');
+        if (existing.status !== 'submitted')
+            return sendBadRequest(res, 'Only submitted questions can be approved');
+
+        const updated = await storage.approveQuestionBankItem(id, req.user!.id);
+        sendSuccess(res, updated);
+    } catch (error) {
+        handleRouteError(res, error, 'questionBank.items.approve');
+    }
+});
+
+// POST /api/question-bank/items/:id/reject — Admin rejects with reason
+router.post('/api/question-bank/items/:id/reject', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
+    try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) return sendBadRequest(res, 'Invalid ID');
+
+        const existing = await storage.getQuestionBankItemById(id);
+        if (!existing) return sendNotFound(res, 'Question not found');
+        if (!['submitted', 'approved'].includes(existing.status))
+            return sendBadRequest(res, 'Only submitted or approved questions can be rejected');
+
+        const reason = (req.body.reason || '').trim();
+        if (!reason) return sendBadRequest(res, 'Rejection reason is required');
+
+        const updated = await storage.rejectQuestionBankItem(id, req.user!.id, reason);
+        sendSuccess(res, updated);
+    } catch (error) {
+        handleRouteError(res, error, 'questionBank.items.reject');
+    }
+});
+
+// POST /api/question-bank/items/:id/publish — Admin publishes an approved question
+router.post('/api/question-bank/items/:id/publish', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
+    try {
+        const id = parseInt(req.params.id);
+        if (isNaN(id)) return sendBadRequest(res, 'Invalid ID');
+
+        const existing = await storage.getQuestionBankItemById(id);
+        if (!existing) return sendNotFound(res, 'Question not found');
+        if (!['approved', 'active'].includes(existing.status))
+            return sendBadRequest(res, 'Only approved questions can be published');
+
+        const updated = await storage.publishQuestionBankItem(id);
+        sendSuccess(res, updated);
+    } catch (error) {
+        handleRouteError(res, error, 'questionBank.items.publish');
+    }
+});
+
+// ═══════════════════════════════════════════
+//  BULK CSV UPLOAD
+// ═══════════════════════════════════════════
+
+router.post('/api/question-bank/items/bulk-csv', authenticateUser, authorizeRoles(...TEACHER_AND_ADMIN), async (req: any, res: Response) => {
     try {
         const { bankId, classId, termId, topicId, questions } = req.body;
-
         if (!bankId) return sendBadRequest(res, 'bankId is required');
-        if (!Array.isArray(questions) || questions.length === 0) {
+        if (!Array.isArray(questions) || questions.length === 0)
             return sendBadRequest(res, 'questions array is required and must not be empty');
-        }
-        if (questions.length > 200) {
+        if (questions.length > 200)
             return sendBadRequest(res, 'Maximum 200 questions per upload');
-        }
+
+        const user = req.user!;
+        const initialStatus = isAdmin(user.roleId) ? 'active' : 'draft';
 
         const created: any[] = [];
         const errors: string[] = [];
@@ -372,8 +510,6 @@ router.post('/api/question-bank/items/bulk-csv', authenticateUser, async (req: a
                     errors.push(`Row ${i + 1}: Invalid question type "${questionType}"`);
                     continue;
                 }
-
-                // Build options for MCQ
                 let options: any[] | undefined;
                 if (questionType === 'multiple_choice' && q.options?.length >= 2) {
                     options = q.options.map((o: any, idx: number) => ({
@@ -382,12 +518,11 @@ router.post('/api/question-bank/items/bulk-csv', authenticateUser, async (req: a
                         orderNumber: idx + 1,
                         explanationText: null,
                     }));
-                    if (!options || !options.some((o: any) => o.isCorrect)) {
+                    if (!options.some((o: any) => o.isCorrect)) {
                         errors.push(`Row ${i + 1}: MCQ must have at least one correct option`);
                         continue;
                     }
                 }
-
                 const item = await storage.createQuestionBankItem({
                     bankId: parseInt(String(bankId)),
                     questionText: q.questionText.trim(),
@@ -397,11 +532,11 @@ router.post('/api/question-bank/items/bulk-csv', authenticateUser, async (req: a
                     classId: classId ? parseInt(String(classId)) : null,
                     termId: termId ? parseInt(String(termId)) : null,
                     topicId: topicId ? parseInt(String(topicId)) : null,
-                    status: 'active',
+                    status: initialStatus,
+                    createdBy: user.id,
                     expectedAnswers: q.expectedAnswer ? JSON.stringify([q.expectedAnswer]) : '[]',
                     explanationText: q.explanationText || null,
                 } as any, options);
-
                 created.push(item);
             } catch (error) {
                 errors.push(`Row ${i + 1}: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -418,51 +553,39 @@ router.post('/api/question-bank/items/bulk-csv', authenticateUser, async (req: a
 //  EXAM GENERATION FROM BANK
 // ═══════════════════════════════════════════
 
-// POST /api/question-bank/auto-generate — Simplified auto-generation with flat filters (preview only)
 router.post('/api/question-bank/auto-generate', authenticateUser, async (req: any, res: Response) => {
     try {
         const { classId, subjectId, termId, topicId, count, questionType, difficulty, excludeIds } = req.body;
-
-        if (!classId || !subjectId || !termId) {
+        if (!classId || !subjectId || !termId)
             return sendBadRequest(res, 'classId, subjectId, and termId are required');
-        }
-        const numQuestions = parseInt(count) || 10;
-        if (numQuestions < 1 || numQuestions > 100) {
-            return sendBadRequest(res, 'count must be between 1 and 100');
-        }
 
-        // Build filters for the existing getQuestionBankItemsFiltered method
+        const numQuestions = parseInt(count) || 10;
+        if (numQuestions < 1 || numQuestions > 100)
+            return sendBadRequest(res, 'count must be between 1 and 100');
+
         const filters: any = {
             classId: parseInt(classId),
             subjectId: parseInt(subjectId),
             termId: parseInt(termId),
-            status: 'active',
+            statuses: ['active', 'published', 'approved'],
         };
         if (topicId) filters.topicId = parseInt(topicId);
         if (difficulty && difficulty !== 'mixed') filters.difficulty = difficulty;
         if (questionType && questionType !== 'all' && questionType !== 'both') filters.questionType = questionType;
 
-        // Get all matching questions from the bank
         let pool = await storage.getQuestionBankItemsFiltered(filters);
 
-        // If questionType is 'both', filter for MCQ + theory types only
         if (questionType === 'both') {
             pool = pool.filter((q: any) =>
-                q.questionType === 'multiple_choice' || q.questionType === 'text' || q.questionType === 'essay'
-            );
+                ['multiple_choice', 'text', 'essay'].includes(q.questionType));
         }
 
-        // Exclude already-selected question IDs (for replace functionality)
         const excludeSet = new Set((excludeIds || []).map((id: any) => parseInt(id)));
-        if (excludeSet.size > 0) {
-            pool = pool.filter((q: any) => !excludeSet.has(q.id));
-        }
+        if (excludeSet.size > 0) pool = pool.filter((q: any) => !excludeSet.has(q.id));
 
-        // Randomly shuffle and pick the requested count
         const shuffled = pool.sort(() => Math.random() - 0.5);
         const selected = shuffled.slice(0, numQuestions);
 
-        // Fetch options for each selected question
         const questionsWithOptions = await Promise.all(selected.map(async (q: any) => {
             const options = await storage.getQuestionBankItemOptions(q.id);
             return { ...q, options };
@@ -473,7 +596,7 @@ router.post('/api/question-bank/auto-generate', authenticateUser, async (req: an
             count: questionsWithOptions.length,
             totalAvailable: pool.length,
             shortfall: pool.length < numQuestions
-                ? `Requested ${numQuestions} questions but only ${pool.length} available in the bank matching your filters`
+                ? `Requested ${numQuestions} but only ${pool.length} available`
                 : null,
         });
     } catch (error) {
@@ -481,59 +604,35 @@ router.post('/api/question-bank/auto-generate', authenticateUser, async (req: an
     }
 });
 
-// POST /api/question-bank/generate — Smart random generation
 router.post('/api/question-bank/generate', authenticateUser, async (req: any, res: Response) => {
     try {
         const { bankId, classId, subjectId, termId, distribution } = req.body;
-
-        if (!Array.isArray(distribution) || distribution.length === 0) {
-            return sendBadRequest(res, 'distribution array is required (each entry: { topicId?, difficulty?, count })');
-        }
-
-        const result = await storage.generateQuestionsFromBank({
-            bankId, classId, subjectId, termId, distribution,
-        });
-
-        // Fetch options for each generated question
+        if (!Array.isArray(distribution) || distribution.length === 0)
+            return sendBadRequest(res, 'distribution array is required');
+        const result = await storage.generateQuestionsFromBank({ bankId, classId, subjectId, termId, distribution });
         const questionsWithOptions = await Promise.all(result.questions.map(async (q) => {
             const options = await storage.getQuestionBankItemOptions(q.id);
             return { ...q, options };
         }));
-
-        sendSuccess(res, {
-            questions: questionsWithOptions,
-            count: questionsWithOptions.length,
-            shortfalls: result.shortfalls,
-        });
+        sendSuccess(res, { questions: questionsWithOptions, count: questionsWithOptions.length, shortfalls: result.shortfalls });
     } catch (error) {
         handleRouteError(res, error, 'questionBank.generate');
     }
 });
 
-// POST /api/question-bank/import-to-exam — Import selected questions into an exam
 router.post('/api/question-bank/import-to-exam', authenticateUser, async (req: any, res: Response) => {
     try {
         const { examId, questionItemIds, randomize, maxQuestions } = req.body;
-
-        if (!examId || !Array.isArray(questionItemIds) || questionItemIds.length === 0) {
+        if (!examId || !Array.isArray(questionItemIds) || questionItemIds.length === 0)
             return sendBadRequest(res, 'examId and questionItemIds array are required');
-        }
-
         const result = await storage.importQuestionsFromBank(examId, questionItemIds, randomize, maxQuestions);
-
-        // Track bank links for each imported question
         for (let i = 0; i < result.questions.length; i++) {
             try {
                 await storage.createExamQuestionBankLink({
-                    examId,
-                    examQuestionId: result.questions[i].id,
-                    bankItemId: questionItemIds[i],
+                    examId, examQuestionId: result.questions[i].id, bankItemId: questionItemIds[i],
                 });
-            } catch {
-                // Link creation is non-critical, continue
-            }
+            } catch { /* non-critical */ }
         }
-
         sendSuccess(res, result);
     } catch (error) {
         handleRouteError(res, error, 'questionBank.importToExam');
