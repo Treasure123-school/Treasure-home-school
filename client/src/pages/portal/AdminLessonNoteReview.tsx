@@ -266,29 +266,22 @@ export default function AdminLessonNoteReview() {
 
   return (
     <div className="min-h-screen bg-background" data-testid="admin-lesson-notes">
-
-      {/* Header */}
-      <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                <ClipboardCheck className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-foreground">Lesson Notes Review</h1>
-                <p className="text-sm text-muted-foreground mt-0.5">Manage, approve, and publish teacher lesson notes</p>
-              </div>
-            </div>
-            <Button onClick={handleCreate} data-testid="button-create-note" className="w-full sm:w-auto">
-              <Plus className="w-4 h-4 mr-1.5" />
-              Create Note
-            </Button>
-          </div>
-        </div>
-      </div>
-
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+
+        {/* Header */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2" data-testid="page-title">
+              <ClipboardCheck className="h-8 w-8 text-primary" />
+              Lesson Notes Review
+            </h1>
+            <p className="text-muted-foreground mt-1">Manage, approve, and publish teacher lesson notes</p>
+          </div>
+          <Button onClick={handleCreate} data-testid="button-create-note" className="w-full sm:w-auto shrink-0">
+            <Plus className="w-4 h-4 mr-1.5" />
+            Create Note
+          </Button>
+        </div>
 
         {/* Stat cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
