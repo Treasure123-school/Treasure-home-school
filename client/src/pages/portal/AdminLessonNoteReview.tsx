@@ -104,32 +104,8 @@ function NoteRow({ note, onView, onAction }: {
           </div>
         </div>
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-1.5 shrink-0">
-          {/* View button — always shown */}
-          <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs"
-            onClick={() => onView(note)} data-testid={`button-view-${note.id}`}>
-            <Eye className="w-3.5 h-3.5 sm:mr-1" />
-            <span className="hidden sm:inline">View</span>
-          </Button>
-
-          {/* Primary action */}
-          {isPending && (
-            <Button size="sm" className="h-8 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700"
-              onClick={() => act('approve-publish')} data-testid={`button-publish-${note.id}`}>
-              <Eye className="w-3.5 h-3.5 sm:mr-1" />
-              <span className="hidden sm:inline">Publish</span>
-            </Button>
-          )}
-          {isApproved && (
-            <Button size="sm" className="h-8 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700"
-              onClick={() => act('publish')} data-testid={`button-publish-approved-${note.id}`}>
-              <Eye className="w-3.5 h-3.5 sm:mr-1" />
-              <span className="hidden sm:inline">Publish</span>
-            </Button>
-          )}
-
-          {/* Overflow / secondary */}
+        {/* Actions — single dropdown */}
+        <div className="shrink-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" variant="outline" className="h-8 w-8 p-0" data-testid={`button-more-${note.id}`}>
@@ -137,19 +113,37 @@ function NoteRow({ note, onView, onAction }: {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onView(note)} data-testid={`button-view-${note.id}`}>
+                <Eye className="w-4 h-4 mr-2" />View
+              </DropdownMenuItem>
+              {isPending && (
+                <DropdownMenuItem onClick={() => act('approve-publish')} data-testid={`button-publish-${note.id}`}
+                  className="text-emerald-600 focus:text-emerald-600">
+                  <Eye className="w-4 h-4 mr-2" />Publish
+                </DropdownMenuItem>
+              )}
+              {isApproved && (
+                <DropdownMenuItem onClick={() => act('publish')} data-testid={`button-publish-approved-${note.id}`}
+                  className="text-emerald-600 focus:text-emerald-600">
+                  <Eye className="w-4 h-4 mr-2" />Publish
+                </DropdownMenuItem>
+              )}
               {isPending && (
                 <DropdownMenuItem onClick={() => act('approve')} data-testid={`button-approve-${note.id}`}>
                   <CheckCircle className="w-4 h-4 mr-2 text-green-600" />Approve only
                 </DropdownMenuItem>
               )}
               {['submitted', 'approved'].includes(note.status) && (
-                <DropdownMenuItem
-                  onClick={() => setShowReject(true)}
-                  className="text-destructive focus:text-destructive"
-                  data-testid={`button-reject-${note.id}`}
-                >
-                  <XCircle className="w-4 h-4 mr-2" />Reject
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => setShowReject(true)}
+                    className="text-destructive focus:text-destructive"
+                    data-testid={`button-reject-${note.id}`}
+                  >
+                    <XCircle className="w-4 h-4 mr-2" />Reject
+                  </DropdownMenuItem>
+                </>
               )}
               {isPublished && (
                 <>
