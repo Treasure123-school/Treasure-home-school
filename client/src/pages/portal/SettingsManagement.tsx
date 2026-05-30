@@ -80,17 +80,56 @@ interface GradingBoundary {
 // ─────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────
+
+/** Normalize any stored phone/email item to a plain string. */
+function itemToString(item: unknown): string {
+  if (typeof item === 'string') return item.trim();
+  if (item && typeof item === 'object') {
+    const o = item as Record<string, unknown>;
+    // Handle SchoolPhone { countryCode, number } format
+    if ('countryCode' in o && 'number' in o) {
+      return `${o.countryCode ?? ''}${o.number ?? ''}`.trim();
+    }
+    // Generic: take first string value found
+    const firstStr = Object.values(o).find(v => typeof v === 'string');
+    if (firstStr) return String(firstStr).trim();
+  }
+  return '';
+}
+
+/** Parse a JSON-encoded array (of strings OR SchoolPhone objects) to string[]. */
 function parseJsonArray(raw?: string | null): string[] {
   if (!raw) return [];
-  try { return JSON.parse(raw); } catch { return []; }
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.map(itemToString).filter(Boolean);
+  } catch {
+    return [];
+  }
 }
 
-function arrayToJsonString(arr: string[]): string {
+/** Convert strings to SchoolPhone objects so SuperAdminSettings stays compatible. */
+function stringToSchoolPhone(phone: string): { countryCode: string; number: string } {
+  const s = phone.trim();
+  if (s.startsWith('+')) {
+    const match = s.match(/^(\+\d{1,3})(.+)$/);
+    if (match) return { countryCode: match[1], number: match[2].replace(/[\s\-()]/g, '') };
+  }
+  if (s.startsWith('0') && s.length >= 10) {
+    return { countryCode: '+234', number: s.slice(1) };
+  }
+  return { countryCode: '+234', number: s };
+}
+
+/** Serialize phone strings back to SchoolPhone JSON (keeps SuperAdminSettings compatible). */
+function phonesToJsonString(arr: string[]): string {
+  return JSON.stringify(arr.filter(Boolean).map(stringToSchoolPhone));
+}
+
+/** Serialize email strings as a plain JSON string array. */
+function emailsToJsonString(arr: string[]): string {
   return JSON.stringify(arr.filter(Boolean));
-}
-
-function commaSepToArray(s: string): string[] {
-  return s.split(',').map(x => x.trim()).filter(Boolean);
 }
 
 // ─────────────────────────────────────────────
@@ -282,8 +321,8 @@ function SchoolProfileSection() {
       schoolShortName: form.schoolShortName,
       schoolMotto: form.schoolMotto,
       schoolAddress: form.schoolAddress,
-      schoolPhones: arrayToJsonString(form.schoolPhones.filter(Boolean)),
-      schoolEmails: arrayToJsonString(form.schoolEmails.filter(Boolean)),
+      schoolPhones: phonesToJsonString(form.schoolPhones),
+      schoolEmails: emailsToJsonString(form.schoolEmails),
       websiteTitle: form.websiteTitle,
       footerText: form.footerText,
     });
