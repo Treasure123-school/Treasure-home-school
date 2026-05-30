@@ -153,15 +153,13 @@ export default function LessonNoteEditorPage() {
 
       {/* ── Page header ── */}
       <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
-          <div className="flex items-center gap-3">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row sm:items-center gap-3">
 
-            {/* Icon */}
+          {/* Icon + title block */}
+          <div className="flex items-center gap-3 flex-1 min-w-0">
             <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
               <BookOpen className="w-5 h-5 text-primary" />
             </div>
-
-            {/* Title block — grows, truncates */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 min-w-0">
                 <h1 className="text-lg sm:text-xl font-bold text-foreground leading-tight truncate">
@@ -171,54 +169,54 @@ export default function LessonNoteEditorPage() {
               </div>
               <p className="text-sm text-muted-foreground mt-0.5 truncate">{pageSubtitle}</p>
             </div>
-
-            {/* Action buttons */}
-            {canEdit && (
-              <div className="flex items-center gap-2 shrink-0">
-                {isTeacher && (
-                  <Button
-                    size="sm"
-                    disabled={!canSave || busy}
-                    onClick={() => submitMutation.mutate()}
-                    data-testid="button-submit-review"
-                  >
-                    <Send className="w-3.5 h-3.5 sm:mr-1.5" />
-                    <span className="hidden sm:inline">{submitMutation.isPending ? 'Submitting…' : 'Submit for Review'}</span>
-                  </Button>
-                )}
-                {isAdmin && (
-                  <Button
-                    size="sm"
-                    disabled={!canSave || busy}
-                    onClick={() => publishMutation.mutate()}
-                    className="bg-emerald-600 hover:bg-emerald-700"
-                    data-testid="button-publish"
-                  >
-                    <Eye className="w-3.5 h-3.5 sm:mr-1.5" />
-                    <span className="hidden sm:inline">{publishMutation.isPending ? 'Publishing…' : 'Save & Publish'}</span>
-                    <span className="sm:hidden">{publishMutation.isPending ? '…' : 'Publish'}</span>
-                  </Button>
-                )}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="h-9 w-9 p-0" data-testid="button-more-actions">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-40">
-                    <DropdownMenuItem
-                      disabled={!canSave || busy}
-                      onClick={() => saveMutation.mutate()}
-                      data-testid="button-save-draft"
-                    >
-                      <Save className="w-3.5 h-3.5 mr-2" />
-                      {saveMutation.isPending ? 'Saving…' : 'Save Draft'}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            )}
           </div>
+
+          {/* Action buttons — new row on mobile, inline on desktop */}
+          {canEdit && (
+            <div className="flex items-center gap-2 sm:shrink-0">
+              {isTeacher && (
+                <Button
+                  size="sm"
+                  disabled={!canSave || busy}
+                  onClick={() => submitMutation.mutate()}
+                  className="flex-1 sm:flex-none"
+                  data-testid="button-submit-review"
+                >
+                  <Send className="w-3.5 h-3.5 mr-1.5" />
+                  {submitMutation.isPending ? 'Submitting…' : 'Submit for Review'}
+                </Button>
+              )}
+              {isAdmin && (
+                <Button
+                  size="sm"
+                  disabled={!canSave || busy}
+                  onClick={() => publishMutation.mutate()}
+                  className="bg-emerald-600 hover:bg-emerald-700 flex-1 sm:flex-none"
+                  data-testid="button-publish"
+                >
+                  <Eye className="w-3.5 h-3.5 mr-1.5" />
+                  {publishMutation.isPending ? 'Publishing…' : 'Save & Publish'}
+                </Button>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9 w-9 p-0 shrink-0" data-testid="button-more-actions">
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-40">
+                  <DropdownMenuItem
+                    disabled={!canSave || busy}
+                    onClick={() => saveMutation.mutate()}
+                    data-testid="button-save-draft"
+                  >
+                    <Save className="w-3.5 h-3.5 mr-2" />
+                    {saveMutation.isPending ? 'Saving…' : 'Save Draft'}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
         </div>
       </div>
 
