@@ -153,20 +153,17 @@ export default function LessonNoteEditorPage() {
 
       {/* ── Page header ── */}
       <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-              <BookOpen className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-xl font-bold text-foreground">{pageTitle}</h1>
-                {note && <StatusBadge status={note.status} />}
-              </div>
-              <p className="text-sm text-muted-foreground mt-0.5 truncate">{pageSubtitle}</p>
-            </div>
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-2">
 
-            {/* Action buttons in header */}
+          {/* Row 1: icon + title + action buttons */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <BookOpen className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-primary" />
+            </div>
+            <h1 className="flex-1 text-lg sm:text-xl font-bold text-foreground leading-tight truncate">
+              {pageTitle}
+            </h1>
+            {/* Action buttons */}
             {canEdit && (
               <div className="flex items-center gap-2 shrink-0">
                 {isTeacher && (
@@ -176,9 +173,8 @@ export default function LessonNoteEditorPage() {
                     onClick={() => submitMutation.mutate()}
                     data-testid="button-submit-review"
                   >
-                    <Send className="w-3.5 h-3.5 mr-1.5" />
+                    <Send className="w-3.5 h-3.5 sm:mr-1.5" />
                     <span className="hidden sm:inline">{submitMutation.isPending ? 'Submitting…' : 'Submit for Review'}</span>
-                    <span className="sm:hidden">{submitMutation.isPending ? '…' : 'Submit'}</span>
                   </Button>
                 )}
                 {isAdmin && (
@@ -189,7 +185,7 @@ export default function LessonNoteEditorPage() {
                     className="bg-emerald-600 hover:bg-emerald-700"
                     data-testid="button-publish"
                   >
-                    <Eye className="w-3.5 h-3.5 mr-1.5" />
+                    <Eye className="w-3.5 h-3.5 sm:mr-1.5" />
                     <span className="hidden sm:inline">{publishMutation.isPending ? 'Publishing…' : 'Save & Publish'}</span>
                     <span className="sm:hidden">{publishMutation.isPending ? '…' : 'Publish'}</span>
                   </Button>
@@ -213,6 +209,12 @@ export default function LessonNoteEditorPage() {
                 </DropdownMenu>
               </div>
             )}
+          </div>
+
+          {/* Row 2: status badge + subtitle */}
+          <div className="flex items-center gap-2 pl-[52px] sm:pl-[56px] flex-wrap">
+            {note && <StatusBadge status={note.status} />}
+            <p className="text-sm text-muted-foreground truncate">{pageSubtitle}</p>
           </div>
         </div>
       </div>
