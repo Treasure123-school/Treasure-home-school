@@ -312,7 +312,7 @@ export default function RichTextEditor({
       {/* MOBILE FLOATING: portal-based, sits above the keyboard */}
       {mobileFloating && createPortal(
         <div
-          className="fixed left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 shadow-lg transition-[bottom] duration-75"
+          className="fixed left-0 right-0 z-50 border-t bg-background shadow-lg transition-[bottom] duration-75"
           style={{ bottom: vvBottom }}
         >
           {toolbarInner}

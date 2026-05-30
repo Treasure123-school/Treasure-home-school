@@ -24,8 +24,11 @@ import {
   Bell, Mail, MessageSquare, Paperclip, Image, Clock, 
   AlertTriangle, AlertCircle, Info, FileText, GraduationCap, 
   PartyPopper, Siren, Eye, X, Upload, Save, Send, Check,
-  LayoutGrid, List
+  LayoutGrid, List, MoreHorizontal
 } from 'lucide-react';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { useAuth } from '@/lib/auth';
 
@@ -409,10 +412,10 @@ export default function AnnouncementsManagement() {
 
   return (
     <div className="space-y-6" data-testid="announcements-management">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+      <div className="flex flex-col gap-3">
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Announcements Management</h1>
         <div className="flex items-center gap-2">
-          <div className="flex items-center bg-muted rounded-lg p-1 mr-2">
+          <div className="flex items-center bg-muted rounded-lg p-1">
             <Button 
               variant={viewMode === 'table' ? 'secondary' : 'ghost'} 
               size="sm" 
@@ -436,7 +439,7 @@ export default function AnnouncementsManagement() {
           </div>
           <Dialog open={isDialogOpen} onOpenChange={(open) => open ? setIsDialogOpen(true) : handleCloseDialog()}>
             <DialogTrigger asChild>
-              <Button data-testid="button-add-announcement">
+              <Button className="flex-1 sm:flex-none" data-testid="button-add-announcement">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Announcement
               </Button>
@@ -1092,9 +1095,9 @@ export default function AnnouncementsManagement() {
               </div>
             </div>
             
-            <div className="flex flex-wrap gap-2 sm:gap-4">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-4">
               <Select value={selectedRole} onValueChange={setSelectedRole}>
-                <SelectTrigger className="w-[140px] sm:w-[160px]" data-testid="select-role-filter">
+                <SelectTrigger className="w-full sm:w-[160px]" data-testid="select-role-filter">
                   <SelectValue placeholder="Role" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1106,7 +1109,7 @@ export default function AnnouncementsManagement() {
               </Select>
 
               <Select value={selectedPriority} onValueChange={setSelectedPriority}>
-                <SelectTrigger className="w-[140px] sm:w-[160px]" data-testid="select-priority-filter">
+                <SelectTrigger className="w-full sm:w-[160px]" data-testid="select-priority-filter">
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1118,7 +1121,7 @@ export default function AnnouncementsManagement() {
               </Select>
 
               <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-                <SelectTrigger className="w-[140px] sm:w-[160px]" data-testid="select-status-filter">
+                <SelectTrigger className="w-full sm:w-[160px] col-span-2" data-testid="select-status-filter">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1247,28 +1250,35 @@ export default function AnnouncementsManagement() {
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
-                            <div className="flex justify-end space-x-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 px-2"
-                                onClick={() => handleEdit(announcement)}
-                                data-testid={`button-edit-announcement-${announcement.id}`}
-                              >
-                                <Edit className="w-3.5 h-3.5 mr-1.5" />
-                                Edit
-                              </Button>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                className="h-8 px-2"
-                                onClick={() => setAnnouncementToDelete(announcement)}
-                                data-testid={`button-delete-announcement-${announcement.id}`}
-                              >
-                                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                                Delete
-                              </Button>
-                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  data-testid={`button-actions-announcement-${announcement.id}`}
+                                >
+                                  <MoreHorizontal className="w-4 h-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => handleEdit(announcement)}
+                                  data-testid={`button-edit-announcement-${announcement.id}`}
+                                >
+                                  <Edit className="w-3.5 h-3.5 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() => setAnnouncementToDelete(announcement)}
+                                  data-testid={`button-delete-announcement-${announcement.id}`}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </TableRow>
                       );
