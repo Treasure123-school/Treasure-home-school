@@ -628,8 +628,20 @@ function AcademicSettingsSection() {
 
   if (isLoading) return <SectionSkeleton />;
 
+  const SaveBtn = ({ className }: { className?: string }) => (
+    <Button onClick={handleSave} disabled={save.isPending} data-testid="button-save-academic" className={className}>
+      {save.isPending ? <Loader2 className="w-4 h-4 animate-spin sm:mr-2" /> : <Save className="w-4 h-4 sm:mr-2" />}
+      <span className="hidden sm:inline">Save Academic Settings</span>
+    </Button>
+  );
+
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">Adjust weights, grading rules, and report card behaviour.</p>
+        <SaveBtn />
+      </div>
+
       <SettingCard title="Assessment Weights" description="How CA (test) and examination scores are weighted for the final grade" icon={Percent}>
         <div className="space-y-4">
           <div className="flex justify-between text-sm font-medium">
@@ -687,10 +699,7 @@ function AcademicSettingsSection() {
       </SettingCard>
 
       <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={save.isPending} data-testid="button-save-academic">
-          {save.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-          Save Academic Settings
-        </Button>
+        <SaveBtn />
       </div>
     </div>
   );
