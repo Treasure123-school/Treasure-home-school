@@ -247,6 +247,15 @@ function sanitizeLogData(data: any): any {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.log(`⚠️ Test users seeding failed: ${errorMessage}`);
   }
+  // Seed default WAEC/NECO grading boundaries
+  try {
+    console.log("Seeding default grading boundaries...");
+    const { seedGradingBoundaries } = await import("./seed-grading-boundaries");
+    await seedGradingBoundaries();
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.log(`⚠️ Grading boundaries seeding failed: ${errorMessage}`);
+  }
   // Local File Storage Setup
   try {
     console.log("Initializing local file storage...");
