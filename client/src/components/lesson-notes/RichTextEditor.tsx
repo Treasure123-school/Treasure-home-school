@@ -66,6 +66,25 @@ export default function RichTextEditor({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
 
+  // Track editor focus so mobile toolbar switches between inline ↔ floating
+  const [focused, setFocused] = useState(false);
+
+  // Visual viewport offset — how far the keyboard has pushed things up
+  const [vvBottom, setVvBottom] = useState(0);
+  useEffect(() => {
+    if (!isMobile || disabled) return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const update = () => setVvBottom(Math.max(0, window.innerHeight - (vv.height + vv.offsetTop)));
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    update();
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+    };
+  }, [isMobile, disabled]);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -98,9 +117,9 @@ export default function RichTextEditor({
         'data-placeholder': placeholder,
       },
     },
-    onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
-    },
+    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+    onFocus: () => setFocused(true),
+    onBlur: () => setFocused(false),
   }, [disabled]);
 
   useEffect(() => {
@@ -108,22 +127,6 @@ export default function RichTextEditor({
       editor.commands.setContent(content || '', false);
     }
   }, []);
-
-  // Mobile: track visual viewport offset so the toolbar floats above the keyboard
-  const [vvBottom, setVvBottom] = useState(0);
-  useEffect(() => {
-    if (!isMobile || disabled) return;
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const update = () => setVvBottom(Math.max(0, window.innerHeight - (vv.height + vv.offsetTop)));
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
-    update();
-    return () => {
-      vv.removeEventListener('resize', update);
-      vv.removeEventListener('scroll', update);
-    };
-  }, [isMobile, disabled]);
 
   const handleImageUpload = useCallback(async (file: File) => {
     if (!editor) return;
@@ -171,7 +174,7 @@ export default function RichTextEditor({
 
   if (!editor) return null;
 
-  // Shared toolbar button group — same markup for both desktop (inline) and mobile (portal)
+  // Shared toolbar buttons — rendered in both inline and floating positions
   const toolbarButtons = (
     <>
       <ToolbarBtn title="Undo (Ctrl+Z)" onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()}>
@@ -293,31 +296,32 @@ export default function RichTextEditor({
     </>
   );
 
-  const toolbarClass = 'flex flex-wrap items-center gap-0.5 px-2 py-1.5 bg-muted/30';
+  const toolbarInner = (
+    <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5">
+      {toolbarButtons}
+    </div>
+  );
+
+  // Mobile: when editor is focused the keyboard is open — show floating toolbar above it.
+  // When not focused, show toolbar inline at the bottom of the editor box.
+  const mobileFloating = isMobile && focused && !disabled;
+  const mobileInline   = isMobile && !focused && !disabled;
 
   return (
     <>
-      {/* MOBILE: floating toolbar above the keyboard via portal */}
-      {!disabled && isMobile && createPortal(
+      {/* MOBILE FLOATING: portal-based, sits above the keyboard */}
+      {mobileFloating && createPortal(
         <div
-          className={`fixed left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 shadow-lg transition-[bottom] duration-75 ${toolbarClass}`}
+          className="fixed left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 shadow-lg transition-[bottom] duration-75"
           style={{ bottom: vvBottom }}
         >
-          {toolbarButtons}
+          {toolbarInner}
         </div>,
         document.body,
       )}
 
       <div className={`border rounded-lg overflow-hidden bg-background ${disabled ? 'opacity-70' : ''}`}>
-        {/* Hidden file input */}
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageFile} />
-
-        {/* DESKTOP: toolbar at the top of the editor, inside the box */}
-        {!disabled && !isMobile && (
-          <div className={`border-b ${toolbarClass}`}>
-            {toolbarButtons}
-          </div>
-        )}
 
         {/* Typing area */}
         <div
@@ -326,14 +330,21 @@ export default function RichTextEditor({
           className="relative"
         >
           <EditorContent editor={editor} />
-          {/* On mobile, extra space so the last line isn't hidden under the floating toolbar */}
-          {!disabled && isMobile && <div className="h-24" />}
+          {/* Spacer so last line isn't hidden under the floating toolbar on mobile */}
+          {mobileFloating && <div className="h-20" />}
         </div>
 
-        {/* DESKTOP: second toolbar row at the bottom for quick access while reading long notes */}
-        {!disabled && !isMobile && (
-          <div className={`border-t ${toolbarClass}`}>
-            {toolbarButtons}
+        {/* DESKTOP: single toolbar at the bottom of the editor */}
+        {!isMobile && !disabled && (
+          <div className="border-t bg-muted/30">
+            {toolbarInner}
+          </div>
+        )}
+
+        {/* MOBILE INLINE: toolbar inside the box when editor is not focused */}
+        {mobileInline && (
+          <div className="border-t bg-muted/30">
+            {toolbarInner}
           </div>
         )}
 
