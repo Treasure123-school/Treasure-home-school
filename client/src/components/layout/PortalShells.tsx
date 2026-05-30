@@ -74,6 +74,9 @@ const SyllabusTopicsManager = lazy(() => import('@/pages/portal/SyllabusTopicsMa
 const QuestionBankManager = lazy(() => import('@/pages/portal/QuestionBankManager'));
 const TeacherLessonNotes = lazy(() => import('@/pages/portal/TeacherLessonNotes'));
 const AdminLessonNoteReview = lazy(() => import('@/pages/portal/AdminLessonNoteReview'));
+const LessonNoteEditorPage = lazy(() => import('@/pages/portal/LessonNoteEditorPage'));
+const LessonNoteViewPage = lazy(() => import('@/pages/portal/LessonNoteViewPage'));
+const StudentLessonNoteViewPage = lazy(() => import('@/pages/portal/StudentLessonNoteViewPage'));
 const ExamPaymentManagement = lazy(() => import('@/pages/portal/ExamPaymentManagement'));
 const AttendanceManagement = lazy(() => import('@/pages/portal/AttendanceManagement'));
 const ParentManagement = lazy(() => import('@/pages/portal/ParentManagement'));
@@ -140,6 +143,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/student/gallery" component={PortalGallery} />
             <Route path="/portal/student/study-resources" component={StudentStudyResources} />
             <Route path="/portal/student/subjects" component={StudentSubjects} />
+            <Route path="/portal/student/lesson-notes/:topicId" component={StudentLessonNoteViewPage} />
             <Route path="/portal/student/scheme-of-work" component={StudentSchemeOfWork} />
             <Route path="/portal/student/timetable" component={StudentClassSchedule} />
             <Route path="/portal/student/assignments" component={StudentAssignments} />
@@ -171,6 +175,9 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/teacher/recent-exam-results" component={TeacherRecentExamResults} />
             <Route path="/portal/teacher/syllabus-topics" component={SyllabusTopicsManager} />
             <Route path="/portal/teacher/question-bank" component={QuestionBankManager} />
+            <Route path="/portal/teacher/lesson-notes/create" component={LessonNoteEditorPage} />
+            <Route path="/portal/teacher/lesson-notes/edit/:id" component={LessonNoteEditorPage} />
+            <Route path="/portal/teacher/lesson-notes/view/:id" component={LessonNoteViewPage} />
             <Route path="/portal/teacher/lesson-notes" component={TeacherLessonNotes} />
             <Route path="/portal/teacher/timetable" component={TeacherTimetable} />
             <Route path="/portal/teacher/messages" component={TeacherMessages} />
@@ -221,6 +228,9 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/comment-templates" component={ReportCommentTemplates} />
             <Route path="/portal/admin/syllabus-topics" component={SyllabusTopicsManager} />
             <Route path="/portal/admin/question-bank" component={QuestionBankManager} />
+            <Route path="/portal/admin/lesson-notes/create" component={LessonNoteEditorPage} />
+            <Route path="/portal/admin/lesson-notes/edit/:id" component={LessonNoteEditorPage} />
+            <Route path="/portal/admin/lesson-notes/view/:id" component={LessonNoteViewPage} />
             <Route path="/portal/admin/lesson-notes" component={AdminLessonNoteReview} />
             <Route path="/portal/admin/exam-payments" component={ExamPaymentManagement} />
             <Route path="/portal/admin/attendance" component={AttendanceManagement} />
