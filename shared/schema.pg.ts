@@ -896,9 +896,22 @@ export const teacherAssignmentHistory = pgTable("teacher_assignment_history", {
   assignmentHistoryDateIdx: index("assignment_history_date_idx").on(table.createdAt),
 }));
 
+// Grade Scales table - Named grading systems (e.g. WAEC, Standard A-F)
+export const gradeScales = pgTable("grade_scales", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull(),
+  description: varchar("description", { length: 255 }),
+  isActive: boolean("is_active").notNull().default(false),
+  isBuiltIn: boolean("is_built_in").notNull().default(false),
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // Grading boundaries table - Configurable grade thresholds
 export const gradingBoundaries = pgTable("grading_boundaries", {
   id: serial("id").primaryKey(),
+  scaleId: integer("scale_id").references(() => gradeScales.id, { onDelete: 'cascade' }),
   name: varchar("name", { length: 100 }).notNull(), // e.g., "Standard", "Custom Science"
   grade: varchar("grade", { length: 10 }).notNull(), // e.g., "A", "B", "C", "D", "E", "F"
   minScore: integer("min_score").notNull(), // Minimum score for this grade
@@ -916,6 +929,7 @@ export const gradingBoundaries = pgTable("grading_boundaries", {
   gradingBoundariesNameIdx: index("grading_boundaries_name_idx").on(table.name),
   gradingBoundariesGradeIdx: index("grading_boundaries_grade_idx").on(table.grade),
   gradingBoundariesDefaultIdx: index("grading_boundaries_default_idx").on(table.isDefault),
+  gradingBoundariesScaleIdx: index("grading_boundaries_scale_idx").on(table.scaleId),
 }));
 
 // Continuous Assessment scores table

@@ -20,9 +20,9 @@ import {
   Settings, Building2, GraduationCap, BarChart3, Users, ClipboardList,
   FileText, FileBarChart2, CalendarCheck, Bell, CreditCard, Palette,
   Shield, Database, Save, Loader2, Plus, Edit, Trash2, Info,
-  ChevronRight, ChevronDown, Search, ExternalLink, Hash, Scale,
+  ChevronRight, ChevronDown, ChevronUp, Search, ExternalLink, Hash, Scale,
   Mail, Phone, Globe, MapPin, Key, AlertTriangle, CheckCircle,
-  RefreshCw, Download, Upload, Lock, Eye, EyeOff, Percent, X
+  RefreshCw, Download, Upload, Lock, Eye, EyeOff, Percent, X, Copy
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────
@@ -68,13 +68,25 @@ interface SystemSettings {
 
 interface GradingBoundary {
   id: number;
+  scaleId?: number | null;
   name: string;
   grade: string;
   minScore: number;
   maxScore: number;
-  remark?: string;
-  gradePoint?: number;
+  remark?: string | null;
+  gradePoint?: number | null;
   isDefault: boolean;
+}
+
+interface GradeScale {
+  id: number;
+  name: string;
+  description?: string | null;
+  isActive: boolean;
+  isBuiltIn: boolean;
+  createdAt: string;
+  updatedAt: string;
+  boundaries: GradingBoundary[];
 }
 
 // ─────────────────────────────────────────────
@@ -738,90 +750,153 @@ function AcademicSettingsSection() {
 }
 
 // ─────────────────────────────────────────────
-// SECTION: Grading Scale (preserved + enhanced)
+// SECTION: Grading Scale
 // ─────────────────────────────────────────────
 function GradingScaleSection() {
   const { settings, isLoading: settingsLoading, save } = useAdminSettings();
   const { toast } = useToast();
   const [positioningMethod, setPositioningMethod] = useState('average');
-  const [defaultScale, setDefaultScale] = useState('standard');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [expandedScaleId, setExpandedScaleId] = useState<number | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editingScale, setEditingScale] = useState<GradeScale | null>(null);
+  const [scaleForm, setScaleForm] = useState({ name: '', description: '', copyFromId: '' });
+  const [boundaryDialogOpen, setBoundaryDialogOpen] = useState(false);
+  const [boundaryScaleId, setBoundaryScaleId] = useState<number | null>(null);
   const [editingBoundary, setEditingBoundary] = useState<GradingBoundary | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
-  const [boundaryForm, setBoundaryForm] = useState({ name: 'Standard', grade: '', minScore: 0, maxScore: 100, remark: '', gradePoint: 0, isDefault: true });
+  const [boundaryForm, setBoundaryForm] = useState({ grade: '', minScore: 0, maxScore: 100, remark: '', gradePoint: '' });
+  const [deleteScaleId, setDeleteScaleId] = useState<number | null>(null);
+  const [deleteBoundaryId, setDeleteBoundaryId] = useState<{ scaleId: number; boundaryId: number } | null>(null);
+  const [previewScore, setPreviewScore] = useState('');
 
   useEffect(() => {
-    if (settings) {
-      setPositioningMethod(settings.positioningMethod || 'average');
-      setDefaultScale(settings.defaultGradingScale || 'standard');
-    }
+    if (settings) setPositioningMethod(settings.positioningMethod || 'average');
   }, [settings]);
 
-  const { data: boundaries = [], isLoading: boundariesLoading } = useQuery<GradingBoundary[]>({
-    queryKey: ['/api/grading-boundaries'],
+  const { data: scales = [], isLoading: scalesLoading } = useQuery<GradeScale[]>({
+    queryKey: ['/api/grade-scales'],
   });
 
-  const createMutation = useMutation({
-    mutationFn: (data: typeof boundaryForm) => apiRequest('POST', '/api/grading-boundaries', data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/grading-boundaries'] }); setIsDialogOpen(false); toast({ title: 'Boundary created' }); },
+  const activeScale = scales.find(s => s.isActive);
+
+  const previewResult = (() => {
+    const score = parseInt(previewScore);
+    if (isNaN(score) || !activeScale?.boundaries?.length) return null;
+    const clamped = Math.max(0, Math.min(100, score));
+    const sorted = [...activeScale.boundaries].sort((a, b) => b.minScore - a.minScore);
+    return sorted.find(b => clamped >= b.minScore && clamped <= b.maxScore) ?? sorted[sorted.length - 1] ?? null;
+  })();
+
+  const activateMutation = useMutation({
+    mutationFn: (id: number) => apiRequest('POST', `/api/grade-scales/${id}/activate`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/grade-scales'] }); toast({ title: 'Grade scale activated' }); },
+    onError: (e: any) => toast({ title: 'Failed to activate', description: e.message, variant: 'destructive' }),
+  });
+
+  const duplicateMutation = useMutation({
+    mutationFn: (id: number) => apiRequest('POST', `/api/grade-scales/${id}/duplicate`),
+    onSuccess: (s: any) => { queryClient.invalidateQueries({ queryKey: ['/api/grade-scales'] }); setExpandedScaleId(s.id); toast({ title: 'Scale duplicated' }); },
     onError: (e: any) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
   });
 
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: typeof boundaryForm }) => apiRequest('PATCH', `/api/grading-boundaries/${id}`, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/grading-boundaries'] }); setIsDialogOpen(false); toast({ title: 'Boundary updated' }); },
+  const deleteScaleMutation = useMutation({
+    mutationFn: (id: number) => apiRequest('DELETE', `/api/grade-scales/${id}`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/grade-scales'] }); setDeleteScaleId(null); toast({ title: 'Scale deleted' }); },
+    onError: (e: any) => toast({ title: 'Failed to delete', description: e.message, variant: 'destructive' }),
+  });
+
+  const createScaleMutation = useMutation({
+    mutationFn: (data: any) => apiRequest('POST', '/api/grade-scales', data),
+    onSuccess: (s: any) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/grade-scales'] });
+      setCreateOpen(false);
+      setScaleForm({ name: '', description: '', copyFromId: '' });
+      setExpandedScaleId(s.id);
+      toast({ title: 'Scale created' });
+    },
     onError: (e: any) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiRequest('DELETE', `/api/grading-boundaries/${id}`),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/grading-boundaries'] }); setDeleteConfirmId(null); toast({ title: 'Boundary deleted' }); },
+  const updateScaleMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => apiRequest('PATCH', `/api/grade-scales/${id}`, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/grade-scales'] }); setEditingScale(null); toast({ title: 'Scale updated' }); },
     onError: (e: any) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
   });
 
-  const bulkCreateMutation = useMutation({
-    mutationFn: () => apiRequest('POST', '/api/grading-boundaries/bulk', {
-      name: 'Standard', isDefault: true,
-      boundaries: [
-        { grade: 'A1', minScore: 75, maxScore: 100, remark: 'Distinction', gradePoint: 4.0 },
-        { grade: 'B2', minScore: 70, maxScore: 74, remark: 'Very Good', gradePoint: 3.5 },
-        { grade: 'B3', minScore: 65, maxScore: 69, remark: 'Good', gradePoint: 3.0 },
-        { grade: 'C4', minScore: 60, maxScore: 64, remark: 'Credit', gradePoint: 2.5 },
-        { grade: 'C5', minScore: 55, maxScore: 59, remark: 'Credit', gradePoint: 2.0 },
-        { grade: 'C6', minScore: 50, maxScore: 54, remark: 'Credit', gradePoint: 1.5 },
-        { grade: 'D7', minScore: 45, maxScore: 49, remark: 'Pass', gradePoint: 1.0 },
-        { grade: 'E8', minScore: 40, maxScore: 44, remark: 'Pass', gradePoint: 0.5 },
-        { grade: 'F9', minScore: 0, maxScore: 39, remark: 'Fail', gradePoint: 0.0 },
-      ],
-    }),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/grading-boundaries'] }); toast({ title: 'Default scale created' }); },
+  const addBoundaryMutation = useMutation({
+    mutationFn: ({ scaleId, data }: { scaleId: number; data: any }) => apiRequest('POST', `/api/grade-scales/${scaleId}/boundaries`, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/grade-scales'] }); setBoundaryDialogOpen(false); resetBoundaryForm(); toast({ title: 'Boundary added' }); },
     onError: (e: any) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
   });
 
-  const handleSaveBoundaryForm = () => {
-    if (!boundaryForm.grade) { toast({ title: 'Grade letter is required', variant: 'destructive' }); return; }
-    if (boundaryForm.minScore > boundaryForm.maxScore) { toast({ title: 'Min score cannot exceed max', variant: 'destructive' }); return; }
-    if (editingBoundary) updateMutation.mutate({ id: editingBoundary.id, data: boundaryForm });
-    else createMutation.mutate(boundaryForm);
+  const updateBoundaryMutation = useMutation({
+    mutationFn: ({ scaleId, boundaryId, data }: { scaleId: number; boundaryId: number; data: any }) =>
+      apiRequest('PATCH', `/api/grade-scales/${scaleId}/boundaries/${boundaryId}`, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/grade-scales'] }); setBoundaryDialogOpen(false); resetBoundaryForm(); toast({ title: 'Boundary updated' }); },
+    onError: (e: any) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
+  });
+
+  const deleteBoundaryMutation = useMutation({
+    mutationFn: ({ scaleId, boundaryId }: { scaleId: number; boundaryId: number }) =>
+      apiRequest('DELETE', `/api/grade-scales/${scaleId}/boundaries/${boundaryId}`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/grade-scales'] }); setDeleteBoundaryId(null); toast({ title: 'Boundary deleted' }); },
+    onError: (e: any) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
+  });
+
+  const resetBoundaryForm = () => {
+    setBoundaryForm({ grade: '', minScore: 0, maxScore: 100, remark: '', gradePoint: '' });
+    setEditingBoundary(null);
+    setBoundaryScaleId(null);
   };
 
-  const openEdit = (b: GradingBoundary) => {
-    setBoundaryForm({ name: b.name, grade: b.grade, minScore: b.minScore, maxScore: b.maxScore, remark: b.remark || '', gradePoint: b.gradePoint || 0, isDefault: b.isDefault });
-    setEditingBoundary(b); setIsDialogOpen(true);
+  const openAddBoundary = (scaleId: number) => { resetBoundaryForm(); setBoundaryScaleId(scaleId); setBoundaryDialogOpen(true); };
+  const openEditBoundary = (scaleId: number, b: GradingBoundary) => {
+    setBoundaryForm({ grade: b.grade, minScore: b.minScore, maxScore: b.maxScore, remark: b.remark || '', gradePoint: b.gradePoint != null ? String(b.gradePoint) : '' });
+    setEditingBoundary(b); setBoundaryScaleId(scaleId); setBoundaryDialogOpen(true);
   };
 
-  const resetBoundaryForm = () => { setBoundaryForm({ name: 'Standard', grade: '', minScore: 0, maxScore: 100, remark: '', gradePoint: 0, isDefault: true }); setEditingBoundary(null); };
+  const handleSaveBoundary = () => {
+    if (!boundaryForm.grade.trim()) { toast({ title: 'Grade is required', variant: 'destructive' }); return; }
+    if (boundaryForm.minScore > boundaryForm.maxScore) { toast({ title: 'Min score cannot exceed max score', variant: 'destructive' }); return; }
+    const payload = {
+      grade: boundaryForm.grade.trim(),
+      minScore: boundaryForm.minScore,
+      maxScore: boundaryForm.maxScore,
+      remark: boundaryForm.remark || undefined,
+      gradePoint: boundaryForm.gradePoint !== '' ? parseFloat(boundaryForm.gradePoint) : undefined,
+    };
+    if (editingBoundary && boundaryScaleId) {
+      updateBoundaryMutation.mutate({ scaleId: boundaryScaleId, boundaryId: editingBoundary.id, data: payload });
+    } else if (boundaryScaleId) {
+      addBoundaryMutation.mutate({ scaleId: boundaryScaleId, data: payload });
+    }
+  };
+
+  const gradeColor = (grade: string) => {
+    const g = grade.toUpperCase();
+    if (g.startsWith('A')) return 'text-green-600 dark:text-green-400';
+    if (g.startsWith('B')) return 'text-blue-600 dark:text-blue-400';
+    if (g.startsWith('C')) return 'text-yellow-600 dark:text-yellow-400';
+    if (g.startsWith('D')) return 'text-orange-600 dark:text-orange-400';
+    return 'text-red-600 dark:text-red-400';
+  };
+  const gradeBg = (grade: string) => {
+    const g = grade.toUpperCase();
+    if (g.startsWith('A')) return 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800';
+    if (g.startsWith('B')) return 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800';
+    if (g.startsWith('C')) return 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800';
+    if (g.startsWith('D')) return 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800';
+    return 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
+  };
 
   if (settingsLoading) return <SectionSkeleton />;
 
   return (
     <div className="space-y-4">
+      {/* Class Position Method */}
       <SettingCard title="Class Position Method" description="How students are ranked within their class" icon={Scale}>
         <div className="space-y-3">
           <Select value={positioningMethod} onValueChange={v => { setPositioningMethod(v); save.mutate({ positioningMethod: v }); }}>
-            <SelectTrigger data-testid="select-positioning-method">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger data-testid="select-positioning-method"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="average">By Average Score (Recommended)</SelectItem>
               <SelectItem value="total">By Total Marks</SelectItem>
@@ -834,117 +909,317 @@ function GradingScaleSection() {
         </div>
       </SettingCard>
 
-      <SettingCard title="Grade Boundaries" description="Define the score ranges that map to each grade letter" icon={BarChart3}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <p className="text-sm text-muted-foreground">{boundaries.length} boundaries configured</p>
-          <div className="flex gap-2 flex-wrap">
-            {boundaries.length === 0 && (
-              <Button variant="outline" size="sm" onClick={() => bulkCreateMutation.mutate()} disabled={bulkCreateMutation.isPending} data-testid="button-create-defaults">
-                {bulkCreateMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
-                Load WAEC/NECO Scale
-              </Button>
-            )}
-            <Button size="sm" onClick={() => { resetBoundaryForm(); setIsDialogOpen(true); }} data-testid="button-add-boundary">
-              <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Boundary
-            </Button>
-          </div>
+      {/* Grade Scales Management */}
+      <SettingCard title="Grade Scales" description="Manage named grading systems. Only one scale is active at a time — it drives all exam results, report cards, and analytics." icon={BarChart3}>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm text-muted-foreground">{scales.length} scale{scales.length !== 1 ? 's' : ''} configured</p>
+          <Button size="sm" onClick={() => { setScaleForm({ name: '', description: '', copyFromId: '' }); setCreateOpen(true); }} data-testid="button-new-scale">
+            <Plus className="w-3.5 h-3.5 mr-1.5" /> New Scale
+          </Button>
         </div>
 
-        {boundariesLoading ? (
-          <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-        ) : boundaries.length === 0 ? (
-          <div className="text-center py-8 bg-muted/20 rounded-lg border-2 border-dashed">
+        {scalesLoading ? (
+          <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+        ) : scales.length === 0 ? (
+          <div className="text-center py-10 bg-muted/20 rounded-lg border-2 border-dashed">
             <BarChart3 className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-            <p className="text-sm text-muted-foreground">No grade boundaries configured.</p>
-            <p className="text-xs text-muted-foreground mt-1">Click "Load WAEC/NECO Scale" to add the standard Nigerian grading scale.</p>
+            <p className="text-sm font-medium text-muted-foreground">No grade scales yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Create a scale using the "New Scale" button above.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-lg border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Grade</TableHead>
-                  <TableHead>Score Range</TableHead>
-                  <TableHead className="hidden sm:table-cell">GPA</TableHead>
-                  <TableHead className="hidden md:table-cell">Remark</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {boundaries.map(b => (
-                  <TableRow key={b.id} data-testid={`row-boundary-${b.id}`}>
-                    <TableCell><Badge variant="outline" className="font-bold">{b.grade}</Badge></TableCell>
-                    <TableCell className="text-sm">{b.minScore}% – {b.maxScore}%</TableCell>
-                    <TableCell className="hidden sm:table-cell text-sm">{b.gradePoint?.toFixed(1) ?? '—'}</TableCell>
-                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{b.remark || '—'}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(b)} data-testid={`button-edit-boundary-${b.id}`}><Edit className="w-3.5 h-3.5" /></Button>
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setDeleteConfirmId(b.id)} data-testid={`button-delete-boundary-${b.id}`}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+          <div className="space-y-3">
+            {scales.map(scale => {
+              const isExpanded = expandedScaleId === scale.id;
+              const sorted = [...scale.boundaries].sort((a, b) => b.minScore - a.minScore);
+              return (
+                <div key={scale.id} className={cn('rounded-lg border transition-all', scale.isActive ? 'border-green-500/40 bg-green-50/50 dark:bg-green-950/20' : 'border-border bg-card')}>
+                  <div className="flex items-start gap-3 p-4">
+                    <div className={cn('w-2 h-2 rounded-full mt-2 shrink-0', scale.isActive ? 'bg-green-500' : 'bg-muted-foreground/25')} />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                        <span className="font-semibold text-sm">{scale.name}</span>
+                        {scale.isActive && <Badge className="bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 text-xs border-0 px-1.5 py-0">Active</Badge>}
+                        {scale.isBuiltIn && <Badge variant="outline" className="text-xs px-1.5 py-0">Built-in</Badge>}
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {scale.description && <p className="text-xs text-muted-foreground">{scale.description}</p>}
+                        <span className="text-xs text-muted-foreground/60">{scale.boundaries.length} {scale.boundaries.length === 1 ? 'boundary' : 'boundaries'}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
+                      {!scale.isActive && (
+                        <Button size="sm" variant="outline" className="h-7 text-xs px-2.5" onClick={() => activateMutation.mutate(scale.id)} disabled={activateMutation.isPending} data-testid={`button-activate-scale-${scale.id}`}>
+                          {activateMutation.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Activate'}
+                        </Button>
+                      )}
+                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Edit name/description" onClick={() => { setEditingScale(scale); setScaleForm({ name: scale.name, description: scale.description || '', copyFromId: '' }); }} data-testid={`button-edit-scale-${scale.id}`}><Edit className="w-3.5 h-3.5" /></Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" title="Duplicate" onClick={() => duplicateMutation.mutate(scale.id)} disabled={duplicateMutation.isPending} data-testid={`button-duplicate-scale-${scale.id}`}><Copy className="w-3.5 h-3.5" /></Button>
+                      {!scale.isActive && (
+                        <Button size="icon" variant="ghost" className="h-7 w-7" title="Delete" onClick={() => setDeleteScaleId(scale.id)} data-testid={`button-delete-scale-${scale.id}`}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                      )}
+                      <Button size="icon" variant="ghost" className="h-7 w-7" title={isExpanded ? 'Collapse' : 'Show boundaries'} onClick={() => setExpandedScaleId(isExpanded ? null : scale.id)} data-testid={`button-expand-scale-${scale.id}`}>
+                        {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="border-t px-4 pb-4 pt-3 space-y-3">
+                      {sorted.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-3">No boundaries yet.</p>
+                      ) : (
+                        <div className="overflow-x-auto rounded border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-muted/30">
+                                <TableHead className="py-2 text-xs">Grade</TableHead>
+                                <TableHead className="py-2 text-xs">Score Range</TableHead>
+                                <TableHead className="py-2 text-xs hidden sm:table-cell">Points</TableHead>
+                                <TableHead className="py-2 text-xs hidden md:table-cell">Remark</TableHead>
+                                <TableHead className="py-2 text-xs text-right">Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {sorted.map(b => (
+                                <TableRow key={b.id} data-testid={`row-boundary-${b.id}`}>
+                                  <TableCell className="py-2"><Badge variant="outline" className="font-bold text-xs">{b.grade}</Badge></TableCell>
+                                  <TableCell className="py-2 text-sm">{b.minScore}% – {b.maxScore}%</TableCell>
+                                  <TableCell className="py-2 text-sm hidden sm:table-cell">{b.gradePoint ?? '—'}</TableCell>
+                                  <TableCell className="py-2 text-sm text-muted-foreground hidden md:table-cell">{b.remark || '—'}</TableCell>
+                                  <TableCell className="py-2 text-right">
+                                    <div className="flex justify-end gap-1">
+                                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEditBoundary(scale.id, b)} data-testid={`button-edit-boundary-${b.id}`}><Edit className="w-3 h-3" /></Button>
+                                      <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setDeleteBoundaryId({ scaleId: scale.id, boundaryId: b.id })} data-testid={`button-delete-boundary-${b.id}`}><Trash2 className="w-3 h-3 text-destructive" /></Button>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                      <Button size="sm" variant="outline" className="w-full text-xs h-8" onClick={() => openAddBoundary(scale.id)} data-testid={`button-add-boundary-${scale.id}`}>
+                        <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Boundary
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </SettingCard>
 
-      {/* Boundary form dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={v => { setIsDialogOpen(v); if (!v) resetBoundaryForm(); }}>
+      {/* Grade Preview */}
+      <SettingCard
+        title="Grade Preview"
+        description={activeScale ? `Live preview using: ${activeScale.name}` : 'Activate a scale above to enable preview'}
+        icon={Eye}
+      >
+        <div className="space-y-4">
+          <div className="flex gap-3 items-end">
+            <div className="flex-1">
+              <Label className="text-xs text-muted-foreground mb-1.5 block">Enter score (0–100)</Label>
+              <Input
+                type="number" min="0" max="100"
+                placeholder="e.g. 75"
+                value={previewScore}
+                onChange={e => setPreviewScore(e.target.value)}
+                disabled={!activeScale}
+                data-testid="input-preview-score"
+              />
+            </div>
+            {previewResult && (
+              <div className={cn('rounded-lg border px-4 py-2 text-center min-w-[100px]', gradeBg(previewResult.grade))}>
+                <div className={cn('text-2xl font-bold leading-tight', gradeColor(previewResult.grade))}>{previewResult.grade}</div>
+                {previewResult.remark && <div className="text-xs text-muted-foreground">{previewResult.remark}</div>}
+                {previewResult.gradePoint != null && <div className="text-xs font-medium mt-0.5">{previewResult.gradePoint} pt{previewResult.gradePoint !== 1 ? 's' : ''}</div>}
+              </div>
+            )}
+            {previewScore && !previewResult && activeScale && (
+              <div className="rounded-lg border px-4 py-2 text-center min-w-[100px] bg-muted/30">
+                <div className="text-sm text-muted-foreground">—</div>
+              </div>
+            )}
+          </div>
+
+          {activeScale && activeScale.boundaries.length > 0 && (
+            <div className="overflow-x-auto rounded border">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30">
+                    <TableHead className="py-2 text-xs">Grade</TableHead>
+                    <TableHead className="py-2 text-xs">Range</TableHead>
+                    <TableHead className="py-2 text-xs hidden sm:table-cell">Points</TableHead>
+                    <TableHead className="py-2 text-xs hidden sm:table-cell">Remark</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[...activeScale.boundaries].sort((a, b) => b.minScore - a.minScore).map(b => (
+                    <TableRow key={b.id} className={cn(previewResult?.id === b.id ? 'bg-primary/8 font-medium' : '')}>
+                      <TableCell className="py-1.5"><Badge variant="outline" className={cn('text-xs font-bold', previewResult?.id === b.id ? gradeColor(b.grade) : '')}>{b.grade}</Badge></TableCell>
+                      <TableCell className="py-1.5 text-xs">{b.minScore}–{b.maxScore}%</TableCell>
+                      <TableCell className="py-1.5 text-xs hidden sm:table-cell">{b.gradePoint ?? '—'}</TableCell>
+                      <TableCell className="py-1.5 text-xs text-muted-foreground hidden sm:table-cell">{b.remark || '—'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+      </SettingCard>
+
+      {/* Create Scale Dialog */}
+      <Dialog open={createOpen} onOpenChange={v => { setCreateOpen(v); if (!v) setScaleForm({ name: '', description: '', copyFromId: '' }); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingBoundary ? 'Edit Grading Boundary' : 'Add Grading Boundary'}</DialogTitle>
-            <DialogDescription>Define the score range and grade point for this level.</DialogDescription>
+            <DialogTitle>New Grade Scale</DialogTitle>
+            <DialogDescription>Create a new grading system. Optionally copy boundaries from an existing scale.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Grade Letter</Label>
-                <Input placeholder="e.g. A1, B2" value={boundaryForm.grade} onChange={e => setBoundaryForm(p => ({ ...p, grade: e.target.value.toUpperCase() }))} data-testid="input-grade" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Grade Point</Label>
-                <Input type="number" step="0.1" min="0" max="4" value={boundaryForm.gradePoint} onChange={e => setBoundaryForm(p => ({ ...p, gradePoint: parseFloat(e.target.value) || 0 }))} data-testid="input-grade-point" />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label>Min Score (%)</Label>
-                <Input type="number" min="0" max="100" value={boundaryForm.minScore} onChange={e => setBoundaryForm(p => ({ ...p, minScore: parseInt(e.target.value) || 0 }))} data-testid="input-min-score" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Max Score (%)</Label>
-                <Input type="number" min="0" max="100" value={boundaryForm.maxScore} onChange={e => setBoundaryForm(p => ({ ...p, maxScore: parseInt(e.target.value) || 100 }))} data-testid="input-max-score" />
-              </div>
+            <div className="space-y-1.5">
+              <Label>Scale Name *</Label>
+              <Input placeholder="e.g. My Custom Scale" value={scaleForm.name} onChange={e => setScaleForm(p => ({ ...p, name: e.target.value }))} data-testid="input-scale-name" />
             </div>
             <div className="space-y-1.5">
-              <Label>Remark</Label>
-              <Input placeholder="e.g. Distinction, Credit, Fail" value={boundaryForm.remark} onChange={e => setBoundaryForm(p => ({ ...p, remark: e.target.value }))} data-testid="input-remark" />
+              <Label>Description <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Input placeholder="Short description of this scale" value={scaleForm.description} onChange={e => setScaleForm(p => ({ ...p, description: e.target.value }))} data-testid="input-scale-description" />
             </div>
+            {scales.length > 0 && (
+              <div className="space-y-1.5">
+                <Label>Copy boundaries from <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Select value={scaleForm.copyFromId} onValueChange={v => setScaleForm(p => ({ ...p, copyFromId: v }))}>
+                  <SelectTrigger data-testid="select-copy-from"><SelectValue placeholder="Start with no boundaries" /></SelectTrigger>
+                  <SelectContent>
+                    {scales.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name} ({s.boundaries.length})</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveBoundaryForm} disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-save-boundary">
-              {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {editingBoundary ? 'Update' : 'Create'}
+            <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (!scaleForm.name.trim()) { toast({ title: 'Name is required', variant: 'destructive' }); return; }
+                createScaleMutation.mutate({ name: scaleForm.name.trim(), description: scaleForm.description.trim() || undefined, copyFromId: scaleForm.copyFromId || undefined });
+              }}
+              disabled={createScaleMutation.isPending}
+              data-testid="button-create-scale"
+            >
+              {createScaleMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Create Scale
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirm */}
-      <Dialog open={deleteConfirmId !== null} onOpenChange={v => { if (!v) setDeleteConfirmId(null); }}>
+      {/* Edit Scale Dialog */}
+      <Dialog open={editingScale !== null} onOpenChange={v => { if (!v) setEditingScale(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Scale</DialogTitle>
+            <DialogDescription>Update the name and description of this grade scale.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Scale Name *</Label>
+              <Input value={scaleForm.name} onChange={e => setScaleForm(p => ({ ...p, name: e.target.value }))} data-testid="input-edit-scale-name" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Description <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Input placeholder="Short description" value={scaleForm.description} onChange={e => setScaleForm(p => ({ ...p, description: e.target.value }))} data-testid="input-edit-scale-description" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingScale(null)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (!editingScale || !scaleForm.name.trim()) { toast({ title: 'Name is required', variant: 'destructive' }); return; }
+                updateScaleMutation.mutate({ id: editingScale.id, data: { name: scaleForm.name.trim(), description: scaleForm.description.trim() || undefined } });
+              }}
+              disabled={updateScaleMutation.isPending}
+              data-testid="button-save-scale"
+            >
+              {updateScaleMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add/Edit Boundary Dialog */}
+      <Dialog open={boundaryDialogOpen} onOpenChange={v => { setBoundaryDialogOpen(v); if (!v) resetBoundaryForm(); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingBoundary ? 'Edit Boundary' : 'Add Boundary'}</DialogTitle>
+            <DialogDescription>Map a score range to a grade letter and optional remark.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Grade *</Label>
+                <Input placeholder="e.g. A1, B+, C" value={boundaryForm.grade} onChange={e => setBoundaryForm(p => ({ ...p, grade: e.target.value }))} data-testid="input-boundary-grade" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Points <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                <Input type="number" step="1" min="0" placeholder="e.g. 4" value={boundaryForm.gradePoint} onChange={e => setBoundaryForm(p => ({ ...p, gradePoint: e.target.value }))} data-testid="input-boundary-points" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Min Score (%)</Label>
+                <Input type="number" min="0" max="100" value={boundaryForm.minScore} onChange={e => setBoundaryForm(p => ({ ...p, minScore: parseInt(e.target.value) || 0 }))} data-testid="input-boundary-min" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Max Score (%)</Label>
+                <Input type="number" min="0" max="100" value={boundaryForm.maxScore} onChange={e => setBoundaryForm(p => ({ ...p, maxScore: parseInt(e.target.value) || 100 }))} data-testid="input-boundary-max" />
+              </div>
+            </div>
+            {boundaryForm.minScore > boundaryForm.maxScore && (
+              <p className="text-xs text-destructive flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> Min score cannot exceed max score</p>
+            )}
+            <div className="space-y-1.5">
+              <Label>Remark <span className="text-muted-foreground text-xs">(optional)</span></Label>
+              <Input placeholder="e.g. Distinction, Credit, Fail" value={boundaryForm.remark} onChange={e => setBoundaryForm(p => ({ ...p, remark: e.target.value }))} data-testid="input-boundary-remark" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setBoundaryDialogOpen(false); resetBoundaryForm(); }}>Cancel</Button>
+            <Button onClick={handleSaveBoundary} disabled={addBoundaryMutation.isPending || updateBoundaryMutation.isPending} data-testid="button-save-boundary">
+              {(addBoundaryMutation.isPending || updateBoundaryMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {editingBoundary ? 'Update' : 'Add'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Scale Confirm */}
+      <Dialog open={deleteScaleId !== null} onOpenChange={v => { if (!v) setDeleteScaleId(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Grade Scale</DialogTitle>
+            <DialogDescription>This permanently deletes the scale and all its boundaries. This cannot be undone.</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteScaleId(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => deleteScaleId && deleteScaleMutation.mutate(deleteScaleId)} disabled={deleteScaleMutation.isPending} data-testid="button-confirm-delete-scale">
+              {deleteScaleMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Boundary Confirm */}
+      <Dialog open={deleteBoundaryId !== null} onOpenChange={v => { if (!v) setDeleteBoundaryId(null); }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Boundary</DialogTitle>
-            <DialogDescription>This cannot be undone. Are you sure?</DialogDescription>
+            <DialogDescription>Remove this grade boundary. This cannot be undone.</DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => deleteConfirmId && deleteMutation.mutate(deleteConfirmId)} disabled={deleteMutation.isPending}>
-              {deleteMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Delete
+            <Button variant="outline" onClick={() => setDeleteBoundaryId(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => deleteBoundaryId && deleteBoundaryMutation.mutate(deleteBoundaryId)} disabled={deleteBoundaryMutation.isPending} data-testid="button-confirm-delete-boundary">
+              {deleteBoundaryMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Delete
             </Button>
           </DialogFooter>
         </DialogContent>

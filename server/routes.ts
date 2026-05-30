@@ -24,6 +24,7 @@ import { realtimeService } from "./realtime-service";
 import { getProfileImagePath, getHomepageImagePath } from "./storage-path-utils";
 import { uploadFileToStorage, replaceFile, deleteFileFromStorage } from "./upload-service";
 import teacherAssignmentRoutes from "./teacher-assignment-routes";
+import gradeScaleRoutes from "./grade-scale-routes";
 import jobVacancyRoutes from "./routes/job-vacancy.routes";
 import settingsRoutes from "./routes/settings.routes";
 import examPaymentRoutes from "./routes/exam-payment.routes";
@@ -1181,6 +1182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Note: Authentication is handled within the router via requireAuth/requireAdmin
   // which use the same JWT verification logic
   app.use(teacherAssignmentRoutes);
+  app.use(gradeScaleRoutes);
 
   // Mount modular route files
   app.use(jobVacancyRoutes);
@@ -10854,21 +10856,22 @@ School Management System Administration
 
   // ==================== REPORT CARD ROUTES ====================
 
-  // Get grading configuration (includes database-configured weights)
+  // Get grading configuration (uses active DB scale when available, falls back to hardcoded)
   app.get('/api/grading-config', authenticateUser, async (req: Request, res: Response) => {
     try {
-      const { getGradingConfig, GRADING_SCALES } = await import('./grading-config');
-      const scaleName = req.query.scale as string || 'standard';
-      const config = getGradingConfig(scaleName);
+      const { GRADING_SCALES } = await import('./grading-config');
+      const { getActiveGradingConfig } = await import('./grade-scale-service');
 
       const systemSettings = await storage.getSystemSettings();
       const dbTestWeight = systemSettings?.testWeight ?? 40;
       const dbExamWeight = systemSettings?.examWeight ?? 60;
-      const dbGradingScale = systemSettings?.defaultGradingScale ?? 'standard';
+
+      // Use the active DB scale if one exists, otherwise fall back to hardcoded scale by name
+      const activeConfig = await getActiveGradingConfig();
 
       res.json({
         currentConfig: {
-          ...config,
+          ...activeConfig,
           testWeight: dbTestWeight,
           examWeight: dbExamWeight,
         },
@@ -10876,7 +10879,7 @@ School Management System Administration
         dbSettings: {
           testWeight: dbTestWeight,
           examWeight: dbExamWeight,
-          defaultGradingScale: dbGradingScale
+          defaultGradingScale: activeConfig.name,
         }
       });
     } catch (error) {
