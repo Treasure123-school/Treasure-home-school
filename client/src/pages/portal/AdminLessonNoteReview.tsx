@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,24 +11,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  BookOpen, CheckCircle, XCircle, Eye, EyeOff, Send, FileText, Clock, ClipboardCheck,
-  AlertCircle, Search, Edit, Trash2, Plus, User, Calendar,
-  ChevronDown, ChevronUp,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { StatusBadge, STATUS_CFG, fmtDate, EnrichedNote } from '@/components/lesson-notes/lessonNoteShared';
+import {
+  BookOpen, CheckCircle, XCircle, Eye, EyeOff, Send, FileText, ClipboardCheck,
+  AlertCircle, Search, Edit, Plus, User, Calendar, MoreHorizontal,
 } from 'lucide-react';
-
-type EnrichedNote = {
-  id: number; topicId: number; classId: number; subjectId: number; termId: number;
-  title: string; content: string | null; objectives: string | null;
-  attachmentUrl: string | null; attachmentName: string | null;
-  status: string; rejectionReason: string | null;
-  createdBy: string | null; submittedBy: string | null; approvedBy: string | null;
-  rejectedBy: string | null; publishedBy: string | null;
-  submittedAt: string | null; approvedAt: string | null;
-  rejectedAt: string | null; publishedAt: string | null;
-  createdAt: string; updatedAt: string;
-  creatorName: string | null; subjectName: string | null;
-  className: string | null; topicName: string | null; termName: string | null;
-};
 
 function useLessonNotes(filters: Record<string, string>) {
   const clean = Object.fromEntries(Object.entries(filters).filter(([, v]) => v && v !== '_all'));
@@ -72,30 +61,6 @@ function useTerms() {
   });
 }
 
-const STATUS_CFG: Record<string, { label: string; cls: string; icon: any }> = {
-  draft:     { label: 'Draft',     cls: 'bg-muted text-muted-foreground border border-border',                                       icon: FileText    },
-  submitted: { label: 'Submitted', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',                         icon: Send        },
-  approved:  { label: 'Approved',  cls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',                     icon: CheckCircle },
-  rejected:  { label: 'Rejected',  cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',                             icon: XCircle     },
-  published: { label: 'Published', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',             icon: Eye         },
-  archived:  { label: 'Archived',  cls: 'bg-muted text-muted-foreground border border-border',                                       icon: Clock       },
-};
-
-function StatusBadge({ status }: { status: string }) {
-  const cfg = STATUS_CFG[status] ?? STATUS_CFG.draft;
-  const Icon = cfg.icon;
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.cls}`}>
-      <Icon className="w-3 h-3" />{cfg.label}
-    </span>
-  );
-}
-
-function fmtDate(d: string | null | undefined) {
-  if (!d) return '';
-  return new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
 function NoteRow({ note, onView, onAction }: {
   note: EnrichedNote;
   onView: (n: EnrichedNote) => void;
@@ -103,7 +68,6 @@ function NoteRow({ note, onView, onAction }: {
 }) {
   const [showReject,  setShowReject]  = useState(false);
   const [rejectInput, setRejectInput] = useState('');
-  const [expanded,    setExpanded]    = useState(false);
   const { toast } = useToast();
 
   const act = async (action: string, extra?: any) => {
@@ -111,79 +75,107 @@ function NoteRow({ note, onView, onAction }: {
     catch (e: any) { toast({ title: 'Error', description: e.message, variant: 'destructive' }); }
   };
 
+  const isPending    = ['draft', 'submitted', 'rejected'].includes(note.status);
+  const isApproved   = note.status === 'approved';
+  const isPublished  = note.status === 'published';
+
   return (
     <div className="rounded-lg border bg-card overflow-hidden" data-testid={`note-row-${note.id}`}>
-      <div className="flex items-start gap-3 p-4">
+      <div className="flex items-start gap-3 p-3 sm:p-4">
         <div className="flex-1 min-w-0 space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
             <StatusBadge status={note.status} />
             {note.className   && <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{note.className}</span>}
             {note.subjectName && <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{note.subjectName}</span>}
-            {note.termName    && <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{note.termName}</span>}
+            {note.termName    && <span className="hidden sm:inline text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{note.termName}</span>}
           </div>
           <p className="font-semibold text-sm leading-snug">{note.title}</p>
-          <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             {note.topicName && (
-              <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" />{note.topicName}</span>
+              <span className="flex items-center gap-1"><BookOpen className="w-3 h-3 shrink-0" />{note.topicName}</span>
             )}
             <span className="flex items-center gap-1">
-              <User className="w-3 h-3" />{note.creatorName ?? 'Unknown teacher'}
+              <User className="w-3 h-3 shrink-0" />{note.creatorName ?? 'Unknown'}
             </span>
-            {note.submittedAt ? (
-              <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Submitted {fmtDate(note.submittedAt)}</span>
-            ) : (
-              <span className="flex items-center gap-1"><Calendar className="w-3 h-3" />Created {fmtDate(note.createdAt)}</span>
-            )}
+            <span className="flex items-center gap-1">
+              <Calendar className="w-3 h-3 shrink-0" />
+              {note.submittedAt ? `Submitted ${fmtDate(note.submittedAt)}` : `Created ${fmtDate(note.createdAt)}`}
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0 flex-wrap justify-end">
-          <Button size="sm" variant="ghost" className="h-8 px-2.5 text-xs"
-            onClick={() => setExpanded(e => !e)} data-testid={`button-expand-${note.id}`}>
-            {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          </Button>
+        {/* Action buttons */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* View button — always shown */}
           <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs"
             onClick={() => onView(note)} data-testid={`button-view-${note.id}`}>
-            <Eye className="w-3.5 h-3.5 mr-1" />View
+            <Eye className="w-3.5 h-3.5 sm:mr-1" />
+            <span className="hidden sm:inline">View</span>
           </Button>
-          {['draft', 'rejected', 'submitted'].includes(note.status) && (
-            <Button size="sm" className="h-8 px-2.5 text-xs bg-green-600 hover:bg-green-700"
-              onClick={() => act('approve')} data-testid={`button-approve-${note.id}`}>
-              <CheckCircle className="w-3.5 h-3.5 mr-1" />Approve
-            </Button>
-          )}
-          {note.status === 'approved' && (
+
+          {/* Primary action */}
+          {isPending && (
             <Button size="sm" className="h-8 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700"
-              onClick={() => act('publish')} data-testid={`button-publish-${note.id}`}>
-              <Eye className="w-3.5 h-3.5 mr-1" />Publish
+              onClick={() => act('approve-publish')} data-testid={`button-publish-${note.id}`}>
+              <Eye className="w-3.5 h-3.5 sm:mr-1" />
+              <span className="hidden sm:inline">Publish</span>
             </Button>
           )}
-          {['draft', 'rejected', 'submitted'].includes(note.status) && (
+          {isApproved && (
             <Button size="sm" className="h-8 px-2.5 text-xs bg-emerald-600 hover:bg-emerald-700"
-              onClick={() => act('approve-publish')} data-testid={`button-approve-publish-${note.id}`}>
-              <Eye className="w-3.5 h-3.5 mr-1" />Publish
+              onClick={() => act('publish')} data-testid={`button-publish-approved-${note.id}`}>
+              <Eye className="w-3.5 h-3.5 sm:mr-1" />
+              <span className="hidden sm:inline">Publish</span>
             </Button>
           )}
-          {['submitted', 'approved'].includes(note.status) && !showReject && (
-            <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs text-destructive border-destructive/30 hover:bg-red-50 dark:hover:bg-red-950/20"
-              onClick={() => setShowReject(true)} data-testid={`button-reject-${note.id}`}>
-              <XCircle className="w-3.5 h-3.5 mr-1" />Reject
-            </Button>
-          )}
-          {note.status === 'published' && (
-            <Button size="sm" variant="outline" className="h-8 px-2.5 text-xs"
-              onClick={() => act('unpublish')} data-testid={`button-unpublish-${note.id}`}>
-              <EyeOff className="w-3.5 h-3.5 mr-1" />Unpublish
-            </Button>
-          )}
+
+          {/* Overflow / secondary */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline" className="h-8 w-8 p-0" data-testid={`button-more-${note.id}`}>
+                <MoreHorizontal className="w-3.5 h-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {isPending && (
+                <DropdownMenuItem onClick={() => act('approve')} data-testid={`button-approve-${note.id}`}>
+                  <CheckCircle className="w-4 h-4 mr-2 text-green-600" />Approve only
+                </DropdownMenuItem>
+              )}
+              {['submitted', 'approved'].includes(note.status) && (
+                <DropdownMenuItem
+                  onClick={() => setShowReject(true)}
+                  className="text-destructive focus:text-destructive"
+                  data-testid={`button-reject-${note.id}`}
+                >
+                  <XCircle className="w-4 h-4 mr-2" />Reject
+                </DropdownMenuItem>
+              )}
+              {isPublished && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => act('unpublish')} className="text-destructive focus:text-destructive"
+                    data-testid={`button-unpublish-${note.id}`}>
+                    <EyeOff className="w-4 h-4 mr-2" />Unpublish
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
+      {/* Rejection inline form */}
       {showReject && (
-        <div className="mx-4 mb-4 p-3 rounded-lg border bg-muted/30 space-y-2">
-          <Textarea value={rejectInput} onChange={e => setRejectInput(e.target.value)}
-            placeholder="Rejection reason (required)…" rows={2}
-            data-testid="input-inline-reject-reason" />
+        <div className="mx-3 sm:mx-4 mb-3 sm:mb-4 p-3 rounded-lg border bg-muted/30 space-y-2">
+          <Textarea
+            value={rejectInput}
+            onChange={e => setRejectInput(e.target.value)}
+            placeholder="Rejection reason (required)…"
+            rows={2}
+            className="resize-none"
+            data-testid="input-inline-reject-reason"
+          />
           <div className="flex gap-2">
             <Button size="sm" variant="outline" onClick={() => { setShowReject(false); setRejectInput(''); }}>Cancel</Button>
             <Button size="sm" variant="destructive" disabled={!rejectInput.trim()}
@@ -191,26 +183,6 @@ function NoteRow({ note, onView, onAction }: {
               Confirm Reject
             </Button>
           </div>
-        </div>
-      )}
-
-      {expanded && (note.objectives || note.content) && (
-        <div className="border-t mx-4 mb-4 pt-3 space-y-3">
-          {note.objectives && (
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Learning Objectives</p>
-              <p className="text-sm whitespace-pre-wrap line-clamp-4">{note.objectives}</p>
-            </div>
-          )}
-          {note.content && (
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Content Preview</p>
-              <div
-                className="text-sm line-clamp-6 [&_*]:max-w-full overflow-hidden"
-                dangerouslySetInnerHTML={{ __html: note.content.replace(/<[^>]+>/g, ' ').trim().slice(0, 400) + '…' }}
-              />
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -228,7 +200,7 @@ export default function AdminLessonNoteReview() {
   const [filterStatus,  setFilterStatus]  = useState('_all');
   const [search,        setSearch]        = useState('');
 
-  const { data: stats }        = useLessonNotesStats();
+  const { data: stats }         = useLessonNotesStats();
   const { data: subjects = [] } = useSubjects();
   const { data: classes  = [] } = useClasses();
   const { data: terms    = [] } = useTerms();
@@ -258,24 +230,19 @@ export default function AdminLessonNoteReview() {
     toast({ title: labels[action] ?? 'Done', description: 'Note status updated.' });
   };
 
-  const handleView = (note: EnrichedNote) => {
-    navigate(`/portal/admin/lesson-notes/view/${note.id}`);
-  };
-
-  const handleCreate = () => {
-    navigate('/portal/admin/lesson-notes/create');
-  };
+  const handleView   = (note: EnrichedNote) => navigate(`/portal/admin/lesson-notes/view/${note.id}`);
+  const handleCreate = () => navigate('/portal/admin/lesson-notes/create');
 
   const STAT_CARDS = [
-    { label: 'Total',          value: stats?.total     ?? 0, cls: '',                                                                                   Icon: BookOpen,    tc: '' },
-    { label: 'Pending Review', value: stats?.submitted ?? 0, cls: 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800',                Icon: Send,        tc: 'text-blue-700 dark:text-blue-400' },
-    { label: 'Approved',       value: stats?.approved  ?? 0, cls: 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800',            Icon: CheckCircle, tc: 'text-green-700 dark:text-green-400' },
-    { label: 'Published',      value: stats?.published ?? 0, cls: 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800',    Icon: Eye,         tc: 'text-emerald-700 dark:text-emerald-400' },
-    { label: 'Rejected',       value: stats?.rejected  ?? 0, cls: 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800',                    Icon: XCircle,     tc: 'text-red-700 dark:text-red-400' },
+    { label: 'Total',    value: stats?.total     ?? 0, cls: '',                                                                               Icon: BookOpen,    tc: '' },
+    { label: 'Pending',  value: stats?.submitted ?? 0, cls: 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800',           Icon: Send,        tc: 'text-blue-700 dark:text-blue-400' },
+    { label: 'Approved', value: stats?.approved  ?? 0, cls: 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800',       Icon: CheckCircle, tc: 'text-green-700 dark:text-green-400' },
+    { label: 'Published',value: stats?.published ?? 0, cls: 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800',Icon: Eye,         tc: 'text-emerald-700 dark:text-emerald-400' },
+    { label: 'Rejected', value: stats?.rejected  ?? 0, cls: 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800',               Icon: XCircle,     tc: 'text-red-700 dark:text-red-400' },
   ];
 
   const renderList = (list: EnrichedNote[], emptyIcon: any, emptyTitle: string, emptyMsg: string) => {
-    if (isLoading) return <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-28 rounded-lg" />)}</div>;
+    if (isLoading) return <div className="space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-24 rounded-lg" />)}</div>;
     if (list.length === 0) {
       const Icon = emptyIcon;
       return (
@@ -302,19 +269,21 @@ export default function AdminLessonNoteReview() {
 
       {/* Header */}
       <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background border-b">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
                 <ClipboardCheck className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-foreground">Lesson Notes Review</h1>
+                <h1 className="text-lg font-bold text-foreground">Lesson Notes Review</h1>
                 <p className="text-sm text-muted-foreground mt-0.5">Manage, approve, and publish teacher lesson notes</p>
               </div>
             </div>
-            <Button onClick={handleCreate} data-testid="button-create-note">
-              <Plus className="w-4 h-4 mr-1.5" />Create Note
+            <Button onClick={handleCreate} data-testid="button-create-note" size="sm">
+              <Plus className="w-4 h-4 mr-1.5" />
+              <span className="hidden sm:inline">Create Note</span>
+              <span className="sm:hidden">New</span>
             </Button>
           </div>
         </div>
@@ -326,8 +295,8 @@ export default function AdminLessonNoteReview() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {STAT_CARDS.map(({ label, value, cls, Icon, tc }) => (
             <Card key={label} className={`shadow-sm border ${cls}`}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-center justify-between mb-1.5">
                   <p className="text-xs font-medium text-muted-foreground">{label}</p>
                   <Icon className={`w-4 h-4 ${tc || 'text-muted-foreground'}`} />
                 </div>
@@ -339,31 +308,39 @@ export default function AdminLessonNoteReview() {
 
         {/* Filters */}
         <Card className="shadow-sm">
-          <CardContent className="p-4">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+          <CardContent className="p-3 sm:p-4 space-y-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
               <Select value={filterClass} onValueChange={setFilterClass}>
-                <SelectTrigger className="h-9" data-testid="filter-class"><SelectValue placeholder="All classes" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs sm:text-sm" data-testid="filter-class">
+                  <SelectValue placeholder="All classes" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_all">All classes</SelectItem>
                   {classes.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={filterSubject} onValueChange={setFilterSubject}>
-                <SelectTrigger className="h-9" data-testid="filter-subject"><SelectValue placeholder="All subjects" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs sm:text-sm" data-testid="filter-subject">
+                  <SelectValue placeholder="All subjects" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_all">All subjects</SelectItem>
                   {subjects.map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={filterTerm} onValueChange={setFilterTerm}>
-                <SelectTrigger className="h-9" data-testid="filter-term"><SelectValue placeholder="All terms" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs sm:text-sm" data-testid="filter-term">
+                  <SelectValue placeholder="All terms" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_all">All terms</SelectItem>
                   {terms.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="h-9" data-testid="filter-status"><SelectValue placeholder="All statuses" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-xs sm:text-sm" data-testid="filter-status">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="_all">All statuses</SelectItem>
                   {Object.entries(STATUS_CFG).map(([s, cfg]) => (
@@ -374,7 +351,7 @@ export default function AdminLessonNoteReview() {
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input className="pl-9 h-9" placeholder="Search by title, teacher, or topic…"
+              <Input className="pl-9 h-9 text-sm" placeholder="Search by title, teacher, or topic…"
                 value={search} onChange={e => setSearch(e.target.value)} data-testid="input-search" />
             </div>
           </CardContent>
@@ -382,30 +359,30 @@ export default function AdminLessonNoteReview() {
 
         {/* Tabs */}
         <Tabs defaultValue="review">
-          <TabsList>
-            <TabsTrigger value="review" data-testid="tab-review">
-              Review Queue
+          <TabsList className="w-full sm:w-auto">
+            <TabsTrigger value="review" className="flex-1 sm:flex-none" data-testid="tab-review">
+              Pending
               {(stats?.submitted ?? 0) > 0 && (
                 <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-bold">
                   {stats?.submitted}
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="approved"  data-testid="tab-approved">Approved ({approved.length})</TabsTrigger>
-            <TabsTrigger value="published" data-testid="tab-published">Published ({published.length})</TabsTrigger>
-            <TabsTrigger value="all"       data-testid="tab-all">All ({filtered.length})</TabsTrigger>
+            <TabsTrigger value="approved"  className="flex-1 sm:flex-none" data-testid="tab-approved">Approved ({approved.length})</TabsTrigger>
+            <TabsTrigger value="published" className="flex-1 sm:flex-none" data-testid="tab-published">Published ({published.length})</TabsTrigger>
+            <TabsTrigger value="all"       className="flex-1 sm:flex-none" data-testid="tab-all">All ({filtered.length})</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="review"    className="mt-4">
+          <TabsContent value="review" className="mt-4">
             {renderList(submitted, ClipboardCheck, 'No notes pending review', 'All submitted notes have been reviewed.')}
           </TabsContent>
-          <TabsContent value="approved"  className="mt-4">
+          <TabsContent value="approved" className="mt-4">
             {renderList(approved, CheckCircle, 'No approved notes', 'Approve submitted notes to see them here.')}
           </TabsContent>
           <TabsContent value="published" className="mt-4">
             {renderList(published, Eye, 'No published notes', 'Publish approved notes to make them visible to students.')}
           </TabsContent>
-          <TabsContent value="all"       className="mt-4">
+          <TabsContent value="all" className="mt-4">
             {renderList(filtered, BookOpen, 'No lesson notes', 'No notes match your current filters.')}
           </TabsContent>
         </Tabs>
@@ -413,4 +390,3 @@ export default function AdminLessonNoteReview() {
     </div>
   );
 }
-

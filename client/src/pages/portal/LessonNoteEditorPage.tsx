@@ -7,76 +7,50 @@ import { ROLE_IDS } from '@/lib/roles';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import RichTextEditor from '@/components/lesson-notes/RichTextEditor';
+import LessonNoteBreadcrumb, { BreadcrumbItem } from '@/components/lesson-notes/LessonNoteBreadcrumb';
+import { StatusBadge, EnrichedNote } from '@/components/lesson-notes/lessonNoteShared';
 import {
-  ArrowLeft, Save, Send, Eye, BookOpen, AlertCircle, CheckCircle,
-  FileText, Clock, XCircle, Info,
+  Save, Send, Eye, BookOpen, AlertCircle, Info, MoreHorizontal,
 } from 'lucide-react';
-
-type EnrichedNote = {
-  id: number; topicId: number; classId: number; subjectId: number; termId: number;
-  title: string; content: string | null; objectives: string | null;
-  attachmentUrl: string | null; attachmentName: string | null;
-  status: string; rejectionReason: string | null;
-  createdBy: string | null; creatorName: string | null;
-  subjectName: string | null; className: string | null;
-  topicName: string | null; termName: string | null;
-  submittedAt: string | null; approvedAt: string | null;
-  rejectedAt: string | null; publishedAt: string | null;
-  createdAt: string; updatedAt: string;
-};
-
-const STATUS_CFG: Record<string, { label: string; cls: string; icon: any }> = {
-  draft:     { label: 'Draft',     cls: 'bg-muted text-muted-foreground border',                                              icon: FileText    },
-  submitted: { label: 'Submitted', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',                  icon: Send        },
-  approved:  { label: 'Approved',  cls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',              icon: CheckCircle },
-  rejected:  { label: 'Rejected',  cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',                     icon: XCircle     },
-  published: { label: 'Published', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',      icon: Eye         },
-  archived:  { label: 'Archived',  cls: 'bg-muted text-muted-foreground border',                                              icon: Clock       },
-};
-
-function StatusBadge({ status }: { status: string }) {
-  const cfg = STATUS_CFG[status] ?? STATUS_CFG.draft;
-  const Icon = cfg.icon;
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.cls}`}>
-      <Icon className="w-3 h-3" />{cfg.label}
-    </span>
-  );
-}
 
 function parseQuery(search: string) {
   const p = new URLSearchParams(search);
   return {
-    topicId: p.get('topicId') || '',
-    classId: p.get('classId') || '',
-    subjectId: p.get('subjectId') || '',
-    termId: p.get('termId') || '',
-    topicName: p.get('topicName') || '',
-    back: p.get('back') || '',
+    topicId:     p.get('topicId')     || '',
+    classId:     p.get('classId')     || '',
+    subjectId:   p.get('subjectId')   || '',
+    termId:      p.get('termId')      || '',
+    topicName:   p.get('topicName')   ? decodeURIComponent(p.get('topicName')!)   : '',
+    className:   p.get('className')   ? decodeURIComponent(p.get('className')!)   : '',
+    subjectName: p.get('subjectName') ? decodeURIComponent(p.get('subjectName')!) : '',
+    termName:    p.get('termName')    ? decodeURIComponent(p.get('termName')!)    : '',
   };
 }
 
 export default function LessonNoteEditorPage() {
   const { id } = useParams<{ id?: string }>();
-  const [location, navigate] = useLocation();
+  const [, navigate] = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
 
   const isEdit = !!id;
-  const isAdmin = user?.roleId === ROLE_IDS.ADMIN || user?.roleId === ROLE_IDS.SUPER_ADMIN;
+  const isAdmin   = user?.roleId === ROLE_IDS.ADMIN || user?.roleId === ROLE_IDS.SUPER_ADMIN;
   const isTeacher = user?.roleId === ROLE_IDS.TEACHER;
   const basePortal = isAdmin ? '/portal/admin' : '/portal/teacher';
+  const listUrl    = `${basePortal}/lesson-notes`;
 
   const query = parseQuery(window.location.search);
 
-  const [title, setTitle]           = useState('');
-  const [objectives, setObjectives] = useState('');
-  const [content, setContent]       = useState('');
+  const [title,       setTitle]       = useState('');
+  const [objectives,  setObjectives]  = useState('');
+  const [content,     setContent]     = useState('');
   const [initialized, setInitialized] = useState(false);
 
   const { data: note, isLoading: noteLoading } = useQuery<EnrichedNote>({
@@ -98,24 +72,22 @@ export default function LessonNoteEditorPage() {
     }
   }, [note, isEdit, initialized]);
 
-  const backUrl = query.back || `${basePortal}/lesson-notes`;
-
   const saveMutation = useMutation({
     mutationFn: async () => {
       const body = { title: title.trim(), content, objectives: objectives.trim() };
       if (isEdit) return (await apiRequest('PUT', `/api/lesson-notes/${id}`, body)).json();
       return (await apiRequest('POST', '/api/lesson-notes', {
         ...body,
-        topicId: parseInt(query.topicId),
-        classId: parseInt(query.classId),
+        topicId:   parseInt(query.topicId),
+        classId:   parseInt(query.classId),
         subjectId: parseInt(query.subjectId),
-        termId: parseInt(query.termId),
+        termId:    parseInt(query.termId),
       })).json();
     },
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] });
       toast({ title: isEdit ? 'Changes saved' : 'Note created', description: 'Saved as draft.' });
-      if (!isEdit) navigate(`${basePortal}/lesson-notes/edit/${data.id}`);
+      if (!isEdit) navigate(`${basePortal}/lesson-notes/edit/${data.id}?${new URLSearchParams({ ...query }).toString()}`);
     },
     onError: (e: any) => toast({ title: 'Save failed', description: e.message, variant: 'destructive' }),
   });
@@ -126,10 +98,8 @@ export default function LessonNoteEditorPage() {
       if (!noteId) {
         const created: EnrichedNote = await (await apiRequest('POST', '/api/lesson-notes', {
           title: title.trim(), content, objectives: objectives.trim(),
-          topicId: parseInt(query.topicId),
-          classId: parseInt(query.classId),
-          subjectId: parseInt(query.subjectId),
-          termId: parseInt(query.termId),
+          topicId: parseInt(query.topicId), classId: parseInt(query.classId),
+          subjectId: parseInt(query.subjectId), termId: parseInt(query.termId),
         })).json();
         noteId = created.id;
       } else {
@@ -140,7 +110,7 @@ export default function LessonNoteEditorPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] });
       toast({ title: 'Submitted for review', description: 'Admin will review your note.' });
-      navigate(backUrl);
+      navigate(listUrl);
     },
     onError: (e: any) => toast({ title: 'Submit failed', description: e.message, variant: 'destructive' }),
   });
@@ -151,10 +121,8 @@ export default function LessonNoteEditorPage() {
       if (!noteId) {
         const created: EnrichedNote = await (await apiRequest('POST', '/api/lesson-notes', {
           title: title.trim(), content, objectives: objectives.trim(),
-          topicId: parseInt(query.topicId),
-          classId: parseInt(query.classId),
-          subjectId: parseInt(query.subjectId),
-          termId: parseInt(query.termId),
+          topicId: parseInt(query.topicId), classId: parseInt(query.classId),
+          subjectId: parseInt(query.subjectId), termId: parseInt(query.termId),
         })).json();
         noteId = created.id;
       } else {
@@ -165,105 +133,122 @@ export default function LessonNoteEditorPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] });
       toast({ title: 'Published!', description: 'Note is now visible to students.' });
-      navigate(backUrl);
+      navigate(listUrl);
     },
     onError: (e: any) => toast({ title: 'Publish failed', description: e.message, variant: 'destructive' }),
   });
 
   const busy = saveMutation.isPending || submitMutation.isPending || publishMutation.isPending;
-  const canSubmit = !!(title.trim());
+  const canSave   = !!(title.trim());
   const currentStatus = note?.status;
-  const canEdit = !currentStatus || ['draft', 'rejected'].includes(currentStatus) || isAdmin;
+  const canEdit   = !currentStatus || ['draft', 'rejected'].includes(currentStatus) || isAdmin;
+
+  const noteClass   = note?.className   || query.className   || '';
+  const noteSubject = note?.subjectName || query.subjectName || '';
+  const noteTerm    = note?.termName    || query.termName    || '';
+  const noteTopic   = note?.topicName   || query.topicName   || '';
+
+  const breadcrumbs: BreadcrumbItem[] = [
+    { label: isAdmin ? 'Lesson Notes Review' : 'My Lesson Notes', href: listUrl },
+    ...(noteClass   ? [{ label: noteClass }]   : []),
+    ...(noteSubject ? [{ label: noteSubject }] : []),
+    ...(noteTerm    ? [{ label: noteTerm }]    : []),
+    ...(noteTopic   ? [{ label: noteTopic }]   : []),
+    { label: isEdit ? 'Edit' : 'New Note' },
+  ];
 
   if (isEdit && noteLoading) {
     return (
       <div className="min-h-screen bg-background">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-4">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-12 rounded-lg" />
+          <Skeleton className="h-6 w-64" />
+          <Skeleton className="h-11 rounded-lg" />
+          <Skeleton className="h-24 rounded-lg" />
           <Skeleton className="h-64 rounded-lg" />
         </div>
       </div>
     );
   }
 
+  const primaryAction = isTeacher ? (
+    <Button
+      size="sm"
+      disabled={!canSave || busy || !canEdit}
+      onClick={() => submitMutation.mutate()}
+      data-testid="button-submit-review"
+      className="shrink-0"
+    >
+      <Send className="w-3.5 h-3.5 mr-1.5" />
+      <span className="hidden sm:inline">{submitMutation.isPending ? 'Submitting…' : 'Submit for Review'}</span>
+      <span className="sm:hidden">{submitMutation.isPending ? '…' : 'Submit'}</span>
+    </Button>
+  ) : isAdmin ? (
+    <Button
+      size="sm"
+      disabled={!canSave || busy}
+      onClick={() => publishMutation.mutate()}
+      className="bg-emerald-600 hover:bg-emerald-700 shrink-0"
+      data-testid="button-publish"
+    >
+      <Eye className="w-3.5 h-3.5 mr-1.5" />
+      <span className="hidden sm:inline">{publishMutation.isPending ? 'Publishing…' : 'Save & Publish'}</span>
+      <span className="sm:hidden">{publishMutation.isPending ? '…' : 'Publish'}</span>
+    </Button>
+  ) : null;
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Top bar */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <Button variant="ghost" size="sm" onClick={() => navigate(backUrl)} className="shrink-0 gap-1.5">
-              <ArrowLeft className="w-4 h-4" /> Back
-            </Button>
-            <div className="w-px h-5 bg-border shrink-0" />
-            <div className="flex items-center gap-2 min-w-0">
-              <BookOpen className="w-4 h-4 text-primary shrink-0" />
-              <span className="text-sm font-medium text-foreground truncate">
-                {isEdit ? 'Edit Lesson Note' : 'Create Lesson Note'}
-              </span>
-              {note && <StatusBadge status={note.status} />}
-            </div>
+      {/* Sticky top bar */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b print:hidden">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3 min-w-0">
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <BookOpen className="w-4 h-4 text-primary shrink-0" />
+            <LessonNoteBreadcrumb items={breadcrumbs} />
+            {note && <StatusBadge status={note.status} />}
           </div>
 
+          {/* Actions */}
           <div className="flex items-center gap-2 shrink-0">
-            <Button variant="outline" size="sm" disabled={!canSubmit || busy} onClick={() => saveMutation.mutate()}
-              data-testid="button-save-draft">
+            {/* Save Draft — always visible on desktop, hidden on mobile (in dropdown) */}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!canSave || busy || !canEdit}
+              onClick={() => saveMutation.mutate()}
+              data-testid="button-save-draft"
+              className="hidden sm:inline-flex"
+            >
               <Save className="w-3.5 h-3.5 mr-1.5" />
               {saveMutation.isPending ? 'Saving…' : 'Save Draft'}
             </Button>
-            {isTeacher && canEdit && (
-              <Button size="sm" disabled={!canSubmit || busy} onClick={() => submitMutation.mutate()}
-                data-testid="button-submit-review">
-                <Send className="w-3.5 h-3.5 mr-1.5" />
-                {submitMutation.isPending ? 'Submitting…' : 'Submit for Review'}
-              </Button>
-            )}
-            {isAdmin && (
-              <Button size="sm" disabled={!canSubmit || busy} onClick={() => publishMutation.mutate()}
-                className="bg-emerald-600 hover:bg-emerald-700"
-                data-testid="button-publish">
-                <Eye className="w-3.5 h-3.5 mr-1.5" />
-                {publishMutation.isPending ? 'Publishing…' : 'Save & Publish'}
-              </Button>
-            )}
+
+            {/* Primary CTA */}
+            {canEdit && primaryAction}
+
+            {/* Mobile overflow menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="sm:hidden w-8 h-8 p-0">
+                  <MoreHorizontal className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  disabled={!canSave || busy || !canEdit}
+                  onSelect={() => saveMutation.mutate()}
+                >
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Draft
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>
 
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
-
-        {/* Meta info */}
-        {(note || query.topicName) && (
-          <div className="flex flex-wrap gap-2 text-xs">
-            {(note?.topicName || query.topicName) && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border">
-                <BookOpen className="w-3 h-3 text-primary" />
-                <span className="text-muted-foreground">Topic:</span>
-                <span className="font-medium">{note?.topicName || decodeURIComponent(query.topicName)}</span>
-              </span>
-            )}
-            {note?.className && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border">
-                <span className="text-muted-foreground">Class:</span>
-                <span className="font-medium">{note.className}</span>
-              </span>
-            )}
-            {note?.subjectName && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border">
-                <span className="text-muted-foreground">Subject:</span>
-                <span className="font-medium">{note.subjectName}</span>
-              </span>
-            )}
-            {note?.termName && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-muted border">
-                <span className="text-muted-foreground">Term:</span>
-                <span className="font-medium">{note.termName}</span>
-              </span>
-            )}
-          </div>
-        )}
 
         {/* Rejection reason */}
         {note?.rejectionReason && (
@@ -273,7 +258,6 @@ export default function LessonNoteEditorPage() {
           </div>
         )}
 
-        {/* Read-only notice for non-editable states */}
         {!canEdit && isTeacher && (
           <div className="flex gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 text-sm text-blue-700 dark:text-blue-400">
             <Info className="w-4 h-4 shrink-0 mt-0.5" />
@@ -328,31 +312,44 @@ export default function LessonNoteEditorPage() {
           />
         </div>
 
-        {/* Bottom action bar */}
-        <div className="flex items-center justify-between pt-2 pb-8 border-t">
-          <Button variant="ghost" onClick={() => navigate(backUrl)} disabled={busy}>
-            <ArrowLeft className="w-4 h-4 mr-1.5" /> Back to List
-          </Button>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" disabled={!canSubmit || busy} onClick={() => saveMutation.mutate()}>
+        {/* Bottom save strip — mobile friendly, no duplicates */}
+        {canEdit && (
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2 pb-8 border-t">
+            <Button
+              variant="outline"
+              disabled={!canSave || busy}
+              onClick={() => saveMutation.mutate()}
+              data-testid="button-save-draft-bottom"
+              className="w-full sm:w-auto"
+            >
               <Save className="w-4 h-4 mr-1.5" />
               {saveMutation.isPending ? 'Saving…' : 'Save Draft'}
             </Button>
-            {isTeacher && canEdit && (
-              <Button disabled={!canSubmit || busy} onClick={() => submitMutation.mutate()}>
+            {isTeacher && (
+              <Button
+                disabled={!canSave || busy}
+                onClick={() => submitMutation.mutate()}
+                className="w-full sm:w-auto"
+                data-testid="button-submit-bottom"
+              >
                 <Send className="w-4 h-4 mr-1.5" />
                 {submitMutation.isPending ? 'Submitting…' : 'Submit for Review'}
               </Button>
             )}
             {isAdmin && (
-              <Button disabled={!canSubmit || busy} onClick={() => publishMutation.mutate()}
-                className="bg-emerald-600 hover:bg-emerald-700">
+              <Button
+                disabled={!canSave || busy}
+                onClick={() => publishMutation.mutate()}
+                className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto"
+                data-testid="button-publish-bottom"
+              >
                 <Eye className="w-4 h-4 mr-1.5" />
                 {publishMutation.isPending ? 'Publishing…' : 'Save & Publish'}
               </Button>
             )}
           </div>
-        </div>
+        )}
+        {!canEdit && <div className="pb-8" />}
       </div>
     </div>
   );
