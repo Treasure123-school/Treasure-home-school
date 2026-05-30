@@ -37,6 +37,7 @@ function buildRouteTable(): RouteEntry[] {
     { pattern: '/portal/student/events', crumbs: [{ label: 'Dashboard', href: '/portal/student' }, { label: 'Events' }] },
     { pattern: '/portal/student/exams', crumbs: [{ label: 'Dashboard', href: '/portal/student' }, { label: 'Exams' }] },
     { pattern: '/portal/student/exam-payment', crumbs: [{ label: 'Dashboard', href: '/portal/student' }, { label: 'Exam Fee Payment' }] },
+    { pattern: /^\/portal\/student\/lesson-notes\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/student' }, { label: 'Scheme of Work', href: '/portal/student/scheme-of-work' }, { label: 'Lesson Note' }] },
 
     // ── Teacher ──────────────────────────────────────────────────────
     { pattern: '/portal/teacher', crumbs: [{ label: 'Dashboard' }] },
@@ -60,6 +61,10 @@ function buildRouteTable(): RouteEntry[] {
     { pattern: '/portal/teacher/events', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'Events' }] },
     { pattern: /^\/portal\/teacher\/results\/class\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'Results', href: '/portal/teacher/classes' }, { label: 'Class Results' }] },
     { pattern: /^\/portal\/teacher\/results\/exam\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'Results' }, { label: 'Exam Results' }] },
+    { pattern: '/portal/teacher/lesson-notes', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'My Lesson Notes' }] },
+    { pattern: '/portal/teacher/lesson-notes/editor/new', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'My Lesson Notes', href: '/portal/teacher/lesson-notes' }, { label: 'New Note' }] },
+    { pattern: /^\/portal\/teacher\/lesson-notes\/edit\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'My Lesson Notes', href: '/portal/teacher/lesson-notes' }, { label: 'Edit Note' }] },
+    { pattern: /^\/portal\/teacher\/lesson-notes\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'My Lesson Notes', href: '/portal/teacher/lesson-notes' }, { label: 'View Note' }] },
 
     // ── Admin ────────────────────────────────────────────────────────
     { pattern: '/portal/admin', crumbs: [{ label: 'Dashboard' }] },
@@ -90,6 +95,11 @@ function buildRouteTable(): RouteEntry[] {
     { pattern: '/portal/admin/comment-templates', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Report Cards' }, { label: 'Comment Templates' }] },
     { pattern: '/portal/admin/question-bank', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Exams', href: '/portal/admin/exams' }, { label: 'Question Bank' }] },
     { pattern: '/portal/admin/syllabus-topics', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Academics' }, { label: 'Syllabus Topics' }] },
+    { pattern: '/portal/admin/lesson-notes', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Lesson Notes Review' }] },
+    { pattern: '/portal/admin/lesson-notes/create', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Lesson Notes Review', href: '/portal/admin/lesson-notes' }, { label: 'Create Note' }] },
+    { pattern: '/portal/admin/lesson-notes/editor/new', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Lesson Notes Review', href: '/portal/admin/lesson-notes' }, { label: 'New Note' }] },
+    { pattern: /^\/portal\/admin\/lesson-notes\/edit\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Lesson Notes Review', href: '/portal/admin/lesson-notes' }, { label: 'Edit Note' }] },
+    { pattern: /^\/portal\/admin\/lesson-notes\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Lesson Notes Review', href: '/portal/admin/lesson-notes' }, { label: 'View Note' }] },
     { pattern: '/portal/admin/recovery-tools', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Settings', href: '/portal/admin/settings' }, { label: 'Recovery Tools' }] },
     { pattern: '/portal/admin/audit-logs', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Audit Logs' }] },
     { pattern: '/portal/admin/users', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'User Management' }] },

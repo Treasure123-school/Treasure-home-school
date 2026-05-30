@@ -13,10 +13,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import RichTextEditor from '@/components/lesson-notes/RichTextEditor';
-import LessonNoteBreadcrumb, { BreadcrumbItem } from '@/components/lesson-notes/LessonNoteBreadcrumb';
 import { StatusBadge, EnrichedNote } from '@/components/lesson-notes/lessonNoteShared';
 import {
-  Save, Send, Eye, BookOpen, AlertCircle, Info, MoreHorizontal,
+  Save, Send, Eye, AlertCircle, Info, MoreHorizontal,
 } from 'lucide-react';
 
 function parseQuery(search: string) {
@@ -139,23 +138,9 @@ export default function LessonNoteEditorPage() {
   });
 
   const busy = saveMutation.isPending || submitMutation.isPending || publishMutation.isPending;
-  const canSave   = !!(title.trim());
+  const canSave     = !!(title.trim());
   const currentStatus = note?.status;
-  const canEdit   = !currentStatus || ['draft', 'rejected'].includes(currentStatus) || isAdmin;
-
-  const noteClass   = note?.className   || query.className   || '';
-  const noteSubject = note?.subjectName || query.subjectName || '';
-  const noteTerm    = note?.termName    || query.termName    || '';
-  const noteTopic   = note?.topicName   || query.topicName   || '';
-
-  const breadcrumbs: BreadcrumbItem[] = [
-    { label: isAdmin ? 'Lesson Notes Review' : 'My Lesson Notes', href: listUrl },
-    ...(noteClass   ? [{ label: noteClass }]   : []),
-    ...(noteSubject ? [{ label: noteSubject }] : []),
-    ...(noteTerm    ? [{ label: noteTerm }]    : []),
-    ...(noteTopic   ? [{ label: noteTopic }]   : []),
-    { label: isEdit ? 'Edit' : 'New Note' },
-  ];
+  const canEdit     = !currentStatus || ['draft', 'rejected'].includes(currentStatus) || isAdmin;
 
   const primaryAction = isTeacher ? (
     <Button
@@ -184,20 +169,16 @@ export default function LessonNoteEditorPage() {
   ) : null;
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Sticky top bar */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b print:hidden">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3 min-w-0">
-          {/* Breadcrumb */}
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <BookOpen className="w-4 h-4 text-primary shrink-0" />
-            <LessonNoteBreadcrumb items={breadcrumbs} />
+    <div className="max-w-4xl">
+
+      {/* ── Sticky actions bar (no breadcrumb) ── */}
+      <div className="sticky top-0 z-10 -mx-2 sm:-mx-4 md:-mx-6 px-2 sm:px-4 md:px-6 py-2 mb-6 bg-background/95 backdrop-blur border-b print:hidden">
+        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
             {note && <StatusBadge status={note.status} />}
           </div>
 
-          {/* Actions */}
           <div className="flex items-center gap-2 shrink-0">
-            {/* Save Draft — always visible on desktop, hidden on mobile (in dropdown) */}
             <Button
               variant="outline"
               size="sm"
@@ -210,10 +191,8 @@ export default function LessonNoteEditorPage() {
               {saveMutation.isPending ? 'Saving…' : 'Save Draft'}
             </Button>
 
-            {/* Primary CTA */}
             {canEdit && primaryAction}
 
-            {/* Mobile overflow menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="sm:hidden w-8 h-8 p-0">
@@ -234,9 +213,9 @@ export default function LessonNoteEditorPage() {
         </div>
       </div>
 
-      {/* ── Loading skeleton (edit mode while note fetches) ── */}
+      {/* ── Loading skeleton ── */}
       {isEdit && noteLoading && (
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+        <div className="space-y-4">
           <Skeleton className="h-11 rounded-lg" />
           <Skeleton className="h-24 rounded-lg" />
           <Skeleton className="h-64 rounded-lg" />
@@ -245,109 +224,104 @@ export default function LessonNoteEditorPage() {
 
       {/* ── Editor form ── */}
       {(!isEdit || !noteLoading) && (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+        <div className="space-y-6">
 
-        {/* Rejection reason */}
-        {note?.rejectionReason && (
-          <div className="flex gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-400">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <div><strong>Rejected:</strong> {note.rejectionReason}</div>
+          {note?.rejectionReason && (
+            <div className="flex gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-400">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div><strong>Rejected:</strong> {note.rejectionReason}</div>
+            </div>
+          )}
+
+          {!canEdit && isTeacher && (
+            <div className="flex gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 text-sm text-blue-700 dark:text-blue-400">
+              <Info className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>This note is <strong>{currentStatus}</strong> and cannot be edited.</div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="note-title" className="text-sm font-semibold">
+              Title <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="note-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Lesson note title…"
+              disabled={!canEdit || busy}
+              className="text-base h-11"
+              data-testid="input-note-title"
+            />
           </div>
-        )}
 
-        {!canEdit && isTeacher && (
-          <div className="flex gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 text-sm text-blue-700 dark:text-blue-400">
-            <Info className="w-4 h-4 shrink-0 mt-0.5" />
-            <div>This note is <strong>{currentStatus}</strong> and cannot be edited.</div>
+          <div className="space-y-2">
+            <Label htmlFor="note-objectives" className="text-sm font-semibold">Learning Objectives</Label>
+            <p className="text-xs text-muted-foreground -mt-1">What students will be able to do after this lesson</p>
+            <textarea
+              id="note-objectives"
+              value={objectives}
+              onChange={(e) => setObjectives(e.target.value)}
+              placeholder="By the end of this lesson, students will be able to…"
+              disabled={!canEdit || busy}
+              rows={3}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+              data-testid="input-note-objectives"
+            />
           </div>
-        )}
 
-        {/* Title */}
-        <div className="space-y-2">
-          <Label htmlFor="note-title" className="text-sm font-semibold">
-            Title <span className="text-destructive">*</span>
-          </Label>
-          <Input
-            id="note-title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Lesson note title…"
-            disabled={!canEdit || busy}
-            className="text-base h-11"
-            data-testid="input-note-title"
-          />
-        </div>
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Lesson Content</Label>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Use the toolbar to format text, add headings, lists, tables, images, and links
+            </p>
+            <RichTextEditor
+              content={content}
+              onChange={setContent}
+              placeholder="Start writing your lesson content here…"
+              minHeight="400px"
+              disabled={!canEdit || busy}
+            />
+          </div>
 
-        {/* Objectives */}
-        <div className="space-y-2">
-          <Label htmlFor="note-objectives" className="text-sm font-semibold">Learning Objectives</Label>
-          <p className="text-xs text-muted-foreground -mt-1">What students will be able to do after this lesson</p>
-          <textarea
-            id="note-objectives"
-            value={objectives}
-            onChange={(e) => setObjectives(e.target.value)}
-            placeholder="By the end of this lesson, students will be able to…"
-            disabled={!canEdit || busy}
-            rows={3}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-            data-testid="input-note-objectives"
-          />
-        </div>
-
-        {/* Rich text editor */}
-        <div className="space-y-2">
-          <Label className="text-sm font-semibold">Lesson Content</Label>
-          <p className="text-xs text-muted-foreground -mt-1">
-            Use the toolbar to format text, add headings, lists, tables, images, and links
-          </p>
-          <RichTextEditor
-            content={content}
-            onChange={setContent}
-            placeholder="Start writing your lesson content here…"
-            minHeight="400px"
-            disabled={!canEdit || busy}
-          />
-        </div>
-
-        {/* Bottom save strip — mobile friendly, no duplicates */}
-        {canEdit && (
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2 pb-8 border-t">
-            <Button
-              variant="outline"
-              disabled={!canSave || busy}
-              onClick={() => saveMutation.mutate()}
-              data-testid="button-save-draft-bottom"
-              className="w-full sm:w-auto"
-            >
-              <Save className="w-4 h-4 mr-1.5" />
-              {saveMutation.isPending ? 'Saving…' : 'Save Draft'}
-            </Button>
-            {isTeacher && (
+          {canEdit && (
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2 pb-8 border-t">
               <Button
+                variant="outline"
                 disabled={!canSave || busy}
-                onClick={() => submitMutation.mutate()}
+                onClick={() => saveMutation.mutate()}
+                data-testid="button-save-draft-bottom"
                 className="w-full sm:w-auto"
-                data-testid="button-submit-bottom"
               >
-                <Send className="w-4 h-4 mr-1.5" />
-                {submitMutation.isPending ? 'Submitting…' : 'Submit for Review'}
+                <Save className="w-4 h-4 mr-1.5" />
+                {saveMutation.isPending ? 'Saving…' : 'Save Draft'}
               </Button>
-            )}
-            {isAdmin && (
-              <Button
-                disabled={!canSave || busy}
-                onClick={() => publishMutation.mutate()}
-                className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto"
-                data-testid="button-publish-bottom"
-              >
-                <Eye className="w-4 h-4 mr-1.5" />
-                {publishMutation.isPending ? 'Publishing…' : 'Save & Publish'}
-              </Button>
-            )}
-          </div>
-        )}
-        {!canEdit && <div className="pb-8" />}
-      </div>
+              {isTeacher && (
+                <Button
+                  disabled={!canSave || busy}
+                  onClick={() => submitMutation.mutate()}
+                  className="w-full sm:w-auto"
+                  data-testid="button-submit-bottom"
+                >
+                  <Send className="w-4 h-4 mr-1.5" />
+                  {submitMutation.isPending ? 'Submitting…' : 'Submit for Review'}
+                </Button>
+              )}
+              {isAdmin && (
+                <Button
+                  disabled={!canSave || busy}
+                  onClick={() => publishMutation.mutate()}
+                  className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto"
+                  data-testid="button-publish-bottom"
+                >
+                  <Eye className="w-4 h-4 mr-1.5" />
+                  {publishMutation.isPending ? 'Publishing…' : 'Save & Publish'}
+                </Button>
+              )}
+            </div>
+          )}
+          {!canEdit && <div className="pb-8" />}
+        </div>
       )}
     </div>
   );
