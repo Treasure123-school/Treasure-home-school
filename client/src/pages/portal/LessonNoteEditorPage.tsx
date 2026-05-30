@@ -157,19 +157,6 @@ export default function LessonNoteEditorPage() {
     { label: isEdit ? 'Edit' : 'New Note' },
   ];
 
-  if (isEdit && noteLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-4">
-          <Skeleton className="h-6 w-64" />
-          <Skeleton className="h-11 rounded-lg" />
-          <Skeleton className="h-24 rounded-lg" />
-          <Skeleton className="h-64 rounded-lg" />
-        </div>
-      </div>
-    );
-  }
-
   const primaryAction = isTeacher ? (
     <Button
       size="sm"
@@ -247,7 +234,17 @@ export default function LessonNoteEditorPage() {
         </div>
       </div>
 
-      {/* Content */}
+      {/* ── Loading skeleton (edit mode while note fetches) ── */}
+      {isEdit && noteLoading && (
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+          <Skeleton className="h-11 rounded-lg" />
+          <Skeleton className="h-24 rounded-lg" />
+          <Skeleton className="h-64 rounded-lg" />
+        </div>
+      )}
+
+      {/* ── Editor form ── */}
+      {(!isEdit || !noteLoading) && (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-6">
 
         {/* Rejection reason */}
@@ -351,6 +348,7 @@ export default function LessonNoteEditorPage() {
         )}
         {!canEdit && <div className="pb-8" />}
       </div>
+      )}
     </div>
   );
 }

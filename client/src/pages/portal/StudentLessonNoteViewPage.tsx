@@ -53,29 +53,43 @@ export default function StudentLessonNoteViewPage() {
     ...(note?.topicName   ? [{ label: note.topicName }]   : [{ label: 'Lesson Note' }]),
   ];
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background">
+  return (
+    <div className="min-h-screen bg-background">
+
+      {/* ── Sticky breadcrumb bar — always visible ── */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b print:hidden">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3 min-w-0">
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <BookOpen className="w-4 h-4 text-primary shrink-0" />
+            {isLoading ? (
+              <Skeleton className="h-4 w-40" />
+            ) : (
+              <LessonNoteBreadcrumb items={breadcrumbs} />
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.print()}
+            className="gap-1.5 shrink-0 print:hidden"
+          >
+            <Printer className="w-4 h-4" />
+            <span className="hidden sm:inline">Print</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* ── Page body ── */}
+      {isLoading && (
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-4">
-          <Skeleton className="h-6 w-64" />
           <Skeleton className="h-10 w-3/4" />
           <Skeleton className="h-6 w-1/2" />
           <Skeleton className="h-96 rounded-xl" />
         </div>
-      </div>
-    );
-  }
+      )}
 
-  if (!note) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
-          <div className="mb-6">
-            <LessonNoteBreadcrumb items={[
-              { label: 'Scheme of Work', href: backUrl },
-              { label: 'Lesson Note' },
-            ]} />
-          </div>
+      {!isLoading && !note && (
+        <div className="max-w-3xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col items-center justify-center text-center py-24 space-y-4">
             <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
               <BookOpen className="w-8 h-8 text-muted-foreground/40" />
@@ -91,78 +105,70 @@ export default function StudentLessonNoteViewPage() {
             </Button>
           </div>
         </div>
-      </div>
-    );
-  }
+      )}
 
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Sticky top bar */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b print:hidden">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-3 min-w-0">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <BookOpen className="w-4 h-4 text-primary shrink-0" />
-            <LessonNoteBreadcrumb items={breadcrumbs} />
+      {!isLoading && note && (
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+
+          {/* Note header */}
+          <div className="space-y-4">
+            <h1 className="text-2xl sm:text-3xl font-bold leading-tight text-foreground break-words">
+              {note.title}
+            </h1>
+            <div className="flex flex-wrap gap-x-4 gap-y-2">
+              {note.className   && <MetaChip icon={GraduationCap} label="Class"     value={note.className} />}
+              {note.subjectName && <MetaChip icon={BookOpen}      label="Subject"   value={note.subjectName} />}
+              {note.termName    && <MetaChip icon={Calendar}      label="Term"      value={note.termName} />}
+              {note.topicName   && <MetaChip icon={FileText}      label="Topic"     value={note.topicName} />}
+              {note.creatorName && <MetaChip icon={User}          label="Teacher"   value={note.creatorName} />}
+              {note.publishedAt && (
+                <MetaChip
+                  icon={Calendar}
+                  label="Published"
+                  value={new Date(note.publishedAt).toLocaleDateString(undefined, {
+                    year: 'numeric', month: 'short', day: 'numeric',
+                  })}
+                />
+              )}
+            </div>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => window.print()} className="gap-1.5 shrink-0 print:hidden">
-            <Printer className="w-4 h-4" />
-            <span className="hidden sm:inline">Print</span>
-          </Button>
+
+          {/* Learning Objectives */}
+          {note.objectives && (
+            <section className="rounded-xl border bg-primary/5 p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4 text-primary shrink-0" />
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-primary">
+                  Learning Objectives
+                </h2>
+              </div>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{note.objectives}</p>
+            </section>
+          )}
+
+          {/* Lesson Content */}
+          {note.content ? (
+            <section className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-5 rounded-full bg-primary shrink-0" />
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                  Lesson Content
+                </h2>
+              </div>
+              <div className="rounded-xl border bg-card p-4 sm:p-6 overflow-x-auto">
+                <RichTextViewer html={note.content} />
+              </div>
+            </section>
+          ) : (
+            <div className="flex items-center gap-3 p-6 rounded-xl bg-muted/30 border border-dashed text-muted-foreground">
+              <AlertCircle className="w-5 h-5 shrink-0" />
+              <p className="text-sm">No lesson content has been added yet.</p>
+            </div>
+          )}
+
+          <div className="pb-12 print:hidden" />
         </div>
-      </div>
-
-      {/* Content */}
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-
-        {/* Note header */}
-        <div className="space-y-4">
-          <h1 className="text-2xl sm:text-3xl font-bold leading-tight text-foreground break-words">
-            {note.title}
-          </h1>
-          <div className="flex flex-wrap gap-x-4 gap-y-2">
-            {note.className   && <MetaChip icon={GraduationCap} label="Class"     value={note.className} />}
-            {note.subjectName && <MetaChip icon={BookOpen}      label="Subject"   value={note.subjectName} />}
-            {note.termName    && <MetaChip icon={Calendar}      label="Term"      value={note.termName} />}
-            {note.topicName   && <MetaChip icon={FileText}      label="Topic"     value={note.topicName} />}
-            {note.creatorName && <MetaChip icon={User}          label="Teacher"   value={note.creatorName} />}
-            {note.publishedAt && (
-              <MetaChip icon={Calendar} label="Published"
-                value={new Date(note.publishedAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })} />
-            )}
-          </div>
-        </div>
-
-        {/* Learning Objectives */}
-        {note.objectives && (
-          <section className="rounded-xl border bg-primary/5 p-5 space-y-3">
-            <div className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-primary shrink-0" />
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-primary">Learning Objectives</h2>
-            </div>
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">{note.objectives}</p>
-          </section>
-        )}
-
-        {/* Lesson Content */}
-        {note.content ? (
-          <section className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-1 h-5 rounded-full bg-primary shrink-0" />
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Lesson Content</h2>
-            </div>
-            <div className="rounded-xl border bg-card p-4 sm:p-6 overflow-x-auto">
-              <RichTextViewer html={note.content} />
-            </div>
-          </section>
-        ) : (
-          <div className="flex items-center gap-3 p-6 rounded-xl bg-muted/30 border border-dashed text-muted-foreground">
-            <AlertCircle className="w-5 h-5 shrink-0" />
-            <p className="text-sm">No lesson content has been added yet.</p>
-          </div>
-        )}
-
-        <div className="pb-12 print:hidden" />
-      </div>
+      )}
     </div>
   );
 }
