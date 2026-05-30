@@ -26,6 +26,7 @@ import type {
   Timetable, InsertTimetable,
   StudentSubjectAssignment, InsertStudentSubjectAssignment, ClassSubjectMapping, InsertClassSubjectMapping,
   SyllabusTopic, InsertSyllabusTopic, ExamQuestionBankLink, InsertExamQuestionBankLink,
+  LessonNote, InsertLessonNote,
   ExamPayment, InsertExamPayment,
   SchoolEvent, InsertSchoolEvent,
   MonnifyVirtualAccount, InsertMonnifyVirtualAccount,
@@ -241,6 +242,15 @@ export interface IStorage {
   createSyllabusTopicsBulk(topics: InsertSyllabusTopic[]): Promise<{ created: number; topics: SyllabusTopic[]; errors: string[] }>;
   updateSyllabusTopic(id: number, topic: Partial<InsertSyllabusTopic>): Promise<SyllabusTopic | undefined>;
   deleteSyllabusTopic(id: number): Promise<boolean>;
+
+  // Lesson Notes
+  getLessonNotes(filters: { classId?: number; subjectId?: number; termId?: number; status?: string; createdBy?: string }): Promise<LessonNote[]>;
+  getLessonNoteById(id: number): Promise<LessonNote | undefined>;
+  getLessonNoteByTopicId(topicId: number, publishedOnly?: boolean): Promise<LessonNote | undefined>;
+  createLessonNote(data: InsertLessonNote): Promise<LessonNote>;
+  updateLessonNote(id: number, data: Partial<InsertLessonNote>): Promise<LessonNote | undefined>;
+  deleteLessonNote(id: number): Promise<boolean>;
+  getLessonNotesStats(): Promise<{ total: number; draft: number; submitted: number; approved: number; rejected: number; published: number }>;
 
   // Enhanced Question Bank Queries
   getQuestionBankItemsFiltered(filters: { bankId?: number; classId?: number; subjectId?: number; termId?: number; topicId?: number; difficulty?: string; questionType?: string; status?: string; createdBy?: string; statuses?: string[] }): Promise<QuestionBankItem[]>;
@@ -3291,6 +3301,51 @@ export class DatabaseStorage implements IStorage {
   async deleteSyllabusTopic(id: number): Promise<boolean> {
     await db.delete(schema.syllabusTopics).where(eq(schema.syllabusTopics.id, id));
     return true;
+  }
+
+  // ═══════════ LESSON NOTES ═══════════
+  async getLessonNotes(filters: { classId?: number; subjectId?: number; termId?: number; status?: string; createdBy?: string }): Promise<LessonNote[]> {
+    const conditions: any[] = [];
+    if (filters.classId) conditions.push(eq(schema.lessonNotes.classId, filters.classId));
+    if (filters.subjectId) conditions.push(eq(schema.lessonNotes.subjectId, filters.subjectId));
+    if (filters.termId) conditions.push(eq(schema.lessonNotes.termId, filters.termId));
+    if (filters.status) conditions.push(eq(schema.lessonNotes.status, filters.status));
+    if (filters.createdBy) conditions.push(eq(schema.lessonNotes.createdBy, filters.createdBy));
+    if (conditions.length === 0) return await db.select().from(schema.lessonNotes).orderBy(desc(schema.lessonNotes.createdAt));
+    return await db.select().from(schema.lessonNotes).where(and(...conditions)).orderBy(desc(schema.lessonNotes.createdAt));
+  }
+  async getLessonNoteById(id: number): Promise<LessonNote | undefined> {
+    const result = await db.select().from(schema.lessonNotes).where(eq(schema.lessonNotes.id, id));
+    return result[0];
+  }
+  async getLessonNoteByTopicId(topicId: number, publishedOnly = false): Promise<LessonNote | undefined> {
+    const conditions: any[] = [eq(schema.lessonNotes.topicId, topicId)];
+    if (publishedOnly) conditions.push(eq(schema.lessonNotes.status, 'published'));
+    const result = await db.select().from(schema.lessonNotes).where(and(...conditions));
+    return result[0];
+  }
+  async createLessonNote(data: InsertLessonNote): Promise<LessonNote> {
+    const result = await db.insert(schema.lessonNotes).values(data).returning();
+    return result[0];
+  }
+  async updateLessonNote(id: number, data: Partial<InsertLessonNote>): Promise<LessonNote | undefined> {
+    const result = await db.update(schema.lessonNotes).set({ ...data, updatedAt: new Date() }).where(eq(schema.lessonNotes.id, id)).returning();
+    return result[0];
+  }
+  async deleteLessonNote(id: number): Promise<boolean> {
+    await db.delete(schema.lessonNotes).where(eq(schema.lessonNotes.id, id));
+    return true;
+  }
+  async getLessonNotesStats(): Promise<{ total: number; draft: number; submitted: number; approved: number; rejected: number; published: number }> {
+    const all = await db.select().from(schema.lessonNotes);
+    return {
+      total: all.length,
+      draft: all.filter((n: LessonNote) => n.status === 'draft').length,
+      submitted: all.filter((n: LessonNote) => n.status === 'submitted').length,
+      approved: all.filter((n: LessonNote) => n.status === 'approved').length,
+      rejected: all.filter((n: LessonNote) => n.status === 'rejected').length,
+      published: all.filter((n: LessonNote) => n.status === 'published').length,
+    };
   }
 
   // ═══════════ ENHANCED QUESTION BANK QUERIES ═══════════

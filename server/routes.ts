@@ -33,6 +33,7 @@ import questionBankRoutes from "./routes/question-bank.routes";
 import termsRoutes from "./routes/terms.routes";
 import uploadRoutes from "./routes/upload.routes";
 import messagesRoutes from "./routes/messages.routes";
+import lessonNotesRoutes from "./routes/lesson-notes.routes";
 import websiteManagementRoutes from "./routes/website-management.routes";
 import { validateTeacherCanCreateExam, validateTeacherCanEnterScores, validateTeacherCanViewResults, getTeacherAssignments, validateExamTimeWindow, logExamAccess } from "./teacher-auth-middleware";
 import { getVisibleExamsForStudent, getVisibleExamsForParent, invalidateVisibilityCache, warmVisibilityCache } from "./exam-visibility";
@@ -1186,6 +1187,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(settingsRoutes);
   app.use(reportCardSkillsRoutes);
   app.use(questionBankRoutes);
+  app.use('/api/lesson-notes', lessonNotesRoutes);
   app.use('/api/terms', termsRoutes);
   app.use("/api/upload", uploadRoutes);
   app.use("/api/exam-payments", examPaymentRoutes);

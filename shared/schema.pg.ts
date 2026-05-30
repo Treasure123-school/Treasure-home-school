@@ -562,6 +562,45 @@ export const syllabusTopics = pgTable("syllabus_topics", {
   syllabusTopicsUniqueIdx: uniqueIndex("syllabus_topics_unique_idx").on(table.classId, table.subjectId, table.termId, table.name),
 }));
 
+// Lesson Notes — Teacher-created lesson notes tied to syllabus topics, with approval workflow
+// Status flow: draft → submitted → approved → published (or rejected back to draft)
+export const lessonNotes = pgTable("lesson_notes", {
+  id: serial("id").primaryKey(),
+  topicId: integer("topic_id").notNull().references(() => syllabusTopics.id, { onDelete: 'cascade' }),
+  classId: integer("class_id").notNull().references(() => classes.id),
+  subjectId: integer("subject_id").notNull().references(() => subjects.id),
+  termId: integer("term_id").notNull().references(() => academicTerms.id),
+  title: varchar("title", { length: 255 }).notNull(),
+  content: text("content"),
+  objectives: text("objectives"),
+  attachmentUrl: text("attachment_url"),
+  attachmentName: varchar("attachment_name", { length: 255 }),
+  // draft | submitted | approved | rejected | published | archived
+  status: varchar("status", { length: 20 }).notNull().default('draft'),
+  rejectionReason: text("rejection_reason"),
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  submittedBy: varchar("submitted_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  submittedAt: timestamp("submitted_at"),
+  approvedBy: varchar("approved_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  approvedAt: timestamp("approved_at"),
+  rejectedBy: varchar("rejected_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  rejectedAt: timestamp("rejected_at"),
+  publishedBy: varchar("published_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  publishedAt: timestamp("published_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  lessonNotesTopicIdx: index("lesson_notes_topic_idx").on(table.topicId),
+  lessonNotesClassIdx: index("lesson_notes_class_idx").on(table.classId),
+  lessonNotesSubjectIdx: index("lesson_notes_subject_idx").on(table.subjectId),
+  lessonNotesStatusIdx: index("lesson_notes_status_idx").on(table.status),
+  lessonNotesCreatedByIdx: index("lesson_notes_created_by_idx").on(table.createdBy),
+  lessonNotesTopicUniqueIdx: uniqueIndex("lesson_notes_topic_unique_idx").on(table.topicId),
+}));
+
+export type LessonNote = typeof lessonNotes.$inferSelect;
+export type InsertLessonNote = typeof lessonNotes.$inferInsert;
+
 // Exam ↔ Question Bank link — tracks which bank items were used in which exams
 export const examQuestionBankLinks = pgTable("exam_question_bank_links", {
   id: serial("id").primaryKey(),

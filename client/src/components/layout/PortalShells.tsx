@@ -72,6 +72,8 @@ const AdminProfile = lazy(() => import('@/pages/portal/AdminProfile'));
 const ReportCommentTemplates = lazy(() => import('@/pages/portal/ReportCommentTemplates'));
 const SyllabusTopicsManager = lazy(() => import('@/pages/portal/SyllabusTopicsManager'));
 const QuestionBankManager = lazy(() => import('@/pages/portal/QuestionBankManager'));
+const TeacherLessonNotes = lazy(() => import('@/pages/portal/TeacherLessonNotes'));
+const AdminLessonNoteReview = lazy(() => import('@/pages/portal/AdminLessonNoteReview'));
 const ExamPaymentManagement = lazy(() => import('@/pages/portal/ExamPaymentManagement'));
 const AttendanceManagement = lazy(() => import('@/pages/portal/AttendanceManagement'));
 const ParentManagement = lazy(() => import('@/pages/portal/ParentManagement'));
@@ -169,6 +171,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/teacher/recent-exam-results" component={TeacherRecentExamResults} />
             <Route path="/portal/teacher/syllabus-topics" component={SyllabusTopicsManager} />
             <Route path="/portal/teacher/question-bank" component={QuestionBankManager} />
+            <Route path="/portal/teacher/lesson-notes" component={TeacherLessonNotes} />
             <Route path="/portal/teacher/timetable" component={TeacherTimetable} />
             <Route path="/portal/teacher/messages" component={TeacherMessages} />
             <Route path="/portal/teacher/announcements" component={TeacherAnnouncements} />
@@ -218,6 +221,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/comment-templates" component={ReportCommentTemplates} />
             <Route path="/portal/admin/syllabus-topics" component={SyllabusTopicsManager} />
             <Route path="/portal/admin/question-bank" component={QuestionBankManager} />
+            <Route path="/portal/admin/lesson-notes" component={AdminLessonNoteReview} />
             <Route path="/portal/admin/exam-payments" component={ExamPaymentManagement} />
             <Route path="/portal/admin/attendance" component={AttendanceManagement} />
             <Route path="/portal/admin/parents" component={ParentManagement} />
