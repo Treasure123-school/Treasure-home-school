@@ -176,9 +176,9 @@ export default function RichTextEditor({
         <EditorContent editor={editor} />
       </div>
 
-      {/* Toolbar — lives below the editor so it stays visible above the mobile keyboard */}
+      {/* Toolbar — sticky so it floats above the mobile keyboard when it appears */}
       {!disabled && (
-        <div className="border-t bg-muted/30 px-2 py-1.5 flex flex-wrap items-center gap-0.5">
+        <div className="sticky bottom-0 z-10 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-2 py-1.5 flex flex-wrap items-center gap-0.5">
           {/* Undo/Redo */}
           <ToolbarBtn title="Undo (Ctrl+Z)" onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()}>
             <Undo className="w-3.5 h-3.5" />
