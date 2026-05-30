@@ -245,6 +245,7 @@ export interface IStorage {
 
   // Lesson Notes
   getLessonNotes(filters: { classId?: number; subjectId?: number; termId?: number; status?: string; createdBy?: string }): Promise<LessonNote[]>;
+  getLessonNotesEnriched(filters: { classId?: number; subjectId?: number; termId?: number; status?: string; createdBy?: string }): Promise<Array<LessonNote & { creatorName: string | null; subjectName: string | null; className: string | null; topicName: string | null; termName: string | null }>>;
   getLessonNoteById(id: number): Promise<LessonNote | undefined>;
   getLessonNoteByTopicId(topicId: number, publishedOnly?: boolean): Promise<LessonNote | undefined>;
   createLessonNote(data: InsertLessonNote): Promise<LessonNote>;
@@ -3313,6 +3314,46 @@ export class DatabaseStorage implements IStorage {
     if (filters.createdBy) conditions.push(eq(schema.lessonNotes.createdBy, filters.createdBy));
     if (conditions.length === 0) return await db.select().from(schema.lessonNotes).orderBy(desc(schema.lessonNotes.createdAt));
     return await db.select().from(schema.lessonNotes).where(and(...conditions)).orderBy(desc(schema.lessonNotes.createdAt));
+  }
+
+  async getLessonNotesEnriched(filters: { classId?: number; subjectId?: number; termId?: number; status?: string; createdBy?: string }): Promise<Array<LessonNote & { creatorName: string | null; subjectName: string | null; className: string | null; topicName: string | null; termName: string | null }>> {
+    const conditions: any[] = [];
+    if (filters.classId)   conditions.push(eq(schema.lessonNotes.classId,   filters.classId));
+    if (filters.subjectId) conditions.push(eq(schema.lessonNotes.subjectId, filters.subjectId));
+    if (filters.termId)    conditions.push(eq(schema.lessonNotes.termId,    filters.termId));
+    if (filters.status)    conditions.push(eq(schema.lessonNotes.status,    filters.status));
+    if (filters.createdBy) conditions.push(eq(schema.lessonNotes.createdBy, filters.createdBy));
+
+    const creatorAlias = alias(schema.users, 'creator');
+
+    const rows = await db.select({
+      note: schema.lessonNotes,
+      creatorFirstName: creatorAlias.firstName,
+      creatorLastName:  creatorAlias.lastName,
+      subjectName:      schema.subjects.name,
+      className:        schema.classes.name,
+      topicName:        schema.syllabusTopics.name,
+      termName:         schema.academicTerms.name,
+    })
+      .from(schema.lessonNotes)
+      .leftJoin(creatorAlias,           eq(schema.lessonNotes.createdBy,  creatorAlias.id))
+      .leftJoin(schema.subjects,        eq(schema.lessonNotes.subjectId,  schema.subjects.id))
+      .leftJoin(schema.classes,         eq(schema.lessonNotes.classId,    schema.classes.id))
+      .leftJoin(schema.syllabusTopics,  eq(schema.lessonNotes.topicId,    schema.syllabusTopics.id))
+      .leftJoin(schema.academicTerms,   eq(schema.lessonNotes.termId,     schema.academicTerms.id))
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(desc(schema.lessonNotes.createdAt));
+
+    return rows.map(row => ({
+      ...row.note,
+      creatorName: row.creatorFirstName && row.creatorLastName
+        ? `${row.creatorFirstName} ${row.creatorLastName}`.trim()
+        : (row.creatorFirstName || row.creatorLastName || null),
+      subjectName: row.subjectName ?? null,
+      className:   row.className   ?? null,
+      topicName:   row.topicName   ?? null,
+      termName:    row.termName    ?? null,
+    }));
   }
   async getLessonNoteById(id: number): Promise<LessonNote | undefined> {
     const result = await db.select().from(schema.lessonNotes).where(eq(schema.lessonNotes.id, id));
