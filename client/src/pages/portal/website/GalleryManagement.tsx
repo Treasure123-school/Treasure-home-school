@@ -153,20 +153,26 @@ export default function GalleryManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Images className="h-6 w-6 text-primary" /> Gallery Management
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">Upload and manage school gallery images</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowCategoryDialog(true)}>
-            <FolderPlus className="h-4 w-4 mr-1" /> Categories
-          </Button>
-          <Button size="sm" onClick={() => setShowUploadDialog(true)}>
-            <Upload className="h-4 w-4 mr-1" /> Upload Image
-          </Button>
+      {/* Header */}
+      <div className="rounded-2xl bg-gradient-to-r from-primary/10 via-primary/5 to-background p-4 sm:p-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
+              <Images className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-foreground">Gallery Management</h1>
+              <p className="text-sm text-muted-foreground">Upload and manage school gallery images</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={() => setShowCategoryDialog(true)}>
+              <FolderPlus className="h-4 w-4 mr-1" /> Categories
+            </Button>
+            <Button size="sm" className="flex-1 sm:flex-none" onClick={() => setShowUploadDialog(true)}>
+              <Upload className="h-4 w-4 mr-1" /> Upload Image
+            </Button>
+          </div>
         </div>
       </div>
 

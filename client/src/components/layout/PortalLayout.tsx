@@ -408,7 +408,14 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               <div className="ml-3 mt-0.5 mb-0.5 pl-2.5 border-l border-border space-y-0.5">
                 {item.items.map((sub: any) => {
                   const SubIcon = sub.icon;
-                  const active = isActive(sub.href);
+                  // Active only if this is the best (most specific) match among siblings.
+                  // Prevents a parent path like /website being highlighted when on /website/gallery.
+                  const siblingBetter = item.items.some((other: any) =>
+                    other.href !== sub.href &&
+                    other.href.length > sub.href.length &&
+                    (location === other.href || location.startsWith(other.href + '/'))
+                  );
+                  const active = isActive(sub.href) && !siblingBetter;
                   return (
                     <button
                       key={sub.href}
