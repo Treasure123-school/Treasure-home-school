@@ -13,7 +13,10 @@ import { useToast } from '@/hooks/use-toast';
 import RichTextEditor from '@/components/lesson-notes/RichTextEditor';
 import { StatusBadge, EnrichedNote } from '@/components/lesson-notes/lessonNoteShared';
 import {
-  Save, Send, Eye, AlertCircle, Info,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Save, Send, Eye, AlertCircle, Info, MoreHorizontal,
 } from 'lucide-react';
 
 function parseQuery(search: string) {
@@ -185,8 +188,63 @@ export default function LessonNoteEditorPage() {
         <Card className="shadow-sm">
           <CardContent className="p-5 sm:p-6 space-y-6">
 
-            {/* Status badge */}
-            {note && (
+            {/* ── Top action bar ── */}
+            {canEdit && (
+              <div className="flex items-center justify-between gap-2 pb-1 border-b">
+                <div className="flex items-center gap-2 min-w-0">
+                  {note && <StatusBadge status={note.status} />}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* Primary CTA */}
+                  {isTeacher && (
+                    <Button
+                      size="sm"
+                      disabled={!canSave || busy}
+                      onClick={() => submitMutation.mutate()}
+                      data-testid="button-submit-review"
+                    >
+                      <Send className="w-3.5 h-3.5 mr-1.5" />
+                      <span className="hidden sm:inline">{submitMutation.isPending ? 'Submitting…' : 'Submit for Review'}</span>
+                      <span className="sm:hidden">{submitMutation.isPending ? '…' : 'Submit'}</span>
+                    </Button>
+                  )}
+                  {isAdmin && (
+                    <Button
+                      size="sm"
+                      disabled={!canSave || busy}
+                      onClick={() => publishMutation.mutate()}
+                      className="bg-emerald-600 hover:bg-emerald-700"
+                      data-testid="button-publish"
+                    >
+                      <Eye className="w-3.5 h-3.5 mr-1.5" />
+                      <span className="hidden sm:inline">{publishMutation.isPending ? 'Publishing…' : 'Save & Publish'}</span>
+                      <span className="sm:hidden">{publishMutation.isPending ? '…' : 'Publish'}</span>
+                    </Button>
+                  )}
+                  {/* Secondary actions dropdown */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-8 w-8 p-0" data-testid="button-more-actions">
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuItem
+                        disabled={!canSave || busy}
+                        onClick={() => saveMutation.mutate()}
+                        data-testid="button-save-draft"
+                      >
+                        <Save className="w-3.5 h-3.5 mr-2" />
+                        {saveMutation.isPending ? 'Saving…' : 'Save Draft'}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            )}
+
+            {/* Status badge when not editable */}
+            {!canEdit && note && (
               <div className="flex items-center gap-2">
                 <StatusBadge status={note.status} />
               </div>
@@ -249,43 +307,6 @@ export default function LessonNoteEditorPage() {
                 disabled={!canEdit || busy}
               />
             </div>
-
-            {canEdit && (
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  disabled={!canSave || busy}
-                  onClick={() => saveMutation.mutate()}
-                  data-testid="button-save-draft-bottom"
-                  className="w-full sm:w-auto"
-                >
-                  <Save className="w-4 h-4 mr-1.5" />
-                  {saveMutation.isPending ? 'Saving…' : 'Save Draft'}
-                </Button>
-                {isTeacher && (
-                  <Button
-                    disabled={!canSave || busy}
-                    onClick={() => submitMutation.mutate()}
-                    className="w-full sm:w-auto"
-                    data-testid="button-submit-bottom"
-                  >
-                    <Send className="w-4 h-4 mr-1.5" />
-                    {submitMutation.isPending ? 'Submitting…' : 'Submit for Review'}
-                  </Button>
-                )}
-                {isAdmin && (
-                  <Button
-                    disabled={!canSave || busy}
-                    onClick={() => publishMutation.mutate()}
-                    className="bg-emerald-600 hover:bg-emerald-700 w-full sm:w-auto"
-                    data-testid="button-publish-bottom"
-                  >
-                    <Eye className="w-4 h-4 mr-1.5" />
-                    {publishMutation.isPending ? 'Publishing…' : 'Save & Publish'}
-                  </Button>
-                )}
-              </div>
-            )}
           </CardContent>
         </Card>
       )}

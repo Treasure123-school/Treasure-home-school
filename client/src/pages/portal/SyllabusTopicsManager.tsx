@@ -398,18 +398,13 @@ export default function SyllabusTopicsManager() {
                   </span>
                   <span className="sm:hidden">Topics</span>
                 </CardTitle>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {!loadingTopics && (topics as any[]).length > 0 && (
-                    <div className="flex gap-1.5">
-                      <Badge variant="secondary" className="text-xs">{(topics as any[]).length} total</Badge>
-                      {publishedCount > 0 && <Badge className="text-xs bg-emerald-500 hover:bg-emerald-500">{publishedCount} published</Badge>}
-                      {draftCount > 0 && <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">{draftCount} draft</Badge>}
-                    </div>
-                  )}
-                  <Button size="sm" onClick={() => { resetForm(); setIsDialogOpen(true); }} data-testid="btn-add-inline">
-                    <Plus className="w-3.5 h-3.5 mr-1" /> Add
-                  </Button>
-                </div>
+                {!loadingTopics && (topics as any[]).length > 0 && (
+                  <div className="flex gap-1.5">
+                    <Badge variant="secondary" className="text-xs">{(topics as any[]).length} total</Badge>
+                    {publishedCount > 0 && <Badge className="text-xs bg-emerald-500 hover:bg-emerald-500">{publishedCount} published</Badge>}
+                    {draftCount > 0 && <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">{draftCount} draft</Badge>}
+                  </div>
+                )}
               </div>
             </CardHeader>
             <CardContent className="px-0 pb-0">
@@ -424,76 +419,129 @@ export default function SyllabusTopicsManager() {
                   </div>
                   <p className="font-medium text-sm">No topics yet</p>
                   <p className="text-xs text-muted-foreground mt-1 mb-4 max-w-xs mx-auto">Add topics for this combination to build the scheme of work.</p>
-                  <Button size="sm" onClick={() => { resetForm(); setIsDialogOpen(true); }}>
-                    <Plus className="w-3.5 h-3.5 mr-1" /> Add First Topic
-                  </Button>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-12 pl-5">#</TableHead>
-                        <TableHead>Topic Name</TableHead>
-                        <TableHead className="hidden md:table-cell">Description</TableHead>
-                        <TableHead className="w-36">Visibility</TableHead>
-                        <TableHead className="w-12 pr-5 text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {[...(topics as any[])]
-                        .sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0))
-                        .map((topic: any, idx: number) => (
-                          <TableRow key={topic.id} data-testid={`topic-row-${topic.id}`}>
-                            <TableCell className="pl-5 text-muted-foreground text-sm font-mono">{topic.orderNumber || idx + 1}</TableCell>
-                            <TableCell>
-                              <p className="font-medium text-sm">{topic.name}</p>
-                              {topic.description && (
-                                <p className="text-xs text-muted-foreground mt-0.5 md:hidden line-clamp-1">{topic.description}</p>
-                              )}
-                            </TableCell>
-                            <TableCell className="hidden md:table-cell text-sm text-muted-foreground max-w-xs">
-                              <span className="line-clamp-1">{topic.description || '—'}</span>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <Switch
-                                  checked={!!topic.isPublished}
-                                  onCheckedChange={(checked) => publishMutation.mutate({ id: topic.id, isPublished: checked })}
-                                  data-testid={`switch-publish-${topic.id}`}
-                                />
-                                <span className={`text-xs font-medium ${topic.isPublished ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
-                                  {topic.isPublished ? 'Published' : 'Draft'}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="pr-5 text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" data-testid={`btn-actions-${topic.id}`}>
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-36">
-                                  <DropdownMenuItem onClick={() => handleEdit(topic)} data-testid={`btn-edit-${topic.id}`}>
-                                    <Edit className="w-3.5 h-3.5 mr-2" /> Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem
-                                    onClick={() => setTopicToDelete(topic)}
-                                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                                    data-testid={`btn-delete-${topic.id}`}
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                <>
+                  {/* ── Mobile card grid (hidden on sm+) ── */}
+                  <div className="sm:hidden px-4 pb-4 grid grid-cols-1 gap-2.5">
+                    {[...(topics as any[])]
+                      .sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0))
+                      .map((topic: any, idx: number) => (
+                        <div
+                          key={topic.id}
+                          className="rounded-xl border bg-card p-3.5 flex gap-3 items-start"
+                          data-testid={`topic-card-${topic.id}`}
+                        >
+                          <span className="w-7 h-7 rounded-full bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                            {topic.orderNumber || idx + 1}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm leading-snug">{topic.name}</p>
+                            {topic.description && (
+                              <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{topic.description}</p>
+                            )}
+                            <div className="flex items-center gap-2 mt-2">
+                              <Switch
+                                checked={!!topic.isPublished}
+                                onCheckedChange={(checked) => publishMutation.mutate({ id: topic.id, isPublished: checked })}
+                                data-testid={`switch-publish-${topic.id}`}
+                              />
+                              <span className={`text-xs font-medium ${topic.isPublished ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
+                                {topic.isPublished ? 'Published' : 'Draft'}
+                              </span>
+                            </div>
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" data-testid={`btn-actions-${topic.id}`}>
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-36">
+                              <DropdownMenuItem onClick={() => handleEdit(topic)} data-testid={`btn-edit-${topic.id}`}>
+                                <Edit className="w-3.5 h-3.5 mr-2" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => setTopicToDelete(topic)}
+                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                data-testid={`btn-delete-${topic.id}`}
+                              >
+                                <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      ))}
+                  </div>
+
+                  {/* ── Desktop table (hidden on mobile) ── */}
+                  <div className="hidden sm:block overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead className="w-12 pl-5">#</TableHead>
+                          <TableHead>Topic Name</TableHead>
+                          <TableHead className="hidden md:table-cell">Description</TableHead>
+                          <TableHead className="w-36">Visibility</TableHead>
+                          <TableHead className="w-12 pr-5 text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {[...(topics as any[])]
+                          .sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0))
+                          .map((topic: any, idx: number) => (
+                            <TableRow key={topic.id} data-testid={`topic-row-${topic.id}`}>
+                              <TableCell className="pl-5 text-muted-foreground text-sm font-mono">{topic.orderNumber || idx + 1}</TableCell>
+                              <TableCell>
+                                <p className="font-medium text-sm">{topic.name}</p>
+                                {topic.description && (
+                                  <p className="text-xs text-muted-foreground mt-0.5 md:hidden line-clamp-1">{topic.description}</p>
+                                )}
+                              </TableCell>
+                              <TableCell className="hidden md:table-cell text-sm text-muted-foreground max-w-xs">
+                                <span className="line-clamp-1">{topic.description || '—'}</span>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Switch
+                                    checked={!!topic.isPublished}
+                                    onCheckedChange={(checked) => publishMutation.mutate({ id: topic.id, isPublished: checked })}
+                                    data-testid={`switch-publish-${topic.id}`}
+                                  />
+                                  <span className={`text-xs font-medium ${topic.isPublished ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`}>
+                                    {topic.isPublished ? 'Published' : 'Draft'}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="pr-5 text-right">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" data-testid={`btn-actions-${topic.id}`}>
+                                      <MoreHorizontal className="w-4 h-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-36">
+                                    <DropdownMenuItem onClick={() => handleEdit(topic)} data-testid={`btn-edit-${topic.id}`}>
+                                      <Edit className="w-3.5 h-3.5 mr-2" /> Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => setTopicToDelete(topic)}
+                                      className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                      data-testid={`btn-delete-${topic.id}`}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>
