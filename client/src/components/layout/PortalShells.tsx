@@ -74,6 +74,7 @@ const SyllabusTopicsManager = lazy(() => import('@/pages/portal/SyllabusTopicsMa
 const QuestionBankManager = lazy(() => import('@/pages/portal/QuestionBankManager'));
 const TeacherLessonNotes = lazy(() => import('@/pages/portal/TeacherLessonNotes'));
 const AdminLessonNoteReview = lazy(() => import('@/pages/portal/AdminLessonNoteReview'));
+const AdminLessonNoteCreate = lazy(() => import('@/pages/portal/AdminLessonNoteCreate'));
 const LessonNoteEditorPage = lazy(() => import('@/pages/portal/LessonNoteEditorPage'));
 const LessonNoteViewPage = lazy(() => import('@/pages/portal/LessonNoteViewPage'));
 const StudentLessonNoteViewPage = lazy(() => import('@/pages/portal/StudentLessonNoteViewPage'));
@@ -228,7 +229,8 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/comment-templates" component={ReportCommentTemplates} />
             <Route path="/portal/admin/syllabus-topics" component={SyllabusTopicsManager} />
             <Route path="/portal/admin/question-bank" component={QuestionBankManager} />
-            <Route path="/portal/admin/lesson-notes/create" component={LessonNoteEditorPage} />
+            <Route path="/portal/admin/lesson-notes/create" component={AdminLessonNoteCreate} />
+            <Route path="/portal/admin/lesson-notes/editor/new" component={LessonNoteEditorPage} />
             <Route path="/portal/admin/lesson-notes/edit/:id" component={LessonNoteEditorPage} />
             <Route path="/portal/admin/lesson-notes/view/:id" component={LessonNoteViewPage} />
             <Route path="/portal/admin/lesson-notes" component={AdminLessonNoteReview} />
