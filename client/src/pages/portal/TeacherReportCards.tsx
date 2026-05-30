@@ -993,9 +993,9 @@ export default function TeacherReportCards() {
                       <SelectValue placeholder="Grading Scale" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="standard">Standard (A-F)</SelectItem>
-                      <SelectItem value="waec">WAEC (A1-F9)</SelectItem>
-                      <SelectItem value="percentage">Percentage</SelectItem>
+                      {(gradingConfig?.availableScales ?? []).map((scaleName: string) => (
+                        <SelectItem key={scaleName} value={scaleName}>{scaleName}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

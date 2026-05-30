@@ -800,30 +800,59 @@ function GradingScaleSection() {
     return sorted.find(b => clamped >= b.minScore && clamped <= b.maxScore) ?? sorted[sorted.length - 1] ?? null;
   })();
 
+  // ── helpers ──────────────────────────────────────────────────────────────
+  const scalesCacheKey = ['/api/grade-scales'];
+  const snap = () => queryClient.getQueryData<GradeScale[]>(scalesCacheKey);
+  const patch = (fn: (old: GradeScale[]) => GradeScale[]) =>
+    queryClient.setQueryData<GradeScale[]>(scalesCacheKey, old => fn(old ?? []));
+
   const activateMutation = useMutation({
     mutationFn: (id: number) => apiRequest('POST', `/api/grade-scales/${id}/activate`),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/grade-scales'] }); toast({ title: 'Grade scale activated' }); },
-    onError: (e: any) => toast({ title: 'Failed to activate', description: e.message, variant: 'destructive' }),
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey: scalesCacheKey });
+      const prev = snap();
+      patch(old => old.map(s => ({ ...s, isActive: s.id === id })));
+      return { prev };
+    },
+    onError: (e: any, _, ctx: any) => {
+      if (ctx?.prev) queryClient.setQueryData(scalesCacheKey, ctx.prev);
+      toast({ title: 'Failed to activate', description: e.message, variant: 'destructive' });
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: scalesCacheKey }); toast({ title: 'Grade scale activated' }); },
   });
 
   const duplicateMutation = useMutation({
     mutationFn: (id: number) => apiRequest('POST', `/api/grade-scales/${id}/duplicate`),
-    onSuccess: (s: any) => { queryClient.invalidateQueries({ queryKey: ['/api/grade-scales'] }); setExpandedScaleId(s.id); toast({ title: 'Scale duplicated' }); },
+    onMutate: async () => { await queryClient.cancelQueries({ queryKey: scalesCacheKey }); },
+    onSuccess: (s: any) => {
+      queryClient.invalidateQueries({ queryKey: scalesCacheKey });
+      setExpandedScaleId(s.id);
+      toast({ title: 'Scale duplicated' });
+    },
     onError: (e: any) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
   });
 
   const deleteScaleMutation = useMutation({
     mutationFn: (id: number) => apiRequest('DELETE', `/api/grade-scales/${id}`),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/grade-scales'] }); setDeleteScaleId(null); toast({ title: 'Scale deleted' }); },
-    onError: (e: any) => toast({ title: 'Failed to delete', description: e.message, variant: 'destructive' }),
+    onMutate: async (id: number) => {
+      await queryClient.cancelQueries({ queryKey: scalesCacheKey });
+      const prev = snap();
+      patch(old => old.filter(s => s.id !== id));
+      setDeleteScaleId(null);
+      return { prev };
+    },
+    onError: (e: any, _, ctx: any) => {
+      if (ctx?.prev) queryClient.setQueryData(scalesCacheKey, ctx.prev);
+      toast({ title: 'Failed to delete', description: e.message, variant: 'destructive' });
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: scalesCacheKey }); toast({ title: 'Scale deleted' }); },
   });
 
   const createScaleMutation = useMutation({
     mutationFn: (data: any) => apiRequest('POST', '/api/grade-scales', data),
+    onMutate: async () => { setCreateOpen(false); setScaleForm({ name: '', description: '', copyFromId: '' }); },
     onSuccess: (s: any) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/grade-scales'] });
-      setCreateOpen(false);
-      setScaleForm({ name: '', description: '', copyFromId: '' });
+      queryClient.invalidateQueries({ queryKey: scalesCacheKey });
       setExpandedScaleId(s.id);
       toast({ title: 'Scale created' });
     },
@@ -832,28 +861,75 @@ function GradingScaleSection() {
 
   const updateScaleMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: any }) => apiRequest('PATCH', `/api/grade-scales/${id}`, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/grade-scales'] }); setEditingScale(null); toast({ title: 'Scale updated' }); },
-    onError: (e: any) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
+    onMutate: async ({ id, data }: { id: number; data: any }) => {
+      await queryClient.cancelQueries({ queryKey: scalesCacheKey });
+      const prev = snap();
+      patch(old => old.map(s => s.id === id ? { ...s, name: data.name, description: data.description ?? s.description } : s));
+      setEditingScale(null);
+      return { prev };
+    },
+    onError: (e: any, _, ctx: any) => {
+      if (ctx?.prev) queryClient.setQueryData(scalesCacheKey, ctx.prev);
+      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: scalesCacheKey }); toast({ title: 'Scale updated' }); },
   });
 
   const addBoundaryMutation = useMutation({
     mutationFn: ({ scaleId, data }: { scaleId: number; data: any }) => apiRequest('POST', `/api/grade-scales/${scaleId}/boundaries`, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/grade-scales'] }); setBoundaryDialogOpen(false); resetBoundaryForm(); toast({ title: 'Boundary added' }); },
-    onError: (e: any) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
+    onMutate: async ({ scaleId, data }: { scaleId: number; data: any }) => {
+      await queryClient.cancelQueries({ queryKey: scalesCacheKey });
+      const prev = snap();
+      const tempId = -Date.now();
+      patch(old => old.map(s => s.id !== scaleId ? s : {
+        ...s, boundaries: [...s.boundaries, { id: tempId, scaleId, name: s.name, isDefault: s.isActive, ...data }]
+      }));
+      setBoundaryDialogOpen(false); resetBoundaryForm();
+      return { prev };
+    },
+    onError: (e: any, _, ctx: any) => {
+      if (ctx?.prev) queryClient.setQueryData(scalesCacheKey, ctx.prev);
+      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: scalesCacheKey }); toast({ title: 'Boundary added' }); },
   });
 
   const updateBoundaryMutation = useMutation({
     mutationFn: ({ scaleId, boundaryId, data }: { scaleId: number; boundaryId: number; data: any }) =>
       apiRequest('PATCH', `/api/grade-scales/${scaleId}/boundaries/${boundaryId}`, data),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/grade-scales'] }); setBoundaryDialogOpen(false); resetBoundaryForm(); toast({ title: 'Boundary updated' }); },
-    onError: (e: any) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
+    onMutate: async ({ scaleId, boundaryId, data }: { scaleId: number; boundaryId: number; data: any }) => {
+      await queryClient.cancelQueries({ queryKey: scalesCacheKey });
+      const prev = snap();
+      patch(old => old.map(s => s.id !== scaleId ? s : {
+        ...s, boundaries: s.boundaries.map(b => b.id !== boundaryId ? b : { ...b, ...data })
+      }));
+      setBoundaryDialogOpen(false); resetBoundaryForm();
+      return { prev };
+    },
+    onError: (e: any, _, ctx: any) => {
+      if (ctx?.prev) queryClient.setQueryData(scalesCacheKey, ctx.prev);
+      toast({ title: 'Failed to update boundary', description: e.message, variant: 'destructive' });
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: scalesCacheKey }); toast({ title: 'Boundary updated' }); },
   });
 
   const deleteBoundaryMutation = useMutation({
     mutationFn: ({ scaleId, boundaryId }: { scaleId: number; boundaryId: number }) =>
       apiRequest('DELETE', `/api/grade-scales/${scaleId}/boundaries/${boundaryId}`),
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/grade-scales'] }); setDeleteBoundaryId(null); toast({ title: 'Boundary deleted' }); },
-    onError: (e: any) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
+    onMutate: async ({ scaleId, boundaryId }: { scaleId: number; boundaryId: number }) => {
+      await queryClient.cancelQueries({ queryKey: scalesCacheKey });
+      const prev = snap();
+      patch(old => old.map(s => s.id !== scaleId ? s : {
+        ...s, boundaries: s.boundaries.filter(b => b.id !== boundaryId)
+      }));
+      setDeleteBoundaryId(null);
+      return { prev };
+    },
+    onError: (e: any, _, ctx: any) => {
+      if (ctx?.prev) queryClient.setQueryData(scalesCacheKey, ctx.prev);
+      toast({ title: 'Failed to delete boundary', description: e.message, variant: 'destructive' });
+    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: scalesCacheKey }); toast({ title: 'Boundary deleted' }); },
   });
 
   const resetBoundaryForm = () => {

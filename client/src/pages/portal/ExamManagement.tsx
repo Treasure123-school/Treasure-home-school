@@ -175,7 +175,7 @@ export default function ExamManagement() {
       instantFeedback: false,
       showCorrectAnswers: true,
       passingScore: 60,
-      gradingScale: 'standard',
+      gradingScale: 'active',
     }
   });
 
@@ -390,6 +390,18 @@ export default function ExamManagement() {
       return response.json();
     },
   });
+
+  // Fetch active grading config so the exam form can show real DB scale names
+  const { data: gradingConfigData } = useQuery<{ availableScales: string[]; dbSettings: { defaultGradingScale: string } }>({
+    queryKey: ['/api/grading-config'],
+    queryFn: async () => {
+      const res = await apiRequest('GET', '/api/grading-config');
+      if (!res.ok) return null;
+      return res.json();
+    },
+  });
+  const availableGradingScales: string[] = gradingConfigData?.availableScales ?? [];
+  const activeGradingScaleName: string = gradingConfigData?.dbSettings?.defaultGradingScale ?? 'standard';
 
   const { data: rawExamQuestions = [], isLoading: loadingQuestions } = useQuery<ExamQuestion[]>({
     queryKey: ['/api/exam-questions', selectedExam?.id],
@@ -954,7 +966,7 @@ export default function ExamManagement() {
       instantFeedback: exam.instantFeedback || false,
       showCorrectAnswers: exam.showCorrectAnswers ?? true,
       passingScore: exam.passingScore || 60,
-      gradingScale: (exam.gradingScale as 'standard' | 'percentage' | 'points' | 'custom') || 'standard',
+      gradingScale: exam.gradingScale || 'active',
     });
 
     setCurrentStep(1);
@@ -1832,13 +1844,15 @@ export default function ExamManagement() {
                       <div>
                         <Label>Grading Scale</Label>
                         <Controller name="gradingScale" control={examControl} render={({ field }) => (
-                          <Select onValueChange={field.onChange} value={field.value || 'standard'} data-testid="select-grading-scale">
+                          <Select onValueChange={field.onChange} value={field.value || 'active'} data-testid="select-grading-scale">
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="standard">Standard (A–F)</SelectItem>
-                              <SelectItem value="percentage">Percentage Only</SelectItem>
-                              <SelectItem value="points">Points Only</SelectItem>
-                              <SelectItem value="custom">Custom Scale</SelectItem>
+                              <SelectItem value="active">
+                                School Active Scale {activeGradingScaleName ? `(${activeGradingScaleName})` : ''}
+                              </SelectItem>
+                              {availableGradingScales.filter(s => s !== activeGradingScaleName).map(scaleName => (
+                                <SelectItem key={scaleName} value={scaleName}>{scaleName}</SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         )} />
