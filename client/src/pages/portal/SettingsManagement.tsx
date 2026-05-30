@@ -599,24 +599,34 @@ function SchoolProfileSection() {
 // ─────────────────────────────────────────────
 function AcademicSettingsSection() {
   const { settings, isLoading, save } = useAdminSettings();
+  const [isEditing, setIsEditing] = useState(false);
   const [testWeight, setTestWeight] = useState(40);
   const [scoreAggregation, setScoreAggregation] = useState('last');
   const [autoCreateReportCard, setAutoCreateReportCard] = useState(true);
   const [showGradeBreakdown, setShowGradeBreakdown] = useState(true);
   const [allowTeacherOverrides, setAllowTeacherOverrides] = useState(true);
+  const [original, setOriginal] = useState({ testWeight: 40, scoreAggregation: 'last', autoCreateReportCard: true, showGradeBreakdown: true, allowTeacherOverrides: true });
 
   useEffect(() => {
     if (settings) {
-      setTestWeight(settings.testWeight ?? 40);
-      setScoreAggregation(settings.scoreAggregationMode || 'last');
-      setAutoCreateReportCard(settings.autoCreateReportCard ?? true);
-      setShowGradeBreakdown(settings.showGradeBreakdown ?? true);
-      setAllowTeacherOverrides(settings.allowTeacherOverrides ?? true);
+      const vals = {
+        testWeight: settings.testWeight ?? 40,
+        scoreAggregation: settings.scoreAggregationMode || 'last',
+        autoCreateReportCard: settings.autoCreateReportCard ?? true,
+        showGradeBreakdown: settings.showGradeBreakdown ?? true,
+        allowTeacherOverrides: settings.allowTeacherOverrides ?? true,
+      };
+      setTestWeight(vals.testWeight);
+      setScoreAggregation(vals.scoreAggregation);
+      setAutoCreateReportCard(vals.autoCreateReportCard);
+      setShowGradeBreakdown(vals.showGradeBreakdown);
+      setAllowTeacherOverrides(vals.allowTeacherOverrides);
+      setOriginal(vals);
     }
   }, [settings]);
 
-  const handleSave = () => {
-    save.mutate({
+  const handleSave = async () => {
+    await save.mutateAsync({
       testWeight,
       examWeight: 100 - testWeight,
       scoreAggregationMode: scoreAggregation,
@@ -624,22 +634,47 @@ function AcademicSettingsSection() {
       showGradeBreakdown,
       allowTeacherOverrides,
     });
+    setOriginal({ testWeight, scoreAggregation, autoCreateReportCard, showGradeBreakdown, allowTeacherOverrides });
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    setTestWeight(original.testWeight);
+    setScoreAggregation(original.scoreAggregation);
+    setAutoCreateReportCard(original.autoCreateReportCard);
+    setShowGradeBreakdown(original.showGradeBreakdown);
+    setAllowTeacherOverrides(original.allowTeacherOverrides);
+    setIsEditing(false);
   };
 
   if (isLoading) return <SectionSkeleton />;
 
-  const SaveBtn = ({ className }: { className?: string }) => (
-    <Button onClick={handleSave} disabled={save.isPending} data-testid="button-save-academic" className={className}>
-      {save.isPending ? <Loader2 className="w-4 h-4 animate-spin sm:mr-2" /> : <Save className="w-4 h-4 sm:mr-2" />}
-      <span className="hidden sm:inline">Save Academic Settings</span>
-    </Button>
-  );
-
   return (
     <div className="space-y-4">
+      {/* Action bar — top only, no duplicate at bottom */}
       <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">Adjust weights, grading rules, and report card behaviour.</p>
-        <SaveBtn />
+        <p className="text-xs text-muted-foreground">
+          {isEditing ? 'Make your changes below, then save.' : 'Click Edit to update academic settings.'}
+        </p>
+        <div className="flex gap-2">
+          {isEditing ? (
+            <>
+              <Button variant="outline" size="sm" onClick={handleCancel} disabled={save.isPending} data-testid="button-cancel-academic">
+                <X className="w-3.5 h-3.5 sm:mr-1.5" />
+                <span className="hidden sm:inline">Cancel</span>
+              </Button>
+              <Button size="sm" onClick={handleSave} disabled={save.isPending} data-testid="button-save-academic">
+                {save.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin sm:mr-1.5" /> : <Save className="w-3.5 h-3.5 sm:mr-1.5" />}
+                <span className="hidden sm:inline">Save Changes</span>
+              </Button>
+            </>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} data-testid="button-edit-academic">
+              <Edit className="w-3.5 h-3.5 sm:mr-1.5" />
+              <span className="hidden sm:inline">Edit</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       <SettingCard title="Assessment Weights" description="How CA (test) and examination scores are weighted for the final grade" icon={Percent}>
@@ -650,8 +685,9 @@ function AcademicSettingsSection() {
           </div>
           <Slider
             value={[testWeight]}
-            onValueChange={v => setTestWeight(v[0])}
+            onValueChange={v => isEditing && setTestWeight(v[0])}
             min={0} max={100} step={5}
+            disabled={!isEditing}
             data-testid="slider-test-weight"
           />
           <div className="grid grid-cols-2 gap-3 text-xs">
@@ -669,7 +705,7 @@ function AcademicSettingsSection() {
 
       <SettingCard title="Score Aggregation" description="When a student has multiple CA scores for the same subject, which score is used?" icon={BarChart3}>
         <div className="space-y-3">
-          <Select value={scoreAggregation} onValueChange={setScoreAggregation}>
+          <Select value={scoreAggregation} onValueChange={setScoreAggregation} disabled={!isEditing}>
             <SelectTrigger data-testid="select-score-aggregation">
               <SelectValue />
             </SelectTrigger>
@@ -692,15 +728,11 @@ function AcademicSettingsSection() {
 
       <SettingCard title="Report Card Behaviour" description="Control how report cards are created and displayed" icon={FileBarChart2}>
         <div className="space-y-1">
-          <SwitchRow id="autoCreateReportCard" label="Auto-create Report Cards" description="Automatically generate a report card for each student when a term starts" checked={autoCreateReportCard} onCheckedChange={setAutoCreateReportCard} />
-          <SwitchRow id="showGradeBreakdown" label="Show Grade Breakdown" description="Display CA and exam scores separately on the report card" checked={showGradeBreakdown} onCheckedChange={setShowGradeBreakdown} />
-          <SwitchRow id="allowTeacherOverrides" label="Allow Teacher Score Overrides" description="Teachers can manually override auto-calculated scores on report cards" checked={allowTeacherOverrides} onCheckedChange={setAllowTeacherOverrides} />
+          <SwitchRow id="autoCreateReportCard" label="Auto-create Report Cards" description="Automatically generate a report card for each student when a term starts" checked={autoCreateReportCard} onCheckedChange={v => isEditing && setAutoCreateReportCard(v)} />
+          <SwitchRow id="showGradeBreakdown" label="Show Grade Breakdown" description="Display CA and exam scores separately on the report card" checked={showGradeBreakdown} onCheckedChange={v => isEditing && setShowGradeBreakdown(v)} />
+          <SwitchRow id="allowTeacherOverrides" label="Allow Teacher Score Overrides" description="Teachers can manually override auto-calculated scores on report cards" checked={allowTeacherOverrides} onCheckedChange={v => isEditing && setAllowTeacherOverrides(v)} />
         </div>
       </SettingCard>
-
-      <div className="flex justify-end">
-        <SaveBtn />
-      </div>
     </div>
   );
 }
