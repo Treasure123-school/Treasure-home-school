@@ -290,10 +290,10 @@ export default function AdminLessonNoteReview() {
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  const [filterClass, setFilterClass] = useState('');
-  const [filterSubject, setFilterSubject] = useState('');
-  const [filterTerm, setFilterTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterClass, setFilterClass] = useState('_all');
+  const [filterSubject, setFilterSubject] = useState('_all');
+  const [filterTerm, setFilterTerm] = useState('_all');
+  const [filterStatus, setFilterStatus] = useState('_all');
   const [search, setSearch] = useState('');
   const [selectedNote, setSelectedNote] = useState<LessonNote | null>(null);
 
@@ -303,10 +303,10 @@ export default function AdminLessonNoteReview() {
   const { data: terms = [] } = useTerms();
 
   const activeFilters: Record<string, string> = {};
-  if (filterClass) activeFilters.classId = filterClass;
-  if (filterSubject) activeFilters.subjectId = filterSubject;
-  if (filterTerm) activeFilters.termId = filterTerm;
-  if (filterStatus) activeFilters.status = filterStatus;
+  if (filterClass !== '_all') activeFilters.classId = filterClass;
+  if (filterSubject !== '_all') activeFilters.subjectId = filterSubject;
+  if (filterTerm !== '_all') activeFilters.termId = filterTerm;
+  if (filterStatus !== '_all') activeFilters.status = filterStatus;
 
   const { data: notes = [], isLoading } = useLessonNotes(activeFilters);
 
@@ -405,7 +405,7 @@ export default function AdminLessonNoteReview() {
                 <Select value={filterClass} onValueChange={setFilterClass}>
                   <SelectTrigger className="h-9" data-testid="filter-class"><SelectValue placeholder="All classes" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All classes</SelectItem>
+                    <SelectItem value="_all">All classes</SelectItem>
                     {classes.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -415,7 +415,7 @@ export default function AdminLessonNoteReview() {
                 <Select value={filterSubject} onValueChange={setFilterSubject}>
                   <SelectTrigger className="h-9" data-testid="filter-subject"><SelectValue placeholder="All subjects" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All subjects</SelectItem>
+                    <SelectItem value="_all">All subjects</SelectItem>
                     {subjects.map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -425,7 +425,7 @@ export default function AdminLessonNoteReview() {
                 <Select value={filterTerm} onValueChange={setFilterTerm}>
                   <SelectTrigger className="h-9" data-testid="filter-term"><SelectValue placeholder="All terms" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All terms</SelectItem>
+                    <SelectItem value="_all">All terms</SelectItem>
                     {terms.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -435,7 +435,7 @@ export default function AdminLessonNoteReview() {
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
                   <SelectTrigger className="h-9" data-testid="filter-status"><SelectValue placeholder="All statuses" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All statuses</SelectItem>
+                    <SelectItem value="_all">All statuses</SelectItem>
                     {Object.entries(STATUS_CONFIG).map(([status, cfg]) => (
                       <SelectItem key={status} value={status}>{cfg.label}</SelectItem>
                     ))}
