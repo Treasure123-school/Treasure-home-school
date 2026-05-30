@@ -107,14 +107,14 @@ export default function AboutPageManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <BookOpen className="h-6 w-6 text-primary" /> About Page Management
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2 truncate">
+            <BookOpen className="h-6 w-6 text-primary shrink-0" /> <span className="truncate">About Page Management</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage the content sections on the public About page</p>
+          <p className="text-sm text-muted-foreground mt-1 truncate">Manage the content sections on the public About page</p>
         </div>
-        <Button onClick={openCreate} data-testid="button-create-about-section">
+        <Button onClick={openCreate} data-testid="button-create-about-section" className="w-full sm:w-auto shrink-0">
           <Plus className="h-4 w-4 mr-1" /> Add Section
         </Button>
       </div>
