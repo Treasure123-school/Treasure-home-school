@@ -163,9 +163,22 @@ export default function RichTextEditor({
 
   return (
     <div className={`border rounded-lg overflow-hidden bg-background ${disabled ? 'opacity-70' : ''}`}>
-      {/* Toolbar */}
+
+      {/* Hidden file input for image upload */}
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageFile} />
+
+      {/* Editor area */}
+      <div
+        onDrop={handleImageDrop}
+        onDragOver={(e) => e.preventDefault()}
+        className="relative"
+      >
+        <EditorContent editor={editor} />
+      </div>
+
+      {/* Toolbar — lives below the editor so it stays visible above the mobile keyboard */}
       {!disabled && (
-        <div className="border-b bg-muted/30 px-2 py-1.5 flex flex-wrap items-center gap-0.5">
+        <div className="border-t bg-muted/30 px-2 py-1.5 flex flex-wrap items-center gap-0.5">
           {/* Undo/Redo */}
           <ToolbarBtn title="Undo (Ctrl+Z)" onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()}>
             <Undo className="w-3.5 h-3.5" />
@@ -296,7 +309,7 @@ export default function RichTextEditor({
                 </button>
               </div>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Highlight</TooltipContent>
+            <TooltipContent side="top" className="text-xs">Highlight</TooltipContent>
           </Tooltip>
 
           {/* Text Color */}
@@ -314,22 +327,10 @@ export default function RichTextEditor({
                 </label>
               </div>
             </TooltipTrigger>
-            <TooltipContent side="bottom" className="text-xs">Text Color</TooltipContent>
+            <TooltipContent side="top" className="text-xs">Text Color</TooltipContent>
           </Tooltip>
         </div>
       )}
-
-      {/* Hidden file input for image upload */}
-      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageFile} />
-
-      {/* Editor area */}
-      <div
-        onDrop={handleImageDrop}
-        onDragOver={(e) => e.preventDefault()}
-        className="relative"
-      >
-        <EditorContent editor={editor} />
-      </div>
 
 
       <style>{`

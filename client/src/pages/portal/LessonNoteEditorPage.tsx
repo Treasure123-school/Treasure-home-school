@@ -273,7 +273,7 @@ export default function LessonNoteEditorPage() {
           <div className="space-y-2">
             <Label className="text-sm font-semibold">Lesson Content</Label>
             <p className="text-xs text-muted-foreground -mt-1">
-              Use the toolbar to format text, add headings, lists, tables, images, and links
+              Use the toolbar below to format text, add headings, lists, tables, images, and links
             </p>
             <RichTextEditor
               content={content}
