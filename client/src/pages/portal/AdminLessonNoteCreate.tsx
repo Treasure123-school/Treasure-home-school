@@ -182,19 +182,16 @@ export default function AdminLessonNoteCreate() {
     <div className="min-h-screen bg-background" data-testid="admin-lesson-note-create">
 
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background border-b">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-5">
+      <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-              <Plus className="w-5 h-5 text-primary" />
+            <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <BookMarked className="w-5 h-5 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <h1 className="text-lg font-bold text-foreground">Create Lesson Note</h1>
+              <h1 className="text-xl font-bold text-foreground">Create Lesson Note</h1>
               <p className="text-sm text-muted-foreground mt-0.5">Select Class → Subject → Term → Topic, then create the note</p>
             </div>
-            <Button variant="outline" size="sm" onClick={handleGoBack} className="shrink-0">
-              ← Back
-            </Button>
           </div>
 
           {/* Selection breadcrumb */}
