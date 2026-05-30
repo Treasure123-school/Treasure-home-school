@@ -15,7 +15,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import {
-  Plus, Trash2, Edit, BookOpen, Layers, Globe, EyeOff, Filter, ChevronRight,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Plus, Trash2, Edit, BookOpen, Layers, Globe, EyeOff, Filter, ChevronRight, MoreHorizontal, Loader2,
 } from 'lucide-react';
 
 function StatCard({ icon: Icon, label, value, iconClass, loading }: {
@@ -68,7 +71,7 @@ export default function SyllabusTopicsManager() {
     queryKey: ['/api/terms'],
     queryFn: async () => (await apiRequest('GET', '/api/terms')).json(),
   });
-  const { data: mappings = [] } = useQuery<any[]>({
+  const { data: mappings = [], isLoading: mappingsLoading } = useQuery<any[]>({
     queryKey: ['/api/class-subject-mappings', selectedClassId],
     queryFn: async () => {
       const r = await apiRequest('GET', `/api/class-subject-mappings/${selectedClassId}`);
@@ -340,12 +343,22 @@ export default function SyllabusTopicsManager() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Subject <span className="text-destructive">*</span></Label>
-                <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId} disabled={!selectedClassId}>
-                  <SelectTrigger data-testid="select-subject"><SelectValue placeholder={!selectedClassId ? 'Select class first' : 'Select subject...'} /></SelectTrigger>
-                  <SelectContent>
-                    {(subjects as any[]).map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                {selectedClassId && mappingsLoading ? (
+                  <div className="relative">
+                    <Skeleton className="h-10 rounded-md w-full" />
+                    <div className="absolute inset-0 flex items-center px-3 gap-2 pointer-events-none">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                      <span className="text-xs text-muted-foreground">Loading subjects…</span>
+                    </div>
+                  </div>
+                ) : (
+                  <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId} disabled={!selectedClassId}>
+                    <SelectTrigger data-testid="select-subject"><SelectValue placeholder={!selectedClassId ? 'Select class first' : 'Select subject...'} /></SelectTrigger>
+                    <SelectContent>
+                      {(subjects as any[]).map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Term <span className="text-destructive">*</span></Label>
@@ -424,7 +437,7 @@ export default function SyllabusTopicsManager() {
                         <TableHead>Topic Name</TableHead>
                         <TableHead className="hidden md:table-cell">Description</TableHead>
                         <TableHead className="w-36">Visibility</TableHead>
-                        <TableHead className="w-20 pr-5 text-right">Actions</TableHead>
+                        <TableHead className="w-12 pr-5 text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -455,14 +468,26 @@ export default function SyllabusTopicsManager() {
                               </div>
                             </TableCell>
                             <TableCell className="pr-5 text-right">
-                              <div className="flex gap-1 justify-end">
-                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleEdit(topic)} data-testid={`btn-edit-${topic.id}`}>
-                                  <Edit className="w-3.5 h-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setTopicToDelete(topic)} data-testid={`btn-delete-${topic.id}`}>
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </Button>
-                              </div>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0" data-testid={`btn-actions-${topic.id}`}>
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-36">
+                                  <DropdownMenuItem onClick={() => handleEdit(topic)} data-testid={`btn-edit-${topic.id}`}>
+                                    <Edit className="w-3.5 h-3.5 mr-2" /> Edit
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    onClick={() => setTopicToDelete(topic)}
+                                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                    data-testid={`btn-delete-${topic.id}`}
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </TableCell>
                           </TableRow>
                         ))}
