@@ -14,6 +14,7 @@ import Highlight from '@tiptap/extension-highlight';
 import { useRef, useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Bold, Italic, Underline, Strikethrough, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   List, ListOrdered, Quote, Minus, Link as LinkIcon, Image as ImageIcon, Table as TableIcon,
@@ -63,6 +64,7 @@ export default function RichTextEditor({
   content, onChange, placeholder = 'Start writing…', minHeight = '320px', disabled = false,
 }: RichTextEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isMobile = useIsMobile();
 
   const editor = useEditor({
     extensions: [
@@ -107,17 +109,13 @@ export default function RichTextEditor({
     }
   }, []);
 
-  // Track the visual viewport so the floating toolbar sits above the mobile keyboard
-  const toolbarRef = useRef<HTMLDivElement>(null);
+  // Mobile: track visual viewport offset so the toolbar floats above the keyboard
   const [vvBottom, setVvBottom] = useState(0);
   useEffect(() => {
-    if (disabled) return;
+    if (!isMobile || disabled) return;
     const vv = window.visualViewport;
     if (!vv) return;
-    const update = () => {
-      const offset = window.innerHeight - (vv.height + vv.offsetTop);
-      setVvBottom(Math.max(0, offset));
-    };
+    const update = () => setVvBottom(Math.max(0, window.innerHeight - (vv.height + vv.offsetTop)));
     vv.addEventListener('resize', update);
     vv.addEventListener('scroll', update);
     update();
@@ -125,15 +123,11 @@ export default function RichTextEditor({
       vv.removeEventListener('resize', update);
       vv.removeEventListener('scroll', update);
     };
-  }, [disabled]);
+  }, [isMobile, disabled]);
 
   const handleImageUpload = useCallback(async (file: File) => {
     if (!editor) return;
-    const maxSize = 10 * 1024 * 1024;
-    if (file.size > maxSize) {
-      alert('Image must be under 10 MB');
-      return;
-    }
+    if (file.size > 10 * 1024 * 1024) { alert('Image must be under 10 MB'); return; }
     const reader = new FileReader();
     reader.onload = (e) => {
       const src = e.target?.result as string;
@@ -164,8 +158,7 @@ export default function RichTextEditor({
   }, [editor]);
 
   const insertTable = useCallback(() => {
-    if (!editor) return;
-    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
+    editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
   }, [editor]);
 
   const setColor = useCallback((color: string) => {
@@ -178,12 +171,9 @@ export default function RichTextEditor({
 
   if (!editor) return null;
 
-  const floatingToolbar = (
-    <div
-      ref={toolbarRef}
-      className="fixed left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 shadow-lg px-2 py-1.5 flex flex-wrap items-center gap-0.5 transition-[bottom] duration-75"
-      style={{ bottom: vvBottom }}
-    >
+  // Shared toolbar button group — same markup for both desktop (inline) and mobile (portal)
+  const toolbarButtons = (
+    <>
       <ToolbarBtn title="Undo (Ctrl+Z)" onClick={() => editor.chain().focus().undo().run()} disabled={!editor.can().undo()}>
         <Undo className="w-3.5 h-3.5" />
       </ToolbarBtn>
@@ -276,55 +266,76 @@ export default function RichTextEditor({
       <ToolbarSep />
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="relative inline-flex items-center">
-            <button
-              type="button"
-              onMouseDown={(e) => { e.preventDefault(); setHighlight('#fef08a'); }}
-              className="inline-flex items-center justify-center w-8 h-8 rounded hover:bg-muted transition-colors"
-            >
-              <Highlighter className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onMouseDown={(e) => { e.preventDefault(); setHighlight('#fef08a'); }}
+            className="inline-flex items-center justify-center w-8 h-8 rounded hover:bg-muted transition-colors"
+          >
+            <Highlighter className="w-3.5 h-3.5" />
+          </button>
         </TooltipTrigger>
         <TooltipContent side="top" className="text-xs">Highlight</TooltipContent>
       </Tooltip>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="relative">
-            <label className="inline-flex items-center justify-center w-8 h-8 rounded hover:bg-muted cursor-pointer transition-colors">
-              <Type className="w-3.5 h-3.5" />
-              <input
-                type="color"
-                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                onInput={(e) => setColor((e.target as HTMLInputElement).value)}
-                defaultValue="#000000"
-              />
-            </label>
-          </div>
+          <label className="inline-flex items-center justify-center w-8 h-8 rounded hover:bg-muted cursor-pointer transition-colors relative">
+            <Type className="w-3.5 h-3.5" />
+            <input
+              type="color"
+              className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+              onInput={(e) => setColor((e.target as HTMLInputElement).value)}
+              defaultValue="#000000"
+            />
+          </label>
         </TooltipTrigger>
         <TooltipContent side="top" className="text-xs">Text Color</TooltipContent>
       </Tooltip>
-    </div>
+    </>
   );
+
+  const toolbarClass = 'flex flex-wrap items-center gap-0.5 px-2 py-1.5 bg-muted/30';
 
   return (
     <>
-      {/* Floating toolbar — rendered at document body level so it sits above the mobile keyboard */}
-      {!disabled && createPortal(floatingToolbar, document.body)}
+      {/* MOBILE: floating toolbar above the keyboard via portal */}
+      {!disabled && isMobile && createPortal(
+        <div
+          className={`fixed left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 shadow-lg transition-[bottom] duration-75 ${toolbarClass}`}
+          style={{ bottom: vvBottom }}
+        >
+          {toolbarButtons}
+        </div>,
+        document.body,
+      )}
 
       <div className={`border rounded-lg overflow-hidden bg-background ${disabled ? 'opacity-70' : ''}`}>
-        {/* Hidden file input for image upload */}
+        {/* Hidden file input */}
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageFile} />
 
-        {/* Editor content area — extra bottom padding keeps last line above the floating toolbar */}
+        {/* DESKTOP: toolbar at the top of the editor, inside the box */}
+        {!disabled && !isMobile && (
+          <div className={`border-b ${toolbarClass}`}>
+            {toolbarButtons}
+          </div>
+        )}
+
+        {/* Typing area */}
         <div
           onDrop={handleImageDrop}
           onDragOver={(e) => e.preventDefault()}
           className="relative"
         >
           <EditorContent editor={editor} />
-          {!disabled && <div className="h-24" />}
+          {/* On mobile, extra space so the last line isn't hidden under the floating toolbar */}
+          {!disabled && isMobile && <div className="h-24" />}
         </div>
+
+        {/* DESKTOP: second toolbar row at the bottom for quick access while reading long notes */}
+        {!disabled && !isMobile && (
+          <div className={`border-t ${toolbarClass}`}>
+            {toolbarButtons}
+          </div>
+        )}
 
         <style>{`
           .ProseMirror p.is-editor-empty:first-child::before {
@@ -337,7 +348,7 @@ export default function RichTextEditor({
           .ProseMirror h1 { font-size: 1.75rem; font-weight: 700; line-height: 1.2; margin: 1rem 0 0.5rem; }
           .ProseMirror h2 { font-size: 1.375rem; font-weight: 600; line-height: 1.3; margin: 0.875rem 0 0.4rem; }
           .ProseMirror h3 { font-size: 1.125rem; font-weight: 600; line-height: 1.4; margin: 0.75rem 0 0.35rem; }
-          .ProseMirror h4 { font-size: 1rem;    font-weight: 600; line-height: 1.4; margin: 0.75rem 0 0.35rem; }
+          .ProseMirror h4 { font-size: 1rem; font-weight: 600; line-height: 1.4; margin: 0.75rem 0 0.35rem; }
           .ProseMirror p { margin: 0.35rem 0; line-height: 1.65; }
           .ProseMirror ul, .ProseMirror ol { margin: 0.5rem 0 0.5rem 1.5rem; }
           .ProseMirror li { margin: 0.2rem 0; }
