@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
+import { useLocation } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,44 +10,61 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useToast } from '@/hooks/use-toast';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { Slider } from '@/components/ui/slider';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { Slider } from '@/components/ui/slider';
-import { 
-  Settings, 
-  School, 
-  Shield, 
-  Bell, 
-  Database, 
-  Users,
-  Save,
-  RefreshCw,
-  CheckCircle,
-  GraduationCap,
-  Scale,
-  Info,
-  Loader2,
-  Plus,
-  Edit,
-  Trash2,
-  Phone,
-  Mail,
-  Globe,
-  MapPin,
-  Calendar,
-  Building2,
-  ChevronRight,
-  Menu,
-  Percent
-} from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import {
+  Settings, Building2, GraduationCap, BarChart3, Users, ClipboardList,
+  FileText, FileBarChart2, CalendarCheck, Bell, CreditCard, Palette,
+  Shield, Database, Save, Loader2, Plus, Edit, Trash2, Info,
+  ChevronRight, ChevronDown, Search, ExternalLink, Hash, Scale,
+  Mail, Phone, Globe, MapPin, Key, AlertTriangle, CheckCircle,
+  RefreshCw, Download, Upload, Lock, Eye, EyeOff, Percent, X
+} from 'lucide-react';
+
+// ─────────────────────────────────────────────
+// Types
+// ─────────────────────────────────────────────
+interface SystemSettings {
+  id?: number;
+  schoolName?: string;
+  schoolShortName?: string;
+  schoolMotto?: string;
+  schoolLogo?: string;
+  favicon?: string;
+  schoolAddress?: string;
+  schoolPhones?: string;
+  schoolEmails?: string;
+  websiteTitle?: string;
+  footerText?: string;
+  maintenanceMode?: boolean;
+  enableSmsNotifications?: boolean;
+  enableEmailNotifications?: boolean;
+  enableExamsModule?: boolean;
+  enableAttendanceModule?: boolean;
+  enableResultsModule?: boolean;
+  themeColor?: string;
+  usernameStudentPrefix?: string;
+  usernameParentPrefix?: string;
+  usernameTeacherPrefix?: string;
+  usernameAdminPrefix?: string;
+  tempPasswordFormat?: string;
+  hideAdminAccountsFromAdmins?: boolean;
+  testWeight?: number;
+  examWeight?: number;
+  defaultGradingScale?: string;
+  scoreAggregationMode?: string;
+  autoCreateReportCard?: boolean;
+  showGradeBreakdown?: boolean;
+  allowTeacherOverrides?: boolean;
+  positioningMethod?: string;
+  requireExamPayment?: boolean;
+  examFeeAmount?: number;
+  designatedPrincipalId?: string | null;
+}
 
 interface GradingBoundary {
   id: number;
@@ -58,1008 +77,1229 @@ interface GradingBoundary {
   isDefault: boolean;
 }
 
-const schoolSettingsSchema = z.object({
-  schoolName: z.string().min(1, 'School name is required'),
-  schoolAddress: z.string().min(1, 'School address is required'),
-  phoneNumber: z.string().optional(),
-  email: z.string().email('Invalid email format').optional(),
-  website: z.string().optional(),
-  academicYear: z.string().min(1, 'Academic year is required'),
-  schoolLogo: z.string().optional(),
-});
-
-
-const notificationSettingsSchema = z.object({
-  emailNotifications: z.boolean(),
-  smsNotifications: z.boolean(),
-  attendanceAlerts: z.boolean(),
-  gradeAlerts: z.boolean(),
-  announcementNotifications: z.boolean(),
-});
-
-type SchoolSettings = z.infer<typeof schoolSettingsSchema>;
-type NotificationSettings = z.infer<typeof notificationSettingsSchema>;
-
-interface GradingConfigResponse {
-  testWeight: number;
-  examWeight: number;
-  defaultGradingScale: string;
-  gradingScales: Record<string, {
-    name: string;
-    ranges: Array<{
-      grade: string;
-      minScore: number;
-      maxScore: number;
-      gpa: number;
-      remark: string;
-    }>;
-  }>;
+// ─────────────────────────────────────────────
+// Helpers
+// ─────────────────────────────────────────────
+function parseJsonArray(raw?: string | null): string[] {
+  if (!raw) return [];
+  try { return JSON.parse(raw); } catch { return []; }
 }
 
-const settingsNavItems = [
-  { id: 'school', label: 'School Info', icon: School, description: 'Basic school details' },
-  { id: 'grading', label: 'Grading', icon: GraduationCap, description: 'Grade scales & weights' },
-  { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Alert preferences' },
-  { id: 'system', label: 'System', icon: Database, description: 'Status & maintenance (view only)' },
-];
+function arrayToJsonString(arr: string[]): string {
+  return JSON.stringify(arr.filter(Boolean));
+}
 
-function GradingBoundariesSection() {
+function commaSepToArray(s: string): string[] {
+  return s.split(',').map(x => x.trim()).filter(Boolean);
+}
+
+// ─────────────────────────────────────────────
+// Shared save hook
+// ─────────────────────────────────────────────
+function useAdminSettings() {
+  const { data: settings, isLoading } = useQuery<SystemSettings>({
+    queryKey: ['/api/admin/settings'],
+    staleTime: 30_000,
+  });
+
   const { toast } = useToast();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingBoundary, setEditingBoundary] = useState<GradingBoundary | null>(null);
-  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
-  const [boundaryToDelete, setBoundaryToDelete] = useState<number | null>(null);
 
-  const [formData, setFormData] = useState({
-    name: 'Standard',
-    grade: '',
-    minScore: 0,
-    maxScore: 100,
-    remark: '',
-    gradePoint: 0,
-    isDefault: true,
-  });
-
-  const { data: boundaries = [], isLoading } = useQuery<GradingBoundary[]>({
-    queryKey: ['/api/grading-boundaries'],
-  });
-
-  const createBoundaryMutation = useMutation({
-    mutationFn: async (data: typeof formData) => {
-      return apiRequest('POST', '/api/grading-boundaries', data);
-    },
+  const mutation = useMutation({
+    mutationFn: (data: Partial<SystemSettings>) => apiRequest('PUT', '/api/admin/settings', data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/grading-boundaries'] });
-      toast({ title: 'Success', description: 'Grading boundary created successfully' });
-      setIsDialogOpen(false);
-      resetForm();
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/settings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/public/settings'] });
+      toast({ title: 'Saved', description: 'Settings updated successfully.' });
     },
-    onError: (error: any) => {
-      toast({ title: 'Failed to Create', description: error.message || 'Could not create grading boundary. Please try again.', variant: 'destructive' });
-    },
+    onError: (e: any) => toast({ title: 'Save failed', description: e.message, variant: 'destructive' }),
   });
 
-  const updateBoundaryMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: typeof formData }) => {
-      return apiRequest('PATCH', `/api/grading-boundaries/${id}`, data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/grading-boundaries'] });
-      toast({ title: 'Success', description: 'Grading boundary updated successfully' });
-      setIsDialogOpen(false);
-      resetForm();
-    },
-    onError: (error: any) => {
-      toast({ title: 'Failed to Update', description: error.message || 'Could not update grading boundary. Please try again.', variant: 'destructive' });
-    },
-  });
+  return { settings, isLoading, save: mutation };
+}
 
-  const deleteBoundaryMutation = useMutation({
-    mutationFn: async (id: number) => {
-      return apiRequest('DELETE', `/api/grading-boundaries/${id}`);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/grading-boundaries'] });
-      toast({ title: 'Success', description: 'Grading boundary deleted successfully' });
-      setDeleteConfirmOpen(false);
-      setBoundaryToDelete(null);
-    },
-    onError: (error: any) => {
-      toast({ title: 'Failed to Delete', description: error.message || 'Could not delete grading boundary. Please try again.', variant: 'destructive' });
-    },
-  });
-
-  const resetForm = () => {
-    setFormData({
-      name: 'Standard',
-      grade: '',
-      minScore: 0,
-      maxScore: 100,
-      remark: '',
-      gradePoint: 0,
-      isDefault: true,
-    });
-    setEditingBoundary(null);
-  };
-
-  const handleSubmit = () => {
-    if (!formData.grade) {
-      toast({ title: 'Error', description: 'Grade letter is required', variant: 'destructive' });
-      return;
-    }
-    if (formData.minScore > formData.maxScore) {
-      toast({ title: 'Error', description: 'Minimum score cannot be greater than maximum score', variant: 'destructive' });
-      return;
-    }
-    if (editingBoundary) {
-      updateBoundaryMutation.mutate({ id: editingBoundary.id, data: formData });
-    } else {
-      createBoundaryMutation.mutate(formData);
-    }
-  };
-
-  const handleEdit = (boundary: GradingBoundary) => {
-    setFormData({
-      name: boundary.name,
-      grade: boundary.grade,
-      minScore: boundary.minScore,
-      maxScore: boundary.maxScore,
-      remark: boundary.remark || '',
-      gradePoint: boundary.gradePoint || 0,
-      isDefault: boundary.isDefault,
-    });
-    setEditingBoundary(boundary);
-    setIsDialogOpen(true);
-  };
-
-  const handleDelete = (id: number) => {
-    setBoundaryToDelete(id);
-    setDeleteConfirmOpen(true);
-  };
-
-  const confirmDelete = () => {
-    if (boundaryToDelete) {
-      deleteBoundaryMutation.mutate(boundaryToDelete);
-    }
-  };
-
-  const defaultBoundaries = [
-    { grade: 'A+', minScore: 90, maxScore: 100, remark: 'Excellent', gradePoint: 4.0 },
-    { grade: 'A', minScore: 80, maxScore: 89, remark: 'Very Good', gradePoint: 3.7 },
-    { grade: 'B+', minScore: 70, maxScore: 79, remark: 'Good', gradePoint: 3.3 },
-    { grade: 'B', minScore: 60, maxScore: 69, remark: 'Credit', gradePoint: 3.0 },
-    { grade: 'C', minScore: 50, maxScore: 59, remark: 'Pass', gradePoint: 2.0 },
-    { grade: 'D', minScore: 40, maxScore: 49, remark: 'Fair', gradePoint: 1.0 },
-    { grade: 'F', minScore: 0, maxScore: 39, remark: 'Fail', gradePoint: 0.0 },
-  ];
-
-  const createDefaultBoundariesMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest('POST', '/api/grading-boundaries/bulk', {
-        name: 'Standard',
-        isDefault: true,
-        boundaries: defaultBoundaries,
-      });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/grading-boundaries'] });
-      toast({ title: 'Success', description: 'Default grading boundaries created' });
-    },
-    onError: () => {
-      toast({ title: 'Error', description: 'Failed to create default boundaries', variant: 'destructive' });
-    },
-  });
-
+// ─────────────────────────────────────────────
+// SettingCard – consistent wrapper for each sub-card
+// ─────────────────────────────────────────────
+function SettingCard({ title, description, icon: Icon, children }: {
+  title: string; description?: string; icon?: React.ElementType; children: React.ReactNode;
+}) {
   return (
-    <>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-        <div>
-          <h3 className="text-lg font-semibold flex items-center gap-2">
-            <GraduationCap className="w-5 h-5" />
-            Grading Boundaries
-          </h3>
-          <p className="text-sm text-muted-foreground">Define grade ranges and points</p>
-        </div>
-        <div className="flex gap-2 flex-wrap">
-          {boundaries.length === 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => createDefaultBoundariesMutation.mutate()}
-              disabled={createDefaultBoundariesMutation.isPending}
-              data-testid="button-create-defaults"
-            >
-              {createDefaultBoundariesMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Create Default Scale
-            </Button>
-          )}
-          <Button size="sm" onClick={() => { resetForm(); setIsDialogOpen(true); }} data-testid="button-add-boundary">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Boundary
-          </Button>
-        </div>
-      </div>
-
-      {isLoading ? (
-        <div className="flex justify-center py-8">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
-        </div>
-      ) : boundaries.length === 0 ? (
-        <div className="text-center py-8 bg-muted/30 rounded-lg">
-          <GraduationCap className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground mb-2">No grading boundaries configured yet.</p>
-          <p className="text-sm text-muted-foreground">Click "Create Default Scale" to set up the standard A-F grading scale.</p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-lg border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Grade</TableHead>
-                <TableHead>Score Range</TableHead>
-                <TableHead className="hidden sm:table-cell">Grade Point</TableHead>
-                <TableHead className="hidden md:table-cell">Remark</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {boundaries.map((boundary) => (
-                <TableRow key={boundary.id} data-testid={`row-boundary-${boundary.id}`}>
-                  <TableCell className="font-semibold">
-                    <Badge variant="outline">{boundary.grade}</Badge>
-                  </TableCell>
-                  <TableCell>{boundary.minScore} - {boundary.maxScore}%</TableCell>
-                  <TableCell className="hidden sm:table-cell">{boundary.gradePoint?.toFixed(1) || '-'}</TableCell>
-                  <TableCell className="hidden md:table-cell text-muted-foreground">{boundary.remark || '-'}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleEdit(boundary)}
-                        data-testid={`button-edit-boundary-${boundary.id}`}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => handleDelete(boundary.id)}
-                        data-testid={`button-delete-boundary-${boundary.id}`}
-                      >
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      )}
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingBoundary ? 'Edit Grading Boundary' : 'Add Grading Boundary'}</DialogTitle>
-            <DialogDescription>
-              Define the score range for this grade level.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="grade">Grade Letter</Label>
-                <Input
-                  id="grade"
-                  value={formData.grade}
-                  onChange={(e) => setFormData({ ...formData, grade: e.target.value.toUpperCase() })}
-                  placeholder="e.g., A+"
-                  data-testid="input-grade"
-                />
-              </div>
-              <div>
-                <Label htmlFor="gradePoint">Grade Point</Label>
-                <Input
-                  id="gradePoint"
-                  type="number"
-                  step="0.1"
-                  value={formData.gradePoint}
-                  onChange={(e) => setFormData({ ...formData, gradePoint: parseFloat(e.target.value) || 0 })}
-                  placeholder="e.g., 4.0"
-                  data-testid="input-grade-point"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="minScore">Minimum Score (%)</Label>
-                <Input
-                  id="minScore"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={formData.minScore}
-                  onChange={(e) => setFormData({ ...formData, minScore: parseInt(e.target.value) || 0 })}
-                  data-testid="input-min-score"
-                />
-              </div>
-              <div>
-                <Label htmlFor="maxScore">Maximum Score (%)</Label>
-                <Input
-                  id="maxScore"
-                  type="number"
-                  min="0"
-                  max="100"
-                  value={formData.maxScore}
-                  onChange={(e) => setFormData({ ...formData, maxScore: parseInt(e.target.value) || 100 })}
-                  data-testid="input-max-score"
-                />
-              </div>
-            </div>
-            <div>
-              <Label htmlFor="remark">Remark</Label>
-              <Input
-                id="remark"
-                value={formData.remark}
-                onChange={(e) => setFormData({ ...formData, remark: e.target.value })}
-                placeholder="e.g., Excellent, Very Good, Pass"
-                data-testid="input-remark"
-              />
-            </div>
-            <div>
-              <Label htmlFor="name">Scale Name</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., Standard, Custom"
-                data-testid="input-scale-name"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Switch
-                id="isDefault"
-                checked={formData.isDefault}
-                onCheckedChange={(checked) => setFormData({ ...formData, isDefault: checked })}
-                data-testid="switch-is-default"
-              />
-              <Label htmlFor="isDefault">Set as default grading scale</Label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)} data-testid="button-cancel">
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSubmit} 
-              disabled={createBoundaryMutation.isPending || updateBoundaryMutation.isPending} 
-              data-testid="button-save-boundary"
-            >
-              {(createBoundaryMutation.isPending || updateBoundaryMutation.isPending) && (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              )}
-              {editingBoundary ? 'Update' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Delete</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete this grading boundary? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteConfirmOpen(false)} data-testid="button-cancel-delete">
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={confirmDelete} disabled={deleteBoundaryMutation.isPending} data-testid="button-confirm-delete">
-              {deleteBoundaryMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          {Icon && <Icon className="w-4 h-4 text-primary shrink-0" />}
+          {title}
+        </CardTitle>
+        {description && <CardDescription className="text-xs">{description}</CardDescription>}
+      </CardHeader>
+      <CardContent>{children}</CardContent>
+    </Card>
   );
 }
 
-function ClassPositionSettings() {
-  const { toast } = useToast();
-  const [positioningMethod, setPositioningMethod] = useState('average');
-  const [isLoading, setIsLoading] = useState(true);
+// ─────────────────────────────────────────────
+// SwitchRow
+// ─────────────────────────────────────────────
+function SwitchRow({ id, label, description, checked, onCheckedChange }: {
+  id: string; label: string; description?: string; checked: boolean; onCheckedChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4 py-2.5 border-b last:border-0">
+      <div className="flex-1 min-w-0">
+        <Label htmlFor={id} className="font-medium cursor-pointer">{label}</Label>
+        {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
+      </div>
+      <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} data-testid={`switch-${id}`} />
+    </div>
+  );
+}
 
-  const { data: settings } = useQuery<{ positioningMethod: string }>({
-    queryKey: ['/api/settings/positioning-method'],
+// ─────────────────────────────────────────────
+// QuickLinkCard – for sections that primarily link elsewhere
+// ─────────────────────────────────────────────
+function QuickLinkCard({ title, description, icon: Icon, href }: {
+  title: string; description: string; icon: React.ElementType; href: string;
+}) {
+  const [, navigate] = useLocation();
+  return (
+    <button
+      onClick={() => navigate(href)}
+      className="w-full text-left flex items-center gap-3 p-4 rounded-lg border bg-card hover:bg-accent hover:border-primary/30 transition-all group"
+      data-testid={`link-${title.toLowerCase().replace(/\s+/g, '-')}`}
+    >
+      <div className="p-2 rounded-md bg-primary/10 group-hover:bg-primary/20 transition-colors">
+        <Icon className="w-4 h-4 text-primary" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-sm">{title}</p>
+        <p className="text-xs text-muted-foreground truncate">{description}</p>
+      </div>
+      <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+    </button>
+  );
+}
+
+// ─────────────────────────────────────────────
+// SECTION: School Profile
+// ─────────────────────────────────────────────
+function SchoolProfileSection() {
+  const { settings, isLoading, save } = useAdminSettings();
+  const [form, setForm] = useState({
+    schoolName: '', schoolShortName: '', schoolMotto: '',
+    schoolAddress: '', schoolPhones: '', schoolEmails: '',
+    websiteTitle: '', footerText: '',
   });
 
   useEffect(() => {
     if (settings) {
-      setPositioningMethod(settings.positioningMethod || 'average');
-      setIsLoading(false);
+      setForm({
+        schoolName: settings.schoolName || '',
+        schoolShortName: settings.schoolShortName || '',
+        schoolMotto: settings.schoolMotto || '',
+        schoolAddress: settings.schoolAddress || '',
+        schoolPhones: parseJsonArray(settings.schoolPhones).join(', '),
+        schoolEmails: parseJsonArray(settings.schoolEmails).join(', '),
+        websiteTitle: settings.websiteTitle || '',
+        footerText: settings.footerText || '',
+      });
     }
   }, [settings]);
 
-  const savePositioningMethodMutation = useMutation({
-    mutationFn: async (method: string) => {
-      return apiRequest('PATCH', '/api/settings/positioning-method', { positioningMethod: method });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/settings/positioning-method'] });
-      toast({ title: 'Success', description: 'Class position calculation method updated successfully' });
-    },
-    onError: (error: any) => {
-      toast({ title: 'Failed to Update', description: error.message || 'Could not update positioning method. Please try again.', variant: 'destructive' });
-    },
+  const handleSave = () => {
+    save.mutate({
+      schoolName: form.schoolName,
+      schoolShortName: form.schoolShortName,
+      schoolMotto: form.schoolMotto,
+      schoolAddress: form.schoolAddress,
+      schoolPhones: arrayToJsonString(commaSepToArray(form.schoolPhones)),
+      schoolEmails: arrayToJsonString(commaSepToArray(form.schoolEmails)),
+      websiteTitle: form.websiteTitle,
+      footerText: form.footerText,
+    });
+  };
+
+  const field = (key: keyof typeof form) => ({
+    value: form[key],
+    onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+      setForm(prev => ({ ...prev, [key]: e.target.value })),
   });
 
-  const handleSave = () => {
-    savePositioningMethodMutation.mutate(positioningMethod);
-  };
+  if (isLoading) return <SectionSkeleton />;
 
   return (
     <div className="space-y-4">
-      <div>
-        <h3 className="text-lg font-semibold flex items-center gap-2">
-          <Scale className="w-5 h-5" />
-          Class Position Calculation
-        </h3>
-        <p className="text-sm text-muted-foreground">Choose how student rankings are calculated</p>
-      </div>
-
-      <div className="space-y-3">
-        <Select
-          value={positioningMethod}
-          onValueChange={setPositioningMethod}
-          disabled={isLoading}
-        >
-          <SelectTrigger data-testid="select-positioning-method">
-            <SelectValue placeholder="Select method" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="average" data-testid="option-average">
-              Average Score (Recommended)
-            </SelectItem>
-            <SelectItem value="total" data-testid="option-total">
-              Total Marks
-            </SelectItem>
-          </SelectContent>
-        </Select>
-
-        <div className="bg-muted/50 rounded-lg p-3 flex items-start gap-2">
-          <Info className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
-          <p className="text-sm text-muted-foreground">
-            {positioningMethod === 'average' 
-              ? 'Students are ranked by average percentage. Fair when students take different numbers of subjects.'
-              : 'Students are ranked by total marks. May not be fair when students take different numbers of subjects.'}
-          </p>
+      <SettingCard title="Identity" description="School name, abbreviation and motto" icon={Building2}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="schoolName">School Name *</Label>
+            <Input id="schoolName" {...field('schoolName')} data-testid="input-school-name" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="schoolShortName">Short Name / Abbreviation</Label>
+            <Input id="schoolShortName" placeholder="e.g. THS" {...field('schoolShortName')} data-testid="input-school-short-name" />
+          </div>
         </div>
+        <div className="space-y-1.5 mt-4">
+          <Label htmlFor="schoolMotto">School Motto</Label>
+          <Input id="schoolMotto" placeholder="e.g. Honesty and Success" {...field('schoolMotto')} data-testid="input-school-motto" />
+        </div>
+      </SettingCard>
 
-        <Button 
-          onClick={handleSave} 
-          disabled={savePositioningMethodMutation.isPending}
-          size="sm"
-          data-testid="button-save-positioning"
-        >
-          {savePositioningMethodMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-          <Save className="w-4 h-4 mr-2" />
-          Save
+      <SettingCard title="Location" description="Physical address of the school" icon={MapPin}>
+        <div className="space-y-1.5">
+          <Label htmlFor="schoolAddress">Full Address</Label>
+          <Textarea id="schoolAddress" rows={2} {...field('schoolAddress')} data-testid="textarea-school-address" />
+        </div>
+      </SettingCard>
+
+      <SettingCard title="Contact Details" description="Phone numbers and email addresses (comma-separated)" icon={Phone}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="schoolPhones" className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> Phone Numbers</Label>
+            <Input id="schoolPhones" placeholder="08012345678, 08087654321" {...field('schoolPhones')} data-testid="input-school-phones" />
+            <p className="text-xs text-muted-foreground">Separate multiple numbers with commas</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="schoolEmails" className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> Email Addresses</Label>
+            <Input id="schoolEmails" placeholder="admin@school.com, info@school.com" {...field('schoolEmails')} data-testid="input-school-emails" />
+            <p className="text-xs text-muted-foreground">Separate multiple addresses with commas</p>
+          </div>
+        </div>
+      </SettingCard>
+
+      <SettingCard title="Website & Portal" description="Website title and footer text shown on the school portal" icon={Globe}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="websiteTitle">Website Title</Label>
+            <Input id="websiteTitle" placeholder="e.g. Treasure-Home School Portal" {...field('websiteTitle')} data-testid="input-website-title" />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="footerText">Footer Text</Label>
+            <Input id="footerText" placeholder="e.g. © 2025 Treasure-Home School" {...field('footerText')} data-testid="input-footer-text" />
+          </div>
+        </div>
+      </SettingCard>
+
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={save.isPending} data-testid="button-save-school-profile">
+          {save.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+          Save School Profile
         </Button>
       </div>
     </div>
   );
 }
 
-function SettingsNavItem({ 
-  item, 
-  isActive, 
-  onClick 
-}: { 
-  item: typeof settingsNavItems[0]; 
-  isActive: boolean; 
-  onClick: () => void;
-}) {
+// ─────────────────────────────────────────────
+// SECTION: Academic Settings
+// ─────────────────────────────────────────────
+function AcademicSettingsSection() {
+  const { settings, isLoading, save } = useAdminSettings();
+  const [testWeight, setTestWeight] = useState(40);
+  const [scoreAggregation, setScoreAggregation] = useState('last');
+  const [autoCreateReportCard, setAutoCreateReportCard] = useState(true);
+  const [showGradeBreakdown, setShowGradeBreakdown] = useState(true);
+  const [allowTeacherOverrides, setAllowTeacherOverrides] = useState(true);
+
+  useEffect(() => {
+    if (settings) {
+      setTestWeight(settings.testWeight ?? 40);
+      setScoreAggregation(settings.scoreAggregationMode || 'last');
+      setAutoCreateReportCard(settings.autoCreateReportCard ?? true);
+      setShowGradeBreakdown(settings.showGradeBreakdown ?? true);
+      setAllowTeacherOverrides(settings.allowTeacherOverrides ?? true);
+    }
+  }, [settings]);
+
+  const handleSave = () => {
+    save.mutate({
+      testWeight,
+      examWeight: 100 - testWeight,
+      scoreAggregationMode: scoreAggregation,
+      autoCreateReportCard,
+      showGradeBreakdown,
+      allowTeacherOverrides,
+    });
+  };
+
+  if (isLoading) return <SectionSkeleton />;
+
   return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "w-full flex items-center gap-3 p-3 rounded-lg text-left transition-colors",
-        isActive 
-          ? "bg-primary text-primary-foreground" 
-          : "hover-elevate"
-      )}
-      data-testid={`nav-${item.id}`}
-    >
-      <item.icon className="w-5 h-5 shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="font-medium text-sm">{item.label}</p>
-        <p className={cn(
-          "text-xs truncate",
-          isActive ? "text-primary-foreground/70" : "text-muted-foreground"
-        )}>
-          {item.description}
-        </p>
+    <div className="space-y-4">
+      <SettingCard title="Assessment Weights" description="How CA (test) and examination scores are weighted for the final grade" icon={Percent}>
+        <div className="space-y-4">
+          <div className="flex justify-between text-sm font-medium">
+            <span className="text-blue-600 dark:text-blue-400">CA / Test: {testWeight}%</span>
+            <span className="text-purple-600 dark:text-purple-400">Exam: {100 - testWeight}%</span>
+          </div>
+          <Slider
+            value={[testWeight]}
+            onValueChange={v => setTestWeight(v[0])}
+            min={0} max={100} step={5}
+            data-testid="slider-test-weight"
+          />
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+              <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+              <span>CA Score carries <strong>{testWeight}%</strong> of total</span>
+            </div>
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
+              <div className="w-2.5 h-2.5 rounded-full bg-purple-500" />
+              <span>Exam Score carries <strong>{100 - testWeight}%</strong> of total</span>
+            </div>
+          </div>
+        </div>
+      </SettingCard>
+
+      <SettingCard title="Score Aggregation" description="When a student has multiple CA scores for the same subject, which score is used?" icon={BarChart3}>
+        <div className="space-y-3">
+          <Select value={scoreAggregation} onValueChange={setScoreAggregation}>
+            <SelectTrigger data-testid="select-score-aggregation">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="last">Most Recent Score (Last submitted)</SelectItem>
+              <SelectItem value="highest">Highest Score</SelectItem>
+              <SelectItem value="average">Average of All Scores</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/40 text-xs text-muted-foreground">
+            <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            <span>
+              {scoreAggregation === 'last' && 'Only the most recently entered CA score is used for grading.'}
+              {scoreAggregation === 'highest' && 'The highest CA score from all entries is used — benefits the student.'}
+              {scoreAggregation === 'average' && 'All CA scores are averaged together for a balanced result.'}
+            </span>
+          </div>
+        </div>
+      </SettingCard>
+
+      <SettingCard title="Report Card Behaviour" description="Control how report cards are created and displayed" icon={FileBarChart2}>
+        <div className="space-y-1">
+          <SwitchRow id="autoCreateReportCard" label="Auto-create Report Cards" description="Automatically generate a report card for each student when a term starts" checked={autoCreateReportCard} onCheckedChange={setAutoCreateReportCard} />
+          <SwitchRow id="showGradeBreakdown" label="Show Grade Breakdown" description="Display CA and exam scores separately on the report card" checked={showGradeBreakdown} onCheckedChange={setShowGradeBreakdown} />
+          <SwitchRow id="allowTeacherOverrides" label="Allow Teacher Score Overrides" description="Teachers can manually override auto-calculated scores on report cards" checked={allowTeacherOverrides} onCheckedChange={setAllowTeacherOverrides} />
+        </div>
+      </SettingCard>
+
+      <div className="flex justify-end">
+        <Button onClick={handleSave} disabled={save.isPending} data-testid="button-save-academic">
+          {save.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+          Save Academic Settings
+        </Button>
       </div>
-      <ChevronRight className={cn(
-        "w-4 h-4 shrink-0",
-        isActive ? "text-primary-foreground/70" : "text-muted-foreground"
-      )} />
-    </button>
+    </div>
   );
 }
 
-export default function SettingsManagement() {
+// ─────────────────────────────────────────────
+// SECTION: Grading Scale (preserved + enhanced)
+// ─────────────────────────────────────────────
+function GradingScaleSection() {
+  const { settings, isLoading: settingsLoading, save } = useAdminSettings();
   const { toast } = useToast();
-  const [activeSection, setActiveSection] = useState('school');
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [positioningMethod, setPositioningMethod] = useState('average');
+  const [defaultScale, setDefaultScale] = useState('standard');
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingBoundary, setEditingBoundary] = useState<GradingBoundary | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [boundaryForm, setBoundaryForm] = useState({ name: 'Standard', grade: '', minScore: 0, maxScore: 100, remark: '', gradePoint: 0, isDefault: true });
 
-  const schoolForm = useForm<SchoolSettings>({
-    resolver: zodResolver(schoolSettingsSchema),
-    defaultValues: {
-      schoolName: 'Treasure-Home School',
-      schoolAddress: '123 Education Street, Learning City, ED 12345',
-      phoneNumber: '+1 (555) 123-4567',
-      email: 'info@treasurehome.edu',
-      website: 'https://treasurehome.edu',
-      academicYear: '2024-2025',
-    },
+  useEffect(() => {
+    if (settings) {
+      setPositioningMethod(settings.positioningMethod || 'average');
+      setDefaultScale(settings.defaultGradingScale || 'standard');
+    }
+  }, [settings]);
+
+  const { data: boundaries = [], isLoading: boundariesLoading } = useQuery<GradingBoundary[]>({
+    queryKey: ['/api/grading-boundaries'],
   });
 
-  const notificationForm = useForm<NotificationSettings>({
-    resolver: zodResolver(notificationSettingsSchema),
-    defaultValues: {
-      emailNotifications: true,
-      smsNotifications: false,
-      attendanceAlerts: true,
-      gradeAlerts: true,
-      announcementNotifications: true,
-    },
+  const createMutation = useMutation({
+    mutationFn: (data: typeof boundaryForm) => apiRequest('POST', '/api/grading-boundaries', data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/grading-boundaries'] }); setIsDialogOpen(false); toast({ title: 'Boundary created' }); },
+    onError: (e: any) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
   });
 
-  const [testWeight, setTestWeight] = useState(40);
-  const [selectedScale, setSelectedScale] = useState('standard');
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: typeof boundaryForm }) => apiRequest('PATCH', `/api/grading-boundaries/${id}`, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/grading-boundaries'] }); setIsDialogOpen(false); toast({ title: 'Boundary updated' }); },
+    onError: (e: any) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
+  });
 
-  const { data: gradingConfig } = useQuery<GradingConfigResponse>({
-    queryKey: ['/api/grading-config'],
-    staleTime: 5 * 60 * 1000,
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiRequest('DELETE', `/api/grading-boundaries/${id}`),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/grading-boundaries'] }); setDeleteConfirmId(null); toast({ title: 'Boundary deleted' }); },
+    onError: (e: any) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
+  });
+
+  const bulkCreateMutation = useMutation({
+    mutationFn: () => apiRequest('POST', '/api/grading-boundaries/bulk', {
+      name: 'Standard', isDefault: true,
+      boundaries: [
+        { grade: 'A1', minScore: 75, maxScore: 100, remark: 'Distinction', gradePoint: 4.0 },
+        { grade: 'B2', minScore: 70, maxScore: 74, remark: 'Very Good', gradePoint: 3.5 },
+        { grade: 'B3', minScore: 65, maxScore: 69, remark: 'Good', gradePoint: 3.0 },
+        { grade: 'C4', minScore: 60, maxScore: 64, remark: 'Credit', gradePoint: 2.5 },
+        { grade: 'C5', minScore: 55, maxScore: 59, remark: 'Credit', gradePoint: 2.0 },
+        { grade: 'C6', minScore: 50, maxScore: 54, remark: 'Credit', gradePoint: 1.5 },
+        { grade: 'D7', minScore: 45, maxScore: 49, remark: 'Pass', gradePoint: 1.0 },
+        { grade: 'E8', minScore: 40, maxScore: 44, remark: 'Pass', gradePoint: 0.5 },
+        { grade: 'F9', minScore: 0, maxScore: 39, remark: 'Fail', gradePoint: 0.0 },
+      ],
+    }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/grading-boundaries'] }); toast({ title: 'Default scale created' }); },
+    onError: (e: any) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
+  });
+
+  const handleSaveBoundaryForm = () => {
+    if (!boundaryForm.grade) { toast({ title: 'Grade letter is required', variant: 'destructive' }); return; }
+    if (boundaryForm.minScore > boundaryForm.maxScore) { toast({ title: 'Min score cannot exceed max', variant: 'destructive' }); return; }
+    if (editingBoundary) updateMutation.mutate({ id: editingBoundary.id, data: boundaryForm });
+    else createMutation.mutate(boundaryForm);
+  };
+
+  const openEdit = (b: GradingBoundary) => {
+    setBoundaryForm({ name: b.name, grade: b.grade, minScore: b.minScore, maxScore: b.maxScore, remark: b.remark || '', gradePoint: b.gradePoint || 0, isDefault: b.isDefault });
+    setEditingBoundary(b); setIsDialogOpen(true);
+  };
+
+  const resetBoundaryForm = () => { setBoundaryForm({ name: 'Standard', grade: '', minScore: 0, maxScore: 100, remark: '', gradePoint: 0, isDefault: true }); setEditingBoundary(null); };
+
+  if (settingsLoading) return <SectionSkeleton />;
+
+  return (
+    <div className="space-y-4">
+      <SettingCard title="Class Position Method" description="How students are ranked within their class" icon={Scale}>
+        <div className="space-y-3">
+          <Select value={positioningMethod} onValueChange={v => { setPositioningMethod(v); save.mutate({ positioningMethod: v }); }}>
+            <SelectTrigger data-testid="select-positioning-method">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="average">By Average Score (Recommended)</SelectItem>
+              <SelectItem value="total">By Total Marks</SelectItem>
+            </SelectContent>
+          </Select>
+          <div className="flex items-start gap-2 p-2.5 rounded-lg bg-muted/40 text-xs text-muted-foreground">
+            <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            <span>{positioningMethod === 'average' ? 'Ranks by average % — fairer when students take different numbers of subjects.' : 'Ranks by total marks — may disadvantage students with fewer subjects.'}</span>
+          </div>
+        </div>
+      </SettingCard>
+
+      <SettingCard title="Grade Boundaries" description="Define the score ranges that map to each grade letter" icon={BarChart3}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <p className="text-sm text-muted-foreground">{boundaries.length} boundaries configured</p>
+          <div className="flex gap-2 flex-wrap">
+            {boundaries.length === 0 && (
+              <Button variant="outline" size="sm" onClick={() => bulkCreateMutation.mutate()} disabled={bulkCreateMutation.isPending} data-testid="button-create-defaults">
+                {bulkCreateMutation.isPending && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                Load WAEC/NECO Scale
+              </Button>
+            )}
+            <Button size="sm" onClick={() => { resetBoundaryForm(); setIsDialogOpen(true); }} data-testid="button-add-boundary">
+              <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Boundary
+            </Button>
+          </div>
+        </div>
+
+        {boundariesLoading ? (
+          <div className="flex justify-center py-6"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+        ) : boundaries.length === 0 ? (
+          <div className="text-center py-8 bg-muted/20 rounded-lg border-2 border-dashed">
+            <BarChart3 className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+            <p className="text-sm text-muted-foreground">No grade boundaries configured.</p>
+            <p className="text-xs text-muted-foreground mt-1">Click "Load WAEC/NECO Scale" to add the standard Nigerian grading scale.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Grade</TableHead>
+                  <TableHead>Score Range</TableHead>
+                  <TableHead className="hidden sm:table-cell">GPA</TableHead>
+                  <TableHead className="hidden md:table-cell">Remark</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {boundaries.map(b => (
+                  <TableRow key={b.id} data-testid={`row-boundary-${b.id}`}>
+                    <TableCell><Badge variant="outline" className="font-bold">{b.grade}</Badge></TableCell>
+                    <TableCell className="text-sm">{b.minScore}% – {b.maxScore}%</TableCell>
+                    <TableCell className="hidden sm:table-cell text-sm">{b.gradePoint?.toFixed(1) ?? '—'}</TableCell>
+                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{b.remark || '—'}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => openEdit(b)} data-testid={`button-edit-boundary-${b.id}`}><Edit className="w-3.5 h-3.5" /></Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setDeleteConfirmId(b.id)} data-testid={`button-delete-boundary-${b.id}`}><Trash2 className="w-3.5 h-3.5 text-destructive" /></Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </SettingCard>
+
+      {/* Boundary form dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={v => { setIsDialogOpen(v); if (!v) resetBoundaryForm(); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingBoundary ? 'Edit Grading Boundary' : 'Add Grading Boundary'}</DialogTitle>
+            <DialogDescription>Define the score range and grade point for this level.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Grade Letter</Label>
+                <Input placeholder="e.g. A1, B2" value={boundaryForm.grade} onChange={e => setBoundaryForm(p => ({ ...p, grade: e.target.value.toUpperCase() }))} data-testid="input-grade" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Grade Point</Label>
+                <Input type="number" step="0.1" min="0" max="4" value={boundaryForm.gradePoint} onChange={e => setBoundaryForm(p => ({ ...p, gradePoint: parseFloat(e.target.value) || 0 }))} data-testid="input-grade-point" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>Min Score (%)</Label>
+                <Input type="number" min="0" max="100" value={boundaryForm.minScore} onChange={e => setBoundaryForm(p => ({ ...p, minScore: parseInt(e.target.value) || 0 }))} data-testid="input-min-score" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Max Score (%)</Label>
+                <Input type="number" min="0" max="100" value={boundaryForm.maxScore} onChange={e => setBoundaryForm(p => ({ ...p, maxScore: parseInt(e.target.value) || 100 }))} data-testid="input-max-score" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Remark</Label>
+              <Input placeholder="e.g. Distinction, Credit, Fail" value={boundaryForm.remark} onChange={e => setBoundaryForm(p => ({ ...p, remark: e.target.value }))} data-testid="input-remark" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveBoundaryForm} disabled={createMutation.isPending || updateMutation.isPending} data-testid="button-save-boundary">
+              {(createMutation.isPending || updateMutation.isPending) && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {editingBoundary ? 'Update' : 'Create'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirm */}
+      <Dialog open={deleteConfirmId !== null} onOpenChange={v => { if (!v) setDeleteConfirmId(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Boundary</DialogTitle>
+            <DialogDescription>This cannot be undone. Are you sure?</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => deleteConfirmId && deleteMutation.mutate(deleteConfirmId)} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// SECTION: Users & Roles
+// ─────────────────────────────────────────────
+function UsersRolesSection() {
+  const { settings, isLoading, save } = useAdminSettings();
+  const [, navigate] = useLocation();
+  const [form, setForm] = useState({
+    usernameStudentPrefix: 'THS-STU',
+    usernameParentPrefix: 'THS-PAR',
+    usernameTeacherPrefix: 'THS-TCH',
+    usernameAdminPrefix: 'THS-ADM',
+    tempPasswordFormat: 'THS@{year}#{random4}',
   });
 
   useEffect(() => {
-    if (gradingConfig) {
-      setTestWeight(gradingConfig.testWeight);
-      setSelectedScale(gradingConfig.defaultGradingScale);
+    if (settings) {
+      setForm({
+        usernameStudentPrefix: settings.usernameStudentPrefix || 'THS-STU',
+        usernameParentPrefix: settings.usernameParentPrefix || 'THS-PAR',
+        usernameTeacherPrefix: settings.usernameTeacherPrefix || 'THS-TCH',
+        usernameAdminPrefix: settings.usernameAdminPrefix || 'THS-ADM',
+        tempPasswordFormat: settings.tempPasswordFormat || 'THS@{year}#{random4}',
+      });
     }
-  }, [gradingConfig]);
+  }, [settings]);
 
-  const [systemStatus] = useState({
-    database: 'Connected',
-    storage: 'Healthy',
-    cache: 'Active',
-    backups: 'Up to date',
+  const field = (key: keyof typeof form) => ({
+    value: form[key],
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => setForm(p => ({ ...p, [key]: e.target.value })),
   });
 
-  const saveSchoolSettingsMutation = useMutation({
-    mutationFn: async (data: SchoolSettings) => {
-      return new Promise(resolve => setTimeout(resolve, 1000));
-    },
-    onSuccess: () => {
-      toast({ title: "Success", description: "School settings updated successfully" });
-    },
-    onError: (error: any) => {
-      toast({ title: "Failed to Save", description: error.message || "Could not update school settings. Please try again.", variant: "destructive" });
-    },
-  });
-
-  const saveNotificationSettingsMutation = useMutation({
-    mutationFn: async (data: NotificationSettings) => {
-      return new Promise(resolve => setTimeout(resolve, 1000));
-    },
-    onSuccess: () => {
-      toast({ title: "Success", description: "Notification settings updated successfully" });
-    },
-    onError: (error: any) => {
-      toast({ title: "Failed to Save", description: error.message || "Could not update notification settings. Please try again.", variant: "destructive" });
-    },
-  });
-
-  const handleDatabaseBackup = () => {
-    toast({ title: "Backup Started", description: "Database backup has been initiated..." });
-  };
-
-  const handleSystemMaintenance = () => {
-    toast({ title: "Maintenance Mode", description: "System maintenance mode activated" });
-  };
-
-  const handleNavClick = (sectionId: string) => {
-    setActiveSection(sectionId);
-    setMobileNavOpen(false);
-  };
-
-  const activeNavItem = settingsNavItems.find(item => item.id === activeSection);
-
-  const renderContent = () => {
-    switch (activeSection) {
-      case 'school':
-        return (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Building2 className="w-5 h-5" />
-                  Basic Information
-                </CardTitle>
-                <CardDescription>School name and academic year</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={schoolForm.handleSubmit((data) => saveSchoolSettingsMutation.mutate(data))} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="schoolName">School Name *</Label>
-                      <Input 
-                        id="schoolName" 
-                        {...schoolForm.register('schoolName')}
-                        data-testid="input-school-name"
-                      />
-                      {schoolForm.formState.errors.schoolName && (
-                        <p className="text-sm text-destructive">{schoolForm.formState.errors.schoolName.message}</p>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="academicYear" className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4" />
-                        Academic Year *
-                      </Label>
-                      <Input 
-                        id="academicYear" 
-                        {...schoolForm.register('academicYear')}
-                        data-testid="input-academic-year"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex justify-end">
-                    <Button type="submit" size="sm" disabled={saveSchoolSettingsMutation.isPending} data-testid="button-save-basic">
-                      <Save className="w-4 h-4 mr-2" />
-                      {saveSchoolSettingsMutation.isPending ? 'Saving...' : 'Save'}
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <MapPin className="w-5 h-5" />
-                  Location
-                </CardTitle>
-                <CardDescription>School address details</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="schoolAddress">Full Address *</Label>
-                    <Textarea 
-                      id="schoolAddress" 
-                      {...schoolForm.register('schoolAddress')}
-                      rows={2}
-                      data-testid="textarea-school-address"
-                    />
-                  </div>
-                  <div className="flex justify-end">
-                    <Button type="button" size="sm" onClick={schoolForm.handleSubmit((data) => saveSchoolSettingsMutation.mutate(data))} disabled={saveSchoolSettingsMutation.isPending} data-testid="button-save-location">
-                      <Save className="w-4 h-4 mr-2" />
-                      Save
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Phone className="w-5 h-5" />
-                  Contact Information
-                </CardTitle>
-                <CardDescription>Phone, email, and website</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="phoneNumber" className="flex items-center gap-2">
-                        <Phone className="w-4 h-4" />
-                        Phone
-                      </Label>
-                      <Input 
-                        id="phoneNumber" 
-                        {...schoolForm.register('phoneNumber')}
-                        data-testid="input-phone-number"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email" className="flex items-center gap-2">
-                        <Mail className="w-4 h-4" />
-                        Email
-                      </Label>
-                      <Input 
-                        id="email" 
-                        type="email"
-                        {...schoolForm.register('email')}
-                        data-testid="input-email"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="website" className="flex items-center gap-2">
-                        <Globe className="w-4 h-4" />
-                        Website
-                      </Label>
-                      <Input 
-                        id="website" 
-                        {...schoolForm.register('website')}
-                        data-testid="input-website"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex justify-end">
-                    <Button type="button" size="sm" onClick={schoolForm.handleSubmit((data) => saveSchoolSettingsMutation.mutate(data))} disabled={saveSchoolSettingsMutation.isPending} data-testid="button-save-contact">
-                      <Save className="w-4 h-4 mr-2" />
-                      Save
-                    </Button>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case 'grading':
-        return (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Percent className="w-5 h-5" />
-                  Assessment Weights
-                </CardTitle>
-                <CardDescription>Configure how test and exam scores are weighted</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium">Test Weight: {testWeight}%</span>
-                    <span className="font-medium">Exam Weight: {100 - testWeight}%</span>
-                  </div>
-                  <Slider
-                    value={[testWeight]}
-                    onValueChange={(value) => setTestWeight(value[0])}
-                    min={0}
-                    max={100}
-                    step={5}
-                    className="w-full"
-                    data-testid="slider-test-weight"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>More weight on tests</span>
-                    <span>More weight on exams</span>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-3">
-                  <Label htmlFor="defaultScale">Default Grading Scale</Label>
-                  <Select value={selectedScale} onValueChange={setSelectedScale}>
-                    <SelectTrigger data-testid="select-default-scale">
-                      <SelectValue placeholder="Select grading scale" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="standard">Standard (A-F)</SelectItem>
-                      <SelectItem value="percentage">Percentage Based</SelectItem>
-                      <SelectItem value="custom">Custom Scale</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="flex justify-end">
-                  <Button size="sm" data-testid="button-save-grading-weights">
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Weights
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="pt-6">
-                <ClassPositionSettings />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <GradingBoundariesSection />
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      case 'notifications':
-        return (
-          <Card>
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Bell className="w-5 h-5" />
-                Notification Preferences
-              </CardTitle>
-              <CardDescription>Choose which notifications to receive</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={notificationForm.handleSubmit((data) => saveNotificationSettingsMutation.mutate(data))} className="space-y-4">
-                <div className="space-y-3">
-                  {[
-                    { id: 'emailNotifications', label: 'Email Notifications', desc: 'Receive notifications via email' },
-                    { id: 'smsNotifications', label: 'SMS Notifications', desc: 'Receive notifications via SMS' },
-                    { id: 'attendanceAlerts', label: 'Attendance Alerts', desc: 'Get notified about attendance issues' },
-                    { id: 'gradeAlerts', label: 'Grade Alerts', desc: 'Get notified about grade updates' },
-                    { id: 'announcementNotifications', label: 'Announcements', desc: 'Get notified about new announcements' },
-                  ].map((item) => (
-                    <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                      <div>
-                        <Label htmlFor={item.id} className="text-base font-medium">{item.label}</Label>
-                        <p className="text-sm text-muted-foreground">{item.desc}</p>
-                      </div>
-                      <Switch 
-                        id={item.id}
-                        {...notificationForm.register(item.id as keyof NotificationSettings)}
-                        data-testid={`switch-${item.id}`}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <div className="flex justify-end pt-2">
-                  <Button type="submit" size="sm" disabled={saveNotificationSettingsMutation.isPending} data-testid="button-save-notifications">
-                    <Save className="w-4 h-4 mr-2" />
-                    {saveNotificationSettingsMutation.isPending ? 'Saving...' : 'Save Changes'}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        );
-
-      case 'system':
-        return (
-          <div className="space-y-6">
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Database className="w-5 h-5" />
-                  System Status
-                </CardTitle>
-                <CardDescription>Current system health overview</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {[
-                    { label: 'Database', desc: 'PostgreSQL Connection', status: systemStatus.database },
-                    { label: 'Storage', desc: 'File System Health', status: systemStatus.storage },
-                    { label: 'Cache', desc: 'Redis Cache Status', status: systemStatus.cache },
-                    { label: 'Backups', desc: 'Last Backup Status', status: systemStatus.backups },
-                  ].map((item) => (
-                    <div key={item.label} className="flex items-center justify-between p-3 rounded-lg border">
-                      <div>
-                        <p className="font-medium text-sm">{item.label}</p>
-                        <p className="text-xs text-muted-foreground">{item.desc}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-500" />
-                        <span className="text-xs font-medium text-green-600">{item.status}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Settings className="w-5 h-5" />
-                  System Actions
-                </CardTitle>
-                <CardDescription>Database backup and maintenance</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button variant="outline" onClick={handleDatabaseBackup} data-testid="button-backup" className="flex-1">
-                    <Database className="w-4 h-4 mr-2" />
-                    Backup Database
-                  </Button>
-                  <Button variant="outline" onClick={handleSystemMaintenance} data-testid="button-maintenance" className="flex-1">
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Maintenance Mode
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        );
-
-      default:
-        return null;
-    }
-  };
+  if (isLoading) return <SectionSkeleton />;
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 h-full" data-testid="settings-management">
+    <div className="space-y-4">
+      <SettingCard title="Username Prefixes" description="Prefix prepended to auto-generated usernames for each role" icon={Hash}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {[
+            { key: 'usernameStudentPrefix' as const, label: 'Student Prefix', example: 'THS-STU-001' },
+            { key: 'usernameTeacherPrefix' as const, label: 'Teacher Prefix', example: 'THS-TCH-001' },
+            { key: 'usernameParentPrefix' as const, label: 'Parent Prefix', example: 'THS-PAR-001' },
+            { key: 'usernameAdminPrefix' as const, label: 'Admin Prefix', example: 'THS-ADM-001' },
+          ].map(({ key, label, example }) => (
+            <div key={key} className="space-y-1.5">
+              <Label htmlFor={key}>{label}</Label>
+              <Input id={key} {...field(key)} data-testid={`input-${key}`} />
+              <p className="text-xs text-muted-foreground">e.g. {form[key]}-001 → <strong>{example.replace('THS', form[key].split('-')[0] || 'THS')}</strong></p>
+            </div>
+          ))}
+        </div>
+      </SettingCard>
+
+      <SettingCard title="Temporary Password Format" description="Format used when a new account is created and a temporary password is generated" icon={Key}>
+        <div className="space-y-2">
+          <Input value={form.tempPasswordFormat} onChange={e => setForm(p => ({ ...p, tempPasswordFormat: e.target.value }))} data-testid="input-temp-password-format" />
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs text-amber-800 dark:text-amber-300">
+            <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            <div>
+              <p className="font-medium mb-1">Available placeholders:</p>
+              <p><code>{'{year}'}</code> → current year &nbsp;|&nbsp; <code>{'{random4}'}</code> → 4 random digits &nbsp;|&nbsp; <code>{'{random6}'}</code> → 6 random digits</p>
+              <p className="mt-1">Example: <code>THS@{'{year}'}#{'{random4}'}</code> → <strong>THS@2025#7342</strong></p>
+            </div>
+          </div>
+        </div>
+      </SettingCard>
+
+      <SettingCard title="User Management" description="Manage users, teachers, students, and parents" icon={Users}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <QuickLinkCard title="Student Management" description="Add, edit, block students" icon={Users} href="/portal/admin/students" />
+          <QuickLinkCard title="Teacher Management" description="Add, verify, manage teachers" icon={Users} href="/portal/admin/teachers" />
+          <QuickLinkCard title="Parent Management" description="Link parents to students" icon={Users} href="/portal/admin/parents" />
+          <QuickLinkCard title="Roles & Permissions" description="Super admin manages global roles" icon={Shield} href="/portal/admin/dashboard" />
+        </div>
+      </SettingCard>
+
+      <div className="flex justify-end">
+        <Button onClick={() => save.mutate(form)} disabled={save.isPending} data-testid="button-save-users">
+          {save.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+          Save User Settings
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// SECTION: Exams & CBT
+// ─────────────────────────────────────────────
+function ExamsCBTSection() {
+  const { settings, isLoading, save } = useAdminSettings();
+  const [requirePayment, setRequirePayment] = useState(false);
+  const [feeAmount, setFeeAmount] = useState(0);
+
+  useEffect(() => {
+    if (settings) {
+      setRequirePayment(settings.requireExamPayment ?? false);
+      setFeeAmount(settings.examFeeAmount ?? 0);
+    }
+  }, [settings]);
+
+  if (isLoading) return <SectionSkeleton />;
+
+  return (
+    <div className="space-y-4">
+      <SettingCard title="Exam Fee Payment" description="Control whether students must pay before they can access exams" icon={CreditCard}>
+        <div className="space-y-4">
+          <SwitchRow id="requireExamPayment" label="Require Exam Fee Payment" description="Students must pay the exam fee before their exams are unlocked" checked={requirePayment} onCheckedChange={setRequirePayment} />
+          {requirePayment && (
+            <div className="space-y-1.5 pl-1">
+              <Label htmlFor="examFeeAmount">Exam Fee Amount (₦)</Label>
+              <div className="flex items-center gap-2 max-w-xs">
+                <span className="text-sm font-semibold text-muted-foreground">₦</span>
+                <Input id="examFeeAmount" type="number" min="0" value={feeAmount} onChange={e => setFeeAmount(parseInt(e.target.value) || 0)} data-testid="input-exam-fee-amount" />
+              </div>
+            </div>
+          )}
+          <Button size="sm" onClick={() => save.mutate({ requireExamPayment: requirePayment, examFeeAmount: feeAmount })} disabled={save.isPending} data-testid="button-save-exam-payment">
+            {save.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1.5" />} Save
+          </Button>
+        </div>
+      </SettingCard>
+
+      <SettingCard title="Exam Management" description="Configure exams, CBT sessions, and results" icon={ClipboardList}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <QuickLinkCard title="Exam Management" description="Create and manage exams" icon={ClipboardList} href="/portal/admin/exams" />
+          <QuickLinkCard title="Exam Sessions" description="Monitor active CBT sessions" icon={Eye} href="/portal/admin/exam-sessions" />
+          <QuickLinkCard title="Payment Records" description="View and manage exam fee payments" icon={CreditCard} href="/portal/admin/exam-payments" />
+          <QuickLinkCard title="Question Banks" description="Manage question bank items" icon={Database} href="/portal/admin/question-bank" />
+        </div>
+      </SettingCard>
+
+      <SettingCard title="Result Controls" description="Control how results are released and reported" icon={FileBarChart2}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <QuickLinkCard title="Exam Results" description="View and publish exam results" icon={BarChart3} href="/portal/admin/exam-results" />
+          <QuickLinkCard title="Report Cards" description="Manage student report cards" icon={FileBarChart2} href="/portal/admin/reports" />
+        </div>
+      </SettingCard>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// SECTION: Lesson Notes
+// ─────────────────────────────────────────────
+function LessonNotesSection() {
+  const [, navigate] = useLocation();
+  return (
+    <div className="space-y-4">
+      <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-900/10">
+        <CardContent className="pt-5">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-amber-100 dark:bg-amber-900/30">
+              <Info className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <p className="font-medium text-sm text-amber-800 dark:text-amber-300">Configuration via Management Pages</p>
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">Lesson note approval workflows, topic visibility, and submission rules are managed per-teacher and per-class via the Lesson Note management pages below.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <SettingCard title="Lesson & Scheme Management" description="Manage lesson notes, topics, and scheme of work" icon={FileText}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <QuickLinkCard title="Lesson Notes" description="View and approve teacher lesson notes" icon={FileText} href="/portal/admin/lesson-notes" />
+          <QuickLinkCard title="Syllabus & Topics" description="Manage scheme of work and topics" icon={GraduationCap} href="/portal/admin/syllabus" />
+          <QuickLinkCard title="Teacher Assignments" description="Assign teachers to subjects and classes" icon={Users} href="/portal/admin/teacher-assignments" />
+          <QuickLinkCard title="Study Resources" description="Upload and manage study materials" icon={Database} href="/portal/admin/study-resources" />
+        </div>
+      </SettingCard>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// SECTION: Report Card Settings
+// ─────────────────────────────────────────────
+function ReportCardSection() {
+  const { settings, isLoading, save } = useAdminSettings();
+  const [showGradeBreakdown, setShowGradeBreakdown] = useState(true);
+  const [autoCreate, setAutoCreate] = useState(true);
+
+  useEffect(() => {
+    if (settings) {
+      setShowGradeBreakdown(settings.showGradeBreakdown ?? true);
+      setAutoCreate(settings.autoCreateReportCard ?? true);
+    }
+  }, [settings]);
+
+  if (isLoading) return <SectionSkeleton />;
+
+  return (
+    <div className="space-y-4">
+      <SettingCard title="Report Card Configuration" description="How report cards are generated and displayed to students and parents" icon={FileBarChart2}>
+        <div className="space-y-1">
+          <SwitchRow id="rc-autoCreate" label="Auto-create Report Cards" description="Automatically generate report cards when a term is configured" checked={autoCreate} onCheckedChange={setAutoCreate} />
+          <SwitchRow id="rc-gradeBreakdown" label="Show CA / Exam Breakdown" description="Display separate CA and exam scores alongside the total score" checked={showGradeBreakdown} onCheckedChange={setShowGradeBreakdown} />
+        </div>
+        <div className="flex justify-end mt-4">
+          <Button size="sm" onClick={() => save.mutate({ showGradeBreakdown, autoCreateReportCard: autoCreate })} disabled={save.isPending} data-testid="button-save-report-card">
+            {save.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1.5" />} Save
+          </Button>
+        </div>
+      </SettingCard>
+
+      <SettingCard title="Signature & Stamp" description="Principal signature and school stamp are configured by Super Admin in Branding" icon={Shield}>
+        <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/40 border">
+          <Lock className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+          <div>
+            <p className="text-sm font-medium">Managed by Super Admin</p>
+            <p className="text-xs text-muted-foreground mt-0.5">School logo, principal signature, and school stamp are uploaded and managed in the Super Admin Branding section. The Designated Principal is set in Super Admin Settings.</p>
+          </div>
+        </div>
+      </SettingCard>
+
+      <SettingCard title="Report Card Actions" description="View, publish, and manage student report cards" icon={FileBarChart2}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <QuickLinkCard title="Report Cards" description="View and publish report cards" icon={FileBarChart2} href="/portal/admin/reports" />
+          <QuickLinkCard title="Report Comments" description="Manage comment templates" icon={FileText} href="/portal/admin/report-comments" />
+        </div>
+      </SettingCard>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// SECTION: Attendance Settings
+// ─────────────────────────────────────────────
+function AttendanceSection() {
+  return (
+    <div className="space-y-4">
+      <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10">
+        <CardContent className="pt-5">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+              <CalendarCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="font-medium text-sm text-blue-800 dark:text-blue-300">Attendance is module-managed</p>
+              <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">Attendance status types (Present, Absent, Late, Excused) are built-in. Recording permissions and visibility are controlled per-teacher via the Attendance management page.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <SettingCard title="Attendance Management" description="Record, review, and export attendance data" icon={CalendarCheck}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <QuickLinkCard title="Attendance Overview" description="School-wide attendance dashboard" icon={CalendarCheck} href="/portal/admin/attendance" />
+          <QuickLinkCard title="Class Management" description="Configure classes and teachers" icon={Building2} href="/portal/admin/classes" />
+        </div>
+      </SettingCard>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// SECTION: Notifications
+// ─────────────────────────────────────────────
+function NotificationsSection() {
+  const { settings, isLoading, save } = useAdminSettings();
+  const [enableEmail, setEnableEmail] = useState(true);
+  const [enableSms, setEnableSms] = useState(false);
+
+  useEffect(() => {
+    if (settings) {
+      setEnableEmail(settings.enableEmailNotifications ?? true);
+      setEnableSms(settings.enableSmsNotifications ?? false);
+    }
+  }, [settings]);
+
+  if (isLoading) return <SectionSkeleton />;
+
+  return (
+    <div className="space-y-4">
+      <SettingCard title="Notification Channels" description="Control which channels are active for sending alerts to students, teachers, and parents" icon={Bell}>
+        <div className="space-y-1">
+          <SwitchRow
+            id="enableEmail"
+            label="Email Notifications"
+            description="Send result alerts, payment confirmations, and announcements via email (requires RESEND_API_KEY)"
+            checked={enableEmail}
+            onCheckedChange={setEnableEmail}
+          />
+          <SwitchRow
+            id="enableSms"
+            label="SMS Notifications"
+            description="Send result alerts and payment confirmations via SMS (requires Twilio credentials)"
+            checked={enableSms}
+            onCheckedChange={setEnableSms}
+          />
+        </div>
+        {(enableEmail || enableSms) && (
+          <div className="mt-3 flex items-start gap-2 p-3 rounded-lg bg-muted/40 text-xs text-muted-foreground border">
+            <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+            <span>API keys for email (RESEND_API_KEY) and SMS (Twilio credentials) must be configured in the Secrets tab by the Super Admin for notifications to send.</span>
+          </div>
+        )}
+        <div className="flex justify-end mt-4">
+          <Button size="sm" onClick={() => save.mutate({ enableEmailNotifications: enableEmail, enableSmsNotifications: enableSms })} disabled={save.isPending} data-testid="button-save-notifications">
+            {save.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1.5" />} Save
+          </Button>
+        </div>
+      </SettingCard>
+
+      <SettingCard title="Announcement Distribution" description="Send announcements to specific audiences" icon={Bell}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <QuickLinkCard title="Announcements" description="Create and publish announcements" icon={Bell} href="/portal/admin/announcements" />
+          <QuickLinkCard title="Events Calendar" description="Schedule school events" icon={CalendarCheck} href="/portal/admin/events" />
+        </div>
+      </SettingCard>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// SECTION: Finance
+// ─────────────────────────────────────────────
+function FinanceSection() {
+  const { settings, isLoading, save } = useAdminSettings();
+  const [requirePayment, setRequirePayment] = useState(false);
+  const [feeAmount, setFeeAmount] = useState(0);
+
+  useEffect(() => {
+    if (settings) {
+      setRequirePayment(settings.requireExamPayment ?? false);
+      setFeeAmount(settings.examFeeAmount ?? 0);
+    }
+  }, [settings]);
+
+  if (isLoading) return <SectionSkeleton />;
+
+  return (
+    <div className="space-y-4">
+      <SettingCard title="Exam Fee Configuration" description="Set whether exam payment is required and the fee amount" icon={CreditCard}>
+        <div className="space-y-4">
+          <SwitchRow id="financeRequirePayment" label="Require Exam Fee Payment" description="Students cannot access exams until the fee is paid" checked={requirePayment} onCheckedChange={setRequirePayment} />
+          {requirePayment && (
+            <div className="space-y-1.5">
+              <Label htmlFor="financeFeeAmount">Exam Fee Amount</Label>
+              <div className="flex items-center gap-2 max-w-xs">
+                <span className="text-sm font-semibold text-muted-foreground">₦</span>
+                <Input id="financeFeeAmount" type="number" min="0" value={feeAmount} onChange={e => setFeeAmount(parseInt(e.target.value) || 0)} data-testid="input-finance-fee-amount" />
+              </div>
+            </div>
+          )}
+          <Button size="sm" onClick={() => save.mutate({ requireExamPayment: requirePayment, examFeeAmount: feeAmount })} disabled={save.isPending} data-testid="button-save-finance">
+            {save.isPending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Save className="w-3.5 h-3.5 mr-1.5" />} Save
+          </Button>
+        </div>
+      </SettingCard>
+
+      <SettingCard title="Payment Records" description="View, verify, and manage all exam fee payments" icon={CreditCard}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <QuickLinkCard title="Exam Payments" description="View and manage payment records" icon={CreditCard} href="/portal/admin/exam-payments" />
+          <QuickLinkCard title="Integrations" description="Configure Paystack and Monnify keys" icon={Key} href="/portal/superadmin/settings/integrations" />
+        </div>
+      </SettingCard>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// SECTION: Appearance
+// ─────────────────────────────────────────────
+function AppearanceSection() {
+  const { data: settings } = useQuery<SystemSettings>({ queryKey: ['/api/admin/settings'] });
+
+  return (
+    <div className="space-y-4">
+      <Card className="border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-900/10">
+        <CardContent className="pt-5">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+              <Palette className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <p className="font-medium text-sm text-purple-800 dark:text-purple-300">Branding managed by Super Admin</p>
+              <p className="text-xs text-purple-700 dark:text-purple-400 mt-1">Logo, favicon, theme colour and full branding customization are controlled in the Super Admin Branding section for consistency across the platform.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <SettingCard title="Current Branding" description="Active branding configuration for this school" icon={Palette}>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-muted/30 border">
+            {settings?.schoolLogo ? (
+              <img src={settings.schoolLogo} alt="School Logo" className="h-12 w-12 object-contain rounded" />
+            ) : (
+              <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center"><Building2 className="w-6 h-6 text-muted-foreground" /></div>
+            )}
+            <span className="text-xs text-muted-foreground">School Logo</span>
+          </div>
+          <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-muted/30 border">
+            <div className="h-12 w-12 rounded-lg flex items-center justify-center" style={{ backgroundColor: `var(--primary)` }}>
+              <Palette className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xs text-muted-foreground">Theme Colour</span>
+          </div>
+          <div className="flex flex-col items-center gap-2 p-4 rounded-lg bg-muted/30 border">
+            <div className="h-12 w-12 rounded-lg bg-muted flex items-center justify-center text-xs font-bold text-muted-foreground">
+              {settings?.schoolShortName || 'THS'}
+            </div>
+            <span className="text-xs text-muted-foreground">Short Name</span>
+          </div>
+        </div>
+      </SettingCard>
+
+      <SettingCard title="Branding Controls" description="Access Super Admin branding settings" icon={Palette}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <QuickLinkCard title="Branding & Theme" description="Logo, favicon, theme colour" icon={Palette} href="/portal/superadmin/settings/branding" />
+          <QuickLinkCard title="Homepage Management" description="Edit the public homepage content" icon={Globe} href="/portal/admin/homepage" />
+          <QuickLinkCard title="Gallery" description="Manage the public photo gallery" icon={Building2} href="/portal/admin/gallery" />
+          <QuickLinkCard title="About Page" description="Edit the About Us page content" icon={FileText} href="/portal/admin/about-page" />
+        </div>
+      </SettingCard>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// SECTION: Security
+// ─────────────────────────────────────────────
+function SecuritySection() {
+  const [, navigate] = useLocation();
+  return (
+    <div className="space-y-4">
+      <Card className="border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10">
+        <CardContent className="pt-5">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
+              <Shield className="w-4 h-4 text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <p className="font-medium text-sm text-red-800 dark:text-red-300">Platform security managed by Super Admin</p>
+              <p className="text-xs text-red-700 dark:text-red-400 mt-1">Password policies, session timeouts, MFA settings, and global access controls are platform-level and managed by the Super Admin.</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <SettingCard title="Security Recommendations" description="Best practices for your school portal" icon={Shield}>
+        <div className="space-y-3">
+          {[
+            { icon: Key, title: 'Strong Passwords', desc: 'Ensure all staff use the provided temp password on first login and change it immediately.' },
+            { icon: Users, title: 'Regular User Audits', desc: 'Periodically review active accounts and suspend students who have left.' },
+            { icon: Lock, title: 'Block Inactive Accounts', desc: 'Block student accounts after the exam season to prevent unauthorized access.' },
+            { icon: AlertTriangle, title: 'Review Audit Logs', desc: 'Check audit logs regularly for any suspicious activity.' },
+          ].map(({ icon: Icon, title, desc }) => (
+            <div key={title} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 border">
+              <Icon className="w-4 h-4 mt-0.5 text-primary shrink-0" />
+              <div>
+                <p className="text-sm font-medium">{title}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </SettingCard>
+
+      <SettingCard title="Security Controls" description="Access security settings and audit logs" icon={Shield}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <QuickLinkCard title="Audit Logs" description="View all system activity logs" icon={Database} href="/portal/admin/audit-logs" />
+          <QuickLinkCard title="Security Policies" description="Super Admin security configuration" icon={Shield} href="/portal/superadmin/settings/security" />
+          <QuickLinkCard title="User Management" description="Block, suspend, or delete users" icon={Users} href="/portal/admin/students" />
+          <QuickLinkCard title="Auth Settings" description="MFA and authentication options" icon={Key} href="/portal/superadmin/settings/authentication" />
+        </div>
+      </SettingCard>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// SECTION: Data Management
+// ─────────────────────────────────────────────
+function DataManagementSection() {
+  return (
+    <div className="space-y-4">
+      <SettingCard title="Data Import" description="Bulk import students, teachers, classes, and results" icon={Upload}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <QuickLinkCard title="Import Students" description="Upload CSV to bulk-create students" icon={Upload} href="/portal/admin/students" />
+          <QuickLinkCard title="Import Results" description="Upload exam results via CSV" icon={Upload} href="/portal/admin/reports" />
+        </div>
+      </SettingCard>
+
+      <SettingCard title="Data Export" description="Download reports and records as files" icon={Download}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <QuickLinkCard title="Export Students" description="Download student list as CSV" icon={Download} href="/portal/admin/students" />
+          <QuickLinkCard title="Export Attendance" description="Download attendance records" icon={Download} href="/portal/admin/attendance" />
+          <QuickLinkCard title="Export Results" description="Download exam results" icon={Download} href="/portal/admin/exam-results" />
+          <QuickLinkCard title="Export Report Cards" description="Download report cards as PDF" icon={Download} href="/portal/admin/reports" />
+        </div>
+      </SettingCard>
+
+      <SettingCard title="Backup & Restore" description="Database backup and restore operations (Super Admin)" icon={Database}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <QuickLinkCard title="Backup & Restore" description="Create and restore database backups" icon={Database} href="/portal/superadmin/settings/backup" />
+          <QuickLinkCard title="Audit Logs" description="View system-wide activity logs" icon={RefreshCw} href="/portal/admin/audit-logs" />
+        </div>
+      </SettingCard>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Skeleton loader for sections
+// ─────────────────────────────────────────────
+function SectionSkeleton() {
+  return (
+    <div className="space-y-4">
+      {[1, 2, 3].map(i => (
+        <div key={i} className="rounded-lg border p-5 space-y-3 animate-pulse">
+          <div className="h-4 bg-muted rounded w-1/3" />
+          <div className="h-3 bg-muted rounded w-2/3" />
+          <div className="h-10 bg-muted rounded" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────
+// Nav config
+// ─────────────────────────────────────────────
+const NAV_ITEMS = [
+  { id: 'school', label: 'School Profile', icon: Building2, description: 'Name, contact, address, motto' },
+  { id: 'academic', label: 'Academic', icon: GraduationCap, description: 'Weights, report cards, overrides' },
+  { id: 'grading', label: 'Grading Scale', icon: BarChart3, description: 'Grade boundaries & class ranking' },
+  { id: 'users', label: 'Users & Roles', icon: Users, description: 'Username formats & permissions' },
+  { id: 'exams', label: 'Exams & CBT', icon: ClipboardList, description: 'Exam config, payment, CBT rules' },
+  { id: 'lessons', label: 'Lesson Notes', icon: FileText, description: 'Approval & visibility rules' },
+  { id: 'reports', label: 'Report Cards', icon: FileBarChart2, description: 'Report card config & signatures' },
+  { id: 'attendance', label: 'Attendance', icon: CalendarCheck, description: 'Status types & permissions' },
+  { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Email & SMS alert settings' },
+  { id: 'finance', label: 'Finance', icon: CreditCard, description: 'Fee & payment configuration' },
+  { id: 'appearance', label: 'Appearance', icon: Palette, description: 'Theme, branding & display' },
+  { id: 'security', label: 'Security', icon: Shield, description: 'Access & password policies' },
+  { id: 'data', label: 'Data & Backup', icon: Database, description: 'Import, export & backups' },
+];
+
+function renderSection(id: string) {
+  switch (id) {
+    case 'school': return <SchoolProfileSection />;
+    case 'academic': return <AcademicSettingsSection />;
+    case 'grading': return <GradingScaleSection />;
+    case 'users': return <UsersRolesSection />;
+    case 'exams': return <ExamsCBTSection />;
+    case 'lessons': return <LessonNotesSection />;
+    case 'reports': return <ReportCardSection />;
+    case 'attendance': return <AttendanceSection />;
+    case 'notifications': return <NotificationsSection />;
+    case 'finance': return <FinanceSection />;
+    case 'appearance': return <AppearanceSection />;
+    case 'security': return <SecuritySection />;
+    case 'data': return <DataManagementSection />;
+    default: return null;
+  }
+}
+
+// ─────────────────────────────────────────────
+// Main Component
+// ─────────────────────────────────────────────
+export default function SettingsManagement() {
+  const [activeSection, setActiveSection] = useState('school');
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const filteredNav = NAV_ITEMS.filter(item =>
+    !search || item.label.toLowerCase().includes(search.toLowerCase()) ||
+    item.description.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const activeItem = NAV_ITEMS.find(i => i.id === activeSection);
+  const ActiveIcon = activeItem?.icon ?? Settings;
+
+  const handleNavClick = useCallback((id: string) => {
+    setActiveSection(id);
+    setMobileNavOpen(false);
+  }, []);
+
+  return (
+    <div className="flex flex-col lg:flex-row gap-6 min-h-0" data-testid="settings-management">
+
+      {/* ── Mobile nav dropdown ── */}
       <div className="lg:hidden">
         <Button
           variant="outline"
-          onClick={() => setMobileNavOpen(!mobileNavOpen)}
+          onClick={() => setMobileNavOpen(v => !v)}
           className="w-full justify-between"
           data-testid="button-mobile-nav"
         >
           <span className="flex items-center gap-2">
-            {activeNavItem && <activeNavItem.icon className="w-4 h-4" />}
-            {activeNavItem?.label || 'Settings'}
+            <ActiveIcon className="w-4 h-4" />
+            {activeItem?.label}
           </span>
-          <Menu className="w-4 h-4" />
+          <ChevronDown className={cn('w-4 h-4 transition-transform', mobileNavOpen && 'rotate-180')} />
         </Button>
-
         {mobileNavOpen && (
-          <Card className="mt-2">
+          <Card className="mt-2 z-10 relative">
             <CardContent className="p-2">
-              <div className="space-y-1">
-                {settingsNavItems.map((item) => (
-                  <SettingsNavItem
+              <div className="relative mb-2">
+                <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search settings…"
+                  className="pl-8 h-8 text-sm"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  data-testid="input-settings-search-mobile"
+                />
+              </div>
+              <div className="space-y-0.5 max-h-64 overflow-y-auto">
+                {filteredNav.map(item => (
+                  <button
                     key={item.id}
-                    item={item}
-                    isActive={activeSection === item.id}
                     onClick={() => handleNavClick(item.id)}
-                  />
+                    className={cn(
+                      'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-left text-sm transition-colors',
+                      activeSection === item.id ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
+                    )}
+                    data-testid={`nav-mobile-${item.id}`}
+                  >
+                    <item.icon className="w-4 h-4 shrink-0" />
+                    <span className="font-medium">{item.label}</span>
+                  </button>
                 ))}
+                {filteredNav.length === 0 && <p className="text-xs text-muted-foreground text-center py-3">No settings found</p>}
               </div>
             </CardContent>
           </Card>
         )}
       </div>
 
-      <div className="hidden lg:block w-64 shrink-0">
-        <Card className="sticky top-4">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              Settings
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-2">
-            <div className="space-y-1">
-              {settingsNavItems.map((item) => (
-                <SettingsNavItem
-                  key={item.id}
-                  item={item}
-                  isActive={activeSection === item.id}
-                  onClick={() => handleNavClick(item.id)}
+      {/* ── Desktop sidebar ── */}
+      <div className="hidden lg:block w-60 shrink-0">
+        <div className="sticky top-4">
+          <Card>
+            <CardHeader className="pb-2 pt-4 px-4">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Settings className="w-4 h-4" /> Settings
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-2 pb-3">
+              <div className="relative mb-2 px-1">
+                <Search className="absolute left-3.5 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
+                <Input
+                  placeholder="Search…"
+                  className="pl-8 h-8 text-sm"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  data-testid="input-settings-search"
                 />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+              <div className="space-y-0.5">
+                {filteredNav.map(item => (
+                  <button
+                    key={item.id}
+                    onClick={() => handleNavClick(item.id)}
+                    className={cn(
+                      'w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-left transition-colors group',
+                      activeSection === item.id
+                        ? 'bg-primary text-primary-foreground'
+                        : 'hover:bg-accent text-foreground'
+                    )}
+                    data-testid={`nav-${item.id}`}
+                  >
+                    <item.icon className="w-4 h-4 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium leading-tight">{item.label}</p>
+                      <p className={cn('text-xs truncate leading-tight', activeSection === item.id ? 'text-primary-foreground/70' : 'text-muted-foreground')}>
+                        {item.description}
+                      </p>
+                    </div>
+                    <ChevronRight className={cn('w-3.5 h-3.5 shrink-0', activeSection === item.id ? 'text-primary-foreground/60' : 'text-muted-foreground/60')} />
+                  </button>
+                ))}
+                {filteredNav.length === 0 && <p className="text-xs text-muted-foreground text-center py-4">No settings found</p>}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
 
+      {/* ── Main content ── */}
       <div className="flex-1 min-w-0">
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            {activeNavItem && <activeNavItem.icon className="w-6 h-6" />}
-            {activeNavItem?.label} Settings
+        <div className="mb-5">
+          <h1 className="text-xl font-bold flex items-center gap-2 truncate">
+            <ActiveIcon className="w-5 h-5 text-primary shrink-0" />
+            <span className="truncate">{activeItem?.label}</span>
           </h1>
-          <p className="text-muted-foreground text-sm">{activeNavItem?.description}</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{activeItem?.description}</p>
         </div>
-        {renderContent()}
+        {renderSection(activeSection)}
       </div>
     </div>
   );
