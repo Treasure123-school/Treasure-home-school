@@ -169,7 +169,7 @@ export default function LessonNoteEditorPage() {
   ) : null;
 
   return (
-    <div className="max-w-4xl">
+    <div className="max-w-4xl pb-36">
 
       {/* ── Sticky actions bar (no breadcrumb) ── */}
       <div className="sticky top-0 z-10 -mx-2 sm:-mx-4 md:-mx-6 px-2 sm:px-4 md:px-6 py-2 mb-6 bg-background/95 backdrop-blur border-b print:hidden">
