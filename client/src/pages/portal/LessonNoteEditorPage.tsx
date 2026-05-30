@@ -16,7 +16,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Save, Send, Eye, AlertCircle, Info, MoreHorizontal,
+  Save, Send, Eye, AlertCircle, Info, MoreHorizontal, BookOpen,
 } from 'lucide-react';
 
 function parseQuery(search: string) {
@@ -143,173 +143,160 @@ export default function LessonNoteEditorPage() {
   const currentStatus = note?.status;
   const canEdit     = !currentStatus || ['draft', 'rejected'].includes(currentStatus) || isAdmin;
 
-  const primaryAction = isTeacher ? (
-    <Button
-      size="sm"
-      disabled={!canSave || busy || !canEdit}
-      onClick={() => submitMutation.mutate()}
-      data-testid="button-submit-review"
-      className="shrink-0"
-    >
-      <Send className="w-3.5 h-3.5 mr-1.5" />
-      <span className="hidden sm:inline">{submitMutation.isPending ? 'Submitting…' : 'Submit for Review'}</span>
-      <span className="sm:hidden">{submitMutation.isPending ? '…' : 'Submit'}</span>
-    </Button>
-  ) : isAdmin ? (
-    <Button
-      size="sm"
-      disabled={!canSave || busy}
-      onClick={() => publishMutation.mutate()}
-      className="bg-emerald-600 hover:bg-emerald-700 shrink-0"
-      data-testid="button-publish"
-    >
-      <Eye className="w-3.5 h-3.5 mr-1.5" />
-      <span className="hidden sm:inline">{publishMutation.isPending ? 'Publishing…' : 'Save & Publish'}</span>
-      <span className="sm:hidden">{publishMutation.isPending ? '…' : 'Publish'}</span>
-    </Button>
-  ) : null;
+  const pageTitle = isEdit ? 'Edit Lesson Note' : 'New Lesson Note';
+  const pageSubtitle = query.topicName
+    ? [query.className, query.subjectName, query.termName, query.topicName].filter(Boolean).join(' → ')
+    : 'Write and publish curriculum lesson content';
 
   return (
-    <div className="max-w-4xl pb-10">
+    <div className="min-h-screen bg-background">
 
-      {/* ── Loading skeleton ── */}
-      {isEdit && noteLoading && (
-        <Card>
-          <CardContent className="p-6 space-y-4">
-            <Skeleton className="h-11 rounded-lg" />
-            <Skeleton className="h-24 rounded-lg" />
-            <Skeleton className="h-64 rounded-lg" />
-          </CardContent>
-        </Card>
-      )}
+      {/* ── Page header ── */}
+      <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <BookOpen className="w-5 h-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xl font-bold text-foreground">{pageTitle}</h1>
+                {note && <StatusBadge status={note.status} />}
+              </div>
+              <p className="text-sm text-muted-foreground mt-0.5 truncate">{pageSubtitle}</p>
+            </div>
 
-      {/* ── Editor form ── */}
-      {(!isEdit || !noteLoading) && (
-        <Card className="shadow-sm">
-          <CardContent className="p-5 sm:p-6 space-y-6">
-
-            {/* ── Top action bar ── */}
+            {/* Action buttons in header */}
             {canEdit && (
-              <div className="flex items-center justify-between gap-2 pb-1 border-b">
-                <div className="flex items-center gap-2 min-w-0">
-                  {note && <StatusBadge status={note.status} />}
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {/* Primary CTA */}
-                  {isTeacher && (
-                    <Button
-                      size="sm"
-                      disabled={!canSave || busy}
-                      onClick={() => submitMutation.mutate()}
-                      data-testid="button-submit-review"
-                    >
-                      <Send className="w-3.5 h-3.5 mr-1.5" />
-                      <span className="hidden sm:inline">{submitMutation.isPending ? 'Submitting…' : 'Submit for Review'}</span>
-                      <span className="sm:hidden">{submitMutation.isPending ? '…' : 'Submit'}</span>
+              <div className="flex items-center gap-2 shrink-0">
+                {isTeacher && (
+                  <Button
+                    size="sm"
+                    disabled={!canSave || busy}
+                    onClick={() => submitMutation.mutate()}
+                    data-testid="button-submit-review"
+                  >
+                    <Send className="w-3.5 h-3.5 mr-1.5" />
+                    <span className="hidden sm:inline">{submitMutation.isPending ? 'Submitting…' : 'Submit for Review'}</span>
+                    <span className="sm:hidden">{submitMutation.isPending ? '…' : 'Submit'}</span>
+                  </Button>
+                )}
+                {isAdmin && (
+                  <Button
+                    size="sm"
+                    disabled={!canSave || busy}
+                    onClick={() => publishMutation.mutate()}
+                    className="bg-emerald-600 hover:bg-emerald-700"
+                    data-testid="button-publish"
+                  >
+                    <Eye className="w-3.5 h-3.5 mr-1.5" />
+                    <span className="hidden sm:inline">{publishMutation.isPending ? 'Publishing…' : 'Save & Publish'}</span>
+                    <span className="sm:hidden">{publishMutation.isPending ? '…' : 'Publish'}</span>
+                  </Button>
+                )}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-9 w-9 p-0" data-testid="button-more-actions">
+                      <MoreHorizontal className="w-4 h-4" />
                     </Button>
-                  )}
-                  {isAdmin && (
-                    <Button
-                      size="sm"
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-40">
+                    <DropdownMenuItem
                       disabled={!canSave || busy}
-                      onClick={() => publishMutation.mutate()}
-                      className="bg-emerald-600 hover:bg-emerald-700"
-                      data-testid="button-publish"
+                      onClick={() => saveMutation.mutate()}
+                      data-testid="button-save-draft"
                     >
-                      <Eye className="w-3.5 h-3.5 mr-1.5" />
-                      <span className="hidden sm:inline">{publishMutation.isPending ? 'Publishing…' : 'Save & Publish'}</span>
-                      <span className="sm:hidden">{publishMutation.isPending ? '…' : 'Publish'}</span>
-                    </Button>
-                  )}
-                  {/* Secondary actions dropdown */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-8 w-8 p-0" data-testid="button-more-actions">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-40">
-                      <DropdownMenuItem
-                        disabled={!canSave || busy}
-                        onClick={() => saveMutation.mutate()}
-                        data-testid="button-save-draft"
-                      >
-                        <Save className="w-3.5 h-3.5 mr-2" />
-                        {saveMutation.isPending ? 'Saving…' : 'Save Draft'}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                      <Save className="w-3.5 h-3.5 mr-2" />
+                      {saveMutation.isPending ? 'Saving…' : 'Save Draft'}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Content ── */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
+
+        {/* Loading skeleton */}
+        {isEdit && noteLoading && (
+          <Card>
+            <CardContent className="p-6 space-y-4">
+              <Skeleton className="h-11 rounded-lg" />
+              <Skeleton className="h-24 rounded-lg" />
+              <Skeleton className="h-64 rounded-lg" />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Editor form */}
+        {(!isEdit || !noteLoading) && (
+          <Card className="shadow-sm">
+            <CardContent className="p-5 sm:p-6 space-y-6">
+
+              {note?.rejectionReason && (
+                <div className="flex gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-400">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div><strong>Rejected:</strong> {note.rejectionReason}</div>
                 </div>
+              )}
+
+              {!canEdit && isTeacher && (
+                <div className="flex gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 text-sm text-blue-700 dark:text-blue-400">
+                  <Info className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div>This note is <strong>{currentStatus}</strong> and cannot be edited.</div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="note-title" className="text-sm font-semibold">
+                  Title <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="note-title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Lesson note title…"
+                  disabled={!canEdit || busy}
+                  className="text-base h-11"
+                  data-testid="input-note-title"
+                />
               </div>
-            )}
 
-            {/* Status badge when not editable */}
-            {!canEdit && note && (
-              <div className="flex items-center gap-2">
-                <StatusBadge status={note.status} />
+              <div className="space-y-2">
+                <Label htmlFor="note-objectives" className="text-sm font-semibold">Learning Objectives</Label>
+                <p className="text-xs text-muted-foreground -mt-1">What students will be able to do after this lesson</p>
+                <textarea
+                  id="note-objectives"
+                  value={objectives}
+                  onChange={(e) => setObjectives(e.target.value)}
+                  placeholder="By the end of this lesson, students will be able to…"
+                  disabled={!canEdit || busy}
+                  rows={3}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
+                  data-testid="input-note-objectives"
+                />
               </div>
-            )}
 
-            {note?.rejectionReason && (
-              <div className="flex gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-400">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                <div><strong>Rejected:</strong> {note.rejectionReason}</div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold">Lesson Content</Label>
+                <p className="text-xs text-muted-foreground -mt-1">
+                  Use the toolbar to format text, add headings, lists, tables, images, and links
+                </p>
+                <RichTextEditor
+                  content={content}
+                  onChange={setContent}
+                  placeholder="Start writing your lesson content here…"
+                  minHeight="400px"
+                  disabled={!canEdit || busy}
+                />
               </div>
-            )}
-
-            {!canEdit && isTeacher && (
-              <div className="flex gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 text-sm text-blue-700 dark:text-blue-400">
-                <Info className="w-4 h-4 shrink-0 mt-0.5" />
-                <div>This note is <strong>{currentStatus}</strong> and cannot be edited.</div>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="note-title" className="text-sm font-semibold">
-                Title <span className="text-destructive">*</span>
-              </Label>
-              <Input
-                id="note-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Lesson note title…"
-                disabled={!canEdit || busy}
-                className="text-base h-11"
-                data-testid="input-note-title"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="note-objectives" className="text-sm font-semibold">Learning Objectives</Label>
-              <p className="text-xs text-muted-foreground -mt-1">What students will be able to do after this lesson</p>
-              <textarea
-                id="note-objectives"
-                value={objectives}
-                onChange={(e) => setObjectives(e.target.value)}
-                placeholder="By the end of this lesson, students will be able to…"
-                disabled={!canEdit || busy}
-                rows={3}
-                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-none"
-                data-testid="input-note-objectives"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold">Lesson Content</Label>
-              <p className="text-xs text-muted-foreground -mt-1">
-                Use the toolbar to format text, add headings, lists, tables, images, and links
-              </p>
-              <RichTextEditor
-                content={content}
-                onChange={setContent}
-                placeholder="Start writing your lesson content here…"
-                minHeight="400px"
-                disabled={!canEdit || busy}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
