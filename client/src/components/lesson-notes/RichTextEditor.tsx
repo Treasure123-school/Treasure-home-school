@@ -80,7 +80,7 @@ export default function RichTextEditor({
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Image.configure({ HTMLAttributes: { class: 'max-w-full h-auto rounded-lg my-4 cursor-pointer' }, allowBase64: true }),
       Link.configure({ openOnClick: false, HTMLAttributes: { class: 'text-primary underline underline-offset-2 hover:opacity-80', target: '_blank', rel: 'noopener noreferrer' } }),
-      Table.configure({ resizable: true, HTMLAttributes: { class: 'border-collapse table-auto w-full my-4' } }),
+      Table.configure({ resizable: false, HTMLAttributes: { class: 'border-collapse table-auto w-full my-4' } }),
       TableRow,
       TableHeader.configure({ HTMLAttributes: { class: 'bg-muted font-semibold text-left px-3 py-2 border border-border text-sm' } }),
       TableCell.configure({ HTMLAttributes: { class: 'px-3 py-2 border border-border text-sm' } }),
