@@ -268,7 +268,7 @@ export default function AdminLessonNoteReview() {
     <div className="min-h-screen bg-background" data-testid="admin-lesson-notes">
 
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background border-b">
+      <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
