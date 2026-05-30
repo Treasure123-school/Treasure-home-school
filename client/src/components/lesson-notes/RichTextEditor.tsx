@@ -1,15 +1,15 @@
-import { useEditor, EditorContent, BubbleMenu } from '@tiptap/react';
+import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import UnderlineExt from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 import Image from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
-import Table from '@tiptap/extension-table';
-import TableRow from '@tiptap/extension-table-row';
-import TableCell from '@tiptap/extension-table-cell';
-import TableHeader from '@tiptap/extension-table-header';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableCell } from '@tiptap/extension-table-cell';
+import { TableHeader } from '@tiptap/extension-table-header';
 import Color from '@tiptap/extension-color';
-import TextStyle from '@tiptap/extension-text-style';
+import { TextStyle } from '@tiptap/extension-text-style';
 import Highlight from '@tiptap/extension-highlight';
 import { useRef, useCallback, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
@@ -331,30 +331,6 @@ export default function RichTextEditor({
         <EditorContent editor={editor} />
       </div>
 
-      {/* Bubble menu for quick formatting */}
-      {!disabled && (
-        <BubbleMenu editor={editor} tippyOptions={{ duration: 100, placement: 'top' }}>
-          <div className="flex items-center gap-0.5 bg-popover border rounded-md shadow-lg p-1">
-            <button type="button" onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleBold().run(); }}
-              className={`w-7 h-7 rounded text-sm flex items-center justify-center hover:bg-muted ${editor.isActive('bold') ? 'bg-primary text-primary-foreground' : ''}`}>
-              <Bold className="w-3 h-3" />
-            </button>
-            <button type="button" onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleItalic().run(); }}
-              className={`w-7 h-7 rounded text-sm flex items-center justify-center hover:bg-muted ${editor.isActive('italic') ? 'bg-primary text-primary-foreground' : ''}`}>
-              <Italic className="w-3 h-3" />
-            </button>
-            <button type="button" onMouseDown={e => { e.preventDefault(); editor.chain().focus().toggleUnderline().run(); }}
-              className={`w-7 h-7 rounded text-sm flex items-center justify-center hover:bg-muted ${editor.isActive('underline') ? 'bg-primary text-primary-foreground' : ''}`}>
-              <Underline className="w-3 h-3" />
-            </button>
-            <div className="w-px h-4 bg-border mx-0.5" />
-            <button type="button" onMouseDown={e => { e.preventDefault(); setLink(); }}
-              className={`w-7 h-7 rounded text-sm flex items-center justify-center hover:bg-muted ${editor.isActive('link') ? 'bg-primary text-primary-foreground' : ''}`}>
-              <LinkIcon className="w-3 h-3" />
-            </button>
-          </div>
-        </BubbleMenu>
-      )}
 
       <style>{`
         .ProseMirror p.is-editor-empty:first-child::before {
