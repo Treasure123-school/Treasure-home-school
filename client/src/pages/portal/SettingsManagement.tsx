@@ -132,6 +132,15 @@ function emailsToJsonString(arr: string[]): string {
   return JSON.stringify(arr.filter(Boolean));
 }
 
+const countryCodes = [
+  { code: "+234", name: "Nigeria" },
+  { code: "+1", name: "USA/Canada" },
+  { code: "+44", name: "UK" },
+  { code: "+233", name: "Ghana" },
+  { code: "+254", name: "Kenya" },
+  { code: "+27", name: "South Africa" },
+];
+
 // ─────────────────────────────────────────────
 // Shared save hook
 // ─────────────────────────────────────────────
@@ -306,14 +315,38 @@ function SchoolProfileSection() {
   const [isEditing, setIsEditing] = useState(false);
   const [form, setForm] = useState<ProfileForm>(buildProfileForm());
   const [original, setOriginal] = useState<ProfileForm>(buildProfileForm());
+  const [phones, setPhones] = useState<Array<{ countryCode: string; number: string }>>([]);
+  const [originalPhones, setOriginalPhones] = useState<Array<{ countryCode: string; number: string }>>([]);
 
   useEffect(() => {
     if (settings) {
       const f = buildProfileForm(settings);
       setForm(f);
       setOriginal(f);
+      try {
+        const parsed = JSON.parse(settings.schoolPhones || '[]');
+        const phoneObjs = Array.isArray(parsed)
+          ? parsed.map((p: any) => typeof p === 'object' && p.countryCode
+              ? p
+              : stringToSchoolPhone(String(p)))
+          : [];
+        setPhones(phoneObjs);
+        setOriginalPhones(phoneObjs);
+      } catch {
+        setPhones([]);
+        setOriginalPhones([]);
+      }
     }
   }, [settings]);
+
+  const addPhone = () => setPhones(prev => [...prev, { countryCode: '+234', number: '' }]);
+  const removePhone = (i: number) => setPhones(prev => prev.filter((_, j) => j !== i));
+  const updatePhone = (i: number, field: 'countryCode' | 'number', value: string) =>
+    setPhones(prev => prev.map((p, j) => j === i ? { ...p, [field]: value } : p));
+
+  const addEmail = () => setForm(prev => ({ ...prev, schoolEmails: [...prev.schoolEmails, ''] }));
+  const removeEmail = (i: number) => setForm(prev => ({ ...prev, schoolEmails: prev.schoolEmails.filter((_, j) => j !== i) }));
+  const updateEmail = (i: number, value: string) => setForm(prev => ({ ...prev, schoolEmails: prev.schoolEmails.map((e, j) => j === i ? value : e) }));
 
   const handleSave = async () => {
     await save.mutateAsync({
@@ -321,17 +354,19 @@ function SchoolProfileSection() {
       schoolShortName: form.schoolShortName,
       schoolMotto: form.schoolMotto,
       schoolAddress: form.schoolAddress,
-      schoolPhones: phonesToJsonString(form.schoolPhones),
+      schoolPhones: JSON.stringify(phones),
       schoolEmails: emailsToJsonString(form.schoolEmails),
       websiteTitle: form.websiteTitle,
       footerText: form.footerText,
     });
     setOriginal(form);
+    setOriginalPhones(phones);
     setIsEditing(false);
   };
 
   const handleCancel = () => {
     setForm(original);
+    setPhones(originalPhones);
     setIsEditing(false);
   };
 
@@ -412,26 +447,97 @@ function SchoolProfileSection() {
       {/* Contact details */}
       <SettingCard title="Contact Details" description="Phone numbers and email addresses" icon={Phone}>
         {isEditing ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5" /> Phone Numbers</Label>
-              <MultiInput
-                values={form.schoolPhones}
-                onChange={v => setForm(p => ({ ...p, schoolPhones: v }))}
-                placeholder="+234 801 234 5678"
-                icon={Phone}
-                type="tel"
-              />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+            {/* Phone Numbers */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                  Phone Numbers
+                </Label>
+                <Button type="button" variant="outline" size="sm" onClick={addPhone} data-testid="button-add-phone">
+                  <Plus className="h-3 w-3 mr-1" /> Add
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {phones.map((phone, index) => (
+                  <div key={index} className="flex gap-2">
+                    <Select
+                      value={phone.countryCode}
+                      onValueChange={(val) => updatePhone(index, 'countryCode', val)}
+                    >
+                      <SelectTrigger className="w-[100px]" data-testid={`select-country-code-${index}`}>
+                        <SelectValue placeholder="Code" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {countryCodes.map((c) => (
+                          <SelectItem key={c.code} value={c.code}>{c.code}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      value={phone.number}
+                      onChange={(e) => updatePhone(index, 'number', e.target.value)}
+                      placeholder="Number"
+                      className="flex-1"
+                      data-testid={`input-phone-${index}`}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removePhone(index)}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      data-testid={`button-remove-phone-${index}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                {phones.length === 0 && (
+                  <p className="text-xs text-muted-foreground italic">No phone numbers added.</p>
+                )}
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5"><Mail className="w-3.5 h-3.5" /> Email Addresses</Label>
-              <MultiInput
-                values={form.schoolEmails}
-                onChange={v => setForm(p => ({ ...p, schoolEmails: v }))}
-                placeholder="admin@school.com"
-                icon={Mail}
-                type="email"
-              />
+
+            {/* Email Addresses */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-muted-foreground" />
+                  Email Addresses
+                </Label>
+                <Button type="button" variant="outline" size="sm" onClick={addEmail} data-testid="button-add-email">
+                  <Plus className="h-3 w-3 mr-1" /> Add
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {form.schoolEmails.map((email, index) => (
+                  <div key={index} className="flex gap-2">
+                    <Input
+                      type="email"
+                      value={email}
+                      onChange={(e) => updateEmail(index, e.target.value)}
+                      placeholder="Email Address"
+                      className="flex-1"
+                      data-testid={`input-email-${index}`}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeEmail(index)}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                      data-testid={`button-remove-email-${index}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+                {form.schoolEmails.filter(Boolean).length === 0 && (
+                  <p className="text-xs text-muted-foreground italic">No email addresses added.</p>
+                )}
+              </div>
             </div>
           </div>
         ) : (
