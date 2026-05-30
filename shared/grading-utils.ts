@@ -71,15 +71,20 @@ export function getGradingConfig(scaleName: string = 'standard'): GradingConfig 
 
 export function calculateGradeFromPercentage(percentage: number, scaleName: string = 'standard'): GradeRange {
   const config = getGradingConfig(scaleName);
-  const normalizedPercentage = Math.max(0, Math.min(100, Math.round(percentage)));
-  
-  for (const range of config.ranges) {
-    if (normalizedPercentage >= range.min && normalizedPercentage <= range.max) {
-      return range;
-    }
+  return calculateGradeFromConfig(percentage, config);
+}
+
+/**
+ * Grade a percentage using a GradingConfig object directly (no hardcoded lookup).
+ * Use this instead of calculateGradeFromPercentage when you already have a DB-loaded config.
+ */
+export function calculateGradeFromConfig(percentage: number, config: GradingConfig): GradeRange {
+  const normalized = Math.max(0, Math.min(100, Math.round(percentage)));
+  const sorted = [...config.ranges].sort((a, b) => b.min - a.min);
+  for (const range of sorted) {
+    if (normalized >= range.min && normalized <= range.max) return range;
   }
-  
-  return config.ranges[config.ranges.length - 1];
+  return sorted[sorted.length - 1] ?? config.ranges[config.ranges.length - 1];
 }
 
 export interface WeightedScoreResult {

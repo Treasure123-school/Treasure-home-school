@@ -1,8 +1,9 @@
 import { db } from '../db';
 import * as schema from '../../shared/schema.pg';
 import { eq, and, inArray, isNull, lte, desc, sql } from 'drizzle-orm';
-import { getGradingConfig, calculateGrade } from '../grading-config';
+import { calculateGradeFromConfig } from '../grading-config';
 import { calculateWeightedScore } from '../../shared/grading-utils';
+import { getActiveGradingConfig } from '../grade-scale-service';
 import { realtimeService } from '../realtime-service';
 
 export type SyncType = 'exam_submit' | 'manual_sync' | 'bulk_sync' | 'retry' | 'admin_repair';
@@ -368,9 +369,9 @@ export class ReliableSyncService {
         const finalExamScore = isMainExam ? safeScore : (existingItem.examScore ?? null);
         const finalExamMaxScore = isMainExam ? safeMaxScore : (existingItem.examMaxScore ?? null);
 
-        const gradingConfig = getGradingConfig(gradingScale);
+        const gradingConfig = await getActiveGradingConfig();
         const weighted = calculateWeightedScore(finalTestScore, finalTestMaxScore, finalExamScore, finalExamMaxScore, gradingConfig);
-        const gradeInfo = calculateGrade(weighted.percentage, gradingScale);
+        const gradeInfo = calculateGradeFromConfig(weighted.percentage, gradingConfig);
 
         const safeTestWeighted = Number.isFinite(weighted.testWeighted) ? Math.round(weighted.testWeighted) : 0;
         const safeExamWeighted = Number.isFinite(weighted.examWeighted) ? Math.round(weighted.examWeighted) : 0;
@@ -571,7 +572,8 @@ export class ReliableSyncService {
     const averageScore = Math.round(totalObtained / itemsWithScores.length);
     const averagePercentage = Math.round((totalObtained / (itemsWithScores.length * 100)) * 100);
 
-    const gradeInfo = calculateGrade(averagePercentage, gradingScale);
+    const activeConfig = await getActiveGradingConfig();
+    const gradeInfo = calculateGradeFromConfig(averagePercentage, activeConfig);
 
     // Use the actual reportCards column names: totalScore, averageScore, averagePercentage, overallGrade
     await tx.update(schema.reportCards)
@@ -727,7 +729,8 @@ export class ReliableSyncService {
     const totalMarks = itemsWithScores.length * 100;
     const averagePercentage = totalMarks > 0 ? Math.round((totalObtained / totalMarks) * 100) : 0;
 
-    const gradeInfo = calculateGrade(averagePercentage, gradingScale);
+    const activeConfig = await getActiveGradingConfig();
+    const gradeInfo = calculateGradeFromConfig(averagePercentage, activeConfig);
 
     await db.update(schema.reportCards)
       .set({

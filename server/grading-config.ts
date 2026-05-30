@@ -5,6 +5,7 @@ export {
   GRADING_SCALES,
   getGradingConfig,
   calculateGradeFromPercentage as calculateGrade,
+  calculateGradeFromConfig,
   calculateWeightedScore,
   calculateClassPosition,
   calculateGPA,

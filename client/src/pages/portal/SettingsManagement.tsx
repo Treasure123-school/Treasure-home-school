@@ -768,6 +768,20 @@ function GradingScaleSection() {
   const [deleteBoundaryId, setDeleteBoundaryId] = useState<{ scaleId: number; boundaryId: number } | null>(null);
   const [previewScore, setPreviewScore] = useState('');
 
+  // Compute overlap warning for the boundary dialog
+  const overlapWarning = (() => {
+    if (!boundaryDialogOpen || !boundaryScaleId) return null;
+    const scale = scales.find(s => s.id === boundaryScaleId);
+    if (!scale) return null;
+    const { minScore, maxScore } = boundaryForm;
+    if (minScore > maxScore) return null;
+    const overlapping = scale.boundaries.find(b =>
+      b.id !== editingBoundary?.id && minScore <= b.maxScore && maxScore >= b.minScore
+    );
+    if (!overlapping) return null;
+    return `Overlaps grade "${overlapping.grade}" (${overlapping.minScore}–${overlapping.maxScore}%)`;
+  })();
+
   useEffect(() => {
     if (settings) setPositioningMethod(settings.positioningMethod || 'average');
   }, [settings]);
@@ -1177,6 +1191,9 @@ function GradingScaleSection() {
             </div>
             {boundaryForm.minScore > boundaryForm.maxScore && (
               <p className="text-xs text-destructive flex items-center gap-1.5"><AlertTriangle className="w-3.5 h-3.5" /> Min score cannot exceed max score</p>
+            )}
+            {overlapWarning && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1.5" data-testid="text-overlap-warning"><AlertTriangle className="w-3.5 h-3.5 shrink-0" /> {overlapWarning}</p>
             )}
             <div className="space-y-1.5">
               <Label>Remark <span className="text-muted-foreground text-xs">(optional)</span></Label>

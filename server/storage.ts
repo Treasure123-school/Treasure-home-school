@@ -2,7 +2,8 @@ import { eq, and, desc, asc, sql, sql as dsql, inArray, isNull, isNotNull, ne, g
 import { alias } from "drizzle-orm/pg-core";
 import { randomUUID } from "crypto";
 import { getDatabase, getSchema, getPgClient, getPgPool, isPostgres, isSqlite } from "./db";
-import { calculateGrade, calculateWeightedScore, getGradingConfig, getOverallGrade } from "./grading-config";
+import { calculateGrade, calculateWeightedScore, getGradingConfig, getOverallGrade, calculateGradeFromConfig } from "./grading-config";
+import { getActiveGradingConfig } from "./grade-scale-service";
 import { deleteFile } from "./cloudinary-service";
 import { DeletionService, DeletionResult, formatDeletionLog } from "./services/deletion-service";
 import { SmartDeletionManager, cleanupOrphanRecords, bulkDeleteUsers, SmartDeletionResult } from "./services/smart-deletion-manager";
@@ -5558,15 +5559,12 @@ export class DatabaseStorage implements IStorage {
         return { populated: 0, errors: ['Report card not found'] };
       }
 
-      const gradingScale = (reportCard as any).gradingScale || 'standard';
-      let config = getGradingConfig(gradingScale);
-
-      // Get system settings for test/exam weights
+      // Use the active DB grade scale (cached), override weights from system settings
+      let config = await getActiveGradingConfig();
       const systemSettings = await this.getSystemSettings();
       if (systemSettings) {
-        // Override grading config with system settings weights
-        const testWeight = systemSettings.testWeight ?? 40;
-        const examWeight = systemSettings.examWeight ?? 60;
+        const testWeight = systemSettings.testWeight ?? config.testWeight;
+        const examWeight = systemSettings.examWeight ?? config.examWeight;
         config = { ...config, testWeight, examWeight };
       }
 
@@ -5608,7 +5606,7 @@ export class DatabaseStorage implements IStorage {
 
           // Calculate weighted score using system settings weights
           const weighted = calculateWeightedScore(testScore, testMaxScore, examScore, examMaxScore, config);
-          const gradeInfo = calculateGrade(weighted.percentage, gradingScale);
+          const gradeInfo = calculateGradeFromConfig(weighted.percentage, config);
 
           // Update the report card item
           await db.update(schema.reportCardItems)
@@ -5695,8 +5693,8 @@ export class DatabaseStorage implements IStorage {
       const reportCard = await this.getReportCard(item[0].reportCardId);
       if (!reportCard) return undefined;
 
-      const gradingScale = (reportCard as any).gradingScale || 'standard';
-      const gradingConfig = getGradingConfig(gradingScale);
+      // Use the active DB grade scale (cached)
+      const gradingConfig = await getActiveGradingConfig();
 
       // Calculate new weighted score
       const testScore = data.testScore !== undefined ? data.testScore : item[0].testScore;
@@ -5705,7 +5703,7 @@ export class DatabaseStorage implements IStorage {
       const examMaxScore = data.examMaxScore !== undefined ? data.examMaxScore : item[0].examMaxScore;
 
       const weighted = calculateWeightedScore(testScore, testMaxScore, examScore, examMaxScore, gradingConfig);
-      const gradeInfo = calculateGrade(weighted.percentage, gradingScale);
+      const gradeInfo = calculateGradeFromConfig(weighted.percentage, gradingConfig);
 
       const result = await db.update(schema.reportCardItems)
         .set({
@@ -6068,7 +6066,8 @@ export class DatabaseStorage implements IStorage {
       }
 
       const averagePercentage = totalPossible > 0 ? (totalObtained / totalPossible) * 100 : 0;
-      const overallGrade = getOverallGrade(averagePercentage, gradingScale);
+      const activeConfig = await getActiveGradingConfig();
+      const overallGrade = calculateGradeFromConfig(averagePercentage, activeConfig).grade;
 
       const result = await db.update(schema.reportCards)
         .set({
@@ -6483,10 +6482,10 @@ export class DatabaseStorage implements IStorage {
       const finalExamScore = isMainExam ? safeScore : (existingItem.examScore ?? null);
       const finalExamMaxScore = isMainExam ? safeMaxScore : (existingItem.examMaxScore ?? null);
 
-      // CRITICAL: Convert gradingScale string to GradingConfig object
-      const gradingConfig = getGradingConfig(gradingScale);
+      // Use the active DB grade scale (cached)
+      const gradingConfig = await getActiveGradingConfig();
       const weighted = calculateWeightedScore(finalTestScore, finalTestMaxScore, finalExamScore, finalExamMaxScore, gradingConfig);
-      const gradeInfo = calculateGrade(weighted.percentage, gradingScale);
+      const gradeInfo = calculateGradeFromConfig(weighted.percentage, gradingConfig);
 
       // CRITICAL: Ensure all weighted values are finite integers, defaulting to 0 for NaN/Infinity
       const safeTestWeighted = Number.isFinite(weighted.testWeighted) ? Math.round(weighted.testWeighted) : 0;

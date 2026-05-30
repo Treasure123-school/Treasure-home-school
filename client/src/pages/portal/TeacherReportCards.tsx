@@ -66,7 +66,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
-import { STANDARD_GRADING_SCALE, GRADING_SCALES, formatPosition, calculateWeightedScore, calculateGradeFromPercentage, getGradingConfig } from '@shared/grading-utils';
+import { STANDARD_GRADING_SCALE, formatPosition, calculateWeightedScore, calculateGradeFromConfig } from '@shared/grading-utils';
 import { calculateAge } from '@/lib/report-card-utils';
 import { ProfessionalReportCard } from '@/components/ui/professional-report-card';
 import { ContactUtils } from '@shared/contact-utils';
@@ -389,8 +389,9 @@ export default function TeacherReportCards() {
       queryClient.setQueryData(['/api/reports', reportCardId, 'full'], (old: any) => {
         if (!old || !old.items) return old;
 
-        const gradingScale = old.gradingScale || 'standard';
-        const gradingConfig = getGradingConfig(gradingScale);
+        // Use the active DB config from the existing query; fall back to standard weights only
+        const activeDbConfig = gradingConfig?.currentConfig;
+        const localGradingConfig = activeDbConfig ?? STANDARD_GRADING_SCALE;
 
         return {
           ...old,
@@ -412,10 +413,10 @@ export default function TeacherReportCards() {
 
               // Calculate derived values locally for instant feedback
               // Use actual max scores from the item (fallback to config weights only for calculation)
-              const calcTestMax = newTestMaxScore ?? gradingConfig.testWeight;
-              const calcExamMax = newExamMaxScore ?? gradingConfig.examWeight;
-              const weighted = calculateWeightedScore(newTestScore, calcTestMax, newExamScore, calcExamMax, gradingConfig);
-              const gradeInfo = calculateGradeFromPercentage(weighted.percentage, gradingScale);
+              const calcTestMax = newTestMaxScore ?? localGradingConfig.testWeight;
+              const calcExamMax = newExamMaxScore ?? localGradingConfig.examWeight;
+              const weighted = calculateWeightedScore(newTestScore, calcTestMax, newExamScore, calcExamMax, localGradingConfig);
+              const gradeInfo = calculateGradeFromConfig(weighted.percentage, localGradingConfig);
 
               updatedItem.testWeightedScore = Math.round(weighted.testWeighted);
               updatedItem.examWeightedScore = Math.round(weighted.examWeighted);

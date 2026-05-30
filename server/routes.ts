@@ -10869,13 +10869,18 @@ School Management System Administration
       // Use the active DB scale if one exists, otherwise fall back to hardcoded scale by name
       const activeConfig = await getActiveGradingConfig();
 
+      // Return DB scale names (not hardcoded)
+      const { db: dbRef } = await import('./db');
+      const { gradeScales: gradeScalesTable } = await import('../shared/schema.pg');
+      const scales = await dbRef.select({ name: gradeScalesTable.name }).from(gradeScalesTable);
+
       res.json({
         currentConfig: {
           ...activeConfig,
           testWeight: dbTestWeight,
           examWeight: dbExamWeight,
         },
-        availableScales: Object.keys(GRADING_SCALES),
+        availableScales: scales.map(s => s.name),
         dbSettings: {
           testWeight: dbTestWeight,
           examWeight: dbExamWeight,

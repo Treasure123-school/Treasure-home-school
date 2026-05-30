@@ -209,6 +209,15 @@ router.post('/api/grade-scales/:id/boundaries', requireAdmin, async (req: Reques
     const [scale] = await db.select().from(gradeScales).where(eq(gradeScales.id, scaleId)).limit(1);
     if (!scale) return res.status(404).json({ message: 'Grade scale not found' });
 
+    // Overlap validation: check no existing boundary for this scale overlaps the new range
+    const existing = await db.select().from(gradingBoundaries).where(eq(gradingBoundaries.scaleId, scaleId));
+    const overlapping = existing.find(b => parsed.minScore <= b.maxScore && parsed.maxScore >= b.minScore);
+    if (overlapping) {
+      return res.status(400).json({
+        message: `Range ${parsed.minScore}–${parsed.maxScore} overlaps with existing grade "${overlapping.grade}" (${overlapping.minScore}–${overlapping.maxScore})`,
+      });
+    }
+
     const [created] = await db.insert(gradingBoundaries).values({
       scaleId,
       name: scale.name,
@@ -237,6 +246,15 @@ router.patch('/api/grade-scales/:scaleId/boundaries/:boundaryId', requireAdmin, 
 
     if (parsed.minScore > parsed.maxScore)
       return res.status(400).json({ message: 'Min score cannot be greater than max score' });
+
+    // Overlap validation: exclude the boundary being edited, check no other boundary overlaps the new range
+    const existing = await db.select().from(gradingBoundaries).where(eq(gradingBoundaries.scaleId, scaleId));
+    const overlapping = existing.find(b => b.id !== boundaryId && parsed.minScore <= b.maxScore && parsed.maxScore >= b.minScore);
+    if (overlapping) {
+      return res.status(400).json({
+        message: `Range ${parsed.minScore}–${parsed.maxScore} overlaps with existing grade "${overlapping.grade}" (${overlapping.minScore}–${overlapping.maxScore})`,
+      });
+    }
 
     const [updated] = await db.update(gradingBoundaries)
       .set({
