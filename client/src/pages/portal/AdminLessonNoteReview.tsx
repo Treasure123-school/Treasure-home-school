@@ -270,7 +270,7 @@ export default function AdminLessonNoteReview() {
       {/* Header */}
       <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background border-b">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
                 <ClipboardCheck className="w-5 h-5 text-primary" />
@@ -280,10 +280,9 @@ export default function AdminLessonNoteReview() {
                 <p className="text-sm text-muted-foreground mt-0.5">Manage, approve, and publish teacher lesson notes</p>
               </div>
             </div>
-            <Button onClick={handleCreate} data-testid="button-create-note" size="sm">
+            <Button onClick={handleCreate} data-testid="button-create-note" className="w-full sm:w-auto">
               <Plus className="w-4 h-4 mr-1.5" />
-              <span className="hidden sm:inline">Create Note</span>
-              <span className="sm:hidden">New</span>
+              Create Note
             </Button>
           </div>
         </div>
