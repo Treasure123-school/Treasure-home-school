@@ -153,16 +153,25 @@ export default function LessonNoteEditorPage() {
 
       {/* ── Page header ── */}
       <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-2">
-
-          {/* Row 1: icon + title + action buttons */}
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-              <BookOpen className="w-4.5 h-4.5 sm:w-5 sm:h-5 text-primary" />
+
+            {/* Icon */}
+            <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+              <BookOpen className="w-5 h-5 text-primary" />
             </div>
-            <h1 className="flex-1 text-lg sm:text-xl font-bold text-foreground leading-tight truncate">
-              {pageTitle}
-            </h1>
+
+            {/* Title block — grows, truncates */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <h1 className="text-lg sm:text-xl font-bold text-foreground leading-tight truncate">
+                  {pageTitle}
+                </h1>
+                {note && <span className="shrink-0"><StatusBadge status={note.status} /></span>}
+              </div>
+              <p className="text-sm text-muted-foreground mt-0.5 truncate">{pageSubtitle}</p>
+            </div>
+
             {/* Action buttons */}
             {canEdit && (
               <div className="flex items-center gap-2 shrink-0">
@@ -209,12 +218,6 @@ export default function LessonNoteEditorPage() {
                 </DropdownMenu>
               </div>
             )}
-          </div>
-
-          {/* Row 2: status badge + subtitle */}
-          <div className="flex items-center gap-2 pl-[52px] sm:pl-[56px] flex-wrap">
-            {note && <StatusBadge status={note.status} />}
-            <p className="text-sm text-muted-foreground truncate">{pageSubtitle}</p>
           </div>
         </div>
       </div>
