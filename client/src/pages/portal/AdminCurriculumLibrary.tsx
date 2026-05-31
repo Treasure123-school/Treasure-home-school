@@ -272,6 +272,9 @@ export default function AdminCurriculumLibrary() {
         </Select>
       </div>
 
+      {/* Sentinel: outside all conditionals so the ref is always stable */}
+      <div ref={sentinelRef} className="h-px w-full" aria-hidden="true" />
+
       {/* Template list grouped */}
       {isLoading ? (
         <div className="space-y-3">

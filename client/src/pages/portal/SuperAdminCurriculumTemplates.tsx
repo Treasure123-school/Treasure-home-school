@@ -290,6 +290,9 @@ export default function SuperAdminCurriculumTemplates() {
         </Select>
       </div>
 
+      {/* Sentinel: outside all conditionals so the ref is always stable */}
+      <div ref={sentinelRef} className="h-px w-full" aria-hidden="true" />
+
       {/* Templates List */}
       <div className="space-y-2">
         {isLoading ? (
