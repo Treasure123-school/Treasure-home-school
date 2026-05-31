@@ -31,6 +31,7 @@ import examPaymentRoutes from "./routes/exam-payment.routes";
 import { monnifyPaymentRouter } from "./routes/monnify-payment.routes";
 import reportCardSkillsRoutes from "./routes/report-card-skills.routes";
 import questionBankRoutes from "./routes/question-bank.routes";
+import curriculumTemplateRoutes from "./routes/curriculum-templates.routes";
 import termsRoutes from "./routes/terms.routes";
 import uploadRoutes from "./routes/upload.routes";
 import messagesRoutes from "./routes/messages.routes";
@@ -1189,6 +1190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(settingsRoutes);
   app.use(reportCardSkillsRoutes);
   app.use(questionBankRoutes);
+  app.use(curriculumTemplateRoutes);
   app.use('/api/lesson-notes', lessonNotesRoutes);
   app.use('/api/terms', termsRoutes);
   app.use("/api/upload", uploadRoutes);

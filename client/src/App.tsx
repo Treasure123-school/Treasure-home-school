@@ -117,6 +117,7 @@ const SuperAdminIntegrations = lazy(() => import("@/pages/portal/SuperAdminInteg
 const SuperAdminBackupRestore = lazy(() => import("@/pages/portal/SuperAdminBackupRestore"));
 const SuperAdminApiAccess = lazy(() => import("@/pages/portal/SuperAdminApiAccess"));
 const ExamPaymentManagement = lazy(() => import("@/pages/portal/ExamPaymentManagement"));
+const SuperAdminCurriculumTemplates = lazy(() => import("@/pages/portal/SuperAdminCurriculumTemplates"));
 
 import StudentExams from "@/pages/portal/StudentExams";
 const ExamFeePayment = lazy(() => import("@/pages/portal/ExamFeePayment"));
@@ -517,6 +518,12 @@ function Router() {
         </Route>
 
         {/* Super Admin Account Routes */}
+        <Route path="/portal/superadmin/curriculum-templates">
+          <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
+            <SuperAdminCurriculumTemplates />
+          </ProtectedRoute>
+        </Route>
+
         <Route path="/portal/superadmin/account/password">
           <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
             <SuperAdminPlaceholder title="Change Password" category="Account" description="Update your password securely" />

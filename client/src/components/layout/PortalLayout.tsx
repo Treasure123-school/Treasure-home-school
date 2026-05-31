@@ -6,7 +6,7 @@ import {
   Clock, PenTool, CheckSquare, Award, Star, Library, DollarSign, Trophy, HelpCircle,
   Inbox, Megaphone, MessagesSquare, ClipboardPen, BarChart3, FolderOpen, RotateCcw,
   Layers, Database, CreditCard, Receipt, ListChecks, PanelLeftClose, PanelLeftOpen,
-  Globe, Newspaper, Images,
+  Globe, Newspaper, Images, BookMarked,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
@@ -236,6 +236,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: `/portal/${userRole}/subject-manager/unified-assignment`, icon: ClipboardList, label: 'Subject Setup' },
               { href: `/portal/${userRole}/academic-terms`, icon: Calendar, label: 'Academic Terms' },
               { href: `/portal/${userRole}/syllabus-topics`, icon: Layers, label: 'Syllabus Topics' },
+              { href: `/portal/${userRole}/academics/curriculum`, icon: BookMarked, label: 'Curriculum Library' },
               { href: `/portal/${userRole}/lesson-notes`, icon: ClipboardCheck, label: 'Lesson Notes' },
               { href: `/portal/${userRole}/academics/timetable`, icon: Clock, label: 'Timetable' },
             ],

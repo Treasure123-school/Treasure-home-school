@@ -256,6 +256,15 @@ function sanitizeLogData(data: any): any {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.log(`⚠️ Grading boundaries seeding failed: ${errorMessage}`);
   }
+  // Seed curriculum templates
+  try {
+    const { seedCurriculumTemplates } = await import("./seed-curriculum-templates");
+    await seedCurriculumTemplates();
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.log(`⚠️ Curriculum templates seeding failed: ${errorMessage}`);
+  }
+
   // Local File Storage Setup
   try {
     console.log("Initializing local file storage...");

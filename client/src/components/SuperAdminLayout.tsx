@@ -19,6 +19,7 @@ import {
   LifeBuoy,
   Terminal,
   CreditCard,
+  BookOpen,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -144,6 +145,13 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
         { label: "Email Configuration", path: "/portal/superadmin/placeholder?page=email" },
         { label: "Notification Rules", path: "/portal/superadmin/placeholder?page=notifications" },
         { label: "Message Templates", path: "/portal/superadmin/placeholder?page=templates" },
+      ],
+    },
+    {
+      label: "Curriculum Library",
+      icon: BookOpen,
+      children: [
+        { label: "Curriculum Templates", path: "/portal/superadmin/curriculum-templates" },
       ],
     },
     {

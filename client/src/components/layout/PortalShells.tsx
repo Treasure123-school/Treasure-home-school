@@ -83,6 +83,7 @@ const AttendanceManagement = lazy(() => import('@/pages/portal/AttendanceManagem
 const ParentManagement = lazy(() => import('@/pages/portal/ParentManagement'));
 const AdminTimetable = lazy(() => import('@/pages/portal/AdminTimetable'));
 const AdminMessages = lazy(() => import('@/pages/portal/AdminMessages'));
+const AdminCurriculumLibrary = lazy(() => import('@/pages/portal/AdminCurriculumLibrary'));
 
 const WebsiteOverview = lazy(() => import('@/pages/portal/website/WebsiteOverview'));
 const GalleryManagement = lazy(() => import('@/pages/portal/website/GalleryManagement'));
@@ -224,7 +225,8 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/results/processing" component={PortalComingSoon} />
             <Route path="/portal/admin/results/publishing" component={AdminResultPublishing} />
             <Route path="/portal/admin/academics/timetable" component={AdminTimetable} />
-            <Route path="/portal/admin/academics/curriculum" component={PortalComingSoon} />
+            <Route path="/portal/admin/academics/curriculum" component={AdminCurriculumLibrary} />
+            <Route path="/portal/admin/curriculum-library" component={AdminCurriculumLibrary} />
             <Route path="/portal/admin/profile" component={AdminProfile} />
             <Route path="/portal/admin/comment-templates" component={ReportCommentTemplates} />
             <Route path="/portal/admin/syllabus-topics" component={SyllabusTopicsManager} />

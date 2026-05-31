@@ -562,6 +562,47 @@ export const syllabusTopics = pgTable("syllabus_topics", {
   syllabusTopicsUniqueIdx: uniqueIndex("syllabus_topics_unique_idx").on(table.classId, table.subjectId, table.termId, table.name),
 }));
 
+// Curriculum Template Library — Global reusable curriculum templates (Super Admin managed)
+export const curriculumTemplates = pgTable("curriculum_templates", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  level: varchar("level", { length: 50 }).notNull(), // 'primary' | 'jss' | 'ss' | 'custom'
+  className: varchar("class_name", { length: 100 }).notNull(),
+  subjectName: varchar("subject_name", { length: 150 }).notNull(),
+  description: text("description"),
+  isPublished: boolean("is_published").notNull().default(false),
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  curriculumTemplatesLevelIdx: index("curriculum_templates_level_idx").on(table.level),
+  curriculumTemplatesClassIdx: index("curriculum_templates_class_idx").on(table.className),
+  curriculumTemplatesSubjectIdx: index("curriculum_templates_subject_idx").on(table.subjectName),
+  curriculumTemplatesPublishedIdx: index("curriculum_templates_published_idx").on(table.isPublished),
+}));
+
+// Curriculum Template Topics — Weekly topics within a template
+export const curriculumTemplateTopics = pgTable("curriculum_template_topics", {
+  id: serial("id").primaryKey(),
+  templateId: integer("template_id").notNull().references(() => curriculumTemplates.id, { onDelete: 'cascade' }),
+  term: varchar("term", { length: 20 }).notNull(), // 'first' | 'second' | 'third'
+  weekNumber: integer("week_number").notNull().default(1),
+  orderNumber: integer("order_number").notNull().default(0),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  curriculumTopicsTemplateIdx: index("curriculum_topics_template_idx").on(table.templateId),
+  curriculumTopicsTermIdx: index("curriculum_topics_term_idx").on(table.term),
+  curriculumTopicsTemplateTermIdx: index("curriculum_topics_template_term_idx").on(table.templateId, table.term),
+}));
+
+export type CurriculumTemplate = typeof curriculumTemplates.$inferSelect;
+export type InsertCurriculumTemplate = typeof curriculumTemplates.$inferInsert;
+export type CurriculumTemplateTopic = typeof curriculumTemplateTopics.$inferSelect;
+export type InsertCurriculumTemplateTopic = typeof curriculumTemplateTopics.$inferInsert;
+
+
 // Lesson Notes — Teacher-created lesson notes tied to syllabus topics, with approval workflow
 // Status flow: draft → submitted → approved → published (or rejected back to draft)
 export const lessonNotes = pgTable("lesson_notes", {
