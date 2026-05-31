@@ -14,7 +14,7 @@ import type {
   ExamResult, InsertExamResult, Announcement, InsertAnnouncement,
   Message, InsertMessage, Gallery, InsertGallery, GalleryCategory, InsertGalleryCategory,
   HomePageContent, InsertHomePageContent, ContactMessage, InsertContactMessage,
-  Role, AcademicTerm, ExamQuestion, InsertExamQuestion, QuestionOption, InsertQuestionOption,
+  Role, AcademicTerm, AcademicSession, InsertAcademicSession, ExamQuestion, InsertExamQuestion, QuestionOption, InsertQuestionOption,
   ExamSession, InsertExamSession, StudentAnswer, InsertStudentAnswer,
   StudyResource, InsertStudyResource, PerformanceEvent, InsertPerformanceEvent,
   TeacherClassAssignment, InsertTeacherClassAssignment, GradingTask, InsertGradingTask, AuditLog, InsertAuditLog, ReportCard, ReportCardItem,
@@ -148,10 +148,20 @@ export interface IStorage {
   updateSubject(id: number, subject: Partial<InsertSubject>): Promise<Subject | undefined>;
   deleteSubject(id: number): Promise<boolean>;
 
+  // Academic sessions
+  getAcademicSessions(): Promise<AcademicSession[]>;
+  getAcademicSession(id: number): Promise<AcademicSession | undefined>;
+  getActiveAcademicSession(): Promise<AcademicSession | undefined>;
+  createAcademicSession(session: InsertAcademicSession): Promise<AcademicSession>;
+  updateAcademicSession(id: number, session: Partial<InsertAcademicSession>): Promise<AcademicSession | undefined>;
+  deleteAcademicSession(id: number): Promise<boolean>;
+  setActiveAcademicSession(id: number): Promise<AcademicSession | undefined>;
+
   // Academic terms
   getCurrentTerm(): Promise<AcademicTerm | undefined>;
   getTerms(): Promise<AcademicTerm[]>;
   getAcademicTerms(): Promise<AcademicTerm[]>;
+  getAcademicTerm(id: number): Promise<AcademicTerm | undefined>;
   createAcademicTerm(term: any): Promise<AcademicTerm>;
   updateAcademicTerm(id: number, term: any): Promise<AcademicTerm | undefined>;
   deleteAcademicTerm(id: number): Promise<boolean>;
@@ -2054,6 +2064,42 @@ export class DatabaseStorage implements IStorage {
     const result = await db.delete(schema.subjects).where(eq(schema.subjects.id, id));
     return (result as any).length > 0 || true;
   }
+  // Academic sessions
+  async getAcademicSessions(): Promise<AcademicSession[]> {
+    return db.select().from(schema.academicSessions).orderBy(desc(schema.academicSessions.startDate));
+  }
+
+  async getAcademicSession(id: number): Promise<AcademicSession | undefined> {
+    const result = await db.select().from(schema.academicSessions).where(eq(schema.academicSessions.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getActiveAcademicSession(): Promise<AcademicSession | undefined> {
+    const result = await db.select().from(schema.academicSessions).where(eq(schema.academicSessions.isActive, true)).limit(1);
+    return result[0];
+  }
+
+  async createAcademicSession(session: InsertAcademicSession): Promise<AcademicSession> {
+    const result = await db.insert(schema.academicSessions).values(session).returning();
+    return result[0];
+  }
+
+  async updateAcademicSession(id: number, session: Partial<InsertAcademicSession>): Promise<AcademicSession | undefined> {
+    const result = await db.update(schema.academicSessions).set(session).where(eq(schema.academicSessions.id, id)).returning();
+    return result[0];
+  }
+
+  async deleteAcademicSession(id: number): Promise<boolean> {
+    const result = await db.delete(schema.academicSessions).where(eq(schema.academicSessions.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async setActiveAcademicSession(id: number): Promise<AcademicSession | undefined> {
+    await db.update(schema.academicSessions).set({ isActive: false });
+    const result = await db.update(schema.academicSessions).set({ isActive: true }).where(eq(schema.academicSessions.id, id)).returning();
+    return result[0];
+  }
+
   // Academic terms
   async getCurrentTerm(): Promise<AcademicTerm | undefined> {
     const result = await db.select().from(schema.academicTerms).where(eq(schema.academicTerms.isCurrent, true)).limit(1);

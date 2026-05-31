@@ -423,6 +423,27 @@ function sanitizeLogData(data: any): any {
       }
     });
     console.log('✅ Sync retry job initialized (runs every 5 minutes)');
+
+    // Run daily at midnight - auto-transition term statuses based on dates
+    const { runTermTransitions } = await import('./academic-calendar-service');
+    cron.default.schedule('0 0 * * *', async () => {
+      try {
+        console.log('🗓️ Running academic calendar term transition check...');
+        const result = await runTermTransitions();
+        if (result.activated.length > 0 || result.completed.length > 0) {
+          console.log(`✅ Term transitions: ${result.activated.length} activated, ${result.completed.length} completed`);
+        }
+        if (result.errors.length > 0) {
+          console.log(`⚠️ Term transition errors: ${result.errors.join(', ')}`);
+        }
+      } catch (error: any) {
+        console.error('❌ Term transition job error:', error.message);
+      }
+    });
+    // Also run immediately on startup to catch any missed transitions
+    runTermTransitions().catch((err: any) => console.error('❌ Startup term transition error:', err.message));
+    console.log('✅ Academic calendar cron initialized (runs daily at midnight)');
+
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.log(`⚠️ Scheduled jobs initialization warning: ${errorMessage}`);

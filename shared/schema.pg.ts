@@ -127,6 +127,21 @@ export const notifications = pgTable("notifications", {
   notificationsIsReadIdx: index("notifications_is_read_idx").on(table.isRead),
 }));
 
+// Academic sessions table (groups terms by school year)
+export const academicSessions = pgTable("academic_sessions", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  year: varchar("year", { length: 20 }).notNull().unique(),
+  startDate: varchar("start_date", { length: 10 }).notNull(),
+  endDate: varchar("end_date", { length: 10 }).notNull(),
+  isActive: boolean("is_active").notNull().default(false),
+  description: text("description"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  academicSessionsYearIdx: index("academic_sessions_year_idx").on(table.year),
+  academicSessionsActiveIdx: index("academic_sessions_active_idx").on(table.isActive),
+}));
+
 // Academic terms table
 export const academicTerms = pgTable("academic_terms", {
   id: serial("id").primaryKey(),
@@ -138,11 +153,13 @@ export const academicTerms = pgTable("academic_terms", {
   status: varchar("status", { length: 20 }).notNull().default('upcoming'),
   isLocked: boolean("is_locked").notNull().default(false),
   description: text("description"),
+  sessionId: integer("session_id").references(() => academicSessions.id, { onDelete: 'set null' }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => ({
   academicTermsYearIdx: index("academic_terms_year_idx").on(table.year),
   academicTermsStatusIdx: index("academic_terms_status_idx").on(table.status),
   academicTermsCurrentIdx: index("academic_terms_current_idx").on(table.isCurrent),
+  academicTermsSessionIdx: index("academic_terms_session_idx").on(table.sessionId),
 }));
 
 // Classes table
@@ -1321,6 +1338,8 @@ export type SuperAdminProfile = typeof superAdminProfiles.$inferSelect;
 export type InsertSuperAdminProfile = typeof superAdminProfiles.$inferInsert;
 export type AcademicTerm = typeof academicTerms.$inferSelect;
 export type InsertAcademicTerm = typeof academicTerms.$inferInsert;
+export type AcademicSession = typeof academicSessions.$inferSelect;
+export type InsertAcademicSession = typeof academicSessions.$inferInsert;
 export type SystemSettings = typeof systemSettings.$inferSelect;
 export type InsertSystemSettings = typeof systemSettings.$inferInsert;
 export type Notification = typeof notifications.$inferSelect;

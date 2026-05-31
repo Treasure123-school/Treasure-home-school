@@ -9,6 +9,7 @@ import { storage } from "../storage";
 import { authenticateUser, authorizeRoles, ROLES } from "./middleware";
 import { realtimeService } from "../realtime-service";
 import { sendSuccess, sendBadRequest, sendNotFound, handleRouteError } from "../utils/response-helpers";
+import { checkTermOverlap } from "../academic-calendar-service";
 
 const router = Router();
 
@@ -75,6 +76,16 @@ router.post('/', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any,
     if (!yearValidation.valid) {
       return sendBadRequest(res, yearValidation.error!);
     }
+
+    if (req.body.startDate >= req.body.endDate) {
+      return sendBadRequest(res, 'startDate must be before endDate');
+    }
+
+    const overlap = await checkTermOverlap(req.body.startDate, req.body.endDate);
+    if (overlap.hasOverlap) {
+      const names = overlap.conflictingTerms.map((t: any) => t.name).join(', ');
+      return sendBadRequest(res, `Term date range overlaps with existing term(s): ${names}`);
+    }
     
     const term = await storage.createAcademicTerm(req.body);
     
@@ -108,6 +119,19 @@ router.put('/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: an
       const yearValidation = validateYearFormat(req.body.year);
       if (!yearValidation.valid) {
         return sendBadRequest(res, yearValidation.error!);
+      }
+    }
+
+    if (req.body.startDate || req.body.endDate) {
+      const resolvedStart = req.body.startDate ?? existingTerm.startDate;
+      const resolvedEnd = req.body.endDate ?? existingTerm.endDate;
+      if (resolvedStart >= resolvedEnd) {
+        return sendBadRequest(res, 'startDate must be before endDate');
+      }
+      const overlap = await checkTermOverlap(resolvedStart, resolvedEnd, termId);
+      if (overlap.hasOverlap) {
+        const names = overlap.conflictingTerms.map((t: any) => t.name).join(', ');
+        return sendBadRequest(res, `Term date range overlaps with existing term(s): ${names}`);
       }
     }
 
