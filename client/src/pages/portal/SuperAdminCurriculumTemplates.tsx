@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -85,6 +85,26 @@ export default function SuperAdminCurriculumTemplates() {
   // Forms
   const [tplForm, setTplForm] = useState({ title: "", level: "jss" as Level, className: "", subjectName: "", description: "" });
   const [topicForm, setTopicForm] = useState({ term: "first" as Term, weekNumber: 1, name: "", description: "" });
+
+  // ── Infinite scroll ───────────────────────────────────────────────────────────
+  const PAGE_SIZE = 24;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [search, levelFilter]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setVisibleCount(c => c + PAGE_SIZE); },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // ── Queries ──────────────────────────────────────────────────────────────────
   const { data: stats } = useQuery<{ total: number; published: number; draft: number; totalTopics: number }>({
@@ -186,6 +206,9 @@ export default function SuperAdminCurriculumTemplates() {
     (levelFilter === "all" || t.level === levelFilter)
   );
 
+  const visibleFiltered = filtered.slice(0, visibleCount);
+  const hasMore = visibleCount < filtered.length;
+
   // ── Render ────────────────────────────────────────────────────────────────────
   return (
     <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
@@ -260,7 +283,11 @@ export default function SuperAdminCurriculumTemplates() {
             <p className="text-sm">Create your first curriculum template to get started</p>
           </div>
         ) : (
-          filtered.map(t => (
+          <>
+          <p className="text-xs text-muted-foreground pb-1">
+            Showing {visibleFiltered.length} of {filtered.length} templates
+          </p>
+          {visibleFiltered.map(t => (
             <Card key={t.id} className="overflow-hidden" data-testid={`card-template-${t.id}`}>
               <div className="flex items-center gap-3 p-4">
                 {/* Expand toggle */}
@@ -319,7 +346,22 @@ export default function SuperAdminCurriculumTemplates() {
                 </div>
               )}
             </Card>
-          ))
+          ))}
+
+          {/* Infinite scroll sentinel */}
+          <div ref={sentinelRef} className="py-2 flex justify-center">
+            {hasMore && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex gap-1">
+                  <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:0ms]" />
+                  <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:150ms]" />
+                  <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:300ms]" />
+                </div>
+                Loading more...
+              </div>
+            )}
+          </div>
+          </>
         )}
       </div>
 

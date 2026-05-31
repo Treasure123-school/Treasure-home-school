@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -93,6 +93,26 @@ export default function AdminCurriculumLibrary() {
   const [publishOnImport, setPublishOnImport] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
+  // ── Infinite scroll ───────────────────────────────────────────────────────────
+  const PAGE_SIZE = 24;
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [search, levelFilter]);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setVisibleCount(c => c + PAGE_SIZE); },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   // ── Queries ──────────────────────────────────────────────────────────────────
   const { data: rawTemplates, isLoading } = useQuery<Template[]>({
     queryKey: ["/api/curriculum-templates", search, levelFilter, "admin"],
@@ -174,9 +194,12 @@ export default function AdminCurriculumLibrary() {
     (levelFilter === "all" || t.level === levelFilter)
   );
 
-  // Group templates by level then class
+  const visibleTemplates = filteredTemplates.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredTemplates.length;
+
+  // Group only the visible slice by level then class
   const grouped: Record<string, Template[]> = {};
-  for (const t of filteredTemplates) {
+  for (const t of visibleTemplates) {
     const key = `${LEVEL_LABELS[t.level]} — ${t.className}`;
     if (!grouped[key]) grouped[key] = [];
     grouped[key].push(t);
@@ -241,41 +264,62 @@ export default function AdminCurriculumLibrary() {
           <p className="text-sm">Published curriculum templates will appear here</p>
         </div>
       ) : (
-        Object.entries(grouped).map(([groupKey, groupTemplates]) => (
-          <div key={groupKey} className="space-y-2">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{groupKey}</h3>
-              <Separator className="flex-1" />
-              <span className="text-xs text-muted-foreground">{groupTemplates.length}</span>
-            </div>
-            <div className="grid gap-2">
-              {groupTemplates.map(t => (
-                <Card key={t.id} className="hover:border-primary/50 transition-colors" data-testid={`card-library-${t.id}`}>
-                  <CardContent className="flex items-center gap-3 p-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 mb-1">
-                        <span className="font-medium text-sm">{t.title}</span>
-                        <Badge className={`text-xs ${LEVEL_COLORS[t.level]}`}>{LEVEL_LABELS[t.level]}</Badge>
+        <div className="space-y-6">
+          {/* Count indicator */}
+          <p className="text-xs text-muted-foreground">
+            Showing {visibleTemplates.length} of {filteredTemplates.length} templates
+          </p>
+
+          {Object.entries(grouped).map(([groupKey, groupTemplates]) => (
+            <div key={groupKey} className="space-y-2">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{groupKey}</h3>
+                <Separator className="flex-1" />
+                <span className="text-xs text-muted-foreground">{groupTemplates.length}</span>
+              </div>
+              <div className="grid gap-2">
+                {groupTemplates.map(t => (
+                  <Card key={t.id} className="hover:border-primary/50 transition-colors" data-testid={`card-library-${t.id}`}>
+                    <CardContent className="flex items-center gap-3 p-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <span className="font-medium text-sm">{t.title}</span>
+                          <Badge className={`text-xs ${LEVEL_COLORS[t.level]}`}>{LEVEL_LABELS[t.level]}</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {t.subjectName} · {t.topicCount} topics across 3 terms
+                        </p>
+                        {t.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{t.description}</p>}
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        {t.subjectName} · {t.topicCount} topics across 3 terms
-                      </p>
-                      {t.description && <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{t.description}</p>}
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <Button size="sm" variant="outline" onClick={() => { setPreviewId(t.id); setActivePreviewTab("first"); }} data-testid={`button-preview-${t.id}`}>
-                        <Eye className="h-4 w-4 mr-1" /> Preview
-                      </Button>
-                      <Button size="sm" onClick={() => openImport(t)} data-testid={`button-import-${t.id}`}>
-                        <Download className="h-4 w-4 mr-1" /> Import
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button size="sm" variant="outline" onClick={() => { setPreviewId(t.id); setActivePreviewTab("first"); }} data-testid={`button-preview-${t.id}`}>
+                          <Eye className="h-4 w-4 mr-1" /> Preview
+                        </Button>
+                        <Button size="sm" onClick={() => openImport(t)} data-testid={`button-import-${t.id}`}>
+                          <Download className="h-4 w-4 mr-1" /> Import
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
+          ))}
+
+          {/* Infinite scroll sentinel */}
+          <div ref={sentinelRef} className="py-2 flex justify-center">
+            {hasMore && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex gap-1">
+                  <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:0ms]" />
+                  <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:150ms]" />
+                  <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:300ms]" />
+                </div>
+                Loading more...
+              </div>
+            )}
           </div>
-        ))
+        </div>
       )}
 
       {/* ── Preview Dialog ─────────────────────────────────────────────────────── */}
