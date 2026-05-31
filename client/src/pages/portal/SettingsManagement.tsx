@@ -826,7 +826,7 @@ function GradingScaleSection() {
   });
 
   const duplicateMutation = useMutation({
-    mutationFn: (id: number) => apiRequest('POST', `/api/grade-scales/${id}/duplicate`),
+    mutationFn: (id: number) => apiRequest('POST', `/api/grade-scales/${id}/duplicate`).then(r => r.json()),
     onMutate: async () => { await queryClient.cancelQueries({ queryKey: scalesCacheKey }); },
     onSuccess: (s: any) => {
       // Append the new duplicate directly — no refetch needed
@@ -861,7 +861,7 @@ function GradingScaleSection() {
   });
 
   const createScaleMutation = useMutation({
-    mutationFn: (data: any) => apiRequest('POST', '/api/grade-scales', data),
+    mutationFn: (data: any) => apiRequest('POST', '/api/grade-scales', data).then(r => r.json()),
     onMutate: async () => { setCreateOpen(false); setScaleForm({ name: '', description: '', copyFromId: '' }); },
     onSuccess: (s: any) => {
       // Add directly from server response — no refetch needed
@@ -893,7 +893,7 @@ function GradingScaleSection() {
   });
 
   const addBoundaryMutation = useMutation({
-    mutationFn: ({ scaleId, data }: { scaleId: number; data: any }) => apiRequest('POST', `/api/grade-scales/${scaleId}/boundaries`, data),
+    mutationFn: ({ scaleId, data }: { scaleId: number; data: any }) => apiRequest('POST', `/api/grade-scales/${scaleId}/boundaries`, data).then(r => r.json()),
     onMutate: async ({ scaleId, data }: { scaleId: number; data: any }) => {
       await queryClient.cancelQueries({ queryKey: scalesCacheKey });
       const prev = snap();
