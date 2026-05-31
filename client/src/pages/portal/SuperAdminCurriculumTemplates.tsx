@@ -89,30 +89,35 @@ export default function SuperAdminCurriculumTemplates() {
   // ── Infinite scroll ───────────────────────────────────────────────────────────
   const PAGE_SIZE = 24;
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const loadingRef = useRef(false);
+  const isBusyRef = useRef(false);
+  const totalRef = useRef(0);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
+    isBusyRef.current = false;
   }, [search, levelFilter]);
 
+  // Recreate observer after every render so scroll-up-then-down always works
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
+    // New items have rendered — release the lock
+    isBusyRef.current = false;
+
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && !loadingRef.current) {
-          loadingRef.current = true;
-          setIsLoadingMore(true);
-          setTimeout(() => {
-            setVisibleCount(c => c + PAGE_SIZE);
-            setIsLoadingMore(false);
-            loadingRef.current = false;
-          }, 350);
-        }
+        if (!entry.isIntersecting || isBusyRef.current) return;
+        isBusyRef.current = true;
+        setVisibleCount(c => {
+          if (c >= totalRef.current) {
+            isBusyRef.current = false;
+            return c;
+          }
+          return c + PAGE_SIZE;
+        });
       },
-      { threshold: 0.1, rootMargin: "0px 0px 80px 0px" }
+      { threshold: 0, rootMargin: "0px 0px 160px 0px" }
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -217,6 +222,9 @@ export default function SuperAdminCurriculumTemplates() {
       t.className.toLowerCase().includes(search.toLowerCase())) &&
     (levelFilter === "all" || t.level === levelFilter)
   );
+
+  // Keep totalRef in sync so the observer closure always sees fresh length
+  totalRef.current = filtered.length;
 
   const visibleFiltered = filtered.slice(0, visibleCount);
   const hasMore = visibleCount < filtered.length;
@@ -360,15 +368,16 @@ export default function SuperAdminCurriculumTemplates() {
             </Card>
           ))}
 
-          {/* Infinite scroll sentinel */}
-          <div ref={sentinelRef} className="py-4 flex justify-center">
-            {(hasMore || isLoadingMore) && (
+          {/* Sentinel: always in DOM so the ref stays stable */}
+          <div ref={sentinelRef} className="h-1 w-full" aria-hidden="true" />
+          {hasMore && (
+            <div className="py-4 flex justify-center">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin text-primary" />
                 <span>Loading more templates…</span>
               </div>
-            )}
-          </div>
+            </div>
+          )}
           </>
         )}
       </div>
