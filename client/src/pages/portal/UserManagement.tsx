@@ -328,8 +328,111 @@ export default function UserManagement() {
         />
       </div>
 
-      {/* ── User table ── */}
-      <Card className="overflow-hidden">
+      {/* ── Mobile card list (hidden on md+) ── */}
+      <div className="md:hidden space-y-3">
+        {isLoading ? (
+          <Card className="p-8 flex items-center justify-center gap-2 text-muted-foreground">
+            <RotateCcw className="h-4 w-4 animate-spin" />
+            <span className="text-sm">Loading users…</span>
+          </Card>
+        ) : filteredUsers.length === 0 ? (
+          <Card className="p-8 text-center text-muted-foreground text-sm">
+            No users found matching your search.
+          </Card>
+        ) : (
+          filteredUsers.map((user) => (
+            <Card key={user.id} className="p-4" data-testid={`card-user-${user.id}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar className="h-10 w-10 border shrink-0">
+                    <AvatarImage src={user.profileImageUrl || undefined} />
+                    <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold uppercase">
+                      {user.firstName[0]}{user.lastName[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm truncate">
+                      {user.firstName} {user.lastName}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                  </div>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      disabled={unsuspendMutation.isPending && unsuspendMutation.variables === user.id}
+                      data-testid={`button-actions-mobile-${user.id}`}
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-52">
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">Manage Account</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="cursor-pointer">
+                      <Eye className="h-4 w-4 mr-2" /> View Profile
+                    </DropdownMenuItem>
+                    {user.status === 'pending' && (
+                      <DropdownMenuItem
+                        className="text-green-600 focus:text-green-700 cursor-pointer"
+                        onClick={() => approveMutation.mutate(user.id)}
+                        data-testid={`button-approve-mobile-${user.id}`}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-2" /> Verify &amp; Activate
+                      </DropdownMenuItem>
+                    )}
+                    {user.status === 'suspended' && (
+                      <DropdownMenuItem
+                        className="text-green-600 focus:text-green-700 cursor-pointer"
+                        onClick={() => setUserToUnsuspend(user)}
+                        data-testid={`button-unsuspend-mobile-${user.id}`}
+                      >
+                        <ShieldOff className="h-4 w-4 mr-2" /> Unsuspend Account
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem
+                      className="cursor-pointer"
+                      onClick={() => handleOpenResetPassword(user)}
+                      data-testid={`button-reset-password-mobile-${user.id}`}
+                    >
+                      <KeyRound className="h-4 w-4 mr-2 text-amber-500" /> Reset Password
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer">
+                      <UserCog className="h-4 w-4 mr-2 text-purple-500" /> Modify Role
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer">
+                      <Trash2 className="h-4 w-4 mr-2" /> Delete Account
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <div className="mt-3 flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <Shield className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-xs font-medium">{getRoleNameById(user.roleId)}</span>
+                </div>
+                <Badge className={`text-xs ${
+                  user.status === 'active' ? 'bg-green-100 text-green-700 border-green-200' :
+                  user.status === 'pending' ? 'bg-amber-100 text-amber-700 border-amber-200' :
+                  'bg-red-100 text-red-700 border-red-200'
+                } border capitalize`}>
+                  {user.status}
+                </Badge>
+              </div>
+            </Card>
+          ))
+        )}
+        {filteredUsers.length > 0 && (
+          <p className="text-xs text-muted-foreground px-1">{filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''} shown</p>
+        )}
+      </div>
+
+      {/* ── Desktop table (hidden on mobile) ── */}
+      <Card className="hidden md:block overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-muted/30">
