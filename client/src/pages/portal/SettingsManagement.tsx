@@ -775,7 +775,7 @@ function GradingScaleSection() {
     if (!scale) return null;
     const { minScore, maxScore } = boundaryForm;
     if (minScore > maxScore) return null;
-    const overlapping = scale.boundaries.find(b =>
+    const overlapping = (scale.boundaries ?? []).find(b =>
       b.id !== editingBoundary?.id && minScore <= b.maxScore && maxScore >= b.minScore
     );
     if (!overlapping) return null;
@@ -924,7 +924,7 @@ function GradingScaleSection() {
       await queryClient.cancelQueries({ queryKey: scalesCacheKey });
       const prev = snap();
       patch(old => old.map(s => s.id !== scaleId ? s : {
-        ...s, boundaries: s.boundaries.map(b => b.id !== boundaryId ? b : { ...b, ...data })
+        ...s, boundaries: (s.boundaries ?? []).map(b => b.id !== boundaryId ? b : { ...b, ...data })
       }));
       setBoundaryDialogOpen(false); resetBoundaryForm();
       return { prev };
@@ -1051,7 +1051,7 @@ function GradingScaleSection() {
           <div className="space-y-3">
             {scales.map(scale => {
               const isExpanded = expandedScaleId === scale.id;
-              const sorted = [...scale.boundaries].sort((a, b) => b.minScore - a.minScore);
+              const sorted = [...(scale.boundaries ?? [])].sort((a, b) => b.minScore - a.minScore);
               return (
                 <div key={scale.id} className={cn('rounded-lg border transition-all', scale.isActive ? 'border-green-500/40 bg-green-50/50 dark:bg-green-950/20' : 'border-border bg-card')}>
                   <div className="flex items-start gap-3 p-4">
@@ -1064,7 +1064,7 @@ function GradingScaleSection() {
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         {scale.description && <p className="text-xs text-muted-foreground">{scale.description}</p>}
-                        <span className="text-xs text-muted-foreground/60">{scale.boundaries.length} {scale.boundaries.length === 1 ? 'boundary' : 'boundaries'}</span>
+                        <span className="text-xs text-muted-foreground/60">{(scale.boundaries ?? []).length} {(scale.boundaries ?? []).length === 1 ? 'boundary' : 'boundaries'}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
@@ -1164,7 +1164,7 @@ function GradingScaleSection() {
             )}
           </div>
 
-          {activeScale && activeScale.boundaries.length > 0 && (
+          {activeScale && (activeScale.boundaries ?? []).length > 0 && (
             <div className="overflow-x-auto rounded border">
               <Table>
                 <TableHeader>
@@ -1176,7 +1176,7 @@ function GradingScaleSection() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {[...activeScale.boundaries].sort((a, b) => b.minScore - a.minScore).map(b => (
+                  {[...(activeScale.boundaries ?? [])].sort((a, b) => b.minScore - a.minScore).map(b => (
                     <TableRow key={b.id} className={cn(previewResult?.id === b.id ? 'bg-primary/8 font-medium' : '')}>
                       <TableCell className="py-1.5"><Badge variant="outline" className={cn('text-xs font-bold', previewResult?.id === b.id ? gradeColor(b.grade) : '')}>{b.grade}</Badge></TableCell>
                       <TableCell className="py-1.5 text-xs">{b.minScore}–{b.maxScore}%</TableCell>
@@ -1213,7 +1213,7 @@ function GradingScaleSection() {
                 <Select value={scaleForm.copyFromId} onValueChange={v => setScaleForm(p => ({ ...p, copyFromId: v }))}>
                   <SelectTrigger data-testid="select-copy-from"><SelectValue placeholder="Start with no boundaries" /></SelectTrigger>
                   <SelectContent>
-                    {scales.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name} ({s.boundaries.length})</SelectItem>)}
+                    {scales.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name} ({(s.boundaries ?? []).length})</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
