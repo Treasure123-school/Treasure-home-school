@@ -264,6 +264,15 @@ function sanitizeLogData(data: any): any {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.log(`⚠️ Curriculum templates seeding failed: ${errorMessage}`);
   }
+  // Gap-fill: add any missing Nigerian curriculum templates
+  try {
+    const { seedCurriculumGapFill } = await import("./seed-curriculum-gap-fill");
+    const result = await seedCurriculumGapFill();
+    result.report.forEach((line) => console.log(line));
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.log(`⚠️ Curriculum gap-fill seeding failed: ${errorMessage}`);
+  }
 
   // Local File Storage Setup
   try {
