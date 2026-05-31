@@ -94,19 +94,20 @@ export default function AdminCurriculumLibrary() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
   // ── Queries ──────────────────────────────────────────────────────────────────
-  const { data: templates = [], isLoading } = useQuery<Template[]>({
+  const { data: rawTemplates, isLoading } = useQuery<Template[]>({
     queryKey: ["/api/curriculum-templates", search, levelFilter, "admin"],
     queryFn: () => {
       const p = new URLSearchParams();
       if (search) p.set("search", search);
       if (levelFilter !== "all") p.set("level", levelFilter);
-      return fetch(`/api/curriculum-templates?${p}`).then(r => r.json());
+      return apiRequest("GET", `/api/curriculum-templates?${p}`).then(r => r.json());
     },
   });
+  const templates: Template[] = Array.isArray(rawTemplates) ? rawTemplates : [];
 
   const { data: detail, isLoading: detailLoading } = useQuery<TemplateDetail>({
     queryKey: ["/api/curriculum-templates", previewId],
-    queryFn: () => fetch(`/api/curriculum-templates/${previewId}`).then(r => r.json()),
+    queryFn: () => apiRequest("GET", `/api/curriculum-templates/${previewId}`).then(r => r.json()),
     enabled: previewId !== null,
   });
 
