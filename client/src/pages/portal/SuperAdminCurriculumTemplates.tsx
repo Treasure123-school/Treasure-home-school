@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   BookOpen, Plus, Edit2, Trash2, Eye, Globe, Lock, Search,
   ChevronDown, ChevronRight, Layers, BookMarked, FileText,
-  BarChart3, CheckCircle, Clock,
+  BarChart3, CheckCircle, Clock, Loader2,
 } from "lucide-react";
 
 type Level = "primary" | "jss" | "ss" | "custom";
@@ -89,7 +89,9 @@ export default function SuperAdminCurriculumTemplates() {
   // ── Infinite scroll ───────────────────────────────────────────────────────────
   const PAGE_SIZE = 24;
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
+  const loadingRef = useRef(false);
 
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
@@ -99,12 +101,22 @@ export default function SuperAdminCurriculumTemplates() {
     const el = sentinelRef.current;
     if (!el) return;
     const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setVisibleCount(c => c + PAGE_SIZE); },
-      { threshold: 0.1 }
+      ([entry]) => {
+        if (entry.isIntersecting && !loadingRef.current) {
+          loadingRef.current = true;
+          setIsLoadingMore(true);
+          setTimeout(() => {
+            setVisibleCount(c => c + PAGE_SIZE);
+            setIsLoadingMore(false);
+            loadingRef.current = false;
+          }, 350);
+        }
+      },
+      { threshold: 0.1, rootMargin: "0px 0px 80px 0px" }
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [visibleCount]);
 
   // ── Queries ──────────────────────────────────────────────────────────────────
   const { data: stats } = useQuery<{ total: number; published: number; draft: number; totalTopics: number }>({
@@ -349,15 +361,11 @@ export default function SuperAdminCurriculumTemplates() {
           ))}
 
           {/* Infinite scroll sentinel */}
-          <div ref={sentinelRef} className="py-2 flex justify-center">
-            {hasMore && (
+          <div ref={sentinelRef} className="py-4 flex justify-center">
+            {(hasMore || isLoadingMore) && (
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <div className="flex gap-1">
-                  <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:0ms]" />
-                  <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:150ms]" />
-                  <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:300ms]" />
-                </div>
-                Loading more...
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span>Loading more templates…</span>
               </div>
             )}
           </div>
