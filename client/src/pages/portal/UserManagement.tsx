@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/lib/auth";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -277,71 +277,82 @@ export default function UserManagement() {
   const strength = passwordStrength(resetForm.newPassword);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <ShieldCheck className="h-6 w-6 text-blue-600" />
-          User Management
-        </h1>
-        <p className="text-muted-foreground">
-          Manage system users, approve registrations, and control account access.
-        </p>
-      </div>
+    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
 
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <Tabs value={statusFilter} onValueChange={setStatusFilter} className="w-full md:w-auto">
-          <TabsList className="bg-slate-100 dark:bg-slate-800/50 p-1 rounded-lg">
-            <TabsTrigger value="all" className="px-4 py-2 text-xs font-semibold uppercase tracking-wider">
-              All ({counts.all})
-            </TabsTrigger>
-            <TabsTrigger value="active" className="px-4 py-2 text-xs font-semibold uppercase tracking-wider">
-              Active ({counts.active})
-            </TabsTrigger>
-            <TabsTrigger value="pending" className="px-4 py-2 text-xs font-semibold uppercase tracking-wider">
-              Pending ({counts.pending})
-            </TabsTrigger>
-            <TabsTrigger value="suspended" className="px-4 py-2 text-xs font-semibold uppercase tracking-wider">
-              Suspended ({counts.suspended})
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
-
-        <div className="relative w-full md:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, email, or ID..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-10 text-sm bg-white dark:bg-slate-950 border-slate-200 dark:border-slate-800"
-            data-testid="input-user-search"
-          />
+      {/* ── Header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <ShieldCheck className="h-6 w-6 text-primary" />
+            User Management
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Manage system users, approve registrations, and control account access.
+          </p>
         </div>
       </div>
 
-      <Card className="border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+      {/* ── Stats row ── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: 'Total', value: counts.all, color: 'text-foreground', icon: Users },
+          { label: 'Active', value: counts.active, color: 'text-green-600', icon: CheckCircle },
+          { label: 'Pending', value: counts.pending, color: 'text-amber-600', icon: Clock },
+          { label: 'Suspended', value: counts.suspended, color: 'text-destructive', icon: Ban },
+        ].map(s => (
+          <Card
+            key={s.label}
+            className={`p-4 cursor-pointer transition-all border-2 ${statusFilter === s.label.toLowerCase() || (s.label === 'Total' && statusFilter === 'all') ? 'border-primary' : 'border-transparent hover:border-primary/30'}`}
+            onClick={() => setStatusFilter(s.label === 'Total' ? 'all' : s.label.toLowerCase())}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">{s.label}</p>
+                <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
+              </div>
+              <s.icon className={`h-6 w-6 ${s.color} opacity-60`} />
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* ── Search bar ── */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by name, email, or username…"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+          data-testid="input-user-search"
+        />
+      </div>
+
+      {/* ── User table ── */}
+      <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-slate-50 dark:bg-slate-900/50">
+            <TableHeader className="bg-muted/30">
               <TableRow>
-                <TableHead className="w-[300px] text-xs font-bold uppercase tracking-widest text-slate-500">User Details</TableHead>
-                <TableHead className="text-xs font-bold uppercase tracking-widest text-slate-500">Role</TableHead>
-                <TableHead className="text-xs font-bold uppercase tracking-widest text-slate-500">Status</TableHead>
-                <TableHead className="text-right text-xs font-bold uppercase tracking-widest text-slate-500">Actions</TableHead>
+                <TableHead className="font-semibold">User</TableHead>
+                <TableHead className="font-semibold">Role</TableHead>
+                <TableHead className="font-semibold">Status</TableHead>
+                <TableHead className="text-right font-semibold">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
                   <TableCell colSpan={4} className="h-32 text-center">
-                    <div className="flex items-center justify-center gap-2 text-slate-500">
+                    <div className="flex items-center justify-center gap-2 text-muted-foreground">
                       <RotateCcw className="h-4 w-4 animate-spin" />
-                      <span className="text-sm font-medium">Loading database...</span>
+                      <span className="text-sm">Loading users…</span>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : filteredUsers.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="h-32 text-center text-muted-foreground text-sm font-medium">
+                  <TableCell colSpan={4} className="h-32 text-center text-muted-foreground text-sm">
                     No users found matching your search.
                   </TableCell>
                 </TableRow>
@@ -349,39 +360,39 @@ export default function UserManagement() {
                 filteredUsers.map((user) => (
                   <TableRow
                     key={user.id}
-                    className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors"
+                    className="hover:bg-muted/20 transition-colors"
                     data-testid={`row-user-${user.id}`}
                   >
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10 border border-slate-200 dark:border-slate-800">
+                        <Avatar className="h-9 w-9 border">
                           <AvatarImage src={user.profileImageUrl || undefined} />
-                          <AvatarFallback className="bg-blue-600 text-white text-xs font-bold uppercase">
+                          <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold uppercase">
                             {user.firstName[0]}{user.lastName[0]}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col min-w-0">
-                          <span className="font-bold text-slate-900 dark:text-slate-100 truncate">
+                          <span className="font-semibold text-sm truncate">
                             {user.firstName} {user.lastName}
                           </span>
-                          <span className="text-xs text-slate-500 truncate">{user.email}</span>
+                          <span className="text-xs text-muted-foreground truncate">{user.email}</span>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Shield className="h-3 w-3 text-blue-500" />
-                        <span className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                      <div className="flex items-center gap-1.5">
+                        <Shield className="h-3.5 w-3.5 text-primary" />
+                        <span className="text-xs font-medium">
                           {getRoleNameById(user.roleId)}
                         </span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={`${
+                      <Badge className={`text-xs ${
                         user.status === 'active' ? 'bg-green-100 text-green-700 border-green-200' :
                         user.status === 'pending' ? 'bg-amber-100 text-amber-700 border-amber-200' :
                         'bg-red-100 text-red-700 border-red-200'
-                      } font-black text-[9px] uppercase tracking-tighter h-5 px-1.5 border`}>
+                      } border capitalize`}>
                         {user.status}
                       </Badge>
                     </TableCell>
@@ -391,58 +402,50 @@ export default function UserManagement() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800"
+                            className="h-8 w-8"
                             disabled={unsuspendMutation.isPending && unsuspendMutation.variables === user.id}
                             data-testid={`button-actions-${user.id}`}
                           >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56 p-1 rounded-xl shadow-xl border-slate-200 dark:border-slate-800">
-                          <DropdownMenuLabel className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            Manage Account
-                          </DropdownMenuLabel>
+                        <DropdownMenuContent align="end" className="w-52">
+                          <DropdownMenuLabel className="text-xs text-muted-foreground">Manage Account</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="rounded-lg py-2 text-sm cursor-pointer flex items-center gap-2 font-medium">
-                            <Eye className="h-4 w-4 text-blue-500" />
-                            View Profile
+                          <DropdownMenuItem className="cursor-pointer">
+                            <Eye className="h-4 w-4 mr-2" /> View Profile
                           </DropdownMenuItem>
                           {user.status === 'pending' && (
                             <DropdownMenuItem
-                              className="rounded-lg py-2 text-sm cursor-pointer flex items-center gap-2 text-green-600 font-bold"
+                              className="text-green-600 focus:text-green-700 cursor-pointer"
                               onClick={() => approveMutation.mutate(user.id)}
                               data-testid={`button-approve-${user.id}`}
                             >
-                              <CheckCircle className="h-4 w-4" />
-                              Verify & Activate
+                              <CheckCircle className="h-4 w-4 mr-2" /> Verify &amp; Activate
                             </DropdownMenuItem>
                           )}
                           {user.status === 'suspended' && (
                             <DropdownMenuItem
-                              className="rounded-lg py-2 text-sm cursor-pointer flex items-center gap-2 text-green-600 font-bold"
+                              className="text-green-600 focus:text-green-700 cursor-pointer"
                               onClick={() => setUserToUnsuspend(user)}
                               data-testid={`button-unsuspend-${user.id}`}
                             >
-                              <ShieldOff className="h-4 w-4" />
-                              Unsuspend Account
+                              <ShieldOff className="h-4 w-4 mr-2" /> Unsuspend Account
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuItem
-                            className="rounded-lg py-2 text-sm cursor-pointer flex items-center gap-2 font-medium"
+                            className="cursor-pointer"
                             onClick={() => handleOpenResetPassword(user)}
                             data-testid={`button-reset-password-${user.id}`}
                           >
-                            <KeyRound className="h-4 w-4 text-amber-500" />
-                            Reset Password
+                            <KeyRound className="h-4 w-4 mr-2 text-amber-500" /> Reset Password
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="rounded-lg py-2 text-sm cursor-pointer flex items-center gap-2 font-medium">
-                            <UserCog className="h-4 w-4 text-purple-500" />
-                            Modify Role
+                          <DropdownMenuItem className="cursor-pointer">
+                            <UserCog className="h-4 w-4 mr-2 text-purple-500" /> Modify Role
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="rounded-lg py-2 text-sm cursor-pointer flex items-center gap-2 text-red-600 font-bold">
-                            <Trash2 className="h-4 w-4" />
-                            Delete Account
+                          <DropdownMenuItem className="text-destructive focus:text-destructive cursor-pointer">
+                            <Trash2 className="h-4 w-4 mr-2" /> Delete Account
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -453,6 +456,11 @@ export default function UserManagement() {
             </TableBody>
           </Table>
         </div>
+        {filteredUsers.length > 0 && (
+          <CardContent className="py-3 border-t">
+            <p className="text-xs text-muted-foreground">{filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''} shown</p>
+          </CardContent>
+        )}
       </Card>
 
       {/* Unsuspend Confirmation Dialog */}
