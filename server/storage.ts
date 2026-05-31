@@ -155,7 +155,7 @@ export interface IStorage {
   createAcademicSession(session: InsertAcademicSession): Promise<AcademicSession>;
   updateAcademicSession(id: number, session: Partial<InsertAcademicSession>): Promise<AcademicSession | undefined>;
   deleteAcademicSession(id: number): Promise<boolean>;
-  setActiveAcademicSession(id: number): Promise<AcademicSession | undefined>;
+  markSessionAsCurrent(id: number): Promise<AcademicSession | undefined>;
 
   // Academic terms
   getCurrentTerm(): Promise<AcademicTerm | undefined>;
@@ -2075,7 +2075,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getActiveAcademicSession(): Promise<AcademicSession | undefined> {
-    const result = await db.select().from(schema.academicSessions).where(eq(schema.academicSessions.isActive, true)).limit(1);
+    const result = await db.select().from(schema.academicSessions).where(eq(schema.academicSessions.isCurrent, true)).limit(1);
     return result[0];
   }
 
@@ -2094,9 +2094,9 @@ export class DatabaseStorage implements IStorage {
     return result.length > 0;
   }
 
-  async setActiveAcademicSession(id: number): Promise<AcademicSession | undefined> {
-    await db.update(schema.academicSessions).set({ isActive: false });
-    const result = await db.update(schema.academicSessions).set({ isActive: true }).where(eq(schema.academicSessions.id, id)).returning();
+  async markSessionAsCurrent(id: number): Promise<AcademicSession | undefined> {
+    await db.update(schema.academicSessions).set({ isCurrent: false });
+    const result = await db.update(schema.academicSessions).set({ isCurrent: true, status: 'active' }).where(eq(schema.academicSessions.id, id)).returning();
     return result[0];
   }
 

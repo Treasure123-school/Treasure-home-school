@@ -1442,6 +1442,18 @@ export type Invite = typeof invites.$inferSelect;
 export type Student = typeof students.$inferSelect;
 export type Class = typeof classes.$inferSelect;
 export type Subject = typeof subjects.$inferSelect;
+export type AcademicSession = {
+  id: number;
+  name: string;
+  year: string;
+  startDate: string;
+  endDate: string;
+  isCurrent: boolean;
+  status: string;
+  description: string | null;
+  createdAt: Date;
+};
+export type InsertAcademicSession = Omit<AcademicSession, 'id' | 'createdAt'>;
 export type AcademicTerm = typeof academicTerms.$inferSelect;
 export type Attendance = typeof attendance.$inferSelect;
 export type Exam = typeof exams.$inferSelect;

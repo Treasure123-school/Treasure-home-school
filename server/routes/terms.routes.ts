@@ -81,10 +81,11 @@ router.post('/', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any,
       return sendBadRequest(res, 'startDate must be before endDate');
     }
 
-    const overlap = await checkTermOverlap(req.body.startDate, req.body.endDate);
+    const sessionId = req.body.sessionId ?? null;
+    const overlap = await checkTermOverlap(req.body.startDate, req.body.endDate, undefined, sessionId);
     if (overlap.hasOverlap) {
       const names = overlap.conflictingTerms.map((t: any) => t.name).join(', ');
-      return sendBadRequest(res, `Term date range overlaps with existing term(s): ${names}`);
+      return sendBadRequest(res, `Term date range overlaps with existing term(s) in this session: ${names}`);
     }
     
     const term = await storage.createAcademicTerm(req.body);
@@ -128,10 +129,11 @@ router.put('/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: an
       if (resolvedStart >= resolvedEnd) {
         return sendBadRequest(res, 'startDate must be before endDate');
       }
-      const overlap = await checkTermOverlap(resolvedStart, resolvedEnd, termId);
+      const sessionId = req.body.sessionId ?? (existingTerm as any).sessionId ?? null;
+      const overlap = await checkTermOverlap(resolvedStart, resolvedEnd, termId, sessionId);
       if (overlap.hasOverlap) {
         const names = overlap.conflictingTerms.map((t: any) => t.name).join(', ');
-        return sendBadRequest(res, `Term date range overlaps with existing term(s): ${names}`);
+        return sendBadRequest(res, `Term date range overlaps with existing term(s) in this session: ${names}`);
       }
     }
 

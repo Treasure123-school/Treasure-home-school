@@ -9,7 +9,7 @@ import { Router, Request, Response } from "express";
 import { storage } from "../storage";
 import { authenticateUser, authorizeRoles, ROLES } from "./middleware";
 import { sendSuccess, sendBadRequest, sendNotFound, handleRouteError } from "../utils/response-helpers";
-import { checkSessionOverlap } from "../academic-calendar-service";
+import { checkSessionOverlap, checkTermOverlap } from "../academic-calendar-service";
 import { realtimeService } from "../realtime-service";
 
 const router = Router();
@@ -102,7 +102,7 @@ router.put("/:id", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: an
     const existing = await storage.getAcademicSession(id);
     if (!existing) return sendNotFound(res, "Academic session not found");
 
-    const { name, year, startDate, endDate, description, isActive } = req.body;
+    const { name, year, startDate, endDate, description, status } = req.body;
 
     if (year) {
       const yearCheck = validateYearFormat(year);
@@ -124,7 +124,7 @@ router.put("/:id", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: an
       }
     }
 
-    const session = await storage.updateAcademicSession(id, { name, year, startDate, endDate, description, isActive });
+    const session = await storage.updateAcademicSession(id, { name, year, startDate, endDate, description, status });
     realtimeService.emitToRole("admin", "session.updated", session);
     sendSuccess(res, session);
   } catch (error: any) {
@@ -159,8 +159,8 @@ router.delete("/:id", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req:
   }
 });
 
-// PUT /api/sessions/:id/set-active — manually set a session as active
-router.put("/:id/set-active", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+// PUT /api/sessions/:id/mark-current — manually mark a session as current
+router.put("/:id/mark-current", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return sendBadRequest(res, "Invalid session ID");
@@ -168,11 +168,11 @@ router.put("/:id/set-active", authenticateUser, authorizeRoles(ROLES.ADMIN), asy
     const existing = await storage.getAcademicSession(id);
     if (!existing) return sendNotFound(res, "Academic session not found");
 
-    const session = await storage.setActiveAcademicSession(id);
-    realtimeService.emitToRole("admin", "session.active-changed", session);
+    const session = await storage.markSessionAsCurrent(id);
+    realtimeService.emitToRole("admin", "session.current-changed", session);
     sendSuccess(res, session);
   } catch (error) {
-    handleRouteError(res, error, "sessions.setActive");
+    handleRouteError(res, error, "sessions.markCurrent");
   }
 });
 

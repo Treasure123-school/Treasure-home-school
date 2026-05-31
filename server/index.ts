@@ -425,11 +425,11 @@ function sanitizeLogData(data: any): any {
     console.log('✅ Sync retry job initialized (runs every 5 minutes)');
 
     // Run daily at midnight - auto-transition term statuses based on dates
-    const { runTermTransitions } = await import('./academic-calendar-service');
+    const { checkAndTransition } = await import('./academic-calendar-service');
     cron.default.schedule('0 0 * * *', async () => {
       try {
         console.log('🗓️ Running academic calendar term transition check...');
-        const result = await runTermTransitions();
+        const result = await checkAndTransition();
         if (result.activated.length > 0 || result.completed.length > 0) {
           console.log(`✅ Term transitions: ${result.activated.length} activated, ${result.completed.length} completed`);
         }
@@ -441,7 +441,7 @@ function sanitizeLogData(data: any): any {
       }
     });
     // Also run immediately on startup to catch any missed transitions
-    runTermTransitions().catch((err: any) => console.error('❌ Startup term transition error:', err.message));
+    checkAndTransition().catch((err: any) => console.error('❌ Startup term transition error:', err.message));
     console.log('✅ Academic calendar cron initialized (runs daily at midnight)');
 
   } catch (error) {

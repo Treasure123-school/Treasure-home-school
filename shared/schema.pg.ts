@@ -134,12 +134,14 @@ export const academicSessions = pgTable("academic_sessions", {
   year: varchar("year", { length: 20 }).notNull().unique(),
   startDate: varchar("start_date", { length: 10 }).notNull(),
   endDate: varchar("end_date", { length: 10 }).notNull(),
-  isActive: boolean("is_active").notNull().default(false),
+  isCurrent: boolean("is_current").notNull().default(false),
+  status: varchar("status", { length: 20 }).notNull().default('upcoming'),
   description: text("description"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => ({
   academicSessionsYearIdx: index("academic_sessions_year_idx").on(table.year),
-  academicSessionsActiveIdx: index("academic_sessions_active_idx").on(table.isActive),
+  academicSessionsCurrentIdx: index("academic_sessions_current_idx").on(table.isCurrent),
+  academicSessionsStatusIdx: index("academic_sessions_status_idx").on(table.status),
 }));
 
 // Academic terms table

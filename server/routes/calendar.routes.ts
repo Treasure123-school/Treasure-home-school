@@ -8,7 +8,7 @@
 import { Router, Request, Response } from "express";
 import { authenticateUser } from "./middleware";
 import { sendSuccess, handleRouteError } from "../utils/response-helpers";
-import { getCalendarCurrentState, runTermTransitions } from "../academic-calendar-service";
+import { getCalendarCurrentState, checkAndTransition } from "../academic-calendar-service";
 import { authorizeRoles, ROLES } from "./middleware";
 
 const router = Router();
@@ -26,7 +26,7 @@ router.get("/current", authenticateUser, async (req: Request, res: Response) => 
 // POST /api/academic-calendar/run-transitions — manually trigger transitions (admin only)
 router.post("/run-transitions", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
   try {
-    const result = await runTermTransitions();
+    const result = await checkAndTransition();
     sendSuccess(res, result);
   } catch (error) {
     handleRouteError(res, error, "calendar.runTransitions");
