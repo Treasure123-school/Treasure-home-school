@@ -56,12 +56,13 @@ export default function SuperAdminSettings() {
     queryKey: ["/api/superadmin/settings"],
   });
 
-  // Principal designation
+  // Principal designation (uses shared leadership endpoint — also accessible to School Admin)
   const { data: principalData, isLoading: principalLoading } = useQuery<{
     designatedPrincipalId: string | null;
-    admins: Array<{ id: string; name: string; username: string }>;
+    admins: Array<{ id: string; name: string; username: string; hasSignature: boolean }>;
+    currentPrincipal: { id: string; name: string; username: string; hasSignature: boolean } | null;
   }>({
-    queryKey: ["/api/superadmin/principal"],
+    queryKey: ["/api/leadership/principal"],
   });
 
   const [selectedPrincipalId, setSelectedPrincipalId] = useState<string>("");
@@ -74,10 +75,10 @@ export default function SuperAdminSettings() {
 
   const designatePrincipalMutation = useMutation({
     mutationFn: async (id: string) =>
-      apiRequest("PUT", "/api/superadmin/principal", { designatedPrincipalId: id || null }),
+      apiRequest("PUT", "/api/leadership/principal", { designatedPrincipalId: id || null }),
     onSuccess: () => {
       toast({ title: "Principal Designated", description: "The school principal has been updated successfully." });
-      queryClient.invalidateQueries({ queryKey: ["/api/superadmin/principal"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/leadership/principal"] });
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
