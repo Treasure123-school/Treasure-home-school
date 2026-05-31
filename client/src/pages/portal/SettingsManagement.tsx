@@ -830,7 +830,7 @@ function GradingScaleSection() {
     onMutate: async () => { await queryClient.cancelQueries({ queryKey: scalesCacheKey }); },
     onSuccess: (s: any) => {
       // Append the new duplicate directly — no refetch needed
-      patch(old => [...old, s]);
+      patch(old => [...old, { ...s, boundaries: s.boundaries ?? [] }]);
       setExpandedScaleId(s.id);
       toast({ title: 'Scale duplicated' });
     },
@@ -865,7 +865,7 @@ function GradingScaleSection() {
     onMutate: async () => { setCreateOpen(false); setScaleForm({ name: '', description: '', copyFromId: '' }); },
     onSuccess: (s: any) => {
       // Add directly from server response — no refetch needed
-      patch(old => [...old, s]);
+      patch(old => [...old, { ...s, boundaries: s.boundaries ?? [] }]);
       setExpandedScaleId(s.id);
       toast({ title: 'Scale created' });
     },
@@ -899,7 +899,7 @@ function GradingScaleSection() {
       const prev = snap();
       const tempId = -Date.now();
       patch(old => old.map(s => s.id !== scaleId ? s : {
-        ...s, boundaries: [...s.boundaries, { id: tempId, scaleId, name: s.name, isDefault: s.isActive, ...data }]
+        ...s, boundaries: [...(s.boundaries ?? []), { id: tempId, scaleId, name: s.name, isDefault: s.isActive, ...data }]
       }));
       setBoundaryDialogOpen(false); resetBoundaryForm();
       return { prev, scaleId };
@@ -911,7 +911,7 @@ function GradingScaleSection() {
     // Replace temp boundary (negative id) with real server boundary
     onSuccess: (b: any, { scaleId }: { scaleId: number }) => {
       patch(old => old.map(s => s.id !== scaleId ? s : {
-        ...s, boundaries: s.boundaries.map(x => x.id < 0 ? b : x)
+        ...s, boundaries: (s.boundaries ?? []).map(x => x.id < 0 ? b : x)
       }));
       toast({ title: 'Boundary added' });
     },
