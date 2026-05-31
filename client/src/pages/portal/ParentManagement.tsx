@@ -7,12 +7,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import {
   Users, Plus, Search, Edit2, Trash2, Eye, Link, Unlink,
   Copy, Check, Phone, Mail, GraduationCap, UserCheck, UserX,
   Filter, X, ChevronDown, Key, ShieldCheck, UserPlus, BookOpen,
-  Hash, CheckCircle2, ImageIcon, AlertCircle
+  Hash, CheckCircle2, ImageIcon, AlertCircle, MoreVertical
 } from 'lucide-react';
 import { computeProfileCompletion } from '@/lib/profileCompletion';
 import { apiRequest } from '@/lib/queryClient';
@@ -589,49 +593,51 @@ export default function ParentManagement() {
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-1 pt-2 border-t border-gray-100 dark:border-gray-800">
+              <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
                 <button
                   onClick={() => setDetailParent(parent)}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-medium"
                   data-testid={`button-view-${parent.id}`}
                 >
-                  <Eye className="h-3.5 w-3.5" /> View
+                  <Eye className="h-3.5 w-3.5" /> View Profile
                 </button>
-                <button
-                  onClick={() => openEdit(parent)}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                  data-testid={`button-edit-${parent.id}`}
-                >
-                  <Edit2 className="h-3.5 w-3.5" /> Edit
-                </button>
-                <button
-                  onClick={() => { setLinkMoreParent(parent); setLinkMoreSelected([]); }}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 transition-colors"
-                  data-testid={`button-link-${parent.id}`}
-                >
-                  <Link className="h-3.5 w-3.5" /> Link
-                </button>
-                <button
-                  onClick={() => toggleActiveMutation.mutate({ id: parent.id, active: !(parent.isActive && parent.status !== 'suspended') })}
-                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs transition-colors ${
-                    parent.isActive && parent.status !== 'suspended'
-                      ? 'text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20'
-                      : 'text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
-                  }`}
-                  data-testid={`button-toggle-${parent.id}`}
-                >
-                  {parent.isActive && parent.status !== 'suspended'
-                    ? <><UserX className="h-3.5 w-3.5" /> Disable</>
-                    : <><UserCheck className="h-3.5 w-3.5" /> Enable</>
-                  }
-                </button>
-                <button
-                  onClick={() => setDeleteConfirm(parent)}
-                  className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                  data-testid={`button-delete-${parent.id}`}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className="p-1.5 rounded-lg text-gray-500 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                      data-testid={`button-actions-${parent.id}`}
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuItem onClick={() => openEdit(parent)} data-testid={`button-edit-${parent.id}`}>
+                      <Edit2 className="h-3.5 w-3.5 mr-2" /> Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => { setLinkMoreParent(parent); setLinkMoreSelected([]); }} data-testid={`button-link-${parent.id}`}>
+                      <Link className="h-3.5 w-3.5 mr-2" /> Link Students
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => toggleActiveMutation.mutate({ id: parent.id, active: !(parent.isActive && parent.status !== 'suspended') })}
+                      data-testid={`button-toggle-${parent.id}`}
+                      className={parent.isActive && parent.status !== 'suspended' ? 'text-amber-600 focus:text-amber-700' : 'text-emerald-600 focus:text-emerald-700'}
+                    >
+                      {parent.isActive && parent.status !== 'suspended'
+                        ? <><UserX className="h-3.5 w-3.5 mr-2" /> Disable</>
+                        : <><UserCheck className="h-3.5 w-3.5 mr-2" /> Enable</>
+                      }
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => setDeleteConfirm(parent)}
+                      className="text-destructive focus:text-destructive"
+                      data-testid={`button-delete-${parent.id}`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </div>
             );

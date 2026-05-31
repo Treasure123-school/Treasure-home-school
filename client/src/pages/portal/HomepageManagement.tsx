@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trash2, Upload, Edit, Save, X, Image as ImageIcon } from 'lucide-react';
+import { Trash2, Upload, Edit, Save, X, Image as ImageIcon, Globe } from 'lucide-react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
@@ -194,20 +194,23 @@ export default function HomepageManagement() {
   const currentSection = SECTIONS[activeSection as keyof typeof SECTIONS];
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
       {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-bold text-foreground" data-testid="text-page-title">Website Images & Content</h1>
-        <p className="text-muted-foreground mt-2">Manage images for different sections of the school website</p>
+        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2" data-testid="text-page-title">
+          <Globe className="h-6 w-6 text-primary" />
+          Website Images &amp; Content
+        </h1>
+        <p className="text-muted-foreground text-sm mt-1">Manage images for different sections of the school website</p>
       </div>
 
       {/* Tabs for Different Sections */}
       <Tabs value={activeSection} onValueChange={setActiveSection}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="flex w-full overflow-x-auto sm:w-auto sm:inline-flex">
           {Object.entries(SECTIONS).map(([key, section]) => (
-            <TabsTrigger key={key} value={key} data-testid={`tab-${key}`}>
-              <span className="mr-2">{section.icon}</span>
-              {section.label}
+            <TabsTrigger key={key} value={key} className="shrink-0" data-testid={`tab-${key}`}>
+              <span className="mr-1.5">{section.icon}</span>
+              <span className="hidden xs:inline sm:inline">{section.label}</span>
             </TabsTrigger>
           ))}
         </TabsList>
@@ -216,12 +219,10 @@ export default function HomepageManagement() {
         {Object.entries(SECTIONS).map(([sectionKey, section]) => (
           <TabsContent key={sectionKey} value={sectionKey} className="space-y-4">
             {/* Section Description */}
-            <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
-              <CardContent className="pt-6">
-                <p className="text-sm text-foreground">{section.description}</p>
-                <p className="text-xs text-muted-foreground mt-2">Allowed types: {section.types.join(', ')}</p>
-              </CardContent>
-            </Card>
+            <div className="flex items-start gap-3 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
+              <span className="text-lg">{section.icon}</span>
+              <p className="text-sm text-blue-900 dark:text-blue-200">{section.description}</p>
+            </div>
 
             {/* Upload Form */}
             {showUploadForm && activeSection === sectionKey && (
