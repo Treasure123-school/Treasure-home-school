@@ -117,7 +117,7 @@ export default function AdminTimetable() {
     },
   });
   const teachers: TeacherData[] = Array.isArray(rawTeachers) ? rawTeachers : [];
-  const { data: terms = [] } = useQuery<TermData[]>({ queryKey: ['/api/academic-terms'] });
+  const { data: terms = [] } = useQuery<TermData[]>({ queryKey: ['/api/terms'] });
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof EMPTY_FORM) => {

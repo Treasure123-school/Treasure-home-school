@@ -127,9 +127,9 @@ export default function TeacherAssignmentManagement() {
   });
 
   const { data: terms = [] } = useQuery({
-    queryKey: ['/api/academic-terms'],
+    queryKey: ['/api/terms'],
     queryFn: async () => {
-      const response = await apiRequest('GET', '/api/academic-terms');
+      const response = await apiRequest('GET', '/api/terms');
       return await response.json();
     },
   });

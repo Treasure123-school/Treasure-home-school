@@ -113,7 +113,7 @@ export default function AdminCurriculumLibrary() {
 
   const { data: classes = [] } = useQuery<ClassItem[]>({ queryKey: ["/api/classes"] });
   const { data: subjects = [] } = useQuery<SubjectItem[]>({ queryKey: ["/api/subjects"] });
-  const { data: terms = [] } = useQuery<AcademicTerm[]>({ queryKey: ["/api/academic-terms"] });
+  const { data: terms = [] } = useQuery<AcademicTerm[]>({ queryKey: ["/api/terms"] });
 
   // ── Import mutation ───────────────────────────────────────────────────────────
   const importMutation = useMutation({
