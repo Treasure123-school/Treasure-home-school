@@ -947,7 +947,7 @@ function GradingScaleSection() {
       await queryClient.cancelQueries({ queryKey: scalesCacheKey });
       const prev = snap();
       patch(old => old.map(s => s.id !== scaleId ? s : {
-        ...s, boundaries: s.boundaries.filter(b => b.id !== boundaryId)
+        ...s, boundaries: (s.boundaries ?? []).filter(b => b.id !== boundaryId)
       }));
       setDeleteBoundaryId(null);
       return { prev };
@@ -956,7 +956,11 @@ function GradingScaleSection() {
       if (ctx?.prev) queryClient.setQueryData(scalesCacheKey, ctx.prev);
       toast({ title: 'Failed to delete boundary', description: e.message, variant: 'destructive' });
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: scalesCacheKey }); toast({ title: 'Boundary deleted' }); },
+    // Optimistic removal is authoritative — mark stale silently, no immediate refetch
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: scalesCacheKey, refetchType: 'none' });
+      toast({ title: 'Boundary deleted' });
+    },
   });
 
   const resetBoundaryForm = () => {
