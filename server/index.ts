@@ -273,6 +273,24 @@ function sanitizeLogData(data: any): any {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.log(`⚠️ Curriculum gap-fill seeding failed: ${errorMessage}`);
   }
+  // Gap-fill Part 2: Primary & JSS language subjects
+  try {
+    const { seedCurriculumGapFill2 } = await import("./seed-curriculum-gap-fill-2");
+    const result2 = await seedCurriculumGapFill2();
+    result2.report.forEach((line) => console.log(line));
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.log(`⚠️ Curriculum gap-fill Part 2 seeding failed: ${errorMessage}`);
+  }
+  // Gap-fill Part 3: SS Yoruba, Igbo, Hausa, Islamic Studies
+  try {
+    const { seedCurriculumGapFill3 } = await import("./seed-curriculum-gap-fill-3");
+    const result3 = await seedCurriculumGapFill3();
+    result3.report.forEach((line) => console.log(line));
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.log(`⚠️ Curriculum gap-fill Part 3 seeding failed: ${errorMessage}`);
+  }
 
   // Local File Storage Setup
   try {
