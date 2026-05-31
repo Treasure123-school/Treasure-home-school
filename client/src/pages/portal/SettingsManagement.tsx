@@ -818,18 +818,26 @@ function GradingScaleSection() {
       if (ctx?.prev) queryClient.setQueryData(scalesCacheKey, ctx.prev);
       toast({ title: 'Failed to activate', description: e.message, variant: 'destructive' });
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: scalesCacheKey }); toast({ title: 'Grade scale activated' }); },
+    // Optimistic update is authoritative — just mark stale silently, no immediate refetch
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: scalesCacheKey, refetchType: 'none' });
+      toast({ title: 'Grade scale activated' });
+    },
   });
 
   const duplicateMutation = useMutation({
     mutationFn: (id: number) => apiRequest('POST', `/api/grade-scales/${id}/duplicate`),
     onMutate: async () => { await queryClient.cancelQueries({ queryKey: scalesCacheKey }); },
     onSuccess: (s: any) => {
-      queryClient.invalidateQueries({ queryKey: scalesCacheKey });
+      // Append the new duplicate directly — no refetch needed
+      patch(old => [...old, s]);
       setExpandedScaleId(s.id);
       toast({ title: 'Scale duplicated' });
     },
-    onError: (e: any) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
+    onError: (e: any) => {
+      queryClient.invalidateQueries({ queryKey: scalesCacheKey, refetchType: 'none' });
+      toast({ title: 'Failed', description: e.message, variant: 'destructive' });
+    },
   });
 
   const deleteScaleMutation = useMutation({
@@ -845,14 +853,19 @@ function GradingScaleSection() {
       if (ctx?.prev) queryClient.setQueryData(scalesCacheKey, ctx.prev);
       toast({ title: 'Failed to delete', description: e.message, variant: 'destructive' });
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: scalesCacheKey }); toast({ title: 'Scale deleted' }); },
+    // Optimistic removal is authoritative — just mark stale, no refetch
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: scalesCacheKey, refetchType: 'none' });
+      toast({ title: 'Scale deleted' });
+    },
   });
 
   const createScaleMutation = useMutation({
     mutationFn: (data: any) => apiRequest('POST', '/api/grade-scales', data),
     onMutate: async () => { setCreateOpen(false); setScaleForm({ name: '', description: '', copyFromId: '' }); },
     onSuccess: (s: any) => {
-      queryClient.invalidateQueries({ queryKey: scalesCacheKey });
+      // Add directly from server response — no refetch needed
+      patch(old => [...old, s]);
       setExpandedScaleId(s.id);
       toast({ title: 'Scale created' });
     },
@@ -872,7 +885,11 @@ function GradingScaleSection() {
       if (ctx?.prev) queryClient.setQueryData(scalesCacheKey, ctx.prev);
       toast({ title: 'Failed', description: e.message, variant: 'destructive' });
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: scalesCacheKey }); toast({ title: 'Scale updated' }); },
+    // Optimistic update is authoritative — just mark stale, no refetch
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: scalesCacheKey, refetchType: 'none' });
+      toast({ title: 'Scale updated' });
+    },
   });
 
   const addBoundaryMutation = useMutation({
@@ -885,13 +902,19 @@ function GradingScaleSection() {
         ...s, boundaries: [...s.boundaries, { id: tempId, scaleId, name: s.name, isDefault: s.isActive, ...data }]
       }));
       setBoundaryDialogOpen(false); resetBoundaryForm();
-      return { prev };
+      return { prev, scaleId };
     },
     onError: (e: any, _, ctx: any) => {
       if (ctx?.prev) queryClient.setQueryData(scalesCacheKey, ctx.prev);
       toast({ title: 'Failed', description: e.message, variant: 'destructive' });
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: scalesCacheKey }); toast({ title: 'Boundary added' }); },
+    // Replace temp boundary (negative id) with real server boundary
+    onSuccess: (b: any, { scaleId }: { scaleId: number }) => {
+      patch(old => old.map(s => s.id !== scaleId ? s : {
+        ...s, boundaries: s.boundaries.map(x => x.id < 0 ? b : x)
+      }));
+      toast({ title: 'Boundary added' });
+    },
   });
 
   const updateBoundaryMutation = useMutation({
@@ -910,7 +933,11 @@ function GradingScaleSection() {
       if (ctx?.prev) queryClient.setQueryData(scalesCacheKey, ctx.prev);
       toast({ title: 'Failed to update boundary', description: e.message, variant: 'destructive' });
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: scalesCacheKey }); toast({ title: 'Boundary updated' }); },
+    // Optimistic update is authoritative — just mark stale, no refetch
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: scalesCacheKey, refetchType: 'none' });
+      toast({ title: 'Boundary updated' });
+    },
   });
 
   const deleteBoundaryMutation = useMutation({
