@@ -584,79 +584,99 @@ function SessionsTable({ sessions, isAdmin, getStatus, termsBySession, getTermSt
           const sessionTerms = (termsBySession[s.id] ?? []).sort((a, b) => a.startDate.localeCompare(b.startDate));
           return (
             <div key={s.id} data-testid={`session-card-${s.id}`}
-              className={`p-4 rounded-xl border-2 ${s.isCurrent ? 'border-primary/40 bg-primary/5' : 'border-border bg-card'} ${isArchived ? 'opacity-70' : ''}`}>
-              <div className="flex items-start justify-between gap-2 mb-3">
+              className={`rounded-xl border-2 overflow-hidden ${s.isCurrent ? 'border-primary/40' : 'border-border'} ${isArchived ? 'opacity-70' : ''}`}>
+              {/* Card header row */}
+              <div className={`flex items-center gap-2 px-4 py-3 ${s.isCurrent ? 'bg-primary/5' : 'bg-muted/30'}`}>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-sm">{s.name}</span>
-                    {s.isCurrent && <Badge className="text-[10px] bg-primary hover:bg-primary py-0">Current</Badge>}
+                    {s.isCurrent && <Badge className="text-[10px] bg-primary hover:bg-primary py-0 px-1.5">Current</Badge>}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{s.year}</p>
+                  <p className="text-xs text-muted-foreground">{s.year}</p>
                 </div>
                 <StatusBadge status={status} />
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs mb-3">
-                <div><p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-0.5">Start</p><p className="font-medium">{fmtDate(s.startDate)}</p></div>
-                <div><p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-0.5">End</p><p className="font-medium">{fmtDate(s.endDate)}</p></div>
-              </div>
-              {/* Mini term timeline */}
-              {sessionTerms.length > 0 && (
-                <div className="flex items-center gap-1 flex-wrap mb-3 pb-3 border-b border-border/50">
-                  {sessionTerms.map((t, i) => {
-                    const ts = getTermStatus(t);
-                    return (
-                      <div key={t.id} className="flex items-center gap-1">
-                        {i > 0 && <div className="w-2 h-px bg-border" />}
-                        <span className={`text-xs px-2 py-0.5 rounded-md font-medium border ${
-                          ts === 'active' ? 'bg-emerald-100 dark:bg-emerald-900/30 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300'
-                          : ts === 'completed' ? 'bg-muted border-border text-muted-foreground'
-                          : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
-                        }`}>
-                          {t.name.replace(' Term', '')}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              {isAdmin && (
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {!s.isCurrent && !isArchived && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onSetCurrent(s.id)}>
-                      <Power className="h-3 w-3 mr-1" /> Set Current
-                    </Button>
-                  )}
-                  {s.isCurrent && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs text-amber-600 border-amber-300" onClick={() => onDeactivate(s.id)}>
-                      <PowerOff className="h-3 w-3 mr-1" /> Deactivate
-                    </Button>
-                  )}
-                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onEdit(s)} disabled={isArchived}>
-                    <Edit className="h-3 w-3 mr-1" /> Edit
-                  </Button>
-                  {!isArchived
-                    ? <Button size="sm" variant="outline" className="h-7 text-xs text-orange-600 border-orange-300" onClick={() => onArchive(s.id)}><Archive className="h-3 w-3 mr-1" /> Archive</Button>
-                    : <Button size="sm" variant="outline" className="h-7 text-xs text-blue-600 border-blue-300" onClick={() => onUnarchive(s.id)}><Eye className="h-3 w-3 mr-1" /> Restore</Button>
-                  }
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="icon" className="h-7 w-7 ml-auto" disabled={s.isCurrent}>
-                        <Trash2 className="h-3.5 w-3.5" />
+                {isAdmin && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" data-testid={`btn-session-menu-mobile-${s.id}`}>
+                        <MoreVertical className="h-4 w-4" />
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Session?</AlertDialogTitle>
-                        <AlertDialogDescription>Delete "{s.name}"? Sessions with linked terms cannot be deleted.</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => onDelete(s.id)}>Delete</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-52">
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">Session Actions</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {!s.isCurrent && !isArchived && (
+                        <DropdownMenuItem onClick={() => onSetCurrent(s.id)} data-testid={`btn-session-activate-mob-${s.id}`}>
+                          <Power className="h-4 w-4 mr-2 text-emerald-600" /> Set as Current
+                        </DropdownMenuItem>
+                      )}
+                      {s.isCurrent && (
+                        <DropdownMenuItem onClick={() => onDeactivate(s.id)} data-testid={`btn-session-deactivate-mob-${s.id}`}>
+                          <PowerOff className="h-4 w-4 mr-2 text-amber-600" /> Deactivate
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={() => onEdit(s)} disabled={isArchived} data-testid={`btn-session-edit-mob-${s.id}`}>
+                        <Edit className="h-4 w-4 mr-2" /> Edit Session
+                      </DropdownMenuItem>
+                      {!isArchived ? (
+                        <DropdownMenuItem onClick={() => onArchive(s.id)} data-testid={`btn-session-archive-mob-${s.id}`}>
+                          <Archive className="h-4 w-4 mr-2 text-orange-500" /> Archive
+                        </DropdownMenuItem>
+                      ) : (
+                        <DropdownMenuItem onClick={() => onUnarchive(s.id)} data-testid={`btn-session-unarchive-mob-${s.id}`}>
+                          <Eye className="h-4 w-4 mr-2 text-blue-500" /> Restore
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuSeparator />
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem onSelect={e => e.preventDefault()}
+                            className="text-destructive focus:text-destructive"
+                            disabled={s.isCurrent}
+                            data-testid={`btn-session-delete-mob-${s.id}`}>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            {s.isCurrent ? 'Cannot delete active' : 'Delete Session'}
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Session?</AlertDialogTitle>
+                            <AlertDialogDescription>Delete "{s.name}"? Sessions with linked terms cannot be deleted.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => onDelete(s.id)}>Delete</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+              {/* Card body */}
+              <div className="px-4 py-3 bg-card space-y-3">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div><p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-0.5">Start</p><p className="font-medium">{fmtDate(s.startDate)}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-0.5">End</p><p className="font-medium">{fmtDate(s.endDate)}</p></div>
                 </div>
-              )}
+                {sessionTerms.length > 0 && (
+                  <div className="flex items-center gap-1 flex-wrap">
+                    {sessionTerms.map((t, i) => {
+                      const ts = getTermStatus(t);
+                      return (
+                        <div key={t.id} className="flex items-center gap-1">
+                          {i > 0 && <div className="w-2 h-px bg-border" />}
+                          <span className={`text-xs px-2 py-0.5 rounded-md font-medium border ${
+                            ts === 'active' ? 'bg-emerald-100 dark:bg-emerald-900/30 border-emerald-300 dark:border-emerald-700 text-emerald-800 dark:text-emerald-300'
+                            : ts === 'completed' ? 'bg-muted border-border text-muted-foreground'
+                            : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400'
+                          }`}>{t.name.replace(' Term', '')}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
@@ -795,68 +815,86 @@ function TermsTable({ terms, isAdmin, getStatus, onEdit, onSetCurrent, onDeactiv
           const pct = active ? termProgress(t.startDate, t.endDate) : 0;
           return (
             <div key={t.id} data-testid={`term-card-${t.id}`}
-              className={`p-3.5 rounded-xl border-2 ${t.isCurrent ? 'border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-900/10' : 'border-border bg-card'}`}>
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div>
+              className={`rounded-xl border-2 overflow-hidden ${t.isCurrent ? 'border-emerald-300 dark:border-emerald-800' : 'border-border'}`}>
+              {/* Card header row */}
+              <div className={`flex items-center gap-2 px-3.5 py-3 ${t.isCurrent ? 'bg-emerald-50/70 dark:bg-emerald-900/15' : 'bg-muted/30'}`}>
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-sm">{t.name}</span>
-                    {t.isCurrent && <Badge className="text-[10px] bg-emerald-500 hover:bg-emerald-500 py-0">Current</Badge>}
-                    {t.isLocked && <span className="inline-flex items-center gap-0.5 text-xs text-amber-600 font-medium"><Lock className="h-3 w-3" /> Locked</span>}
+                    {t.isCurrent && <Badge className="text-[10px] bg-emerald-500 hover:bg-emerald-500 py-0 px-1.5">Current</Badge>}
+                    {t.isLocked && <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 font-medium"><Lock className="h-3 w-3" />Locked</span>}
                   </div>
                   <p className="text-xs text-muted-foreground">{t.year}</p>
                 </div>
                 <StatusBadge status={status} />
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs mb-2">
-                <div><p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-0.5">Start</p><p className="font-medium">{fmtDate(t.startDate)}</p></div>
-                <div><p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-0.5">End</p><p className="font-medium">{fmtDate(t.endDate)}</p></div>
-              </div>
-              {active && (
-                <div className="mb-3">
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-muted-foreground">{pct}% complete</span>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">{daysLeft(t.endDate)}d left</span>
-                  </div>
-                  <Progress value={pct} className="h-1.5" />
-                </div>
-              )}
-              {isAdmin && (
-                <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-border/50">
-                  {!t.isCurrent && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => onSetCurrent(t.id)}>
-                      <Power className="h-3 w-3 mr-1" /> Set Current
-                    </Button>
-                  )}
-                  {t.isCurrent && (
-                    <Button size="sm" variant="outline" className="h-7 text-xs text-amber-600 border-amber-300" onClick={() => onDeactivate(t.id)}>
-                      <PowerOff className="h-3 w-3 mr-1" /> Deactivate
-                    </Button>
-                  )}
-                  <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => onToggleLock(t.id)}>
-                    {t.isLocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
-                  </Button>
-                  <Button variant="outline" size="icon" className="h-7 w-7" disabled={t.isLocked} onClick={() => onEdit(t)}>
-                    <Edit className="h-3.5 w-3.5" />
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="icon" className="h-7 w-7" disabled={t.isLocked || t.isCurrent}>
-                        <Trash2 className="h-3.5 w-3.5" />
+                {isAdmin && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" data-testid={`btn-term-menu-mobile-${t.id}`}>
+                        <MoreVertical className="h-4 w-4" />
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Term?</AlertDialogTitle>
-                        <AlertDialogDescription>Delete "{t.name} ({t.year})"? This cannot be undone.</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => onDelete(t.id)}>Delete</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-52">
+                      <DropdownMenuLabel className="text-xs text-muted-foreground">Term Actions</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {!t.isCurrent && (
+                        <DropdownMenuItem onClick={() => onSetCurrent(t.id)} data-testid={`btn-term-activate-mob-${t.id}`}>
+                          <Power className="h-4 w-4 mr-2 text-emerald-600" /> Set as Current
+                        </DropdownMenuItem>
+                      )}
+                      {t.isCurrent && (
+                        <DropdownMenuItem onClick={() => onDeactivate(t.id)} data-testid={`btn-term-deactivate-mob-${t.id}`}>
+                          <PowerOff className="h-4 w-4 mr-2 text-amber-600" /> Deactivate
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem onClick={() => onToggleLock(t.id)} data-testid={`btn-term-lock-mob-${t.id}`}>
+                        {t.isLocked ? <><Unlock className="h-4 w-4 mr-2" /> Unlock Term</> : <><Lock className="h-4 w-4 mr-2" /> Lock Term</>}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => onEdit(t)} disabled={t.isLocked} data-testid={`btn-term-edit-mob-${t.id}`}>
+                        <Edit className="h-4 w-4 mr-2" /> Edit Term
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem onSelect={e => e.preventDefault()}
+                            className="text-destructive focus:text-destructive"
+                            disabled={t.isLocked || t.isCurrent}
+                            data-testid={`btn-term-delete-mob-${t.id}`}>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            {t.isCurrent ? 'Cannot delete active' : t.isLocked ? 'Unlock to delete' : 'Delete Term'}
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Term?</AlertDialogTitle>
+                            <AlertDialogDescription>Delete "{t.name} ({t.year})"? This cannot be undone.</AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => onDelete(t.id)}>Delete</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
+              {/* Card body */}
+              <div className="px-3.5 py-3 bg-card space-y-2">
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div><p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-0.5">Start</p><p className="font-medium">{fmtDate(t.startDate)}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider mb-0.5">End</p><p className="font-medium">{fmtDate(t.endDate)}</p></div>
                 </div>
-              )}
+                {active && (
+                  <div>
+                    <div className="flex justify-between text-xs mb-1">
+                      <span className="text-muted-foreground">{pct}% complete</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">{daysLeft(t.endDate)}d left</span>
+                    </div>
+                    <Progress value={pct} className="h-1.5" />
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
@@ -1080,7 +1118,7 @@ export default function AcademicTermsManagement() {
         {isLoading ? Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />) : <>
           <StatCard icon={Play} label="Active Term" value={currentTerm?.name ?? '—'} sub={currentTerm ? `Ends ${fmtShort(currentTerm.endDate)}` : undefined} color="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" />
           <StatCard icon={Layers} label="Session" value={currentSession?.year ?? (currentYear ?? '—')} sub={currentSession ? currentSession.name : currentYear ? 'No session linked' : undefined} color="bg-primary/10 text-primary" />
-          <StatCard icon={ChevronRight} label="Next Term" value={upcomingTerm?.name ?? '—'} sub={daysToNext !== null && daysToNext >= 0 ? `in ${daysToNext}d` : (upcomingTerm ? fmtShort(upcomingTerm.startDate) : undefined)} color="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" />
+          <StatCard icon={ChevronRight} label="Next Term" value={upcomingTerm?.name ?? (allTerms.length > 0 ? 'None yet' : '—')} sub={upcomingTerm ? (daysToNext !== null && daysToNext >= 0 ? `in ${daysToNext}d` : fmtShort(upcomingTerm.startDate)) : (allTerms.length > 0 ? 'Add a future term' : undefined)} color="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" />
           <StatCard icon={CalendarDays} label="Term/Yr Start" value={currentSession ? fmtShort(currentSession.startDate) : (fallbackSessionStart ? fmtShort(fallbackSessionStart) : '—')} sub={currentSession ? undefined : (fallbackSessionStart ? currentYear ?? undefined : undefined)} color="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" />
           <StatCard icon={Target} label="Term/Yr End" value={currentSession ? fmtShort(currentSession.endDate) : (fallbackSessionEnd ? fmtShort(fallbackSessionEnd) : '—')} sub={currentSession ? undefined : (fallbackSessionEnd ? currentYear ?? undefined : undefined)} color="bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400" />
           <StatCard icon={Zap} label="Records" value={`${allSessions.length}S · ${allTerms.length}T`} sub={`${allSessions.length} session${allSessions.length !== 1 ? 's' : ''}, ${allTerms.length} term${allTerms.length !== 1 ? 's' : ''}`} color="bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400" />
@@ -1136,8 +1174,8 @@ export default function AcademicTermsManagement() {
               <CardDescription className="text-xs mt-0.5">School years that group your terms — create, activate, archive, and delete sessions</CardDescription>
             </div>
             {isAdmin && (
-              <Button size="sm" variant="outline" onClick={() => setSessionDialog({ open: true, editing: null })} data-testid="btn-add-session">
-                <Plus className="h-3.5 w-3.5 mr-1" /> Add
+              <Button size="sm" onClick={() => setSessionDialog({ open: true, editing: null })} data-testid="btn-add-session">
+                <Plus className="h-3.5 w-3.5 mr-1" /> New Session
               </Button>
             )}
           </div>
@@ -1188,8 +1226,8 @@ export default function AcademicTermsManagement() {
               <CardDescription className="text-xs mt-0.5">Manage terms within sessions — activate, lock, and track progress</CardDescription>
             </div>
             {isAdmin && (
-              <Button size="sm" variant="outline" onClick={() => setTermDialog({ open: true, editing: null })} data-testid="btn-add-term">
-                <Plus className="h-3.5 w-3.5 mr-1" /> Add
+              <Button size="sm" onClick={() => setTermDialog({ open: true, editing: null })} data-testid="btn-add-term">
+                <Plus className="h-3.5 w-3.5 mr-1" /> New Term
               </Button>
             )}
           </div>
