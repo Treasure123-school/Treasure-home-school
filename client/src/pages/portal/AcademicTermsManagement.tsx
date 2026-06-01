@@ -280,6 +280,12 @@ function TermDialog({ open, onClose, editing, sessions, onSaved }: TermDialogPro
                 {sessions.map(s => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
               </SelectContent>
             </Select>
+            {sessions.length === 0 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 flex items-start gap-1.5">
+                <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                Tip: Create a session first, then assign terms to it. Terms in the same session share an overlap check — keeping each year isolated.
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>Academic Year <span className="text-destructive">*</span></Label>
@@ -981,6 +987,14 @@ export default function AcademicTermsManagement() {
   const daysToNext = upcomingTerm ? calendar.daysUntil(upcomingTerm.startDate) : null;
   const activeTermCount = allTerms.filter(t => calendar.getTermStatus(t) === 'active').length;
 
+  // Fallback session boundaries from terms when no session exists
+  const currentYear = currentTerm?.year ?? null;
+  const yearTerms = currentYear ? allTerms.filter(t => t.year === currentYear) : [];
+  const fallbackSessionStart = yearTerms.length > 0
+    ? yearTerms.reduce((a, b) => a.startDate < b.startDate ? a : b).startDate : null;
+  const fallbackSessionEnd = yearTerms.length > 0
+    ? yearTerms.reduce((a, b) => a.endDate > b.endDate ? a : b).endDate : null;
+
   if (!user) return <div className="flex items-center justify-center h-48 text-muted-foreground">Please log in.</div>;
 
   return (
@@ -1024,12 +1038,12 @@ export default function AcademicTermsManagement() {
       {/* ── Stat Cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {isLoading ? Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-20 rounded-xl" />) : <>
-          <StatCard icon={Play} label="Active Term" value={currentTerm?.name ?? '—'} sub={currentTerm ? fmtShort(currentTerm.endDate) : undefined} color="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" />
-          <StatCard icon={Layers} label="Session" value={currentSession?.year ?? '—'} sub={currentSession?.name} color="bg-primary/10 text-primary" />
-          <StatCard icon={ChevronRight} label="Next Term" value={upcomingTerm?.name ?? '—'} sub={daysToNext !== null && daysToNext >= 0 ? `in ${daysToNext}d` : undefined} color="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" />
-          <StatCard icon={CalendarDays} label="Session Start" value={currentSession ? fmtShort(currentSession.startDate) : '—'} color="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" />
-          <StatCard icon={Target} label="Session End" value={currentSession ? fmtShort(currentSession.endDate) : '—'} color="bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400" />
-          <StatCard icon={Zap} label="Records" value={`${allSessions.length}S · ${allTerms.length}T`} sub={`${allSessions.length} sessions, ${allTerms.length} terms`} color="bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400" />
+          <StatCard icon={Play} label="Active Term" value={currentTerm?.name ?? '—'} sub={currentTerm ? `Ends ${fmtShort(currentTerm.endDate)}` : undefined} color="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" />
+          <StatCard icon={Layers} label="Session" value={currentSession?.year ?? (currentYear ?? '—')} sub={currentSession ? currentSession.name : currentYear ? 'No session linked' : undefined} color="bg-primary/10 text-primary" />
+          <StatCard icon={ChevronRight} label="Next Term" value={upcomingTerm?.name ?? '—'} sub={daysToNext !== null && daysToNext >= 0 ? `in ${daysToNext}d` : (upcomingTerm ? fmtShort(upcomingTerm.startDate) : undefined)} color="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" />
+          <StatCard icon={CalendarDays} label="Term/Yr Start" value={currentSession ? fmtShort(currentSession.startDate) : (fallbackSessionStart ? fmtShort(fallbackSessionStart) : '—')} sub={currentSession ? undefined : (fallbackSessionStart ? currentYear ?? undefined : undefined)} color="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" />
+          <StatCard icon={Target} label="Term/Yr End" value={currentSession ? fmtShort(currentSession.endDate) : (fallbackSessionEnd ? fmtShort(fallbackSessionEnd) : '—')} sub={currentSession ? undefined : (fallbackSessionEnd ? currentYear ?? undefined : undefined)} color="bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400" />
+          <StatCard icon={Zap} label="Records" value={`${allSessions.length}S · ${allTerms.length}T`} sub={`${allSessions.length} session${allSessions.length !== 1 ? 's' : ''}, ${allTerms.length} term${allTerms.length !== 1 ? 's' : ''}`} color="bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400" />
         </>}
       </div>
 

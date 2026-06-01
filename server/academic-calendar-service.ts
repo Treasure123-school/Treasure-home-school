@@ -13,7 +13,7 @@
 
 import { storage, db } from "./storage";
 import * as schema from "@shared/schema.pg";
-import { eq, and, ne, lte, gte } from "drizzle-orm";
+import { eq, and, ne, lte, gte, isNull } from "drizzle-orm";
 import type { AcademicTerm, AcademicSession } from "@shared/schema";
 
 // ─── Pure Utility ─────────────────────────────────────────────────────────────
@@ -117,7 +117,11 @@ export async function checkTermOverlap(
     ];
 
     if (sessionId != null) {
+      // Scope overlap check to terms within the same session
       conditions.push(eq(schema.academicTerms.sessionId, sessionId));
+    } else {
+      // Scope overlap check to only other unassigned (no session) terms
+      conditions.push(isNull(schema.academicTerms.sessionId));
     }
 
     const rows = await db

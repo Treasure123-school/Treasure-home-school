@@ -85,7 +85,10 @@ router.post('/', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any,
     const overlap = await checkTermOverlap(req.body.startDate, req.body.endDate, undefined, sessionId);
     if (overlap.hasOverlap) {
       const names = overlap.conflictingTerms.map((t: any) => t.name).join(', ');
-      return sendBadRequest(res, `Term date range overlaps with existing term(s) in this session: ${names}`);
+      const hint = sessionId == null
+        ? ` (Tip: assign this term to a session to isolate date ranges per school year)`
+        : '';
+      return sendBadRequest(res, `Date range overlaps with: ${names}.${hint}`);
     }
     
     const term = await storage.createAcademicTerm(req.body);
@@ -133,7 +136,8 @@ router.put('/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: an
       const overlap = await checkTermOverlap(resolvedStart, resolvedEnd, termId, sessionId);
       if (overlap.hasOverlap) {
         const names = overlap.conflictingTerms.map((t: any) => t.name).join(', ');
-        return sendBadRequest(res, `Term date range overlaps with existing term(s) in this session: ${names}`);
+        const hint = sessionId == null ? ` (Tip: assign this term to a session to isolate date ranges per school year)` : '';
+        return sendBadRequest(res, `Date range overlaps with: ${names}.${hint}`);
       }
     }
 
