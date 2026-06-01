@@ -15,6 +15,7 @@ import { storage, db } from "./storage";
 import * as schema from "@shared/schema.pg";
 import { eq, and, ne, lte, gte, isNull } from "drizzle-orm";
 import type { AcademicTerm, AcademicSession } from "@shared/schema";
+import { getPgPool } from "./db";
 
 // ─── Pure Utility ─────────────────────────────────────────────────────────────
 
@@ -169,6 +170,31 @@ export async function checkSessionOverlap(
     console.error("[AcademicCalendarService] checkSessionOverlap error:", error);
     return { hasOverlap: false, conflictingTerms: [] };
   }
+}
+
+// ─── Auto-detect setting check ────────────────────────────────────────────────
+
+async function isAutoDetectEnabled(): Promise<boolean> {
+  try {
+    const pool = getPgPool();
+    if (!pool) return true;
+    const { rows } = await pool.query(
+      "SELECT academic_auto_detect FROM system_settings ORDER BY id LIMIT 1"
+    );
+    return rows.length > 0 ? rows[0].academic_auto_detect !== false : true;
+  } catch {
+    return true; // default to enabled if DB query fails
+  }
+}
+
+/** Runs transitions only when academicAutoDetect is enabled in system settings. */
+export async function checkAndTransitionIfEnabled(): Promise<TransitionResult> {
+  const enabled = await isAutoDetectEnabled();
+  if (!enabled) {
+    console.log("[AcademicCalendarService] Auto-detect is disabled — skipping automatic transitions.");
+    return { activated: [], completed: [], errors: [] };
+  }
+  return checkAndTransition();
 }
 
 // ─── Transition Engine ────────────────────────────────────────────────────────

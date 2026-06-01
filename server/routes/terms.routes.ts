@@ -246,7 +246,14 @@ router.put('/:id/status', authenticateUser, authorizeRoles(ROLES.ADMIN), async (
       return sendBadRequest(res, 'Status is required');
     }
 
-    const term = await storage.updateAcademicTerm(termId, { status: req.body.status });
+    // When deactivating, also clear isCurrent
+    const inactiveStatuses = ['completed', 'inactive', 'archived'];
+    const updates: any = { status: req.body.status };
+    if (inactiveStatuses.includes(req.body.status)) {
+      updates.isCurrent = false;
+    }
+
+    const term = await storage.updateAcademicTerm(termId, updates);
     
     realtimeService.emitTableChange('academic_terms', 'UPDATE', term, existingTerm, req.user!.id);
     realtimeService.emitToRole('admin', 'term.status-changed', term);
@@ -254,6 +261,26 @@ router.put('/:id/status', authenticateUser, authorizeRoles(ROLES.ADMIN), async (
     sendSuccess(res, term);
   } catch (error) {
     handleRouteError(res, error, 'terms.updateStatus');
+  }
+});
+
+// PUT /api/terms/:id/deactivate — explicit deactivate: clears isCurrent + sets status to inactive
+router.put('/:id/deactivate', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+  try {
+    const termId = parseInt(req.params.id);
+    if (isNaN(termId)) return sendBadRequest(res, 'Invalid term ID');
+
+    const existingTerm = await storage.getAcademicTerm(termId);
+    if (!existingTerm) return sendNotFound(res, 'Academic term not found');
+
+    const term = await storage.updateAcademicTerm(termId, { isCurrent: false, status: 'inactive' });
+
+    realtimeService.emitTableChange('academic_terms', 'UPDATE', term, existingTerm, req.user!.id);
+    realtimeService.emitToRole('admin', 'term.deactivated', term);
+
+    sendSuccess(res, term);
+  } catch (error) {
+    handleRouteError(res, error, 'terms.deactivate');
   }
 });
 

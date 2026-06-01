@@ -124,7 +124,14 @@ router.put("/:id", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: an
       }
     }
 
-    const session = await storage.updateAcademicSession(id, { name, year, startDate, endDate, description, status });
+    // When deactivating or archiving, also clear isCurrent flag
+    const inactiveStatuses = ["inactive", "archived", "completed"];
+    const isCurrent = status && inactiveStatuses.includes(status) ? false : undefined;
+
+    const updates: any = { name, year, startDate, endDate, description, status };
+    if (isCurrent === false) updates.isCurrent = false;
+
+    const session = await storage.updateAcademicSession(id, updates);
     realtimeService.emitToRole("admin", "session.updated", session);
     sendSuccess(res, session);
   } catch (error: any) {
@@ -156,6 +163,23 @@ router.delete("/:id", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req:
       return sendBadRequest(res, "Cannot delete this session — it is linked to academic terms.");
     }
     handleRouteError(res, error, "sessions.delete");
+  }
+});
+
+// PUT /api/sessions/:id/deactivate — explicitly deactivate: clears isCurrent + sets status to inactive
+router.put("/:id/deactivate", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) return sendBadRequest(res, "Invalid session ID");
+
+    const existing = await storage.getAcademicSession(id);
+    if (!existing) return sendNotFound(res, "Academic session not found");
+
+    const session = await storage.updateAcademicSession(id, { isCurrent: false, status: "inactive" });
+    realtimeService.emitToRole("admin", "session.deactivated", session);
+    sendSuccess(res, session);
+  } catch (error) {
+    handleRouteError(res, error, "sessions.deactivate");
   }
 });
 

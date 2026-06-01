@@ -398,29 +398,54 @@ function StatCard({ icon: Icon, label, value, sub, color }: { icon: any; label: 
 
 function AutomationBanner({ enabled, isAdmin, isPending, onToggle }: { enabled: boolean; isAdmin: boolean; isPending: boolean; onToggle: (v: boolean) => void }) {
   return (
-    <div className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border-2 transition-colors ${
-      enabled ? 'bg-amber-50/80 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800'
-               : 'bg-muted/30 border-dashed border-muted-foreground/20'
+    <div className={`rounded-xl border-2 transition-colors overflow-hidden ${
+      enabled ? 'border-amber-200 dark:border-amber-800' : 'border-slate-200 dark:border-slate-700'
     }`} data-testid="banner-automation">
-      <div className={`p-2 rounded-lg shrink-0 ${enabled ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-muted'}`}>
-        <Bot className={`h-5 w-5 ${enabled ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`} />
-      </div>
-      <div className="flex-1">
-        <p className={`text-sm font-semibold ${enabled ? 'text-amber-900 dark:text-amber-300' : 'text-foreground'}`}>
-          Automatic Detection is {enabled ? 'Enabled' : 'Disabled'}
-        </p>
-        <p className={`text-xs mt-0.5 ${enabled ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>
-          {enabled
-            ? 'The system automatically activates terms and sessions when their start date arrives (runs daily at midnight). Admins can still override manually.'
-            : 'Manual mode — no automatic switching. Admins must activate sessions and terms explicitly using "Set as Current".'}
-        </p>
-      </div>
-      {isAdmin && (
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs font-medium text-muted-foreground">Auto-detect</span>
-          <Switch data-testid="switch-auto-detect" checked={enabled} onCheckedChange={onToggle} disabled={isPending} />
+      {/* Header row */}
+      <div className={`flex flex-col sm:flex-row sm:items-center gap-3 p-4 ${
+        enabled ? 'bg-amber-50/80 dark:bg-amber-900/10' : 'bg-slate-50/80 dark:bg-slate-800/30'
+      }`}>
+        <div className={`p-2 rounded-lg shrink-0 ${enabled ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-slate-200 dark:bg-slate-700/50'}`}>
+          <Bot className={`h-5 w-5 ${enabled ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500 dark:text-slate-400'}`} />
         </div>
-      )}
+        <div className="flex-1">
+          <p className={`text-sm font-semibold ${enabled ? 'text-amber-900 dark:text-amber-300' : 'text-foreground'}`}>
+            Academic Calendar Automation — {enabled ? 'Auto Mode' : 'Manual Mode'}
+          </p>
+          <p className={`text-xs mt-0.5 ${enabled ? 'text-amber-700 dark:text-amber-400' : 'text-muted-foreground'}`}>
+            {enabled
+              ? 'Sessions and terms activate automatically when their start date is reached (checked daily at midnight).'
+              : 'No automatic switching. You control which session and term are active at all times.'}
+          </p>
+        </div>
+        {isAdmin && (
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="text-xs font-medium text-muted-foreground">{enabled ? 'Auto' : 'Manual'}</span>
+            <Switch data-testid="switch-auto-detect" checked={enabled} onCheckedChange={onToggle} disabled={isPending} />
+          </div>
+        )}
+      </div>
+      {/* Detail bullets */}
+      <div className={`border-t px-4 py-3 grid sm:grid-cols-2 gap-x-6 gap-y-1.5 text-xs ${
+        enabled ? 'border-amber-100 dark:border-amber-900/30 bg-amber-50/40 dark:bg-amber-900/5'
+                : 'border-slate-100 dark:border-slate-700/50 bg-slate-50/40 dark:bg-slate-800/20'
+      }`}>
+        {enabled ? (
+          <>
+            <div className="flex items-start gap-2"><Check className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" /><span className="text-muted-foreground">Status transitions run at midnight daily</span></div>
+            <div className="flex items-start gap-2"><Check className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" /><span className="text-muted-foreground">Term/session becomes active on its start date</span></div>
+            <div className="flex items-start gap-2"><Check className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" /><span className="text-muted-foreground">Completed items are archived when their end date passes</span></div>
+            <div className="flex items-start gap-2"><Check className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" /><span className="text-muted-foreground">Admins can still override manually at any time</span></div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-start gap-2"><Info className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" /><span className="text-muted-foreground">Use <strong className="text-foreground">Set as Current</strong> on a session to make it active</span></div>
+            <div className="flex items-start gap-2"><Info className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" /><span className="text-muted-foreground">Use <strong className="text-foreground">Set as Current</strong> on a term to make it active</span></div>
+            <div className="flex items-start gap-2"><Info className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" /><span className="text-muted-foreground">Use <strong className="text-foreground">Deactivate</strong> to clear the active state</span></div>
+            <div className="flex items-start gap-2"><Info className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" /><span className="text-muted-foreground">No automatic transitions will occur until re-enabled</span></div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
@@ -914,7 +939,7 @@ export default function AcademicTermsManagement() {
   });
 
   const deactivateSessionMut = useSessionMut('Session deactivated.', async (id) => {
-    const r = await apiRequest('PUT', `/api/sessions/${id}`, { status: 'inactive' });
+    const r = await apiRequest('PUT', `/api/sessions/${id}/deactivate`);
     if (!r.ok) { const e = await r.json().catch(() => ({ message: 'Failed' })); throw new Error(e.message); }
     return r.json();
   });
@@ -957,7 +982,7 @@ export default function AcademicTermsManagement() {
   });
 
   const deactivateTermMut = useTermMut('Term deactivated.', async (id) => {
-    const r = await apiRequest('PUT', `/api/terms/${id}/status`, { status: 'completed' });
+    const r = await apiRequest('PUT', `/api/terms/${id}/deactivate`);
     if (!r.ok) { const e = await r.json().catch(() => ({ message: 'Failed' })); throw new Error(e.message); }
     return r.json();
   });
@@ -982,10 +1007,25 @@ export default function AcademicTermsManagement() {
     onError: (e: any) => toast({ title: 'Cannot Delete', description: e.message, variant: 'destructive' }),
   });
 
+  // ── Session History state ────────────────────────────────────────────────────
+  const [showHistory, setShowHistory] = useState(false);
+
   // ── Derived data ─────────────────────────────────────────────────────────────
   const { currentSession, currentTerm, upcomingTerm, allSessions, allTerms, isLoading } = calendar;
   const daysToNext = upcomingTerm ? calendar.daysUntil(upcomingTerm.startDate) : null;
   const activeTermCount = allTerms.filter(t => calendar.getTermStatus(t) === 'active').length;
+  const multipleActiveTerms = activeTermCount > 1;
+  const multipleActiveSessions = allSessions.filter(s => s.isCurrent).length > 1;
+
+  // Separate active/upcoming sessions from past/archived ones
+  const activeSessions = allSessions.filter(s => {
+    const st = calendar.getSessionStatus(s);
+    return st === 'active' || st === 'upcoming';
+  });
+  const historySessions = allSessions.filter(s => {
+    const st = calendar.getSessionStatus(s);
+    return st === 'completed' || st === 'archived' || s.status === 'inactive';
+  });
 
   // Fallback session boundaries from terms when no session exists
   const currentYear = currentTerm?.year ?? null;
@@ -1054,6 +1094,35 @@ export default function AcademicTermsManagement() {
         isPending={autoDetectMut.isPending}
         onToggle={v => autoDetectMut.mutate(v)}
       />
+
+      {/* ── Validation Warnings ── */}
+      {!isLoading && multipleActiveTerms && (
+        <div className="flex items-start gap-3 p-3.5 rounded-xl border border-destructive/30 bg-destructive/5 text-sm" data-testid="warning-multiple-active-terms">
+          <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-destructive">Multiple active terms detected ({activeTermCount})</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Only one term should be active at a time. Use <strong>Deactivate</strong> on the extra terms, or use <strong>Set as Current</strong> on the correct term to automatically clear the others.</p>
+          </div>
+        </div>
+      )}
+      {!isLoading && multipleActiveSessions && (
+        <div className="flex items-start gap-3 p-3.5 rounded-xl border border-destructive/30 bg-destructive/5 text-sm" data-testid="warning-multiple-active-sessions">
+          <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-destructive">Multiple active sessions detected</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Only one session should be marked as current. Use <strong>Deactivate</strong> on the extra sessions.</p>
+          </div>
+        </div>
+      )}
+      {!isLoading && !autoDetect && isAdmin && !currentSession && !currentTerm && allSessions.length > 0 && (
+        <div className="flex items-start gap-3 p-3.5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10 text-sm" data-testid="info-manual-mode-no-active">
+          <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-blue-800 dark:text-blue-300">Manual mode — no active session or term</p>
+            <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5">Use <strong>Set as Current</strong> on a session and term below to activate them for the portal.</p>
+          </div>
+        </div>
+      )}
 
       {/* ── Sessions ── */}
       <Card>
@@ -1195,6 +1264,85 @@ export default function AcademicTermsManagement() {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Session History ── */}
+      {historySessions.length > 0 && (
+        <Card data-testid="card-session-history">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/50">
+                  <Clock className="h-4 w-4 text-slate-500" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Session History</CardTitle>
+                  <CardDescription className="text-xs">{historySessions.length} past / archived session{historySessions.length !== 1 ? 's' : ''}</CardDescription>
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setShowHistory(v => !v)} data-testid="button-toggle-history">
+                <ChevronRight className={`h-4 w-4 transition-transform ${showHistory ? 'rotate-90' : ''}`} />
+                <span className="ml-1 text-xs">{showHistory ? 'Hide' : 'Show'}</span>
+              </Button>
+            </div>
+          </CardHeader>
+          {showHistory && (
+            <CardContent className="pt-0">
+              <div className="space-y-2">
+                {historySessions.map(s => {
+                  const termCount = allTerms.filter(t => t.sessionId === s.id).length;
+                  return (
+                    <div key={s.id} className="flex items-center justify-between p-3 rounded-lg border bg-muted/20 hover:bg-muted/40 transition-colors" data-testid={`row-history-session-${s.id}`}>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="p-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 shrink-0">
+                          <GraduationCap className="h-3.5 w-3.5 text-slate-500" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{s.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {s.year} · {termCount} term{termCount !== 1 ? 's' : ''} · {s.startDate} → {s.endDate}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                        <Badge variant="secondary" className="text-xs capitalize">
+                          {s.status}
+                        </Badge>
+                        {isAdmin && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-7 w-7" data-testid={`button-history-actions-${s.id}`}>
+                                <MoreVertical className="h-3.5 w-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel className="text-xs text-muted-foreground">Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => setCurrentSessionMut.mutate(s.id)} data-testid={`item-reactivate-${s.id}`}>
+                                <Play className="h-3.5 w-3.5 mr-2 text-emerald-500" />Reactivate
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setSessionDialog({ open: true, editing: s })} data-testid={`item-edit-history-${s.id}`}>
+                                <Edit className="h-3.5 w-3.5 mr-2" />Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => deleteSessionMut.mutate(s.id)}
+                                className="text-destructive focus:text-destructive"
+                                data-testid={`item-delete-history-${s.id}`}
+                              >
+                                <Trash2 className="h-3.5 w-3.5 mr-2" />Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       {/* ── Dialogs ── */}
       <SessionDialog
