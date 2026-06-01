@@ -20,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth';
+import { ROLE_IDS } from '@/lib/roles';
 import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import type { CalendarSession, CalendarTerm, TermStatus } from '@/hooks/useAcademicCalendar';
 import {
@@ -910,7 +911,8 @@ export default function AcademicTermsManagement() {
   const { user } = useAuth();
 
   // ⚠ isAdmin MUST be declared before any hook that uses it
-  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+  // Login API returns roleId (number), never the string "role" — use ROLE_IDS
+  const isAdmin = user?.roleId === ROLE_IDS.ADMIN || user?.roleId === ROLE_IDS.SUPER_ADMIN;
 
   const calendar = useAcademicCalendar();
 
