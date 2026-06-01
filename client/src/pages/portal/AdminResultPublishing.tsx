@@ -4,6 +4,7 @@ import jsPDF from 'jspdf';
 import JSZip from 'jszip';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { toCanvas, toPng } from 'html-to-image';
 import { BaileysReportTemplate } from '@/components/ui/baileys-report-template';
@@ -151,13 +152,14 @@ export default function AdminResultPublishing() {
     },
   });
 
-  const { data: terms = [] } = useQuery({
-    queryKey: ['/api/terms'],
-    queryFn: async () => {
-      const response = await apiRequest('GET', '/api/terms');
-      return await response.json();
-    },
-  });
+  const { currentTerm, allTerms: terms } = useAcademicCalendar();
+
+  // Auto-select current term on load
+  useEffect(() => {
+    if (currentTerm && selectedTerm === 'all') {
+      setSelectedTerm(String(currentTerm.id));
+    }
+  }, [currentTerm]);
 
   const { data: reportCardsData, isLoading, refetch } = useQuery({
     queryKey: ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, statusFilter],

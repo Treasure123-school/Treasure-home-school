@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -126,13 +127,14 @@ export default function TeacherAssignmentManagement() {
     },
   });
 
-  const { data: terms = [] } = useQuery({
-    queryKey: ['/api/terms'],
-    queryFn: async () => {
-      const response = await apiRequest('GET', '/api/terms');
-      return await response.json();
-    },
-  });
+  const { currentTerm, allTerms: terms } = useAcademicCalendar();
+
+  // Auto-select current term in the create/edit form
+  useEffect(() => {
+    if (currentTerm && !formData.termId) {
+      setFormData(f => ({ ...f, termId: String(currentTerm.id) }));
+    }
+  }, [currentTerm]);
 
   useSocketIORealtime({
     table: 'teacher_class_assignments',

@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent } from '@/components/ui/card';
@@ -43,14 +44,6 @@ function useAllSubjects() {
     queryKey: ['/api/subjects'],
     queryFn: async () => (await apiRequest('GET', '/api/subjects')).json(),
     staleTime: 5 * 60 * 1000,
-  });
-}
-
-function useTerms() {
-  return useQuery<any[]>({
-    queryKey: ['/api/terms'],
-    queryFn: async () => (await apiRequest('GET', '/api/terms')).json(),
-    staleTime: 10 * 60 * 1000,
   });
 }
 
@@ -125,7 +118,14 @@ export default function AdminLessonNoteCreate() {
   const { data: classes  = [],         isLoading: loadingClasses  } = useClasses();
   const { data: allSubjects = [] }                                   = useAllSubjects();
   const { data: mappings = [] }                                      = useSubjectMappings(classId);
-  const { data: terms    = [] }                                      = useTerms();
+  const { currentTerm, allTerms: terms } = useAcademicCalendar();
+
+  // Auto-select current term when it loads
+  useEffect(() => {
+    if (currentTerm && !termId) {
+      setTermId(String(currentTerm.id));
+    }
+  }, [currentTerm, termId]);
   const { data: topics   = [], isLoading: loadingTopics }           = useAllTopics(classId, subjectId, termId);
   const { data: notes    = [], isLoading: loadingNotes  }           = useExistingNotes(classId, subjectId, termId);
 

@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { calculateAge, getGradeColor, getRemarkFromGrade, formatPosition } from '@/lib/report-card-utils';
 import { useQuery } from '@tanstack/react-query';
+import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -102,13 +103,14 @@ export default function StudentReportCard() {
   const schoolEmail = ContactUtils.getPrimaryEmail(settings);
   const schoolPhone = ContactUtils.getFormattedPrimaryPhone(settings);
 
-  const { data: terms = [] } = useQuery({
-    queryKey: ['/api/terms'],
-    queryFn: async () => {
-      const response = await apiRequest('GET', '/api/terms');
-      return await response.json();
-    },
-  });
+  const { currentTerm, allTerms: terms } = useAcademicCalendar();
+
+  // Auto-select current term when it loads
+  useEffect(() => {
+    if (currentTerm && !selectedTerm) {
+      setSelectedTerm(String(currentTerm.id));
+    }
+  }, [currentTerm, selectedTerm]);
 
   const { data: reportCard, isLoading } = useQuery({
     queryKey: ['/api/reports/student-report-card', user?.id, selectedTerm],

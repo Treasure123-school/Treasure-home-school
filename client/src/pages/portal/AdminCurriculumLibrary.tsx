@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useAcademicCalendar } from "@/hooks/useAcademicCalendar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -150,7 +151,7 @@ export default function AdminCurriculumLibrary() {
 
   const { data: classes = [] } = useQuery<ClassItem[]>({ queryKey: ["/api/classes"] });
   const { data: subjects = [] } = useQuery<SubjectItem[]>({ queryKey: ["/api/subjects"] });
-  const { data: terms = [] } = useQuery<AcademicTerm[]>({ queryKey: ["/api/terms"] });
+  const { allTerms: terms } = useAcademicCalendar();
 
   // ── Import mutation ───────────────────────────────────────────────────────────
   const importMutation = useMutation({

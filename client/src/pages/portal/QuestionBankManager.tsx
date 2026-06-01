@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAcademicCalendar } from "@/hooks/useAcademicCalendar";
 import { useAuth } from "@/lib/auth";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -137,7 +138,7 @@ function ContextFilterBar({
   showBank?: boolean;
 }) {
   const { data: classes = [] } = useQuery<any[]>({ queryKey: ["/api/classes"] });
-  const { data: terms   = [] } = useQuery<any[]>({ queryKey: ["/api/terms"] });
+  const { allTerms: terms } = useAcademicCalendar();
 
   const { data: classSubjects = [], isLoading: subjectsLoading } = useQuery<any[]>({
     queryKey:  ["/api/classes", value.classId, "available-subjects"],
@@ -1208,8 +1209,17 @@ export default function QuestionBankManager() {
     enabled:   !!bankClassId,
     staleTime: 60_000,
   });
-  const { data: allTerms   = [] } = useQuery<any[]>({ queryKey: ["/api/terms"] });
+  const { currentTerm, allTerms } = useAcademicCalendar();
   const { data: allClasses = [] } = useQuery<any[]>({ queryKey: ["/api/classes"] });
+
+  // Auto-select current term in browse, my-bank, and create-bank filters
+  useEffect(() => {
+    if (currentTerm) {
+      if (!browseCtx.termId) setBrowseCtx(c => ({ ...c, termId: currentTerm.id }));
+      if (!myCtx.termId) setMyCtx(c => ({ ...c, termId: currentTerm.id }));
+      if (!bankTermId) setBankTermId(String(currentTerm.id));
+    }
+  }, [currentTerm]);
 
   // ── Workflow dialogs
   const [rejectTarget,    setRejectTarget]    = useState<any>(null);

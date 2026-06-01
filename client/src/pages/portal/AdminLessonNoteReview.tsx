@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent } from '@/components/ui/card';
@@ -49,14 +50,6 @@ function useClasses() {
   return useQuery<any[]>({
     queryKey: ['/api/classes'],
     queryFn: async () => (await apiRequest('GET', '/api/classes')).json(),
-    staleTime: 5 * 60 * 1000,
-  });
-}
-
-function useTerms() {
-  return useQuery<any[]>({
-    queryKey: ['/api/terms'],
-    queryFn: async () => (await apiRequest('GET', '/api/terms')).json(),
     staleTime: 5 * 60 * 1000,
   });
 }
@@ -197,7 +190,14 @@ export default function AdminLessonNoteReview() {
   const { data: stats }         = useLessonNotesStats();
   const { data: subjects = [] } = useSubjects();
   const { data: classes  = [] } = useClasses();
-  const { data: terms    = [] } = useTerms();
+  const { currentTerm, allTerms: terms } = useAcademicCalendar();
+
+  // Auto-select current term in the filter when it loads
+  useEffect(() => {
+    if (currentTerm && filterTerm === '_all') {
+      setFilterTerm(String(currentTerm.id));
+    }
+  }, [currentTerm]);
 
   const activeFilters = { classId: filterClass, subjectId: filterSubject, termId: filterTerm, status: filterStatus };
   const { data: notes = [], isLoading } = useLessonNotes(activeFilters);

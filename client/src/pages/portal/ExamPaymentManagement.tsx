@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -58,18 +59,9 @@ export default function ExamPaymentManagement() {
     examFeeAmount: 0,
   });
 
-  // Fetch terms
-  const { data: termsData } = useQuery<Term[]>({
-    queryKey: ['/api/terms'],
-    queryFn: async () => {
-      const res = await apiRequest('GET', '/api/terms');
-      return res.json();
-    },
-  });
-
-  // Determine effective term
-  const terms = termsData ?? [];
-  const currentTerm = terms.find(t => t.isCurrent);
+  // Fetch academic calendar (provides currentTerm + allTerms)
+  const { currentTerm, allTerms } = useAcademicCalendar();
+  const terms = allTerms as Term[];
   const effectiveTermId = selectedTermId ?? currentTerm?.id ?? null;
 
   // Fetch payment overview

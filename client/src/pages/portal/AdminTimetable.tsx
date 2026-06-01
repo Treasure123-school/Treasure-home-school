@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -117,7 +118,7 @@ export default function AdminTimetable() {
     },
   });
   const teachers: TeacherData[] = Array.isArray(rawTeachers) ? rawTeachers : [];
-  const { data: terms = [] } = useQuery<TermData[]>({ queryKey: ['/api/terms'] });
+  const { currentTerm, allTerms: terms } = useAcademicCalendar();
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof EMPTY_FORM) => {
@@ -182,7 +183,7 @@ export default function AdminTimetable() {
 
   function openAdd() {
     setEditEntry(null);
-    setForm({ ...EMPTY_FORM });
+    setForm({ ...EMPTY_FORM, termId: currentTerm ? String(currentTerm.id) : '' });
     setConflictMsg('');
     setShowDialog(true);
   }
@@ -229,8 +230,6 @@ export default function AdminTimetable() {
   }, [entries]);
 
   const activeFilters = [filterClass !== 'all', filterTeacher !== 'all', filterTerm !== 'all'].filter(Boolean).length;
-
-  const currentTerm = terms.find(t => t.isCurrent);
 
   const handlePrint = () => window.print();
 

@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -24,14 +25,6 @@ function useMySubjects(enabled: boolean) {
     queryFn: async () => (await apiRequest('GET', '/api/my-subjects')).json(),
     staleTime: 10 * 60 * 1000,
     enabled,
-  });
-}
-
-function useTerms() {
-  return useQuery<any[]>({
-    queryKey: ['/api/terms'],
-    queryFn: async () => (await apiRequest('GET', '/api/terms')).json(),
-    staleTime: 10 * 60 * 1000,
   });
 }
 
@@ -72,7 +65,14 @@ export default function StudentSchemeOfWork() {
 
   const { data: studentInfo, isLoading: loadingStudent } = useStudentInfo();
   const { data: subjects = [], isLoading: loadingSubjects } = useMySubjects(!!studentInfo);
-  const { data: terms = [],    isLoading: loadingTerms   } = useTerms();
+  const { currentTerm, allTerms: terms, isLoading: loadingTerms } = useAcademicCalendar();
+
+  // Auto-select current term when it loads
+  useEffect(() => {
+    if (currentTerm && !selectedTermId) {
+      setSelectedTermId(String(currentTerm.id));
+    }
+  }, [currentTerm, selectedTermId]);
 
   const filtersComplete = !!(selectedSubjectId && selectedTermId);
 

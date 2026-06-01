@@ -8,7 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
-import type { Class, Subject, AcademicTerm } from '@shared/schema';
+import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
+import type { Class, Subject } from '@shared/schema';
 import { ROLE_IDS } from '@/lib/roles';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -244,22 +245,15 @@ export default function CreateExam() {
 
   const subjectsLoading = assignmentsLoading || (myAssignments?.isAdmin && mappingsLoading);
 
-  // Fetch academic terms with real-time updates
-  const { data: terms = [], isLoading: termsLoading } = useQuery<AcademicTerm[]>({
-    queryKey: ['/api/terms'],
-    refetchOnWindowFocus: true,
-    staleTime: 30000,
-  });
+  // Fetch academic calendar (provides currentTerm + allTerms)
+  const { currentTerm, allTerms: terms, isLoading: termsLoading } = useAcademicCalendar();
 
-  // Auto-select current term when terms are loaded
+  // Auto-select current term when it loads
   useEffect(() => {
-    if (terms.length > 0 && !form.getValues('termId')) {
-      const currentTerm = terms.find((term: any) => term.isCurrent);
-      if (currentTerm) {
-        form.setValue('termId', currentTerm.id);
-      }
+    if (currentTerm && !form.getValues('termId')) {
+      form.setValue('termId', currentTerm.id);
     }
-  }, [terms, form]);
+  }, [currentTerm, form]);
 
   // Clear subject and teacher selection when class changes to avoid stale selections
   useEffect(() => {

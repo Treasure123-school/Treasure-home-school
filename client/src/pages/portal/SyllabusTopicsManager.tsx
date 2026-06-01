@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -67,10 +68,14 @@ export default function SyllabusTopicsManager() {
     queryKey: ['/api/subjects'],
     queryFn: async () => (await apiRequest('GET', '/api/subjects')).json(),
   });
-  const { data: terms = [] } = useQuery({
-    queryKey: ['/api/terms'],
-    queryFn: async () => (await apiRequest('GET', '/api/terms')).json(),
-  });
+  const { currentTerm, allTerms: terms } = useAcademicCalendar();
+
+  // Auto-select current term when it loads
+  useEffect(() => {
+    if (currentTerm && !selectedTermId) {
+      setSelectedTermId(String(currentTerm.id));
+    }
+  }, [currentTerm, selectedTermId]);
   const { data: mappings = [], isLoading: mappingsLoading } = useQuery<any[]>({
     queryKey: ['/api/class-subject-mappings', selectedClassId],
     queryFn: async () => {

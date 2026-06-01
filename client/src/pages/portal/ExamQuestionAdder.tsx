@@ -6,8 +6,9 @@
  * Tab 3: Import from Question Bank — browse/filter/select from bank
  * Tab 4: Auto Generate — auto-generate questions from question bank with filters
  */
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -90,10 +91,16 @@ export default function ExamQuestionAdder({
         queryKey: ['/api/subjects'],
         queryFn: async () => { const r = await apiRequest('GET', '/api/subjects'); return r.json(); },
     });
-    const { data: terms = [] } = useQuery({
-        queryKey: ['/api/terms'],
-        queryFn: async () => { const r = await apiRequest('GET', '/api/terms'); return r.json(); },
-    });
+    const { currentTerm, allTerms: terms } = useAcademicCalendar();
+
+    // Auto-select current term in the bank filter and auto-generate filter
+    useEffect(() => {
+        if (currentTerm) {
+            if (!bankFilterTermId) setBankFilterTermId(String(currentTerm.id));
+            if (!autoTermId) setAutoTermId(String(currentTerm.id));
+        }
+    }, [currentTerm]);
+
     const { data: bankTopics = [] } = useQuery({
         queryKey: ['/api/syllabus-topics', 'bank-import', bankFilterClassId, bankFilterSubjectId, bankFilterTermId],
         queryFn: async () => {

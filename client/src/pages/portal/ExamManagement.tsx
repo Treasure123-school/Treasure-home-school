@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useSearch } from 'wouter';
 import ExamQuestionAdder from './ExamQuestionAdder';
 import { useQuery, useMutation } from '@tanstack/react-query';
+import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { optimisticToggle, optimisticDelete, optimisticCreate, optimisticUpdateItem, rollbackOnError } from '@/lib/optimisticUpdates';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -382,14 +383,14 @@ export default function ExamManagement() {
     },
   });
 
-  const { data: terms = [], isLoading: loadingTerms } = useQuery<any[]>({
-    queryKey: ['/api/terms'],
-    queryFn: async () => {
-      const response = await apiRequest('GET', '/api/terms');
-      if (!response.ok) throw new Error('Failed to fetch terms');
-      return response.json();
-    },
-  });
+  const { currentTerm, allTerms: terms } = useAcademicCalendar();
+
+  // Auto-select current term when the Create Exam dialog opens (not for edits)
+  useEffect(() => {
+    if (currentTerm && !editingExam && isExamDialogOpen) {
+      setExamValue('termId', currentTerm.id as any);
+    }
+  }, [currentTerm, editingExam, isExamDialogOpen, setExamValue]);
 
   // Fetch active grading config so the exam form can show real DB scale names
   const { data: gradingConfigData } = useQuery<{ availableScales: string[]; dbSettings: { defaultGradingScale: string } }>({
