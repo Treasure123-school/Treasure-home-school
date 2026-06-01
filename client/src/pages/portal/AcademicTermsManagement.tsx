@@ -1090,22 +1090,11 @@ export default function AcademicTermsManagement() {
           <p className="text-muted-foreground text-sm mt-1">Manage sessions, terms, and calendar automation</p>
         </div>
         {isAdmin && (
-          <div className="flex items-center gap-2 flex-wrap">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="sm" onClick={() => runTransMut.mutate()} disabled={runTransMut.isPending} data-testid="btn-run-transitions">
-                    <RefreshCw className={`h-4 w-4 mr-1.5 ${runTransMut.isPending ? 'animate-spin' : ''}`} />
-                    {runTransMut.isPending ? 'Running…' : 'Run Transitions'}
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent><p>Manually trigger date-based term transitions</p></TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            <Button variant="outline" size="sm" onClick={() => setTermDialog({ open: true, editing: null })} data-testid="btn-new-term">
+          <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 w-full sm:w-auto">
+            <Button variant="outline" className="w-full sm:w-auto" onClick={() => setTermDialog({ open: true, editing: null })} data-testid="btn-new-term">
               <Plus className="h-4 w-4 mr-1" /> New Term
             </Button>
-            <Button size="sm" onClick={() => setSessionDialog({ open: true, editing: null })} data-testid="btn-new-session">
+            <Button className="w-full sm:w-auto" onClick={() => setSessionDialog({ open: true, editing: null })} data-testid="btn-new-session">
               <Plus className="h-4 w-4 mr-1" /> New Session
             </Button>
           </div>
@@ -1167,19 +1156,12 @@ export default function AcademicTermsManagement() {
       {/* ── Sessions ── */}
       <Card>
         <CardHeader className="pb-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <Layers className="h-4 w-4 text-primary" /> Academic Sessions
-                <Badge variant="secondary" className="ml-1">{allSessions.length}</Badge>
-              </CardTitle>
-              <CardDescription className="text-xs mt-0.5">School years that group your terms — create, activate, archive, and delete sessions</CardDescription>
-            </div>
-            {isAdmin && (
-              <Button size="sm" onClick={() => setSessionDialog({ open: true, editing: null })} data-testid="btn-add-session">
-                <Plus className="h-3.5 w-3.5 mr-1" /> New Session
-              </Button>
-            )}
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <Layers className="h-4 w-4 text-primary" /> Academic Sessions
+              <Badge variant="secondary" className="ml-1">{allSessions.length}</Badge>
+            </CardTitle>
+            <CardDescription className="text-xs mt-0.5">School years that group your terms — create, activate, archive, and delete sessions</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
@@ -1218,20 +1200,13 @@ export default function AcademicTermsManagement() {
       {/* ── Terms ── */}
       <Card>
         <CardHeader className="pb-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <Calendar className="h-4 w-4 text-primary" /> Academic Terms
-                <Badge variant="secondary" className="ml-1">{allTerms.length}</Badge>
-                {activeTermCount > 0 && <Badge className="text-[10px] bg-emerald-500 hover:bg-emerald-500 py-0">{activeTermCount} active</Badge>}
-              </CardTitle>
-              <CardDescription className="text-xs mt-0.5">Manage terms within sessions — activate, lock, and track progress</CardDescription>
-            </div>
-            {isAdmin && (
-              <Button size="sm" onClick={() => setTermDialog({ open: true, editing: null })} data-testid="btn-add-term">
-                <Plus className="h-3.5 w-3.5 mr-1" /> New Term
-              </Button>
-            )}
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base font-semibold flex-wrap">
+              <Calendar className="h-4 w-4 text-primary" /> Academic Terms
+              <Badge variant="secondary" className="ml-1">{allTerms.length}</Badge>
+              {activeTermCount > 0 && <Badge className="text-[10px] bg-emerald-500 hover:bg-emerald-500 py-0">{activeTermCount} active</Badge>}
+            </CardTitle>
+            <CardDescription className="text-xs mt-0.5">Manage terms within sessions — activate, lock, and track progress</CardDescription>
           </div>
         </CardHeader>
         <CardContent>
