@@ -308,6 +308,7 @@ export const systemSettings = pgTable("system_settings", {
   deletedUserRetentionDays: integer("deleted_user_retention_days").notNull().default(30),
   requireExamPayment: boolean("require_exam_payment").notNull().default(false),
   examFeeAmount: integer("exam_fee_amount").notNull().default(0),
+  academicAutoDetect: boolean("academic_auto_detect").notNull().default(true),
   designatedPrincipalId: varchar("designated_principal_id", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
   updatedBy: varchar("updated_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp("created_at").notNull().defaultNow(),

@@ -247,6 +247,20 @@ function sanitizeLogData(data: any): any {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.log(`⚠️ Test users seeding failed: ${errorMessage}`);
   }
+  // Apply incremental DB migrations (safe ALTER TABLE ... ADD COLUMN IF NOT EXISTS)
+  try {
+    const { getPgPool } = await import("./db");
+    const pool = getPgPool();
+    if (pool) {
+      await pool.query(`
+        ALTER TABLE system_settings
+        ADD COLUMN IF NOT EXISTS academic_auto_detect BOOLEAN NOT NULL DEFAULT TRUE
+      `);
+      console.log('✅ DB migration: academic_auto_detect column ensured');
+    }
+  } catch (err: any) {
+    console.log(`⚠️ DB migration warning: ${err.message}`);
+  }
   // Seed default WAEC/NECO grading boundaries
   try {
     console.log("Seeding default grading boundaries...");
