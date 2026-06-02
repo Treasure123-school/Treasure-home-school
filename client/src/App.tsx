@@ -128,6 +128,7 @@ const AdmissionsManagement = lazy(() => import("@/pages/portal/website/Admission
 
 import StudentExams from "@/pages/portal/StudentExams";
 const ExamFeePayment = lazy(() => import("@/pages/portal/ExamFeePayment"));
+const ChangePasswordPage = lazy(() => import("@/pages/portal/ChangePasswordPage"));
 
 function Router() {
   return (
@@ -584,7 +585,16 @@ function Router() {
 
         <Route path="/portal/superadmin/account/password">
           <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
-            <SuperAdminPlaceholder title="Change Password" category="Account" description="Update your password securely" />
+            <SuperAdminLayout>
+              <ChangePasswordPage />
+            </SuperAdminLayout>
+          </ProtectedRoute>
+        </Route>
+        <Route path="/portal/superadmin/change-password">
+          <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
+            <SuperAdminLayout>
+              <ChangePasswordPage />
+            </SuperAdminLayout>
           </ProtectedRoute>
         </Route>
 

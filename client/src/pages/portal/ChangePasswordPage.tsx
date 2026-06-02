@@ -1,48 +1,13 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { KeyRound, Eye, EyeOff, CheckCircle, RotateCcw, ShieldCheck, ChevronRight } from "lucide-react";
-
-interface ChangePasswordLinkCardProps {
-  href: string;
-}
-
-export function ChangePasswordLinkCard({ href }: ChangePasswordLinkCardProps) {
-  return (
-    <Card className="dark:bg-slate-800 dark:border-slate-700 hover:shadow-md transition-shadow">
-      <CardContent className="p-4 sm:p-5">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="shrink-0 h-10 w-10 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-              <ShieldCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="font-semibold text-sm dark:text-white">Change Password</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Update your login credentials securely</p>
-            </div>
-          </div>
-          <Link href={href}>
-            <Button
-              variant="outline"
-              size="sm"
-              className="shrink-0 gap-1.5"
-              data-testid="link-change-password"
-            >
-              Update
-              <ChevronRight className="h-3.5 w-3.5" />
-            </Button>
-          </Link>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+import { KeyRound, Eye, EyeOff, CheckCircle, RotateCcw, ShieldCheck, ArrowLeft } from "lucide-react";
 
 interface PasswordForm {
   currentPassword: string;
@@ -69,7 +34,18 @@ function getStrength(pwd: string) {
   return { label: "Strong", color: "bg-green-500", textColor: "text-green-600", width: "w-full" };
 }
 
-export function ChangePasswordCard() {
+function getPortalBackPath(pathname: string): { path: string; label: string } {
+  if (pathname.includes("/portal/student")) return { path: "/portal/student/profile", label: "Back to Profile" };
+  if (pathname.includes("/portal/teacher")) return { path: "/portal/teacher/profile", label: "Back to Profile" };
+  if (pathname.includes("/portal/admin")) return { path: "/portal/admin/profile", label: "Back to Profile" };
+  if (pathname.includes("/portal/superadmin")) return { path: "/portal/superadmin/profile", label: "Back to Profile" };
+  if (pathname.includes("/portal/parent")) return { path: "/portal/parent/profile", label: "Back to Profile" };
+  return { path: "/", label: "Go Back" };
+}
+
+export default function ChangePasswordPage() {
+  const [location] = useLocation();
+  const { path: backPath, label: backLabel } = getPortalBackPath(location);
   const { toast } = useToast();
   const [form, setForm] = useState<PasswordForm>(defaultForm);
   const [show, setShow] = useState({ current: false, new: false, confirm: false });
@@ -91,7 +67,6 @@ export function ChangePasswordCard() {
     onSuccess: () => {
       setForm(defaultForm);
       setSuccess(true);
-      setTimeout(() => setSuccess(false), 4000);
       toast({ title: "Password Changed", description: "Your password has been updated successfully." });
     },
     onError: (error: Error) => {
@@ -124,28 +99,50 @@ export function ChangePasswordCard() {
   };
 
   return (
-    <Card className="dark:bg-slate-800 dark:border-slate-700">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 dark:text-white">
-          <ShieldCheck className="h-5 w-5 text-blue-600" />
-          Change Password
-        </CardTitle>
-        <CardDescription className="dark:text-slate-400">
-          Update your login password. Use a strong, unique password.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        {success && (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300">
-            <CheckCircle className="h-4 w-4 shrink-0" />
-            <span className="text-sm font-medium">Password updated successfully!</span>
-          </div>
-        )}
+    <div className="max-w-2xl mx-auto space-y-6 p-4 sm:p-6">
+      {/* Back link */}
+      <div>
+        <Link href={backPath}>
+          <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground -ml-2">
+            <ArrowLeft className="h-4 w-4" />
+            {backLabel}
+          </Button>
+        </Link>
+      </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Change Password</h1>
+        <p className="text-muted-foreground text-sm sm:text-base mt-1">
+          Update your login password. Use a strong, unique password to keep your account secure.
+        </p>
+      </div>
+
+      {/* Form Card */}
+      <Card className="dark:bg-slate-800 dark:border-slate-700">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 dark:text-white">
+            <ShieldCheck className="h-5 w-5 text-blue-600" />
+            Update Password
+          </CardTitle>
+          <CardDescription className="dark:text-slate-400">
+            Enter your current password, then choose a new one.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {success && (
+            <div className="flex items-center gap-3 p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300">
+              <CheckCircle className="h-5 w-5 shrink-0" />
+              <div>
+                <p className="font-semibold text-sm">Password updated successfully!</p>
+                <p className="text-xs mt-0.5 opacity-80">Your account is now secured with the new password.</p>
+              </div>
+            </div>
+          )}
+
           {/* Current Password */}
           <div className="space-y-2">
-            <Label htmlFor="cp-current" className="dark:text-slate-200 text-sm font-semibold">
+            <Label htmlFor="cp-current" className="dark:text-slate-200 font-semibold">
               Current Password
             </Label>
             <div className="relative">
@@ -154,7 +151,7 @@ export function ChangePasswordCard() {
                 type={show.current ? "text" : "password"}
                 value={form.currentPassword}
                 onChange={(e) => setForm(f => ({ ...f, currentPassword: e.target.value }))}
-                placeholder="Enter current password"
+                placeholder="Enter your current password"
                 className="pr-10 dark:bg-slate-900 dark:border-slate-700 dark:text-white"
                 data-testid="input-current-password"
                 autoComplete="current-password"
@@ -172,7 +169,7 @@ export function ChangePasswordCard() {
 
           {/* New Password */}
           <div className="space-y-2">
-            <Label htmlFor="cp-new" className="dark:text-slate-200 text-sm font-semibold">
+            <Label htmlFor="cp-new" className="dark:text-slate-200 font-semibold">
               New Password
             </Label>
             <div className="relative">
@@ -195,10 +192,9 @@ export function ChangePasswordCard() {
                 {show.new ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
-            {/* Strength bar */}
             {form.newPassword && strength && (
-              <div className="space-y-1">
-                <div className="h-1 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div className="space-y-1 mt-2">
+                <div className="h-1.5 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                   <div className={`h-full ${strength.color} ${strength.width} transition-all duration-300 rounded-full`} />
                 </div>
                 <p className={`text-xs font-medium ${strength.textColor}`}>{strength.label} password</p>
@@ -208,7 +204,7 @@ export function ChangePasswordCard() {
 
           {/* Confirm Password */}
           <div className="space-y-2">
-            <Label htmlFor="cp-confirm" className="dark:text-slate-200 text-sm font-semibold">
+            <Label htmlFor="cp-confirm" className="dark:text-slate-200 font-semibold">
               Confirm New Password
             </Label>
             <div className="relative">
@@ -243,23 +239,35 @@ export function ChangePasswordCard() {
               </p>
             )}
           </div>
-        </div>
 
-        <div className="flex justify-end pt-1">
-          <Button
-            onClick={handleSubmit}
-            disabled={changePasswordMutation.isPending}
-            data-testid="button-change-password"
-            className="w-full sm:w-auto"
-          >
-            {changePasswordMutation.isPending ? (
-              <><RotateCcw className="h-4 w-4 mr-2 animate-spin" /> Updating...</>
-            ) : (
-              <><KeyRound className="h-4 w-4 mr-2" /> Update Password</>
-            )}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+          {/* Tips */}
+          <div className="rounded-lg bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 p-4">
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-2">Password tips</p>
+            <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-1">
+              <li>• At least 8 characters long</li>
+              <li>• Mix of uppercase and lowercase letters</li>
+              <li>• Include numbers and special characters</li>
+              <li>• Do not reuse a recent password</li>
+            </ul>
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              onClick={handleSubmit}
+              disabled={changePasswordMutation.isPending}
+              data-testid="button-change-password"
+              size="lg"
+              className="w-full sm:w-auto"
+            >
+              {changePasswordMutation.isPending ? (
+                <><RotateCcw className="h-4 w-4 mr-2 animate-spin" /> Updating...</>
+              ) : (
+                <><KeyRound className="h-4 w-4 mr-2" /> Update Password</>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

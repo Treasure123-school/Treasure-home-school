@@ -8,7 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/lib/auth";
 import { getApiUrl } from '@/config/api';
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Save, Key, Pen, User, Shield, Camera, X } from "lucide-react";
+import { Save, Pen, User, Shield, Camera, X } from "lucide-react";
+import { ChangePasswordLinkCard } from "@/components/ChangePasswordCard";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ImageCapture } from "@/components/ui/image-capture";
 import { SignatureDialog } from "@/components/ui/signature-pad";
@@ -27,12 +28,6 @@ interface ProfileData {
   firstName: string;
   lastName: string;
   email: string;
-}
-
-interface PasswordData {
-  currentPassword: string;
-  newPassword: string;
-  confirmPassword: string;
 }
 
 function PrincipalSignatureCard() {
@@ -134,12 +129,6 @@ export default function AdminProfile() {
     email: user?.email || "",
   });
 
-  const [passwordData, setPasswordData] = useState<PasswordData>({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
-
   const updateProfileMutation = useMutation({
     mutationFn: async (data: any) => {
       return apiRequest("PUT", `/api/users/${user?.id}`, data);
@@ -153,23 +142,6 @@ export default function AdminProfile() {
       toast({
         title: "Error",
         description: error.message || "Failed to update profile",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const changePasswordMutation = useMutation({
-    mutationFn: async (data: any) => {
-      return apiRequest("POST", "/api/auth/change-password", data);
-    },
-    onSuccess: () => {
-      toast({ title: "Success", description: "Password changed successfully" });
-      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to change password",
         variant: "destructive",
       });
     },
@@ -234,26 +206,6 @@ export default function AdminProfile() {
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handlePasswordChange = () => {
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast({
-        title: "Error",
-        description: "New passwords do not match",
-        variant: "destructive",
-      });
-      return;
-    }
-    if (passwordData.newPassword.length < 6) {
-      toast({
-        title: "Error",
-        description: "Password must be at least 6 characters",
-        variant: "destructive",
-      });
-      return;
-    }
-    changePasswordMutation.mutate(passwordData);
   };
 
   const handleRemoveImage = async () => {
@@ -482,71 +434,9 @@ export default function AdminProfile() {
         </div>
 
         {/* Change Password */}
-        <Card className="lg:col-span-3 dark:bg-slate-800 dark:border-slate-700">
-          <CardHeader>
-            <CardTitle className="dark:text-white flex items-center gap-2">
-              <Key className="h-5 w-5" />
-              Change Password
-            </CardTitle>
-            <CardDescription className="dark:text-slate-400">
-              Update your login password
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="currentPassword" className="dark:text-slate-200">Current Password</Label>
-                <Input
-                  id="currentPassword"
-                  type="password"
-                  data-testid="input-current-password"
-                  value={passwordData.currentPassword}
-                  onChange={(e) =>
-                    setPasswordData({ ...passwordData, currentPassword: e.target.value })
-                  }
-                  className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="newPassword" className="dark:text-slate-200">New Password</Label>
-                <Input
-                  id="newPassword"
-                  type="password"
-                  data-testid="input-new-password"
-                  value={passwordData.newPassword}
-                  onChange={(e) =>
-                    setPasswordData({ ...passwordData, newPassword: e.target.value })
-                  }
-                  className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword" className="dark:text-slate-200">Confirm New Password</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  data-testid="input-confirm-password"
-                  value={passwordData.confirmPassword}
-                  onChange={(e) =>
-                    setPasswordData({ ...passwordData, confirmPassword: e.target.value })
-                  }
-                  className="dark:bg-slate-900 dark:border-slate-700 dark:text-white"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <Button
-                onClick={handlePasswordChange}
-                disabled={changePasswordMutation.isPending}
-                data-testid="button-change-password"
-                className="w-full sm:w-auto"
-              >
-                <Key className="mr-2 h-4 w-4" />
-                {changePasswordMutation.isPending ? "Changing..." : "Change Password"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="lg:col-span-3">
+          <ChangePasswordLinkCard href="/portal/admin/change-password" />
+        </div>
       </div>
     </div>
   );
