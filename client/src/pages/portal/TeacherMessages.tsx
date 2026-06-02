@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
@@ -509,73 +509,85 @@ export default function TeacherMessages() {
       {/* New Message Dialog */}
       <Dialog open={isNewMessageOpen} onOpenChange={setIsNewMessageOpen}>
         <DialogContent className="sm:max-w-md rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
-              <Plus className="h-5 w-5 text-blue-600" />
-              New Message
-            </DialogTitle>
+          <DialogHeader className="space-y-3 pb-2">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-blue-100 dark:bg-blue-900/40 rounded-xl">
+                <Send className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                  New Message
+                </DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground mt-0.5">
+                  Send a message to a student or colleague
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <div>
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Recipient (Username or ID)</Label>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Recipient (Username or ID)</Label>
               <div className="flex gap-2">
-                <Input
-                  placeholder="Enter username or ID..."
-                  value={recipientIdentifier}
-                  onChange={(e) => setRecipientIdentifier(e.target.value)}
-                  className="rounded-xl flex-1"
-                  disabled={!!recipientInfo}
-                />
+                <div className="relative flex-1">
+                  <Input
+                    placeholder="Enter username or ID..."
+                    value={recipientIdentifier}
+                    onChange={(e) => setRecipientIdentifier(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleVerifyRecipient()}
+                    className="rounded-xl"
+                    disabled={!!recipientInfo}
+                    data-testid="input-recipient-identifier"
+                  />
+                  {isVerifying && <div className="absolute right-3 top-2.5"><Loader2 className="h-4 w-4 animate-spin text-blue-600" /></div>}
+                  {recipientInfo && !isVerifying && <div className="absolute right-3 top-2.5"><CheckCircle2 className="h-4 w-4 text-green-500" /></div>}
+                </div>
                 {recipientInfo ? (
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => {
-                      setRecipientInfo(null);
-                      setRecipientIdentifier('');
-                      setNewMsgRecipient('');
-                    }}
-                    className="text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl"
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { setRecipientInfo(null); setRecipientIdentifier(''); setNewMsgRecipient(''); }}
+                    className="text-destructive hover:text-destructive rounded-xl"
                   >
                     Clear
                   </Button>
                 ) : (
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={handleVerifyRecipient}
                     disabled={isVerifying || !recipientIdentifier.trim()}
                     className="rounded-xl"
+                    data-testid="button-verify-recipient"
                   >
-                    {isVerifying ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      'Verify'
-                    )}
+                    {isVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify'}
                   </Button>
                 )}
               </div>
               {recipientInfo && (
-                <div className="mt-2 text-[11px] p-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-xl flex items-center gap-2">
-                  <CheckCircle2 className="h-3 w-3" />
-                  <span>Verified: <strong>{recipientInfo.firstName} {recipientInfo.lastName}</strong> ({recipientInfo.roleName})</span>
+                <div className="flex items-center gap-2 p-2 px-3 bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-800 rounded-lg">
+                  <Avatar className="h-6 w-6">
+                    <AvatarFallback className="bg-green-500 text-white text-[10px]">{recipientInfo.firstName?.[0]}{recipientInfo.lastName?.[0]}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-medium text-green-800 dark:text-green-300">
+                    {recipientInfo.firstName} {recipientInfo.lastName} ({recipientInfo.roleName})
+                  </span>
                 </div>
               )}
             </div>
-            <div>
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Subject</Label>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Subject</Label>
               <Input
-                placeholder="Message subject..."
+                placeholder="What is this about?"
                 value={newMsgSubject}
                 onChange={e => setNewMsgSubject(e.target.value)}
                 className="rounded-xl"
                 data-testid="input-new-message-subject"
               />
             </div>
-            <div>
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5 block">Message</Label>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Message</Label>
               <Textarea
-                placeholder="Write your message..."
+                placeholder="Write your message here..."
                 value={newMsgContent}
                 onChange={e => setNewMsgContent(e.target.value)}
                 rows={4}
@@ -583,22 +595,25 @@ export default function TeacherMessages() {
                 data-testid="input-new-message-content"
               />
             </div>
-            <div className="flex gap-2 pt-1">
-              <Button
-                variant="outline"
-                onClick={() => setIsNewMessageOpen(false)}
-                className="flex-1 rounded-xl"
-              >
-                Cancel
-              </Button>
+            <div className="space-y-2 pt-1">
               <Button
                 onClick={() => newMessageMutation.mutate({ recipientId: newMsgRecipient, subject: newMsgSubject, content: newMsgContent })}
                 disabled={!newMsgRecipient || !newMsgContent.trim() || newMessageMutation.isPending}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl gap-2"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl gap-2"
                 data-testid="button-send-new-message"
               >
-                <Send className="h-4 w-4" />
-                {newMessageMutation.isPending ? 'Sending...' : 'Send'}
+                {newMessageMutation.isPending ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" />Sending...</>
+                ) : (
+                  <><Send className="h-4 w-4" />Send Message</>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setIsNewMessageOpen(false)}
+                className="w-full rounded-xl"
+              >
+                Cancel
               </Button>
             </div>
           </div>

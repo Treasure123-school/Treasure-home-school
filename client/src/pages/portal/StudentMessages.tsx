@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -428,16 +428,25 @@ export default function StudentMessages() {
 
       {/* New Message Dialog */}
       <Dialog open={isNewMessageOpen} onOpenChange={setIsNewMessageOpen}>
-        <DialogContent className="sm:max-w-[500px] rounded-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Plus className="w-5 h-5 text-blue-600" />
-              New Message
-            </DialogTitle>
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader className="space-y-3 pb-2">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-blue-100 dark:bg-blue-900/40 rounded-xl">
+                <Send className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                  New Message
+                </DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground mt-0.5">
+                  Send a message to your teacher
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Recipient (Username or ID)</Label>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Recipient (Username or ID)</Label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Input
@@ -471,25 +480,27 @@ export default function StudentMessages() {
                 </div>
               )}
             </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Subject</Label>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Subject</Label>
               <Input placeholder="What is this about?" value={newMsgSubject} onChange={(e) => setNewMsgSubject(e.target.value)} className="rounded-xl" data-testid="input-new-message-subject" />
             </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-medium">Message</Label>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Message</Label>
               <Textarea placeholder="Write your message here..." className="min-h-[120px] resize-none rounded-xl" value={newMsgContent} onChange={(e) => setNewMsgContent(e.target.value)} data-testid="input-new-message-content" />
             </div>
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <Button variant="outline" className="rounded-full px-6" onClick={() => setIsNewMessageOpen(false)}>Cancel</Button>
+            <div className="space-y-2 pt-1">
               <Button
-                className="rounded-full px-8 bg-blue-600 hover:bg-blue-700"
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl gap-2"
                 onClick={() => sendMessageMutation.mutate({ recipientId: newMsgRecipient, subject: newMsgSubject || 'Message', content: newMsgContent })}
                 disabled={!newMsgRecipient || !newMsgContent.trim() || sendMessageMutation.isPending}
                 data-testid="button-send-new-message"
               >
                 {sendMessageMutation.isPending
-                  ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Sending...</>
-                  : <><Send className="w-4 h-4 mr-2" />Send</>}
+                  ? <><Loader2 className="h-4 w-4 animate-spin" />Sending...</>
+                  : <><Send className="h-4 w-4" />Send Message</>}
+              </Button>
+              <Button variant="outline" className="w-full rounded-xl" onClick={() => setIsNewMessageOpen(false)}>
+                Cancel
               </Button>
             </div>
           </div>

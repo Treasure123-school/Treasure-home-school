@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
@@ -438,100 +438,97 @@ export default function AdminMessages() {
 
       {/* New Message Dialog */}
       <Dialog open={isNewMessageOpen} onOpenChange={setIsNewMessageOpen}>
-        <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden rounded-2xl">
-          <DialogHeader className="p-6 bg-gray-50 dark:bg-gray-900/50 border-b">
-            <DialogTitle className="text-2xl font-bold flex items-center gap-2">
-              <Plus className="w-6 h-6 text-blue-600" />
-              New Message
-            </DialogTitle>
-          </DialogHeader>
-          
-          <div className="p-6 space-y-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Recipient (ID, Username, or Email)</Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Input
-                      placeholder="e.g. THS/STU/001 or johndoe@gmail.com"
-                      value={recipientIdentifier}
-                      onChange={(e) => setRecipientIdentifier(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleVerifyRecipient()}
-                    />
-                    {isVerifying && (
-                      <div className="absolute right-3 top-2.5">
-                        <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                      </div>
-                    )}
-                    {recipientInfo && !isVerifying && (
-                      <div className="absolute right-3 top-2.5">
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      </div>
-                    )}
-                  </div>
-                  <Button 
-                    type="button" 
-                    variant="secondary" 
-                    onClick={handleVerifyRecipient}
-                    disabled={isVerifying || !recipientIdentifier.trim()}
-                  >
-                    Verify
-                  </Button>
-                </div>
-                {recipientInfo && (
-                  <div className="flex items-center gap-2 p-2 px-3 bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-800 rounded-lg animate-in fade-in slide-in-from-top-1">
-                    <Avatar className="h-6 w-6">
-                      <AvatarFallback className="bg-green-500 text-white text-[10px]">
-                        {recipientInfo.firstName[0]}{recipientInfo.lastName[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-sm font-medium text-green-800 dark:text-green-300">
-                      Verified: {recipientInfo.firstName} {recipientInfo.lastName} ({recipientInfo.roleName})
-                    </span>
-                  </div>
-                )}
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader className="space-y-3 pb-2">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-blue-100 dark:bg-blue-900/40 rounded-xl">
+                <Send className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Subject</Label>
-                <Input
-                  placeholder="What is this about?"
-                  value={newMsgSubject}
-                  onChange={(e) => setNewMsgSubject(e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Message</Label>
-                <Textarea
-                  placeholder="Write your message here..."
-                  className="min-h-[120px] resize-none"
-                  value={newMsgContent}
-                  onChange={(e) => setNewMsgContent(e.target.value)}
-                />
+              <div>
+                <DialogTitle className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                  New Message
+                </DialogTitle>
+                <DialogDescription className="text-sm text-muted-foreground mt-0.5">
+                  Send a direct message to any school member
+                </DialogDescription>
               </div>
             </div>
-
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <Button variant="outline" className="rounded-full px-6" onClick={() => setIsNewMessageOpen(false)}>
-                Cancel
-              </Button>
-              <Button 
-                className="rounded-full px-8 bg-blue-600 hover:bg-blue-700" 
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Recipient (ID, Username, or Email)</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    placeholder="e.g. THS/STU/001 or johndoe@gmail.com"
+                    value={recipientIdentifier}
+                    onChange={(e) => setRecipientIdentifier(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleVerifyRecipient()}
+                    className="rounded-xl"
+                    data-testid="input-recipient-identifier"
+                  />
+                  {isVerifying && <div className="absolute right-3 top-2.5"><Loader2 className="h-4 w-4 animate-spin text-blue-600" /></div>}
+                  {recipientInfo && !isVerifying && <div className="absolute right-3 top-2.5"><CheckCircle2 className="h-4 w-4 text-green-500" /></div>}
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleVerifyRecipient}
+                  disabled={isVerifying || !recipientIdentifier.trim()}
+                  className="rounded-xl"
+                  data-testid="button-verify-recipient"
+                >
+                  {isVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify'}
+                </Button>
+              </div>
+              {recipientInfo && (
+                <div className="flex items-center gap-2 p-2 px-3 bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-800 rounded-lg">
+                  <Avatar className="h-6 w-6">
+                    <AvatarFallback className="bg-green-500 text-white text-[10px]">
+                      {recipientInfo.firstName[0]}{recipientInfo.lastName[0]}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm font-medium text-green-800 dark:text-green-300">
+                    {recipientInfo.firstName} {recipientInfo.lastName} ({recipientInfo.roleName})
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Subject</Label>
+              <Input
+                placeholder="What is this about?"
+                value={newMsgSubject}
+                onChange={(e) => setNewMsgSubject(e.target.value)}
+                className="rounded-xl"
+                data-testid="input-new-message-subject"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Message</Label>
+              <Textarea
+                placeholder="Write your message here..."
+                className="min-h-[120px] resize-none rounded-xl"
+                value={newMsgContent}
+                onChange={(e) => setNewMsgContent(e.target.value)}
+                data-testid="input-new-message-content"
+              />
+            </div>
+            <div className="space-y-2 pt-1">
+              <Button
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl gap-2"
                 onClick={dialogOnSubmit}
                 disabled={!newMsgRecipient || !newMsgContent || sendMessageMutation.isPending}
+                data-testid="button-send-new-message"
               >
                 {sendMessageMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Sending...
-                  </>
+                  <><Loader2 className="h-4 w-4 animate-spin" />Sending...</>
                 ) : (
-                  <>
-                    <Send className="w-4 h-4 mr-2" />
-                    Send Message
-                  </>
+                  <><Send className="h-4 w-4" />Send Message</>
                 )}
+              </Button>
+              <Button variant="outline" className="w-full rounded-xl" onClick={() => setIsNewMessageOpen(false)}>
+                Cancel
               </Button>
             </div>
           </div>
