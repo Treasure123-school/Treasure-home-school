@@ -159,6 +159,8 @@ export default function StudentExams() {
   const [tabSwitchCount, setTabSwitchCount] = useState(0); // Keep for backward compatibility
   const [showViolationWarning, setShowViolationWarning] = useState(false);
   const [showTabSwitchWarning, setShowTabSwitchWarning] = useState(false); // Keep for compatibility
+  const [showBackNavWarning, setShowBackNavWarning] = useState(false); // Back/forward navigation warning (not a violation)
+  const backNavWarningTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [violationHistory, setViolationHistory] = useState<ViolationRecord[]>([]);
   const [lastViolationType, setLastViolationType] = useState<ViolationType | null>(null);
   const violationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -1386,8 +1388,12 @@ export default function StudentExams() {
     };
 
     const handlePopState = () => {
+      // Block the navigation immediately — lock the student on the exam page
       window.history.pushState(null, '', window.location.href);
-      handleSecurityViolation('refresh_attempt', 'Attempted to use browser back/forward button');
+      // Show an informational warning WITHOUT counting it as a violation
+      setShowBackNavWarning(true);
+      if (backNavWarningTimeoutRef.current) clearTimeout(backNavWarningTimeoutRef.current);
+      backNavWarningTimeoutRef.current = setTimeout(() => setShowBackNavWarning(false), 7000);
     };
 
     window.history.pushState(null, '', window.location.href);
@@ -2898,6 +2904,34 @@ export default function StudentExams() {
         />
 
         <div className="container mx-auto px-4 pb-12 max-w-4xl">
+          {/* Back / Forward Navigation Warning (not a violation) */}
+          {showBackNavWarning && (
+            <div className="mb-4 border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 rounded-r-lg p-3 flex items-start gap-3 shadow-sm">
+              <div className="flex-shrink-0 mt-0.5">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                  Navigation Blocked
+                </p>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
+                  You cannot navigate away during an exam. Please stay on this page and complete your exam. Use the <strong>Submit</strong> button when you are done.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowBackNavWarning(false)}
+                className="flex-shrink-0 text-blue-400 hover:text-blue-600 dark:hover:text-blue-200 transition-colors"
+                aria-label="Dismiss"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+
           {/* Warning Banners */}
           {(showTabSwitchWarning || !isOnline) && (
             <div className="mb-6 space-y-2">
