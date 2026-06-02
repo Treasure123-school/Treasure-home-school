@@ -359,6 +359,7 @@ export const exams = pgTable("exams", {
   requireFullscreen: boolean("require_fullscreen").notNull().default(false),
   maxTabSwitches: integer("max_tab_switches").notNull().default(3),
   shuffleOptions: boolean("shuffle_options").notNull().default(false),
+  showInstructionsScreen: boolean("show_instructions_screen").notNull().default(true),
 });
 
 // Exam questions table

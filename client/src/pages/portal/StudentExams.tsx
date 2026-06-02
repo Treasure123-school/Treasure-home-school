@@ -13,7 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { Clock, BookOpen, Trophy, Play, Eye, CheckCircle, XCircle, Timer, Save, RotateCcw, AlertCircle, Loader, FileText, Circle, CheckCircle2, HelpCircle, ClipboardCheck, GraduationCap, Award, Calendar, Calculator, X, Lock, CreditCard } from 'lucide-react';
+import { Clock, BookOpen, Trophy, Play, Eye, CheckCircle, XCircle, Timer, Save, RotateCcw, AlertCircle, Loader, FileText, Circle, CheckCircle2, HelpCircle, ClipboardCheck, GraduationCap, Award, Calendar, Calculator, X, Lock, CreditCard, Keyboard, Shield, ChevronDown, ChevronUp } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import type { Exam as BaseExam, ExamSession, ExamQuestion, QuestionOption, StudentAnswer } from '@shared/schema';
 
 // Extend Exam with payment fields injected by the server at runtime
@@ -209,6 +210,24 @@ export default function StudentExams() {
   const [manualRefError, setManualRefError] = useState("");
   const recoveryAttemptedRef = useRef(false);
   const isManualRecoveryRef = useRef(false);
+
+  // Instructions screen state
+  const [showInstructionsDialog, setShowInstructionsDialog] = useState(false);
+  const [pendingExamForInstructions, setPendingExamForInstructions] = useState<Exam | null>(null);
+  const [instructionsAccepted, setInstructionsAccepted] = useState(false);
+
+  // Keyboard hints visibility
+  const [showKeyboardHints, setShowKeyboardHints] = useState(false);
+
+  // Ref holding latest exam-state for the keyboard shortcut handler (avoids stale closures)
+  const kbStateRef = useRef({
+    currentQuestion: null as ExamQuestion | null,
+    currentQuestionIndex: 0,
+    answers: {} as Record<number, any>,
+    questionOptions: [] as QuestionOption[],
+    existingAnswers: [] as StudentAnswer[],
+    examQuestions: [] as ExamQuestion[],
+  });
 
   // Socket.IO realtime updates for exams list.
   // Subscribes to the CLASS channel (students are allowed) so that teacher edits
@@ -848,6 +867,100 @@ export default function StudentExams() {
       return () => clearInterval(timer);
     }
   }, [timeRemaining, activeSession]);
+
+  // Keep kbStateRef in sync with latest exam state (no stale closures in keyboard handler)
+  useEffect(() => {
+    kbStateRef.current = {
+      currentQuestion: currentQuestion ?? null,
+      currentQuestionIndex,
+      answers,
+      questionOptions,
+      existingAnswers,
+      examQuestions,
+    };
+  });
+
+  // Keyboard shortcuts during active exam
+  useEffect(() => {
+    if (!activeSession || activeSession.isCompleted) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip if any modifier key is held (except Shift)
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      // Skip if focus is in a text input or textarea
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'TEXTAREA' || tag === 'INPUT') return;
+
+      const {
+        currentQuestion: q,
+        currentQuestionIndex: idx,
+        answers: ans,
+        questionOptions: opts,
+        existingAnswers: existing,
+        examQuestions: questions,
+      } = kbStateRef.current;
+
+      if (!q) return;
+
+      const saveCurrentAnswer = () => {
+        const currentAnswer = ans[q.id];
+        if (currentAnswer && (currentAnswer !== '' && currentAnswer !== null)) {
+          const existingAnswer = existing.find(a => a.questionId === q.id);
+          const isNewAnswer = !existingAnswer ||
+            (q.questionType === 'multiple_choice'
+              ? String(existingAnswer.selectedOptionId) !== String(currentAnswer)
+              : existingAnswer.textAnswer !== currentAnswer);
+          if (isNewAnswer) {
+            submitAnswerMutation.mutate({ questionId: q.id, answer: currentAnswer, questionType: q.questionType });
+          }
+        }
+      };
+
+      switch (e.key.toLowerCase()) {
+        case 'n': {
+          e.preventDefault();
+          saveCurrentAnswer();
+          if (idx < questions.length - 1) {
+            setCurrentQuestionIndex(prev => prev + 1);
+          }
+          break;
+        }
+        case 'p': {
+          e.preventDefault();
+          saveCurrentAnswer();
+          if (idx > 0) {
+            setCurrentQuestionIndex(prev => prev - 1);
+          }
+          break;
+        }
+        case 's': {
+          e.preventDefault();
+          saveCurrentAnswer();
+          break;
+        }
+        case 'a':
+        case 'b':
+        case 'c':
+        case 'd':
+        case 'e': {
+          if (q.questionType !== 'multiple_choice') break;
+          const optionIndex = 'abcde'.indexOf(e.key.toLowerCase());
+          if (optionIndex < opts.length) {
+            e.preventDefault();
+            const option = opts[optionIndex];
+            handleAnswerChange(q.id, String(option.id), 'multiple_choice');
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSession?.id, activeSession?.isCompleted]);
 
   // Network status monitoring and session health check
   useEffect(() => {
@@ -2184,6 +2297,18 @@ export default function StudentExams() {
       setLocation('/portal/student/exam-results');
       return;
     }
+    // Show instructions screen if enabled (default true)
+    if (exam.showInstructionsScreen !== false) {
+      setPendingExamForInstructions(exam);
+      setInstructionsAccepted(false);
+      setShowInstructionsDialog(true);
+      return;
+    }
+
+    proceedToStartExam(exam);
+  };
+
+  const proceedToStartExam = (exam: Exam) => {
     // Pre-flight check: confirm exam has questions
     toast({
       title: "Preparing Your Exam",
@@ -2974,6 +3099,37 @@ export default function StudentExams() {
               )}
             </div>
 
+            {/* Keyboard Shortcuts Hints */}
+            <div className="mt-4">
+              <button
+                onClick={() => setShowKeyboardHints(prev => !prev)}
+                className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                data-testid="button-toggle-keyboard-hints"
+              >
+                <Keyboard className="w-3.5 h-3.5" />
+                Keyboard shortcuts
+                {showKeyboardHints ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
+              {showKeyboardHints && (
+                <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800/60 rounded-lg border border-gray-200 dark:border-gray-700 flex flex-wrap gap-x-6 gap-y-2">
+                  {[
+                    { key: 'N', desc: 'Next question' },
+                    { key: 'P', desc: 'Previous question' },
+                    { key: 'S', desc: 'Save answer' },
+                    { key: 'A–E', desc: 'Select option (MCQ)' },
+                  ].map(({ key, desc }) => (
+                    <div key={key} className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
+                      <kbd className="px-1.5 py-0.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-gray-700 dark:text-gray-300 font-mono font-semibold shadow-sm text-xs">
+                        {key}
+                      </kbd>
+                      <span>{desc}</span>
+                    </div>
+                  ))}
+                  <p className="w-full text-xs text-gray-400 dark:text-gray-500 mt-1">Shortcuts inactive when typing in text fields.</p>
+                </div>
+              )}
+            </div>
+
             {/* Question Grid - Small and at bottom */}
             <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Quick Navigation</p>
@@ -3456,6 +3612,126 @@ export default function StudentExams() {
           </div>
         )}
       </div>
+
+      {/* ── Exam Instructions Dialog ── */}
+      <Dialog open={showInstructionsDialog} onOpenChange={(open) => {
+        if (!open) { setShowInstructionsDialog(false); setPendingExamForInstructions(null); setInstructionsAccepted(false); }
+      }}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-exam-instructions">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              Exam Instructions & Rules
+            </DialogTitle>
+            {pendingExamForInstructions && (
+              <DialogDescription className="text-base font-medium text-foreground pt-1">
+                {pendingExamForInstructions.name}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+
+          <div className="space-y-5 py-2">
+            {/* Exam details */}
+            {pendingExamForInstructions && (
+              <div className="grid grid-cols-2 gap-3">
+                {pendingExamForInstructions.timeLimit && (
+                  <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <div>
+                      <p className="text-xs text-muted-foreground">Time Limit</p>
+                      <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">{pendingExamForInstructions.timeLimit} min</p>
+                    </div>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950/30 rounded-lg border border-green-200 dark:border-green-800">
+                  <FileText className="h-4 w-4 text-green-600 dark:text-green-400 shrink-0" />
+                  <div>
+                    <p className="text-xs text-muted-foreground">Total Marks</p>
+                    <p className="text-sm font-semibold text-green-700 dark:text-green-300">{pendingExamForInstructions.totalMarks}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Custom instructions from teacher */}
+            {pendingExamForInstructions?.instructions && (
+              <div className="p-4 bg-amber-50 dark:bg-amber-950/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                <p className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-2 flex items-center gap-1.5">
+                  <ClipboardCheck className="h-4 w-4" />
+                  Teacher Instructions
+                </p>
+                <p className="text-sm text-amber-900 dark:text-amber-200 whitespace-pre-wrap leading-relaxed">{pendingExamForInstructions.instructions}</p>
+              </div>
+            )}
+
+            {/* General exam rules */}
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-1.5">
+                <AlertCircle className="h-4 w-4 text-red-500" />
+                General Exam Rules
+              </p>
+              <ul className="space-y-2">
+                {[
+                  'Do not switch browser tabs or minimize the window during the exam.',
+                  'Each tab switch is recorded as a violation. After 3 violations your exam will be auto-submitted.',
+                  'Do not open Developer Tools at any time.',
+                  'Do not copy or paste content during the exam.',
+                  'Your answers are saved automatically — no need to submit after each question.',
+                  'Ensure you have a stable internet connection before starting.',
+                  'Contact your teacher immediately if you encounter a technical problem.',
+                ].map((rule, i) => (
+                  <li key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+                    <span className="mt-0.5 flex-shrink-0 w-5 h-5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center text-xs font-bold">{i + 1}</span>
+                    {rule}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Acceptance checkbox */}
+            <div className="flex items-start gap-3 p-4 bg-gray-50 dark:bg-gray-800/60 rounded-lg border border-gray-200 dark:border-gray-700">
+              <Checkbox
+                id="instructions-accepted"
+                checked={instructionsAccepted}
+                onCheckedChange={(v) => setInstructionsAccepted(!!v)}
+                data-testid="checkbox-instructions-accepted"
+                className="mt-0.5"
+              />
+              <Label htmlFor="instructions-accepted" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer leading-relaxed">
+                I have read and understood all the instructions and rules above. I am ready to begin the exam.
+              </Label>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-3 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => { setShowInstructionsDialog(false); setPendingExamForInstructions(null); setInstructionsAccepted(false); }}
+              data-testid="button-instructions-cancel"
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={!instructionsAccepted || startExamMutation.isPending}
+              onClick={() => {
+                if (!pendingExamForInstructions || !instructionsAccepted) return;
+                setShowInstructionsDialog(false);
+                proceedToStartExam(pendingExamForInstructions);
+                setPendingExamForInstructions(null);
+                setInstructionsAccepted(false);
+              }}
+              className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white"
+              data-testid="button-instructions-begin"
+            >
+              {startExamMutation.isPending ? (
+                <><Loader className="w-4 h-4 mr-2 animate-spin" />Starting…</>
+              ) : (
+                <><Play className="w-4 h-4 mr-2" />I Understand, Begin Exam</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── Restore Payment Dialog ── */}
       <Dialog open={showRestoreDialog} onOpenChange={(open) => {

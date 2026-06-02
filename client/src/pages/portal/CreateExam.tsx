@@ -68,6 +68,7 @@ const createExamSchema = z.object({
   instantFeedback: z.boolean().default(false),
   showCorrectAnswers: z.boolean().default(false),
   gradingScale: z.string().optional(),
+  showInstructionsScreen: z.boolean().default(true),
 });
 
 type CreateExamFormData = z.infer<typeof createExamSchema>;
@@ -175,6 +176,7 @@ export default function CreateExam() {
       instantFeedback: false,
       showCorrectAnswers: true,
       gradingScale: 'standard',
+      showInstructionsScreen: true,
     },
   });
 
@@ -877,6 +879,26 @@ export default function CreateExam() {
                       render={({ field }) => (
                         <Switch
                           id="shuffleQuestions"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      )}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border border-border hover:bg-muted/70 transition-colors">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="showInstructionsScreen" className="text-base font-semibold cursor-pointer">Show Instructions Screen</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Students must read and accept exam rules before starting
+                      </p>
+                    </div>
+                    <Controller
+                      name="showInstructionsScreen"
+                      control={form.control}
+                      render={({ field }) => (
+                        <Switch
+                          id="showInstructionsScreen"
                           checked={field.value}
                           onCheckedChange={field.onChange}
                         />
