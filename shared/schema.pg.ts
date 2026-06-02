@@ -1565,6 +1565,8 @@ export const homepageSections = pgTable("homepage_sections", {
   isEnabled: boolean("is_enabled").notNull().default(true),
   displayOrder: integer("display_order").notNull().default(0),
   content: jsonb("content"),
+  draftContent: jsonb("draft_content"),
+  status: varchar("status", { length: 20 }).notNull().default("published"),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
   updatedBy: varchar("updated_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
 });

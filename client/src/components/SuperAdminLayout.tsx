@@ -20,6 +20,12 @@ import {
   Terminal,
   CreditCard,
   BookOpen,
+  Globe,
+  ImageIcon,
+  Newspaper,
+  HelpCircle,
+  Inbox,
+  GraduationCap,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -187,6 +193,19 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
         { label: "API Playground", path: "/portal/superadmin/placeholder?page=api" },
         { label: "Webhooks", path: "/portal/superadmin/placeholder?page=webhooks" },
         { label: "Environment Variables", path: "/portal/superadmin/placeholder?page=environment" },
+      ],
+    },
+    {
+      label: "Website Management",
+      icon: Globe,
+      children: [
+        { label: "Homepage", path: "/portal/superadmin/homepage-management", icon: ImageIcon },
+        { label: "Gallery", path: "/portal/superadmin/website/gallery", icon: ImageIcon },
+        { label: "News & Blog", path: "/portal/superadmin/website/news", icon: Newspaper },
+        { label: "FAQ", path: "/portal/superadmin/website/faq", icon: HelpCircle },
+        { label: "About Page", path: "/portal/superadmin/website/about", icon: BookOpen },
+        { label: "Contact Inbox", path: "/portal/superadmin/website/contact-inbox", icon: Inbox },
+        { label: "Admissions", path: "/portal/superadmin/website/admissions", icon: GraduationCap },
       ],
     },
     {

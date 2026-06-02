@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,11 +7,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Trash2, Upload, Edit, Save, X, Image as ImageIcon, Globe,
-  Eye, EyeOff, GripVertical, Plus, ChevronDown, ChevronUp,
-  ExternalLink, Palette, Type, Layout, Layers, AlignLeft,
-  BarChart2, MessageSquare, HelpCircle, Camera,
+  Trash2, Upload, Save, X, Image as ImageIcon, Globe,
+  Eye, EyeOff, GripVertical, Plus, ExternalLink, Palette, Type,
+  Layout, Layers, AlignLeft, BarChart2, MessageSquare, HelpCircle,
+  Camera, FileEdit, CheckCircle2, Clock, AlertTriangle, RefreshCw,
+  Info, ChevronRight,
 } from 'lucide-react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
@@ -35,7 +37,7 @@ const SECTION_CONFIGS: SectionConfig[] = [
     key: 'hero',
     title: 'Hero Section',
     icon: Layout,
-    description: 'Main banner — heading text, accent color, subheading, call-to-action buttons, and background image.',
+    description: 'Main banner — heading lines with white + colored text, accent color, subheading, and CTA buttons.',
     defaultContent: {
       line1White: 'We Nurture ', line1Colored: 'Young Minds.',
       line2White: 'We Build ', line2Colored: 'Character.',
@@ -54,7 +56,7 @@ const SECTION_CONFIGS: SectionConfig[] = [
     defaultContent: {
       label: 'About Our School',
       heading: 'Qualitative Education and moral excellence',
-      body1: 'Treasure Home School is a sanctuary of brilliance committed to providing quality education and strong moral upbringing. We believe every child is unique and deserves careful guidance to discover their full potential.',
+      body1: 'Treasure Home School is a sanctuary of brilliance committed to providing quality education and strong moral upbringing.',
       body2: 'Our holistic teaching approach combines sound academics, discipline, creativity, and life skills to prepare pupils for the global stage.',
       ctaText: 'Discover Our Mission', ctaLink: '/about',
     },
@@ -79,7 +81,7 @@ const SECTION_CONFIGS: SectionConfig[] = [
   },
   {
     key: 'stats',
-    title: 'Statistics',
+    title: 'Statistics Banner',
     icon: BarChart2,
     description: 'Key metrics displayed in the blue banner strip.',
     defaultContent: {
@@ -100,7 +102,7 @@ const SECTION_CONFIGS: SectionConfig[] = [
       heading: 'Voices from Our Community',
       subheading: 'Hear from parents and alumni about how Treasure-Home School has made a difference in their lives.',
       items: [
-        { name: 'Mrs. Sarah Williams', role: 'Parent of 3', initials: 'SW', text: 'Choosing Treasure-Home School was the best decision we ever made for our children\'s education.' },
+        { name: 'Mrs. Sarah Williams', role: 'Parent of 3', initials: 'SW', text: "Choosing Treasure-Home School was the best decision we ever made for our children's education." },
         { name: 'Adebayo Daniel', role: 'Satisfied Parent', initials: 'AD', text: 'The teachers are dedicated, the environment is nurturing, and my son has grown tremendously both academically and in character.' },
         { name: 'Folake Ogundimu', role: 'Satisfied Parent', initials: 'FO', text: 'The level of care and attention each child receives here is exceptional.' },
       ],
@@ -108,7 +110,7 @@ const SECTION_CONFIGS: SectionConfig[] = [
   },
   {
     key: 'gallery',
-    title: 'Gallery Section',
+    title: 'Gallery / Images',
     icon: Camera,
     description: 'Homepage gallery preview — upload and manage display images.',
     defaultContent: {},
@@ -138,96 +140,100 @@ interface HomepageSection {
   isEnabled: boolean;
   displayOrder: number;
   content: Record<string, any> | null;
+  draftContent: Record<string, any> | null;
+  status: string;
+  updatedAt: string;
 }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function useToken() {
-  return localStorage.getItem('token') || '';
-}
+const token = () => localStorage.getItem('token') || '';
+const authHdr = () => ({ Authorization: `Bearer ${token()}` });
 
-function authHeaders(token: string) {
-  return { Authorization: `Bearer ${token}` };
+function relativeTime(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+  return `${Math.floor(diff / 86400000)}d ago`;
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function SectionBadge({ enabled }: { enabled: boolean }) {
+function StatusBadge({ status, isEnabled }: { status: string; isEnabled: boolean }) {
+  if (!isEnabled) return (
+    <Badge className="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-500 border-gray-200">Hidden</Badge>
+  );
+  if (status === 'draft') return (
+    <Badge className="text-[10px] px-1.5 py-0.5 bg-amber-100 text-amber-700 border-amber-200">Draft</Badge>
+  );
   return (
-    <Badge variant={enabled ? 'default' : 'secondary'} className={`text-[10px] px-1.5 py-0.5 ${enabled ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500'}`}>
-      {enabled ? 'Visible' : 'Hidden'}
-    </Badge>
+    <Badge className="text-[10px] px-1.5 py-0.5 bg-green-100 text-green-700 border-green-200">Published</Badge>
   );
 }
 
-// ─── Section Editors ──────────────────────────────────────────────────────────
+// ─── Section-Specific Editors ──────────────────────────────────────────────────
 
 function HeroEditor({ content, onChange }: { content: Record<string, any>; onChange: (c: Record<string, any>) => void }) {
-  const set = (key: string, val: any) => onChange({ ...content, [key]: val });
+  const set = (k: string, v: any) => onChange({ ...content, [k]: v });
+  const accent = content.accentColor ?? '#00BFFF';
   return (
     <div className="space-y-6">
-      {/* Heading lines */}
       <div>
-        <Label className="text-sm font-semibold text-foreground mb-3 block flex items-center gap-2"><Type className="h-4 w-4" /> Heading Lines</Label>
-        <p className="text-xs text-muted-foreground mb-3">Each line has white text + colored text. Set the accent color below.</p>
-        {[1, 2, 3].map((n) => (
+        <p className="text-xs font-semibold text-foreground mb-1 flex items-center gap-1.5"><Type className="h-3.5 w-3.5" /> Heading Lines</p>
+        <p className="text-[11px] text-muted-foreground mb-3">Each line has a white prefix + a colored suffix. The accent color applies to all colored parts.</p>
+        {([1, 2, 3] as const).map(n => (
           <div key={n} className="grid grid-cols-2 gap-2 mb-2">
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Line {n} — White text</Label>
-              <Input value={content[`line${n}White`] ?? ''} onChange={e => set(`line${n}White`, e.target.value)} placeholder={`Line ${n} start`} data-testid={`input-line${n}white`} />
+              <Label className="text-[11px] text-muted-foreground block mb-1">Line {n} — White text</Label>
+              <Input value={content[`line${n}White`] ?? ''} onChange={e => set(`line${n}White`, e.target.value)} data-testid={`input-line${n}white`} />
             </div>
             <div>
-              <Label className="text-xs text-muted-foreground mb-1 block">Line {n} — Colored text</Label>
-              <Input value={content[`line${n}Colored`] ?? ''} onChange={e => set(`line${n}Colored`, e.target.value)} placeholder={`Colored word(s)`} data-testid={`input-line${n}colored`} />
+              <Label className="text-[11px] text-muted-foreground block mb-1">Line {n} — Colored text</Label>
+              <Input value={content[`line${n}Colored`] ?? ''} onChange={e => set(`line${n}Colored`, e.target.value)} data-testid={`input-line${n}colored`} />
             </div>
           </div>
         ))}
       </div>
 
-      {/* Accent color */}
       <div>
-        <Label className="text-sm font-semibold mb-2 block flex items-center gap-2"><Palette className="h-4 w-4" /> Accent Color</Label>
-        <p className="text-xs text-muted-foreground mb-2">This color is applied to the colored words in each heading line.</p>
-        <div className="flex items-center gap-3">
-          <input type="color" value={content.accentColor ?? '#00BFFF'} onChange={e => set('accentColor', e.target.value)} className="h-9 w-14 rounded border cursor-pointer" data-testid="input-accent-color" />
-          <Input value={content.accentColor ?? '#00BFFF'} onChange={e => set('accentColor', e.target.value)} placeholder="#00BFFF" className="font-mono max-w-[120px]" data-testid="input-accent-color-text" />
+        <p className="text-xs font-semibold text-foreground mb-2 flex items-center gap-1.5"><Palette className="h-3.5 w-3.5" /> Accent Color</p>
+        <div className="flex items-center gap-3 flex-wrap">
+          <input type="color" value={accent} onChange={e => set('accentColor', e.target.value)} className="h-9 w-12 rounded border cursor-pointer" data-testid="input-accent-color" />
+          <Input value={accent} onChange={e => set('accentColor', e.target.value)} className="font-mono w-28" data-testid="input-accent-color-text" />
           <div className="flex gap-1.5 flex-wrap">
             {['#00BFFF', '#3B82F6', '#22C55E', '#F59E0B', '#EF4444', '#A855F7', '#F97316', '#FFFFFF'].map(c => (
               <button key={c} onClick={() => set('accentColor', c)} title={c}
-                className="w-6 h-6 rounded-full border-2 transition-transform hover:scale-110"
-                style={{ backgroundColor: c, borderColor: content.accentColor === c ? '#1D4ED8' : '#E5E7EB' }} />
+                className="w-6 h-6 rounded-full border-2 transition-all hover:scale-110"
+                style={{ backgroundColor: c, borderColor: accent === c ? '#1D4ED8' : '#E5E7EB' }} />
             ))}
           </div>
         </div>
-        <div className="mt-3 p-3 rounded-lg bg-black/80 text-white text-sm">
-          <span>Preview: </span>
-          <span className="font-bold">We Nurture </span>
-          <span className="font-bold" style={{ color: content.accentColor ?? '#00BFFF' }}>Young Minds.</span>
+        <div className="mt-3 px-4 py-3 rounded-lg bg-black/80 text-white text-sm font-bold">
+          {content.line1White ?? 'We Nurture '}
+          <span style={{ color: accent }}>{content.line1Colored ?? 'Young Minds.'}</span>
         </div>
       </div>
 
-      {/* Subheading */}
       <div>
-        <Label className="text-sm font-semibold mb-1 block">Subheading</Label>
-        <Textarea value={content.subheading ?? ''} onChange={e => set('subheading', e.target.value)} rows={2} placeholder="Short description below the heading" data-testid="textarea-subheading" />
+        <Label className="text-xs font-semibold mb-1.5 block">Subheading</Label>
+        <Textarea value={content.subheading ?? ''} onChange={e => set('subheading', e.target.value)} rows={2} data-testid="textarea-subheading" />
       </div>
 
-      {/* CTA Buttons */}
       <div>
-        <Label className="text-sm font-semibold mb-3 block">Call-to-Action Buttons</Label>
+        <p className="text-xs font-semibold mb-3">Call-to-Action Buttons</p>
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Primary Button Text</Label>
-            <Input value={content.primaryBtnText ?? ''} onChange={e => set('primaryBtnText', e.target.value)} placeholder="ENROLL" data-testid="input-primary-btn-text" />
-            <Label className="text-xs text-muted-foreground">Primary Button Link</Label>
-            <Input value={content.primaryBtnLink ?? ''} onChange={e => set('primaryBtnLink', e.target.value)} placeholder="/admissions" data-testid="input-primary-btn-link" />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">Secondary Button Text</Label>
-            <Input value={content.secondaryBtnText ?? ''} onChange={e => set('secondaryBtnText', e.target.value)} placeholder="CONTACT US" data-testid="input-secondary-btn-text" />
-            <Label className="text-xs text-muted-foreground">Secondary Button Link</Label>
-            <Input value={content.secondaryBtnLink ?? ''} onChange={e => set('secondaryBtnLink', e.target.value)} placeholder="/contact" data-testid="input-secondary-btn-link" />
-          </div>
+          {[
+            { labelT: 'Primary Button Text', keyT: 'primaryBtnText', labelL: 'Primary Button Link', keyL: 'primaryBtnLink', ph: ['ENROLL', '/admissions'] },
+            { labelT: 'Secondary Button Text', keyT: 'secondaryBtnText', labelL: 'Secondary Button Link', keyL: 'secondaryBtnLink', ph: ['CONTACT US', '/contact'] },
+          ].map(({ labelT, keyT, labelL, keyL, ph }) => (
+            <div key={keyT} className="space-y-2">
+              <Label className="text-[11px] text-muted-foreground">{labelT}</Label>
+              <Input value={content[keyT] ?? ''} onChange={e => set(keyT, e.target.value)} placeholder={ph[0]} data-testid={`input-${keyT}`} />
+              <Label className="text-[11px] text-muted-foreground">{labelL}</Label>
+              <Input value={content[keyL] ?? ''} onChange={e => set(keyL, e.target.value)} placeholder={ph[1]} data-testid={`input-${keyL}`} />
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -238,24 +244,28 @@ function AboutEditor({ content, onChange }: { content: Record<string, any>; onCh
   const set = (k: string, v: any) => onChange({ ...content, [k]: v });
   return (
     <div className="space-y-4">
-      <div><Label className="text-xs text-muted-foreground mb-1 block">Section Label (small text above heading)</Label>
-        <Input value={content.label ?? ''} onChange={e => set('label', e.target.value)} placeholder="About Our School" data-testid="input-about-label" />
-      </div>
-      <div><Label className="text-xs text-muted-foreground mb-1 block">Heading</Label>
-        <Input value={content.heading ?? ''} onChange={e => set('heading', e.target.value)} placeholder="Qualitative Education and moral excellence" data-testid="input-about-heading" />
-      </div>
-      <div><Label className="text-xs text-muted-foreground mb-1 block">First Paragraph</Label>
-        <Textarea value={content.body1 ?? ''} onChange={e => set('body1', e.target.value)} rows={3} data-testid="textarea-about-body1" />
-      </div>
-      <div><Label className="text-xs text-muted-foreground mb-1 block">Second Paragraph</Label>
-        <Textarea value={content.body2 ?? ''} onChange={e => set('body2', e.target.value)} rows={3} data-testid="textarea-about-body2" />
-      </div>
+      {[
+        { label: 'Section Label (small text above heading)', key: 'label', ph: 'About Our School' },
+        { label: 'Heading', key: 'heading', ph: 'Qualitative Education and moral excellence' },
+      ].map(({ label, key, ph }) => (
+        <div key={key}><Label className="text-xs text-muted-foreground mb-1 block">{label}</Label>
+          <Input value={content[key] ?? ''} onChange={e => set(key, e.target.value)} placeholder={ph} data-testid={`input-about-${key}`} />
+        </div>
+      ))}
+      {[
+        { label: 'First Paragraph', key: 'body1' },
+        { label: 'Second Paragraph', key: 'body2' },
+      ].map(({ label, key }) => (
+        <div key={key}><Label className="text-xs text-muted-foreground mb-1 block">{label}</Label>
+          <Textarea value={content[key] ?? ''} onChange={e => set(key, e.target.value)} rows={3} data-testid={`textarea-about-${key}`} />
+        </div>
+      ))}
       <div className="grid grid-cols-2 gap-3">
         <div><Label className="text-xs text-muted-foreground mb-1 block">Link Text</Label>
-          <Input value={content.ctaText ?? ''} onChange={e => set('ctaText', e.target.value)} placeholder="Discover Our Mission" data-testid="input-about-cta-text" />
+          <Input value={content.ctaText ?? ''} onChange={e => set('ctaText', e.target.value)} placeholder="Discover Our Mission" data-testid="input-about-ctatext" />
         </div>
         <div><Label className="text-xs text-muted-foreground mb-1 block">Link URL</Label>
-          <Input value={content.ctaLink ?? ''} onChange={e => set('ctaLink', e.target.value)} placeholder="/about" data-testid="input-about-cta-link" />
+          <Input value={content.ctaLink ?? ''} onChange={e => set('ctaLink', e.target.value)} placeholder="/about" data-testid="input-about-ctalink" />
         </div>
       </div>
     </div>
@@ -265,33 +275,30 @@ function AboutEditor({ content, onChange }: { content: Record<string, any>; onCh
 function PillarsEditor({ content, onChange }: { content: Record<string, any>; onChange: (c: Record<string, any>) => void }) {
   const set = (k: string, v: any) => onChange({ ...content, [k]: v });
   const pillars: { title: string; desc: string }[] = content.pillars ?? [];
-  const updatePillar = (i: number, field: string, val: string) => {
-    const updated = pillars.map((p, idx) => idx === i ? { ...p, [field]: val } : p);
-    set('pillars', updated);
-  };
-  const addPillar = () => set('pillars', [...pillars, { title: '', desc: '' }]);
-  const removePillar = (i: number) => set('pillars', pillars.filter((_, idx) => idx !== i));
+  const upd = (i: number, f: string, v: string) => set('pillars', pillars.map((p, idx) => idx === i ? { ...p, [f]: v } : p));
   return (
     <div className="space-y-4">
       <div><Label className="text-xs text-muted-foreground mb-1 block">Section Heading</Label>
-        <Input value={content.heading ?? ''} onChange={e => set('heading', e.target.value)} placeholder="Our Core Pillars" data-testid="input-pillars-heading" />
+        <Input value={content.heading ?? ''} onChange={e => set('heading', e.target.value)} data-testid="input-pillars-heading" />
       </div>
       <div><Label className="text-xs text-muted-foreground mb-1 block">Section Subheading</Label>
-        <Input value={content.subheading ?? ''} onChange={e => set('subheading', e.target.value)} placeholder="These foundational values..." data-testid="input-pillars-subheading" />
+        <Input value={content.subheading ?? ''} onChange={e => set('subheading', e.target.value)} data-testid="input-pillars-subheading" />
       </div>
       <Separator />
       <div className="space-y-3">
         {pillars.map((p, i) => (
-          <div key={i} className="border rounded-lg p-3 space-y-2 bg-muted/30">
-            <div className="flex items-center justify-between">
+          <div key={i} className="border rounded-lg p-3 bg-muted/30 space-y-2">
+            <div className="flex justify-between items-center">
               <span className="text-xs font-semibold text-muted-foreground">Pillar {i + 1}</span>
-              <Button variant="ghost" size="sm" className="text-destructive h-7 w-7 p-0" onClick={() => removePillar(i)} data-testid={`button-remove-pillar-${i}`}><Trash2 className="h-3.5 w-3.5" /></Button>
+              <Button variant="ghost" size="sm" className="text-destructive h-7 w-7 p-0" onClick={() => set('pillars', pillars.filter((_, idx) => idx !== i))} data-testid={`button-remove-pillar-${i}`}><Trash2 className="h-3.5 w-3.5" /></Button>
             </div>
-            <Input value={p.title} onChange={e => updatePillar(i, 'title', e.target.value)} placeholder="Pillar name" data-testid={`input-pillar-title-${i}`} />
-            <Textarea value={p.desc} onChange={e => updatePillar(i, 'desc', e.target.value)} rows={2} placeholder="Description" data-testid={`textarea-pillar-desc-${i}`} />
+            <Input value={p.title} onChange={e => upd(i, 'title', e.target.value)} placeholder="Pillar name" data-testid={`input-pillar-title-${i}`} />
+            <Textarea value={p.desc} onChange={e => upd(i, 'desc', e.target.value)} rows={2} placeholder="Description" data-testid={`textarea-pillar-desc-${i}`} />
           </div>
         ))}
-        <Button variant="outline" size="sm" onClick={addPillar} data-testid="button-add-pillar"><Plus className="h-4 w-4 mr-1" /> Add Pillar</Button>
+        <Button variant="outline" size="sm" onClick={() => set('pillars', [...pillars, { title: '', desc: '' }])} data-testid="button-add-pillar">
+          <Plus className="h-4 w-4 mr-1" /> Add Pillar
+        </Button>
       </div>
     </div>
   );
@@ -299,22 +306,18 @@ function PillarsEditor({ content, onChange }: { content: Record<string, any>; on
 
 function StatsEditor({ content, onChange }: { content: Record<string, any>; onChange: (c: Record<string, any>) => void }) {
   const items: { value: string; label: string }[] = content.items ?? [];
-  const update = (i: number, field: string, val: string) => {
-    const updated = items.map((s, idx) => idx === i ? { ...s, [field]: val } : s);
-    onChange({ ...content, items: updated });
-  };
-  const add = () => onChange({ ...content, items: [...items, { value: '', label: '' }] });
-  const remove = (i: number) => onChange({ ...content, items: items.filter((_, idx) => idx !== i) });
+  const upd = (i: number, f: string, v: string) => onChange({ ...content, items: items.map((s, idx) => idx === i ? { ...s, [f]: v } : s) });
   return (
     <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">Each stat shows a big number/value and a small label underneath.</p>
       {items.map((s, i) => (
         <div key={i} className="flex items-center gap-2">
-          <Input value={s.value} onChange={e => update(i, 'value', e.target.value)} placeholder="100%" className="w-24" data-testid={`input-stat-value-${i}`} />
-          <Input value={s.label} onChange={e => update(i, 'label', e.target.value)} placeholder="Satisfied Parents" className="flex-1" data-testid={`input-stat-label-${i}`} />
-          <Button variant="ghost" size="sm" className="text-destructive h-9 w-9 p-0" onClick={() => remove(i)} data-testid={`button-remove-stat-${i}`}><Trash2 className="h-4 w-4" /></Button>
+          <Input value={s.value} onChange={e => upd(i, 'value', e.target.value)} placeholder="100%" className="w-24" data-testid={`input-stat-value-${i}`} />
+          <Input value={s.label} onChange={e => upd(i, 'label', e.target.value)} placeholder="Satisfied Parents" className="flex-1" data-testid={`input-stat-label-${i}`} />
+          <Button variant="ghost" size="sm" className="text-destructive h-9 w-9 p-0" onClick={() => onChange({ ...content, items: items.filter((_, idx) => idx !== i) })} data-testid={`button-remove-stat-${i}`}><Trash2 className="h-4 w-4" /></Button>
         </div>
       ))}
-      <Button variant="outline" size="sm" onClick={add} data-testid="button-add-stat"><Plus className="h-4 w-4 mr-1" /> Add Stat</Button>
+      <Button variant="outline" size="sm" onClick={() => onChange({ ...content, items: [...items, { value: '', label: '' }] })} data-testid="button-add-stat"><Plus className="h-4 w-4 mr-1" /> Add Stat</Button>
     </div>
   );
 }
@@ -322,9 +325,7 @@ function StatsEditor({ content, onChange }: { content: Record<string, any>; onCh
 function TestimonialsEditor({ content, onChange }: { content: Record<string, any>; onChange: (c: Record<string, any>) => void }) {
   const set = (k: string, v: any) => onChange({ ...content, [k]: v });
   const items: { name: string; role: string; initials: string; text: string }[] = content.items ?? [];
-  const update = (i: number, field: string, val: string) => set('items', items.map((t, idx) => idx === i ? { ...t, [field]: val } : t));
-  const add = () => set('items', [...items, { name: '', role: '', initials: '', text: '' }]);
-  const remove = (i: number) => set('items', items.filter((_, idx) => idx !== i));
+  const upd = (i: number, f: string, v: string) => set('items', items.map((t, idx) => idx === i ? { ...t, [f]: v } : t));
   return (
     <div className="space-y-4">
       <div><Label className="text-xs text-muted-foreground mb-1 block">Section Heading</Label>
@@ -336,20 +337,20 @@ function TestimonialsEditor({ content, onChange }: { content: Record<string, any
       <Separator />
       <div className="space-y-3">
         {items.map((t, i) => (
-          <div key={i} className="border rounded-lg p-3 space-y-2 bg-muted/30">
+          <div key={i} className="border rounded-lg p-3 bg-muted/30 space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-xs font-semibold text-muted-foreground">Testimonial {i + 1}</span>
-              <Button variant="ghost" size="sm" className="text-destructive h-7 w-7 p-0" onClick={() => remove(i)} data-testid={`button-remove-testimonial-${i}`}><Trash2 className="h-3.5 w-3.5" /></Button>
+              <Button variant="ghost" size="sm" className="text-destructive h-7 w-7 p-0" onClick={() => set('items', items.filter((_, idx) => idx !== i))} data-testid={`button-remove-testimonial-${i}`}><Trash2 className="h-3.5 w-3.5" /></Button>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <Input value={t.name} onChange={e => update(i, 'name', e.target.value)} placeholder="Full name" data-testid={`input-testimonial-name-${i}`} />
-              <Input value={t.initials} onChange={e => update(i, 'initials', e.target.value)} placeholder="Initials (SW)" className="w-full" data-testid={`input-testimonial-initials-${i}`} />
+              <Input value={t.name} onChange={e => upd(i, 'name', e.target.value)} placeholder="Full name" data-testid={`input-testimonial-name-${i}`} />
+              <Input value={t.initials} onChange={e => upd(i, 'initials', e.target.value)} placeholder="SW" data-testid={`input-testimonial-initials-${i}`} />
             </div>
-            <Input value={t.role} onChange={e => update(i, 'role', e.target.value)} placeholder="Parent of 3" data-testid={`input-testimonial-role-${i}`} />
-            <Textarea value={t.text} onChange={e => update(i, 'text', e.target.value)} rows={2} placeholder="Quote..." data-testid={`textarea-testimonial-text-${i}`} />
+            <Input value={t.role} onChange={e => upd(i, 'role', e.target.value)} placeholder="Parent of 3" data-testid={`input-testimonial-role-${i}`} />
+            <Textarea value={t.text} onChange={e => upd(i, 'text', e.target.value)} rows={2} placeholder="Quote..." data-testid={`textarea-testimonial-text-${i}`} />
           </div>
         ))}
-        <Button variant="outline" size="sm" onClick={add} data-testid="button-add-testimonial"><Plus className="h-4 w-4 mr-1" /> Add Testimonial</Button>
+        <Button variant="outline" size="sm" onClick={() => set('items', [...items, { name: '', role: '', initials: '', text: '' }])} data-testid="button-add-testimonial"><Plus className="h-4 w-4 mr-1" /> Add Testimonial</Button>
       </div>
     </div>
   );
@@ -358,9 +359,7 @@ function TestimonialsEditor({ content, onChange }: { content: Record<string, any
 function FaqEditor({ content, onChange }: { content: Record<string, any>; onChange: (c: Record<string, any>) => void }) {
   const set = (k: string, v: any) => onChange({ ...content, [k]: v });
   const items: { question: string; answer: string }[] = content.items ?? [];
-  const update = (i: number, field: string, val: string) => set('items', items.map((f, idx) => idx === i ? { ...f, [field]: val } : f));
-  const add = () => set('items', [...items, { question: '', answer: '' }]);
-  const remove = (i: number) => set('items', items.filter((_, idx) => idx !== i));
+  const upd = (i: number, f: string, v: string) => set('items', items.map((f2, idx) => idx === i ? { ...f2, [f]: v } : f2));
   return (
     <div className="space-y-4">
       <div><Label className="text-xs text-muted-foreground mb-1 block">Section Heading</Label>
@@ -369,51 +368,55 @@ function FaqEditor({ content, onChange }: { content: Record<string, any>; onChan
       <Separator />
       <div className="space-y-3">
         {items.map((f, i) => (
-          <div key={i} className="border rounded-lg p-3 space-y-2 bg-muted/30">
+          <div key={i} className="border rounded-lg p-3 bg-muted/30 space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-xs font-semibold text-muted-foreground">Question {i + 1}</span>
-              <Button variant="ghost" size="sm" className="text-destructive h-7 w-7 p-0" onClick={() => remove(i)} data-testid={`button-remove-faq-${i}`}><Trash2 className="h-3.5 w-3.5" /></Button>
+              <Button variant="ghost" size="sm" className="text-destructive h-7 w-7 p-0" onClick={() => set('items', items.filter((_, idx) => idx !== i))} data-testid={`button-remove-faq-${i}`}><Trash2 className="h-3.5 w-3.5" /></Button>
             </div>
-            <Input value={f.question} onChange={e => update(i, 'question', e.target.value)} placeholder="Question..." data-testid={`input-faq-question-${i}`} />
-            <Textarea value={f.answer} onChange={e => update(i, 'answer', e.target.value)} rows={2} placeholder="Answer..." data-testid={`textarea-faq-answer-${i}`} />
+            <Input value={f.question} onChange={e => upd(i, 'question', e.target.value)} placeholder="Question..." data-testid={`input-faq-question-${i}`} />
+            <Textarea value={f.answer} onChange={e => upd(i, 'answer', e.target.value)} rows={2} placeholder="Answer..." data-testid={`textarea-faq-answer-${i}`} />
           </div>
         ))}
-        <Button variant="outline" size="sm" onClick={add} data-testid="button-add-faq"><Plus className="h-4 w-4 mr-1" /> Add Question</Button>
+        <Button variant="outline" size="sm" onClick={() => set('items', [...items, { question: '', answer: '' }])} data-testid="button-add-faq"><Plus className="h-4 w-4 mr-1" /> Add Question</Button>
       </div>
     </div>
   );
 }
 
-function GalleryImageManager({ token }: { token: string }) {
+// ─── Gallery Image Manager ─────────────────────────────────────────────────────
+
+function GalleryImageManager() {
   const { toast } = useToast();
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [showUpload, setShowUpload] = useState(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [altText, setAltText] = useState('');
+  const [contentType, setContentType] = useState('gallery_preview_1');
 
   const { data: allContent = [], isLoading } = useQuery<HomePageContent[]>({
     queryKey: ['/api/homepage-content'],
     refetchOnWindowFocus: false,
   });
 
-  const galleryContent = allContent.filter(c =>
+  const gallery = allContent.filter(c =>
     ['hero_image', 'gallery_preview_1', 'gallery_preview_2', 'gallery_preview_3', 'about_section', 'featured_content'].includes(c.contentType)
   );
 
   const uploadMutation = useMutation({
-    mutationFn: async ({ file, contentType, alt }: { file: File; contentType: string; alt: string }) => {
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('uploadType', 'homepage');
-      formData.append('contentType', contentType);
-      formData.append('altText', alt);
-      formData.append('displayOrder', '0');
-      const response = await fetch(getApiUrl('/api/upload'), { method: 'POST', body: formData, headers: { Authorization: `Bearer ${token}` }, credentials: 'include' });
-      if (!response.ok) { const e = await response.json().catch(() => ({})); throw new Error(e.message || 'Upload failed'); }
-      return response.json();
+    mutationFn: async () => {
+      if (!uploadFile) throw new Error('No file selected');
+      const form = new FormData();
+      form.append('file', uploadFile);
+      form.append('uploadType', 'homepage');
+      form.append('contentType', contentType);
+      form.append('altText', altText);
+      form.append('displayOrder', '0');
+      const r = await fetch(getApiUrl('/api/upload'), { method: 'POST', body: form, headers: authHdr(), credentials: 'include' });
+      if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.message || 'Upload failed'); }
+      return r.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/homepage-content'] });
-      toast({ title: 'Image uploaded' });
+      toast({ title: 'Image uploaded successfully' });
       setUploadFile(null); setAltText(''); setShowUpload(false);
     },
     onError: (e: Error) => toast({ title: 'Upload failed', description: e.message, variant: 'destructive' }),
@@ -421,90 +424,105 @@ function GalleryImageManager({ token }: { token: string }) {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: number) => {
-      const r = await fetch(getApiUrl(`/api/homepage-content/${id}`), { method: 'DELETE', headers: { Authorization: `Bearer ${token}` }, credentials: 'include' });
+      const r = await fetch(getApiUrl(`/api/homepage-content/${id}`), { method: 'DELETE', headers: authHdr(), credentials: 'include' });
       if (!r.ok) throw new Error('Delete failed');
     },
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/homepage-content'] }); toast({ title: 'Image deleted' }); },
     onError: (e: Error) => toast({ title: 'Delete failed', description: e.message, variant: 'destructive' }),
   });
 
-  const toggleActive = useMutation({
+  const toggleMutation = useMutation({
     mutationFn: async ({ id, isActive }: { id: number; isActive: boolean }) => {
-      const r = await fetch(getApiUrl(`/api/homepage-content/${id}`), { method: 'PUT', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ isActive }), credentials: 'include' });
+      const r = await fetch(getApiUrl(`/api/homepage-content/${id}`), { method: 'PUT', headers: { 'Content-Type': 'application/json', ...authHdr() }, body: JSON.stringify({ isActive }), credentials: 'include' });
       if (!r.ok) throw new Error('Update failed');
       return r.json();
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/homepage-content'] }),
   });
 
+  const CONTENT_TYPE_LABELS: Record<string, string> = {
+    hero_image: 'Hero Image',
+    gallery_preview_1: 'Gallery Preview 1',
+    gallery_preview_2: 'Gallery Preview 2',
+    gallery_preview_3: 'Gallery Preview 3',
+    about_section: 'About Section Image',
+    featured_content: 'Featured Content',
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">Upload images for hero banner and gallery preview sections.</p>
-        <Button size="sm" onClick={() => setShowUpload(v => !v)} data-testid="button-toggle-upload">
-          <Upload className="h-4 w-4 mr-1.5" />{showUpload ? 'Cancel' : 'Upload Image'}
+        <p className="text-sm text-muted-foreground">Upload hero images and gallery preview photos.</p>
+        <Button size="sm" variant={showUpload ? 'outline' : 'default'} onClick={() => setShowUpload(v => !v)} data-testid="button-toggle-upload">
+          {showUpload ? <><X className="h-4 w-4 mr-1" /> Cancel</> : <><Upload className="h-4 w-4 mr-1.5" /> Upload Image</>}
         </Button>
       </div>
 
       {showUpload && (
-        <Card className="border-dashed">
+        <Card className="border-dashed border-2">
           <CardContent className="pt-4 space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs mb-1 block">Content Type</Label>
-                <select id="upload-content-type" className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm" data-testid="select-content-type">
-                  <option value="hero_image">Hero Image</option>
-                  <option value="gallery_preview_1">Gallery Preview 1</option>
-                  <option value="gallery_preview_2">Gallery Preview 2</option>
-                  <option value="gallery_preview_3">Gallery Preview 3</option>
-                  <option value="about_section">About Section Image</option>
-                  <option value="featured_content">Featured Content</option>
+                <Label className="text-xs mb-1 block">Image Type</Label>
+                <select value={contentType} onChange={e => setContentType(e.target.value)} className="w-full px-3 py-2 border border-input rounded-md bg-background text-sm" data-testid="select-content-type">
+                  {Object.entries(CONTENT_TYPE_LABELS).map(([val, lbl]) => <option key={val} value={val}>{lbl}</option>)}
                 </select>
               </div>
               <div>
-                <Label className="text-xs mb-1 block">Alt Text</Label>
+                <Label className="text-xs mb-1 block">Alt Text (accessibility)</Label>
                 <Input value={altText} onChange={e => setAltText(e.target.value)} placeholder="Describe the image" data-testid="input-upload-alt" />
               </div>
             </div>
             <div>
-              <Label className="text-xs mb-1 block">Image File</Label>
+              <Label className="text-xs mb-1 block">Image File (JPG, PNG, WebP)</Label>
               <Input type="file" accept="image/*" onChange={e => setUploadFile(e.target.files?.[0] || null)} data-testid="input-upload-file" />
             </div>
-            <Button size="sm" disabled={!uploadFile || uploadMutation.isPending}
-              onClick={() => {
-                const sel = (document.getElementById('upload-content-type') as HTMLSelectElement).value;
-                uploadMutation.mutate({ file: uploadFile!, contentType: sel, alt: altText });
-              }} data-testid="button-do-upload">
-              {uploadMutation.isPending ? 'Uploading…' : 'Upload'}
+            {uploadFile && (
+              <p className="text-xs text-muted-foreground">Selected: {uploadFile.name} ({(uploadFile.size / 1024).toFixed(0)} KB)</p>
+            )}
+            <Button size="sm" disabled={!uploadFile || uploadMutation.isPending} onClick={() => uploadMutation.mutate()} data-testid="button-do-upload">
+              {uploadMutation.isPending ? <><RefreshCw className="h-4 w-4 mr-1 animate-spin" /> Uploading…</> : <><Upload className="h-4 w-4 mr-1" /> Upload</>}
             </Button>
           </CardContent>
         </Card>
       )}
 
-      {isLoading ? <div className="text-center py-8 text-muted-foreground text-sm">Loading…</div> : galleryContent.length === 0 ? (
-        <div className="text-center py-10">
-          <ImageIcon className="h-10 w-10 text-muted-foreground mx-auto mb-2 opacity-40" />
-          <p className="text-sm text-muted-foreground">No images uploaded yet</p>
+      {isLoading ? (
+        <div className="grid grid-cols-2 gap-3">{[...Array(4)].map((_, i) => <div key={i} className="aspect-[4/3] rounded-lg bg-muted animate-pulse" />)}</div>
+      ) : gallery.length === 0 ? (
+        <div className="text-center py-12 border-2 border-dashed rounded-xl">
+          <Camera className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+          <p className="text-sm font-medium text-muted-foreground">No images uploaded yet</p>
+          <p className="text-xs text-muted-foreground mt-1">Click "Upload Image" to add your first photo</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {galleryContent.map(item => (
-            <div key={item.id} className="relative group rounded-lg overflow-hidden border bg-muted" data-testid={`gallery-item-${item.id}`}>
+          {gallery.map(item => (
+            <div key={item.id} className="relative group rounded-xl overflow-hidden border bg-muted" data-testid={`gallery-item-${item.id}`}>
               {item.imageUrl ? (
                 <img src={item.imageUrl} alt={item.altText || ''} className="w-full aspect-[4/3] object-cover" />
               ) : (
-                <div className="w-full aspect-[4/3] flex items-center justify-center"><ImageIcon className="h-8 w-8 text-muted-foreground opacity-40" /></div>
+                <div className="w-full aspect-[4/3] flex items-center justify-center bg-muted/50">
+                  <ImageIcon className="h-8 w-8 text-muted-foreground opacity-30" />
+                </div>
               )}
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2">
-                <span className="text-white text-[10px] font-medium px-2 text-center leading-tight">{item.contentType.replace(/_/g, ' ')}</span>
+              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-2">
+                <span className="text-white text-[10px] font-medium text-center leading-tight px-1">
+                  {CONTENT_TYPE_LABELS[item.contentType] || item.contentType}
+                </span>
                 <div className="flex gap-1.5">
-                  <button onClick={() => toggleActive.mutate({ id: item.id, isActive: !item.isActive })} className={`p-1.5 rounded text-white ${item.isActive ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-500 hover:bg-gray-600'}`} title={item.isActive ? 'Active — click to hide' : 'Hidden — click to show'} data-testid={`button-toggle-active-${item.id}`}>
+                  <button onClick={() => toggleMutation.mutate({ id: item.id, isActive: !item.isActive })}
+                    className={`p-1.5 rounded-lg text-white ${item.isActive ? 'bg-green-600 hover:bg-green-700' : 'bg-gray-500 hover:bg-gray-600'}`}
+                    title={item.isActive ? 'Active — click to hide' : 'Hidden — click to show'} data-testid={`button-toggle-active-${item.id}`}>
                     {item.isActive ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
                   </button>
-                  <button onClick={() => deleteMutation.mutate(item.id)} className="p-1.5 rounded bg-red-600 hover:bg-red-700 text-white" data-testid={`button-delete-image-${item.id}`}><Trash2 className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => deleteMutation.mutate(item.id)}
+                    className="p-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white" data-testid={`button-delete-image-${item.id}`}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               </div>
-              <div className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ${item.isActive ? 'bg-green-400' : 'bg-gray-400'}`} />
+              <div className={`absolute top-2 right-2 w-2.5 h-2.5 rounded-full border border-white/50 ${item.isActive ? 'bg-green-400' : 'bg-gray-400'}`} title={item.isActive ? 'Active' : 'Hidden'} />
             </div>
           ))}
         </div>
@@ -513,16 +531,17 @@ function GalleryImageManager({ token }: { token: string }) {
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function HomepageManagement() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const token = useToken();
-  const [activeSection, setActiveSection] = useState('hero');
+
+  // Working copies of content being edited (keyed by sectionKey)
   const [localContent, setLocalContent] = useState<Record<string, Record<string, any>>>({});
-  const [dragOver, setDragOver] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState('hero');
   const [dragItem, setDragItem] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState<string | null>(null);
 
   const { data: sections = [], isLoading } = useQuery<HomepageSection[]>({
     queryKey: ['/api/homepage-sections'],
@@ -531,38 +550,76 @@ export default function HomepageManagement() {
 
   const sectionMap = Object.fromEntries(sections.map(s => [s.sectionKey, s]));
 
+  // Get effective content for a section: prefer local edits, then DB content, then defaults
   const getContent = useCallback((key: string) => {
     if (localContent[key]) return localContent[key];
-    const db = sectionMap[key]?.content;
+    const dbContent = sectionMap[key]?.content;
     const defaults = SECTION_CONFIGS.find(s => s.key === key)?.defaultContent ?? {};
-    return db ? { ...defaults, ...db } : defaults;
+    return dbContent ? { ...defaults, ...dbContent } : { ...defaults };
   }, [localContent, sectionMap]);
 
+  // Get the PUBLISHED content (what visitors currently see)
+  const getPublishedContent = useCallback((key: string) => {
+    const dbContent = sectionMap[key]?.content;
+    const defaults = SECTION_CONFIGS.find(s => s.key === key)?.defaultContent ?? {};
+    return dbContent ? { ...defaults, ...dbContent } : { ...defaults };
+  }, [sectionMap]);
+
+  // Mutation: save draft or publish
   const saveMutation = useMutation({
-    mutationFn: async ({ sectionKey, isEnabled, displayOrder, content }: { sectionKey: string; isEnabled: boolean; displayOrder: number; content: Record<string, any> }) => {
+    mutationFn: async ({ sectionKey, action, contentToSave }: { sectionKey: string; action: 'draft' | 'publish'; contentToSave: Record<string, any> }) => {
+      const dbSec = sectionMap[sectionKey];
+      const body: Record<string, any> = {
+        sectionTitle: SECTION_CONFIGS.find(s => s.key === sectionKey)?.title ?? sectionKey,
+        isEnabled: dbSec?.isEnabled ?? true,
+        displayOrder: dbSec?.displayOrder ?? SECTION_CONFIGS.findIndex(s => s.key === sectionKey),
+      };
+      if (action === 'draft') {
+        body.draftContent = contentToSave;
+        body.status = 'draft';
+        // Keep existing published content unchanged
+        if (dbSec?.content) body.content = dbSec.content;
+      } else {
+        // Publish: move to content, clear draftContent
+        body.content = contentToSave;
+        body.draftContent = null;
+        body.status = 'published';
+      }
       const r = await fetch(getApiUrl(`/api/homepage-sections/${sectionKey}`), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ sectionTitle: SECTION_CONFIGS.find(s => s.key === sectionKey)?.title ?? sectionKey, isEnabled, displayOrder, content }),
+        headers: { 'Content-Type': 'application/json', ...authHdr() },
+        body: JSON.stringify(body),
         credentials: 'include',
       });
       if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.message || 'Save failed'); }
       return r.json();
     },
-    onSuccess: (_, vars) => {
+    onSuccess: (_, { sectionKey, action }) => {
       queryClient.invalidateQueries({ queryKey: ['/api/homepage-sections'] });
-      setLocalContent(prev => { const n = { ...prev }; delete n[vars.sectionKey]; return n; });
-      toast({ title: 'Section saved', description: 'Changes are now live on the website.' });
+      setLocalContent(prev => { const n = { ...prev }; delete n[sectionKey]; return n; });
+      toast({
+        title: action === 'draft' ? 'Draft saved' : '✓ Published to website',
+        description: action === 'draft'
+          ? 'Your changes are saved as a draft. Publish when ready to make them live.'
+          : 'Changes are now visible to all website visitors.',
+      });
     },
     onError: (e: Error) => toast({ title: 'Save failed', description: e.message, variant: 'destructive' }),
   });
 
+  // Mutation: toggle section visibility
   const toggleMutation = useMutation({
-    mutationFn: async ({ sectionKey, isEnabled, displayOrder }: { sectionKey: string; isEnabled: boolean; displayOrder: number }) => {
+    mutationFn: async ({ sectionKey, isEnabled }: { sectionKey: string; isEnabled: boolean }) => {
+      const dbSec = sectionMap[sectionKey];
       const r = await fetch(getApiUrl(`/api/homepage-sections/${sectionKey}`), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ sectionTitle: SECTION_CONFIGS.find(s => s.key === sectionKey)?.title ?? sectionKey, isEnabled, displayOrder }),
+        headers: { 'Content-Type': 'application/json', ...authHdr() },
+        body: JSON.stringify({
+          sectionTitle: SECTION_CONFIGS.find(s => s.key === sectionKey)?.title ?? sectionKey,
+          isEnabled,
+          displayOrder: dbSec?.displayOrder ?? SECTION_CONFIGS.findIndex(s => s.key === sectionKey),
+          status: dbSec?.status ?? 'published',
+        }),
         credentials: 'include',
       });
       if (!r.ok) throw new Error('Toggle failed');
@@ -572,11 +629,12 @@ export default function HomepageManagement() {
     onError: (e: Error) => toast({ title: 'Toggle failed', description: e.message, variant: 'destructive' }),
   });
 
+  // Mutation: reorder sections
   const reorderMutation = useMutation({
     mutationFn: async (ordered: { sectionKey: string; displayOrder: number }[]) => {
       const r = await fetch(getApiUrl('/api/homepage-sections-order'), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', ...authHdr() },
         body: JSON.stringify({ sections: ordered }),
         credentials: 'include',
       });
@@ -586,99 +644,108 @@ export default function HomepageManagement() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/homepage-sections'] }),
   });
 
+  // Sort sidebar configs by their DB display order
   const orderedConfigs = [...SECTION_CONFIGS].sort((a, b) => {
     const ao = sectionMap[a.key]?.displayOrder ?? SECTION_CONFIGS.findIndex(s => s.key === a.key);
     const bo = sectionMap[b.key]?.displayOrder ?? SECTION_CONFIGS.findIndex(s => s.key === b.key);
     return ao - bo;
   });
 
-  const activeCfg = SECTION_CONFIGS.find(s => s.key === activeSection);
+  const activeCfg = SECTION_CONFIGS.find(s => s.key === activeSection)!;
   const activeDbSection = sectionMap[activeSection];
   const activeEnabled = activeDbSection?.isEnabled ?? true;
   const activeOrder = activeDbSection?.displayOrder ?? SECTION_CONFIGS.findIndex(s => s.key === activeSection);
+  const activeStatus = activeDbSection?.status ?? 'published';
   const hasLocalChanges = !!localContent[activeSection];
+  const hasDraftInDB = !!activeDbSection?.draftContent;
 
-  const handleDragStart = (key: string) => setDragItem(key);
-  const handleDragOver = (e: React.DragEvent, key: string) => { e.preventDefault(); setDragOver(key); };
-  const handleDrop = (e: React.DragEvent, targetKey: string) => {
-    e.preventDefault();
+  // Drag and drop reorder
+  const handleDrop = (targetKey: string) => {
     if (!dragItem || dragItem === targetKey) { setDragItem(null); setDragOver(null); return; }
     const keys = orderedConfigs.map(c => c.key);
-    const fromIdx = keys.indexOf(dragItem);
-    const toIdx = keys.indexOf(targetKey);
+    const from = keys.indexOf(dragItem);
+    const to = keys.indexOf(targetKey);
     const newKeys = [...keys];
-    newKeys.splice(fromIdx, 1);
-    newKeys.splice(toIdx, 0, dragItem);
-    const ordered = newKeys.map((k, i) => ({ sectionKey: k, displayOrder: i }));
-    reorderMutation.mutate(ordered);
+    newKeys.splice(from, 1);
+    newKeys.splice(to, 0, dragItem);
+    reorderMutation.mutate(newKeys.map((k, i) => ({ sectionKey: k, displayOrder: i })));
     setDragItem(null); setDragOver(null);
   };
 
   if (!user) return <div className="p-8 text-center text-muted-foreground">Loading…</div>;
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-5">
+
+      {/* ─── Header ─── */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2" data-testid="text-page-title">
-            <Globe className="h-6 w-6 text-primary" /> Homepage Management
+          <h1 className="text-xl font-bold flex items-center gap-2" data-testid="text-page-title">
+            <Globe className="h-5 w-5 text-primary" /> Homepage Management
           </h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Control all content, layout, and visibility of the public homepage.</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Manage all sections of the school's public homepage. Changes are reflected on the website immediately when published.</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => window.open('/', '_blank')} data-testid="button-preview-homepage">
-          <ExternalLink className="h-4 w-4 mr-1.5" /> Preview Homepage
-        </Button>
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => window.open('/', '_blank')} data-testid="button-preview-homepage">
+            <ExternalLink className="h-4 w-4 mr-1.5" /> Preview Live Site
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-        {/* ─── Section List (left sidebar) ─── */}
-        <div className="space-y-2">
-          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-1 mb-3">
-            Sections — drag to reorder
-          </div>
+      {/* ─── Status summary bar ─── */}
+      {sections.length > 0 && (
+        <div className="flex items-center gap-4 px-4 py-2.5 bg-muted/50 rounded-xl border text-xs text-muted-foreground flex-wrap">
+          <span className="flex items-center gap-1.5"><CheckCircle2 className="h-3.5 w-3.5 text-green-500" /><strong>{sections.filter(s => s.isEnabled && s.status !== 'draft').length}</strong> published</span>
+          <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5 text-amber-500" /><strong>{sections.filter(s => s.status === 'draft' || !!s.draftContent).length}</strong> with drafts</span>
+          <span className="flex items-center gap-1.5"><EyeOff className="h-3.5 w-3.5 text-gray-400" /><strong>{sections.filter(s => !s.isEnabled).length}</strong> hidden</span>
+          <span className="ml-auto flex items-center gap-1 text-muted-foreground"><Info className="h-3 w-3" /> Toggle visibility with the switch · Drag items to reorder</span>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-5">
+        {/* ─── Section Sidebar ─── */}
+        <div className="space-y-1.5">
           {isLoading ? (
-            <div className="space-y-2">{[...Array(7)].map((_, i) => <div key={i} className="h-14 rounded-lg bg-muted animate-pulse" />)}</div>
+            [...Array(7)].map((_, i) => <div key={i} className="h-14 rounded-xl bg-muted animate-pulse" />)
           ) : (
-            orderedConfigs.map((cfg) => {
+            orderedConfigs.map(cfg => {
               const dbSec = sectionMap[cfg.key];
               const enabled = dbSec?.isEnabled ?? true;
+              const status = dbSec?.status ?? 'published';
+              const hasDraft = !!dbSec?.draftContent;
+              const isActive = activeSection === cfg.key;
               const Icon = cfg.icon;
-              const isDragging = dragItem === cfg.key;
-              const isOver = dragOver === cfg.key;
               return (
                 <div
                   key={cfg.key}
                   draggable
-                  onDragStart={() => handleDragStart(cfg.key)}
-                  onDragOver={e => handleDragOver(e, cfg.key)}
+                  onDragStart={() => setDragItem(cfg.key)}
+                  onDragOver={e => { e.preventDefault(); setDragOver(cfg.key); }}
                   onDragLeave={() => setDragOver(null)}
-                  onDrop={e => handleDrop(e, cfg.key)}
+                  onDrop={() => handleDrop(cfg.key)}
                   onDragEnd={() => { setDragItem(null); setDragOver(null); }}
                   onClick={() => setActiveSection(cfg.key)}
-                  className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer transition-all select-none
-                    ${activeSection === cfg.key ? 'bg-primary/10 border-primary/30 shadow-sm' : 'bg-card border-border hover:bg-accent/50'}
-                    ${isDragging ? 'opacity-40' : ''}
-                    ${isOver ? 'border-primary border-dashed bg-primary/5' : ''}
+                  className={`flex items-center gap-2.5 p-3 rounded-xl border cursor-pointer select-none transition-all
+                    ${isActive ? 'bg-primary/10 border-primary/30 shadow-sm' : 'bg-card border-border hover:bg-accent/40'}
+                    ${dragItem === cfg.key ? 'opacity-40' : ''}
+                    ${dragOver === cfg.key ? 'border-primary border-dashed bg-primary/5' : ''}
                   `}
                   data-testid={`section-item-${cfg.key}`}
                 >
                   <GripVertical className="h-4 w-4 text-muted-foreground shrink-0 cursor-grab" />
-                  <div className={`p-1.5 rounded-lg shrink-0 ${activeSection === cfg.key ? 'bg-primary/20' : 'bg-muted'}`}>
-                    <Icon className={`h-4 w-4 ${activeSection === cfg.key ? 'text-primary' : 'text-muted-foreground'}`} />
+                  <div className={`p-1.5 rounded-lg shrink-0 ${isActive ? 'bg-primary/20' : 'bg-muted'}`}>
+                    <Icon className={`h-4 w-4 ${isActive ? 'text-primary' : 'text-muted-foreground'}`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{cfg.title}</div>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <SectionBadge enabled={enabled} />
+                    <p className="text-sm font-medium truncate">{cfg.title}</p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <StatusBadge status={status} isEnabled={enabled} />
+                      {hasDraft && enabled && <Badge className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 border-blue-200">Has draft</Badge>}
                     </div>
                   </div>
                   <Switch
                     checked={enabled}
-                    onCheckedChange={(checked) => {
-                      const order = dbSec?.displayOrder ?? SECTION_CONFIGS.findIndex(s => s.key === cfg.key);
-                      toggleMutation.mutate({ sectionKey: cfg.key, isEnabled: checked, displayOrder: order });
-                    }}
+                    onCheckedChange={checked => toggleMutation.mutate({ sectionKey: cfg.key, isEnabled: checked })}
                     onClick={e => e.stopPropagation()}
                     data-testid={`switch-section-${cfg.key}`}
                   />
@@ -688,13 +755,14 @@ export default function HomepageManagement() {
           )}
         </div>
 
-        {/* ─── Editor Panel (right) ─── */}
-        <div>
-          {activeCfg && (
+        {/* ─── Editor Panel ─── */}
+        {activeCfg && (
+          <div className="space-y-4">
+            {/* Section header card */}
             <Card className="shadow-sm">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-3">
-                  <div>
+                  <div className="flex-1">
                     <CardTitle className="text-base flex items-center gap-2">
                       <activeCfg.icon className="h-5 w-5 text-primary" />
                       {activeCfg.title}
@@ -702,19 +770,42 @@ export default function HomepageManagement() {
                     <CardDescription className="mt-1 text-xs">{activeCfg.description}</CardDescription>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <div className="flex items-center gap-1.5">
-                      {activeEnabled ? <Eye className="h-4 w-4 text-green-600" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
-                      <span className="text-xs text-muted-foreground">{activeEnabled ? 'Visible' : 'Hidden'}</span>
-                    </div>
+                    <StatusBadge status={activeStatus} isEnabled={activeEnabled} />
+                    {hasDraftInDB && <Badge className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 border-blue-200">Has draft</Badge>}
+                    {activeDbSection?.updatedAt && (
+                      <span className="text-xs text-muted-foreground hidden sm:block">Updated {relativeTime(activeDbSection.updatedAt)}</span>
+                    )}
                   </div>
                 </div>
               </CardHeader>
+            </Card>
 
-              <Separator />
+            {/* Draft notification */}
+            {hasDraftInDB && !hasLocalChanges && activeSection !== 'gallery' && (
+              <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-700">
+                <Clock className="h-4 w-4 shrink-0" />
+                <span className="flex-1">This section has a saved draft that hasn't been published yet.</span>
+                <Button size="sm" variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-100 h-8"
+                  onClick={() => {
+                    const draftC = activeDbSection?.draftContent ?? {};
+                    const defaults = activeCfg.defaultContent;
+                    setLocalContent(prev => ({ ...prev, [activeSection]: { ...defaults, ...draftC } }));
+                  }} data-testid="button-load-draft">
+                  <FileEdit className="h-3.5 w-3.5 mr-1" /> Edit Draft
+                </Button>
+                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 h-8"
+                  onClick={() => saveMutation.mutate({ sectionKey: activeSection, action: 'publish', contentToSave: { ...activeCfg.defaultContent, ...activeDbSection?.draftContent } })}
+                  disabled={saveMutation.isPending} data-testid="button-publish-draft">
+                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Publish Draft
+                </Button>
+              </div>
+            )}
 
+            {/* Main editor card */}
+            <Card className="shadow-sm">
               <CardContent className="pt-5">
                 {activeSection === 'gallery' ? (
-                  <GalleryImageManager token={token} />
+                  <GalleryImageManager />
                 ) : (
                   <>
                     {activeSection === 'hero' && <HeroEditor content={getContent('hero')} onChange={c => setLocalContent(p => ({ ...p, hero: c }))} />}
@@ -726,32 +817,52 @@ export default function HomepageManagement() {
 
                     <Separator className="my-5" />
 
-                    <div className="flex items-center justify-between gap-3">
+                    {/* Action bar */}
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
                       <div className="flex items-center gap-2">
                         {hasLocalChanges && (
-                          <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-700 border-amber-200">Unsaved changes</Badge>
+                          <Badge className="bg-amber-100 text-amber-700 border-amber-200">
+                            <AlertTriangle className="h-3 w-3 mr-1" /> Unsaved changes
+                          </Badge>
                         )}
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap justify-end">
                         {hasLocalChanges && (
-                          <Button variant="outline" size="sm" onClick={() => setLocalContent(p => { const n = { ...p }; delete n[activeSection]; return n; })} data-testid="button-discard-changes">
+                          <Button variant="ghost" size="sm" onClick={() => setLocalContent(p => { const n = { ...p }; delete n[activeSection]; return n; })} data-testid="button-discard-changes">
                             <X className="h-4 w-4 mr-1" /> Discard
                           </Button>
                         )}
-                        <Button size="sm" disabled={saveMutation.isPending}
-                          onClick={() => saveMutation.mutate({ sectionKey: activeSection, isEnabled: activeEnabled, displayOrder: activeOrder, content: getContent(activeSection) })}
-                          data-testid="button-save-section">
-                          <Save className="h-4 w-4 mr-1.5" />
-                          {saveMutation.isPending ? 'Saving…' : 'Save & Publish'}
+                        {hasLocalChanges && (
+                          <Button variant="outline" size="sm" disabled={saveMutation.isPending}
+                            onClick={() => saveMutation.mutate({ sectionKey: activeSection, action: 'draft', contentToSave: getContent(activeSection) })}
+                            data-testid="button-save-draft">
+                            <Clock className="h-4 w-4 mr-1.5" />
+                            {saveMutation.isPending ? 'Saving…' : 'Save as Draft'}
+                          </Button>
+                        )}
+                        <Button size="sm" disabled={saveMutation.isPending || (!hasLocalChanges && !hasDraftInDB && !!activeDbSection)}
+                          onClick={() => saveMutation.mutate({ sectionKey: activeSection, action: 'publish', contentToSave: getContent(activeSection) })}
+                          data-testid="button-publish-section"
+                          className="bg-primary hover:bg-primary/90">
+                          <CheckCircle2 className="h-4 w-4 mr-1.5" />
+                          {saveMutation.isPending ? 'Publishing…' : 'Publish'}
                         </Button>
                       </div>
                     </div>
+
+                    {/* Current live content indicator */}
+                    {activeDbSection && activeStatus === 'published' && !hasLocalChanges && (
+                      <p className="text-[11px] text-muted-foreground mt-3 flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3 text-green-500" />
+                        This section is currently live on the website.
+                      </p>
+                    )}
                   </>
                 )}
               </CardContent>
             </Card>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -6504,13 +6504,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Admin: upsert a homepage section
+  // Admin: upsert a homepage section (supports draft/publish workflow)
   app.put('/api/homepage-sections/:sectionKey', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
     try {
       const { sectionKey } = req.params;
-      const { sectionTitle, isEnabled, displayOrder, content } = req.body;
-      const section = await storage.upsertHomepageSection(sectionKey, { sectionTitle, isEnabled, displayOrder, content }, req.user!.id);
-      res.json({ message: 'Section saved successfully', section });
+      const { sectionTitle, isEnabled, displayOrder, content, draftContent, status } = req.body;
+      const section = await storage.upsertHomepageSection(sectionKey, { sectionTitle, isEnabled, displayOrder, content, draftContent, status }, req.user!.id);
+      res.json({ message: status === 'draft' ? 'Draft saved' : 'Section published successfully', section });
     } catch (error: any) {
       res.status(500).json({ message: error.message || 'Failed to save section' });
     }

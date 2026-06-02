@@ -408,7 +408,7 @@ export interface IStorage {
   // Homepage sections management
   getHomepageSections(): Promise<HomepageSection[]>;
   getHomepageSection(sectionKey: string): Promise<HomepageSection | undefined>;
-  upsertHomepageSection(sectionKey: string, data: { sectionTitle?: string; isEnabled?: boolean; displayOrder?: number; content?: any }, userId?: string): Promise<HomepageSection>;
+  upsertHomepageSection(sectionKey: string, data: { sectionTitle?: string; isEnabled?: boolean; displayOrder?: number; content?: any; draftContent?: any; status?: string }, userId?: string): Promise<HomepageSection>;
   updateHomepageSectionsOrder(sections: { sectionKey: string; displayOrder: number }[]): Promise<void>;
 
   // Contact messages management
@@ -4922,7 +4922,7 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async upsertHomepageSection(sectionKey: string, data: { sectionTitle?: string; isEnabled?: boolean; displayOrder?: number; content?: any }, userId?: string): Promise<HomepageSection> {
+  async upsertHomepageSection(sectionKey: string, data: { sectionTitle?: string; isEnabled?: boolean; displayOrder?: number; content?: any; draftContent?: any; status?: string }, userId?: string): Promise<HomepageSection> {
     const existing = await this.getHomepageSection(sectionKey);
     if (existing) {
       const result = await db.update(schema.homepageSections)
@@ -4932,7 +4932,7 @@ export class DatabaseStorage implements IStorage {
       return result[0];
     } else {
       const result = await db.insert(schema.homepageSections)
-        .values({ sectionKey, sectionTitle: data.sectionTitle || sectionKey, isEnabled: data.isEnabled ?? true, displayOrder: data.displayOrder ?? 0, content: data.content || null, updatedBy: userId || null })
+        .values({ sectionKey, sectionTitle: data.sectionTitle || sectionKey, isEnabled: data.isEnabled ?? true, displayOrder: data.displayOrder ?? 0, content: data.content || null, draftContent: data.draftContent || null, status: data.status || 'published', updatedBy: userId || null })
         .returning();
       return result[0];
     }

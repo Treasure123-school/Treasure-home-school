@@ -118,6 +118,13 @@ const SuperAdminBackupRestore = lazy(() => import("@/pages/portal/SuperAdminBack
 const SuperAdminApiAccess = lazy(() => import("@/pages/portal/SuperAdminApiAccess"));
 const ExamPaymentManagement = lazy(() => import("@/pages/portal/ExamPaymentManagement"));
 const SuperAdminCurriculumTemplates = lazy(() => import("@/pages/portal/SuperAdminCurriculumTemplates"));
+const HomepageManagement = lazy(() => import("@/pages/portal/HomepageManagement"));
+const GalleryManagement = lazy(() => import("@/pages/portal/website/GalleryManagement"));
+const NewsManagement = lazy(() => import("@/pages/portal/website/NewsManagement"));
+const FaqManagement = lazy(() => import("@/pages/portal/website/FaqManagement"));
+const AboutPageManagement = lazy(() => import("@/pages/portal/website/AboutPageManagement"));
+const ContactInbox = lazy(() => import("@/pages/portal/website/ContactInbox"));
+const AdmissionsManagement = lazy(() => import("@/pages/portal/website/AdmissionsManagement"));
 
 import StudentExams from "@/pages/portal/StudentExams";
 const ExamFeePayment = lazy(() => import("@/pages/portal/ExamFeePayment"));
@@ -399,6 +406,57 @@ function Router() {
         <Route path="/portal/superadmin/communication/templates">
           <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
             <SuperAdminPlaceholder title="Templates" category="Communication" description="Manage message templates" />
+          </ProtectedRoute>
+        </Route>
+
+        {/* Super Admin Website / Homepage Management */}
+        <Route path="/portal/superadmin/homepage-management">
+          <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
+            <SuperAdminLayout>
+              <HomepageManagement />
+            </SuperAdminLayout>
+          </ProtectedRoute>
+        </Route>
+        <Route path="/portal/superadmin/website/gallery">
+          <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
+            <SuperAdminLayout>
+              <GalleryManagement />
+            </SuperAdminLayout>
+          </ProtectedRoute>
+        </Route>
+        <Route path="/portal/superadmin/website/news">
+          <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
+            <SuperAdminLayout>
+              <NewsManagement />
+            </SuperAdminLayout>
+          </ProtectedRoute>
+        </Route>
+        <Route path="/portal/superadmin/website/faq">
+          <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
+            <SuperAdminLayout>
+              <FaqManagement />
+            </SuperAdminLayout>
+          </ProtectedRoute>
+        </Route>
+        <Route path="/portal/superadmin/website/about">
+          <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
+            <SuperAdminLayout>
+              <AboutPageManagement />
+            </SuperAdminLayout>
+          </ProtectedRoute>
+        </Route>
+        <Route path="/portal/superadmin/website/contact-inbox">
+          <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
+            <SuperAdminLayout>
+              <ContactInbox />
+            </SuperAdminLayout>
+          </ProtectedRoute>
+        </Route>
+        <Route path="/portal/superadmin/website/admissions">
+          <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
+            <SuperAdminLayout>
+              <AdmissionsManagement />
+            </SuperAdminLayout>
           </ProtectedRoute>
         </Route>
 
