@@ -6482,6 +6482,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ─── Homepage Sections API ────────────────────────────────────────────────
+
+  // Public: get all enabled homepage sections (for public website)
+  app.get('/api/public/homepage-sections', async (req, res) => {
+    try {
+      const sections = await storage.getHomepageSections();
+      res.json(sections);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to get homepage sections' });
+    }
+  });
+
+  // Admin: get all homepage sections (authenticated)
+  app.get('/api/homepage-sections', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const sections = await storage.getHomepageSections();
+      res.json(sections);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to get homepage sections' });
+    }
+  });
+
+  // Admin: upsert a homepage section
+  app.put('/api/homepage-sections/:sectionKey', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const { sectionKey } = req.params;
+      const { sectionTitle, isEnabled, displayOrder, content } = req.body;
+      const section = await storage.upsertHomepageSection(sectionKey, { sectionTitle, isEnabled, displayOrder, content }, req.user!.id);
+      res.json({ message: 'Section saved successfully', section });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to save section' });
+    }
+  });
+
+  // Admin: batch reorder homepage sections
+  app.put('/api/homepage-sections-order', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const { sections } = req.body as { sections: { sectionKey: string; displayOrder: number }[] };
+      await storage.updateHomepageSectionsOrder(sections);
+      res.json({ message: 'Section order updated' });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message || 'Failed to update order' });
+    }
+  });
+
+  // Admin: get all homepage content (both admin-owned and active)
+  app.get('/api/homepage-content/all', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const content = await storage.getHomePageContent();
+      res.json(content);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to get homepage content' });
+    }
+  });
+
+  // ─── End Homepage Sections API ────────────────────────────────────────────
+
   // Public endpoint to get all active homepage content (no auth required)
   app.get('/api/public/homepage-content', async (req, res) => {
     try {

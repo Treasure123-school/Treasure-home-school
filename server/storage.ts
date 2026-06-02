@@ -33,6 +33,7 @@ import type {
   MonnifyVirtualAccount, InsertMonnifyVirtualAccount,
   NewsPost, InsertNewsPost, Faq, InsertFaq, AboutSection, InsertAboutSection,
   AdmissionsEnquiry, InsertAdmissionsEnquiry,
+  HomepageSection, InsertHomepageSection,
 } from "@shared/schema";
 
 // Get centralized database instance and schema from db.ts
@@ -403,6 +404,12 @@ export interface IStorage {
   getHomePageContentById(id: number): Promise<HomePageContent | undefined>;
   updateHomePageContent(id: number, content: Partial<InsertHomePageContent>): Promise<HomePageContent | undefined>;
   deleteHomePageContent(id: number): Promise<boolean>;
+
+  // Homepage sections management
+  getHomepageSections(): Promise<HomepageSection[]>;
+  getHomepageSection(sectionKey: string): Promise<HomepageSection | undefined>;
+  upsertHomepageSection(sectionKey: string, data: { sectionTitle?: string; isEnabled?: boolean; displayOrder?: number; content?: any }, userId?: string): Promise<HomepageSection>;
+  updateHomepageSectionsOrder(sections: { sectionKey: string; displayOrder: number }[]): Promise<void>;
 
   // Contact messages management
   createContactMessage(message: InsertContactMessage): Promise<ContactMessage>;
@@ -4901,6 +4908,44 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return result.length > 0;
   }
+
+  // Homepage sections management
+  async getHomepageSections(): Promise<HomepageSection[]> {
+    return await db.select().from(schema.homepageSections)
+      .orderBy(asc(schema.homepageSections.displayOrder));
+  }
+
+  async getHomepageSection(sectionKey: string): Promise<HomepageSection | undefined> {
+    const result = await db.select().from(schema.homepageSections)
+      .where(eq(schema.homepageSections.sectionKey, sectionKey))
+      .limit(1);
+    return result[0];
+  }
+
+  async upsertHomepageSection(sectionKey: string, data: { sectionTitle?: string; isEnabled?: boolean; displayOrder?: number; content?: any }, userId?: string): Promise<HomepageSection> {
+    const existing = await this.getHomepageSection(sectionKey);
+    if (existing) {
+      const result = await db.update(schema.homepageSections)
+        .set({ ...data, updatedAt: new Date(), updatedBy: userId || null })
+        .where(eq(schema.homepageSections.sectionKey, sectionKey))
+        .returning();
+      return result[0];
+    } else {
+      const result = await db.insert(schema.homepageSections)
+        .values({ sectionKey, sectionTitle: data.sectionTitle || sectionKey, isEnabled: data.isEnabled ?? true, displayOrder: data.displayOrder ?? 0, content: data.content || null, updatedBy: userId || null })
+        .returning();
+      return result[0];
+    }
+  }
+
+  async updateHomepageSectionsOrder(sections: { sectionKey: string; displayOrder: number }[]): Promise<void> {
+    for (const s of sections) {
+      await db.update(schema.homepageSections)
+        .set({ displayOrder: s.displayOrder, updatedAt: new Date() })
+        .where(eq(schema.homepageSections.sectionKey, s.sectionKey));
+    }
+  }
+
   // Comprehensive grade management
   async recordComprehensiveGrade(gradeData: any): Promise<any> {
     try {

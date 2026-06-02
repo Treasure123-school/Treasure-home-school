@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, integer, boolean, timestamp, index, uniqueIndex, serial, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, boolean, timestamp, index, uniqueIndex, serial, varchar, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -1557,3 +1557,17 @@ export type AboutSection = typeof aboutSections.$inferSelect;
 export type InsertAboutSection = typeof aboutSections.$inferInsert;
 export type AdmissionsEnquiry = typeof admissionsEnquiries.$inferSelect;
 export type InsertAdmissionsEnquiry = typeof admissionsEnquiries.$inferInsert;
+
+export const homepageSections = pgTable("homepage_sections", {
+  id: serial("id").primaryKey(),
+  sectionKey: varchar("section_key", { length: 50 }).notNull().unique(),
+  sectionTitle: varchar("section_title", { length: 100 }).notNull(),
+  isEnabled: boolean("is_enabled").notNull().default(true),
+  displayOrder: integer("display_order").notNull().default(0),
+  content: jsonb("content"),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  updatedBy: varchar("updated_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+});
+
+export type HomepageSection = typeof homepageSections.$inferSelect;
+export type InsertHomepageSection = typeof homepageSections.$inferInsert;
