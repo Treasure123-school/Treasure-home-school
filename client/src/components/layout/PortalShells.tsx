@@ -83,6 +83,7 @@ const AttendanceManagement = lazy(() => import('@/pages/portal/AttendanceManagem
 const ParentManagement = lazy(() => import('@/pages/portal/ParentManagement'));
 const AdminTimetable = lazy(() => import('@/pages/portal/AdminTimetable'));
 const AdminMessages = lazy(() => import('@/pages/portal/AdminMessages'));
+const ParentMessages = lazy(() => import('@/pages/portal/ParentMessages'));
 const AdminCurriculumLibrary = lazy(() => import('@/pages/portal/AdminCurriculumLibrary'));
 
 const WebsiteOverview = lazy(() => import('@/pages/portal/website/WebsiteOverview'));
@@ -247,7 +248,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/parents" component={ParentManagement} />
             <Route path="/portal/admin/calendar" component={AdminCalendarPage} />
             <Route path="/portal/admin/events" component={EventsManagement} />
-            <Route path="/portal/admin/messages" component={TeacherMessages} />
+            <Route path="/portal/admin/messages" component={AdminMessages} />
             <Route path="/portal/admin/website" component={WebsiteOverview} />
             <Route path="/portal/admin/website/gallery" component={GalleryManagement} />
             <Route path="/portal/admin/website/news" component={NewsManagement} />
@@ -270,6 +271,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/parent/profile" component={ParentProfile} />
             <Route path="/portal/parent/calendar" component={SharedCalendarPage} />
             <Route path="/portal/parent/events" component={SharedEventsPage} />
+            <Route path="/portal/parent/messages" component={ParentMessages} />
             <Route path="/portal/parent/change-password" component={ChangePasswordPage} />
             <Route path="/portal/parent/notifications" component={NotificationsPage} />
             <Route path="/portal/parent/*" component={PortalComingSoon} />

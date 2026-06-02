@@ -56,7 +56,7 @@ function formatTime(dateStr: string): string {
   return new Date(dateStr).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 }
 
-export default function StudentMessages() {
+export default function ParentMessages() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -87,7 +87,7 @@ export default function StudentMessages() {
         const msg = event.data;
         if (msg.recipientId === user?.id && (msg.senderId !== selectedContactId || showConversations)) {
           toast({
-            title: `New message from ${msg.senderName || 'Teacher'}`,
+            title: `New message from ${msg.senderName || 'School'}`,
             description: msg.subject || 'Click to view',
           });
           queryClient.invalidateQueries({ queryKey: ['/api/messages/user', user?.id] });
@@ -128,7 +128,7 @@ export default function StudentMessages() {
           : 'U';
         map.set(contactId, {
           contactId,
-          contactName: contactName || 'Teacher',
+          contactName: contactName || 'Staff',
           contactInitials: initials,
           lastMessage: msg.content,
           lastTime: msg.createdAt,
@@ -198,12 +198,12 @@ export default function StudentMessages() {
       if (!response.ok) {
         setRecipientInfo(null);
         setNewMsgRecipient('');
-        toast({ title: 'User Not Found', description: 'Could not find a user with that identifier.', variant: 'destructive' });
+        toast({ title: 'User Not Found', description: 'Could not find a staff member with that identifier.', variant: 'destructive' });
       } else {
         const data = await response.json();
         setRecipientInfo(data);
         setNewMsgRecipient(data.id);
-        toast({ title: 'User Verified', description: `${data.firstName} ${data.lastName} (${data.roleName})` });
+        toast({ title: 'Verified', description: `${data.firstName} ${data.lastName} (${data.roleName})` });
       }
     } catch {
       toast({ title: 'Lookup Error', description: 'Failed to verify recipient.', variant: 'destructive' });
@@ -280,7 +280,7 @@ export default function StudentMessages() {
               </p>
               {!searchTerm && (
                 <Button variant="outline" size="sm" onClick={() => setIsNewMessageOpen(true)}>
-                  Message a teacher
+                  Contact the school
                 </Button>
               )}
             </div>
@@ -331,7 +331,7 @@ export default function StudentMessages() {
               </Avatar>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate">{selectedConversation.contactName}</p>
-                <p className="text-xs text-muted-foreground">Teacher</p>
+                <p className="text-xs text-muted-foreground">School Staff</p>
               </div>
             </div>
 
@@ -413,9 +413,9 @@ export default function StudentMessages() {
               <MessageSquare className="w-16 h-16 text-blue-200" />
             </div>
             <div className="max-w-xs space-y-2">
-              <h3 className="text-xl font-bold">Your Messages</h3>
+              <h3 className="text-xl font-bold">Messages</h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Send messages to your teachers to ask questions or get help with your studies.
+                Send messages to teachers and school staff about your child's progress and activities.
               </p>
             </div>
             <Button className="rounded-full px-8 shadow-md" onClick={() => setIsNewMessageOpen(true)}>
@@ -437,7 +437,7 @@ export default function StudentMessages() {
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Recipient (Username or ID)</Label>
+              <Label className="text-sm font-medium">Recipient (Teacher/Staff Username or ID)</Label>
               <div className="flex gap-2">
                 <div className="relative flex-1">
                   <Input
@@ -473,7 +473,7 @@ export default function StudentMessages() {
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-medium">Subject</Label>
-              <Input placeholder="What is this about?" value={newMsgSubject} onChange={(e) => setNewMsgSubject(e.target.value)} className="rounded-xl" data-testid="input-new-message-subject" />
+              <Input placeholder="e.g. Regarding my child's progress" value={newMsgSubject} onChange={(e) => setNewMsgSubject(e.target.value)} className="rounded-xl" data-testid="input-new-message-subject" />
             </div>
             <div className="space-y-2">
               <Label className="text-sm font-medium">Message</Label>

@@ -307,19 +307,19 @@ export default function TeacherMessages() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex-1 min-h-0 bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden flex">
+      <div className="flex-1 min-h-0 bg-card rounded-2xl shadow-sm border border-border overflow-hidden flex">
 
         {/* Conversation Sidebar */}
-        <div className={`${showConversations ? 'flex' : 'hidden'} md:flex w-full md:w-[300px] lg:w-[320px] flex-col border-r border-gray-100 dark:border-gray-800 flex-shrink-0`}>
+        <div className={`${showConversations ? 'flex' : 'hidden'} w-full flex-col border-r border-border flex-shrink-0`}>
           {/* Search */}
-          <div className="p-3 border-b border-gray-100 dark:border-gray-800">
+          <div className="p-3 border-b border-border">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search conversations..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="pl-9 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-xl text-sm"
+                className="pl-9 rounded-xl text-sm"
                 data-testid="input-search-conversations"
               />
             </div>
@@ -389,7 +389,7 @@ export default function TeacherMessages() {
         </div>
 
         {/* Chat Window */}
-        <div className={`${!showConversations ? 'flex' : 'hidden'} md:flex flex-1 flex-col min-w-0`}>
+        <div className={`${!showConversations ? 'flex' : 'hidden'} w-full flex-1 flex-col min-w-0`}>
           {!selectedConversation ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
               <div className="bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-full p-6 mb-4">
@@ -411,10 +411,10 @@ export default function TeacherMessages() {
           ) : (
             <>
               {/* Chat Header */}
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex-shrink-0">
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card flex-shrink-0">
                 <button
                   onClick={() => { setShowConversations(true); setSelectedContactId(null); }}
-                  className="md:hidden p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="p-1.5 rounded-lg hover:bg-muted transition-colors"
                 >
                   <ArrowLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />
                 </button>
@@ -471,11 +471,11 @@ export default function TeacherMessages() {
               </div>
 
               {/* Message Input */}
-              <div className="border-t border-gray-100 dark:border-gray-800 p-3 flex-shrink-0 bg-white dark:bg-gray-900">
+              <div className="border-t border-border p-3 flex-shrink-0 bg-card">
                 <div className="flex items-end gap-2">
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="p-2 rounded-xl text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex-shrink-0"
+                    className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex-shrink-0"
                     title="Attach file"
                     data-testid="button-attach-file"
                   >
@@ -488,7 +488,7 @@ export default function TeacherMessages() {
                     onChange={e => setMessageText(e.target.value)}
                     onKeyDown={handleKeyDown}
                     rows={1}
-                    className="flex-1 resize-none bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-xl text-sm min-h-[40px] max-h-[120px] py-2.5"
+                    className="flex-1 resize-none bg-muted border-0 rounded-xl text-sm min-h-[40px] max-h-[120px] py-2.5"
                     data-testid="input-message-text"
                   />
                   <Button

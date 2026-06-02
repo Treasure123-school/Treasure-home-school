@@ -263,34 +263,22 @@ export default function AdminMessages() {
 
   if (isLoading) {
     return (
-      <div className="flex h-[calc(100vh-12rem)] bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden">
-        <div className="w-80 border-r border-gray-200 dark:border-gray-800 flex flex-col">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-800">
-            <Skeleton className="h-10 w-full" />
-          </div>
-          <div className="flex-1 overflow-y-auto p-2 space-y-2">
-            {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 w-full" />)}
-          </div>
+      <div className="h-[calc(100vh-12rem)] bg-card rounded-xl border border-border overflow-hidden">
+        <div className="p-4 border-b border-border">
+          <Skeleton className="h-10 w-full" />
         </div>
-        <div className="flex-1 flex flex-col">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-800">
-            <Skeleton className="h-10 w-48" />
-          </div>
-          <div className="flex-1 p-4 space-y-4">
-            <Skeleton className="h-12 w-1/2" />
-            <Skeleton className="h-12 w-1/3 ml-auto" />
-            <Skeleton className="h-12 w-1/2" />
-          </div>
+        <div className="p-2 space-y-2">
+          {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-16 w-full" />)}
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-[calc(100vh-12rem)] bg-white dark:bg-gray-950 rounded-xl border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
+    <div className="flex h-[calc(100vh-12rem)] bg-card rounded-xl border border-border overflow-hidden shadow-sm">
       {/* Conversations List */}
-      <div className={`${showConversations ? 'block' : 'hidden'} md:block w-full md:w-80 border-r border-gray-200 dark:border-gray-800 flex flex-col bg-gray-50/30 dark:bg-gray-900/10`}>
-        <div className="p-4 border-b border-gray-200 dark:border-gray-800 space-y-4">
+      <div className={`${showConversations ? 'flex' : 'hidden'} w-full flex-col bg-muted/5`}>
+        <div className="p-4 border-b border-border space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-blue-600" />
@@ -304,7 +292,7 @@ export default function AdminMessages() {
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search conversations..."
-              className="pl-9 bg-white dark:bg-gray-900 h-9"
+              className="pl-9 h-9"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -356,12 +344,12 @@ export default function AdminMessages() {
       </div>
 
       {/* Message Area */}
-      <div className={`${!showConversations ? 'block' : 'hidden'} md:flex flex-1 flex-col bg-white dark:bg-gray-950`}>
+      <div className={`${!showConversations ? 'flex' : 'hidden'} flex-1 flex-col bg-background`}>
         {selectedConversation ? (
           <>
             {/* Header */}
-            <div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center gap-3">
-              <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setShowConversations(true)}>
+            <div className="p-4 border-b border-border flex items-center gap-3">
+              <Button variant="ghost" size="icon" onClick={() => setShowConversations(true)}>
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <Avatar className="h-9 w-9 border border-gray-200 dark:border-gray-700">
@@ -380,7 +368,7 @@ export default function AdminMessages() {
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 bg-gray-50/50 dark:bg-gray-950">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-muted/5">
               {selectedConversation.messages.map((msg, i) => {
                 const isMine = msg.senderId === user?.id;
                 const nextMsg = selectedConversation.messages[i+1];
@@ -408,14 +396,14 @@ export default function AdminMessages() {
             </div>
 
             {/* Input */}
-            <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 dark:border-gray-800 flex items-center gap-2 bg-white dark:bg-gray-950">
+            <form onSubmit={handleSendMessage} className="p-4 border-t border-border flex items-center gap-2 bg-card">
               <Button type="button" size="icon" variant="ghost" className="h-9 w-9 text-muted-foreground" onClick={() => fileInputRef.current?.click()}>
                 <Paperclip className="h-5 w-5" />
               </Button>
               <input type="file" ref={fileInputRef} className="hidden" />
               <Input
                 placeholder="Type your message..."
-                className="flex-1 bg-gray-100 dark:bg-gray-900 border-0 h-10 focus-visible:ring-1 focus-visible:ring-blue-500 rounded-full px-4"
+                className="flex-1 bg-muted border-0 h-10 focus-visible:ring-1 focus-visible:ring-blue-500 rounded-full px-4"
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
               />
@@ -430,8 +418,8 @@ export default function AdminMessages() {
             </form>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-6 bg-gray-50/50 dark:bg-gray-950">
-            <div className="bg-white dark:bg-gray-900 p-8 rounded-full shadow-lg border border-gray-100 dark:border-gray-800 animate-pulse-slow">
+          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-6 bg-muted/5">
+            <div className="bg-card p-8 rounded-full shadow-lg border border-border">
               <MessageSquare className="w-16 h-16 text-blue-200" />
             </div>
             <div className="max-w-xs space-y-2">
