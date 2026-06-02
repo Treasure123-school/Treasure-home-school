@@ -3116,7 +3116,7 @@ export default function StudentExams() {
                   {[
                     { key: 'N', desc: 'Next question' },
                     { key: 'P', desc: 'Previous question' },
-                    { key: 'S', desc: 'Save answer' },
+                    { key: 'S', desc: 'Submit exam' },
                     { key: 'A–E', desc: 'Select option (MCQ)' },
                   ].map(({ key, desc }) => (
                     <div key={key} className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-400">
