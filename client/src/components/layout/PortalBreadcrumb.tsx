@@ -37,6 +37,7 @@ function buildRouteTable(): RouteEntry[] {
     { pattern: '/portal/student/events', crumbs: [{ label: 'Dashboard', href: '/portal/student' }, { label: 'Events' }] },
     { pattern: '/portal/student/exams', crumbs: [{ label: 'Dashboard', href: '/portal/student' }, { label: 'Exams' }] },
     { pattern: '/portal/student/exam-payment', crumbs: [{ label: 'Dashboard', href: '/portal/student' }, { label: 'Exam Fee Payment' }] },
+    { pattern: '/portal/student/notifications', crumbs: [{ label: 'Dashboard', href: '/portal/student' }, { label: 'Notifications' }] },
     { pattern: '/portal/student/change-password', crumbs: [{ label: 'Dashboard', href: '/portal/student' }, { label: 'Profile', href: '/portal/student/profile' }, { label: 'Change Password' }] },
     { pattern: /^\/portal\/student\/lesson-notes\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/student' }, { label: 'Scheme of Work', href: '/portal/student/scheme-of-work' }, { label: 'Lesson Note' }] },
 
@@ -62,6 +63,7 @@ function buildRouteTable(): RouteEntry[] {
     { pattern: '/portal/teacher/events', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'Events' }] },
     { pattern: /^\/portal\/teacher\/results\/class\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'Results', href: '/portal/teacher/classes' }, { label: 'Class Results' }] },
     { pattern: /^\/portal\/teacher\/results\/exam\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'Results' }, { label: 'Exam Results' }] },
+    { pattern: '/portal/teacher/notifications', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'Notifications' }] },
     { pattern: '/portal/teacher/change-password', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'Profile', href: '/portal/teacher/profile' }, { label: 'Change Password' }] },
     { pattern: '/portal/teacher/lesson-notes', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'My Lesson Notes' }] },
     { pattern: '/portal/teacher/lesson-notes/editor/new', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'My Lesson Notes', href: '/portal/teacher/lesson-notes' }, { label: 'New Note' }] },
@@ -102,6 +104,7 @@ function buildRouteTable(): RouteEntry[] {
     { pattern: '/portal/admin/lesson-notes/editor/new', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Lesson Notes Review', href: '/portal/admin/lesson-notes' }, { label: 'New Note' }] },
     { pattern: /^\/portal\/admin\/lesson-notes\/edit\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Lesson Notes Review', href: '/portal/admin/lesson-notes' }, { label: 'Edit Note' }] },
     { pattern: /^\/portal\/admin\/lesson-notes\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Lesson Notes Review', href: '/portal/admin/lesson-notes' }, { label: 'View Note' }] },
+    { pattern: '/portal/admin/notifications', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Notifications' }] },
     { pattern: '/portal/admin/change-password', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Profile', href: '/portal/admin/profile' }, { label: 'Change Password' }] },
     { pattern: '/portal/admin/recovery-tools', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Settings', href: '/portal/admin/settings' }, { label: 'Recovery Tools' }] },
     { pattern: '/portal/admin/audit-logs', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Audit Logs' }] },
@@ -135,9 +138,11 @@ function buildRouteTable(): RouteEntry[] {
     { pattern: '/portal/parent/events', crumbs: [{ label: 'Dashboard', href: '/portal/parent' }, { label: 'Events' }] },
     { pattern: '/portal/parent/messages', crumbs: [{ label: 'Dashboard', href: '/portal/parent' }, { label: 'Messages' }] },
     { pattern: '/portal/parent/change-password', crumbs: [{ label: 'Dashboard', href: '/portal/parent' }, { label: 'Profile', href: '/portal/parent/profile' }, { label: 'Change Password' }] },
+    { pattern: '/portal/parent/notifications', crumbs: [{ label: 'Dashboard', href: '/portal/parent' }, { label: 'Notifications' }] },
 
     // ── Super Admin ──────────────────────────────────────────────────
     { pattern: '/portal/superadmin/change-password', crumbs: [{ label: 'Dashboard', href: '/portal/superadmin' }, { label: 'Profile', href: '/portal/superadmin/profile' }, { label: 'Change Password' }] },
+    { pattern: '/portal/superadmin/notifications', crumbs: [{ label: 'Dashboard', href: '/portal/superadmin' }, { label: 'Notifications' }] },
   ];
 }
 

@@ -129,6 +129,7 @@ const AdmissionsManagement = lazy(() => import("@/pages/portal/website/Admission
 import StudentExams from "@/pages/portal/StudentExams";
 const ExamFeePayment = lazy(() => import("@/pages/portal/ExamFeePayment"));
 const ChangePasswordPage = lazy(() => import("@/pages/portal/ChangePasswordPage"));
+const NotificationsPage = lazy(() => import("@/pages/portal/NotificationsPage"));
 
 function Router() {
   return (
@@ -594,6 +595,13 @@ function Router() {
           <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
             <SuperAdminLayout>
               <ChangePasswordPage />
+            </SuperAdminLayout>
+          </ProtectedRoute>
+        </Route>
+        <Route path="/portal/superadmin/notifications">
+          <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
+            <SuperAdminLayout>
+              <NotificationsPage />
             </SuperAdminLayout>
           </ProtectedRoute>
         </Route>

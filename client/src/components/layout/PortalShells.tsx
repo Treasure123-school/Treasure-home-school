@@ -105,6 +105,7 @@ const AdminCalendarPage = lazy(() => import('@/pages/portal/AdminCalendarPage'))
 const SharedCalendarPage = lazy(() => import('@/pages/portal/SharedCalendarPage'));
 const SharedEventsPage = lazy(() => import('@/pages/portal/SharedEventsPage'));
 const ChangePasswordPage = lazy(() => import('@/pages/portal/ChangePasswordPage'));
+const NotificationsPage = lazy(() => import('@/pages/portal/NotificationsPage'));
 
 export function StudentPortalShell() {
   return <PortalShell role="student" />;
@@ -157,6 +158,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/student/calendar" component={SharedCalendarPage} />
             <Route path="/portal/student/events" component={SharedEventsPage} />
             <Route path="/portal/student/change-password" component={ChangePasswordPage} />
+            <Route path="/portal/student/notifications" component={NotificationsPage} />
             <Route path="/portal/student/*" component={PortalComingSoon} />
           </Switch>
         )}
@@ -189,6 +191,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/teacher/calendar" component={SharedCalendarPage} />
             <Route path="/portal/teacher/events" component={SharedEventsPage} />
             <Route path="/portal/teacher/change-password" component={ChangePasswordPage} />
+            <Route path="/portal/teacher/notifications" component={NotificationsPage} />
             <Route path="/portal/teacher/*" component={PortalComingSoon} />
           </Switch>
         )}
@@ -253,6 +256,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/website/contact-inbox" component={ContactInbox} />
             <Route path="/portal/admin/website/admissions" component={AdmissionsManagement} />
             <Route path="/portal/admin/change-password" component={ChangePasswordPage} />
+            <Route path="/portal/admin/notifications" component={NotificationsPage} />
             <Route path="/portal/admin/*" component={PortalComingSoon} />
           </Switch>
         )}
@@ -267,6 +271,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/parent/calendar" component={SharedCalendarPage} />
             <Route path="/portal/parent/events" component={SharedEventsPage} />
             <Route path="/portal/parent/change-password" component={ChangePasswordPage} />
+            <Route path="/portal/parent/notifications" component={NotificationsPage} />
             <Route path="/portal/parent/*" component={PortalComingSoon} />
           </Switch>
         )}

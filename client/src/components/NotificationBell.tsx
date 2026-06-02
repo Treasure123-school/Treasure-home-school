@@ -1,4 +1,4 @@
-import { Bell, UserPlus, AlertCircle, BookOpen, Calendar, MessageSquare, GraduationCap } from 'lucide-react';
+import { Bell, UserPlus, AlertCircle, BookOpen, Calendar, MessageSquare, GraduationCap, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -7,9 +7,9 @@ import { queryClient, apiRequest } from '@/lib/queryClient';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/lib/auth';
-import { ROLE_IDS } from '@/lib/roles';
-import { Link } from 'wouter';
-import { useEffect } from 'react';
+import { getPortalByRoleId } from '@/lib/roles';
+import { useLocation } from 'wouter';
+import { useEffect, useState } from 'react';
 
 interface Notification {
   id: number;
@@ -23,10 +23,16 @@ interface Notification {
 }
 export function NotificationBell() {
   const { user } = useAuth();
+  const [, navigate] = useLocation();
+  const [open, setOpen] = useState(false);
 
   if (!user) {
     return null;
   }
+
+  const portalBase = getPortalByRoleId(user.roleId);
+  const notificationsPath = `${portalBase}/notifications`;
+
   const { data: notifications = [] } = useQuery<Notification[]>({
     queryKey: ['/api/notifications'],
     refetchInterval: 10000, // Refresh every 10 seconds for real-time feel
@@ -77,6 +83,8 @@ export function NotificationBell() {
     if (!notification.isRead) {
       markAsReadMutation.mutate(notification.id);
     }
+    setOpen(false);
+    navigate(notificationsPath);
   };
 
   const handleMarkAllRead = () => {
@@ -103,7 +111,7 @@ export function NotificationBell() {
   };
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button 
           variant="ghost" 
@@ -160,7 +168,7 @@ export function NotificationBell() {
                   key={notification.id}
                   onClick={() => handleNotificationClick(notification)}
                   className={`w-full p-4 text-left hover:bg-muted/50 transition-colors ${
-                    !notification.isRead ? 'bg-orange-50/50 dark:bg-orange-950/30 border-l-2 border-orange-500' : ''
+                    !notification.isRead ? 'bg-orange-50/50 dark:bg-orange-950/30' : ''
                   }`}
                   data-testid={`notification-${notification.id}`}
                 >
@@ -189,6 +197,17 @@ export function NotificationBell() {
             </div>
           )}
         </ScrollArea>
+        {/* Footer - View all */}
+        <div className="border-t p-2">
+          <button
+            onClick={() => { setOpen(false); navigate(notificationsPath); }}
+            className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-md text-sm font-medium text-primary hover:bg-primary/5 transition-colors"
+            data-testid="button-view-all-notifications"
+          >
+            View all notifications
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
       </PopoverContent>
     </Popover>
   );
