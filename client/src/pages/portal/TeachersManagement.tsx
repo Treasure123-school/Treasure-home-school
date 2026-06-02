@@ -778,7 +778,7 @@ export default function TeachersManagement() {
               Add Teacher
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto h-fit">
             <DialogHeader>
               <DialogTitle>
                 {editingTeacher ? 'Edit Teacher' : 'Add New Teacher'}
@@ -1358,13 +1358,6 @@ export default function TeachersManagement() {
                           <Edit className="w-4 h-4 mr-2" />
                           Edit Teacher
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleOpenAssignmentDialog(teacher)}
-                          data-testid={`button-assign-teacher-${teacher.id}`}
-                        >
-                          <BookOpen className="w-4 h-4 mr-2" />
-                          Manage Assignments
-                        </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => setTeacherToBlock(teacher)}
@@ -1491,9 +1484,6 @@ export default function TeachersManagement() {
                       <DropdownMenuContent align="end" className="w-48">
                         <DropdownMenuItem onClick={() => handleEdit(teacher)}>
                           <Edit className="w-4 h-4 mr-2" />Edit Teacher
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleOpenAssignmentDialog(teacher)}>
-                          <BookOpen className="w-4 h-4 mr-2" />Manage Assignments
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
