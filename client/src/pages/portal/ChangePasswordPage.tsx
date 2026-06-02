@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Link, useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { KeyRound, Eye, EyeOff, CheckCircle, RotateCcw, ShieldCheck, ArrowLeft } from "lucide-react";
+import { KeyRound, Eye, EyeOff, CheckCircle, RotateCcw, ShieldCheck } from "lucide-react";
 
 interface PasswordForm {
   currentPassword: string;
@@ -34,18 +33,7 @@ function getStrength(pwd: string) {
   return { label: "Strong", color: "bg-green-500", textColor: "text-green-600", width: "w-full" };
 }
 
-function getPortalBackPath(pathname: string): { path: string; label: string } {
-  if (pathname.includes("/portal/student")) return { path: "/portal/student/profile", label: "Back to Profile" };
-  if (pathname.includes("/portal/teacher")) return { path: "/portal/teacher/profile", label: "Back to Profile" };
-  if (pathname.includes("/portal/admin")) return { path: "/portal/admin/profile", label: "Back to Profile" };
-  if (pathname.includes("/portal/superadmin")) return { path: "/portal/superadmin/profile", label: "Back to Profile" };
-  if (pathname.includes("/portal/parent")) return { path: "/portal/parent/profile", label: "Back to Profile" };
-  return { path: "/", label: "Go Back" };
-}
-
 export default function ChangePasswordPage() {
-  const [location] = useLocation();
-  const { path: backPath, label: backLabel } = getPortalBackPath(location);
   const { toast } = useToast();
   const [form, setForm] = useState<PasswordForm>(defaultForm);
   const [show, setShow] = useState({ current: false, new: false, confirm: false });
@@ -100,16 +88,6 @@ export default function ChangePasswordPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 p-4 sm:p-6">
-      {/* Back link */}
-      <div>
-        <Link href={backPath}>
-          <Button variant="ghost" size="sm" className="gap-2 text-muted-foreground hover:text-foreground -ml-2">
-            <ArrowLeft className="h-4 w-4" />
-            {backLabel}
-          </Button>
-        </Link>
-      </div>
-
       {/* Page Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Change Password</h1>
