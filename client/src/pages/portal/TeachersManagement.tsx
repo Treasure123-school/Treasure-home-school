@@ -778,7 +778,7 @@ export default function TeachersManagement() {
               Add Teacher
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto h-fit">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingTeacher ? 'Edit Teacher' : 'Add New Teacher'}
