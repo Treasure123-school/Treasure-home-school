@@ -7,16 +7,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   MessageSquare, Send, Search, Plus, ArrowLeft, Paperclip,
-  Check, CheckCheck, Clock, Users, Inbox, Loader2, CheckCircle2
+  Check, CheckCheck, Clock, Users, Inbox
 } from 'lucide-react';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
+import { NewMessageDialog } from '@/components/NewMessageDialog';
 
 interface Message {
   id: number;
@@ -75,13 +74,7 @@ export default function TeacherMessages() {
   const [selectedContactId, setSelectedContactId] = useState<string | null>(null);
   const [messageText, setMessageText] = useState('');
   const [isNewMessageOpen, setIsNewMessageOpen] = useState(false);
-  const [newMsgRecipient, setNewMsgRecipient] = useState('');
-  const [newMsgSubject, setNewMsgSubject] = useState('');
-  const [newMsgContent, setNewMsgContent] = useState('');
   const [showConversations, setShowConversations] = useState(true);
-  const [recipientIdentifier, setRecipientIdentifier] = useState('');
-  const [recipientInfo, setRecipientInfo] = useState<any>(null);
-  const [isVerifying, setIsVerifying] = useState(false);
 
   const { data: messages = [], isLoading } = useQuery<Message[]>({
     queryKey: ['/api/messages/user', user?.id],
@@ -125,28 +118,6 @@ export default function TeacherMessages() {
     enabled: !!user,
   });
 
-  const handleVerifyRecipient = async () => {
-    if (!recipientIdentifier.trim()) return;
-    setIsVerifying(true);
-    try {
-      const response = await apiRequest('GET', `/api/messages/lookup/${encodeURIComponent(recipientIdentifier.trim())}`);
-      if (!response.ok) {
-        setRecipientInfo(null);
-        setNewMsgRecipient('');
-        toast({ title: 'User Not Found', description: 'Could not find a user with that username or ID.', variant: 'destructive' });
-      } else {
-        const data = await response.json();
-        setRecipientInfo(data);
-        setNewMsgRecipient(data.id);
-        toast({ title: 'User Verified', description: `Recipient: ${data.firstName} ${data.lastName} (${data.roleName})` });
-      }
-    } catch (error) {
-      toast({ title: 'Lookup Error', description: 'Failed to verify recipient. Please try again.', variant: 'destructive' });
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
   const sendMutation = useMutation({
     mutationFn: async (data: { recipientId: string; subject: string; content: string }) => {
       const res = await apiRequest('POST', '/api/messages', data);
@@ -156,28 +127,6 @@ export default function TeacherMessages() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/messages/user', user?.id] });
       setMessageText('');
-    },
-    onError: (error: any) => toast({ title: 'Failed to Send', description: error.message || 'Could not send message. Please try again.', variant: 'destructive' }),
-  });
-
-  const newMessageMutation = useMutation({
-    mutationFn: async (data: { recipientId: string; subject: string; content: string }) => {
-      const res = await apiRequest('POST', '/api/messages', data);
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.message || 'Failed to send message');
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/messages/user', user?.id] });
-      setIsNewMessageOpen(false);
-      setNewMsgRecipient('');
-      setNewMsgSubject('');
-      setNewMsgContent('');
-      setRecipientIdentifier('');
-      setRecipientInfo(null);
-      toast({ title: 'Message Sent', description: 'Your message has been sent.' });
     },
     onError: (error: any) => toast({ title: 'Failed to Send', description: error.message || 'Could not send message. Please try again.', variant: 'destructive' }),
   });
@@ -506,119 +455,13 @@ export default function TeacherMessages() {
         </div>
       </div>
 
-      {/* New Message Dialog */}
-      <Dialog open={isNewMessageOpen} onOpenChange={setIsNewMessageOpen}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
-          <DialogHeader className="space-y-3 pb-2">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-blue-100 dark:bg-blue-900/40 rounded-xl">
-                <Send className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <DialogTitle className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                  New Message
-                </DialogTitle>
-                <DialogDescription className="text-sm text-muted-foreground mt-0.5">
-                  Send a message to a student or colleague
-                </DialogDescription>
-              </div>
-            </div>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Recipient (Username or ID)</Label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Input
-                    placeholder="Enter username or ID..."
-                    value={recipientIdentifier}
-                    onChange={(e) => setRecipientIdentifier(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleVerifyRecipient()}
-                    className="rounded-xl"
-                    disabled={!!recipientInfo}
-                    data-testid="input-recipient-identifier"
-                  />
-                  {isVerifying && <div className="absolute right-3 top-2.5"><Loader2 className="h-4 w-4 animate-spin text-blue-600" /></div>}
-                  {recipientInfo && !isVerifying && <div className="absolute right-3 top-2.5"><CheckCircle2 className="h-4 w-4 text-green-500" /></div>}
-                </div>
-                {recipientInfo ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => { setRecipientInfo(null); setRecipientIdentifier(''); setNewMsgRecipient(''); }}
-                    className="text-destructive hover:text-destructive rounded-xl"
-                  >
-                    Clear
-                  </Button>
-                ) : (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={handleVerifyRecipient}
-                    disabled={isVerifying || !recipientIdentifier.trim()}
-                    className="rounded-xl"
-                    data-testid="button-verify-recipient"
-                  >
-                    {isVerifying ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify'}
-                  </Button>
-                )}
-              </div>
-              {recipientInfo && (
-                <div className="flex items-center gap-2 p-2 px-3 bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-800 rounded-lg">
-                  <Avatar className="h-6 w-6">
-                    <AvatarFallback className="bg-green-500 text-white text-[10px]">{recipientInfo.firstName?.[0]}{recipientInfo.lastName?.[0]}</AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm font-medium text-green-800 dark:text-green-300">
-                    {recipientInfo.firstName} {recipientInfo.lastName} ({recipientInfo.roleName})
-                  </span>
-                </div>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Subject</Label>
-              <Input
-                placeholder="What is this about?"
-                value={newMsgSubject}
-                onChange={e => setNewMsgSubject(e.target.value)}
-                className="rounded-xl"
-                data-testid="input-new-message-subject"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Message</Label>
-              <Textarea
-                placeholder="Write your message here..."
-                value={newMsgContent}
-                onChange={e => setNewMsgContent(e.target.value)}
-                rows={4}
-                className="rounded-xl resize-none"
-                data-testid="input-new-message-content"
-              />
-            </div>
-            <div className="space-y-2 pt-1">
-              <Button
-                onClick={() => newMessageMutation.mutate({ recipientId: newMsgRecipient, subject: newMsgSubject, content: newMsgContent })}
-                disabled={!newMsgRecipient || !newMsgContent.trim() || newMessageMutation.isPending}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl gap-2"
-                data-testid="button-send-new-message"
-              >
-                {newMessageMutation.isPending ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" />Sending...</>
-                ) : (
-                  <><Send className="h-4 w-4" />Send Message</>
-                )}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setIsNewMessageOpen(false)}
-                className="w-full rounded-xl"
-              >
-                Cancel
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <NewMessageDialog
+        open={isNewMessageOpen}
+        onOpenChange={setIsNewMessageOpen}
+        currentUserId={user?.id}
+        description="Send a message to a student or colleague"
+        recipientPlaceholder="Enter username or ID..."
+      />
     </div>
   );
 }
