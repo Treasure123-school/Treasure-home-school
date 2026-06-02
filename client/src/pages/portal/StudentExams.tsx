@@ -936,6 +936,7 @@ export default function StudentExams() {
         case 's': {
           e.preventDefault();
           saveCurrentAnswer();
+          setShowSubmitDialog(true);
           break;
         }
         case 'a':
