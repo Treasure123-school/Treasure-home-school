@@ -164,7 +164,7 @@
     "@types/ws": "^8.18.1",
     "cross-env": "^10.1.0",
     "drizzle-kit": "^0.30.6",
-    "tsx": "^4.21.0"
+    "tsx": "^4.22.4"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
