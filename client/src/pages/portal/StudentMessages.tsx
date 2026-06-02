@@ -166,21 +166,21 @@ export default function StudentMessages() {
   const MessageList = () => (
     <div className="flex flex-col h-full">
       {/* List header */}
-      <div className="flex-shrink-0 p-4 border-b border-gray-100 dark:border-gray-800">
+      <div className="flex-shrink-0 p-4 border-b border-border">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search messages..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-9 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-xl"
+            className="pl-9 rounded-xl"
             data-testid="input-search-messages"
           />
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+      <div className="flex-1 overflow-y-auto divide-y divide-border">
         {isLoading ? (
           <div className="p-4 space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
@@ -261,7 +261,7 @@ export default function StudentMessages() {
       {selectedMessage ? (
         <>
           {/* Detail header */}
-          <div className="flex-shrink-0 p-5 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex-shrink-0 p-5 border-b border-border">
             <div className="flex items-start justify-between gap-3 mb-3">
               <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 leading-snug">
                 {selectedMessage.subject}
@@ -334,37 +334,43 @@ export default function StudentMessages() {
 
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-3 flex items-center gap-3 shadow-sm">
-          <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-            <Inbox className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Total</p>
-            <p className="text-lg font-bold text-gray-900 dark:text-gray-100" data-testid="text-total-messages">{messages.length}</p>
-          </div>
-        </div>
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-3 flex items-center gap-3 shadow-sm">
-          <div className="h-8 w-8 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center">
-            <MessageSquare className="h-4 w-4 text-orange-600 dark:text-orange-400" />
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Unread</p>
-            <p className="text-lg font-bold text-gray-900 dark:text-gray-100" data-testid="text-unread-messages">{unreadCount}</p>
-          </div>
-        </div>
-        <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 p-3 flex items-center gap-3 shadow-sm">
-          <div className="h-8 w-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground">Read</p>
-            <p className="text-lg font-bold text-gray-900 dark:text-gray-100" data-testid="text-read-messages">{messages.length - unreadCount}</p>
-          </div>
-        </div>
+        <Card>
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+              <Inbox className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Total</p>
+              <p className="text-lg font-bold" data-testid="text-total-messages">{messages.length}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="h-8 w-8 bg-orange-100 dark:bg-orange-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+              <MessageSquare className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Unread</p>
+              <p className="text-lg font-bold" data-testid="text-unread-messages">{unreadCount}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="h-8 w-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Read</p>
+              <p className="text-lg font-bold" data-testid="text-read-messages">{messages.length - unreadCount}</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Main inbox area */}
-      <div className="flex-1 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+      <div className="flex-1 bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
         {/* Mobile: toggle between list and detail */}
         <div className="lg:hidden h-full">
           {showDetail && selectedMessage ? (

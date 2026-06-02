@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -360,28 +361,21 @@ export default function AttendanceManagement() {
       <SummaryCards overview={overview} loading={overviewLoading} />
 
       {/* ── Tabs ─────────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-1 border-b border-border">
-        {tabs.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`relative flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
-              activeTab === tab.id
-                ? 'border-primary text-primary'
-                : 'border-transparent text-muted-foreground hover:text-foreground'
-            }`}
-            data-testid={`tab-${tab.id}`}
-          >
-            <tab.icon className="h-4 w-4 flex-shrink-0" />
-            <span>{tab.label}</span>
-            {tab.badge ? (
-              <span className="h-4 w-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                {tab.badge}
-              </span>
-            ) : null}
-          </button>
-        ))}
-      </div>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Tab)}>
+        <TabsList>
+          {tabs.map(tab => (
+            <TabsTrigger key={tab.id} value={tab.id} data-testid={`tab-${tab.id}`} className="flex items-center gap-1.5">
+              <tab.icon className="h-3.5 w-3.5 flex-shrink-0" />
+              <span>{tab.label}</span>
+              {tab.badge ? (
+                <span className="h-4 w-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                  {tab.badge}
+                </span>
+              ) : null}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {/* ══════════ TAB: SUMMARY ══════════ */}
       {activeTab === 'summary' && (

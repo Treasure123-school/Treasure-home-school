@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // ── Types ────────────────────────────────────────────────────────────────
 interface Notification {
@@ -245,27 +246,15 @@ export default function NotificationsPage() {
       </div>
 
       {/* ── Filter Tabs ── */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-        {tabs.map(({ key, label, count }) => (
-          <button
-            key={key}
-            onClick={() => setActiveTab(key)}
-            data-testid={`button-filter-${key}`}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 ${
-              activeTab === key
-                ? "bg-primary text-primary-foreground shadow-sm"
-                : "bg-muted text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {label}
-            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-              activeTab === key ? "bg-white/20 text-inherit" : "bg-background text-muted-foreground"
-            }`}>
-              {count}
-            </span>
-          </button>
-        ))}
-      </div>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FilterTab)}>
+        <TabsList>
+          {tabs.map(({ key, label, count }) => (
+            <TabsTrigger key={key} value={key} data-testid={`button-filter-${key}`}>
+              {label} ({count})
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {/* ── List ── */}
       {isLoading ? (

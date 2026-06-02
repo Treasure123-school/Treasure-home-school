@@ -7,6 +7,7 @@ import { Megaphone, Calendar, Search, User, ChevronDown, ChevronUp, Bell, AlertT
 import { Input } from '@/components/ui/input';
 import { useState } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type Priority = 'urgent' | 'important' | 'normal';
 type FilterType = 'all' | Priority;
@@ -127,31 +128,15 @@ export default function StudentAnnouncements() {
             data-testid="input-search-announcements"
           />
         </div>
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-          {(['all', 'urgent', 'important', 'normal'] as FilterType[]).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border ${
-                filter === f
-                  ? f === 'all'
-                    ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-gray-900 dark:border-gray-100'
-                    : f === 'urgent'
-                    ? 'bg-red-600 text-white border-red-600'
-                    : f === 'important'
-                    ? 'bg-amber-500 text-white border-amber-500'
-                    : 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-              }`}
-              data-testid={`filter-${f}`}
-            >
-              {f === 'all' ? 'All' : PRIORITY_CONFIG[f].label}
-              <span className={`ml-1.5 text-xs ${filter === f ? 'opacity-80' : 'opacity-60'}`}>
-                ({counts[f === 'all' ? 'all' : f]})
-              </span>
-            </button>
-          ))}
-        </div>
+        <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterType)}>
+          <TabsList>
+            {(['all', 'urgent', 'important', 'normal'] as FilterType[]).map((f) => (
+              <TabsTrigger key={f} value={f} data-testid={`filter-${f}`}>
+                {f === 'all' ? 'All' : PRIORITY_CONFIG[f].label} ({counts[f === 'all' ? 'all' : f]})
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* Results count */}

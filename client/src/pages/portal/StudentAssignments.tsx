@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth';
 import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -154,25 +155,15 @@ export default function StudentAssignments() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-        {(['all', 'pending', 'submitted', 'late'] as FilterTab[]).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setFilter(tab)}
-            data-testid={`button-filter-${tab}`}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all duration-200 ${
-              filter === tab
-                ? 'bg-primary text-white shadow-sm'
-                : 'bg-muted text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${filter === tab ? 'bg-white/20' : 'bg-background text-muted-foreground'}`}>
-              {counts[tab]}
-            </span>
-          </button>
-        ))}
-      </div>
+      <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterTab)}>
+        <TabsList>
+          {(['all', 'pending', 'submitted', 'late'] as FilterTab[]).map(tab => (
+            <TabsTrigger key={tab} value={tab} data-testid={`button-filter-${tab}`}>
+              {tab.charAt(0).toUpperCase() + tab.slice(1)} ({counts[tab]})
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
 
       {/* List */}
       {isLoading ? (
