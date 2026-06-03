@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   BookOpen, GraduationCap, Palette, Briefcase, BookMarked,
-  User, ClipboardList, Award, Sparkles, FileText, FolderOpen,
+  User, ClipboardList, Award, Sparkles, FolderOpen,
   Layers,
 } from 'lucide-react';
 import { useLocation } from 'wouter';
@@ -95,14 +95,6 @@ export default function StudentSubjects() {
               : 'Your assigned subjects for this term'}
           </p>
         </div>
-        <Button
-          variant="outline" size="sm"
-          onClick={() => navigate('/portal/student/report-card')}
-          data-testid="button-view-report-card"
-          className="self-start sm:self-auto gap-1.5"
-        >
-          <FileText className="w-4 h-4" /> Report Card
-        </Button>
       </div>
 
       {/* ── Stat Cards ── */}

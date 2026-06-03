@@ -365,7 +365,7 @@ function WeeklyView({
   return (
     <div className="space-y-4">
       <Tabs value={activeDay} onValueChange={setActiveDay}>
-        <TabsList className="flex gap-1 w-full overflow-x-auto">
+        <TabsList>
           {DAYS.map(day => {
             const isToday = day === todayName;
             const count = weeklySchedule[day]?.length ?? 0;
@@ -374,11 +374,10 @@ function WeeklyView({
                 key={day}
                 value={day}
                 data-testid={`button-day-${day.toLowerCase()}`}
-                className="flex-shrink-0 flex flex-col items-center gap-0 px-3 py-2 h-auto"
               >
-                <span className="font-semibold text-xs">{DAY_SHORT[day]}</span>
-                <span className="text-[10px] opacity-60">{count} {count === 1 ? 'cls' : 'cls'}</span>
-                {isToday && <span className="w-1 h-0.5 rounded-full bg-primary mt-0.5" />}
+                {DAY_SHORT[day]}
+                {isToday && <span className="ml-1 w-1.5 h-1.5 rounded-full bg-primary inline-block" />}
+                <span className="ml-1 text-[10px] opacity-60">({count})</span>
               </TabsTrigger>
             );
           })}
