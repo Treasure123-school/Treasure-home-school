@@ -195,7 +195,7 @@ export default function SuperAdminLessonNoteLibrary() {
 
   const { data: templatesData, isLoading } = useQuery<any>({
     queryKey: ["/api/lesson-note-library/templates", params.toString()],
-    queryFn: () => fetch(`/api/lesson-note-library/templates?${params}`).then(r => r.json()),
+    queryFn: () => apiRequest("GET", `/api/lesson-note-library/templates?${params}`).then(r => r.json()),
   });
 
   const { data: filterOpts } = useQuery<any>({
@@ -204,7 +204,7 @@ export default function SuperAdminLessonNoteLibrary() {
 
   const { data: previewData } = useQuery<any>({
     queryKey: ["/api/lesson-note-library/templates", previewId],
-    queryFn: () => previewId ? fetch(`/api/lesson-note-library/templates/${previewId}`).then(r => r.json()) : null,
+    queryFn: () => previewId ? apiRequest("GET", `/api/lesson-note-library/templates/${previewId}`).then(r => r.json()) : null,
     enabled: !!previewId,
   });
 

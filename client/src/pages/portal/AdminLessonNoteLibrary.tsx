@@ -170,13 +170,13 @@ export default function AdminLessonNoteLibrary() {
   });
   const { data: libData, isLoading: libLoading } = useQuery<any>({
     queryKey: ["/api/lesson-note-library/templates", libParams.toString()],
-    queryFn: () => fetch(`/api/lesson-note-library/templates?${libParams}`).then(r => r.json()),
+    queryFn: () => apiRequest("GET", `/api/lesson-note-library/templates?${libParams}`).then(r => r.json()),
   });
 
   const { data: filterOpts } = useQuery<any>({ queryKey: ["/api/lesson-note-library/filter-options"] });
   const { data: previewData } = useQuery<any>({
     queryKey: ["/api/lesson-note-library/templates", previewId],
-    queryFn: () => previewId ? fetch(`/api/lesson-note-library/templates/${previewId}`).then(r => r.json()) : null,
+    queryFn: () => previewId ? apiRequest("GET", `/api/lesson-note-library/templates/${previewId}`).then(r => r.json()) : null,
     enabled: !!previewId,
   });
 
@@ -193,11 +193,11 @@ export default function AdminLessonNoteLibrary() {
   });
   const { data: snData, isLoading: snLoading } = useQuery<any>({
     queryKey: ["/api/lesson-note-library/school-notes", snParams.toString()],
-    queryFn: () => fetch(`/api/lesson-note-library/school-notes?${snParams}`).then(r => r.json()),
+    queryFn: () => apiRequest("GET", `/api/lesson-note-library/school-notes?${snParams}`).then(r => r.json()),
   });
   const { data: viewNoteData } = useQuery<any>({
     queryKey: ["/api/lesson-note-library/school-notes", viewNoteId],
-    queryFn: () => viewNoteId ? fetch(`/api/lesson-note-library/school-notes/${viewNoteId}`).then(r => r.json()) : null,
+    queryFn: () => viewNoteId ? apiRequest("GET", `/api/lesson-note-library/school-notes/${viewNoteId}`).then(r => r.json()) : null,
     enabled: !!viewNoteId,
   });
 
