@@ -36,9 +36,9 @@ function parseQuery(search: string) {
 }
 
 const EMPTY_SECTIONS = {
-  objectives: '', materials: '', previousKnowledge: '',
+  objectives: '', previousKnowledge: '', materials: '',
   introduction: '', content: '', teacherActivities: '',
-  studentActivities: '', evaluation: '', assignment: '', references: '',
+  studentActivities: '',
 };
 type Sections = typeof EMPTY_SECTIONS;
 type SectionKey = keyof Sections;
