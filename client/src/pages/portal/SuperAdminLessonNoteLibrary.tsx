@@ -253,10 +253,10 @@ export default function SuperAdminLessonNoteLibrary() {
     onError: (err: any) => toast({ title: "Error", description: err?.message, variant: "destructive" }),
   });
 
-  const templates: Template[] = templatesData?.data?.templates ?? [];
-  const pagination = templatesData?.data?.pagination ?? { page: 1, pages: 1, total: 0 };
-  const stats = statsData?.data ?? {};
-  const opts = filterOpts?.data ?? {};
+  const templates: Template[] = templatesData?.templates ?? [];
+  const pagination = templatesData?.pagination ?? { page: 1, pages: 1, total: 0 };
+  const stats = statsData ?? {};
+  const opts = filterOpts ?? {};
 
   const openEdit = (t: Template) => {
     setForm({
@@ -279,7 +279,7 @@ export default function SuperAdminLessonNoteLibrary() {
   };
   const hasFilters = search || filterLevel !== "all" || filterClass !== "all" || filterSubject !== "all" || filterTerm !== "all";
 
-  const previewTemplate: Template | null = previewData?.data ?? null;
+  const previewTemplate: Template | null = previewData ?? null;
 
   return (
     <SuperAdminLayout>

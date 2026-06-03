@@ -244,17 +244,17 @@ export default function AdminLessonNoteLibrary() {
     onError: (err: any) => toast({ title: "Error", description: err?.message, variant: "destructive" }),
   });
 
-  const templates: Template[] = libData?.data?.templates ?? [];
-  const libPag = libData?.data?.pagination ?? { page: 1, pages: 1, total: 0 };
-  const opts = filterOpts?.data ?? {};
-  const previewTemplate: Template | null = previewData?.data ?? null;
+  const templates: Template[] = libData?.templates ?? [];
+  const libPag = libData?.pagination ?? { page: 1, pages: 1, total: 0 };
+  const opts = filterOpts ?? {};
+  const previewTemplate: Template | null = previewData ?? null;
   const importTemplate: Template | null = importId
     ? templates.find(t => t.id === importId) ?? null
     : null;
 
-  const schoolNotes: SchoolNote[] = snData?.data?.notes ?? [];
-  const snPag = snData?.data?.pagination ?? { page: 1, pages: 1, total: 0 };
-  const viewNote: SchoolNote | null = viewNoteData?.data ?? null;
+  const schoolNotes: SchoolNote[] = snData?.notes ?? [];
+  const snPag = snData?.pagination ?? { page: 1, pages: 1, total: 0 };
+  const viewNote: SchoolNote | null = viewNoteData ?? null;
 
   const classes = classesData?.data ?? classesData ?? [];
   const subjects = subjectsData?.data ?? subjectsData ?? [];
