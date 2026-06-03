@@ -9,54 +9,54 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
   BookOpen, GraduationCap, Palette, Briefcase, BookMarked,
-  User, ClipboardList, Award, Sparkles, FileText, FolderOpen, Layers,
+  User, ClipboardList, Award, Sparkles, FileText, FolderOpen,
+  Layers,
 } from 'lucide-react';
-import { useAuth } from '@/lib/auth';
 import { useLocation } from 'wouter';
 
 // ── Category Config ────────────────────────────────────────────────────────
 type CategoryKey = 'all' | 'general' | 'science' | 'art' | 'commercial';
 
-const CATEGORY_CONFIG: Record<Exclude<CategoryKey, 'all'>, { label: string; icon: any; color: string; bg: string }> = {
-  general:    { label: 'General',    icon: BookMarked, color: 'text-blue-600',   bg: 'bg-blue-50 dark:bg-blue-900/20' },
-  science:    { label: 'Science',    icon: GraduationCap, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20' },
-  art:        { label: 'Art',        icon: Palette,    color: 'text-violet-600', bg: 'bg-violet-50 dark:bg-violet-900/20' },
-  commercial: { label: 'Commercial', icon: Briefcase,  color: 'text-amber-600',  bg: 'bg-amber-50 dark:bg-amber-900/20' },
+const CATEGORY_CFG: Record<Exclude<CategoryKey, 'all'>, {
+  label: string; icon: any; iconColor: string; bg: string;
+}> = {
+  general:    { label: 'General',    icon: BookMarked,   iconColor: 'text-blue-600',    bg: 'bg-blue-50 dark:bg-blue-900/30' },
+  science:    { label: 'Science',    icon: GraduationCap,iconColor: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
+  art:        { label: 'Art',        icon: Palette,      iconColor: 'text-violet-600',  bg: 'bg-violet-50 dark:bg-violet-900/30' },
+  commercial: { label: 'Commercial', icon: Briefcase,    iconColor: 'text-amber-600',   bg: 'bg-amber-50 dark:bg-amber-900/30' },
 };
+const ALL_TABS: CategoryKey[] = ['all', 'general', 'science', 'art', 'commercial'];
 
-const ALL_CATEGORIES: CategoryKey[] = ['all', 'general', 'science', 'art', 'commercial'];
-
-function getCategoryConfig(cat: string) {
-  return CATEGORY_CONFIG[cat as Exclude<CategoryKey, 'all'>] ?? CATEGORY_CONFIG.general;
+function getCategoryCfg(cat: string) {
+  return CATEGORY_CFG[cat as Exclude<CategoryKey, 'all'>] ?? CATEGORY_CFG.general;
 }
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 export default function StudentSubjects() {
-  useAuth();
   const [, navigate] = useLocation();
   const [activeCategory, setActiveCategory] = useState<CategoryKey>('all');
 
   const { data: studentInfo, isLoading: studentLoading } = useQuery({
     queryKey: ['/api/students/me'],
-    queryFn: async () => { const res = await apiRequest('GET', '/api/students/me'); return res.json(); },
+    queryFn: async () => { const r = await apiRequest('GET', '/api/students/me'); return r.json(); },
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: assignedSubjects = [], isLoading: subjectsLoading } = useQuery({
+  const { data: assignedSubjects = [], isLoading: subjectsLoading } = useQuery<any[]>({
     queryKey: ['/api/my-subjects'],
-    queryFn: async () => { const res = await apiRequest('GET', '/api/my-subjects'); return res.json(); },
+    queryFn: async () => { const r = await apiRequest('GET', '/api/my-subjects'); return r.json(); },
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: subjectTeachers = {} } = useQuery({
+  const { data: subjectTeachers = {} } = useQuery<Record<number, any>>({
     queryKey: ['/api/my-subject-teachers'],
-    queryFn: async () => { const res = await apiRequest('GET', '/api/my-subject-teachers'); return res.json(); },
+    queryFn: async () => { const r = await apiRequest('GET', '/api/my-subject-teachers'); return r.json(); },
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: examData = { activeExams: {}, examCounts: {} } } = useQuery({
+  const { data: examData = { activeExams: {}, examCounts: {} } } = useQuery<any>({
     queryKey: ['/api/my-active-exams'],
-    queryFn: async () => { const res = await apiRequest('GET', '/api/my-active-exams'); return res.json(); },
+    queryFn: async () => { const r = await apiRequest('GET', '/api/my-active-exams'); return r.json(); },
     staleTime: 3 * 60 * 1000,
     refetchInterval: 3 * 60 * 1000,
   });
@@ -64,90 +64,110 @@ export default function StudentSubjects() {
   const isLoading = studentLoading || subjectsLoading;
 
   const getTeacher = (id: number) => subjectTeachers[id] || null;
-  const getActiveExams = (id: number) => examData.activeExams[id] || [];
+  const getActiveExams = (id: number): any[] => examData.activeExams?.[id] || [];
   const hasActive = (id: number) => getActiveExams(id).length > 0;
-  const totalActive = Object.values(examData.activeExams as Record<string, any[]>).flat().length;
+  const totalActive = Object.values(examData.activeExams ?? {}).flat().length;
 
-  // Count per category
-  const categoryCounts: Record<CategoryKey, number> = {
-    all: assignedSubjects.length,
-    general: 0, science: 0, art: 0, commercial: 0,
-  };
-  (assignedSubjects as any[]).forEach((s: any) => {
+  // Counts per category
+  const counts: Record<CategoryKey, number> = { all: assignedSubjects.length, general: 0, science: 0, art: 0, commercial: 0 };
+  assignedSubjects.forEach((s: any) => {
     const cat = (s.category || 'general').toLowerCase() as Exclude<CategoryKey, 'all'>;
-    if (cat in categoryCounts) categoryCounts[cat]++;
+    if (cat in counts) counts[cat]++;
   });
 
-  const filteredSubjects = activeCategory === 'all'
-    ? (assignedSubjects as any[])
-    : (assignedSubjects as any[]).filter((s: any) => (s.category || 'general').toLowerCase() === activeCategory);
+  const filtered = activeCategory === 'all'
+    ? assignedSubjects
+    : assignedSubjects.filter((s: any) => (s.category || 'general').toLowerCase() === activeCategory);
 
   return (
-    <div className="space-y-6 pb-8" data-testid="student-subjects">
+    <div className="p-4 md:p-6 space-y-5 max-w-4xl mx-auto" data-testid="student-subjects">
 
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">My Subjects</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <BookOpen className="h-6 w-6 text-primary" />
+            My Subjects
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
             {studentInfo?.className
               ? `${studentInfo.className}${studentInfo.department ? ` · ${studentInfo.department} Dept.` : ''}`
               : 'Your assigned subjects for this term'}
           </p>
         </div>
         <Button
-          variant="outline"
-          size="sm"
+          variant="outline" size="sm"
           onClick={() => navigate('/portal/student/report-card')}
           data-testid="button-view-report-card"
           className="self-start sm:self-auto gap-1.5"
         >
-          <FileText className="w-4 h-4" />
-          Report Card
+          <FileText className="w-4 h-4" /> Report Card
         </Button>
       </div>
 
-      {/* ── Summary Chips ── */}
-      {!isLoading && (
-        <div className="flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-xs font-medium text-muted-foreground">
-            <GraduationCap className="w-3.5 h-3.5" />
-            {studentInfo?.className || 'Not Assigned'}
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-muted text-xs font-medium text-muted-foreground">
-            <BookMarked className="w-3.5 h-3.5" />
-            {assignedSubjects.length} Subject{assignedSubjects.length !== 1 ? 's' : ''}
-          </span>
-          {totalActive > 0 && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs font-semibold text-amber-700 dark:text-amber-400">
-              <Sparkles className="w-3.5 h-3.5" />
-              {totalActive} Active Exam{totalActive !== 1 ? 's' : ''}
-            </span>
-          )}
+      {/* ── Stat Cards ── */}
+      {isLoading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-20 rounded-lg" />)}
         </div>
+      ) : (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[
+            { label: 'Total Subjects', value: assignedSubjects.length, icon: BookMarked, color: 'text-blue-600' },
+            { label: 'General',        value: counts.general,          icon: BookOpen,   color: 'text-blue-500' },
+            { label: 'Science / Art',  value: counts.science + counts.art, icon: GraduationCap, color: 'text-emerald-600' },
+            { label: 'Active Exams',   value: totalActive,             icon: Sparkles,   color: 'text-amber-600' },
+          ].map(item => (
+            <Card key={item.label}>
+              <CardContent className="p-3">
+                <div className="flex items-center gap-2 mb-1">
+                  <item.icon className={`h-4 w-4 ${item.color}`} />
+                  <span className="text-xs text-muted-foreground">{item.label}</span>
+                </div>
+                <p className={`text-xl font-bold ${item.color}`}>{item.value}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* ── Active Exams Banner ── */}
+      {!isLoading && totalActive > 0 && (
+        <Card>
+          <CardContent className="p-4 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center flex-shrink-0">
+                <Sparkles className="h-4 w-4 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Active Now</p>
+                <p className="text-sm font-bold text-foreground">
+                  {totalActive} Exam{totalActive !== 1 ? 's' : ''} available
+                </p>
+                <p className="text-xs text-muted-foreground">Tap a subject to view and start</p>
+              </div>
+            </div>
+            <Badge className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 text-sm font-bold px-3 py-1">
+              {totalActive} Active
+            </Badge>
+          </CardContent>
+        </Card>
       )}
 
       {/* ── Category Filter Tabs ── */}
       {!isLoading && assignedSubjects.length > 0 && (
         <Tabs value={activeCategory} onValueChange={v => setActiveCategory(v as CategoryKey)}>
           <TabsList>
-            {ALL_CATEGORIES.map(cat => {
-              const count = categoryCounts[cat];
+            {ALL_TABS.map(cat => {
+              const count = counts[cat];
               if (cat !== 'all' && count === 0) return null;
-              const label = cat === 'all' ? 'All' : CATEGORY_CONFIG[cat]?.label ?? cat;
-              const Icon = cat !== 'all' ? CATEGORY_CONFIG[cat]?.icon : BookOpen;
+              const label = cat === 'all' ? 'All' : CATEGORY_CFG[cat]?.label ?? cat;
+              const Icon = cat === 'all' ? BookOpen : CATEGORY_CFG[cat]?.icon;
               return (
-                <TabsTrigger
-                  key={cat}
-                  value={cat}
-                  data-testid={`button-category-${cat}`}
-                  className="flex items-center gap-1.5"
-                >
+                <TabsTrigger key={cat} value={cat} data-testid={`button-category-${cat}`} className="flex items-center gap-1.5">
                   {Icon && <Icon className="h-3.5 w-3.5" />}
                   {label}
-                  {count > 0 && (
-                    <span className="ml-0.5 text-[10px] font-bold opacity-70">({count})</span>
-                  )}
+                  <span className="ml-0.5 opacity-60 text-[10px] font-bold">({count})</span>
                 </TabsTrigger>
               );
             })}
@@ -155,16 +175,16 @@ export default function StudentSubjects() {
         </Tabs>
       )}
 
-      {/* ── Loading State ── */}
+      {/* ── Loading Grid ── */}
       {isLoading && (
         <div className="grid gap-3 sm:grid-cols-2">
-          {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-36 w-full rounded-xl" />)}
+          {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-36 rounded-lg" />)}
         </div>
       )}
 
       {/* ── Empty State ── */}
       {!isLoading && assignedSubjects.length === 0 && (
-        <Card className="border-dashed">
+        <Card>
           <CardContent className="flex flex-col items-center justify-center py-20 text-center">
             <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-4">
               <BookOpen className="w-7 h-7 text-muted-foreground opacity-50" />
@@ -177,17 +197,16 @@ export default function StudentSubjects() {
         </Card>
       )}
 
-      {/* ── Subject Grid ── */}
-      {!isLoading && filteredSubjects.length > 0 && (
+      {/* ── Subject Cards Grid ── */}
+      {!isLoading && filtered.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2">
-          {filteredSubjects.map((subject: any) => {
+          {filtered.map((subject: any) => {
             const subjectId = subject.id || subject.subjectId;
             const teacher = getTeacher(subjectId);
             const activeExams = getActiveExams(subjectId);
             const active = hasActive(subjectId);
             const cat = (subject.category || 'general').toLowerCase();
-            const catCfg = getCategoryConfig(cat);
-            const CategoryIcon = catCfg.icon;
+            const catCfg = getCategoryCfg(cat);
 
             return (
               <SubjectCard
@@ -198,7 +217,6 @@ export default function StudentSubjects() {
                 activeExams={activeExams}
                 active={active}
                 catCfg={catCfg}
-                CategoryIcon={CategoryIcon}
                 onNavigate={navigate}
               />
             );
@@ -206,12 +224,12 @@ export default function StudentSubjects() {
         </div>
       )}
 
-      {/* No results for filter */}
-      {!isLoading && assignedSubjects.length > 0 && filteredSubjects.length === 0 && (
-        <Card className="border-dashed">
+      {/* ── No results for filter ── */}
+      {!isLoading && assignedSubjects.length > 0 && filtered.length === 0 && (
+        <Card>
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-3">
-              <BookOpen className="w-6 h-6 text-muted-foreground opacity-50" />
+              <BookOpen className="w-6 h-6 text-muted-foreground opacity-40" />
             </div>
             <p className="text-sm font-semibold text-muted-foreground">No subjects in this category</p>
           </CardContent>
@@ -223,30 +241,29 @@ export default function StudentSubjects() {
 
 // ── Subject Card ───────────────────────────────────────────────────────────
 function SubjectCard({
-  subject, subjectId, teacher, activeExams, active, catCfg, CategoryIcon, onNavigate,
+  subject, subjectId, teacher, activeExams, active, catCfg, onNavigate,
 }: {
   subject: any;
   subjectId: number;
   teacher: any;
   activeExams: any[];
   active: boolean;
-  catCfg: { label: string; icon: any; color: string; bg: string };
-  CategoryIcon: any;
+  catCfg: { label: string; icon: any; iconColor: string; bg: string };
   onNavigate: (path: string) => void;
 }) {
+  const CategoryIcon = catCfg.icon;
+
   return (
-    <div
-      className={`rounded-xl border bg-white dark:bg-gray-900 transition-shadow hover:shadow-sm flex flex-col ${
-        active ? 'border-amber-200 dark:border-amber-800' : 'border-gray-200 dark:border-gray-700'
-      }`}
+    <Card
+      className={active ? 'border-amber-200 dark:border-amber-800' : ''}
       data-testid={`subject-card-${subjectId}`}
     >
-      <div className="p-4 flex flex-col gap-3">
+      <CardContent className="p-4 flex flex-col gap-3">
 
         {/* Subject Identity */}
         <div className="flex items-start gap-3">
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${catCfg.bg}`}>
-            <CategoryIcon className={`w-4 h-4 ${catCfg.color}`} />
+          <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${catCfg.bg}`}>
+            <CategoryIcon className={`w-4 h-4 ${catCfg.iconColor}`} />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground leading-none mb-1">
@@ -286,38 +303,25 @@ function SubjectCard({
 
         {/* Action Row */}
         <div className="grid grid-cols-4 divide-x divide-border/60 pt-1 border-t border-border/60">
-          <ActionBtn
-            icon={<Layers className="w-3.5 h-3.5" />}
-            label="Scheme"
+          <ActionBtn icon={<Layers className="w-3.5 h-3.5" />} label="Scheme"
             onClick={() => onNavigate(`/portal/student/scheme-of-work?subject=${subjectId}`)}
-            testId={`button-scheme-${subjectId}`}
-          />
-          <ActionBtn
-            icon={<FolderOpen className="w-3.5 h-3.5" />}
-            label="Files"
+            testId={`button-scheme-${subjectId}`} />
+          <ActionBtn icon={<FolderOpen className="w-3.5 h-3.5" />} label="Files"
             onClick={() => onNavigate(`/portal/student/study-resources?subject=${subjectId}`)}
-            testId={`button-materials-${subjectId}`}
-          />
-          <ActionBtn
-            icon={<ClipboardList className="w-3.5 h-3.5" />}
-            label="Exams"
+            testId={`button-materials-${subjectId}`} />
+          <ActionBtn icon={<ClipboardList className="w-3.5 h-3.5" />} label="Exams"
             onClick={() => onNavigate(`/portal/student/exams?subject=${subjectId}`)}
-            testId={`button-exams-${subjectId}`}
-            highlight={active}
-          />
-          <ActionBtn
-            icon={<Award className="w-3.5 h-3.5" />}
-            label="Scores"
+            testId={`button-exams-${subjectId}`} highlight={active} />
+          <ActionBtn icon={<Award className="w-3.5 h-3.5" />} label="Scores"
             onClick={() => onNavigate(`/portal/student/exam-results?subject=${subjectId}`)}
-            testId={`button-scores-${subjectId}`}
-          />
+            testId={`button-scores-${subjectId}`} />
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
-// ── Action Button ──────────────────────────────────────────────────────────
+// ── Action Button (icon + label) ───────────────────────────────────────────
 function ActionBtn({
   icon, label, onClick, testId, highlight = false,
 }: {
@@ -329,7 +333,7 @@ function ActionBtn({
 }) {
   return (
     <button
-      className={`flex flex-col items-center gap-0.5 py-2 transition-colors ${
+      className={`flex flex-col items-center gap-0.5 py-2 transition-colors rounded-b ${
         highlight
           ? 'text-amber-700 dark:text-amber-400 font-semibold hover:bg-amber-50 dark:hover:bg-amber-900/20'
           : 'text-muted-foreground hover:text-primary hover:bg-primary/5'
