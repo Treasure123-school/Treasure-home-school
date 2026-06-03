@@ -18,6 +18,7 @@ interface SectionEditorProps {
   content: string;
   onChange: (html: string) => void;
   onFocused: (editor: any) => void;
+  onBlurred?: () => void;
   placeholder?: string;
   disabled?: boolean;
   minHeight?: string;
@@ -30,6 +31,7 @@ export default function SectionEditor({
   content,
   onChange,
   onFocused,
+  onBlurred,
   placeholder = 'Type here…',
   disabled = false,
   minHeight = '72px',
@@ -59,6 +61,9 @@ export default function SectionEditor({
       : []),
   ];
 
+  // Do NOT pass [disabled] as deps — that's a Tiptap v2 pattern that causes
+  // editor destroy/recreate cycles in v3, which sets commandManager to null
+  // mid-flight and causes "Cannot read properties of null (reading 'commands')".
   const editor = useEditor({
     extensions,
     content: content || '',
@@ -72,15 +77,27 @@ export default function SectionEditor({
     },
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     onFocus: ({ editor }) => onFocused(editor),
-  }, [disabled]);
+    onBlur: () => onBlurred?.(),
+  });
+
+  // Handle disabled changes without recreating the editor
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    editor.setEditable(!disabled);
+  }, [editor, disabled]);
 
   const prevContent = useRef(content);
   useEffect(() => {
-    if (!editor) return;
+    // Guard: editor must exist and must not be in a destroyed/transitional state
+    if (!editor || editor.isDestroyed) return;
     if (content !== prevContent.current) {
       prevContent.current = content;
       if (!editor.isFocused) {
-        editor.commands.setContent(content || '', false);
+        try {
+          editor.commands.setContent(content || '', false);
+        } catch {
+          // Editor may be in a transitional state; ignore and let next render handle it
+        }
       }
     }
   }, [content, editor]);

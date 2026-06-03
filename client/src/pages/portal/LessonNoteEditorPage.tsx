@@ -248,7 +248,10 @@ function SharedToolbar({
   imageInputRef: React.RefObject<HTMLInputElement>;
   disabled: boolean;
 }) {
-  const e = activeEditor;
+  // Guard against stale/destroyed editor references — in Tiptap v3, when an
+  // editor is destroyed its commandManager is set to null, so any call to
+  // editor.can() / editor.chain() / editor.commands would crash.
+  const e = (activeEditor && !activeEditor.isDestroyed) ? activeEditor : null;
   const hasTable = e?.isActive('table');
   const showImageBtn = activeSectionLabel === 'Lesson Content' || activeSectionLabel === 'Introduction';
   const showTableBtn = activeSectionLabel === 'Lesson Content';
@@ -450,9 +453,23 @@ export default function LessonNoteEditorPage() {
   }, []);
 
   const handleSectionFocus = useCallback((key: SectionKey, editor: any) => {
-    setActiveEditor(editor);
-    const def = SECTION_DEFS.find(d => d.key === key);
-    setActiveSectionLabel(def?.label ?? '');
+    // Only store editor if it's alive
+    if (editor && !editor.isDestroyed) {
+      setActiveEditor(editor);
+      const def = SECTION_DEFS.find(d => d.key === key);
+      setActiveSectionLabel(def?.label ?? '');
+    }
+  }, []);
+
+  const handleSectionBlur = useCallback(() => {
+    // Small delay so clicking toolbar buttons doesn't clear the active editor
+    // before the toolbar's onMouseDown (which uses preventDefault) fires
+    setTimeout(() => {
+      setActiveEditor((prev: any) => {
+        if (prev && prev.isDestroyed) return null;
+        return prev;
+      });
+    }, 150);
   }, []);
 
   // ── Save / Submit / Publish ───────────────────────────────────────────────
@@ -866,8 +883,9 @@ export default function LessonNoteEditorPage() {
                           content={sections[def.key]}
                           onChange={(html) => updateSection(def.key, html)}
                           onFocused={(editor) => handleSectionFocus(def.key, editor)}
+                          onBlurred={handleSectionBlur}
                           placeholder={def.placeholder}
-                          disabled={!canEdit || busy || aiLoading}
+                          disabled={!canEdit || busy}
                           minHeight={(def as any).minHeight || '72px'}
                           enableTable={def.enableTable}
                           enableImage={def.enableImage}
