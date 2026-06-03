@@ -91,6 +91,27 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
 
   const [expandedSections, setExpandedSections] = useState<string[]>([]);
 
+  // Auto-expand the section that contains the current route
+  useEffect(() => {
+    const routeToSection: Record<string, string> = {
+      '/portal/superadmin/curriculum-templates': 'Curriculum Library',
+      '/portal/superadmin/lesson-note-library': 'Curriculum Library',
+      '/portal/superadmin/settings': 'System Settings',
+      '/portal/superadmin/settings/authentication': 'System Settings',
+      '/portal/superadmin/settings/security': 'System Settings',
+      '/portal/superadmin/settings/branding': 'System Settings',
+      '/portal/superadmin/settings/integrations': 'System Settings',
+      '/portal/superadmin/integrations': 'Integrations & Notifications',
+      '/portal/superadmin/users': 'User Management',
+    };
+    const section = routeToSection[location];
+    if (section) {
+      setExpandedSections(prev =>
+        prev.includes(section) ? prev : [...prev, section]
+      );
+    }
+  }, [location]);
+
   const toggleSection = (section: string) => {
     setExpandedSections(prev => 
       prev.includes(section) 

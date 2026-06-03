@@ -115,6 +115,20 @@ export default function PortalLayout({ children, userRole, userName, userInitial
   const schoolMotto = settings?.schoolMotto || '';
   const displayLogo = settings?.schoolLogo || schoolLogo;
 
+  // Auto-open the correct sidebar group based on the current route
+  useEffect(() => {
+    if (userRole === 'admin') {
+      const academicRoutes = ['/classes', '/subjects', '/subject-manager', '/academic-terms', '/syllabus-topics', '/academics/curriculum', '/lesson-notes', '/lesson-note-library', '/academics/timetable'];
+      const studentRoutes = ['/students', '/parents', '/attendance'];
+      const staffRoutes = ['/teachers', '/users', '/job-vacancies', '/recovery-tools'];
+      const examRoutes = ['/exams', '/grading-queue', '/exam-analytics', '/question-bank', '/results', '/exam-payments'];
+      if (academicRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-academics'); return; }
+      if (studentRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-students'); return; }
+      if (staffRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-staff'); return; }
+      if (examRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-exams'); return; }
+    }
+  }, [location, userRole]);
+
   useEffect(() => {
     if (settings?.favicon) {
       const faviconUrl = settings.favicon;
@@ -196,6 +210,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
           },
           { name: 'Report Cards', href: `/portal/${userRole}/report-cards`, icon: FileText },
           { name: 'Lesson Notes', href: `/portal/${userRole}/lesson-notes`, icon: BookOpen },
+          { name: 'Note Library', href: `/portal/${userRole}/lesson-note-library`, icon: Library },
           { name: 'School Calendar', href: `/portal/${userRole}/calendar`, icon: Calendar },
           { name: 'Events', href: `/portal/${userRole}/events`, icon: Bell },
           { name: 'Announcements', href: `/portal/${userRole}/announcements`, icon: Megaphone },

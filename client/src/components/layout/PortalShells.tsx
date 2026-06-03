@@ -187,6 +187,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/teacher/lesson-notes/edit/:id" component={LessonNoteEditorPage} />
             <Route path="/portal/teacher/lesson-notes/view/:id" component={LessonNoteViewPage} />
             <Route path="/portal/teacher/lesson-notes" component={TeacherLessonNotes} />
+            <Route path="/portal/teacher/lesson-note-library" component={AdminLessonNoteLibrary} />
             <Route path="/portal/teacher/timetable" component={TeacherTimetable} />
             <Route path="/portal/teacher/messages" component={TeacherMessages} />
             <Route path="/portal/teacher/announcements" component={TeacherAnnouncements} />
