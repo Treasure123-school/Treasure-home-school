@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   AlertCircle,
   ExternalLink,
+  Sparkles,
 } from "lucide-react";
 import type { SystemSettings } from "@shared/schema";
 
@@ -221,6 +222,71 @@ export default function SuperAdminIntegrations() {
               <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
               <p className="text-xs text-amber-800 dark:text-amber-200">
                 The secret key is never exposed to students. All payment verification is done server-to-server with Paystack's API. Students are identified automatically from their login session — no manual input required.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* OpenAI AI Generation Setup */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-violet-600" />
+              AI Lesson Note Generation (OpenAI)
+            </CardTitle>
+            <CardDescription>
+              Configure OpenAI to enable teachers to generate complete, curriculum-aligned lesson notes instantly with AI.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-3">
+              <div className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+                <div className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900 flex items-center justify-center text-xs font-bold text-violet-700 dark:text-violet-300 shrink-0 mt-0.5">1</div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Create an OpenAI account</p>
+                  <p className="text-xs text-muted-foreground">Sign up at platform.openai.com and add billing (GPT-4o Mini is very affordable — ~$0.001 per lesson note).</p>
+                  <a href="https://platform.openai.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                    platform.openai.com <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+                <div className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900 flex items-center justify-center text-xs font-bold text-violet-700 dark:text-violet-300 shrink-0 mt-0.5">2</div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Generate an API key</p>
+                  <p className="text-xs text-muted-foreground">Go to <strong>API Keys</strong> in the OpenAI dashboard and create a new secret key.</p>
+                  <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                    platform.openai.com/api-keys <ExternalLink className="h-3 w-3" />
+                  </a>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+                <div className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900 flex items-center justify-center text-xs font-bold text-violet-700 dark:text-violet-300 shrink-0 mt-0.5">3</div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Add the key to Replit Secrets</p>
+                  <p className="text-xs text-muted-foreground">In the Replit sidebar, open <strong>Secrets</strong> and add:</p>
+                  <div className="mt-2 p-2 bg-slate-900 dark:bg-black rounded-md font-mono text-xs text-green-400">
+                    OPENAI_API_KEY=sk-proj-xxxxxxxxxxxx
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Restart the server after adding the key for it to take effect.</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+                <div className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900 flex items-center justify-center text-xs font-bold text-violet-700 dark:text-violet-300 shrink-0 mt-0.5">4</div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Teachers can now generate lesson notes</p>
+                  <p className="text-xs text-muted-foreground">When creating a new lesson note, teachers click <strong>"Generate with AI"</strong> — the system uses GPT-4o Mini to produce a fully structured, curriculum-aligned lesson note in seconds based on the topic, class, and subject.</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800">
+              <CheckCircle2 className="h-4 w-4 text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
+              <p className="text-xs text-violet-800 dark:text-violet-200">
+                If no API key is configured, the system automatically falls back to a structured template — teachers can still generate a lesson note outline and fill in the details manually.
               </p>
             </div>
           </CardContent>

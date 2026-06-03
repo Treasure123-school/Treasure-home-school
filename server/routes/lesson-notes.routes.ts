@@ -83,33 +83,48 @@ router.post('/generate', authenticateUser, authorizeRoles(...ALL_STAFF), async (
     const { topic, className, subjectName, termName, weekNumber, duration = '40 minutes' } = req.body;
     if (!topic) return res.status(400).json({ message: 'topic is required' });
 
+    const subj = subjectName || 'General';
+    const cls  = className  || 'Secondary School';
+    const t    = topic;
+
     // Try OpenAI if key is present
     if (process.env.OPENAI_API_KEY) {
       try {
-        const prompt = `You are an expert Nigerian secondary school curriculum specialist.
-Generate a complete, professional lesson note in JSON format for the following:
-Topic: "${topic}"
-Class: "${className || 'Secondary School'}"
-Subject: "${subjectName || 'General'}"
+        const prompt = `You are an expert Nigerian secondary school curriculum specialist who writes detailed, professional lesson notes.
+
+Generate a complete lesson note in JSON format for:
+Topic: "${t}"
+Class: "${cls}"
+Subject: "${subj}"
 Term: "${termName || 'First Term'}"
-Week: "${weekNumber || '1'}"
 Duration: "${duration}"
 
-Return ONLY a JSON object with these exact keys (HTML allowed in values, use <ul><li> for lists, <strong> for bold, <p> for paragraphs):
+Return ONLY valid JSON with exactly these 7 keys. Use HTML in all values.
+Rules:
+- "objectives": Use <ol><li> numbered list. 4–5 specific, measurable outcomes starting with action verbs (define, identify, explain, demonstrate, apply).
+- "previousKnowledge": 1–2 sentences about what students already know that links to this topic. No list needed.
+- "materials": <ul><li> list of 5–7 specific teaching materials (textbook name, charts, specimens, etc.).
+- "introduction": 2–3 paragraphs. How teacher opens the lesson — a relatable question or scenario, then links to prior knowledge, then states the topic. No bullet lists.
+- "content": This is the MOST IMPORTANT section. Write detailed, textbook-quality content with:
+  * <h2> for the main topic heading
+  * <h3> for each sub-topic (at least 3 sub-topics)
+  * <p> paragraphs with clear explanations
+  * <ul><li> or <ol><li> for lists/types/examples where appropriate
+  * Use <strong> for key terms
+  * Include a table using <table><tr><th>/<td> if listing types/comparisons (e.g. types with explanation and examples)
+  * Minimum 400 words of real educational content specific to the Nigerian curriculum
+- "teacherActivities": <table><tr> with 3 columns: Step | Activity | Time. 5 steps covering intro, explanation, demonstration, guided practice, conclusion. Use <th> for headers.
+- "studentActivities": <ul><li> list of 6–8 specific student actions during the lesson.
+
 {
   "objectives": "...",
-  "materials": "...",
   "previousKnowledge": "...",
+  "materials": "...",
   "introduction": "...",
   "content": "...",
   "teacherActivities": "...",
-  "studentActivities": "...",
-  "evaluation": "...",
-  "assignment": "...",
-  "references": "..."
-}
-
-Make objectives use numbered bullet list. Make teacherActivities use step-by-step format. Make evaluation have 4-5 specific questions. Content should be detailed and educational.`;
+  "studentActivities": "..."
+}`;
 
         const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
@@ -118,102 +133,90 @@ Make objectives use numbered bullet list. Make teacherActivities use step-by-ste
             'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
           },
           body: JSON.stringify({
-            model: 'gpt-3.5-turbo',
+            model: 'gpt-4o-mini',
             response_format: { type: 'json_object' },
             messages: [{ role: 'user', content: prompt }],
-            max_tokens: 2000,
-            temperature: 0.7,
+            max_tokens: 3000,
+            temperature: 0.5,
           }),
         });
         if (aiRes.ok) {
           const aiData = await aiRes.json() as any;
-          const sections = JSON.parse(aiData.choices[0].message.content);
-          return res.json({ sections, aiGenerated: true });
+          const raw = aiData.choices?.[0]?.message?.content;
+          if (raw) {
+            const sections = JSON.parse(raw);
+            return res.json({ sections, aiGenerated: true });
+          }
+        } else {
+          const errBody = await aiRes.text();
+          console.log('[AI Generation] OpenAI error:', aiRes.status, errBody);
         }
       } catch (err) {
         console.log('[AI Generation] OpenAI failed, falling back to template:', (err as any).message);
       }
     }
 
-    // Template generation (no API key / fallback)
-    const subj = subjectName || 'this subject';
-    const cls  = className  || 'the class';
-    const t    = topic;
-
+    // Template fallback (no API key or OpenAI error)
     const sections = {
-      objectives: `<ul>
-<li>By the end of this lesson, students should be able to <strong>define and explain ${t}</strong> in their own words.</li>
-<li>Identify and list the key components or features of ${t}.</li>
-<li>Apply knowledge of ${t} to solve simple problems or answer questions.</li>
-<li>Appreciate the relevance of ${t} to everyday life and the ${subj} curriculum.</li>
-</ul>`,
+      objectives: `<ol>
+<li>By the end of this lesson, students should be able to <strong>define ${t}</strong> accurately in their own words.</li>
+<li>Identify and describe the key types or components of ${t}.</li>
+<li>Explain the importance and applications of ${t} in ${subj} and everyday life.</li>
+<li>Distinguish between the major categories or features associated with ${t}.</li>
+<li>Apply knowledge of ${t} to answer questions and solve related problems.</li>
+</ol>`,
+      previousKnowledge: `<p>Students have been previously taught related concepts in ${subj} including basic definitions, classifications, and the Nigerian environment context. They are expected to be familiar with introductory topics covered earlier this term in ${cls}.</p>`,
       materials: `<ul>
-<li>${subj} textbook (recommended for ${cls})</li>
-<li>Whiteboard and markers / chalk and chalkboard</li>
-<li>Relevant charts, diagrams, or illustrations</li>
-<li>Worksheets or exercise sheets</li>
+<li>${subj} Textbook for ${cls}</li>
+<li>Whiteboard / chalkboard and markers or chalk</li>
+<li>Charts and diagrams illustrating ${t}</li>
 <li>Real-world specimens or models (where applicable)</li>
+<li>Worksheets and exercise sheets</li>
+<li>Projector or TV screen (if available)</li>
 </ul>`,
-      previousKnowledge: `<p>Students are expected to have prior knowledge of the following concepts that directly relate to <strong>${t}</strong>:</p>
-<ul>
-<li>Basic definitions and terminology in ${subj}</li>
-<li>Topics previously covered this term in ${cls}</li>
-<li>General observation and problem-solving skills</li>
-</ul>`,
-      introduction: `<p>The teacher begins the lesson by:</p>
-<ul>
-<li>Welcoming students and briefly reviewing the previous lesson</li>
-<li>Asking thought-provoking questions related to <strong>${t}</strong> to stimulate student interest</li>
-<li>Introducing the topic by connecting it to real-world examples familiar to students in ${cls}</li>
-<li>Writing the topic <strong>"${t}"</strong> on the board and stating the lesson objectives clearly</li>
-</ul>`,
+      introduction: `<p>The teacher begins by greeting the class and briefly reviewing the previous lesson to activate prior knowledge. Students are asked: <em>"Can you give me examples of ${t} from your daily life?"</em> A short discussion follows to generate interest.</p>
+<p>The teacher then introduces today's topic by connecting it to familiar real-world scenarios in the Nigerian context, making the subject matter relevant and relatable to students in ${cls}.</p>
+<p>The topic <strong>"${t}"</strong> is written on the board and the learning objectives are stated clearly so students know what they are expected to achieve by the end of the lesson.</p>`,
       content: `<h2>${t}</h2>
-<p><strong>Definition:</strong> [Provide a clear, concise definition of ${t} appropriate for ${cls} ${subj}.]</p>
-<h3>Key Concepts</h3>
+<p><strong>Definition:</strong> [Write a clear, concise definition of ${t} appropriate for ${cls} ${subj} students.]</p>
+
+<h3>Types / Categories</h3>
+<table>
+<tr><th>Type</th><th>Description</th><th>Examples</th></tr>
+<tr><td>[Type 1]</td><td>[Brief description]</td><td>[Local Nigerian examples]</td></tr>
+<tr><td>[Type 2]</td><td>[Brief description]</td><td>[Examples]</td></tr>
+<tr><td>[Type 3]</td><td>[Brief description]</td><td>[Examples]</td></tr>
+</table>
+
+<h3>Key Characteristics</h3>
 <ul>
-<li><strong>Concept 1:</strong> [Explain the first major concept related to ${t}]</li>
-<li><strong>Concept 2:</strong> [Explain the second major concept]</li>
-<li><strong>Concept 3:</strong> [Explain the third major concept]</li>
+<li><strong>Characteristic 1:</strong> [Explain]</li>
+<li><strong>Characteristic 2:</strong> [Explain]</li>
+<li><strong>Characteristic 3:</strong> [Explain]</li>
 </ul>
-<h3>Worked Example</h3>
-<p>[Provide a clear worked example that demonstrates the key principle of ${t}. Show step-by-step working.]</p>
-<h3>Important Notes</h3>
-<p>[Add any important notes, exceptions, or key facts students must remember about ${t}.]</p>`,
-      teacherActivities: `<ul>
-<li><strong>Step 1 (5 min):</strong> Introduce the topic "${t}", state objectives, and connect to prior knowledge.</li>
-<li><strong>Step 2 (10 min):</strong> Explain key concepts of ${t} using the board, diagrams, and real-world examples. Ask guided questions.</li>
-<li><strong>Step 3 (10 min):</strong> Demonstrate a worked example step by step. Invite students to participate.</li>
-<li><strong>Step 4 (10 min):</strong> Guide students through practice exercises. Circulate and provide feedback.</li>
-<li><strong>Step 5 (5 min):</strong> Summarise the lesson, evaluate understanding, and give assignment.</li>
-</ul>`,
+
+<h3>Importance / Uses</h3>
+<p>[Explain why ${t} is important to ${subj} and to everyday Nigerian life. Give specific examples.]</p>
+
+<h3>Summary</h3>
+<p>[Summarise the key points of the lesson in 2–3 sentences for students to note.]</p>`,
+      teacherActivities: `<table>
+<tr><th>Step</th><th>Activity</th><th>Time</th></tr>
+<tr><td>1</td><td>Introduce the topic, state objectives, review previous lesson</td><td>5 min</td></tr>
+<tr><td>2</td><td>Explain key concepts of ${t} using the board, charts, and real examples</td><td>10 min</td></tr>
+<tr><td>3</td><td>Demonstrate worked examples and invite student responses</td><td>10 min</td></tr>
+<tr><td>4</td><td>Guide students through class exercises; circulate and give feedback</td><td>10 min</td></tr>
+<tr><td>5</td><td>Summarise lesson, ask evaluative questions, give take-home task</td><td>5 min</td></tr>
+</table>`,
       studentActivities: `<ul>
-<li>Listen attentively and take notes as the teacher explains ${t}</li>
-<li>Answer oral questions posed by the teacher throughout the lesson</li>
-<li>Participate actively in class discussions and demonstrations</li>
-<li>Copy key definitions, diagrams, and examples into their notebooks</li>
-<li>Attempt practice exercises individually or in pairs</li>
+<li>Listen attentively as the teacher introduces the topic and states objectives</li>
+<li>Respond to opening questions and contribute to class discussion</li>
+<li>Copy key definitions, diagrams, and examples into their exercise books</li>
+<li>Answer oral questions posed by the teacher during the lesson</li>
+<li>Participate actively in demonstrations and group discussions</li>
+<li>Attempt class exercises individually or in pairs</li>
 <li>Ask questions where clarification is needed</li>
-</ul>`,
-      evaluation: `<p><strong>The teacher evaluates students' understanding by asking the following questions:</strong></p>
-<ul>
-<li>1. In your own words, what is <strong>${t}</strong>?</li>
-<li>2. List <strong>three</strong> characteristics or features of ${t}.</li>
-<li>3. Give <strong>two</strong> examples of ${t} as it applies to ${subj}.</li>
-<li>4. Explain the <strong>importance</strong> of ${t} to everyday life or to ${subj}.</li>
-<li>5. What is the <strong>difference</strong> between [key term A] and [key term B] related to ${t}?</li>
-</ul>`,
-      assignment: `<p><strong>Students are to complete the following by the next lesson:</strong></p>
-<ul>
-<li>1. Write a half-page summary on <strong>${t}</strong> in your own words.</li>
-<li>2. Draw and label a diagram illustrating ${t} (where applicable).</li>
-<li>3. List <strong>five</strong> examples of ${t} from your environment or daily experience.</li>
-<li>4. Answer questions [page/exercise reference] in your ${subj} textbook.</li>
-</ul>`,
-      references: `<ul>
-<li>Recommended ${subj} Textbook for ${cls} — Chapter on ${t}</li>
-<li>Nigerian Educational Research and Development Council (NERDC). (2015). <em>${subj} Curriculum for ${cls}</em>. NERDC Press.</li>
-<li>Universal Basic Education Commission (UBEC). <em>Basic Education Scheme of Work</em>.</li>
-<li>Relevant online educational resources (teacher's discretion)</li>
+<li>Record the take-home task in their assignment notebooks</li>
 </ul>`,
     };
 
