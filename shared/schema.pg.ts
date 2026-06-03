@@ -1559,6 +1559,90 @@ export type InsertAboutSection = typeof aboutSections.$inferInsert;
 export type AdmissionsEnquiry = typeof admissionsEnquiries.$inferSelect;
 export type InsertAdmissionsEnquiry = typeof admissionsEnquiries.$inferInsert;
 
+// ─── Lesson Note Library ──────────────────────────────────────────────────────
+
+// Master library of lesson note templates — managed by Super Admin only
+export const lessonNoteTemplates = pgTable("lesson_note_templates", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  level: varchar("level", { length: 50 }).notNull(),          // primary | jss | ss | custom
+  className: varchar("class_name", { length: 100 }).notNull(),
+  subjectName: varchar("subject_name", { length: 150 }).notNull(),
+  term: varchar("term", { length: 20 }).notNull(),             // first | second | third
+  weekNumber: integer("week_number").notNull().default(1),
+  topic: varchar("topic", { length: 255 }).notNull(),
+  duration: varchar("duration", { length: 50 }),               // e.g. "40 minutes"
+  objectives: text("objectives"),
+  entryBehaviour: text("entry_behaviour"),
+  instructionalMaterials: text("instructional_materials"),
+  content: text("content"),                                    // main lesson content
+  teacherActivities: text("teacher_activities"),
+  studentActivities: text("student_activities"),
+  evaluationQuestions: text("evaluation_questions"),
+  assignments: text("assignments"),
+  references: text("references"),
+  isPublished: boolean("is_published").notNull().default(false),
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  lntLevelIdx: index("lnt_level_idx").on(table.level),
+  lntClassIdx: index("lnt_class_idx").on(table.className),
+  lntSubjectIdx: index("lnt_subject_idx").on(table.subjectName),
+  lntTermIdx: index("lnt_term_idx").on(table.term),
+  lntPublishedIdx: index("lnt_published_idx").on(table.isPublished),
+  lntClassSubjectIdx: index("lnt_class_subject_idx").on(table.className, table.subjectName),
+  lntUniqueIdx: uniqueIndex("lnt_unique_idx").on(table.className, table.subjectName, table.term, table.weekNumber, table.topic),
+}));
+
+export const insertLessonNoteTemplateSchema = createInsertSchema(lessonNoteTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+export type LessonNoteTemplate = typeof lessonNoteTemplates.$inferSelect;
+export type InsertLessonNoteTemplate = z.infer<typeof insertLessonNoteTemplateSchema>;
+
+// School-specific copies of lesson notes — imported from library or created independently
+export const schoolLessonNotes = pgTable("school_lesson_notes", {
+  id: serial("id").primaryKey(),
+  templateId: integer("template_id").references(() => lessonNoteTemplates.id, { onDelete: 'set null' }),
+  classId: integer("class_id").references(() => classes.id),
+  subjectId: integer("subject_id").references(() => subjects.id),
+  termId: integer("term_id").references(() => academicTerms.id),
+  topicId: integer("topic_id").references(() => syllabusTopics.id, { onDelete: 'set null' }),
+  title: varchar("title", { length: 255 }).notNull(),
+  className: varchar("class_name", { length: 100 }),
+  subjectName: varchar("subject_name", { length: 150 }),
+  term: varchar("term", { length: 20 }),
+  weekNumber: integer("week_number").default(1),
+  topic: varchar("topic", { length: 255 }),
+  duration: varchar("duration", { length: 50 }),
+  objectives: text("objectives"),
+  entryBehaviour: text("entry_behaviour"),
+  instructionalMaterials: text("instructional_materials"),
+  content: text("content"),
+  teacherActivities: text("teacher_activities"),
+  studentActivities: text("student_activities"),
+  evaluationQuestions: text("evaluation_questions"),
+  assignments: text("assignments"),
+  references: text("references"),
+  status: varchar("status", { length: 20 }).notNull().default('draft'),  // draft | approved | published | archived
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  slnClassIdx: index("sln_class_idx").on(table.classId),
+  slnSubjectIdx: index("sln_subject_idx").on(table.subjectId),
+  slnTermIdx: index("sln_term_idx").on(table.termId),
+  slnTemplateIdx: index("sln_template_idx").on(table.templateId),
+  slnStatusIdx: index("sln_status_idx").on(table.status),
+  slnCreatedByIdx: index("sln_created_by_idx").on(table.createdBy),
+  slnDuplicateIdx: uniqueIndex("sln_duplicate_idx").on(table.templateId, table.classId, table.termId),
+}));
+
+export const insertSchoolLessonNoteSchema = createInsertSchema(schoolLessonNotes).omit({ id: true, createdAt: true, updatedAt: true });
+export type SchoolLessonNote = typeof schoolLessonNotes.$inferSelect;
+export type InsertSchoolLessonNote = z.infer<typeof insertSchoolLessonNoteSchema>;
+
+// ─── END Lesson Note Library ──────────────────────────────────────────────────
+
 export const homepageSections = pgTable("homepage_sections", {
   id: serial("id").primaryKey(),
   sectionKey: varchar("section_key", { length: 50 }).notNull().unique(),

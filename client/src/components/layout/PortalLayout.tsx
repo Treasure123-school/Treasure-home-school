@@ -238,6 +238,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: `/portal/${userRole}/syllabus-topics`, icon: Layers, label: 'Syllabus Topics' },
               { href: `/portal/${userRole}/academics/curriculum`, icon: BookMarked, label: 'Curriculum Library' },
               { href: `/portal/${userRole}/lesson-notes`, icon: ClipboardCheck, label: 'Lesson Notes' },
+              { href: `/portal/${userRole}/lesson-note-library`, icon: Library, label: 'Note Library' },
               { href: `/portal/${userRole}/academics/timetable`, icon: Clock, label: 'Timetable' },
             ],
           },

@@ -118,6 +118,7 @@ const SuperAdminBackupRestore = lazy(() => import("@/pages/portal/SuperAdminBack
 const SuperAdminApiAccess = lazy(() => import("@/pages/portal/SuperAdminApiAccess"));
 const ExamPaymentManagement = lazy(() => import("@/pages/portal/ExamPaymentManagement"));
 const SuperAdminCurriculumTemplates = lazy(() => import("@/pages/portal/SuperAdminCurriculumTemplates"));
+const SuperAdminLessonNoteLibrary = lazy(() => import("@/pages/portal/SuperAdminLessonNoteLibrary"));
 const HomepageManagement = lazy(() => import("@/pages/portal/HomepageManagement"));
 const GalleryManagement = lazy(() => import("@/pages/portal/website/GalleryManagement"));
 const NewsManagement = lazy(() => import("@/pages/portal/website/NewsManagement"));
@@ -581,6 +582,12 @@ function Router() {
         <Route path="/portal/superadmin/curriculum-templates">
           <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
             <SuperAdminCurriculumTemplates />
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/portal/superadmin/lesson-note-library">
+          <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
+            <SuperAdminLessonNoteLibrary />
           </ProtectedRoute>
         </Route>
 

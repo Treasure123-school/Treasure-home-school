@@ -6,6 +6,7 @@ import { setupVite, serveStatic } from "./vite";
 import { db } from "./storage";
 import { isPostgres, dbInfo } from "./db";
 import { seedAcademicTerms } from "./seed-terms";
+import { seedLessonNoteTemplates } from "./seed-lesson-note-templates";
 import { validateEnvironment } from "./env-validation";
 import fs from "fs/promises";
 import { performanceMonitor } from "./performance-monitor";
@@ -216,6 +217,13 @@ function sanitizeLogData(data: any): any {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.log(`⚠️ Academic terms seeding failed: ${errorMessage}`);
+  }
+  // Seed lesson note library templates
+  try {
+    await seedLessonNoteTemplates();
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.log(`⚠️ Lesson note templates seeding failed: ${errorMessage}`);
   }
   // Seed system settings if they don't exist
   try {

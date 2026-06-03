@@ -32,6 +32,7 @@ import { monnifyPaymentRouter } from "./routes/monnify-payment.routes";
 import reportCardSkillsRoutes from "./routes/report-card-skills.routes";
 import questionBankRoutes from "./routes/question-bank.routes";
 import curriculumTemplateRoutes from "./routes/curriculum-templates.routes";
+import lessonNoteLibraryRoutes from "./routes/lesson-note-library.routes";
 import termsRoutes from "./routes/terms.routes";
 import sessionsRoutes from "./routes/sessions.routes";
 import calendarRoutes from "./routes/calendar.routes";
@@ -1193,6 +1194,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(reportCardSkillsRoutes);
   app.use(questionBankRoutes);
   app.use(curriculumTemplateRoutes);
+  app.use(lessonNoteLibraryRoutes);
   app.use('/api/lesson-notes', lessonNotesRoutes);
   app.use('/api/terms', termsRoutes);
   app.use('/api/sessions', sessionsRoutes);

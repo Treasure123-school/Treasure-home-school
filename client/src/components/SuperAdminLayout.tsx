@@ -158,6 +158,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
       icon: BookOpen,
       children: [
         { label: "Curriculum Templates", path: "/portal/superadmin/curriculum-templates" },
+        { label: "Lesson Note Library", path: "/portal/superadmin/lesson-note-library" },
       ],
     },
     {
