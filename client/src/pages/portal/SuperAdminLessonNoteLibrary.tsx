@@ -242,6 +242,17 @@ export default function SuperAdminLessonNoteLibrary() {
     onError: (err: any) => toast({ title: "Error", description: err?.message, variant: "destructive" }),
   });
 
+  const publishAllMutation = useMutation({
+    mutationFn: () => apiRequest("POST", "/api/lesson-note-library/templates/publish-all", {}),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/lesson-note-library/templates"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/lesson-note-library/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/lesson-note-library/filter-options"] });
+      toast({ title: "All templates published", description: `${data?.updated ?? ""} templates are now visible to admins and teachers.` });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err?.message, variant: "destructive" }),
+  });
+
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/lesson-note-library/templates/${id}`),
     onSuccess: () => {
@@ -296,10 +307,22 @@ export default function SuperAdminLessonNoteLibrary() {
                 <p className="text-blue-100 text-sm mt-0.5">Master library of lesson note templates — original, curriculum-aligned content</p>
               </div>
             </div>
-            <Button onClick={() => { setForm({ ...EMPTY_FORM }); setShowCreate(true); }}
-              className="bg-white text-blue-700 hover:bg-blue-50 font-semibold">
-              <Plus className="h-4 w-4 mr-2" /> New Template
-            </Button>
+            <div className="flex gap-2 flex-wrap">
+              {(stats.draft ?? 0) > 0 && (
+                <Button
+                  onClick={() => publishAllMutation.mutate()}
+                  disabled={publishAllMutation.isPending}
+                  className="bg-green-500 text-white hover:bg-green-400 font-semibold"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  {publishAllMutation.isPending ? "Publishing..." : `Publish All (${stats.draft})`}
+                </Button>
+              )}
+              <Button onClick={() => { setForm({ ...EMPTY_FORM }); setShowCreate(true); }}
+                className="bg-white text-blue-700 hover:bg-blue-50 font-semibold">
+                <Plus className="h-4 w-4 mr-2" /> New Template
+              </Button>
+            </div>
           </div>
         </div>
 

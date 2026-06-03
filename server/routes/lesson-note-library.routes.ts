@@ -326,6 +326,25 @@ router.patch(
   }
 );
 
+// ─── Super Admin: Bulk Publish All Templates ──────────────────────────────────
+
+router.post(
+  "/api/lesson-note-library/templates/publish-all",
+  authenticateUser,
+  authorizeRoles(...SUPER_ADMIN_ONLY),
+  async (_req: Request, res: Response) => {
+    try {
+      const result = await db
+        .update(lessonNoteTemplates)
+        .set({ isPublished: true, updatedAt: new Date() })
+        .returning({ id: lessonNoteTemplates.id });
+      sendSuccess(res, { updated: result.length, message: `${result.length} templates published.` });
+    } catch (err) {
+      handleRouteError(res, err, "lesson-note-library.templates.publish-all");
+    }
+  }
+);
+
 // ─── Super Admin: Delete Template ─────────────────────────────────────────────
 
 router.delete(

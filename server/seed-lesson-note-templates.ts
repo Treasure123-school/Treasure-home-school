@@ -596,6 +596,12 @@ export async function seedLessonNoteTemplates(): Promise<void> {
           );
 
         if (existing.length > 0) {
+          if (!existing[0].isPublished) {
+            await db
+              .update(lessonNoteTemplates)
+              .set({ isPublished: true, updatedAt: new Date() })
+              .where(eq(lessonNoteTemplates.id, existing[0].id));
+          }
           skipped++;
           continue;
         }
