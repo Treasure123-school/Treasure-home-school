@@ -1,32 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useAuth } from '@/lib/auth';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Clock,
-  Calendar,
-  BookOpen,
-  User,
-  MapPin,
-  ChevronRight,
-  ExternalLink,
-  Bell,
-  Timer,
-  Layers,
-  CalendarDays,
-  GraduationCap,
-  Video,
+  Clock, Calendar, BookOpen, User, MapPin, ChevronRight,
+  ExternalLink, Bell, Timer, CalendarDays, GraduationCap, Video,
+  AlertCircle,
 } from 'lucide-react';
 
+// ── Constants ──────────────────────────────────────────────────────────────
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 const DAY_SHORT: Record<string, string> = {
   Monday: 'Mon', Tuesday: 'Tue', Wednesday: 'Wed', Thursday: 'Thu', Friday: 'Fri',
 };
 
+// ── Types ──────────────────────────────────────────────────────────────────
 type ClassEntry = {
   id: number;
   dayOfWeek: string;
@@ -48,28 +40,26 @@ type TimetableData = {
 };
 
 type ClassStatus = 'ongoing' | 'upcoming' | 'completed';
+type ViewMode = 'today' | 'weekly';
 
+// ── Helpers ────────────────────────────────────────────────────────────────
 function normalizeDay(day: string): string {
   if (!day) return '';
   const d = day.toLowerCase();
   return DAYS.find(dd => dd.toLowerCase() === d || dd.toLowerCase().startsWith(d.slice(0, 3))) || day;
 }
 
-function parseTime(timeStr: string): { h: number; m: number } {
-  const [hh, mm] = timeStr.split(':').map(Number);
-  return { h: hh || 0, m: mm || 0 };
-}
-
 function timeToMinutes(timeStr: string): number {
-  const { h, m } = parseTime(timeStr);
-  return h * 60 + m;
+  const [hh, mm] = timeStr.split(':').map(Number);
+  return (hh || 0) * 60 + (mm || 0);
 }
 
 function formatTime12(timeStr: string): string {
-  const { h, m } = parseTime(timeStr);
+  const [hh, mm] = timeStr.split(':').map(Number);
+  const h = hh || 0;
   const ampm = h < 12 ? 'AM' : 'PM';
   const h12 = h % 12 === 0 ? 12 : h % 12;
-  return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+  return `${h12}:${String(mm || 0).padStart(2, '0')} ${ampm}`;
 }
 
 function getClassStatus(entry: ClassEntry, nowMinutes: number, todayName: string): ClassStatus {
@@ -92,45 +82,48 @@ function formatCountdown(seconds: number): string {
   return `${s}s`;
 }
 
-const STATUS_CONFIG: Record<ClassStatus, { label: string; color: string; bg: string; dot: string }> = {
+function getTeacherName(entry: ClassEntry): string {
+  return (entry.teacherFirstName || entry.teacherLastName)
+    ? `${entry.teacherFirstName ?? ''} ${entry.teacherLastName ?? ''}`.trim()
+    : 'Unknown Teacher';
+}
+
+// ── Config ─────────────────────────────────────────────────────────────────
+const STATUS_CONFIG: Record<ClassStatus, { label: string; color: string; bg: string; dot: string; border: string }> = {
   ongoing: {
-    label: 'Ongoing',
+    label: 'Live',
     color: 'text-emerald-700 dark:text-emerald-400',
-    bg: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800',
+    bg: 'bg-emerald-50 dark:bg-emerald-900/20',
     dot: 'bg-emerald-500',
+    border: 'border-emerald-200 dark:border-emerald-800',
   },
   upcoming: {
     label: 'Upcoming',
     color: 'text-blue-700 dark:text-blue-400',
-    bg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
+    bg: 'bg-blue-50 dark:bg-blue-900/20',
     dot: 'bg-blue-500',
+    border: 'border-blue-200 dark:border-blue-800',
   },
   completed: {
-    label: 'Completed',
+    label: 'Done',
     color: 'text-gray-500 dark:text-gray-400',
-    bg: 'bg-gray-50 dark:bg-gray-800/40 border-gray-200 dark:border-gray-700',
+    bg: 'bg-gray-50 dark:bg-gray-800/40',
     dot: 'bg-gray-400',
+    border: 'border-gray-200 dark:border-gray-700',
   },
 };
 
 const SUBJECT_COLORS = [
-  'from-violet-500 to-purple-600',
-  'from-blue-500 to-cyan-600',
-  'from-emerald-500 to-teal-600',
-  'from-orange-500 to-amber-600',
-  'from-pink-500 to-rose-600',
-  'from-indigo-500 to-blue-600',
-  'from-teal-500 to-green-600',
-  'from-red-500 to-orange-600',
+  'from-violet-500 to-purple-600', 'from-blue-500 to-cyan-600',
+  'from-emerald-500 to-teal-600', 'from-orange-500 to-amber-600',
+  'from-pink-500 to-rose-600', 'from-indigo-500 to-blue-600',
+  'from-teal-500 to-green-600', 'from-red-500 to-orange-600',
 ];
+function subjectColor(id: number) { return SUBJECT_COLORS[id % SUBJECT_COLORS.length]; }
 
-function getSubjectColor(id: number): string {
-  return SUBJECT_COLORS[id % SUBJECT_COLORS.length];
-}
-
+// ── Main Page ──────────────────────────────────────────────────────────────
 export default function StudentClassSchedule() {
-  const { user } = useAuth();
-  const [view, setView] = useState<'today' | 'weekly'>('today');
+  const [view, setView] = useState<ViewMode>('today');
   const [now, setNow] = useState(new Date());
   const [selectedClass, setSelectedClass] = useState<ClassEntry | null>(null);
 
@@ -167,6 +160,9 @@ export default function StudentClassSchedule() {
     ? Math.max(0, timeToMinutes(nextClass.startTime) * 60 - (now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()))
     : null;
 
+  const ongoingClass = todaySchedule.find(e => getStatus(e) === 'ongoing');
+  const totalWeekClasses = Object.values(weeklySchedule).flat().length;
+
   const formatDate = (d: Date) =>
     d.toLocaleDateString('en-NG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -175,6 +171,7 @@ export default function StudentClassSchedule() {
 
   return (
     <div className="space-y-6 pb-8" data-testid="student-class-schedule">
+
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
@@ -184,7 +181,7 @@ export default function StudentClassSchedule() {
             <span data-testid="text-current-date">{formatDate(now)}</span>
           </p>
           {isLoading ? (
-            <Skeleton className="h-4 w-24 mt-1" />
+            <Skeleton className="h-5 w-24 mt-1.5" />
           ) : data?.className ? (
             <span className="inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 text-primary text-xs font-semibold">
               <GraduationCap className="h-3 w-3" />
@@ -195,57 +192,77 @@ export default function StudentClassSchedule() {
 
         <div className="flex flex-col items-start sm:items-end gap-2 self-start">
           <div
-            className="flex items-center gap-2 bg-muted rounded-xl px-4 py-2 tabular-nums font-mono text-base font-semibold text-foreground"
+            className="flex items-center gap-2 bg-muted rounded-xl px-4 py-2 tabular-nums font-mono text-base font-semibold"
             data-testid="text-live-clock"
           >
             <Clock className="h-4 w-4 text-primary" />
             {formatClock(now)}
           </div>
           {nextClass && countdownSeconds !== null && countdownSeconds > 0 && (
-            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-secondary/20 text-xs font-semibold text-amber-700 dark:text-secondary">
+            <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-xs font-semibold text-amber-700 dark:text-amber-400">
               <Timer className="h-3.5 w-3.5" />
-              <span>
-                Next in{' '}
-                <span className="font-bold tabular-nums" data-testid="text-countdown">
-                  {formatCountdown(countdownSeconds)}
-                </span>
+              Next in{' '}
+              <span className="font-bold tabular-nums" data-testid="text-countdown">
+                {formatCountdown(countdownSeconds)}
               </span>
             </div>
           )}
         </div>
       </div>
 
-      {/* ── View Toggle ── */}
-      <div className="flex items-center gap-1 bg-muted rounded-xl p-1 w-fit">
-        <button
-          onClick={() => setView('today')}
-          data-testid="button-today-view"
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-            view === 'today'
-              ? 'bg-white dark:bg-card text-primary shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <Layers className="h-4 w-4" />
-          Today View
-        </button>
-        <button
-          onClick={() => setView('weekly')}
-          data-testid="button-weekly-view"
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
-            view === 'weekly'
-              ? 'bg-white dark:bg-card text-primary shadow-sm'
-              : 'text-muted-foreground hover:text-foreground'
-          }`}
-        >
-          <CalendarDays className="h-4 w-4" />
-          Weekly View
-        </button>
-      </div>
+      {/* ── Summary Stats ── */}
+      {!isLoading && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <StatCard
+            icon={<CalendarDays className="h-4 w-4 text-blue-600" />}
+            label="Today"
+            value={`${todaySchedule.length} ${todaySchedule.length === 1 ? 'class' : 'classes'}`}
+            accent="blue"
+          />
+          <StatCard
+            icon={<CalendarDays className="h-4 w-4 text-violet-600" />}
+            label="This Week"
+            value={`${totalWeekClasses} ${totalWeekClasses === 1 ? 'class' : 'classes'}`}
+            accent="violet"
+          />
+          <StatCard
+            icon={<Clock className="h-4 w-4 text-emerald-600" />}
+            label="Ongoing"
+            value={ongoingClass ? ongoingClass.subjectName ?? 'Now' : 'None'}
+            accent={ongoingClass ? 'emerald' : 'gray'}
+            pulse={!!ongoingClass}
+          />
+          <StatCard
+            icon={<Timer className="h-4 w-4 text-amber-600" />}
+            label="Next Class"
+            value={nextClass ? nextClass.subjectName ?? 'Upcoming' : '—'}
+            accent="amber"
+          />
+        </div>
+      )}
+      {isLoading && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-16 rounded-xl" />)}
+        </div>
+      )}
+
+      {/* ── View Tabs ── */}
+      <Tabs value={view} onValueChange={(v) => setView(v as ViewMode)}>
+        <TabsList>
+          <TabsTrigger value="today" data-testid="button-today-view" className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4" />
+            Today
+          </TabsTrigger>
+          <TabsTrigger value="weekly" data-testid="button-weekly-view" className="flex items-center gap-2">
+            <CalendarDays className="h-4 w-4" />
+            Weekly
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* ── Content ── */}
       {isLoading ? (
-        <ScheduleSkeleton view={view} />
+        <ScheduleSkeleton />
       ) : error ? (
         <ErrorState />
       ) : view === 'today' ? (
@@ -274,11 +291,47 @@ export default function StudentClassSchedule() {
   );
 }
 
+// ── Stat Card ─────────────────────────────────────────────────────────────
+function StatCard({
+  icon, label, value, accent, pulse = false,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  accent: 'blue' | 'violet' | 'emerald' | 'amber' | 'gray';
+  pulse?: boolean;
+}) {
+  const bg: Record<string, string> = {
+    blue: 'bg-blue-50 dark:bg-blue-900/20',
+    violet: 'bg-violet-50 dark:bg-violet-900/20',
+    emerald: 'bg-emerald-50 dark:bg-emerald-900/20',
+    amber: 'bg-amber-50 dark:bg-amber-900/20',
+    gray: 'bg-muted',
+  };
+  return (
+    <Card className="border-0 shadow-none">
+      <CardContent className={`p-3 rounded-xl ${bg[accent]} flex items-center gap-3`}>
+        <div className="flex-shrink-0 relative">
+          {icon}
+          {pulse && (
+            <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+            </span>
+          )}
+        </div>
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground leading-none mb-0.5">{label}</p>
+          <p className="text-sm font-bold text-foreground truncate">{value}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Today View ────────────────────────────────────────────────────────────
 function TodayView({
-  schedule,
-  todayName,
-  getStatus,
-  onSelect,
+  schedule, todayName, getStatus, onSelect,
 }: {
   schedule: ClassEntry[];
   todayName: string;
@@ -286,12 +339,11 @@ function TodayView({
   onSelect: (e: ClassEntry) => void;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-          <BookOpen className="h-5 w-5 text-blue-600" />
-          Today's Schedule
-          <span className="text-sm font-normal text-gray-500 dark:text-gray-400">— {todayName}</span>
+        <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+          <BookOpen className="h-4 w-4" />
+          {todayName}'s Schedule
         </h2>
         <Badge variant="outline" className="text-xs">
           {schedule.length} {schedule.length === 1 ? 'class' : 'classes'}
@@ -301,26 +353,17 @@ function TodayView({
       {schedule.length === 0 ? (
         <EmptyState message={`No classes scheduled for ${todayName}.`} sub="Enjoy your free day!" />
       ) : (
-        <div className="space-y-3">
-          {schedule.map((entry) => (
-            <ClassCard
-              key={entry.id}
-              entry={entry}
-              status={getStatus(entry)}
-              onSelect={onSelect}
-            />
-          ))}
-        </div>
+        schedule.map(entry => (
+          <ClassCard key={entry.id} entry={entry} status={getStatus(entry)} onSelect={onSelect} />
+        ))
       )}
     </div>
   );
 }
 
+// ── Weekly View ────────────────────────────────────────────────────────────
 function WeeklyView({
-  weeklySchedule,
-  todayName,
-  getStatus,
-  onSelect,
+  weeklySchedule, todayName, getStatus, onSelect,
 }: {
   weeklySchedule: Record<string, ClassEntry[]>;
   todayName: string;
@@ -331,62 +374,58 @@ function WeeklyView({
 
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-        <CalendarDays className="h-5 w-5 text-blue-600" />
+      <h2 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+        <CalendarDays className="h-4 w-4" />
         Weekly Schedule
       </h2>
 
       {/* Day tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-        {DAYS.map((day) => {
-          const isToday = day === todayName;
-          const isActive = day === activeDay;
-          const count = weeklySchedule[day]?.length ?? 0;
-          return (
-            <button
-              key={day}
-              onClick={() => setActiveDay(day)}
-              data-testid={`button-day-${day.toLowerCase()}`}
-              className={`flex-shrink-0 flex flex-col items-center gap-0.5 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 border ${
-                isActive
-                  ? 'bg-primary text-white border-primary shadow-sm'
-                  : isToday
-                  ? 'bg-primary/10 text-primary border-primary/20'
-                  : 'bg-card text-muted-foreground border-border hover:border-primary/30'
-              }`}
-            >
-              <span>{DAY_SHORT[day]}</span>
-              <span className={`text-xs ${isActive ? 'text-white/70' : 'text-muted-foreground/60'}`}>
-                {count} {count === 1 ? 'class' : 'classes'}
-              </span>
-            </button>
-          );
-        })}
+      <div className="overflow-x-auto pb-1 scrollbar-none">
+        <Tabs value={activeDay} onValueChange={setActiveDay}>
+          <TabsList className="w-full sm:w-auto flex gap-1">
+            {DAYS.map(day => {
+              const isToday = day === todayName;
+              const count = weeklySchedule[day]?.length ?? 0;
+              return (
+                <TabsTrigger
+                  key={day}
+                  value={day}
+                  data-testid={`button-day-${day.toLowerCase()}`}
+                  className="flex-shrink-0 flex flex-col items-center gap-0.5 px-4 py-2 h-auto"
+                >
+                  <span className="font-semibold">{DAY_SHORT[day]}</span>
+                  <span className="text-[10px] opacity-70">
+                    {count} {count === 1 ? 'class' : 'cls'}
+                  </span>
+                  {isToday && <span className="w-1 h-1 rounded-full bg-primary mt-0.5" />}
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </Tabs>
       </div>
 
-      {/* Selected day schedule */}
-      {weeklySchedule[activeDay]?.length === 0 ? (
-        <EmptyState message={`No classes on ${activeDay}.`} sub="Nothing scheduled for this day." />
-      ) : (
-        <div className="space-y-3">
-          {weeklySchedule[activeDay].map((entry) => {
+      {/* Selected day classes */}
+      <div className="space-y-3">
+        {weeklySchedule[activeDay]?.length === 0 ? (
+          <EmptyState message={`No classes on ${activeDay}.`} sub="Nothing scheduled for this day." />
+        ) : (
+          weeklySchedule[activeDay]?.map(entry => {
             const isToday = activeDay === todayName;
             const status: ClassStatus = isToday ? getStatus(entry) : 'upcoming';
             return (
               <ClassCard key={entry.id} entry={entry} status={status} onSelect={onSelect} dimCompleted={false} />
             );
-          })}
-        </div>
-      )}
+          })
+        )}
+      </div>
     </div>
   );
 }
 
+// ── Class Card ─────────────────────────────────────────────────────────────
 function ClassCard({
-  entry,
-  status,
-  onSelect,
-  dimCompleted = true,
+  entry, status, onSelect, dimCompleted = true,
 }: {
   entry: ClassEntry;
   status: ClassStatus;
@@ -394,28 +433,30 @@ function ClassCard({
   dimCompleted?: boolean;
 }) {
   const cfg = STATUS_CONFIG[status];
-  const color = getSubjectColor(entry.subjectId);
-  const teacherName =
-    entry.teacherFirstName || entry.teacherLastName
-      ? `${entry.teacherFirstName ?? ''} ${entry.teacherLastName ?? ''}`.trim()
-      : 'Unknown Teacher';
+  const color = subjectColor(entry.subjectId);
+  const teacherName = getTeacherName(entry);
+  const isOngoing = status === 'ongoing';
 
   return (
     <div
       data-testid={`card-class-${entry.id}`}
-      className={`group relative flex items-stretch rounded-2xl border overflow-hidden transition-all duration-200 hover:shadow-md cursor-pointer ${cfg.bg} ${
-        dimCompleted && status === 'completed' ? 'opacity-60' : ''
-      } ${status === 'ongoing' ? 'shadow-sm shadow-emerald-500/20 ring-1 ring-emerald-300/50 dark:ring-emerald-700/50' : ''}`}
       onClick={() => onSelect(entry)}
+      className={`group relative flex items-stretch rounded-2xl border overflow-hidden transition-all duration-200 hover:shadow-md cursor-pointer bg-white dark:bg-gray-900 ${
+        dimCompleted && status === 'completed' ? 'opacity-60' : ''
+      } ${
+        isOngoing
+          ? 'border-emerald-300 dark:border-emerald-700 ring-1 ring-emerald-200 dark:ring-emerald-800'
+          : 'border-gray-200 dark:border-gray-700'
+      }`}
     >
       {/* Color strip */}
       <div className={`w-1.5 flex-shrink-0 bg-gradient-to-b ${color}`} />
 
-      <div className="flex-1 px-4 py-4">
+      <div className="flex-1 px-4 py-4 min-w-0">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-1">
-              {status === 'ongoing' && (
+              {isOngoing && (
                 <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400">
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -424,10 +465,7 @@ function ClassCard({
                   LIVE
                 </span>
               )}
-              <h3
-                className="font-bold text-gray-900 dark:text-gray-100 text-base truncate"
-                data-testid={`text-subject-${entry.id}`}
-              >
+              <h3 className="font-bold text-gray-900 dark:text-gray-100 text-base truncate" data-testid={`text-subject-${entry.id}`}>
                 {entry.subjectName ?? 'Unknown Subject'}
               </h3>
               {entry.subjectCode && (
@@ -435,7 +473,7 @@ function ClassCard({
               )}
             </div>
 
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600 dark:text-gray-400">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 dark:text-gray-400">
               <span className="flex items-center gap-1.5" data-testid={`text-teacher-${entry.id}`}>
                 <User className="h-3.5 w-3.5" />
                 {teacherName}
@@ -462,23 +500,23 @@ function ClassCard({
               {cfg.label}
             </Badge>
 
-            {status === 'ongoing' ? (
+            {isOngoing ? (
               <Button
                 size="sm"
                 data-testid={`button-join-${entry.id}`}
                 className="h-7 px-3 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
-                onClick={(ev) => { ev.stopPropagation(); onSelect(entry); }}
+                onClick={ev => { ev.stopPropagation(); onSelect(entry); }}
               >
                 <Video className="h-3 w-3 mr-1" />
-                Join Class
+                Join
               </Button>
             ) : (
               <Button
                 size="sm"
                 variant="ghost"
                 data-testid={`button-details-${entry.id}`}
-                className="h-7 px-3 text-xs text-gray-600 dark:text-gray-400"
-                onClick={(ev) => { ev.stopPropagation(); onSelect(entry); }}
+                className="h-7 px-3 text-xs text-gray-500 dark:text-gray-400"
+                onClick={ev => { ev.stopPropagation(); onSelect(entry); }}
               >
                 Details
                 <ChevronRight className="h-3 w-3 ml-1" />
@@ -491,30 +529,25 @@ function ClassCard({
   );
 }
 
+// ── Class Detail Dialog ────────────────────────────────────────────────────
 function ClassDetailDialog({
-  entry,
-  status,
-  onClose,
+  entry, status, onClose,
 }: {
   entry: ClassEntry | null;
   status: ClassStatus;
   onClose: () => void;
 }) {
   if (!entry) return null;
-
   const cfg = STATUS_CONFIG[status];
-  const color = getSubjectColor(entry.subjectId);
-  const teacherName =
-    entry.teacherFirstName || entry.teacherLastName
-      ? `${entry.teacherFirstName ?? ''} ${entry.teacherLastName ?? ''}`.trim()
-      : 'Unknown Teacher';
+  const color = subjectColor(entry.subjectId);
+  const teacherName = getTeacherName(entry);
 
   return (
-    <Dialog open={!!entry} onOpenChange={(open) => { if (!open) onClose(); }}>
+    <Dialog open={!!entry} onOpenChange={open => { if (!open) onClose(); }}>
       <DialogContent className="max-w-md rounded-2xl" data-testid="dialog-class-detail">
         <DialogHeader>
           <div className={`h-2 w-full rounded-full bg-gradient-to-r ${color} mb-3 -mt-1`} />
-          <DialogTitle className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          <DialogTitle className="text-xl font-bold">
             {entry.subjectName ?? 'Class Details'}
           </DialogTitle>
         </DialogHeader>
@@ -526,7 +559,7 @@ function ClassDetailDialog({
               {cfg.label}
             </Badge>
             {entry.subjectCode && (
-              <span className="text-xs font-mono text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+              <span className="text-xs font-mono text-gray-400 bg-muted px-2 py-1 rounded">
                 {entry.subjectCode}
               </span>
             )}
@@ -554,10 +587,7 @@ function ClassDetailDialog({
           </div>
 
           {status === 'ongoing' && (
-            <Button
-              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
-              data-testid="button-dialog-join"
-            >
+            <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl" data-testid="button-dialog-join">
               <Video className="h-4 w-4 mr-2" />
               Join Live Class
             </Button>
@@ -573,25 +603,14 @@ function ClassDetailDialog({
   );
 }
 
-function DetailRow({
-  icon,
-  label,
-  value,
-  testId,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  testId?: string;
-}) {
+// ── Shared sub-components ──────────────────────────────────────────────────
+function DetailRow({ icon, label, value, testId }: { icon: React.ReactNode; label: string; value: string; testId?: string }) {
   return (
-    <div className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl">
-      <span className="text-gray-400 dark:text-gray-500 mt-0.5">{icon}</span>
+    <div className="flex items-start gap-3 p-3 bg-muted/50 rounded-xl">
+      <span className="text-muted-foreground mt-0.5">{icon}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
-        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 break-words" data-testid={testId}>
-          {value}
-        </p>
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">{label}</p>
+        <p className="text-sm font-medium text-foreground break-words" data-testid={testId}>{value}</p>
       </div>
     </div>
   );
@@ -599,48 +618,37 @@ function DetailRow({
 
 function EmptyState({ message, sub }: { message: string; sub?: string }) {
   return (
-    <div
-      className="flex flex-col items-center justify-center py-16 text-center"
-      data-testid="empty-state-schedule"
-    >
-      <div className="w-16 h-16 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mb-4">
-        <CalendarDays className="h-8 w-8 text-blue-400" />
-      </div>
-      <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">{message}</h3>
-      {sub && <p className="text-sm text-gray-500 dark:text-gray-400">{sub}</p>}
-    </div>
+    <Card className="border-dashed">
+      <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mb-4">
+          <CalendarDays className="h-7 w-7 text-blue-400" />
+        </div>
+        <h3 className="text-base font-semibold mb-1" data-testid="empty-state-schedule">{message}</h3>
+        {sub && <p className="text-sm text-muted-foreground">{sub}</p>}
+      </CardContent>
+    </Card>
   );
 }
 
 function ErrorState() {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="w-16 h-16 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4">
-        <Bell className="h-8 w-8 text-red-400" />
-      </div>
-      <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-1">Failed to load schedule</h3>
-      <p className="text-sm text-gray-500 dark:text-gray-400">Please try again later.</p>
-    </div>
+    <Card className="border-dashed border-red-200 dark:border-red-800">
+      <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+        <div className="w-14 h-14 rounded-2xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center mb-4">
+          <AlertCircle className="h-7 w-7 text-red-400" />
+        </div>
+        <h3 className="text-base font-semibold mb-1">Failed to load schedule</h3>
+        <p className="text-sm text-muted-foreground">Please try again later.</p>
+      </CardContent>
+    </Card>
   );
 }
 
-function ScheduleSkeleton({ view }: { view: 'today' | 'weekly' }) {
+function ScheduleSkeleton() {
   return (
-    <div className="space-y-4">
-      {view === 'weekly' && (
-        <div className="flex gap-2">
-          {DAYS.map(d => <Skeleton key={d} className="h-14 w-16 rounded-xl" />)}
-        </div>
-      )}
+    <div className="space-y-3">
       {[1, 2, 3].map(i => (
-        <div key={i} className="rounded-2xl border bg-gray-50 dark:bg-gray-800/40 p-4 flex gap-4 items-center">
-          <Skeleton className="w-1.5 h-20 rounded-full" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-5 w-40" />
-            <Skeleton className="h-4 w-56" />
-          </div>
-          <Skeleton className="h-8 w-20 rounded-lg" />
-        </div>
+        <Skeleton key={i} className="h-24 w-full rounded-2xl" />
       ))}
     </div>
   );
