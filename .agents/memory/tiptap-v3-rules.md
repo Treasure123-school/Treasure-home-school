@@ -18,6 +18,14 @@ Changing `editable` via a `useEditor` option dep causes the editor to destroy/re
 
 **How to apply:** Sync disabled state via `useEffect` → `editor.setEditable(!disabled)` after creation.
 
+## Rule 4: @tiptap/extension-text-style has NO default export in v3
+`import TextStyle from '@tiptap/extension-text-style'` crashes at runtime.
+Must use: `import { TextStyle } from '@tiptap/extension-text-style'`
+
+**Why:** In v3, `@tiptap/extension-text-style` became a multi-export bundle (`TextStyle`, `Color`, `FontFamily`, `FontSize`, `BackgroundColor`, `LineHeight`, `TextStyleKit`) with no default. All other extensions (Underline, Color, FontFamily, Highlight, Image, Link, TextAlign) still have a default export.
+
+**How to apply:** Always use named import for TextStyle. Quick test: `node -e "const m = require('@tiptap/extension-text-style'); console.log(Object.keys(m))"` — if no `default` key, use named import.
+
 ## Rule 3: ProseMirror imports must use ESM path
 `require('@tiptap/pm/state')` crashes in Vite ESM builds. Use `import { Plugin } from '@tiptap/pm/state'`.
 
