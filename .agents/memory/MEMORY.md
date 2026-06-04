@@ -1,0 +1,1 @@
+- [Tiptap v3 breaking changes](tiptap-v3-rules.md) — critical rules for Tiptap v3 editor (BubbleMenu removed, disabled dep crash, ESM imports)
