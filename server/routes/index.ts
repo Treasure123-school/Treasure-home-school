@@ -35,3 +35,4 @@ export { default as reportCardSkillsRoutes } from './report-card-skills.routes';
 export { default as questionBankRoutes } from './question-bank.routes';
 export { default as uploadRoutes } from './upload.routes';
 export { default as messagesRoutes } from './messages.routes';
+export { default as aiConfigRoutes } from './ai-config.routes';

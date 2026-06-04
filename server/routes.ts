@@ -39,6 +39,7 @@ import calendarRoutes from "./routes/calendar.routes";
 import uploadRoutes from "./routes/upload.routes";
 import messagesRoutes from "./routes/messages.routes";
 import lessonNotesRoutes from "./routes/lesson-notes.routes";
+import aiConfigRoutes from "./routes/ai-config.routes";
 import websiteManagementRoutes from "./routes/website-management.routes";
 import { validateTeacherCanCreateExam, validateTeacherCanEnterScores, validateTeacherCanViewResults, getTeacherAssignments, validateExamTimeWindow, logExamAccess } from "./teacher-auth-middleware";
 import { getVisibleExamsForStudent, getVisibleExamsForParent, invalidateVisibilityCache, warmVisibilityCache } from "./exam-visibility";
@@ -1196,6 +1197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(curriculumTemplateRoutes);
   app.use(lessonNoteLibraryRoutes);
   app.use('/api/lesson-notes', lessonNotesRoutes);
+  app.use(aiConfigRoutes);
   app.use('/api/terms', termsRoutes);
   app.use('/api/sessions', sessionsRoutes);
   app.use('/api/academic-calendar', calendarRoutes);

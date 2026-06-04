@@ -39,6 +39,7 @@ const SuperAdminAllUsers = lazy(() => import("@/pages/portal/SuperAdminAllUsers"
 const SuperAdminRolesPermissions = lazy(() => import("@/pages/portal/SuperAdminRolesPermissions"));
 const SuperAdminUserAccessControl = lazy(() => import("@/pages/portal/SuperAdminUserAccessControl"));
 const SuperAdminAuthenticationSettings = lazy(() => import("@/pages/portal/SuperAdminAuthenticationSettings"));
+const SuperAdminAIConfig = lazy(() => import("@/pages/portal/SuperAdminAIConfig"));
 const SuperAdminPlaceholder = lazy(() => import("@/pages/portal/SuperAdminPlaceholder"));
 const AdminRecoveryTools = lazy(() => import("@/pages/portal/AdminRecoveryTools"));
 
@@ -217,6 +218,11 @@ function Router() {
         <Route path="/portal/superadmin/settings/authentication">
           <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
             <SuperAdminAuthenticationSettings />
+          </ProtectedRoute>
+        </Route>
+        <Route path="/portal/superadmin/settings/ai-config">
+          <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
+            <SuperAdminAIConfig />
           </ProtectedRoute>
         </Route>
 

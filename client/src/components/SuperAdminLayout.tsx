@@ -101,6 +101,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
       '/portal/superadmin/settings/security': 'System Settings',
       '/portal/superadmin/settings/branding': 'System Settings',
       '/portal/superadmin/settings/integrations': 'System Settings',
+      '/portal/superadmin/settings/ai-config': 'System Settings',
       '/portal/superadmin/integrations': 'Integrations & Notifications',
       '/portal/superadmin/users': 'User Management',
     };
@@ -187,6 +188,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
       icon: Settings,
       children: [
         { label: "General Configuration", path: "/portal/superadmin/settings" },
+        { label: "AI Configuration", path: "/portal/superadmin/settings/ai-config" },
         { label: "Authentication", path: "/portal/superadmin/settings/authentication" },
         { label: "Security Policies", path: "/portal/superadmin/settings/security" },
         { label: "Branding & Theme", path: "/portal/superadmin/settings/branding" },

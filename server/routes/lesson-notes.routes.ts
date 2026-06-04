@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { storage } from '../storage';
 import { authenticateUser, authorizeRoles, ROLES } from './middleware';
+import { generateLessonNoteContent, getAIConfig } from '../services/ai-service';
 
 const router = Router();
 
@@ -80,86 +81,36 @@ router.post('/', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Req
 // ─── POST /generate  (AI-powered lesson note content generation) ─────────────
 router.post('/generate', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   try {
-    const { topic, className, subjectName, termName, weekNumber, duration = '40 minutes' } = req.body;
+    const { topic, className, subjectName, termName, duration = '40 minutes' } = req.body;
     if (!topic) return res.status(400).json({ message: 'topic is required' });
 
     const subj = subjectName || 'General';
     const cls  = className  || 'Secondary School';
     const t    = topic;
 
-    // Try OpenAI if key is present
-    if (process.env.OPENAI_API_KEY) {
+    // Load AI config and check feature toggle
+    const config = await getAIConfig();
+    if (!config.features.lessonNotes) {
+      return res.status(403).json({ message: 'AI lesson note generation is currently disabled by the administrator.' });
+    }
+
+    // Attempt AI generation if a key is available
+    if (config.apiKey) {
       try {
-        const prompt = `You are an expert Nigerian secondary school curriculum specialist who writes comprehensive, classroom-ready lesson notes.
-
-Generate a complete lesson note in JSON format for:
-Topic: "${t}"
-Class: "${cls}"
-Subject: "${subj}"
-Term: "${termName || 'First Term'}"
-Duration: "${duration}"
-
-Return ONLY valid JSON with exactly these 6 keys. Use HTML in all values.
-
-KEY RULES:
-- "objectives": <ol><li> list of 4–5 specific, measurable outcomes beginning with action verbs (define, identify, explain, demonstrate, apply, compare, analyse).
-- "introduction": 2–3 paragraphs that open the lesson engagingly — pose a relatable question or real-world scenario relevant to Nigerian students, connect to what they know, then introduce the topic. No bullet lists.
-- "content": THIS IS THE MOST CRITICAL SECTION. Write extensive, textbook-quality educational content. Requirements:
-  * MINIMUM 600 words of substantive educational content (aim for 800–1200 words)
-  * <h3> for each major sub-topic (at least 4–5 sub-topics)
-  * <p> paragraphs with thorough explanations — do NOT use placeholder text
-  * Define all key terms with <strong> markup
-  * Provide clear explanations, real examples, and practical applications
-  * Use <ul><li> or <ol><li> for types, lists, classifications
-  * Include at least one <table><tr><th>/<td> for comparisons, types, or classifications
-  * Use age-appropriate language for ${cls} students
-  * Include Nigerian/local context and examples where relevant
-  * Cover the topic comprehensively — this section alone should be longer than all other sections combined
-  * Break complex ideas into clear steps or sub-sections
-- "evaluation": 6–8 assessment questions mixing objectives and theory. Number them as <ol><li>. Include at least 2 short-answer/theory questions.
-- "assignment": 3–5 meaningful homework tasks as <ol><li>. Should extend the lesson concepts.
-- "summary": 3–5 bullet points (<ul><li>) recapping the key concepts students must remember from this lesson.
-
-{
-  "objectives": "...",
-  "introduction": "...",
-  "content": "...",
-  "evaluation": "...",
-  "assignment": "...",
-  "summary": "..."
-}`;
-
-        const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-          },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            response_format: { type: 'json_object' },
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: 5000,
-            temperature: 0.6,
-          }),
+        const result = await generateLessonNoteContent({
+          topic: t,
+          className: cls,
+          subjectName: subj,
+          termName: termName || 'First Term',
+          duration,
         });
-        if (aiRes.ok) {
-          const aiData = await aiRes.json() as any;
-          const raw = aiData.choices?.[0]?.message?.content;
-          if (raw) {
-            const sections = JSON.parse(raw);
-            return res.json({ sections, aiGenerated: true });
-          }
-        } else {
-          const errBody = await aiRes.text();
-          console.log('[AI Generation] OpenAI error:', aiRes.status, errBody);
-        }
+        return res.json({ sections: result.sections, aiGenerated: true, provider: result.provider, model: result.model });
       } catch (err) {
-        console.log('[AI Generation] OpenAI failed, falling back to template:', (err as any).message);
+        console.log('[AI Generation] Failed, falling back to template:', (err as any).message);
       }
     }
 
-    // Template fallback (no API key or OpenAI error)
+    // Template fallback (no API key or generation error)
     const sections = {
       objectives: `<ol>
 <li>By the end of this lesson, students should be able to <strong>define ${t}</strong> accurately in their own words.</li>

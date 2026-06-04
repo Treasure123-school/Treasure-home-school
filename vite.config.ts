@@ -16,6 +16,20 @@ export default defineConfig({
   root: path.resolve(import.meta.dirname, "client"),
   optimizeDeps: {
     include: ['lodash'],
+    exclude: ['canvg'],
+    esbuildOptions: {
+      plugins: [
+        {
+          name: 'ignore-core-js-modules',
+          setup(build) {
+            build.onResolve({ filter: /^core-js\// }, (args) => ({
+              path: args.path,
+              external: true,
+            }));
+          },
+        },
+      ],
+    },
   },
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
