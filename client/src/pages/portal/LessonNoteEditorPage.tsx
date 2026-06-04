@@ -442,16 +442,27 @@ export default function LessonNoteEditorPage() {
       if (data.sections) {
         // Convert sections to a single HTML document
         const LABELS: Record<string, string> = {
-          objectives: '1. Learning Objectives',
-          previousKnowledge: '2. Previous Knowledge',
-          materials: '3. Instructional Materials',
-          introduction: '4. Introduction / Set Induction',
-          content: '5. Lesson Content',
-          teacherActivities: "6. Teacher's Activities",
-          studentActivities: "7. Students' Activities",
+          objectives:   '1. Learning Objectives',
+          introduction: '2. Introduction',
+          content:      '3. Detailed Lesson Note',
+          evaluation:   '4. Evaluation / Classwork',
+          assignment:   '5. Assignment',
+          summary:      '6. Summary',
         };
-        const ORDER = ['objectives','previousKnowledge','materials','introduction','content','teacherActivities','studentActivities'];
-        let html = `<h1>${title}</h1>`;
+        const ORDER = ['objectives', 'introduction', 'content', 'evaluation', 'assignment', 'summary'];
+
+        // Build header block with lesson metadata
+        const metaRows = [
+          query.className    && `<tr><td><strong>Class:</strong></td><td>${query.className}</td></tr>`,
+          query.subjectName  && `<tr><td><strong>Subject:</strong></td><td>${query.subjectName}</td></tr>`,
+          query.termName     && `<tr><td><strong>Term:</strong></td><td>${query.termName}</td></tr>`,
+          `<tr><td><strong>Duration:</strong></td><td>40 minutes</td></tr>`,
+        ].filter(Boolean).join('');
+        const header = metaRows
+          ? `<table style="border:none;width:auto;margin-bottom:1em"><tbody>${metaRows}</tbody></table>`
+          : '';
+
+        let html = `<h1>${title}</h1>${header}`;
         ORDER.forEach(key => {
           const val = data.sections[key];
           if (val?.trim()) html += `<h2>${LABELS[key]}</h2>${val}`;
