@@ -178,9 +178,9 @@ function TSelect({
             <button
               key={o.value}
               type="button"
-              onMouseDown={e => { e.preventDefault(); onChange(o.value); setOpen(false); }}
+              onPointerDown={e => { e.preventDefault(); onChange(o.value); setOpen(false); }}
               className={[
-                'w-full text-left px-3 py-1.5 text-xs whitespace-nowrap transition-colors',
+                'w-full text-left px-3 py-2 text-xs whitespace-nowrap transition-colors',
                 o.value === value
                   ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
                   : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800',
@@ -209,13 +209,30 @@ const FONT_SIZES = [
   '20px', '22px', '24px', '28px', '32px', '36px', '48px', '60px', '72px',
 ].map(s => ({ label: s.replace('px', ''), value: s }));
 
+// 10 columns × 8 rows — Word-style full palette
 const TEXT_COLORS = [
-  '#000000', '#374151', '#6b7280', '#ef4444', '#f97316', '#eab308',
-  '#22c55e', '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#ffffff',
+  // Row 1: Black → White
+  '#000000','#1f2937','#374151','#4b5563','#6b7280','#9ca3af','#d1d5db','#e5e7eb','#f9fafb','#ffffff',
+  // Row 2: Deep reds → light reds
+  '#7f0000','#b91c1c','#dc2626','#ef4444','#f87171','#fca5a5','#fecaca','#fee2e2','#fff1f2','#ffe4e6',
+  // Row 3: Oranges → ambers
+  '#7c2d12','#c2410c','#ea580c','#f97316','#fb923c','#fdba74','#fed7aa','#ffedd5','#fff7ed','#fef3c7',
+  // Row 4: Yellows → limes
+  '#713f12','#a16207','#ca8a04','#eab308','#facc15','#fde047','#fef08a','#fef9c3','#f7fee7','#ecfccb',
+  // Row 5: Greens
+  '#052e16','#14532d','#15803d','#16a34a','#22c55e','#4ade80','#86efac','#bbf7d0','#dcfce7','#f0fdf4',
+  // Row 6: Blues
+  '#0c4a6e','#1e3a8a','#1d4ed8','#2563eb','#3b82f6','#60a5fa','#93c5fd','#bfdbfe','#dbeafe','#eff6ff',
+  // Row 7: Purples / Indigos
+  '#3b0764','#4c1d95','#5b21b6','#6d28d9','#8b5cf6','#a78bfa','#c4b5fd','#ddd6fe','#ede9fe','#f5f3ff',
+  // Row 8: Pinks / Magentas
+  '#500724','#831843','#be185d','#db2777','#ec4899','#f472b6','#f9a8d4','#fbcfe8','#fce7f3','#fdf2f8',
 ];
 
 const HIGHLIGHT_COLORS = [
-  '#fef08a', '#bbf7d0', '#bfdbfe', '#fecaca', '#fed7aa', '#e9d5ff',
+  '#fef08a','#fde68a','#fcd34d','#bbf7d0','#86efac','#6ee7b7',
+  '#bfdbfe','#93c5fd','#a5b4fc','#fecaca','#fca5a5','#f9a8d4',
+  '#fed7aa','#fdba74','#e9d5ff','#d8b4fe','#99f6e4','#ffffff',
 ];
 
 // ── Color Picker ──────────────────────────────────────────────────────────
@@ -224,45 +241,99 @@ function ColorPicker({ value, colors, onChange, icon: Icon, title }: {
   value: string; colors: string[]; onChange: (c: string) => void; icon: any; title: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [hexInput, setHexInput] = useState('');
   const ref = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const h = (e: Event) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
     document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
+    document.addEventListener('touchstart', h);
+    return () => { document.removeEventListener('mousedown', h); document.removeEventListener('touchstart', h); };
   }, []);
+
+  const applyHex = () => {
+    const v = hexInput.startsWith('#') ? hexInput : '#' + hexInput;
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) { onChange(v); setOpen(false); }
+  };
+
+  const cols = 10;
   return (
     <div ref={ref} className="relative shrink-0">
       <Tooltip>
         <TooltipTrigger asChild>
           <button
             type="button"
-            onMouseDown={e => { e.preventDefault(); setOpen(o => !o); }}
+            onMouseDown={e => { e.preventDefault(); setHexInput(''); setOpen(o => !o); }}
             className="inline-flex flex-col items-center justify-center h-7 w-7 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             <Icon className="h-3.5 w-3.5 text-gray-700 dark:text-gray-300" />
-            <div className="w-4 h-1 rounded-sm mt-0.5 border border-gray-200 dark:border-gray-600" style={{ background: value || '#000' }} />
+            <div className="w-4 h-1.5 rounded-sm mt-0.5 border border-gray-300 dark:border-gray-500" style={{ background: value || '#000' }} />
           </button>
         </TooltipTrigger>
         <TooltipContent side="bottom" className="text-xs z-[100]">{title}</TooltipContent>
       </Tooltip>
+
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-[100] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl p-2.5">
-          <div className="grid grid-cols-6 gap-1.5">
-            {colors.map(c => (
-              <button key={c} type="button"
-                onMouseDown={e => { e.preventDefault(); onChange(c); setOpen(false); }}
-                className="w-6 h-6 rounded border border-gray-200 dark:border-gray-600 hover:scale-110 transition-transform"
-                style={{ background: c }}
+        <div className="absolute top-full left-0 mt-1 z-[200] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-3 w-[252px]">
+          {/* Color grid */}
+          <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+            {colors.map((c, i) => (
+              <button
+                key={i}
+                type="button"
+                onPointerDown={e => { e.preventDefault(); onChange(c); setOpen(false); }}
+                className={[
+                  'rounded transition-transform hover:scale-125 focus:outline-none border',
+                  value === c ? 'ring-2 ring-offset-1 ring-blue-500 scale-110' : 'border-gray-200 dark:border-gray-600',
+                  c === '#ffffff' ? 'border-gray-300' : '',
+                ].join(' ')}
+                style={{ background: c, width: 20, height: 20 }}
                 title={c}
               />
             ))}
           </div>
-          <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 flex items-center gap-2">
-            <span className="text-xs text-gray-500 dark:text-gray-400">Custom:</span>
-            <input type="color" value={value || '#000000'}
-              onChange={e => onChange(e.target.value)}
-              className="w-7 h-7 rounded cursor-pointer border border-gray-200 p-0.5 bg-white"
+
+          {/* Spectrum gradient bar — tap to pick */}
+          <div className="mt-3">
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-wide font-medium">Spectrum</p>
+            <div
+              className="w-full h-5 rounded cursor-crosshair border border-gray-200 dark:border-gray-600"
+              style={{ background: 'linear-gradient(to right, #ff0000, #ff8000, #ffff00, #00ff00, #00ffff, #0000ff, #8000ff, #ff00ff, #ff0080, #ff0000)' }}
+              onPointerDown={e => {
+                e.preventDefault();
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                const x = (e.clientX - rect.left) / rect.width;
+                const hue = Math.round(x * 360);
+                const hex = `hsl(${hue},100%,50%)`;
+                const tmp = document.createElement('canvas'); tmp.width = 1; tmp.height = 1;
+                const ctx = tmp.getContext('2d')!;
+                ctx.fillStyle = hex; ctx.fillRect(0,0,1,1);
+                const [r,g,b] = ctx.getImageData(0,0,1,1).data;
+                onChange(`#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`);
+                setOpen(false);
+              }}
             />
+          </div>
+
+          {/* Hex input */}
+          <div className="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-700 flex items-center gap-2">
+            <div className="w-6 h-6 rounded border border-gray-300 dark:border-gray-600 shrink-0" style={{ background: hexInput ? (hexInput.startsWith('#') ? hexInput : '#' + hexInput) : (value || '#000') }} />
+            <input
+              type="text"
+              maxLength={7}
+              placeholder="#000000"
+              value={hexInput}
+              onChange={e => setHexInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') applyHex(); }}
+              className="flex-1 text-xs border border-gray-200 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-mono focus:outline-none focus:ring-1 focus:ring-blue-400"
+            />
+            <button
+              type="button"
+              onPointerDown={e => { e.preventDefault(); applyHex(); }}
+              className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded transition-colors"
+            >
+              OK
+            </button>
           </div>
         </div>
       )}
