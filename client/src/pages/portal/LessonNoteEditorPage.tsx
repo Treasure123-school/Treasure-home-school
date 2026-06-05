@@ -116,11 +116,6 @@ function StartScreen({
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col items-center px-4 pt-8 pb-16">
       <div className="w-full max-w-xl">
-        <button onClick={() => navigate(listUrl)}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 mb-6 transition-colors">
-          <ChevronLeft className="h-4 w-4" />Back to Lesson Notes
-        </button>
-
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-100 dark:bg-blue-900/30 rounded-2xl mb-4">
             <BookOpen className="h-7 w-7 text-blue-600 dark:text-blue-400" />
