@@ -1,0 +1,13 @@
+{
+  "name": "glob",
+  "version": "10.4.5",
+  "description": "glob stub",
+  "main": "dist/commonjs/index.js",
+  "exports": {
+    ".": {
+      "import": "./dist/esm/index.js",
+      "require": "./dist/commonjs/index.js"
+    }
+  },
+  "license": "ISC"
+}

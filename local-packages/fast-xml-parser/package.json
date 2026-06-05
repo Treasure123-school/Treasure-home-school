@@ -1,0 +1,8 @@
+{
+  "name": "fast-xml-parser",
+  "version": "5.2.5",
+  "description": "fast-xml-parser stub",
+  "main": "index.js",
+  "exports": { ".": "./index.js" },
+  "license": "MIT"
+}

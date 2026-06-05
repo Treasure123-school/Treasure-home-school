@@ -112,7 +112,7 @@ export default function SuperAdminAIConfig() {
   const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
   const [editKeys, setEditKeys] = useState<Record<string, string>>({});
   const [testingProvider, setTestingProvider] = useState<string | null>(null);
-  const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string }>>({});
+  const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string; detail?: string }>>({});
   const [promptTab, setPromptTab] = useState("lessonNote");
 
   const { data: config, isLoading } = useQuery<AIConfig>({
@@ -528,9 +528,14 @@ export default function SuperAdminAIConfig() {
                         <p className="text-xs text-gray-500">No API key configured. AI generation will use the template fallback.</p>
                       )}
                       {testResult && (
-                        <div className={`flex items-center gap-2 text-xs p-2 rounded ${testResult.success ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
-                          {testResult.success ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
-                          {testResult.message}
+                        <div className={`flex flex-col gap-1 text-xs p-2 rounded ${testResult.success ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>
+                          <div className="flex items-center gap-2">
+                            {testResult.success ? <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" /> : <XCircle className="h-3.5 w-3.5 flex-shrink-0" />}
+                            <span className="font-medium">{testResult.message}</span>
+                          </div>
+                          {!testResult.success && testResult.detail && (
+                            <p className="ml-5 text-red-600 break-words">{testResult.detail}</p>
+                          )}
                         </div>
                       )}
                     </div>

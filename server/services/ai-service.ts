@@ -99,6 +99,13 @@ function getEnvKey(provider: string): string {
   return '';
 }
 
+/** Create a fetch with a hard timeout using AbortController */
+function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 90000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 export async function getAllAISettings(): Promise<Record<string, string>> {
   const allSettings = await storage.getAllSettings();
   const ai: Record<string, string> = {};
@@ -138,6 +145,40 @@ export async function getAIConfig() {
   };
 }
 
+/**
+ * Try to repair a truncated JSON string by closing any open strings,
+ * arrays, and objects so JSON.parse has a chance to succeed.
+ */
+function repairJson(raw: string): string {
+  let s = raw.trim();
+  // Remove markdown fences
+  s = s.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/, '').trim();
+
+  // If already valid, return as-is
+  try { JSON.parse(s); return s; } catch {}
+
+  // Close any open string (odd number of unescaped quotes)
+  const quoteCount = (s.match(/(?<!\\)"/g) || []).length;
+  if (quoteCount % 2 !== 0) s += '"';
+
+  // Count open braces/brackets and close them
+  let opens = 0;
+  let inStr = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === '"' && (i === 0 || s[i - 1] !== '\\')) inStr = !inStr;
+    if (!inStr) {
+      if (ch === '{' || ch === '[') opens++;
+      else if (ch === '}' || ch === ']') opens--;
+    }
+  }
+  // Remove trailing comma before closing
+  s = s.replace(/,\s*$/, '');
+  while (opens > 0) { s += '}'; opens--; }
+
+  return s;
+}
+
 export async function generateLessonNoteContent(params: {
   topic: string;
   className: string;
@@ -162,20 +203,22 @@ export async function generateLessonNoteContent(params: {
   let tokensUsed = 0;
 
   if (provider === 'openai') {
-    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
+    const resp = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         model,
         response_format: { type: 'json_object' },
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 5000,
+        max_tokens: 8000,
         temperature: 0.6,
       }),
     });
     if (!resp.ok) {
-      const err = await resp.text();
-      throw new Error(`OpenAI error ${resp.status}: ${err}`);
+      const errText = await resp.text();
+      let detail = errText;
+      try { detail = JSON.parse(errText)?.error?.message || errText; } catch {}
+      throw new Error(`OpenAI error ${resp.status}: ${detail}`);
     }
     const data = await resp.json() as any;
     raw = data.choices?.[0]?.message?.content || '';
@@ -183,7 +226,7 @@ export async function generateLessonNoteContent(params: {
 
   } else if (provider === 'anthropic') {
     const jsonPrompt = prompt + '\n\nIMPORTANT: Respond ONLY with valid JSON. No markdown fences, no extra text.';
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+    const resp = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -192,22 +235,23 @@ export async function generateLessonNoteContent(params: {
       },
       body: JSON.stringify({
         model,
-        max_tokens: 5000,
+        max_tokens: 8000,
         messages: [{ role: 'user', content: jsonPrompt }],
       }),
     });
     if (!resp.ok) {
-      const err = await resp.text();
-      throw new Error(`Anthropic error ${resp.status}: ${err}`);
+      const errText = await resp.text();
+      let detail = errText;
+      try { detail = JSON.parse(errText)?.error?.message || errText; } catch {}
+      throw new Error(`Anthropic error ${resp.status}: ${detail}`);
     }
     const data = await resp.json() as any;
     raw = data.content?.[0]?.text || '';
     tokensUsed = (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0);
-    // Strip markdown fences if present
     raw = raw.replace(/^```json\s*/i, '').replace(/\s*```$/, '').trim();
 
   } else if (provider === 'gemini') {
-    const resp = await fetch(
+    const resp = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
       {
         method: 'POST',
@@ -216,25 +260,56 @@ export async function generateLessonNoteContent(params: {
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             responseMimeType: 'application/json',
-            maxOutputTokens: 5000,
+            maxOutputTokens: 8192,
             temperature: 0.6,
           },
         }),
       }
     );
     if (!resp.ok) {
-      const err = await resp.text();
-      throw new Error(`Gemini error ${resp.status}: ${err}`);
+      const errText = await resp.text();
+      let detail = errText;
+      try { detail = JSON.parse(errText)?.error?.message || errText; } catch {}
+      throw new Error(`Gemini error ${resp.status}: ${detail}`);
     }
     const data = await resp.json() as any;
     raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     tokensUsed = (data.usageMetadata?.promptTokenCount || 0) + (data.usageMetadata?.candidatesTokenCount || 0);
 
+    // Check finish reason — RECITATION or SAFETY means partial content
+    const finishReason = data.candidates?.[0]?.finishReason;
+    if (finishReason && finishReason !== 'STOP' && finishReason !== 'MAX_TOKENS') {
+      throw new Error(`Gemini generation stopped: ${finishReason}`);
+    }
+
   } else {
     throw new Error(`Unknown AI provider: ${provider}`);
   }
 
-  const sections = JSON.parse(raw);
+  if (!raw || raw.trim() === '') {
+    throw new Error(`${provider} returned an empty response. Please check your API key and account status.`);
+  }
+
+  // Attempt to parse; if it fails try to repair truncated JSON
+  let sections: Record<string, string>;
+  try {
+    sections = JSON.parse(raw);
+  } catch {
+    const repaired = repairJson(raw);
+    try {
+      sections = JSON.parse(repaired);
+    } catch (e2) {
+      throw new Error(`${provider} returned malformed JSON. The response may have been cut off. Try a model with larger output capacity.`);
+    }
+  }
+
+  // Validate that all 6 required sections are present and non-empty
+  const required = ['objectives', 'introduction', 'content', 'evaluation', 'assignment', 'summary'];
+  const missing = required.filter(k => !sections[k] || sections[k].trim() === '');
+  if (missing.length > 0) {
+    throw new Error(`AI response is missing required sections: ${missing.join(', ')}. Try again or switch to a more capable model.`);
+  }
+
   await trackUsage(model, tokensUsed);
 
   return { sections, tokensUsed, provider, model };
@@ -279,7 +354,7 @@ export async function trackUsage(model: string, tokens: number): Promise<void> {
   }
 }
 
-export async function testProviderConnection(provider: string): Promise<{ success: boolean; message: string }> {
+export async function testProviderConnection(provider: string): Promise<{ success: boolean; message: string; detail?: string }> {
   const ai = await getAllAISettings();
   const apiKey = ai[`${provider}.apiKey`] || getEnvKey(provider);
 
@@ -287,42 +362,61 @@ export async function testProviderConnection(provider: string): Promise<{ succes
 
   try {
     if (provider === 'openai') {
-      const r = await fetch('https://api.openai.com/v1/models', {
-        headers: { Authorization: `Bearer ${apiKey}` },
-      });
-      return r.ok
-        ? { success: true, message: 'OpenAI connection successful ✓' }
-        : { success: false, message: `OpenAI returned status ${r.status}` };
+      const r = await fetchWithTimeout(
+        'https://api.openai.com/v1/models',
+        { headers: { Authorization: `Bearer ${apiKey}` } },
+        15000
+      );
+      if (r.ok) return { success: true, message: 'OpenAI connection successful ✓' };
+      const body = await r.text();
+      let detail = body;
+      try { detail = JSON.parse(body)?.error?.message || body; } catch {}
+      return { success: false, message: `OpenAI error ${r.status}`, detail };
     }
 
     if (provider === 'anthropic') {
-      const r = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-3-haiku-20240307', max_tokens: 5, messages: [{ role: 'user', content: 'Hi' }] }),
-      });
-      return (r.ok || r.status === 529)
-        ? { success: true, message: 'Anthropic connection successful ✓' }
-        : { success: false, message: `Anthropic returned status ${r.status}` };
+      const r = await fetchWithTimeout(
+        'https://api.anthropic.com/v1/messages',
+        {
+          method: 'POST',
+          headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: 'claude-3-haiku-20240307', max_tokens: 5, messages: [{ role: 'user', content: 'Hi' }] }),
+        },
+        15000
+      );
+      if (r.ok || r.status === 529) return { success: true, message: 'Anthropic connection successful ✓' };
+      const body = await r.text();
+      let detail = body;
+      try { detail = JSON.parse(body)?.error?.message || body; } catch {}
+      return { success: false, message: `Anthropic error ${r.status}`, detail };
     }
 
     if (provider === 'gemini') {
       const model = ai['gemini.model'] || 'gemini-1.5-pro';
-      const r = await fetch(
+      const r = await fetchWithTimeout(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ contents: [{ parts: [{ text: 'Hi' }] }] }),
-        }
+        },
+        15000
       );
-      return r.ok
-        ? { success: true, message: 'Gemini connection successful ✓' }
-        : { success: false, message: `Gemini returned status ${r.status}` };
+      if (r.ok) return { success: true, message: 'Gemini connection successful ✓' };
+      const body = await r.text();
+      let detail = body;
+      try { detail = JSON.parse(body)?.error?.message || body; } catch {}
+      return { success: false, message: `Gemini error ${r.status}`, detail };
     }
 
     return { success: false, message: 'Unknown provider' };
   } catch (err: any) {
-    return { success: false, message: `Connection failed: ${err.message}` };
+    const isTimeout = err.name === 'AbortError';
+    return {
+      success: false,
+      message: isTimeout
+        ? `Connection timed out after 15 seconds. Check your network or try again.`
+        : `Connection failed: ${err.message}`,
+    };
   }
 }

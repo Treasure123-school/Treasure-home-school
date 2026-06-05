@@ -1,0 +1,7 @@
+{
+  "name": "jspdf",
+  "version": "3.0.4",
+  "description": "PDF generation stub",
+  "main": "index.js",
+  "license": "MIT"
+}
