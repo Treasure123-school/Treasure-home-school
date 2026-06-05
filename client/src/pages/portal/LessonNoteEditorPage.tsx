@@ -114,10 +114,10 @@ function StartScreen({
 }) {
   const [, navigate] = useLocation();
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col items-center px-4 pt-8 pb-16">
       <div className="w-full max-w-xl">
         <button onClick={() => navigate(listUrl)}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 mb-8 transition-colors">
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 mb-6 transition-colors">
           <ChevronLeft className="h-4 w-4" />Back to Lesson Notes
         </button>
 
