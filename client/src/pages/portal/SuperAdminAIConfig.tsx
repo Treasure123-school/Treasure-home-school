@@ -165,7 +165,8 @@ export default function SuperAdminAIConfig() {
   const testConnection = async (provider: string) => {
     setTestingProvider(provider);
     try {
-      const result = await apiRequest("POST", "/api/superadmin/ai-config/test", { provider }) as any;
+      const res = await apiRequest("POST", "/api/superadmin/ai-config/test", { provider });
+      const result = await res.json();
       setTestResults(prev => ({ ...prev, [provider]: result }));
     } catch (err: any) {
       setTestResults(prev => ({ ...prev, [provider]: { success: false, message: err.message } }));

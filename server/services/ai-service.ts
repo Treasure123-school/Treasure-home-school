@@ -60,44 +60,51 @@ const TOKEN_COSTS: Record<string, number> = {
   'gemini-1.5-flash': 0.1875,
 };
 
-export const DEFAULT_LESSON_NOTE_PROMPT = `You are an expert Nigerian secondary school curriculum specialist who writes comprehensive, classroom-ready lesson notes.
+export const DEFAULT_LESSON_NOTE_PROMPT = `You are a senior Nigerian secondary school curriculum expert and master teacher with 20+ years of experience. Your task is to write a complete, publication-quality lesson note — the kind a highly competent teacher would actually use in class.
 
-Generate a complete lesson note in JSON format for:
-Topic: "{topic}"
-Class: "{className}"
-Subject: "{subjectName}"
-Term: "{termName}"
-Duration: "{duration}"
+TOPIC: {topic}
+CLASS: {className}
+SUBJECT: {subjectName}
+TERM: {termName}
+DURATION: {duration}
 
-Return ONLY valid JSON with exactly these 6 keys. Use HTML in all values.
+CRITICAL INSTRUCTIONS:
+1. Write REAL, ACTUAL content — no placeholders, no bracket text like [write here] or [example], no ellipsis filler.
+2. Every sentence must contain genuine educational information about the specific topic above.
+3. Write as if this will be printed and handed to students immediately.
+4. Use Nigerian examples, local contexts, and references to Nigeria wherever relevant.
+5. Return ONLY a valid JSON object with exactly 6 keys: objectives, introduction, content, evaluation, assignment, summary.
+6. All values must be HTML strings. No markdown. No code fences.
 
-KEY RULES:
-- "objectives": <ol><li> list of 4–5 specific, measurable outcomes beginning with action verbs (define, identify, explain, demonstrate, apply, compare, analyse).
-- "introduction": 2–3 paragraphs that open the lesson engagingly — pose a relatable question or real-world scenario relevant to Nigerian students, connect to what they know, then introduce the topic. No bullet lists.
-- "content": THIS IS THE MOST CRITICAL SECTION. Write extensive, textbook-quality educational content. Requirements:
-  * MINIMUM 600 words of substantive educational content (aim for 800–1200 words)
-  * <h3> for each major sub-topic (at least 4–5 sub-topics)
-  * <p> paragraphs with thorough explanations — do NOT use placeholder text
-  * Define all key terms with <strong> markup
-  * Provide clear explanations, real examples, and practical applications
-  * Use <ul><li> or <ol><li> for types, lists, classifications
-  * Include at least one <table><tr><th>/<td> for comparisons, types, or classifications
-  * Use age-appropriate language for {className} students
-  * Include Nigerian/local context and examples where relevant
-  * Cover the topic comprehensively — this section alone should be longer than all other sections combined
-  * Break complex ideas into clear steps or sub-sections
-- "evaluation": 6–8 assessment questions mixing objectives and theory. Number them as <ol><li>. Include at least 2 short-answer/theory questions.
-- "assignment": 3–5 meaningful homework tasks as <ol><li>. Should extend the lesson concepts.
-- "summary": 3–5 bullet points (<ul><li>) recapping the key concepts students must remember from this lesson.
+SECTION REQUIREMENTS:
 
-{
-  "objectives": "...",
-  "introduction": "...",
-  "content": "...",
-  "evaluation": "...",
-  "assignment": "...",
-  "summary": "..."
-}`;
+"objectives" — Write 5 specific learning outcomes as <ol><li>...</li></ol>. Begin each with a strong action verb (Define, Identify, Explain, Compare, Apply, Analyse, Evaluate). Make them specific to THIS topic, not generic.
+
+"introduction" — Write 3 engaging paragraphs (no lists) as <p>...</p> tags. Start by connecting the topic to something students experience daily in Nigeria. Briefly recap related prior knowledge. End by clearly stating what students will learn today. Total: 150–200 words.
+
+"content" — THIS IS THE MOST IMPORTANT SECTION. Write comprehensive, textbook-quality educational content covering the topic in full detail. Requirements:
+• Minimum 700 words of substantive, factual content
+• Use <h3> headings for each sub-section (minimum 4 sub-sections)
+• Define every key term using <strong>term</strong> markup, followed by a clear explanation
+• Write multiple <p> paragraphs under each sub-section with detailed explanations
+• Include at least ONE <table> with <th> headers showing types, classifications, or comparisons with Nigerian examples
+• Include at least ONE <ul><li> or <ol><li> list of important points, steps, or characteristics
+• Cover: definition, background/history, types/classifications, characteristics/features, importance, and practical applications
+• Use real Nigerian examples (cities, rivers, industries, crops, people, events) throughout
+• Write at a level appropriate for {className} students in Nigeria
+
+"evaluation" — Write 7 assessment questions as <ol><li>...</li></ol> mixing:
+• 2 definition questions
+• 2 explanation/discussion questions  
+• 2 application/analytical questions
+• 1 compare-and-contrast question
+Include mark allocations in brackets e.g. (2 marks).
+
+"assignment" — Write 4 homework tasks as <ol><li>...</li></ol> that extend learning beyond the classroom. Include research tasks, practical activities, and written exercises.
+
+"summary" — Write 5 bullet points as <ul><li>...</li></ol> summarising the most important things students learned. Each point must be a complete, informative sentence — not a one-word label.
+
+Now write the complete lesson note JSON. Remember: write REAL content, not placeholders.`;
 
 function getEnvKey(provider: string): string {
   if (provider === 'openai') return process.env.OPENAI_API_KEY || '';
@@ -328,6 +335,12 @@ export async function generateLessonNoteContent(params: {
   const missing = required.filter(k => !sections[k] || sections[k].trim() === '');
   if (missing.length > 0) {
     throw new Error(`AI response is missing required sections: ${missing.join(', ')}. Try again or switch to a more capable model.`);
+  }
+
+  // Detect placeholder/template text — the AI must NOT output bracket placeholders
+  const placeholderPattern = /\[(?:provide|write|insert|add|explain|describe|list|give|example|type \d|feature \d|detailed|specific|brief|continue|research)[^\]]{0,120}\]/i;
+  if (placeholderPattern.test(sections['content'] || '')) {
+    throw new Error(`AI returned template placeholder text instead of real content. Please try again — if this persists, switch to a more capable model such as gpt-4o or gemini-2.5-pro.`);
   }
 
   await trackUsage(model, tokensUsed);
