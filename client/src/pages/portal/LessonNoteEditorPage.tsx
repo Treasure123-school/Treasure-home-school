@@ -18,8 +18,13 @@ import DocEditor from '@/components/lesson-notes/DocEditor';
 import {
   Save, Send, Eye, EyeOff, AlertCircle, Info, BookOpen, Sparkles, Pencil,
   ChevronLeft, Loader2, GraduationCap, BookMarked, Calendar, Printer,
-  CheckCircle2, Clock, CloudOff,
+  CheckCircle2, Clock, CloudOff, Copy, Check,
 } from 'lucide-react';
+
+function shortAiError(msg: string): string {
+  const first = msg.split('\n')[0].split('*')[0].trim();
+  return first.length > 120 ? first.slice(0, 120) + '…' : first;
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -356,6 +361,15 @@ export default function LessonNoteEditorPage() {
   const [preview, setPreview]         = useState(false);
   const [aiLoading, setAiLoading]     = useState(false);
   const [saveStatus, setSaveStatus]   = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
+  const [copied, setCopied]           = useState(false);
+
+  const copyToClipboard = useCallback(() => {
+    const plain = content.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
+    navigator.clipboard.writeText(plain).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [content]);
 
   // Auto-save timer
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -498,8 +512,9 @@ export default function LessonNoteEditorPage() {
 
       // Check for server-side errors (apiRequest returns the response without throwing on 4xx)
       if (!res.ok) {
-        const msg = data?.message || 'AI generation failed. Please check your API key in AI Configuration.';
-        toast({ title: '⚠️ AI Generation Failed', description: msg, variant: 'destructive', duration: 10000 });
+        const raw = data?.message || 'AI generation failed. Please check your API key in AI Configuration.';
+        const msg = shortAiError(raw);
+        toast({ title: '⚠️ AI Generation Failed', description: msg, variant: 'destructive', duration: 8000 });
         setMode('choose');
         return;
       }
@@ -544,7 +559,8 @@ export default function LessonNoteEditorPage() {
         setMode('choose');
       }
     } catch (err: any) {
-      const msg = err?.message || 'Could not generate content. Please check your AI provider settings.';
+      const raw = err?.message || 'Could not generate content. Please check your AI provider settings.';
+      const msg = shortAiError(raw);
       toast({ title: '⚠️ AI Generation Failed', description: msg, variant: 'destructive', duration: 8000 });
       setMode('choose');
     } finally {
@@ -628,6 +644,12 @@ export default function LessonNoteEditorPage() {
                 <span className="hidden sm:inline">{aiLoading ? 'Generating…' : 'AI Generate'}</span>
               </Button>
             )}
+
+            <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 rounded"
+              onClick={copyToClipboard} disabled={!content}>
+              {copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline">{copied ? 'Copied!' : 'Copy'}</span>
+            </Button>
 
             <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 rounded"
               onClick={() => setPreview(true)}>

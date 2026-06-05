@@ -147,24 +147,51 @@ function TSelect({
   value: string; onChange: (v: string) => void;
   options: { label: string; value: string }[]; width?: string; title: string;
 }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const current = options.find(o => o.value === value);
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
+
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div className={`relative ${width} shrink-0`}>
-          <select
-            value={value}
-            onChange={e => onChange(e.target.value)}
-            onMouseDown={e => e.stopPropagation()}
-            title={title}
-            className="w-full h-7 pl-2 pr-6 text-xs rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 appearance-none cursor-pointer hover:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
+    <div ref={ref} className={`relative ${width} shrink-0`}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onMouseDown={e => { e.preventDefault(); setOpen(o => !o); }}
+            className="w-full h-7 pl-2 pr-6 text-xs rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-left truncate hover:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
           >
-            {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-          </select>
-          <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
+            {current?.label || options[0]?.label}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" className="text-xs z-[100]">{title}</TooltipContent>
+      </Tooltip>
+      <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-[200] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden min-w-full max-h-52 overflow-y-auto">
+          {options.map(o => (
+            <button
+              key={o.value}
+              type="button"
+              onMouseDown={e => { e.preventDefault(); onChange(o.value); setOpen(false); }}
+              className={[
+                'w-full text-left px-3 py-1.5 text-xs whitespace-nowrap transition-colors',
+                o.value === value
+                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+                  : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800',
+              ].join(' ')}
+            >
+              {o.label}
+            </button>
+          ))}
         </div>
-      </TooltipTrigger>
-      <TooltipContent side="bottom" className="text-xs z-[100]">{title}</TooltipContent>
-    </Tooltip>
+      )}
+    </div>
   );
 }
 
