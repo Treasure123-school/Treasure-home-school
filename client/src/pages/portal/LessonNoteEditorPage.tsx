@@ -474,8 +474,9 @@ export default function LessonNoteEditorPage() {
           description: data.aiGenerated ? 'Document filled. Review and customise as needed.' : 'Template applied. Edit to match your lesson.',
         });
       }
-    } catch {
-      toast({ title: 'Generation failed', description: 'Could not generate. Try again.', variant: 'destructive' });
+    } catch (err: any) {
+      const msg = err?.message || 'Could not generate content. Please check your AI provider settings.';
+      toast({ title: '⚠️ AI Generation Failed', description: msg, variant: 'destructive', duration: 8000 });
     } finally {
       setAiLoading(false);
     }

@@ -3,7 +3,14 @@ import { storage } from '../storage';
 export const PROVIDER_DEFAULTS: Record<string, string> = {
   openai: 'gpt-4o-mini',
   anthropic: 'claude-3-5-sonnet-20241022',
-  gemini: 'gemini-1.5-pro',
+  gemini: 'gemini-2.0-flash',
+};
+
+// Models that are deprecated/removed — auto-migrated to their replacement
+const DEPRECATED_MODEL_MAP: Record<string, string> = {
+  'gemini-1.5-pro': 'gemini-2.0-flash',
+  'gemini-1.5-flash': 'gemini-2.0-flash',
+  'gemini-1.0-pro': 'gemini-2.0-flash',
 };
 
 export const OPENAI_MODELS = [
@@ -118,7 +125,20 @@ export async function getAllAISettings(): Promise<Record<string, string>> {
 export async function getAIConfig() {
   const ai = await getAllAISettings();
   const provider = ai['provider'] || 'openai';
-  const model = ai[`${provider}.model`] || PROVIDER_DEFAULTS[provider] || 'gpt-4o-mini';
+  const rawModel = ai[`${provider}.model`] || PROVIDER_DEFAULTS[provider] || 'gpt-4o-mini';
+  // Auto-migrate deprecated models and persist to DB so the UI also updates
+  const model = DEPRECATED_MODEL_MAP[rawModel] || rawModel;
+  if (model !== rawModel) {
+    try {
+      const key = `ai.${provider}.model`;
+      const existing = await storage.getSetting(key);
+      if (existing) {
+        await storage.updateSetting(key, model, 'system');
+      } else {
+        await storage.createSetting({ key, value: model, description: `AI config: ${key}`, dataType: 'string', updatedBy: 'system' });
+      }
+    } catch { /* non-fatal */ }
+  }
   const apiKey = ai[`${provider}.apiKey`] || getEnvKey(provider);
 
   return {
@@ -362,12 +382,22 @@ export async function testProviderConnection(provider: string): Promise<{ succes
 
   try {
     if (provider === 'openai') {
+      // Use a real (tiny) chat completion — model list endpoint fails for project-scoped keys
+      const model = ai['openai.model'] || PROVIDER_DEFAULTS.openai;
       const r = await fetchWithTimeout(
-        'https://api.openai.com/v1/models',
-        { headers: { Authorization: `Bearer ${apiKey}` } },
-        15000
+        'https://api.openai.com/v1/chat/completions',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+          body: JSON.stringify({
+            model,
+            messages: [{ role: 'user', content: 'Say OK' }],
+            max_tokens: 5,
+          }),
+        },
+        20000
       );
-      if (r.ok) return { success: true, message: 'OpenAI connection successful ✓' };
+      if (r.ok) return { success: true, message: `OpenAI connection successful ✓ (model: ${model})` };
       const body = await r.text();
       let detail = body;
       try { detail = JSON.parse(body)?.error?.message || body; } catch {}
@@ -382,7 +412,7 @@ export async function testProviderConnection(provider: string): Promise<{ succes
           headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
           body: JSON.stringify({ model: 'claude-3-haiku-20240307', max_tokens: 5, messages: [{ role: 'user', content: 'Hi' }] }),
         },
-        15000
+        20000
       );
       if (r.ok || r.status === 529) return { success: true, message: 'Anthropic connection successful ✓' };
       const body = await r.text();
@@ -392,17 +422,22 @@ export async function testProviderConnection(provider: string): Promise<{ succes
     }
 
     if (provider === 'gemini') {
-      const model = ai['gemini.model'] || 'gemini-1.5-pro';
+      // Auto-migrate deprecated model names before testing
+      const rawModel = ai['gemini.model'] || PROVIDER_DEFAULTS.gemini;
+      const model = DEPRECATED_MODEL_MAP[rawModel] || rawModel;
       const r = await fetchWithTimeout(
         `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: 'Hi' }] }] }),
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: 'Say OK' }] }],
+            generationConfig: { maxOutputTokens: 5 },
+          }),
         },
-        15000
+        20000
       );
-      if (r.ok) return { success: true, message: 'Gemini connection successful ✓' };
+      if (r.ok) return { success: true, message: `Gemini connection successful ✓ (model: ${model})` };
       const body = await r.text();
       let detail = body;
       try { detail = JSON.parse(body)?.error?.message || body; } catch {}
@@ -415,7 +450,7 @@ export async function testProviderConnection(provider: string): Promise<{ succes
     return {
       success: false,
       message: isTimeout
-        ? `Connection timed out after 15 seconds. Check your network or try again.`
+        ? `Connection timed out after 20 seconds. Check your network or try again.`
         : `Connection failed: ${err.message}`,
     };
   }

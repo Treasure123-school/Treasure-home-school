@@ -105,12 +105,29 @@ router.post('/generate', authenticateUser, authorizeRoles(...ALL_STAFF), async (
           duration,
         });
         return res.json({ sections: result.sections, aiGenerated: true, provider: result.provider, model: result.model });
-      } catch (err) {
-        console.log('[AI Generation] Failed, falling back to template:', (err as any).message);
+      } catch (err: any) {
+        const aiError = err.message || 'Unknown AI error';
+        console.error('[AI Generation] Failed:', aiError);
+        // 400 → queryClient shows serverMessage directly to the user
+        return res.status(400).json({
+          message: `AI generation failed: ${aiError}`,
+          aiError,
+          provider: config.provider,
+          model: config.model,
+        });
       }
     }
 
-    // Template fallback (no API key or generation error)
+    // No API key configured — 400 so the message is shown to the user
+    if (!config.apiKey) {
+      return res.status(400).json({
+        message: `No API key configured for provider "${config.provider}". Go to AI Configuration → Providers and add your key.`,
+        aiError: 'no_api_key',
+        provider: config.provider,
+      });
+    }
+
+    // Template fallback (should not normally reach here)
     const sections = {
       objectives: `<ol>
 <li>By the end of this lesson, students should be able to <strong>define ${t}</strong> accurately in their own words.</li>
