@@ -293,62 +293,6 @@ export default function LessonNoteEditorPage() {
     progressValues.current.clear();
   }
 
-  // ── Inline AI image generation ────────────────────────────────────────────
-  const handleGenerateCoverImage = useCallback(async () => {
-    setImgGenLoading(true);
-    setImgGenPanel(true);
-    setImgGenUrl(null);
-    setImgGenMeta('');
-    try {
-      // Auto-save to get an ID if this is a brand-new note
-      let noteId = savedNoteId.current;
-      if (!noteId) {
-        if (!title.trim()) {
-          toast({ title: 'Title required', description: 'Enter a title before generating an image.', variant: 'destructive' });
-          setImgGenLoading(false);
-          setImgGenPanel(false);
-          return;
-        }
-        noteId = await doSave(liveHtmlRef.current || content);
-      }
-      const token = localStorage.getItem('token');
-      const r = await fetch(getApiUrl(`/api/lesson-notes/${noteId}/generate-image-cf`), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        credentials: 'include',
-        body: JSON.stringify({ subject: query.subjectName, className: query.className }),
-      });
-      if (!r.ok) {
-        const err = await r.json().catch(() => ({}));
-        throw new Error(err.error || `Status ${r.status}`);
-      }
-      const result = await r.json();
-      setImgGenUrl(result.imageUrl);
-      setImgGenMeta([result.provider, result.model].filter(Boolean).join(' · '));
-    } catch (err: any) {
-      toast({ title: 'Image generation failed', description: err.message || 'Unknown error', variant: 'destructive' });
-      setImgGenPanel(false);
-    } finally {
-      setImgGenLoading(false);
-    }
-  }, [title, doSave, content, query, toast]);
-
-  const handleInsertImage = useCallback(() => {
-    if (!imgGenUrl) return;
-    const caption = [title, query.subjectName].filter(Boolean).join(' — ');
-    const imgHtml = `<figure style="text-align:center;margin:1.5em 0"><img src="${imgGenUrl}" alt="${caption}" style="max-width:100%;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.12)" /><figcaption style="font-size:0.85em;color:#6b7280;margin-top:0.5em">${caption}</figcaption></figure>`;
-    // Insert after the opening h1 if present, otherwise prepend
-    const updated = /<h1[\s\S]*?<\/h1>/i.test(content)
-      ? content.replace(/(<\/h1>)/i, `$1${imgHtml}`)
-      : imgHtml + content;
-    setContent(updated);
-    liveHtmlRef.current = updated;
-    setSaveStatus('unsaved');
-    setImgGenPanel(false);
-    setImgGenUrl(null);
-    toast({ title: '✅ Image inserted', description: 'AI-generated image added to your lesson note.' });
-  }, [imgGenUrl, content, title, query]);
-
   // ── Clipboard copy ────────────────────────────────────────────────────────
   const copyToClipboard = useCallback(() => {
     const plain = content.replace(/<[^>]+>/g, '')
@@ -450,6 +394,61 @@ export default function LessonNoteEditorPage() {
     savedNoteId.current = created.id;
     return created.id;
   }, [title, query]);
+
+  // ── Inline AI image generation ─────────────────────────────────────────────
+  // Declared AFTER doSave to avoid the TDZ crash ("cannot access before init")
+  const handleGenerateCoverImage = useCallback(async () => {
+    setImgGenLoading(true);
+    setImgGenPanel(true);
+    setImgGenUrl(null);
+    setImgGenMeta('');
+    try {
+      let noteId = savedNoteId.current;
+      if (!noteId) {
+        if (!title.trim()) {
+          toast({ title: 'Title required', description: 'Enter a title before generating an image.', variant: 'destructive' });
+          setImgGenLoading(false);
+          setImgGenPanel(false);
+          return;
+        }
+        noteId = await doSave(liveHtmlRef.current || content);
+      }
+      const token = localStorage.getItem('token');
+      const r = await fetch(getApiUrl(`/api/lesson-notes/${noteId}/generate-image-cf`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: 'include',
+        body: JSON.stringify({ subject: query.subjectName, className: query.className }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.error || `Status ${r.status}`);
+      }
+      const result = await r.json();
+      setImgGenUrl(result.imageUrl);
+      setImgGenMeta([result.provider, result.model].filter(Boolean).join(' · '));
+    } catch (err: any) {
+      toast({ title: 'Image generation failed', description: err.message || 'Unknown error', variant: 'destructive' });
+      setImgGenPanel(false);
+    } finally {
+      setImgGenLoading(false);
+    }
+  }, [title, doSave, content, query, toast]);
+
+  const handleInsertImage = useCallback(() => {
+    if (!imgGenUrl) return;
+    const caption = [title, query.subjectName].filter(Boolean).join(' — ');
+    const imgHtml = `<figure style="text-align:center;margin:1.5em 0"><img src="${imgGenUrl}" alt="${caption}" style="max-width:100%;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.12)" /><figcaption style="font-size:0.85em;color:#6b7280;margin-top:0.5em">${caption}</figcaption></figure>`;
+    const updated = /<h1[\s\S]*?<\/h1>/i.test(content)
+      ? content.replace(/(<\/h1>)/i, `$1${imgHtml}`)
+      : imgHtml + content;
+    setContent(updated);
+    liveHtmlRef.current = updated;
+    setSaveStatus('unsaved');
+    setImgGenPanel(false);
+    setImgGenUrl(null);
+    toast({ title: '✅ Image inserted', description: 'AI-generated image added to your lesson note.' });
+  }, [imgGenUrl, content, title, query]);
 
   const triggerAutoSave = useCallback(async (html: string) => {
     if (!title.trim()) return;
