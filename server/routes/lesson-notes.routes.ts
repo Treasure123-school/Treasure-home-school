@@ -4,10 +4,11 @@ import { storage } from '../storage';
 import { authenticateUser, authorizeRoles, ROLES } from './middleware';
 import { generateLessonNoteContent, streamGenerateLessonNote, getAIConfig } from '../services/ai-service';
 import {
-  getCloudflareConfig,
   buildImagePrompt,
-  generateImageWithCloudflare,
+  generateImage,
   saveGeneratedImage,
+  getActiveImageProvider,
+  getActiveImagePromptTemplate,
 } from '../services/cloudflare-ai-service';
 
 const router = Router();
@@ -379,8 +380,9 @@ router.post('/generate-image', authenticateUser, authorizeRoles(...ALL_STAFF), (
   }
 });
 
-// ─── POST /:id/generate-image-cf  (Cloudflare Workers AI — generates + saves) ─
-// Calls Cloudflare AI image model, saves the PNG, and stores the URL on the note.
+// ─── POST /:id/generate-image-cf  (AI image generation — Cloudflare or NVIDIA) ─
+// Unified endpoint: dispatches to Cloudflare or NVIDIA based on the active
+// imageProvider setting. Saves the PNG and stores the URL on the lesson note.
 router.post('/:id/generate-image-cf', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   try {
     const user = getUser(req);
@@ -388,75 +390,52 @@ router.post('/:id/generate-image-cf', authenticateUser, authorizeRoles(...ALL_ST
     const note = await storage.getLessonNoteById(noteId);
     if (!note) return res.status(404).json({ error: 'Lesson note not found' });
 
-    // Teachers can only generate images for their own notes
     if (user.roleId === ROLES.TEACHER && note.createdBy !== user.id)
       return res.status(403).json({ error: 'Access denied' });
 
-    const cfConfig = await getCloudflareConfig();
-
-    if (!cfConfig.imageGenEnabled)
-      return res.status(403).json({ error: 'Cloudflare image generation is disabled by the administrator.' });
-
-    if (!cfConfig.accountId || !cfConfig.apiToken)
-      return res.status(400).json({
-        error: 'Cloudflare Account ID and API Token are not configured. Go to AI Settings → Image Generation.',
-        cfError: 'no_credentials',
-      });
-
-    // Build prompt from request body (override) or from note fields
+    // Build prompt
     const { prompt: customPrompt, subject, className } = req.body;
     const topic = note.title;
-    const prompt = customPrompt ||
-      buildImagePrompt(cfConfig.imagePromptTemplate, { topic, subject, className });
+    const promptTemplate = await getActiveImagePromptTemplate();
+    const prompt = customPrompt || buildImagePrompt(promptTemplate, { topic, subject, className });
 
-    console.log(`[CF Image] Generating for note ${noteId}, model: ${cfConfig.imageModel}, prompt: "${prompt.slice(0, 80)}"`);
+    const activeProvider = await getActiveImageProvider();
+    console.log(`[Image AI] Generating for note ${noteId}, provider: ${activeProvider}, prompt: "${prompt.slice(0, 80)}"`);
 
-    const imageBuffer = await generateImageWithCloudflare(prompt, cfConfig);
-    const imageUrl = await saveGeneratedImage(imageBuffer, noteId);
+    const { buffer, provider, model } = await generateImage(prompt);
+    const imageUrl = await saveGeneratedImage(buffer, noteId);
 
-    // Persist the image URL and prompt to the lesson note
     await storage.updateLessonNote(noteId, {
       aiImageUrl: imageUrl,
       aiImagePrompt: prompt,
     });
 
-    console.log(`[CF Image] Saved image for note ${noteId}: ${imageUrl}`);
-    return res.json({ imageUrl, prompt, model: cfConfig.imageModel });
+    console.log(`[Image AI] Saved for note ${noteId} via ${provider}: ${imageUrl}`);
+    return res.json({ imageUrl, prompt, model, provider });
   } catch (err: any) {
-    console.error('[CF Image] generation error:', err.message);
+    console.error('[Image AI] generation error:', err.message);
     return res.status(500).json({ error: err.message || 'Image generation failed' });
   }
 });
 
-// ─── POST /generate-image-cf/preview  (Cloudflare image preview — no DB save) ─
-// Useful for testing prompts in the admin panel without attaching to a note.
+// ─── POST /generate-image-cf/preview  (admin preview — no DB save) ───────────
 router.post('/generate-image-cf/preview', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: Request, res: Response) => {
   try {
-    const cfConfig = await getCloudflareConfig();
-
-    if (!cfConfig.imageGenEnabled)
-      return res.status(403).json({ error: 'Cloudflare image generation is disabled.' });
-
-    if (!cfConfig.accountId || !cfConfig.apiToken)
-      return res.status(400).json({
-        error: 'Cloudflare Account ID and API Token are not configured.',
-        cfError: 'no_credentials',
-      });
-
-    const { prompt, subject, className, topic } = req.body;
+    const { prompt, subject, className, topic, provider: providerOverride } = req.body;
+    const promptTemplate = await getActiveImagePromptTemplate();
     const finalPrompt = prompt ||
-      buildImagePrompt(cfConfig.imagePromptTemplate, {
+      buildImagePrompt(promptTemplate, {
         topic: topic || 'sample educational topic',
         subject,
         className,
       });
 
-    const imageBuffer = await generateImageWithCloudflare(finalPrompt, cfConfig);
-    const imageUrl = await saveGeneratedImage(imageBuffer, `preview-${Date.now()}`);
+    const { buffer, provider, model } = await generateImage(finalPrompt, providerOverride);
+    const imageUrl = await saveGeneratedImage(buffer, `preview-${Date.now()}`);
 
-    return res.json({ imageUrl, prompt: finalPrompt, model: cfConfig.imageModel });
+    return res.json({ imageUrl, prompt: finalPrompt, model, provider });
   } catch (err: any) {
-    console.error('[CF Image] preview error:', err.message);
+    console.error('[Image AI] preview error:', err.message);
     return res.status(500).json({ error: err.message || 'Image generation failed' });
   }
 });

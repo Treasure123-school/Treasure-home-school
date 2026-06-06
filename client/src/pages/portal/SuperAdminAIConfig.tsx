@@ -182,19 +182,29 @@ export default function SuperAdminAIConfig() {
     },
   });
 
-  // ── Cloudflare Image AI state ─────────────────────────────────────────────
+  // ── Image AI shared state ─────────────────────────────────────────────────
+  const [activeImgProvider, setActiveImgProvider] = useState<"cloudflare" | "nvidia">("cloudflare");
+  const [sharedPromptTemplate, setSharedPromptTemplate] = useState("");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const [previewModel, setPreviewModel] = useState("");
+
+  // ── Cloudflare state ──────────────────────────────────────────────────────
   const [cfAccountId, setCfAccountId] = useState("");
   const [cfApiToken, setCfApiToken] = useState("");
   const [showCfToken, setShowCfToken] = useState(false);
   const [showCfAccountId, setShowCfAccountId] = useState(false);
   const [cfTestResult, setCfTestResult] = useState<{ success: boolean; message: string; detail?: string } | null>(null);
   const [cfTesting, setCfTesting] = useState(false);
-  const [cfPreviewUrl, setCfPreviewUrl] = useState<string | null>(null);
-  const [cfPreviewing, setCfPreviewing] = useState(false);
   const [localCfConfig, setLocalCfConfig] = useState<Partial<CloudflareConfig>>({});
 
   const { data: cfConfig, isLoading: cfLoading } = useQuery<CloudflareConfig>({
     queryKey: ["/api/superadmin/ai-config/cloudflare"],
+    select: (d: any) => {
+      if (d.activeProvider) setActiveImgProvider(d.activeProvider);
+      if (d.sharedPromptTemplate && !sharedPromptTemplate) setSharedPromptTemplate(d.sharedPromptTemplate);
+      return d as CloudflareConfig;
+    },
   });
 
   const mergedCf = { ...cfConfig, ...localCfConfig } as CloudflareConfig;
@@ -202,15 +212,11 @@ export default function SuperAdminAIConfig() {
   const saveCfMutation = useMutation({
     mutationFn: (data: any) => apiRequest("PUT", "/api/superadmin/ai-config/cloudflare", data),
     onSuccess: () => {
-      toast({ title: "Cloudflare Config Saved", description: "Image generation settings have been updated." });
+      toast({ title: "Cloudflare Config Saved" });
       qc.invalidateQueries({ queryKey: ["/api/superadmin/ai-config/cloudflare"] });
-      setCfAccountId("");
-      setCfApiToken("");
-      setLocalCfConfig({});
+      setCfAccountId(""); setCfApiToken(""); setLocalCfConfig({});
     },
-    onError: (err: any) => {
-      toast({ title: "Save Failed", description: err.message, variant: "destructive" });
-    },
+    onError: (err: any) => toast({ title: "Save Failed", description: err.message, variant: "destructive" }),
   });
 
   const handleSaveCfConfig = () => {
@@ -219,46 +225,109 @@ export default function SuperAdminAIConfig() {
       apiToken: cfApiToken || undefined,
       imageModel: mergedCf.imageModel,
       imageGenEnabled: mergedCf.imageGenEnabled,
-      imagePromptTemplate: mergedCf.imagePromptTemplate,
       steps: mergedCf.steps,
     });
   };
 
   const handleTestCf = async () => {
-    setCfTesting(true);
-    setCfTestResult(null);
+    setCfTesting(true); setCfTestResult(null);
     try {
       const res = await apiRequest("POST", "/api/superadmin/ai-config/cloudflare/test", {
         accountId: cfAccountId || undefined,
         apiToken: cfApiToken || undefined,
         imageModel: mergedCf.imageModel,
       });
-      const result = await res.json();
-      setCfTestResult(result);
+      setCfTestResult(await res.json());
     } catch (err: any) {
       setCfTestResult({ success: false, message: err.message });
-    } finally {
-      setCfTesting(false);
-    }
+    } finally { setCfTesting(false); }
   };
 
+  // ── NVIDIA Image state ────────────────────────────────────────────────────
+  interface NvidiaImgConfig {
+    apiKey: string; apiKeyMasked: string; apiKeyFromEnv: boolean; apiKeyFromTextAI: boolean;
+    imageModel: string; imageGenEnabled: boolean;
+    width: number; height: number; steps: number; seed: number;
+    availableModels: { id: string; label: string }[];
+  }
+
+  const [nvidiaApiKey, setNvidiaApiKey] = useState("");
+  const [showNvidiaKey, setShowNvidiaKey] = useState(false);
+  const [nvidiaTestResult, setNvidiaTestResult] = useState<{ success: boolean; message: string; detail?: string } | null>(null);
+  const [nvidiaTesting, setNvidiaTesting] = useState(false);
+  const [localNvConfig, setLocalNvConfig] = useState<Partial<NvidiaImgConfig>>({});
+
+  const { data: nvConfig, isLoading: nvLoading } = useQuery<NvidiaImgConfig>({
+    queryKey: ["/api/superadmin/ai-config/nvidia-image"],
+  });
+
+  const mergedNv = { ...nvConfig, ...localNvConfig } as NvidiaImgConfig;
+
+  const saveNvMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("PUT", "/api/superadmin/ai-config/nvidia-image", data),
+    onSuccess: () => {
+      toast({ title: "NVIDIA Config Saved" });
+      qc.invalidateQueries({ queryKey: ["/api/superadmin/ai-config/nvidia-image"] });
+      setNvidiaApiKey(""); setLocalNvConfig({});
+    },
+    onError: (err: any) => toast({ title: "Save Failed", description: err.message, variant: "destructive" }),
+  });
+
+  const handleSaveNvConfig = () => {
+    saveNvMutation.mutate({
+      apiKey: nvidiaApiKey || undefined,
+      imageModel: mergedNv.imageModel,
+      imageGenEnabled: mergedNv.imageGenEnabled,
+      width: mergedNv.width,
+      height: mergedNv.height,
+      steps: mergedNv.steps,
+      seed: mergedNv.seed,
+    });
+  };
+
+  const handleTestNvidia = async () => {
+    setNvidiaTesting(true); setNvidiaTestResult(null);
+    try {
+      const res = await apiRequest("POST", "/api/superadmin/ai-config/nvidia-image/test", {
+        apiKey: nvidiaApiKey || undefined,
+        imageModel: mergedNv.imageModel,
+      });
+      setNvidiaTestResult(await res.json());
+    } catch (err: any) {
+      setNvidiaTestResult({ success: false, message: err.message });
+    } finally { setNvidiaTesting(false); }
+  };
+
+  // ── Shared: save provider + prompt template ───────────────────────────────
+  const saveProviderMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("PUT", "/api/superadmin/ai-config/image-provider", data),
+    onSuccess: () => {
+      toast({ title: "Image Provider Saved", description: `Active provider: ${activeImgProvider}` });
+      qc.invalidateQueries({ queryKey: ["/api/superadmin/ai-config/cloudflare"] });
+    },
+    onError: (err: any) => toast({ title: "Save Failed", description: err.message, variant: "destructive" }),
+  });
+
+  const handleSaveProvider = () => {
+    saveProviderMutation.mutate({ provider: activeImgProvider, promptTemplate: sharedPromptTemplate });
+  };
+
+  // ── Shared: preview generation ────────────────────────────────────────────
   const handlePreviewImage = async () => {
-    setCfPreviewing(true);
-    setCfPreviewUrl(null);
+    setPreviewing(true); setPreviewUrl(null);
     try {
       const res = await apiRequest("POST", "/api/lesson-notes/generate-image-cf/preview", {
         topic: "Photosynthesis in Plants",
         subject: "Biology",
         className: "SS 2",
+        provider: activeImgProvider,
       });
       const result = await res.json();
-      if (result.imageUrl) setCfPreviewUrl(result.imageUrl);
+      if (result.imageUrl) { setPreviewUrl(result.imageUrl); setPreviewModel(result.model || ""); }
       else toast({ title: "Preview Failed", description: result.error || "Unknown error", variant: "destructive" });
     } catch (err: any) {
       toast({ title: "Preview Failed", description: err.message, variant: "destructive" });
-    } finally {
-      setCfPreviewing(false);
-    }
+    } finally { setPreviewing(false); }
   };
 
   const testConnection = async (provider: string) => {
@@ -892,292 +961,335 @@ export default function SuperAdminAIConfig() {
             </div>
           </TabsContent>
 
-          {/* ── IMAGE AI TAB (Cloudflare Workers AI) ─────────────────── */}
+          {/* ── IMAGE AI TAB ─────────────────────────────────────────── */}
           <TabsContent value="imageai" className="space-y-6 mt-6">
-            {/* Header info */}
             <Alert className="border-orange-200 bg-orange-50">
               <Image className="h-4 w-4 text-orange-600" />
-              <AlertTitle className="text-orange-800">Cloudflare Workers AI — Image Generation</AlertTitle>
+              <AlertTitle className="text-orange-800">AI Image Generation for Lesson Notes</AlertTitle>
               <AlertDescription className="text-orange-700">
-                Generates educational diagrams for lesson notes using Cloudflare's serverless AI models.
-                Requires a free Cloudflare account with Workers AI enabled.
-                Images are saved to the server and linked to the lesson note.
+                Choose between Cloudflare Workers AI (free tier) or NVIDIA Build API (higher quality) to generate educational diagrams automatically when teachers create lesson notes.
               </AlertDescription>
             </Alert>
 
-            {cfLoading ? (
+            {(cfLoading || nvLoading) ? (
               <div className="flex items-center justify-center h-32">
                 <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
               </div>
             ) : (
               <>
-                {/* Enable / Disable toggle */}
-                <Card>
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div className="flex items-start gap-3">
-                      <span className="text-2xl mt-0.5">🖼️</span>
-                      <div>
-                        <div className="font-medium">Cloudflare Image Generation</div>
-                        <div className="text-sm text-gray-500">Allow teachers to generate AI educational images for lesson notes</div>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={mergedCf.imageGenEnabled ?? true}
-                      onCheckedChange={(v) => setLocalCfConfig(prev => ({ ...prev, imageGenEnabled: v }))}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Credentials */}
+                {/* ── Provider selector ── */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2">
-                      <Key className="h-4 w-4 text-orange-600" />
-                      Cloudflare Credentials
+                      <Sparkles className="h-4 w-4 text-orange-600" /> Active Image Provider
                     </CardTitle>
-                    <CardDescription>
-                      Find these at dash.cloudflare.com → AI → Workers AI. Account ID is in the right sidebar of any page.
-                    </CardDescription>
+                    <CardDescription>Select which service generates lesson note images. Both can be configured below; only the active one is used.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Cloudflare option */}
+                      <button
+                        type="button"
+                        onClick={() => setActiveImgProvider("cloudflare")}
+                        className={`flex items-start gap-3 rounded-lg border-2 p-3 text-left transition-all ${activeImgProvider === "cloudflare" ? "border-orange-500 bg-orange-50" : "border-gray-200 hover:border-orange-300"}`}
+                      >
+                        <span className="text-2xl">☁️</span>
+                        <div>
+                          <div className="font-semibold text-sm flex items-center gap-2">
+                            Cloudflare Workers AI
+                            {activeImgProvider === "cloudflare" && <Badge className="bg-orange-500 text-white text-xs">Active</Badge>}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-0.5">Free tier · 10,000 neurons/day · FLUX Schnell</div>
+                          {cfConfig?.accountIdMasked
+                            ? <div className="text-xs text-green-600 mt-1 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Credentials configured</div>
+                            : <div className="text-xs text-amber-600 mt-1">⚠ Credentials not set</div>}
+                        </div>
+                      </button>
+                      {/* NVIDIA option */}
+                      <button
+                        type="button"
+                        onClick={() => setActiveImgProvider("nvidia")}
+                        className={`flex items-start gap-3 rounded-lg border-2 p-3 text-left transition-all ${activeImgProvider === "nvidia" ? "border-green-500 bg-green-50" : "border-gray-200 hover:border-green-300"}`}
+                      >
+                        <span className="text-2xl">🟢</span>
+                        <div>
+                          <div className="font-semibold text-sm flex items-center gap-2">
+                            NVIDIA Build API
+                            {activeImgProvider === "nvidia" && <Badge className="bg-green-600 text-white text-xs">Active</Badge>}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-0.5">Higher quality · FLUX.1 Schnell &amp; Dev · Pay-per-use</div>
+                          {nvConfig?.apiKeyMasked
+                            ? <div className="text-xs text-green-600 mt-1 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> API key configured</div>
+                            : <div className="text-xs text-amber-600 mt-1">⚠ API key not set</div>}
+                        </div>
+                      </button>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button size="sm" onClick={handleSaveProvider} disabled={saveProviderMutation.isPending} className="bg-orange-600 hover:bg-orange-700">
+                        {saveProviderMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                        Set Active Provider
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* ── Shared prompt template ── */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Settings2 className="h-4 w-4 text-gray-600" /> Shared Prompt Template
+                    </CardTitle>
+                    <CardDescription>Used by both providers. Customise how the image prompt is built from each lesson's topic, subject, and class.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <Textarea
+                      rows={4}
+                      className="font-mono text-xs resize-y"
+                      placeholder="Educational diagram for {topic} in {subject}, class {className}..."
+                      value={sharedPromptTemplate}
+                      onChange={(e) => setSharedPromptTemplate(e.target.value)}
+                    />
+                    <div className="bg-gray-50 border rounded p-2 text-xs text-gray-600">
+                      <p className="font-semibold mb-1">Template variables:</p>
+                      <div className="grid grid-cols-3 gap-1">
+                        {[["{topic}", "Lesson note title"], ["{subject}", "Subject name"], ["{className}", "Class (e.g. SS 2)"]].map(([v, d]) => (
+                          <div key={v} className="flex items-center gap-1">
+                            <code className="bg-white border px-1 rounded">{v}</code>
+                            <span className="text-gray-500">{d}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="flex justify-end">
+                      <Button size="sm" variant="outline" onClick={handleSaveProvider} disabled={saveProviderMutation.isPending}>
+                        {saveProviderMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                        Save Template
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* ── CLOUDFLARE CONFIG ── */}
+                <Card className={activeImgProvider === "cloudflare" ? "ring-2 ring-orange-400" : ""}>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <span>☁️</span> Cloudflare Workers AI
+                      {activeImgProvider === "cloudflare" && <Badge className="bg-orange-500 text-white text-xs">Active</Badge>}
+                    </CardTitle>
+                    <CardDescription>Free tier with 10,000 neurons/day. Sign up at dash.cloudflare.com — no credit card needed.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-medium">Enable Cloudflare generation</div>
+                      <Switch checked={mergedCf.imageGenEnabled ?? true} onCheckedChange={(v) => setLocalCfConfig(p => ({ ...p, imageGenEnabled: v }))} />
+                    </div>
+
                     {/* Account ID */}
                     <div className="space-y-1.5">
                       <Label className="text-sm font-medium flex items-center gap-1.5">
                         Account ID
-                        {(cfConfig?.accountIdMasked || cfConfig?.accountIdFromEnv) && (
-                          <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-                        )}
-                        {cfConfig?.accountIdFromEnv && (
-                          <Badge className="bg-blue-100 text-blue-700 text-xs ml-1">From ENV</Badge>
-                        )}
+                        {cfConfig?.accountIdMasked && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
+                        {cfConfig?.accountIdFromEnv && <Badge className="bg-blue-100 text-blue-700 text-xs ml-1">ENV</Badge>}
                       </Label>
                       <div className="relative">
-                        <Input
-                          type={showCfAccountId ? "text" : "password"}
-                          placeholder={cfConfig?.accountIdMasked || "Enter your Cloudflare Account ID"}
-                          value={cfAccountId}
-                          onChange={(e) => setCfAccountId(e.target.value)}
-                          className="pr-10 font-mono text-sm"
-                        />
-                        <button
-                          type="button"
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                          onClick={() => setShowCfAccountId(p => !p)}
-                        >
+                        <Input type={showCfAccountId ? "text" : "password"} placeholder={cfConfig?.accountIdMasked || "Paste Account ID"} value={cfAccountId} onChange={(e) => setCfAccountId(e.target.value)} className="pr-10 font-mono text-sm" />
+                        <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" onClick={() => setShowCfAccountId(p => !p)}>
                           {showCfAccountId ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
-                      {cfConfig?.accountIdFromEnv && (
-                        <p className="text-xs text-blue-600">Using CLOUDFLARE_ACCOUNT_ID env variable. Enter above to override.</p>
-                      )}
+                      {cfConfig?.accountIdFromEnv && <p className="text-xs text-blue-600">Using CLOUDFLARE_ACCOUNT_ID env var.</p>}
                     </div>
 
                     {/* API Token */}
                     <div className="space-y-1.5">
                       <Label className="text-sm font-medium flex items-center gap-1.5">
                         API Token
-                        {(cfConfig?.apiTokenMasked || cfConfig?.apiTokenFromEnv) && (
-                          <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-                        )}
-                        {cfConfig?.apiTokenFromEnv && (
-                          <Badge className="bg-blue-100 text-blue-700 text-xs ml-1">From ENV</Badge>
-                        )}
+                        {cfConfig?.apiTokenMasked && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
+                        {cfConfig?.apiTokenFromEnv && <Badge className="bg-blue-100 text-blue-700 text-xs ml-1">ENV</Badge>}
                       </Label>
                       <div className="relative">
-                        <Input
-                          type={showCfToken ? "text" : "password"}
-                          placeholder={cfConfig?.apiTokenMasked || "Enter your Cloudflare API Token"}
-                          value={cfApiToken}
-                          onChange={(e) => setCfApiToken(e.target.value)}
-                          className="pr-10 font-mono text-sm"
-                        />
-                        <button
-                          type="button"
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                          onClick={() => setShowCfToken(p => !p)}
-                        >
+                        <Input type={showCfToken ? "text" : "password"} placeholder={cfConfig?.apiTokenMasked || "Paste API Token"} value={cfApiToken} onChange={(e) => setCfApiToken(e.target.value)} className="pr-10 font-mono text-sm" />
+                        <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" onClick={() => setShowCfToken(p => !p)}>
                           {showCfToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
-                      {cfConfig?.apiTokenFromEnv && (
-                        <p className="text-xs text-blue-600">Using CLOUDFLARE_API_TOKEN env variable. Enter above to override.</p>
-                      )}
-                      <p className="text-xs text-gray-500">
-                        Create a token at dash.cloudflare.com → Profile → API Tokens with "Workers AI" permission.
-                      </p>
+                      <p className="text-xs text-gray-500">Create at dash.cloudflare.com → Profile → API Tokens → "Workers AI" template.</p>
                     </div>
 
-                    {/* Test connection */}
-                    <div className="space-y-2">
-                      <Button
-                        variant="outline"
-                        onClick={handleTestCf}
-                        disabled={cfTesting || (!cfAccountId && !cfConfig?.accountIdMasked)}
-                        className="w-full"
-                      >
-                        {cfTesting ? (
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                        ) : (
-                          <FlaskConical className="h-4 w-4 mr-2" />
-                        )}
-                        Test Cloudflare Connection
-                      </Button>
-                      {cfTestResult && (
-                        <div className={`flex flex-col gap-1 text-xs p-2.5 rounded ${cfTestResult.success ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
-                          <div className="flex items-center gap-2">
-                            {cfTestResult.success
-                              ? <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
-                              : <XCircle className="h-3.5 w-3.5 flex-shrink-0" />}
-                            <span className="font-medium">{cfTestResult.message}</span>
-                          </div>
-                          {cfTestResult.detail && (
-                            <p className="ml-5 break-words">{cfTestResult.detail}</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Model & Generation Settings */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-orange-600" />
-                      Model & Generation Settings
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                      {/* Model selector */}
                       <div className="space-y-1.5">
                         <Label className="text-sm font-medium">Image Model</Label>
-                        <Select
-                          value={mergedCf.imageModel || "@cf/black-forest-labs/flux-1-schnell"}
-                          onValueChange={(v) => setLocalCfConfig(prev => ({ ...prev, imageModel: v }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select model" />
-                          </SelectTrigger>
+                        <Select value={mergedCf.imageModel || "@cf/black-forest-labs/flux-1-schnell"} onValueChange={(v) => setLocalCfConfig(p => ({ ...p, imageModel: v }))}>
+                          <SelectTrigger><SelectValue placeholder="Select model" /></SelectTrigger>
                           <SelectContent>
-                            {(cfConfig?.availableModels || []).map((m) => (
-                              <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
-                            ))}
+                            {(cfConfig?.availableModels || []).map((m) => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
                           </SelectContent>
                         </Select>
-                        <p className="text-xs text-gray-500">FLUX Schnell is fastest and free on Workers AI.</p>
                       </div>
-
-                      {/* Steps */}
                       <div className="space-y-1.5">
-                        <Label className="text-sm font-medium">Generation Steps</Label>
-                        <Input
-                          type="number"
-                          min={1}
-                          max={20}
-                          value={mergedCf.steps ?? 4}
-                          onChange={(e) => setLocalCfConfig(prev => ({ ...prev, steps: parseInt(e.target.value) || 4 }))}
-                        />
-                        <p className="text-xs text-gray-500">Higher = better quality, slower. 4 is ideal for FLUX.</p>
+                        <Label className="text-sm font-medium">Steps (1–20)</Label>
+                        <Input type="number" min={1} max={20} value={mergedCf.steps ?? 4} onChange={(e) => setLocalCfConfig(p => ({ ...p, steps: parseInt(e.target.value) || 4 }))} />
+                        <p className="text-xs text-gray-500">4 steps is ideal for FLUX Schnell.</p>
                       </div>
                     </div>
 
-                    {/* Prompt template */}
-                    <div className="space-y-1.5">
-                      <Label className="text-sm font-medium">Image Prompt Template</Label>
-                      <Textarea
-                        rows={4}
-                        className="font-mono text-xs resize-y"
-                        placeholder="Educational diagram for {topic} in {subject}, class {className}..."
-                        value={mergedCf.imagePromptTemplate ?? ""}
-                        onChange={(e) => setLocalCfConfig(prev => ({ ...prev, imagePromptTemplate: e.target.value }))}
-                      />
-                      <div className="bg-gray-50 border rounded p-2 text-xs text-gray-600 space-y-1">
-                        <p className="font-semibold">Template variables:</p>
-                        <div className="grid grid-cols-3 gap-1">
-                          {[
-                            ["{topic}", "Lesson note title"],
-                            ["{subject}", "Subject name"],
-                            ["{className}", "Class name (e.g. SS 2)"],
-                          ].map(([v, d]) => (
-                            <div key={v} className="flex items-center gap-1">
-                              <code className="bg-white border px-1 rounded font-mono">{v}</code>
-                              <span className="text-gray-500">{d}</span>
-                            </div>
-                          ))}
+                    {/* Test + Save */}
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={handleTestCf} disabled={cfTesting || (!cfAccountId && !cfConfig?.accountIdMasked)} className="flex-1">
+                        {cfTesting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FlaskConical className="h-4 w-4 mr-2" />}
+                        Test Connection
+                      </Button>
+                      <Button onClick={handleSaveCfConfig} disabled={saveCfMutation.isPending} className="flex-1 bg-orange-600 hover:bg-orange-700">
+                        {saveCfMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                        Save Cloudflare
+                      </Button>
+                    </div>
+                    {cfTestResult && (
+                      <div className={`flex flex-col gap-1 text-xs p-2.5 rounded ${cfTestResult.success ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+                        <div className="flex items-center gap-2">
+                          {cfTestResult.success ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+                          <span className="font-medium">{cfTestResult.message}</span>
                         </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Image Preview */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Image className="h-4 w-4 text-orange-600" />
-                      Test Image Generation
-                    </CardTitle>
-                    <CardDescription>
-                      Generate a sample image using current settings to verify everything is working.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Button
-                      variant="outline"
-                      onClick={handlePreviewImage}
-                      disabled={cfPreviewing || (!cfConfig?.accountIdMasked && !cfAccountId)}
-                      className="w-full border-orange-300 text-orange-700 hover:bg-orange-50"
-                    >
-                      {cfPreviewing ? (
-                        <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Generating preview image…</>
-                      ) : (
-                        <><Sparkles className="h-4 w-4 mr-2" /> Generate Sample: "Photosynthesis in Plants"</>
-                      )}
-                    </Button>
-                    {cfPreviewUrl && (
-                      <div className="space-y-2">
-                        <img
-                          src={cfPreviewUrl}
-                          alt="AI-generated preview"
-                          className="w-full rounded-lg border shadow-sm max-h-64 object-contain bg-gray-50"
-                        />
-                        <p className="text-xs text-gray-500 text-center">
-                          Preview saved to server. This is the quality teachers will see.
-                        </p>
+                        {cfTestResult.detail && <p className="ml-5 break-words">{cfTestResult.detail}</p>}
                       </div>
                     )}
                   </CardContent>
                 </Card>
 
-                {/* How to get credentials */}
-                <Card className="border-dashed">
+                {/* ── NVIDIA CONFIG ── */}
+                <Card className={activeImgProvider === "nvidia" ? "ring-2 ring-green-500" : ""}>
                   <CardHeader>
-                    <CardTitle className="text-sm text-gray-600 flex items-center gap-2">
-                      <ChevronRight className="h-4 w-4" /> Setup Instructions
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <span>🟢</span> NVIDIA Build API
+                      {activeImgProvider === "nvidia" && <Badge className="bg-green-600 text-white text-xs">Active</Badge>}
                     </CardTitle>
+                    <CardDescription>
+                      Uses NVIDIA's hosted FLUX.1 and Stable Diffusion models via <strong>build.nvidia.com</strong>. Higher quality output; requires an NVIDIA API key.
+                    </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-2 text-sm text-gray-600">
-                    <ol className="list-decimal list-inside space-y-1.5">
-                      <li>Go to <strong>dash.cloudflare.com</strong> and sign up for a free account</li>
-                      <li>In the right sidebar of any page, copy your <strong>Account ID</strong></li>
-                      <li>Go to <strong>Profile → API Tokens → Create Token</strong></li>
-                      <li>Use the <em>"Workers AI" template</em> or add <strong>Account → Workers AI → Edit</strong> permission</li>
-                      <li>Copy the generated token and paste it above</li>
-                      <li>Alternatively, set <code className="bg-gray-100 px-1 rounded">CLOUDFLARE_ACCOUNT_ID</code> and <code className="bg-gray-100 px-1 rounded">CLOUDFLARE_API_TOKEN</code> as environment variables</li>
-                    </ol>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Workers AI free tier includes 10,000 neurons/day — sufficient for typical school usage.
-                    </p>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-medium">Enable NVIDIA generation</div>
+                      <Switch checked={mergedNv.imageGenEnabled ?? true} onCheckedChange={(v) => setLocalNvConfig(p => ({ ...p, imageGenEnabled: v }))} />
+                    </div>
+
+                    {/* API Key */}
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-medium flex items-center gap-1.5">
+                        API Key (nvapi-…)
+                        {nvConfig?.apiKeyMasked && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
+                        {nvConfig?.apiKeyFromEnv && <Badge className="bg-blue-100 text-blue-700 text-xs ml-1">ENV</Badge>}
+                        {nvConfig?.apiKeyFromTextAI && <Badge className="bg-purple-100 text-purple-700 text-xs ml-1">From Text AI</Badge>}
+                      </Label>
+                      <div className="relative">
+                        <Input type={showNvidiaKey ? "text" : "password"} placeholder={nvConfig?.apiKeyMasked || "nvapi-…"} value={nvidiaApiKey} onChange={(e) => setNvidiaApiKey(e.target.value)} className="pr-10 font-mono text-sm" />
+                        <button type="button" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" onClick={() => setShowNvidiaKey(p => !p)}>
+                          {showNvidiaKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      {nvConfig?.apiKeyFromTextAI && (
+                        <p className="text-xs text-purple-600">Reusing API key configured for NVIDIA text AI. Enter above to use a separate image key.</p>
+                      )}
+                      {nvConfig?.apiKeyFromEnv && (
+                        <p className="text-xs text-blue-600">Using NVIDIA_API_KEY env variable.</p>
+                      )}
+                      <p className="text-xs text-gray-500">Get your key at <strong>build.nvidia.com</strong> → API Keys. Free credits included on sign-up.</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">Image Model</Label>
+                        <Select value={mergedNv.imageModel || "black-forest-labs/flux.1-schnell"} onValueChange={(v) => setLocalNvConfig(p => ({ ...p, imageModel: v }))}>
+                          <SelectTrigger><SelectValue placeholder="Select model" /></SelectTrigger>
+                          <SelectContent>
+                            {(nvConfig?.availableModels || []).map((m) => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">Steps (1–50)</Label>
+                        <Input type="number" min={1} max={50} value={mergedNv.steps ?? 4} onChange={(e) => setLocalNvConfig(p => ({ ...p, steps: parseInt(e.target.value) || 4 }))} />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">Width (px)</Label>
+                        <Select value={String(mergedNv.width ?? 1024)} onValueChange={(v) => setLocalNvConfig(p => ({ ...p, width: parseInt(v) }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {["512","768","1024"].map(s => <SelectItem key={s} value={s}>{s}px</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">Height (px)</Label>
+                        <Select value={String(mergedNv.height ?? 1024)} onValueChange={(v) => setLocalNvConfig(p => ({ ...p, height: parseInt(v) }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {["512","768","1024"].map(s => <SelectItem key={s} value={s}>{s}px</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={handleTestNvidia} disabled={nvidiaTesting || (!nvidiaApiKey && !nvConfig?.apiKeyMasked)} className="flex-1">
+                        {nvidiaTesting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FlaskConical className="h-4 w-4 mr-2" />}
+                        Test Connection
+                      </Button>
+                      <Button onClick={handleSaveNvConfig} disabled={saveNvMutation.isPending} className="flex-1 bg-green-700 hover:bg-green-800">
+                        {saveNvMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                        Save NVIDIA
+                      </Button>
+                    </div>
+                    {nvidiaTestResult && (
+                      <div className={`flex flex-col gap-1 text-xs p-2.5 rounded ${nvidiaTestResult.success ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+                        <div className="flex items-center gap-2">
+                          {nvidiaTestResult.success ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+                          <span className="font-medium">{nvidiaTestResult.message}</span>
+                        </div>
+                        {nvidiaTestResult.detail && <p className="ml-5 break-words">{nvidiaTestResult.detail}</p>}
+                      </div>
+                    )}
+
+                    {/* NVIDIA setup instructions */}
+                    <div className="border rounded-lg p-3 bg-gray-50 text-xs text-gray-600 space-y-1.5">
+                      <p className="font-semibold text-gray-700">How to get your NVIDIA API key:</p>
+                      <ol className="list-decimal list-inside space-y-1">
+                        <li>Go to <strong>build.nvidia.com</strong> and sign in with your NVIDIA account</li>
+                        <li>Click <strong>Get API Key</strong> in the top right</li>
+                        <li>Generate a new key — it starts with <code className="bg-white border px-1 rounded font-mono">nvapi-</code></li>
+                        <li>Paste it above. Free credits are included on sign-up.</li>
+                        <li>Alternatively, set <code className="bg-white border px-1 rounded font-mono">NVIDIA_API_KEY</code> as an environment variable</li>
+                      </ol>
+                    </div>
                   </CardContent>
                 </Card>
 
-                <div className="flex justify-end">
-                  <Button onClick={handleSaveCfConfig} disabled={saveCfMutation.isPending} className="bg-orange-600 hover:bg-orange-700">
-                    {saveCfMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                    Save Image AI Settings
-                  </Button>
-                </div>
+                {/* ── Preview / test generation ── */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Image className="h-4 w-4 text-orange-600" /> Test Image Generation
+                    </CardTitle>
+                    <CardDescription>
+                      Generates a sample using the <strong>currently active provider</strong> ({activeImgProvider === "nvidia" ? "NVIDIA" : "Cloudflare"}) and your saved credentials.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Button variant="outline" onClick={handlePreviewImage} disabled={previewing} className="w-full border-orange-300 text-orange-700 hover:bg-orange-50">
+                      {previewing
+                        ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Generating via {activeImgProvider === "nvidia" ? "NVIDIA" : "Cloudflare"}…</>
+                        : <><Sparkles className="h-4 w-4 mr-2" /> Generate Sample: "Photosynthesis in Plants"</>}
+                    </Button>
+                    {previewUrl && (
+                      <div className="space-y-2">
+                        <img src={previewUrl} alt="AI-generated preview" className="w-full rounded-lg border shadow-sm max-h-72 object-contain bg-gray-50" />
+                        <p className="text-xs text-gray-500 text-center">
+                          Generated via {activeImgProvider === "nvidia" ? "NVIDIA Build API" : "Cloudflare Workers AI"}{previewModel ? ` · ${previewModel}` : ""}. Saved to server.
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </>
             )}
           </TabsContent>

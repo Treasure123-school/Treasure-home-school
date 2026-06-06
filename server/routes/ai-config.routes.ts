@@ -15,6 +15,9 @@ import {
   getCloudflareConfigForAdmin,
   testCloudflareConnection,
   getCloudflareConfig,
+  getNvidiaImageConfigForAdmin,
+  getNvidiaImageConfig,
+  testNvidiaImageConnection,
 } from '../services/cloudflare-ai-service';
 
 const router = Router();
@@ -285,7 +288,6 @@ router.put('/api/superadmin/ai-config/cloudflare', authenticateUser, authorizeRo
 // ── POST /api/superadmin/ai-config/cloudflare/test ───────────────────────
 router.post('/api/superadmin/ai-config/cloudflare/test', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
   try {
-    // Allow testing with credentials from request body (for before saving)
     const { accountId, apiToken, imageModel } = req.body;
     const baseConfig = await getCloudflareConfig();
     const testConfig = {
@@ -298,6 +300,88 @@ router.post('/api/superadmin/ai-config/cloudflare/test', authenticateUser, autho
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── GET /api/superadmin/ai-config/nvidia-image ────────────────────────────
+router.get('/api/superadmin/ai-config/nvidia-image', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  try {
+    const data = await getNvidiaImageConfigForAdmin();
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── PUT /api/superadmin/ai-config/nvidia-image ────────────────────────────
+router.put('/api/superadmin/ai-config/nvidia-image', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as AuthenticatedUser).id;
+    const { apiKey, imageModel, imageGenEnabled, width, height, steps, seed } = req.body;
+
+    const save = async (key: string, value: string) => {
+      const full = `nvidiaImg.${key}`;
+      const existing = await storage.getSetting(full);
+      if (existing) {
+        await storage.updateSetting(full, value, userId);
+      } else {
+        await storage.createSetting({ key: full, value, description: `NVIDIA Image AI: ${key}`, dataType: 'string', updatedBy: userId });
+      }
+    };
+
+    if (apiKey && !apiKey.includes('...') && apiKey !== '••••••••') await save('apiKey', apiKey.trim());
+    if (imageModel) await save('imageModel', imageModel);
+    if (imageGenEnabled !== undefined) await save('imageGenEnabled', String(imageGenEnabled));
+    if (width !== undefined) await save('width', String(width));
+    if (height !== undefined) await save('height', String(height));
+    if (steps !== undefined) await save('steps', String(steps));
+    if (seed !== undefined) await save('seed', String(seed));
+
+    res.json({ success: true, message: 'NVIDIA Image AI configuration saved' });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── POST /api/superadmin/ai-config/nvidia-image/test ─────────────────────
+router.post('/api/superadmin/ai-config/nvidia-image/test', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  try {
+    const { apiKey, imageModel } = req.body;
+    const baseConfig = await getNvidiaImageConfig();
+    const testConfig = {
+      ...baseConfig,
+      apiKey: (apiKey && !apiKey.includes('...')) ? apiKey.trim() : baseConfig.apiKey,
+      imageModel: imageModel || baseConfig.imageModel,
+    };
+    const result = await testNvidiaImageConnection(testConfig);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ── PUT /api/superadmin/ai-config/image-provider ──────────────────────────
+// Sets the active image generation provider (cloudflare | nvidia) and shared prompt template
+router.put('/api/superadmin/ai-config/image-provider', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as AuthenticatedUser).id;
+    const { provider, promptTemplate } = req.body;
+
+    const save = async (key: string, value: string) => {
+      const existing = await storage.getSetting(key);
+      if (existing) {
+        await storage.updateSetting(key, value, userId);
+      } else {
+        await storage.createSetting({ key, value, description: `Image AI: ${key}`, dataType: 'string', updatedBy: userId });
+      }
+    };
+
+    if (provider === 'cloudflare' || provider === 'nvidia') await save('imgAi.provider', provider);
+    if (promptTemplate !== undefined) await save('imgAi.promptTemplate', promptTemplate);
+
+    res.json({ success: true, message: 'Image provider settings saved' });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
   }
 });
 
