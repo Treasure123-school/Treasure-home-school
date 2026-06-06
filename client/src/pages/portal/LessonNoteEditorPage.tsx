@@ -75,11 +75,25 @@ function parseQuery(search: string) {
   };
 }
 
+/**
+ * Strip <figure> elements that don't contain an <img> tag (failed or skeleton diagrams).
+ * Failed diagrams contain only a <div> placeholder — no <img>. Skeleton diagrams also lack <img>.
+ * Prevents TipTap from converting these placeholder divs into garbled paragraph text.
+ */
+function stripFailedFigures(html: string): string {
+  if (!html) return html;
+  return html.replace(/<figure[\s\S]*?<\/figure>/gi, (match) => {
+    // Keep figure only if it contains an <img> tag (any src is fine)
+    if (/<img\s/i.test(match)) return match;
+    return '';
+  });
+}
+
 function migrateContent(rawContent: string | null, rawObjectives: string | null): string {
   if (!rawContent) return rawObjectives ? `<p>${rawObjectives}</p>` : '';
   try {
     const j = JSON.parse(rawContent);
-    if (j._v === 3) return j.html || '';
+    if (j._v === 3) return stripFailedFigures(j.html || '');
     if (j._v === 2) {
       const LABELS: Record<string, string> = {
         objectives: 'Learning Objectives', previousKnowledge: 'Previous Knowledge',
@@ -99,7 +113,7 @@ function migrateContent(rawContent: string | null, rawObjectives: string | null)
       return html || '';
     }
   } catch {}
-  return rawContent || '';
+  return stripFailedFigures(rawContent || '');
 }
 
 function serializeContent(html: string): string {
@@ -578,8 +592,11 @@ export default function LessonNoteEditorPage() {
                     imgGenActiveRef.current = false;
                     clearAllProgressTimers();
                     // ── Phase 2: hand final HTML to TipTap ──
-                    // liveHtmlRef now has only real <img> tags — no skeleton divs
-                    setContent(liveHtmlRef.current);
+                    // Strip any remaining failed/skeleton figures before TipTap processes
+                    // them (TipTap would convert the inner divs to garbled paragraph text)
+                    const cleanHtml = stripFailedFigures(liveHtmlRef.current);
+                    liveHtmlRef.current = cleanHtml;
+                    setContent(cleanHtml);
                     setIsGeneratingImages(false);
                     setSaveStatus('unsaved');
                   });

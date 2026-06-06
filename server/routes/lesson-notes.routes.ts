@@ -342,40 +342,34 @@ router.post('/:id/approve-publish', authenticateUser, authorizeRoles(...ADMIN_RO
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
-// ─── POST /generate-image  (HF FLUX.1-schnell — teacher+ only) ───────────────
-router.post('/generate-image', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
+// ─── POST /generate-image  (Pollinations.AI FLUX — free, no API key) ──────────
+// Pollinations blocks server-side requests from cloud IPs (402), so we return
+// the URL directly. The browser loads the image client-side — no 402, no wait.
+// A stable hash seed makes the same prompt always produce the same image.
+router.post('/generate-image', authenticateUser, authorizeRoles(...ALL_STAFF), (req: Request, res: Response) => {
   try {
     const { prompt } = req.body;
     if (!prompt || typeof prompt !== 'string') return res.status(400).json({ error: 'prompt required' });
 
-    const apiKey = process.env.HF_API_KEY;
-    if (!apiKey) return res.status(503).json({ error: 'Hugging Face API key (HF_API_KEY) not configured' });
-
-    const model = 'black-forest-labs/FLUX.1-schnell';
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 58000);
-
-    const resp = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
-      method: 'POST',
-      signal: controller.signal,
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'x-wait-for-model': 'true' },
-      body: JSON.stringify({ inputs: prompt, parameters: { num_inference_steps: 4 } }),
-    });
-    clearTimeout(timeoutId);
-
-    if (!resp.ok) {
-      const text = await resp.text();
-      console.error('[generate-image] HF error', resp.status, text.slice(0, 200));
-      return res.status(resp.status).json({ error: `HF API ${resp.status}: ${text.slice(0, 200)}` });
+    // Deterministic seed from prompt → same prompt = same image every time
+    let hash = 0;
+    for (let i = 0; i < prompt.length; i++) {
+      hash = Math.imul(31, hash) + prompt.charCodeAt(i) | 0;
     }
+    const seed = Math.abs(hash) % 999983;
 
-    const buf = await resp.arrayBuffer();
-    const ct = resp.headers.get('content-type') || 'image/jpeg';
-    const b64 = Buffer.from(buf).toString('base64');
-    res.json({ imageUrl: `data:${ct};base64,${b64}` });
+    // Enhance prompt for educational diagram quality
+    const enhancedPrompt = `${prompt}, educational textbook diagram, white background, clear labels, scientific illustration, clean, professional, high quality`;
+    const encoded = encodeURIComponent(enhancedPrompt);
+
+    // Return the Pollinations URL — browser loads the image directly (avoids cloud IP block)
+    const imageUrl = `https://image.pollinations.ai/prompt/${encoded}?seed=${seed}&width=1024&height=768&model=flux&nologo=true`;
+
+    console.log(`[generate-image] Returning Pollinations URL seed=${seed} prompt="${prompt.slice(0, 60)}"`);
+    return res.json({ imageUrl });
   } catch (err: any) {
-    const isTimeout = err.name === 'AbortError';
-    res.status(isTimeout ? 504 : 500).json({ error: isTimeout ? 'Image generation timed out (58s)' : err.message });
+    console.error('[generate-image] error:', err.message);
+    return res.status(500).json({ error: err.message });
   }
 });
 
