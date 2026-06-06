@@ -176,7 +176,9 @@ router.post('/generate/stream-live', authenticateUser, authorizeRoles(...ALL_STA
 
   // Switch to SSE mode
   res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Transfer-Encoding', 'chunked');
   res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx/Replit proxy buffering
   res.flushHeaders();
 
@@ -186,6 +188,9 @@ router.post('/generate/stream-live', authenticateUser, authorizeRoles(...ALL_STA
   const send = (payload: object) => {
     if (!closed && !res.writableEnded) {
       res.write(`data: ${JSON.stringify(payload)}\n\n`);
+      // Flush the compression middleware buffer so every token reaches the
+      // browser immediately instead of being held until the stream ends.
+      (res as any).flush?.();
     }
   };
 

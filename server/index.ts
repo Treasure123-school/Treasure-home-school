@@ -87,6 +87,13 @@ app.use(compression({
     if (req.headers['x-no-compression']) {
       return false;
     }
+    // Never compress SSE streams — compression buffers chunks and breaks
+    // real-time streaming (tokens arrive all at once at the end instead of
+    // progressively). The flush() calls in the SSE handler are not enough
+    // when gzip is active because gzip has its own internal buffer.
+    if (res.getHeader('Content-Type') === 'text/event-stream') {
+      return false;
+    }
     // Use compression for all other responses
     return compression.filter(req, res);
   }
