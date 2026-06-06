@@ -19,7 +19,7 @@ import DocEditor from '@/components/lesson-notes/DocEditor';
 import {
   Save, Send, Eye, EyeOff, AlertCircle, Info, BookOpen, Sparkles, Pencil,
   ChevronLeft, Loader2, GraduationCap, BookMarked, Calendar, Printer,
-  CheckCircle2, Clock, CloudOff, Copy, Check, CheckCircle,
+  CheckCircle2, Clock, CloudOff, Copy, Check, CheckCircle, RefreshCw, X,
 } from 'lucide-react';
 
 function shortAiError(msg: string): string {
@@ -159,58 +159,148 @@ function applyNoteStyles(html: string): string {
     .replace(/<strong>/g, '<strong style="background:#fef9c3;padding:0 2px;border-radius:2px;color:#1e3a5f">');
 }
 
-// ── Inject Pollinations.AI images after visual h3 headings ───────────────────
-
-function hashStr(s: string): number {
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) + h) ^ s.charCodeAt(i);
-  return Math.abs(h);
-}
+// ── AI-generated diagram helpers ──────────────────────────────────────────────
 
 interface ImgJob { id: string; prompt: string; heading: string; }
 
+/** Build the shimmer skeleton figure HTML for a pending diagram. */
+function makePlaceholderFigure(id: string, heading: string, prompt: string): string {
+  const ep = encodeURIComponent(prompt);
+  const eh = encodeURIComponent(heading);
+  return `<figure id="${id}" data-fig-id="${id}" data-regen-prompt="${ep}" data-regen-heading="${eh}" style="margin:1em 0 1.5em;text-align:center;page-break-inside:avoid">
+  <div class="ai-img-skeleton" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:200px;background:linear-gradient(90deg,#f0f4ff 25%,#e8efff 50%,#f0f4ff 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border:1px dashed #bfdbfe;border-radius:8px;gap:0.6em">
+    <svg width="36" height="36" fill="none" stroke="#93c5fd" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+    <span style="color:#6b7280;font-size:0.82rem">Generating diagram…</span>
+    <span style="color:#9ca3af;font-size:0.7rem">${heading}</span>
+  </div>
+  <figcaption style="font-size:0.75rem;color:#6b7280;margin-top:0.4em;font-style:italic">Fig: ${heading}</figcaption>
+</figure>`;
+}
+
+/**
+ * Inject diagram placeholders after visual h3 headings.
+ * Always produces at least 3 diagrams — extras are inserted before the
+ * Evaluation/Assignment section so they land in the "Content" area.
+ */
 function addImagePlaceholders(html: string, topic: string, subjectName: string): { html: string; imgJobs: ImgJob[] } {
   const VISUAL = /diagram|structure|process|cycle|classif|chart|system|organ|cell|molecule|flow|stages|mechanism|anatomy|illustration|model|cross.?section|formation|composition|types of|parts of|components/i;
   const imgJobs: ImgJob[] = [];
   let idx = 0;
-  const newHtml = html.replace(/<h3(?:[^>]*)>([^<]+)<\/h3>/g, (match: string, heading: string) => {
+  const ts = Date.now();
+
+  // First pass — inject after every h3 that matches the VISUAL pattern
+  let newHtml = html.replace(/<h3(?:[^>]*)>([^<]+)<\/h3>/g, (match: string, heading: string) => {
     if (!VISUAL.test(heading) && !VISUAL.test(topic)) return match;
-    const id = `ai-img-${idx++}-${Date.now()}`;
-    const promptText = `${heading.trim()}, educational textbook diagram for ${subjectName || topic}, clear labeled scientific illustration, white background, detailed, high quality`;
-    imgJobs.push({ id, prompt: promptText, heading: heading.trim() });
-    return `${match}<figure id="${id}" style="margin:1em 0 1.5em;text-align:center;page-break-inside:avoid">
-  <div class="ai-img-skeleton" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:200px;background:linear-gradient(90deg,#f0f4ff 25%,#e8efff 50%,#f0f4ff 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border:1px dashed #bfdbfe;border-radius:8px;gap:0.6em">
-    <svg width="36" height="36" fill="none" stroke="#93c5fd" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
-    <span style="color:#6b7280;font-size:0.82rem">Generating diagram…</span>
-    <span style="color:#9ca3af;font-size:0.7rem">${heading.trim()}</span>
-  </div>
-  <figcaption style="font-size:0.75rem;color:#6b7280;margin-top:0.4em;font-style:italic">Fig: ${heading.trim()}</figcaption>
-</figure>`;
+    const id = `ai-img-${idx++}-${ts}`;
+    const prompt = `${heading.trim()}, educational textbook diagram for ${subjectName || topic}, clear labeled scientific illustration, white background, detailed, high quality`;
+    imgJobs.push({ id, prompt, heading: heading.trim() });
+    return `${match}${makePlaceholderFigure(id, heading.trim(), prompt)}`;
   });
+
+  // Guarantee at least 3 diagrams — generate topic-based extras if needed
+  if (imgJobs.length < 3) {
+    const extras = [
+      [`Overview of ${topic}`,        `Clear labeled overview diagram of ${topic} for ${subjectName || 'students'}, educational textbook illustration, white background, detailed`],
+      [`${topic} — Key Concepts`,     `Key concepts diagram of ${topic}, ${subjectName || 'science'} subject, educational textbook style, labeled, white background`],
+      [`${topic} — Summary Diagram`,  `Summary infographic of ${topic}, step-by-step educational illustration, ${subjectName || ''}, white background, labeled`],
+      [`${topic} — Process Flow`,     `Process flow diagram of ${topic}, educational, ${subjectName || ''}, clear labels, white background`],
+    ];
+    const needed = 3 - imgJobs.length;
+    const toAdd  = extras.slice(0, needed);
+
+    // Find a good insertion point: right before the Evaluation/Assignment h2
+    const markerRe = /<h2[^>]*>[^<]*(Evaluation|Assignment|Classwork|Test|Summary)/i;
+    const markerIdx = newHtml.search(markerRe);
+
+    let extraBlock = '';
+    for (const [heading, prompt] of toAdd) {
+      const id = `ai-img-${idx++}-${ts}`;
+      imgJobs.push({ id, prompt, heading });
+      extraBlock += `<h3 style="color:#1d4ed8;font-size:1.05em;font-weight:600;margin:1.5em 0 0.5em">${heading}</h3>${makePlaceholderFigure(id, heading, prompt)}\n`;
+    }
+
+    if (markerIdx > 0) {
+      newHtml = newHtml.slice(0, markerIdx) + extraBlock + newHtml.slice(markerIdx);
+    } else {
+      newHtml += extraBlock;
+    }
+  }
+
   return { html: newHtml, imgJobs };
 }
 
-/** Replace one placeholder figure (by ID) with the actual generated image. */
+/** Replace a shimmer placeholder with the real image (keeps data attrs for re-regen). */
 function replacePlaceholder(html: string, id: string, imageUrl: string, heading: string): string {
-  const figRe = new RegExp(`<figure id="${id}"[^>]*>[\\s\\S]*?</figure>`);
-  const replacement = `<figure style="margin:1em 0 1.5em;text-align:center;page-break-inside:avoid">
-  <img src="${imageUrl}" alt="Diagram: ${heading}" style="max-width:100%;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.08)" />
-  <figcaption style="font-size:0.75rem;color:#6b7280;margin-top:0.4em;font-style:italic">Fig: ${heading}</figcaption>
+  const figRe = new RegExp(`<figure[^>]*data-fig-id="${id}"[^>]*>[\\s\\S]*?</figure>`);
+  const ep = encodeURIComponent(`${heading}, educational textbook diagram, clear labeled scientific illustration, white background, detailed`);
+  const eh = encodeURIComponent(heading);
+  // data-fig-id goes on both the <figure> (for raw-HTML match) AND the <img>
+  // so TipTap's Image extension can preserve it through its attribute system
+  const replacement = `<figure data-fig-id="${id}" data-regen-prompt="${ep}" data-regen-heading="${eh}" style="margin:1em 0 1.5em;text-align:center;page-break-inside:avoid">
+  <img src="${imageUrl}" alt="Diagram: ${heading}" data-fig-id="${id}" data-regen-prompt="${ep}" data-regen-heading="${eh}" style="max-width:100%;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.08);cursor:pointer" />
+  <figcaption style="font-size:0.75rem;color:#6b7280;margin-top:0.4em;font-style:italic">Fig: ${heading} · click to regenerate</figcaption>
 </figure>`;
   return html.replace(figRe, replacement);
 }
 
-/** Mark a placeholder as failed. */
+/** Mark a figure as failed (keeps data attrs so user can click → regen). */
 function markPlaceholderFailed(html: string, id: string, heading: string): string {
-  const figRe = new RegExp(`<figure id="${id}"[^>]*>[\\s\\S]*?</figure>`);
-  const replacement = `<figure style="margin:1em 0 1.5em;text-align:center;page-break-inside:avoid">
-  <div style="display:flex;align-items:center;justify-content:center;width:100%;height:64px;background:#f9fafb;border:1px dashed #e5e7eb;border-radius:8px;color:#9ca3af;font-size:0.75rem;gap:0.4em">
+  const figRe = new RegExp(`<figure[^>]*data-fig-id="${id}"[^>]*>[\\s\\S]*?</figure>`);
+  const ep = encodeURIComponent(`${heading}, educational textbook diagram, clear labeled scientific illustration, white background, detailed`);
+  const eh = encodeURIComponent(heading);
+  const replacement = `<figure data-fig-id="${id}" data-regen-prompt="${ep}" data-regen-heading="${eh}" style="margin:1em 0 1.5em;text-align:center;page-break-inside:avoid">
+  <div style="display:flex;align-items:center;justify-content:center;width:100%;height:64px;background:#fef9f9;border:1px dashed #fecaca;border-radius:8px;color:#ef4444;font-size:0.75rem;gap:0.5em;cursor:pointer">
     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-    Diagram unavailable — ${heading}
+    Diagram unavailable — click to regenerate
   </div>
   <figcaption style="font-size:0.75rem;color:#9ca3af;margin-top:0.4em;font-style:italic">Fig: ${heading}</figcaption>
 </figure>`;
   return html.replace(figRe, replacement);
+}
+
+/** Replace any figure (loaded or failed) back to a shimmer skeleton for re-generation. */
+function replaceFigWithSkeleton(html: string, id: string, heading: string, prompt: string): string {
+  const figRe = new RegExp(`<figure[^>]*data-fig-id="${id}"[^>]*>[\\s\\S]*?</figure>`);
+  // If id not found, try legacy format with id= attr (initial placeholders before first replacement)
+  if (!figRe.test(html)) {
+    const legacyRe = new RegExp(`<figure id="${id}"[^>]*>[\\s\\S]*?</figure>`);
+    return html.replace(legacyRe, makePlaceholderFigure(id, heading, prompt));
+  }
+  return html.replace(figRe, makePlaceholderFigure(id, heading, prompt));
+}
+
+// ── Floating "Regenerate diagram" panel ──────────────────────────────────────
+
+interface RegenFig { figId: string; heading: string; prompt: string; top: number; left: number; }
+
+function RegenPanel({ fig, busy, onClose, onRegen }: {
+  fig: RegenFig; busy: boolean; onClose: () => void;
+  onRegen: (figId: string, prompt: string, heading: string) => void;
+}) {
+  return (
+    <div
+      className="absolute z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl p-3 w-64"
+      style={{ top: fig.top, left: Math.max(8, fig.left) }}
+      onClick={e => e.stopPropagation()}
+    >
+      <div className="flex items-start justify-between gap-2 mb-2">
+        <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 leading-snug line-clamp-2">{fig.heading}</span>
+        <button onClick={onClose} className="shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 mt-0.5">
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <button
+        disabled={busy}
+        onClick={() => onRegen(fig.figId, fig.prompt, fig.heading)}
+        className="flex items-center justify-center gap-2 w-full text-xs bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-lg px-3 py-2 font-semibold transition-colors"
+      >
+        {busy
+          ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          : <RefreshCw className="h-3.5 w-3.5" />}
+        {busy ? 'Regenerating…' : 'Regenerate Diagram'}
+      </button>
+    </div>
+  );
 }
 
 // ── AI progress banner (shown inside the editor while generating) ─────────────
@@ -478,7 +568,12 @@ export default function LessonNoteEditorPage() {
   const liveHtmlRef      = useRef('');
   const userEditedRef    = useRef(false);
   const imgGenActiveRef  = useRef(false);
-  const [copied, setCopied]           = useState(false);
+  const [copied,    setCopied]    = useState(false);
+  const [regenFig,  setRegenFig]  = useState<RegenFig | null>(null);
+  const [regenBusy, setRegenBusy] = useState(false);
+  const editorWrapRef = useRef<HTMLDivElement>(null);
+  // Registry of all AI diagrams so regen always has prompt/heading even if TipTap strips DOM attrs
+  const diagramsRef = useRef<Map<string, { prompt: string; heading: string }>>(new Map());
 
   const copyToClipboard = useCallback(() => {
     const plain = content.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
@@ -503,7 +598,9 @@ export default function LessonNoteEditorPage() {
     if (initialized) return;
     if (isEdit && note) {
       setTitle(note.title || '');
-      setContent(migrateContent(note.content, note.objectives));
+      const html = migrateContent(note.content, note.objectives);
+      setContent(html);
+      liveHtmlRef.current = html;
       setInitialized(true);
       setSaveStatus('saved');
     }
@@ -522,6 +619,7 @@ export default function LessonNoteEditorPage() {
   // ── Content change handler + auto-save ────────────────────────────────────
   const handleContentChange = useCallback((html: string) => {
     setContent(html);
+    liveHtmlRef.current = html; // keep in sync for regen
     setSaveStatus('unsaved');
     // If images are still generating, flag that the user has manually edited
     // so we don't overwrite their changes when images finish loading
@@ -531,6 +629,72 @@ export default function LessonNoteEditorPage() {
       triggerAutoSave(html);
     }, 2000);
   }, [title]);
+
+  // ── Click on a diagram image → show Regenerate panel ─────────────────────
+  // Works via [data-fig-id] on the NodeViewWrapper span (TipTap Image extension
+  // preserves these through addAttributes), and falls back to diagramsRef.
+  const handleEditorClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    // Walk up DOM: check the target itself, then closest ancestor with data-fig-id
+    const carrier = (
+      target.getAttribute('data-fig-id') ? target :
+      target.closest('[data-fig-id]') as HTMLElement | null
+    );
+    if (!carrier) { setRegenFig(null); return; }
+    const figId = carrier.getAttribute('data-fig-id')!;
+
+    // Try DOM attrs first (most reliable if TipTap preserved them)
+    const rawPrompt  = carrier.getAttribute('data-regen-prompt');
+    const rawHeading = carrier.getAttribute('data-regen-heading');
+    // Fall back to diagramsRef registry if DOM attrs were stripped
+    const reg = diagramsRef.current.get(figId);
+    const prompt  = rawPrompt  ? decodeURIComponent(rawPrompt)  : (reg?.prompt  ?? '');
+    const heading = rawHeading ? decodeURIComponent(rawHeading) : (reg?.heading ?? 'Diagram');
+    if (!prompt) { setRegenFig(null); return; }
+
+    const wrap = editorWrapRef.current;
+    if (!wrap) return;
+    const wrapRect = wrap.getBoundingClientRect();
+    const rect     = carrier.getBoundingClientRect();
+    const top  = rect.top  - wrapRect.top  + 8;
+    const left = rect.left - wrapRect.left + rect.width / 2 - 128;
+    setRegenFig({ figId, heading, prompt, top, left });
+    e.stopPropagation();
+  }, []);
+
+  // ── Regenerate a single diagram ──────────────────────────────────────────
+  const regenSingle = useCallback(async (figId: string, prompt: string, heading: string) => {
+    setRegenFig(null);
+    setRegenBusy(true);
+    // Swap figure back to shimmer skeleton
+    const current = liveHtmlRef.current;
+    const withSkeleton = replaceFigWithSkeleton(current, figId, heading, prompt);
+    liveHtmlRef.current = withSkeleton;
+    setContent(withSkeleton);
+
+    const token = localStorage.getItem('token');
+    try {
+      const r = await fetch(getApiUrl('/api/lesson-notes/generate-image'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: 'include',
+        body: JSON.stringify({ prompt }),
+      });
+      if (!r.ok) throw new Error(`status ${r.status}`);
+      const { imageUrl } = await r.json();
+      const updated = replacePlaceholder(liveHtmlRef.current, figId, imageUrl, heading);
+      liveHtmlRef.current = updated;
+      setContent(updated);
+      toast({ title: '✅ Diagram regenerated', description: heading });
+    } catch {
+      const failed = markPlaceholderFailed(liveHtmlRef.current, figId, heading);
+      liveHtmlRef.current = failed;
+      setContent(failed);
+      toast({ title: '❌ Diagram failed', description: 'Could not regenerate. Click the diagram to try again.', variant: 'destructive' });
+    } finally {
+      setRegenBusy(false);
+    }
+  }, [toast]);
 
   // ── Save mutations ─────────────────────────────────────────────────────────
   const buildPayload = (html: string, extra?: Record<string, any>) => ({
@@ -731,6 +895,12 @@ export default function LessonNoteEditorPage() {
                 setAiDone(true);
 
                 if (imgJobs.length > 0) {
+                  // Populate registry so click handler can always look up prompt/heading
+                  diagramsRef.current.clear();
+                  for (const { id, prompt, heading } of imgJobs) {
+                    diagramsRef.current.set(id, { prompt, heading });
+                  }
+
                   setAiImgTotal(imgJobs.length);
                   setAiImgDone(0);
                   imgGenActiveRef.current = true;
@@ -963,7 +1133,11 @@ export default function LessonNoteEditorPage() {
       )}
 
       {/* ── Document editor (fills remaining height) ── */}
-      <div className="flex-1 min-h-0 overflow-hidden">
+      <div
+        ref={editorWrapRef}
+        className="flex-1 min-h-0 overflow-hidden relative"
+        onClick={handleEditorClick}
+      >
         {(isEdit && noteLoading) ? (
           <div className="h-full flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-gray-300" />
@@ -978,6 +1152,16 @@ export default function LessonNoteEditorPage() {
                 ? 'Start writing your lesson note here, or click "AI Generate" above to fill it automatically…'
                 : undefined
             }
+          />
+        )}
+
+        {/* Floating "Regenerate diagram" panel — appears when a figure is clicked */}
+        {regenFig && (
+          <RegenPanel
+            fig={regenFig}
+            busy={regenBusy}
+            onClose={() => setRegenFig(null)}
+            onRegen={regenSingle}
           />
         )}
       </div>

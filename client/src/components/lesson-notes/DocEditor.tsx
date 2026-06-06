@@ -441,6 +441,9 @@ function FloatingSelectionMenu({ editor }: { editor: any }) {
 
 function ResizableImageView({ node, updateAttributes, deleteNode, selected }: NodeViewProps) {
   const { src, alt, width } = node.attrs as { src: string; alt?: string; width?: number | null };
+  const figId     = node.attrs['data-fig-id']       as string | null;
+  const regenPr   = node.attrs['data-regen-prompt']  as string | null;
+  const regenHd   = node.attrs['data-regen-heading'] as string | null;
   const innerRef = useRef<HTMLSpanElement>(null);
   const dragStart = useRef<{ x: number; w: number } | null>(null);
 
@@ -468,7 +471,11 @@ function ResizableImageView({ node, updateAttributes, deleteNode, selected }: No
   };
 
   return (
-    <NodeViewWrapper as="span" style={{ display: 'inline-block', maxWidth: '100%' }}>
+    <NodeViewWrapper
+      as="span"
+      style={{ display: 'inline-block', maxWidth: '100%' }}
+      {...(figId ? { 'data-fig-id': figId, 'data-regen-prompt': regenPr, 'data-regen-heading': regenHd } : {})}
+    >
       <span
         ref={innerRef}
         style={{ display: 'inline-block', position: 'relative', maxWidth: '100%' }}
@@ -484,8 +491,10 @@ function ResizableImageView({ node, updateAttributes, deleteNode, selected }: No
             maxWidth: '100%',
             outline: selected ? '2px solid #3b82f6' : undefined,
             outlineOffset: selected ? '2px' : undefined,
+            cursor: figId ? 'pointer' : undefined,
           }}
           draggable={false}
+          {...(figId ? { 'data-fig-id': figId } : {})}
         />
 
         {selected && (
@@ -582,6 +591,21 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
               default: null,
               parseHTML: el => el.getAttribute('width') ? parseInt(el.getAttribute('width')!, 10) : null,
               renderHTML: attrs => attrs.width ? { width: attrs.width } : {},
+            },
+            'data-fig-id': {
+              default: null,
+              parseHTML: el => el.getAttribute('data-fig-id') || null,
+              renderHTML: attrs => attrs['data-fig-id'] ? { 'data-fig-id': attrs['data-fig-id'] } : {},
+            },
+            'data-regen-prompt': {
+              default: null,
+              parseHTML: el => el.getAttribute('data-regen-prompt') || null,
+              renderHTML: attrs => attrs['data-regen-prompt'] ? { 'data-regen-prompt': attrs['data-regen-prompt'] } : {},
+            },
+            'data-regen-heading': {
+              default: null,
+              parseHTML: el => el.getAttribute('data-regen-heading') || null,
+              renderHTML: attrs => attrs['data-regen-heading'] ? { 'data-regen-heading': attrs['data-regen-heading'] } : {},
             },
           };
         },

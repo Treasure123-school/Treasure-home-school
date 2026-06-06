@@ -619,16 +619,14 @@ export async function trackUsage(model: string, tokens: number): Promise<void> {
     const cost = (tokens / 1_000_000) * costPerMillion;
     const today = new Date().toISOString().split('T')[0];
     const yearMonth = today.substring(0, 7);
-    const sysId = 'system';
-
     const upsert = async (key: string, update: (prev: any) => any, empty: object) => {
       const existing = await storage.getSetting(key);
       const prev = existing?.value ? JSON.parse(existing.value) : empty;
       const next = update(prev);
       if (existing) {
-        await storage.updateSetting(key, JSON.stringify(next), sysId);
+        await storage.updateSetting(key, JSON.stringify(next), null as any);
       } else {
-        await storage.createSetting({ key, value: JSON.stringify(next), description: `AI usage: ${key}`, dataType: 'json', updatedBy: sysId });
+        await storage.createSetting({ key, value: JSON.stringify(next), description: `AI usage: ${key}`, dataType: 'json', updatedBy: null as any });
       }
     };
 
