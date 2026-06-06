@@ -45,6 +45,7 @@ export type EnrichedNote = {
   submittedAt: string | null; approvedAt: string | null;
   rejectedAt: string | null; publishedAt: string | null;
   createdAt: string; updatedAt: string;
+  hiddenSections?: string[] | null;
 };
 
 // ── Section metadata for _v:2 format ────────────────────────────────────────
@@ -81,6 +82,7 @@ const SECTION_V2_ORDER = [
 export function parseNoteContent(
   rawContent: string | null | undefined,
   rawObjectives?: string | null,
+  hiddenSections?: string[] | null,
 ): string {
   if (!rawContent || !rawContent.trim()) {
     return rawObjectives ? `<p>${rawObjectives}</p>` : '';
@@ -100,6 +102,7 @@ export function parseNoteContent(
       if (j._v === 2) {
         let html = '';
         SECTION_V2_ORDER.forEach((key, idx) => {
+          if (hiddenSections?.includes(key)) return;
           const val = j[key];
           if (!val || !String(val).trim()) return;
           html += `<h2>${idx + 1}. ${SECTION_V2_LABELS[key] || key}</h2>${val}`;

@@ -651,6 +651,7 @@ export const lessonNotes = pgTable("lesson_notes", {
   rejectedAt: timestamp("rejected_at"),
   publishedBy: varchar("published_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
   publishedAt: timestamp("published_at"),
+  hiddenSections: jsonb("hidden_sections").$type<string[]>(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({

@@ -18,6 +18,7 @@ type LessonNote = {
   creatorName: string | null; subjectName: string | null;
   className: string | null; topicName: string | null; termName: string | null;
   publishedAt: string | null; createdAt: string;
+  hiddenSections?: string[] | null;
 };
 
 function MetaChip({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
@@ -130,7 +131,7 @@ export default function StudentLessonNoteViewPage() {
 
       {/* Lesson Content */}
       {(() => {
-        const parsedHtml = parseNoteContent(note.content, note.objectives);
+        const parsedHtml = parseNoteContent(note.content, note.objectives, note.hiddenSections);
         if (!parsedHtml) {
           return (
             <div className="flex items-center gap-3 p-6 rounded-xl bg-muted/30 border border-dashed text-muted-foreground">

@@ -104,6 +104,22 @@ router.post('/', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Req
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
+// ─── PATCH /:id/hidden-sections  (teacher=own or admin toggles section visibility) ─
+router.patch('/:id/hidden-sections', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
+  try {
+    const user = getUser(req);
+    const note = await storage.getLessonNoteById(parseInt(req.params.id));
+    if (!note) return res.status(404).json({ message: 'Lesson note not found' });
+    if (user.roleId === ROLES.TEACHER && note.createdBy !== user.id)
+      return res.status(403).json({ message: 'Access denied' });
+    const { hiddenSections } = req.body;
+    if (!Array.isArray(hiddenSections))
+      return res.status(400).json({ message: 'hiddenSections must be an array of section keys' });
+    const updated = await storage.updateLessonNote(note.id, { hiddenSections } as any);
+    res.json(updated);
+  } catch (err: any) { res.status(500).json({ message: err.message }); }
+});
+
 // ─── POST /generate/start  (kick off AI generation — returns jobId immediately)
 router.post('/generate/start', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   try {
