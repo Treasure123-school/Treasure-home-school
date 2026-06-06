@@ -624,6 +624,9 @@ export default function LessonNoteEditorPage() {
                   });
 
                   const tok = localStorage.getItem('token');
+                  let imgSuccessCount = 0;
+                  let imgFailCount = 0;
+                  const imgErrors: string[] = [];
 
                   Promise.all(imgJobs.map(async ({ id: fid, prompt, heading }) => {
                     try {
@@ -633,17 +636,26 @@ export default function LessonNoteEditorPage() {
                         credentials: 'include',
                         body: JSON.stringify({ prompt }),
                       });
-                      if (!r.ok) throw new Error(`status ${r.status}`);
+                      if (!r.ok) {
+                        const errBody = await r.json().catch(() => ({}));
+                        throw new Error(errBody?.error || `Server error ${r.status}`);
+                      }
                       const { imageUrl } = await r.json();
 
+                      if (!imageUrl) throw new Error('No image URL returned');
+
                       stopProgressTimer(fid, 100);
+                      imgSuccessCount++;
 
                       if (!userEditedRef.current) {
                         liveHtmlRef.current = replacePlaceholder(liveHtmlRef.current, fid, imageUrl, heading);
-                        // Update the overlay div — React re-renders, then useEffect re-syncs remaining progress
                         setGeneratingHtml(liveHtmlRef.current);
                       }
-                    } catch {
+                    } catch (err: unknown) {
+                      const msg = err instanceof Error ? err.message : String(err);
+                      console.error(`[diagram] failed for "${heading}":`, msg);
+                      imgFailCount++;
+                      imgErrors.push(msg);
                       stopProgressTimer(fid, 0);
                       if (!userEditedRef.current) {
                         liveHtmlRef.current = markPlaceholderFailed(liveHtmlRef.current, fid, heading);
@@ -655,14 +667,34 @@ export default function LessonNoteEditorPage() {
                   })).finally(() => {
                     imgGenActiveRef.current = false;
                     clearAllProgressTimers();
+
                     // ── Phase 2: hand final HTML to TipTap ──
-                    // Strip any remaining failed/skeleton figures before TipTap processes
-                    // them (TipTap would convert the inner divs to garbled paragraph text)
                     const cleanHtml = stripFailedFigures(liveHtmlRef.current);
                     liveHtmlRef.current = cleanHtml;
                     setContent(cleanHtml);
                     setIsGeneratingImages(false);
                     setSaveStatus('unsaved');
+
+                    // Show result toast
+                    const total = imgJobs.length;
+                    if (imgSuccessCount === total) {
+                      toast({ title: `✅ All ${total} diagram${total > 1 ? 's' : ''} generated`, description: 'Note is ready to save.' });
+                    } else if (imgSuccessCount > 0) {
+                      toast({
+                        title: `⚠️ ${imgSuccessCount} of ${total} diagrams generated`,
+                        description: `${imgFailCount} failed. Click any failed diagram to retry.`,
+                        variant: 'destructive',
+                        duration: 8000,
+                      });
+                    } else {
+                      const firstErr = imgErrors[0] || 'AI image provider not configured';
+                      toast({
+                        title: '❌ Diagrams could not be generated',
+                        description: `${firstErr}. Go to AI Settings → Image Generation to configure.`,
+                        variant: 'destructive',
+                        duration: 10000,
+                      });
+                    }
                   });
 
                 } else {
