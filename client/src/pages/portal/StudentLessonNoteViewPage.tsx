@@ -1,6 +1,7 @@
 import { useParams, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
+import type { SystemSettings } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import RichTextViewer from '@/components/lesson-notes/RichTextViewer';
@@ -45,6 +46,11 @@ export default function StudentLessonNoteViewPage() {
     enabled: !!topicId,
     retry: false,
   });
+
+  const { data: settings } = useQuery<SystemSettings>({
+    queryKey: ['/api/public/settings'],
+  });
+  const brandColor = settings?.primaryColor || '#3b82f6';
 
   if (isLoading) {
     return (
@@ -145,7 +151,7 @@ export default function StudentLessonNoteViewPage() {
               </h2>
             </div>
             <div className="rounded-xl border bg-card p-4 sm:p-6 overflow-x-auto">
-              <RichTextViewer html={parsedHtml} />
+              <RichTextViewer html={parsedHtml} brandColor={brandColor} />
             </div>
           </section>
         );

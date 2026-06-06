@@ -1020,6 +1020,7 @@ export default function LessonNoteEditorPage() {
               content={content}
               onChange={canEdit && !aiLoading ? handleContentChange : () => {}}
               disabled={!canEdit || busy || aiLoading}
+              brandColor={settings?.primaryColor || '#3b82f6'}
               placeholder={
                 canEdit
                   ? 'Start writing your lesson note here, or click "AI Generate" above to fill it automatically…'

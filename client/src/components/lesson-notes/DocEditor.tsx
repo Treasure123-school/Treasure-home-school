@@ -28,7 +28,7 @@ import {
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Link as LinkIcon, Link2Off, Image as ImageIcon, Minus, Undo, Redo,
   Table as TableIcon, Rows, Columns, Trash2, Highlighter,
-  ChevronDown, Baseline, Type,
+  ChevronDown, Type,
 } from 'lucide-react';
 
 // ── Custom FontSize extension ──────────────────────────────────────────────
@@ -197,9 +197,8 @@ function TSelect({
 }
 
 const FONT_FAMILIES = [
-  { label: 'Default', value: '' },
+  { label: 'Georgia', value: '' },
   { label: 'Arial', value: 'Arial, sans-serif' },
-  { label: 'Georgia', value: 'Georgia, serif' },
   { label: 'Times New Roman', value: '"Times New Roman", serif' },
   { label: 'Courier New', value: '"Courier New", monospace' },
   { label: 'Trebuchet MS', value: '"Trebuchet MS", sans-serif' },
@@ -559,11 +558,11 @@ export interface DocEditorProps {
   disabled?: boolean;
   placeholder?: string;
   onEditorReady?: (editor: any) => void;
+  brandColor?: string;
 }
 
-export default function DocEditor({ content, onChange, disabled = false, placeholder, onEditorReady }: DocEditorProps) {
+export default function DocEditor({ content, onChange, disabled = false, placeholder, onEditorReady, brandColor = '#3b82f6' }: DocEditorProps) {
   const imageInputRef = useRef<HTMLInputElement>(null!);
-  const [textColor, setTextColor] = useState('#000000');
   const [hlColor, setHlColor] = useState('#fef08a');
   const [wordStats, setWordStats] = useState(() => countWords(content));
 
@@ -723,8 +722,6 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
               v ? e?.chain().focus().setFontSize(v).run() : e?.chain().focus().unsetFontSize().run()
             } options={[{ label: 'Size', value: '' }, ...FONT_SIZES]} />
             <TSep />
-            <ColorPicker title="Text color" icon={Baseline} value={textColor} colors={TEXT_COLORS}
-              onChange={c => { setTextColor(c); e?.chain().focus().setColor(c).run(); }} />
             <ColorPicker title="Highlight color" icon={Highlighter} value={hlColor} colors={HIGHLIGHT_COLORS}
               onChange={c => { setHlColor(c); e?.chain().focus().toggleHighlight({ color: c }).run(); }} />
           </div>
@@ -776,7 +773,7 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
         <div className="min-h-full py-8 px-4 flex justify-center">
           <div
             className="doc-paper relative w-full max-w-4xl bg-white dark:bg-gray-900 shadow-md border border-gray-200 dark:border-gray-700 min-h-[1056px] px-16 py-14"
-            style={{ fontFamily: 'Georgia, serif' }}
+            style={{ fontFamily: 'Georgia, serif', '--doc-heading-color': brandColor } as React.CSSProperties}
           >
             {/* Floating selection toolbar */}
             {e && !disabled && <FloatingSelectionMenu editor={e} />}
@@ -819,11 +816,11 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
         /* Typography */
         .doc-root { min-height: 200px; }
         .doc-root > * + * { margin-top: 0.4em; }
-        .doc-root p  { line-height: 1.75; font-size: 1rem; margin: 0 0 0.35em; }
-        .doc-root h1 { font-size: 2rem;   font-weight: 700; margin: 1.1em 0 0.4em; line-height: 1.25; }
-        .doc-root h2 { font-size: 1.5rem; font-weight: 700; margin: 0.9em 0 0.3em; line-height: 1.3; }
-        .doc-root h3 { font-size: 1.2rem; font-weight: 600; margin: 0.8em 0 0.25em; }
-        .doc-root h4 { font-size: 1.05rem; font-weight: 600; margin: 0.7em 0 0.2em; }
+        .doc-root p  { line-height: 1.75; font-size: 1rem; margin: 0 0 0.35em; color: #000; }
+        .doc-root h1 { font-size: 2rem;   font-weight: 700; margin: 1.1em 0 0.4em; line-height: 1.25; color: var(--doc-heading-color, #3b82f6); }
+        .doc-root h2 { font-size: 1.5rem; font-weight: 700; margin: 0.9em 0 0.3em; line-height: 1.3; color: var(--doc-heading-color, #3b82f6); }
+        .doc-root h3 { font-size: 1.2rem; font-weight: 600; margin: 0.8em 0 0.25em; color: var(--doc-heading-color, #3b82f6); }
+        .doc-root h4 { font-size: 1.05rem; font-weight: 600; margin: 0.7em 0 0.2em; color: var(--doc-heading-color, #3b82f6); }
         .doc-root strong { font-weight: 700; }
         .doc-root em    { font-style: italic; }
         .doc-root u     { text-decoration: underline; }

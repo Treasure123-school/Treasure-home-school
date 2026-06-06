@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useLocation, useParams } from 'wouter';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
+import type { SystemSettings } from '@shared/schema';
 import { useAuth } from '@/lib/auth';
 import { ROLE_IDS } from '@/lib/roles';
 import { Button } from '@/components/ui/button';
@@ -34,7 +35,7 @@ const SECTION_VIEW_DEFS = [
   { key: 'references',        label: 'References',             icon: ExternalLink,  iconBg: 'bg-gray-100',   iconColor: 'text-gray-600',   borderColor: 'border-gray-200',   headerBg: 'bg-gray-50'   },
 ] as const;
 
-function NoteContentRenderer({ note }: { note: EnrichedNote }) {
+function NoteContentRenderer({ note, brandColor = '#3b82f6' }: { note: EnrichedNote; brandColor?: string }) {
   // Check for v2 structured sections (uses the fancy section-card UI)
   const sections = isV2Sections(note.content);
 
@@ -96,7 +97,7 @@ function NoteContentRenderer({ note }: { note: EnrichedNote }) {
         <div className="w-1 h-5 rounded-full bg-primary shrink-0" />
         <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Lesson Content</h2>
       </div>
-      <RichTextViewer html={parsedHtml} className="min-h-[200px]" />
+      <RichTextViewer html={parsedHtml} className="min-h-[200px]" brandColor={brandColor} />
     </section>
   );
 }
@@ -130,6 +131,11 @@ export default function LessonNoteViewPage() {
     queryKey: ['/api/lesson-notes', id],
     queryFn: async () => (await apiRequest('GET', `/api/lesson-notes/${id}`)).json(),
   });
+
+  const { data: settings } = useQuery<SystemSettings>({
+    queryKey: ['/api/public/settings'],
+  });
+  const brandColor = settings?.primaryColor || '#3b82f6';
 
   const act = async (action: string, extra?: any) => {
     if (!note) return;
@@ -320,7 +326,7 @@ export default function LessonNoteViewPage() {
         <div><span className="text-muted-foreground">Updated:</span> <strong>{fmtDate(note.updatedAt)}</strong></div>
       </div>
 
-      <NoteContentRenderer note={note} />
+      <NoteContentRenderer note={note} brandColor={brandColor} />
 
       <div className="pb-12 print:hidden" />
     </div>

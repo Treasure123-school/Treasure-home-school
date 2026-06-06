@@ -28,6 +28,7 @@ interface RichTextEditorProps {
   placeholder?: string;
   minHeight?: string;
   disabled?: boolean;
+  brandColor?: string;
 }
 
 function ToolbarBtn({
@@ -61,7 +62,7 @@ function ToolbarSep() {
 }
 
 export default function RichTextEditor({
-  content, onChange, placeholder = 'Start writing…', minHeight = '320px', disabled = false,
+  content, onChange, placeholder = 'Start writing…', minHeight = '320px', disabled = false, brandColor = '#3b82f6',
 }: RichTextEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
@@ -279,20 +280,6 @@ export default function RichTextEditor({
         </TooltipTrigger>
         <TooltipContent side="top" className="text-xs">Highlight</TooltipContent>
       </Tooltip>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <label className="inline-flex items-center justify-center w-8 h-8 rounded hover:bg-muted cursor-pointer transition-colors relative">
-            <Type className="w-3.5 h-3.5" />
-            <input
-              type="color"
-              className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-              onInput={(e) => setColor((e.target as HTMLInputElement).value)}
-              defaultValue="#000000"
-            />
-          </label>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="text-xs">Text Color</TooltipContent>
-      </Tooltip>
     </>
   );
 
@@ -320,7 +307,10 @@ export default function RichTextEditor({
         document.body,
       )}
 
-      <div className={`border rounded-lg overflow-hidden bg-background ${disabled ? 'opacity-70' : ''}`}>
+      <div
+        className={`border rounded-lg overflow-hidden bg-background ${disabled ? 'opacity-70' : ''}`}
+        style={{ '--rte-heading-color': brandColor } as React.CSSProperties}
+      >
         <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleImageFile} />
 
         {/* Typing area */}
@@ -356,11 +346,11 @@ export default function RichTextEditor({
             height: 0;
             pointer-events: none;
           }
-          .ProseMirror h1 { font-size: 1.75rem; font-weight: 700; line-height: 1.2; margin: 1rem 0 0.5rem; }
-          .ProseMirror h2 { font-size: 1.375rem; font-weight: 600; line-height: 1.3; margin: 0.875rem 0 0.4rem; }
-          .ProseMirror h3 { font-size: 1.125rem; font-weight: 600; line-height: 1.4; margin: 0.75rem 0 0.35rem; }
-          .ProseMirror h4 { font-size: 1rem; font-weight: 600; line-height: 1.4; margin: 0.75rem 0 0.35rem; }
-          .ProseMirror p { margin: 0.35rem 0; line-height: 1.65; }
+          .ProseMirror h1 { font-size: 1.75rem; font-weight: 700; line-height: 1.2; margin: 1rem 0 0.5rem; color: var(--rte-heading-color, #3b82f6); }
+          .ProseMirror h2 { font-size: 1.375rem; font-weight: 600; line-height: 1.3; margin: 0.875rem 0 0.4rem; color: var(--rte-heading-color, #3b82f6); }
+          .ProseMirror h3 { font-size: 1.125rem; font-weight: 600; line-height: 1.4; margin: 0.75rem 0 0.35rem; color: var(--rte-heading-color, #3b82f6); }
+          .ProseMirror h4 { font-size: 1rem; font-weight: 600; line-height: 1.4; margin: 0.75rem 0 0.35rem; color: var(--rte-heading-color, #3b82f6); }
+          .ProseMirror p { margin: 0.35rem 0; line-height: 1.65; color: #000; }
           .ProseMirror ul, .ProseMirror ol { margin: 0.5rem 0 0.5rem 1.5rem; }
           .ProseMirror li { margin: 0.2rem 0; }
           .ProseMirror table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
