@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import RichTextViewer from '@/components/lesson-notes/RichTextViewer';
-import { StatusBadge, fmtDate, EnrichedNote } from '@/components/lesson-notes/lessonNoteShared';
+import { StatusBadge, fmtDate, EnrichedNote, parseNoteContent, isV2Sections } from '@/components/lesson-notes/lessonNoteShared';
 import {
   Edit, Send, Eye, EyeOff, CheckCircle, XCircle, BookOpen, Calendar,
   User, FileText, AlertCircle, Printer, GraduationCap, MoreHorizontal,
@@ -35,18 +35,11 @@ const SECTION_VIEW_DEFS = [
 ] as const;
 
 function NoteContentRenderer({ note }: { note: EnrichedNote }) {
-  // Try to parse JSON v2 format
-  let sections: Record<string, string> | null = null;
-  if (note.content) {
-    try {
-      const parsed = JSON.parse(note.content);
-      if (parsed._v === 2) sections = parsed;
-    } catch {}
-  }
+  // Check for v2 structured sections (uses the fancy section-card UI)
+  const sections = isV2Sections(note.content);
 
-  // New structured format
   if (sections) {
-    const hasAny = SECTION_VIEW_DEFS.some(d => sections![d.key]?.trim());
+    const hasAny = SECTION_VIEW_DEFS.some(d => sections[d.key]?.trim());
     if (!hasAny) {
       return (
         <div className="flex items-center gap-3 p-6 rounded-xl bg-muted/30 border border-dashed text-muted-foreground">
@@ -58,7 +51,7 @@ function NoteContentRenderer({ note }: { note: EnrichedNote }) {
     return (
       <div className="rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden divide-y divide-gray-100 dark:divide-gray-800">
         {SECTION_VIEW_DEFS.map((def) => {
-          const html = sections![def.key];
+          const html = sections[def.key];
           if (!html?.trim()) return null;
           const Icon = def.icon;
           return (
@@ -84,35 +77,27 @@ function NoteContentRenderer({ note }: { note: EnrichedNote }) {
     );
   }
 
-  // Legacy format: separate objectives + content
+  // v3 (current format) or legacy plain-HTML format:
+  // parseNoteContent handles all cases — extracts .html from JSON wrapper or returns raw HTML
+  const parsedHtml = parseNoteContent(note.content, note.objectives);
+
+  if (!parsedHtml) {
+    return (
+      <div className="flex items-center gap-3 p-6 rounded-xl bg-muted/30 border border-dashed text-muted-foreground">
+        <FileText className="w-5 h-5 shrink-0" />
+        <p className="text-sm">No content has been added yet.</p>
+      </div>
+    );
+  }
+
   return (
-    <>
-      {note.objectives && (
-        <section className="space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="w-1 h-5 rounded-full bg-primary shrink-0" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Learning Objectives</h2>
-          </div>
-          <div className="pl-3 border-l-2 border-muted">
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">{note.objectives}</p>
-          </div>
-        </section>
-      )}
-      {note.content ? (
-        <section className="space-y-3">
-          <div className="flex items-center gap-2">
-            <div className="w-1 h-5 rounded-full bg-primary shrink-0" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Lesson Content</h2>
-          </div>
-          <RichTextViewer html={note.content} className="min-h-[200px]" />
-        </section>
-      ) : (
-        <div className="flex items-center gap-3 p-6 rounded-xl bg-muted/30 border border-dashed text-muted-foreground">
-          <FileText className="w-5 h-5 shrink-0" />
-          <p className="text-sm">No content has been added yet.</p>
-        </div>
-      )}
-    </>
+    <section className="space-y-3">
+      <div className="flex items-center gap-2">
+        <div className="w-1 h-5 rounded-full bg-primary shrink-0" />
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Lesson Content</h2>
+      </div>
+      <RichTextViewer html={parsedHtml} className="min-h-[200px]" />
+    </section>
   );
 }
 

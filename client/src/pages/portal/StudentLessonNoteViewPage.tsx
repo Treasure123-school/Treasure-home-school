@@ -8,6 +8,7 @@ import {
   BookOpen, Calendar, User, FileText, AlertCircle,
   GraduationCap, Target, Printer,
 } from 'lucide-react';
+import { parseNoteContent } from '@/components/lesson-notes/lessonNoteShared';
 
 type LessonNote = {
   id: number; topicId: number;
@@ -125,24 +126,30 @@ export default function StudentLessonNoteViewPage() {
       )}
 
       {/* Lesson Content */}
-      {note.content ? (
-        <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <div className="w-1 h-5 rounded-full bg-primary shrink-0" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-              Lesson Content
-            </h2>
-          </div>
-          <div className="rounded-xl border bg-card p-4 sm:p-6 overflow-x-auto">
-            <RichTextViewer html={note.content} />
-          </div>
-        </section>
-      ) : (
-        <div className="flex items-center gap-3 p-6 rounded-xl bg-muted/30 border border-dashed text-muted-foreground">
-          <AlertCircle className="w-5 h-5 shrink-0" />
-          <p className="text-sm">No lesson content has been added yet.</p>
-        </div>
-      )}
+      {(() => {
+        const parsedHtml = parseNoteContent(note.content, note.objectives);
+        if (!parsedHtml) {
+          return (
+            <div className="flex items-center gap-3 p-6 rounded-xl bg-muted/30 border border-dashed text-muted-foreground">
+              <AlertCircle className="w-5 h-5 shrink-0" />
+              <p className="text-sm">No lesson content has been added yet.</p>
+            </div>
+          );
+        }
+        return (
+          <section className="space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-5 rounded-full bg-primary shrink-0" />
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                Lesson Content
+              </h2>
+            </div>
+            <div className="rounded-xl border bg-card p-4 sm:p-6 overflow-x-auto">
+              <RichTextViewer html={parsedHtml} />
+            </div>
+          </section>
+        );
+      })()}
 
       <div className="pb-12 print:hidden" />
     </div>

@@ -46,3 +46,85 @@ export type EnrichedNote = {
   rejectedAt: string | null; publishedAt: string | null;
   createdAt: string; updatedAt: string;
 };
+
+// ── Section metadata for _v:2 format ────────────────────────────────────────
+
+const SECTION_V2_LABELS: Record<string, string> = {
+  objectives:        'Learning Objectives',
+  previousKnowledge: 'Previous Knowledge',
+  materials:         'Instructional Materials',
+  introduction:      'Introduction / Set Induction',
+  content:           'Lesson Content',
+  teacherActivities: "Teacher's Activities",
+  studentActivities: "Students' Activities",
+  evaluation:        'Evaluation',
+  assignment:        'Assignment / Homework',
+  references:        'References',
+};
+
+const SECTION_V2_ORDER = [
+  'objectives', 'previousKnowledge', 'materials', 'introduction', 'content',
+  'teacherActivities', 'studentActivities', 'evaluation', 'assignment', 'references',
+];
+
+/**
+ * Parse a lesson note's raw `content` field into renderable HTML.
+ *
+ * Handles:
+ *  - `{ "_v": 3, "html": "..." }` — current editor format
+ *  - `{ "_v": 2, objectives: "...", content: "...", ... }` — structured sections format
+ *  - Plain HTML string — legacy notes written before JSON wrapping
+ *  - null / empty string — returns empty string
+ *
+ * Also accepts a legacy `objectives` string (old notes stored objectives separately).
+ */
+export function parseNoteContent(
+  rawContent: string | null | undefined,
+  rawObjectives?: string | null,
+): string {
+  if (!rawContent || !rawContent.trim()) {
+    return rawObjectives ? `<p>${rawObjectives}</p>` : '';
+  }
+
+  // Only try JSON parse if the string starts with `{`
+  if (rawContent.trimStart().startsWith('{')) {
+    try {
+      const j = JSON.parse(rawContent);
+
+      // v3: flat HTML wrapper — current format
+      if (j._v === 3) {
+        return j.html || '';
+      }
+
+      // v2: structured sections — older format
+      if (j._v === 2) {
+        let html = '';
+        SECTION_V2_ORDER.forEach((key, idx) => {
+          const val = j[key];
+          if (!val || !String(val).trim()) return;
+          html += `<h2>${idx + 1}. ${SECTION_V2_LABELS[key] || key}</h2>${val}`;
+        });
+        if (!html && rawObjectives) return `<p>${rawObjectives}</p>`;
+        return html;
+      }
+    } catch {
+      // Not valid JSON — fall through to treat as plain HTML
+    }
+  }
+
+  // Plain HTML (legacy notes)
+  return rawContent;
+}
+
+/**
+ * Returns true if rawContent is the _v:2 structured sections format.
+ * Used by view pages that render the fancy section-card UI for v2 notes.
+ */
+export function isV2Sections(rawContent: string | null | undefined): Record<string, string> | null {
+  if (!rawContent || !rawContent.trimStart().startsWith('{')) return null;
+  try {
+    const j = JSON.parse(rawContent);
+    if (j._v === 2) return j as Record<string, string>;
+  } catch {}
+  return null;
+}
