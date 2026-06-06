@@ -92,10 +92,10 @@ app.use(compression({
   }
 }));
 
-// Request timeout middleware (60 seconds for production/replit, 5 mins for local dev to allow Vite pre-bundling)
+// Request timeout middleware (10 mins for dev/replit, 60s for production)
 app.use((req, res, next) => {
-  const isDev = process.env.NODE_ENV !== 'production' && !process.env.REPLIT_DEV_DOMAIN;
-  const timeout = isDev ? 300000 : 60000; // 5 mins in dev, 60s in prod
+  const isDev = process.env.NODE_ENV !== 'production';
+  const timeout = isDev ? 600000 : 60000; // 10 mins in dev (covers AI generation polling), 60s in prod
   req.setTimeout(timeout, () => {
     if (!res.headersSent) res.status(408).json({ message: 'Request timeout' });
   });

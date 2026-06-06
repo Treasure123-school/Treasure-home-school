@@ -567,10 +567,10 @@ export default function LessonNoteEditorPage() {
       }
       const { jobId } = startData;
 
-      // Step 2: Poll every 3 seconds until done or error (max 5 minutes)
-      const maxAttempts = 100; // 100 × 3s = 5 minutes
+      // Step 2: Poll every 4 seconds until done or error (max 8 minutes — covers 5-min AI timeout + buffer)
+      const maxAttempts = 120; // 120 × 4s = 8 minutes
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        await new Promise(r => setTimeout(r, 3000));
+        await new Promise(r => setTimeout(r, 4000));
         const pollRes = await apiFetch('GET', `/api/lesson-notes/generate/poll/${jobId}`);
         const pollData = await pollRes.json();
 
@@ -596,7 +596,7 @@ export default function LessonNoteEditorPage() {
         // status === 'pending' → keep polling
       }
 
-      throw new Error('Timed out after 5 minutes. Try a faster model like Llama 3.1 8B in AI Configuration.');
+      throw new Error('Timed out after 8 minutes. The AI is taking too long — try a faster model like GPT-4o Mini or Gemini 2.0 Flash in AI Configuration.');
     } catch (err: any) {
       toast({ title: '⚠️ AI Generation Failed', description: shortAiError(err?.message || 'Unknown error'), variant: 'destructive', duration: 8000 });
       setMode('choose');

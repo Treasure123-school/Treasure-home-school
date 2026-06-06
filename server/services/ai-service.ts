@@ -163,7 +163,7 @@ function getEnvKey(provider: string): string {
 }
 
 /** Create a fetch with a hard timeout using AbortController */
-function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 90000): Promise<Response> {
+function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 300000): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
@@ -371,7 +371,7 @@ export async function generateLessonNoteContent(params: {
         temperature: 0.6,
         top_p: 1.0,
       }),
-    }, 180000);
+    }, 300000);
     if (!resp.ok) {
       const errText = await resp.text();
       let detail = errText;
