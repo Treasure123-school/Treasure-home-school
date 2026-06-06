@@ -4,6 +4,7 @@ export const PROVIDER_DEFAULTS: Record<string, string> = {
   openai: 'gpt-4o-mini',
   anthropic: 'claude-3-5-sonnet-20241022',
   gemini: 'gemini-2.0-flash',
+  nvidia: 'meta/llama-3.1-405b-instruct',
 };
 
 // Models that are deprecated/removed — auto-migrated to their replacement
@@ -36,6 +37,18 @@ export const GEMINI_MODELS = [
   { id: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (Fast)' },
   { id: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
   { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash (Cheap)' },
+];
+
+// NVIDIA NIM — OpenAI-compatible API, free credits with daily refresh
+export const NVIDIA_MODELS = [
+  { id: 'meta/llama-3.1-405b-instruct', label: 'Llama 3.1 405B (Best Quality)' },
+  { id: 'meta/llama-3.1-70b-instruct', label: 'Llama 3.1 70B (Fast)' },
+  { id: 'meta/llama-3.1-8b-instruct', label: 'Llama 3.1 8B (Lightest)' },
+  { id: 'moonshotai/kimi-k2.6', label: 'Kimi K2.6 (Moonshot AI)' },
+  { id: 'mistralai/mistral-large', label: 'Mistral Large' },
+  { id: 'mistralai/mixtral-8x22b-instruct-v0.1', label: 'Mixtral 8x22B' },
+  { id: 'google/gemma-2-27b-it', label: 'Gemma 2 27B (Google)' },
+  { id: 'microsoft/phi-3-medium-128k-instruct', label: 'Phi-3 Medium (Microsoft)' },
 ];
 
 // Rough average cost per 1M tokens (USD) — input+output blended
@@ -110,6 +123,7 @@ function getEnvKey(provider: string): string {
   if (provider === 'openai') return process.env.OPENAI_API_KEY || '';
   if (provider === 'anthropic') return process.env.ANTHROPIC_API_KEY || '';
   if (provider === 'gemini') return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
+  if (provider === 'nvidia') return process.env.NVIDIA_API_KEY || '';
   return '';
 }
 
@@ -309,6 +323,31 @@ export async function generateLessonNoteContent(params: {
       throw new Error(`Gemini generation stopped: ${finishReason}`);
     }
 
+  } else if (provider === 'nvidia') {
+    // NVIDIA NIM uses OpenAI-compatible chat completions endpoint
+    const jsonPrompt = prompt + '\n\nIMPORTANT: Respond ONLY with valid JSON. No markdown fences, no extra text.';
+    const resp = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: 'user', content: jsonPrompt }],
+        max_tokens: 8000,
+        temperature: 0.6,
+        top_p: 1.0,
+      }),
+    });
+    if (!resp.ok) {
+      const errText = await resp.text();
+      let detail = errText;
+      try { detail = JSON.parse(errText)?.message || JSON.parse(errText)?.error?.message || errText; } catch {}
+      throw new Error(`NVIDIA NIM error ${resp.status}: ${detail}`);
+    }
+    const data = await resp.json() as any;
+    raw = data.choices?.[0]?.message?.content || '';
+    tokensUsed = data.usage?.total_tokens || 0;
+    raw = raw.replace(/^```json\s*/i, '').replace(/\s*```$/, '').trim();
+
   } else {
     throw new Error(`Unknown AI provider: ${provider}`);
   }
@@ -455,6 +494,24 @@ export async function testProviderConnection(provider: string): Promise<{ succes
       let detail = body;
       try { detail = JSON.parse(body)?.error?.message || body; } catch {}
       return { success: false, message: `Gemini error ${r.status}`, detail };
+    }
+
+    if (provider === 'nvidia') {
+      const model = ai['nvidia.model'] || PROVIDER_DEFAULTS.nvidia;
+      const r = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: 'Say OK' }],
+          max_tokens: 5,
+        }),
+      }, 20000);
+      if (r.ok) return { success: true, message: `NVIDIA NIM connection successful ✓ (model: ${model})` };
+      const body = await r.text();
+      let detail = body;
+      try { detail = JSON.parse(body)?.message || JSON.parse(body)?.error?.message || body; } catch {}
+      return { success: false, message: `NVIDIA NIM error ${r.status}`, detail };
     }
 
     return { success: false, message: 'Unknown provider' };

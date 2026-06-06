@@ -8,6 +8,7 @@ import {
   OPENAI_MODELS,
   ANTHROPIC_MODELS,
   GEMINI_MODELS,
+  NVIDIA_MODELS,
   PROVIDER_DEFAULTS,
 } from '../services/ai-service';
 
@@ -22,6 +23,7 @@ function getEnvKey(provider: string): string {
   if (provider === 'openai') return process.env.OPENAI_API_KEY || '';
   if (provider === 'anthropic') return process.env.ANTHROPIC_API_KEY || '';
   if (provider === 'gemini') return process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '';
+  if (provider === 'nvidia') return process.env.NVIDIA_API_KEY || '';
   return '';
 }
 
@@ -39,7 +41,7 @@ router.get('/api/superadmin/ai-config', authenticateUser, authorizeRoles(ROLES.S
   try {
     const ai = await getAllAISettings();
 
-    const providers = ['openai', 'anthropic', 'gemini'];
+    const providers = ['openai', 'anthropic', 'gemini', 'nvidia'];
     const providerInfo: Record<string, any> = {};
 
     for (const p of providers) {
@@ -85,6 +87,7 @@ router.get('/api/superadmin/ai-config', authenticateUser, authorizeRoles(ROLES.S
         openai: OPENAI_MODELS,
         anthropic: ANTHROPIC_MODELS,
         gemini: GEMINI_MODELS,
+        nvidia: NVIDIA_MODELS,
       },
     });
   } catch (err: any) {

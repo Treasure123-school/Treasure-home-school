@@ -55,6 +55,7 @@ interface AIConfig {
     openai: ProviderInfo;
     anthropic: ProviderInfo;
     gemini: ProviderInfo;
+    nvidia: ProviderInfo;
   };
   features: {
     lessonNotes: boolean;
@@ -78,6 +79,7 @@ interface AIConfig {
     openai: { id: string; label: string }[];
     anthropic: { id: string; label: string }[];
     gemini: { id: string; label: string }[];
+    nvidia: { id: string; label: string }[];
   };
 }
 
@@ -92,18 +94,21 @@ const PROVIDER_LABELS: Record<string, string> = {
   openai: "OpenAI",
   anthropic: "Anthropic (Claude)",
   gemini: "Google Gemini",
+  nvidia: "NVIDIA NIM (Free)",
 };
 
 const PROVIDER_COLORS: Record<string, string> = {
   openai: "bg-green-100 text-green-800 border-green-200",
   anthropic: "bg-orange-100 text-orange-800 border-orange-200",
   gemini: "bg-blue-100 text-blue-800 border-blue-200",
+  nvidia: "bg-emerald-100 text-emerald-800 border-emerald-200",
 };
 
 const PROVIDER_ICONS: Record<string, string> = {
   openai: "🤖",
   anthropic: "🧠",
   gemini: "✨",
+  nvidia: "🟢",
 };
 
 export default function SuperAdminAIConfig() {
@@ -177,7 +182,7 @@ export default function SuperAdminAIConfig() {
 
   const handleSaveConfig = () => {
     const providers: Record<string, any> = {};
-    for (const p of ["openai", "anthropic", "gemini"]) {
+    for (const p of ["openai", "anthropic", "gemini", "nvidia"]) {
       providers[p] = {
         model: merged.providers?.[p as keyof typeof merged.providers]?.model,
         ...(editKeys[p] ? { apiKey: editKeys[p] } : {}),
@@ -351,7 +356,7 @@ export default function SuperAdminAIConfig() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {["openai", "anthropic", "gemini"].map((p) => {
+                {["openai", "anthropic", "gemini", "nvidia"].map((p) => {
                   const info = config?.providers?.[p as keyof typeof config.providers];
                   const isActive = p === activeProvider;
                   const result = testResults[p];
@@ -424,8 +429,8 @@ export default function SuperAdminAIConfig() {
                 <CardDescription>Select which provider is used for all AI generation</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-3 gap-3">
-                  {["openai", "anthropic", "gemini"].map((p) => (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {["openai", "anthropic", "gemini", "nvidia"].map((p) => (
                     <button
                       key={p}
                       onClick={() => setLocalConfig(prev => ({ ...prev, provider: p }))}
@@ -450,7 +455,7 @@ export default function SuperAdminAIConfig() {
             </Card>
 
             {/* Provider Details */}
-            {(["openai", "anthropic", "gemini"] as const).map((p) => {
+            {(["openai", "anthropic", "gemini", "nvidia"] as const).map((p) => {
               const info = merged.providers?.[p];
               const models = config?.availableModels?.[p] || [];
               const testResult = testResults[p];
