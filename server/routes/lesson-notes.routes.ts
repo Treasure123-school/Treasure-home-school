@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { randomUUID } from 'crypto';
 import { storage } from '../storage';
 import { authenticateUser, authorizeRoles, ROLES } from './middleware';
-import { generateLessonNoteContent, getAIConfig } from '../services/ai-service';
+import { generateLessonNoteContent, streamGenerateLessonNote, getAIConfig } from '../services/ai-service';
 
 const router = Router();
 
@@ -151,6 +151,56 @@ router.get('/generate/poll/:jobId', authenticateUser, authorizeRoles(...ALL_STAF
   // Done — return result and clean up
   aiJobs.delete(req.params.jobId);
   return res.json({ status: 'done', ...job.result });
+});
+
+// ─── POST /generate/stream-live  (SSE — pipes AI tokens directly to browser) ───
+router.post('/generate/stream-live', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
+  const { topic, className, subjectName, termName, duration = '40 minutes' } = req.body;
+
+  if (!topic) return res.status(400).json({ message: 'topic is required' });
+
+  try {
+    const config = await getAIConfig();
+    if (!config.features.lessonNotes) {
+      return res.status(403).json({ message: 'AI lesson note generation is currently disabled by the administrator.' });
+    }
+    if (!config.apiKey) {
+      return res.status(400).json({
+        message: `No API key configured for provider "${config.provider}". Go to AI Configuration → Providers and add your key.`,
+        aiError: 'no_api_key',
+      });
+    }
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+
+  // Switch to SSE mode
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx/Replit proxy buffering
+  res.flushHeaders();
+
+  let closed = false;
+  req.on('close', () => { closed = true; });
+
+  const send = (payload: object) => {
+    if (!closed && !res.writableEnded) {
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+    }
+  };
+
+  try {
+    const result = await streamGenerateLessonNote(
+      { topic, className: className || 'Secondary School', subjectName: subjectName || 'General', termName: termName || 'First Term', duration },
+      (text) => send({ t: text }),
+    );
+    send({ done: true, sections: result.sections, provider: result.provider, model: result.model, tokensUsed: result.tokensUsed });
+  } catch (err: any) {
+    console.error('[AI Streaming] Failed:', err.message);
+    send({ error: err.message || 'AI generation failed.' });
+  } finally {
+    if (!res.writableEnded) res.end();
+  }
 });
 
 // ─── POST /generate  (legacy — kept for backwards compat, now uses job pattern internally) ─

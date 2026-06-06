@@ -19,7 +19,7 @@ import DocEditor from '@/components/lesson-notes/DocEditor';
 import {
   Save, Send, Eye, EyeOff, AlertCircle, Info, BookOpen, Sparkles, Pencil,
   ChevronLeft, Loader2, GraduationCap, BookMarked, Calendar, Printer,
-  CheckCircle2, Clock, CloudOff, Copy, Check,
+  CheckCircle2, Clock, CloudOff, Copy, Check, CheckCircle,
 } from 'lucide-react';
 
 function shortAiError(msg: string): string {
@@ -123,50 +123,71 @@ const AI_MESSAGES = [
   'Almost ready...',
 ];
 
-function GeneratingScreen({ topic, elapsed }: { topic: string; elapsed: number }) {
-  const [msgIdx, setMsgIdx] = useState(0);
-
-  useEffect(() => {
-    const msgTimer = setInterval(() => setMsgIdx(i => (i + 1) % AI_MESSAGES.length), 4000);
-    return () => clearInterval(msgTimer);
-  }, []);
-
-  // Progress creeps to ~90% over 3 minutes, then holds
-  const progress = Math.min(Math.round((elapsed / 180) * 90), 90);
-
+function StreamingScreen({ topic, liveText, elapsed, isDone }: {
+  topic: string; liveText: string; elapsed: number; isDone: boolean;
+}) {
+  const boxRef = useRef<HTMLDivElement>(null);
   const formatTime = (s: number) => s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
+  const charCount = liveText.length;
+
+  // Auto-scroll to bottom as new tokens arrive
+  useEffect(() => {
+    if (boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight;
+  }, [liveText]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center px-4">
-      <div className="w-full max-w-sm text-center space-y-6">
-        {/* Animated icon */}
-        <div className="relative inline-flex items-center justify-center w-20 h-20 mx-auto">
-          <div className="absolute inset-0 rounded-full bg-blue-100 dark:bg-blue-900/30 animate-pulse" />
-          <Sparkles className="h-9 w-9 text-blue-600 dark:text-blue-400 relative z-10" />
+    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center px-4 py-8">
+      <div className="w-full max-w-2xl">
+        {/* Header */}
+        <div className="text-center mb-6">
+          <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 ${
+            isDone ? 'bg-green-500/20' : 'bg-blue-500/20'
+          }`}>
+            {isDone
+              ? <CheckCircle className="h-8 w-8 text-green-400" />
+              : <Sparkles className="h-8 w-8 text-blue-400 animate-pulse" />}
+          </div>
+          <h1 className="text-xl font-bold text-white mb-1">
+            {isDone ? 'Generation Complete!' : 'AI is writing your lesson note…'}
+          </h1>
+          <p className="text-gray-400 text-sm truncate max-w-xs mx-auto">{topic}</p>
         </div>
 
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-1">Generating Lesson Note</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-1">{topic}</p>
+        {/* Live text box */}
+        <div
+          ref={boxRef}
+          className="bg-gray-900 border border-gray-700 rounded-xl p-4 h-80 overflow-y-auto font-mono text-sm text-gray-200 leading-relaxed whitespace-pre-wrap break-words"
+        >
+          {liveText
+            ? <>
+                {liveText}
+                {!isDone && <span className="inline-block w-0.5 h-[1em] bg-blue-400 animate-pulse ml-0.5 align-text-bottom" />}
+              </>
+            : <span className="text-gray-600 animate-pulse">Connecting to AI provider…</span>
+          }
         </div>
 
-        {/* Progress bar */}
-        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-          <div
-            className="h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-1000 ease-out"
-            style={{ width: `${progress}%` }}
-          />
+        {/* Stats */}
+        <div className="flex items-center justify-center gap-4 mt-4 text-sm text-gray-400 flex-wrap">
+          <span>⏱ {elapsed === 0 ? 'Starting…' : formatTime(elapsed)}</span>
+          {charCount > 0 && <>
+            <span>•</span>
+            <span>{charCount.toLocaleString()} characters</span>
+          </>}
+          {!isDone && liveText && <>
+            <span>•</span>
+            <span className="flex items-center gap-1.5">
+              <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              Live
+            </span>
+          </>}
         </div>
 
-        {/* Cycling message */}
-        <p key={msgIdx} className="text-sm font-medium text-blue-600 dark:text-blue-400 animate-pulse min-h-[1.25rem]">
-          {AI_MESSAGES[msgIdx]}
-        </p>
-
-        {/* Live elapsed time — reassures teacher the page is working */}
-        <p className="text-xs text-gray-400 dark:text-gray-500">
-          {elapsed === 0 ? 'Starting…' : `Working… ${formatTime(elapsed)}`}
-        </p>
+        {isDone && (
+          <p className="text-center mt-4 text-green-400 text-sm font-medium animate-pulse">
+            Opening editor…
+          </p>
+        )}
       </div>
     </div>
   );
@@ -360,9 +381,11 @@ export default function LessonNoteEditorPage() {
   const [title,       setTitle]       = useState(query.topicName || '');
   const [content,     setContent]     = useState('');
   const [initialized, setInitialized] = useState(false);
-  const [mode, setMode] = useState<'choose' | 'generating' | 'editing'>(isEdit ? 'editing' : 'choose');
+  const [mode, setMode] = useState<'choose' | 'streaming' | 'editing'>(isEdit ? 'editing' : 'choose');
   const [preview, setPreview]         = useState(false);
   const [aiLoading, setAiLoading]     = useState(false);
+  const [liveText, setLiveText]       = useState('');
+  const [streamDone, setStreamDone]   = useState(false);
   const [saveStatus, setSaveStatus]   = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
   const [copied, setCopied]           = useState(false);
 
@@ -498,24 +521,10 @@ export default function LessonNoteEditorPage() {
     onError: (e: any) => toast({ title: 'Publish failed', description: e.message, variant: 'destructive' }),
   });
 
-  // ── AI Generation (background job + polling — no HTTP timeout issues) ───────
+  // ── AI Generation (live SSE streaming — ChatGPT-style) ───────────────────────
   const [aiElapsed, setAiElapsed] = useState(0);
 
-  const apiFetch = useCallback(async (method: string, path: string, body?: unknown) => {
-    const token = localStorage.getItem('token');
-    const res = await fetch(getApiUrl(path), {
-      method,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      credentials: 'include',
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-    });
-    return res;
-  }, []);
-
-  const buildNoteHtml = useCallback((data: any) => {
+  const buildNoteHtml = useCallback((sections: Record<string, string>) => {
     const LABELS: Record<string, string> = {
       objectives:   '1. Learning Objectives',
       introduction: '2. Introduction',
@@ -536,7 +545,7 @@ export default function LessonNoteEditorPage() {
       : '';
     let html = `<h1>${title}</h1>${header}`;
     ORDER.forEach(key => {
-      const val = data.sections[key];
+      const val = sections[key];
       if (val?.trim()) html += `<h2>${LABELS[key]}</h2>${val}`;
     });
     return html;
@@ -549,54 +558,86 @@ export default function LessonNoteEditorPage() {
     }
     setAiLoading(true);
     setAiElapsed(0);
-    setMode('generating');
+    setLiveText('');
+    setStreamDone(false);
+    setMode('streaming');
 
-    // Elapsed-time ticker
     const startTime = Date.now();
     const ticker = setInterval(() => setAiElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
 
     try {
-      // Step 1: Start the job — returns immediately with a jobId
-      const startRes = await apiFetch('POST', '/api/lesson-notes/generate/start', {
-        topic: title, className: query.className, subjectName: query.subjectName,
-        termName: query.termName,
+      const token = localStorage.getItem('token');
+      const resp = await fetch(getApiUrl('/api/lesson-notes/generate/stream-live'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          topic: title,
+          className:   query.className,
+          subjectName: query.subjectName,
+          termName:    query.termName,
+        }),
       });
-      const startData = await startRes.json();
-      if (!startRes.ok) {
-        throw new Error(startData?.message || 'Could not start generation.');
+
+      // Non-2xx before SSE headers → plain JSON error
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        throw new Error(data?.message || `Server error ${resp.status}`);
       }
-      const { jobId } = startData;
 
-      // Step 2: Poll every 4 seconds until done or error (max 8 minutes — covers 5-min AI timeout + buffer)
-      const maxAttempts = 120; // 120 × 4s = 8 minutes
-      for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        await new Promise(r => setTimeout(r, 4000));
-        const pollRes = await apiFetch('GET', `/api/lesson-notes/generate/poll/${jobId}`);
-        const pollData = await pollRes.json();
+      // Read the SSE stream token-by-token
+      const reader = resp.body!.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+      let accumulated = '';
 
-        if (!pollRes.ok || pollData.status === 'error') {
-          throw new Error(pollData?.message || 'AI generation failed.');
-        }
+      outer: while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() ?? '';
 
-        if (pollData.status === 'done') {
-          if (pollData.sections) {
-            setContent(buildNoteHtml(pollData));
-            setSaveStatus('unsaved');
-            setMode('editing');
-            toast({
-              title: '✨ AI generation complete',
-              description: `Generated by ${pollData.provider || 'AI'} (${pollData.model || ''}). Review and customise as needed.`,
-            });
-          } else {
-            toast({ title: '⚠️ No content returned', description: 'AI returned an empty response. Try again.', variant: 'destructive', duration: 8000 });
-            setMode('choose');
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data:')) continue;
+          const payload = trimmed.slice(5).trim();
+          try {
+            const evt = JSON.parse(payload);
+
+            if (evt.error) throw new Error(evt.error);
+
+            if (evt.done) {
+              // Stream complete — show "done" state briefly then open editor
+              setStreamDone(true);
+              await new Promise(r => setTimeout(r, 900));
+              if (evt.sections) {
+                setContent(buildNoteHtml(evt.sections));
+                setSaveStatus('unsaved');
+                setMode('editing');
+                toast({
+                  title: '✨ AI generation complete',
+                  description: `Generated by ${evt.provider || 'AI'} (${evt.model || ''}). Review and customise as needed.`,
+                });
+              } else {
+                toast({ title: '⚠️ No content returned', description: 'AI returned an empty response. Try again.', variant: 'destructive', duration: 8000 });
+                setMode('choose');
+              }
+              break outer;
+            }
+
+            if (evt.t) {
+              accumulated += evt.t;
+              setLiveText(accumulated);
+            }
+          } catch (e: any) {
+            if (e?.message) throw e;
           }
-          return;
         }
-        // status === 'pending' → keep polling
       }
-
-      throw new Error('Timed out after 8 minutes. The AI is taking too long — try a faster model like GPT-4o Mini or Gemini 2.0 Flash in AI Configuration.');
     } catch (err: any) {
       toast({ title: '⚠️ AI Generation Failed', description: shortAiError(err?.message || 'Unknown error'), variant: 'destructive', duration: 8000 });
       setMode('choose');
@@ -604,7 +645,7 @@ export default function LessonNoteEditorPage() {
       clearInterval(ticker);
       setAiLoading(false);
     }
-  }, [title, query, toast, apiFetch, buildNoteHtml]);
+  }, [title, query, toast, buildNoteHtml]);
 
   const busy = saveMutation.isPending || submitMutation.isPending || publishMutation.isPending;
 
@@ -623,9 +664,9 @@ export default function LessonNoteEditorPage() {
     );
   }
 
-  // ── Generating screen ───────────────────────────────────────────────────────
-  if (mode === 'generating') {
-    return <GeneratingScreen topic={title} elapsed={aiElapsed} />;
+  // ── Streaming screen (live ChatGPT-style) ──────────────────────────────────
+  if (mode === 'streaming') {
+    return <StreamingScreen topic={title} liveText={liveText} elapsed={aiElapsed} isDone={streamDone} />;
   }
 
   // ── Preview overlay ────────────────────────────────────────────────────────
