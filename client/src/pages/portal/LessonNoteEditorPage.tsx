@@ -167,40 +167,83 @@ function hashStr(s: string): number {
   return Math.abs(h);
 }
 
-function addImagesToNote(html: string, topic: string, subjectName: string): string {
+interface ImgJob { id: string; prompt: string; heading: string; }
+
+function addImagePlaceholders(html: string, topic: string, subjectName: string): { html: string; imgJobs: ImgJob[] } {
   const VISUAL = /diagram|structure|process|cycle|classif|chart|system|organ|cell|molecule|flow|stages|mechanism|anatomy|illustration|model|cross.?section|formation|composition|types of|parts of|components/i;
-  return html.replace(/<h3(?:[^>]*)>([^<]+)<\/h3>/g, (match: string, heading: string) => {
+  const imgJobs: ImgJob[] = [];
+  let idx = 0;
+  const newHtml = html.replace(/<h3(?:[^>]*)>([^<]+)<\/h3>/g, (match: string, heading: string) => {
     if (!VISUAL.test(heading) && !VISUAL.test(topic)) return match;
-    const seed = hashStr(heading + topic);
-    const promptText = `${heading.trim()}, educational textbook diagram for ${subjectName || topic}, clear labeled illustration, white background, high detail, scientific style`;
-    const encoded = encodeURIComponent(promptText);
-    const imgUrl = `https://image.pollinations.ai/prompt/${encoded}?width=720&height=440&nologo=true&seed=${seed % 9999}`;
-    return `${match}<figure style="margin:1em 0 1.5em;text-align:center;page-break-inside:avoid">
-  <img src="${imgUrl}" alt="Diagram: ${heading.trim()}" loading="lazy" style="max-width:100%;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.08)" />
+    const id = `ai-img-${idx++}-${Date.now()}`;
+    const promptText = `${heading.trim()}, educational textbook diagram for ${subjectName || topic}, clear labeled scientific illustration, white background, detailed, high quality`;
+    imgJobs.push({ id, prompt: promptText, heading: heading.trim() });
+    return `${match}<figure id="${id}" style="margin:1em 0 1.5em;text-align:center;page-break-inside:avoid">
+  <div class="ai-img-skeleton" style="display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%;height:200px;background:linear-gradient(90deg,#f0f4ff 25%,#e8efff 50%,#f0f4ff 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border:1px dashed #bfdbfe;border-radius:8px;gap:0.6em">
+    <svg width="36" height="36" fill="none" stroke="#93c5fd" stroke-width="1.5" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+    <span style="color:#6b7280;font-size:0.82rem">Generating diagram…</span>
+    <span style="color:#9ca3af;font-size:0.7rem">${heading.trim()}</span>
+  </div>
   <figcaption style="font-size:0.75rem;color:#6b7280;margin-top:0.4em;font-style:italic">Fig: ${heading.trim()}</figcaption>
 </figure>`;
   });
+  return { html: newHtml, imgJobs };
+}
+
+/** Replace one placeholder figure (by ID) with the actual generated image. */
+function replacePlaceholder(html: string, id: string, imageUrl: string, heading: string): string {
+  const figRe = new RegExp(`<figure id="${id}"[^>]*>[\\s\\S]*?</figure>`);
+  const replacement = `<figure style="margin:1em 0 1.5em;text-align:center;page-break-inside:avoid">
+  <img src="${imageUrl}" alt="Diagram: ${heading}" style="max-width:100%;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.08)" />
+  <figcaption style="font-size:0.75rem;color:#6b7280;margin-top:0.4em;font-style:italic">Fig: ${heading}</figcaption>
+</figure>`;
+  return html.replace(figRe, replacement);
+}
+
+/** Mark a placeholder as failed. */
+function markPlaceholderFailed(html: string, id: string, heading: string): string {
+  const figRe = new RegExp(`<figure id="${id}"[^>]*>[\\s\\S]*?</figure>`);
+  const replacement = `<figure style="margin:1em 0 1.5em;text-align:center;page-break-inside:avoid">
+  <div style="display:flex;align-items:center;justify-content:center;width:100%;height:64px;background:#f9fafb;border:1px dashed #e5e7eb;border-radius:8px;color:#9ca3af;font-size:0.75rem;gap:0.4em">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    Diagram unavailable — ${heading}
+  </div>
+  <figcaption style="font-size:0.75rem;color:#9ca3af;margin-top:0.4em;font-style:italic">Fig: ${heading}</figcaption>
+</figure>`;
+  return html.replace(figRe, replacement);
 }
 
 // ── AI progress banner (shown inside the editor while generating) ─────────────
 
-function AIProgressBanner({ elapsed, completedSections, isDone }: {
-  elapsed: number; completedSections: number; isDone: boolean;
+function AIProgressBanner({ elapsed, completedSections, isDone, imgTotal, imgDone }: {
+  elapsed: number; completedSections: number; isDone: boolean; imgTotal: number; imgDone: number;
 }) {
   const NAMES = ['Objectives', 'Introduction', 'Content', 'Evaluation', 'Assignment', 'Summary'];
   const fmt = (s: number) => s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
+
+  const imgsLoading = isDone && imgTotal > 0 && imgDone < imgTotal;
+  const imgsAllDone = isDone && imgTotal > 0 && imgDone >= imgTotal;
+
   const pct = isDone ? 100 : Math.round((completedSections / 6) * 92);
-  const label = isDone
+  const imgPct = imgTotal > 0 ? Math.round((imgDone / imgTotal) * 100) : 0;
+
+  const label = imgsLoading
+    ? `Generating diagram ${imgDone + 1} of ${imgTotal}…`
+    : imgsAllDone
+    ? `✅ All ${imgTotal} diagram${imgTotal > 1 ? 's' : ''} ready — review and save`
+    : isDone
     ? 'Generation complete — review and save your note'
     : completedSections < 6 ? `Writing ${NAMES[completedSections]}…` : 'Finalising…';
+
+  const showImageBar = isDone && imgTotal > 0;
 
   return (
     <div className="shrink-0 border-b border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-background px-4 py-2.5">
       <div className="flex items-center gap-3">
         <div className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center ${
-          isDone ? 'bg-green-100 dark:bg-green-900/30' : 'bg-primary/10'
+          imgsAllDone || (isDone && imgTotal === 0) ? 'bg-green-100 dark:bg-green-900/30' : 'bg-primary/10'
         }`}>
-          {isDone
+          {imgsAllDone || (isDone && imgTotal === 0)
             ? <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
             : <Sparkles className="h-4 w-4 text-primary animate-pulse" />}
         </div>
@@ -208,15 +251,25 @@ function AIProgressBanner({ elapsed, completedSections, isDone }: {
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs font-medium text-foreground truncate">{label}</span>
             <span className="text-xs text-muted-foreground ml-3 shrink-0 tabular-nums">
-              {completedSections}/6 · {elapsed === 0 ? 'starting…' : fmt(elapsed)}
+              {!isDone && `${completedSections}/6 · ${elapsed === 0 ? 'starting…' : fmt(elapsed)}`}
+              {showImageBar && `🖼 ${imgDone}/${imgTotal}`}
             </span>
           </div>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 overflow-hidden">
-            <div
-              className={`h-1 rounded-full transition-all duration-700 ${isDone ? 'bg-green-500' : 'bg-primary'}`}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
+          {/* Text generation bar */}
+          {!isDone && (
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 overflow-hidden">
+              <div className="h-1 rounded-full transition-all duration-700 bg-primary" style={{ width: `${pct}%` }} />
+            </div>
+          )}
+          {/* Image generation bar */}
+          {showImageBar && (
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 overflow-hidden">
+              <div
+                className={`h-1 rounded-full transition-all duration-500 ${imgsAllDone ? 'bg-green-500' : 'bg-amber-400'}`}
+                style={{ width: `${imgPct}%` }}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -416,7 +469,15 @@ export default function LessonNoteEditorPage() {
   const [aiLoading, setAiLoading]       = useState(false);
   const [aiCompletedSections, setAiCompletedSections] = useState(0);
   const [aiDone, setAiDone]             = useState(false);
+  const [aiImgTotal,  setAiImgTotal]    = useState(0);
+  const [aiImgDone,   setAiImgDone]     = useState(0);
   const [saveStatus, setSaveStatus]     = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
+
+  // Used during image generation to track the "live" html so progressive
+  // replacements don't overwrite each other, and to detect user edits.
+  const liveHtmlRef      = useRef('');
+  const userEditedRef    = useRef(false);
+  const imgGenActiveRef  = useRef(false);
   const [copied, setCopied]           = useState(false);
 
   const copyToClipboard = useCallback(() => {
@@ -462,6 +523,9 @@ export default function LessonNoteEditorPage() {
   const handleContentChange = useCallback((html: string) => {
     setContent(html);
     setSaveStatus('unsaved');
+    // If images are still generating, flag that the user has manually edited
+    // so we don't overwrite their changes when images finish loading
+    if (imgGenActiveRef.current) userEditedRef.current = true;
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => {
       triggerAutoSave(html);
@@ -656,15 +720,59 @@ export default function LessonNoteEditorPage() {
             if (evt.done) {
               if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
               if (evt.sections) {
-                const finalHtml = addImagesToNote(buildNoteHtml(evt.sections), title, query.subjectName);
-                setContent(finalHtml);
+                const baseHtml = buildNoteHtml(evt.sections);
+                const { html: htmlWithPlaceholders, imgJobs } = addImagePlaceholders(baseHtml, title, query.subjectName);
+
+                liveHtmlRef.current = htmlWithPlaceholders;
+                userEditedRef.current = false;
+                setContent(htmlWithPlaceholders);
                 setSaveStatus('unsaved');
                 setAiCompletedSections(6);
                 setAiDone(true);
-                toast({
-                  title: '✨ AI generation complete',
-                  description: `Generated by ${evt.provider || 'AI'} (${evt.model || ''}). Images are loading in the background.`,
-                });
+
+                if (imgJobs.length > 0) {
+                  setAiImgTotal(imgJobs.length);
+                  setAiImgDone(0);
+                  imgGenActiveRef.current = true;
+                  const token = localStorage.getItem('token');
+
+                  // Generate images progressively — each replaces its placeholder as it finishes
+                  Promise.all(imgJobs.map(async ({ id, prompt, heading }) => {
+                    try {
+                      const r = await fetch(getApiUrl('/api/lesson-notes/generate-image'), {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+                        credentials: 'include',
+                        body: JSON.stringify({ prompt }),
+                      });
+                      if (!r.ok) throw new Error(`status ${r.status}`);
+                      const { imageUrl } = await r.json();
+                      if (!userEditedRef.current) {
+                        liveHtmlRef.current = replacePlaceholder(liveHtmlRef.current, id, imageUrl, heading);
+                        setContent(liveHtmlRef.current);
+                      }
+                    } catch {
+                      if (!userEditedRef.current) {
+                        liveHtmlRef.current = markPlaceholderFailed(liveHtmlRef.current, id, heading);
+                        setContent(liveHtmlRef.current);
+                      }
+                    } finally {
+                      setAiImgDone(prev => prev + 1);
+                    }
+                  })).finally(() => {
+                    imgGenActiveRef.current = false;
+                  });
+
+                  toast({
+                    title: '✨ Note ready — diagrams loading',
+                    description: `${imgJobs.length} diagram${imgJobs.length > 1 ? 's' : ''} generating via AI in the background.`,
+                  });
+                } else {
+                  toast({
+                    title: '✨ AI generation complete',
+                    description: `Generated by ${evt.provider || 'AI'} (${evt.model || ''}).`,
+                  });
+                }
               } else {
                 toast({ title: '⚠️ No content returned', description: 'AI returned an empty response. Try again.', variant: 'destructive', duration: 8000 });
               }
@@ -844,11 +952,13 @@ export default function LessonNoteEditorPage() {
       </div>
 
       {/* ── AI progress banner — shown directly above editor while generating ── */}
-      {aiLoading && (
+      {(aiLoading || (aiDone && aiImgTotal > 0 && aiImgDone < aiImgTotal)) && (
         <AIProgressBanner
           elapsed={aiElapsed}
           completedSections={aiCompletedSections}
           isDone={aiDone}
+          imgTotal={aiImgTotal}
+          imgDone={aiImgDone}
         />
       )}
 

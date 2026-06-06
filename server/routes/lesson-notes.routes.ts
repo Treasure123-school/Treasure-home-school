@@ -342,4 +342,41 @@ router.post('/:id/approve-publish', authenticateUser, authorizeRoles(...ADMIN_RO
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
+// ─── POST /generate-image  (HF FLUX.1-schnell — teacher+ only) ───────────────
+router.post('/generate-image', authenticateUser, authorizeRoles([ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPERADMIN]), async (req: Request, res: Response) => {
+  try {
+    const { prompt } = req.body;
+    if (!prompt || typeof prompt !== 'string') return res.status(400).json({ error: 'prompt required' });
+
+    const apiKey = process.env.HF_API_KEY;
+    if (!apiKey) return res.status(503).json({ error: 'Hugging Face API key (HF_API_KEY) not configured' });
+
+    const model = 'black-forest-labs/FLUX.1-schnell';
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 58000);
+
+    const resp = await fetch(`https://api-inference.huggingface.co/models/${model}`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'x-wait-for-model': 'true' },
+      body: JSON.stringify({ inputs: prompt, parameters: { num_inference_steps: 4 } }),
+    });
+    clearTimeout(timeoutId);
+
+    if (!resp.ok) {
+      const text = await resp.text();
+      console.error('[generate-image] HF error', resp.status, text.slice(0, 200));
+      return res.status(resp.status).json({ error: `HF API ${resp.status}: ${text.slice(0, 200)}` });
+    }
+
+    const buf = await resp.arrayBuffer();
+    const ct = resp.headers.get('content-type') || 'image/jpeg';
+    const b64 = Buffer.from(buf).toString('base64');
+    res.json({ imageUrl: `data:${ct};base64,${b64}` });
+  } catch (err: any) {
+    const isTimeout = err.name === 'AbortError';
+    res.status(isTimeout ? 504 : 500).json({ error: isTimeout ? 'Image generation timed out (58s)' : err.message });
+  }
+});
+
 export default router;
