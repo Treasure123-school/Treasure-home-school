@@ -800,6 +800,16 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
 
       {/* ── Editor styles ── */}
       <style>{`
+        /* Shimmer animation — used by diagram regen loading SVG */
+        @keyframes shimmer {
+          0%   { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+        @keyframes ai-pulse {
+          0%, 100% { opacity: 1; }
+          50%       { opacity: 0.6; }
+        }
+
         /* Placeholder */
         .doc-root p.is-editor-empty:first-child::before {
           color: #9ca3af; content: attr(data-placeholder);

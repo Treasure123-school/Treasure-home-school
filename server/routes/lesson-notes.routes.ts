@@ -343,7 +343,7 @@ router.post('/:id/approve-publish', authenticateUser, authorizeRoles(...ADMIN_RO
 });
 
 // ─── POST /generate-image  (HF FLUX.1-schnell — teacher+ only) ───────────────
-router.post('/generate-image', authenticateUser, authorizeRoles([ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPERADMIN]), async (req: Request, res: Response) => {
+router.post('/generate-image', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   try {
     const { prompt } = req.body;
     if (!prompt || typeof prompt !== 'string') return res.status(400).json({ error: 'prompt required' });
