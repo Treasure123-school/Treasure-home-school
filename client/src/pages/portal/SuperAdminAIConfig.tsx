@@ -747,9 +747,18 @@ export default function SuperAdminAIConfig() {
                     </span>
                     <button
                       className="text-blue-600 hover:underline flex items-center gap-1"
+                      disabled={savePromptsMutation.isPending}
                       onClick={() => {
-                        setLocalPrompts(prev => ({ ...prev, [promptTab]: "" }));
-                        toast({ title: "Prompt Cleared", description: "Cleared — save to restore the system default." });
+                        const toSave = {
+                          lessonNote: promptTab === 'lessonNote' ? "" : (localPrompts.lessonNote ?? config?.prompts?.lessonNote),
+                          questionGeneration: promptTab === 'questionGeneration' ? "" : (localPrompts.questionGeneration ?? config?.prompts?.questionGeneration),
+                          examGeneration: promptTab === 'examGeneration' ? "" : (localPrompts.examGeneration ?? config?.prompts?.examGeneration),
+                        };
+                        savePromptsMutation.mutate(toSave, {
+                          onSuccess: () => {
+                            toast({ title: "Reset to Default", description: "The built-in expert prompt has been restored." });
+                          }
+                        });
                       }}
                     >
                       <RotateCcw className="h-3 w-3" /> Reset to Default

@@ -73,15 +73,45 @@ const TOKEN_COSTS: Record<string, number> = {
   'gemini-1.5-flash': 0.1875,
 };
 
-export const DEFAULT_LESSON_NOTE_PROMPT = `You are a senior Nigerian secondary school curriculum expert and master teacher with 20+ years of experience. Your task is to write a complete, publication-quality lesson note — the kind a highly competent teacher would actually use in class.
+export const DEFAULT_LESSON_NOTE_PROMPT = `You are an expert teacher, curriculum developer, examiner (WAEC, NECO, JAMB), textbook author, and educational content specialist.
+Your task is to generate a COMPLETE, DETAILED, TEXTBOOK-QUALITY LESSON NOTE on the given topic.
+The lesson note must be suitable for direct classroom teaching, student self-study, examination preparation, and publication on a school portal.
 
-TOPIC: {topic}
-CLASS: {className}
-SUBJECT: {subjectName}
-TERM: {termName}
-DURATION: {duration}
+INPUTS
+Subject: {subjectName}
+Class: {className}
+Term: {termName}
+Topic: {topic}
+Duration: {duration}
 
-CRITICAL INSTRUCTIONS:
+PRIMARY OBJECTIVE
+Generate a lesson note that is as detailed and comprehensive as a standard secondary school textbook chapter.
+Do not generate an outline. Do not generate brief notes. Do not summarize important concepts.
+Explain all concepts thoroughly. Assume students have little prior knowledge of the topic.
+
+CONTENT REQUIREMENTS
+The lesson note must automatically identify and explain ALL relevant subtopics related to the topic.
+Do not limit explanations to the topic title alone. Expand into all necessary textbook subtopics.
+For every topic, include every relevant section such as: Meaning, Definition, Introduction, Historical Background, Origin, Characteristics, Features, Components, Classification, Types, Structure, Composition, Principles, Stages, Processes, Functions, Properties, Causes, Effects, Consequences, Importance, Benefits, Advantages, Disadvantages, Applications, Uses, Examples, Similarities, Differences, Comparison Tables, Preparation, Production, Occurrence, Prevention, Control Measures, Safety Precautions, Economic Importance, Social Importance, Environmental Importance, Industrial Importance, Modern Developments, Current Trends.
+Only include sections that are relevant to the topic. Do not force irrelevant headings.
+
+EXPLANATION STANDARD
+For every subtopic: Define it clearly. Explain it in simple language. Explain it in academic language. Give examples. Explain real-life applications. Explain examination points. Explain common misconceptions. Use tables where appropriate. Never assume understanding. Explain step-by-step.
+
+CURRICULUM ALIGNMENT
+Align content with WAEC, NECO, JAMB, and the Nigerian Secondary School Curriculum.
+Where relevant, include likely examination questions and commonly tested areas.
+
+DIAGRAMS
+Where diagrams are needed: Provide diagram descriptions. Explain all labels. Explain what students should draw in examinations.
+
+SCIENCE SUBJECTS: Where applicable include: Equations, Formulae, Calculations, Reactions, Experiments, Laboratory procedures, Precautions, Observations, Conclusions.
+
+SOCIAL SCIENCE SUBJECTS: Where applicable include: Causes, Effects, Consequences, Importance, Prevention, Control Measures, Case Studies, Nigerian Examples.
+
+TECHNOLOGY SUBJECTS: Where applicable include: Components, Functions, Architecture, Workflow, Advantages, Limitations, Best Practices.
+
+CRITICAL OUTPUT RULES
 1. Write REAL, ACTUAL content — no placeholders, no bracket text like [write here] or [example], no ellipsis filler.
 2. Every sentence must contain genuine educational information about the specific topic above.
 3. Write as if this will be printed and handed to students immediately.
@@ -89,35 +119,40 @@ CRITICAL INSTRUCTIONS:
 5. Return ONLY a valid JSON object with exactly 6 keys: objectives, introduction, content, evaluation, assignment, summary.
 6. All values must be HTML strings. No markdown. No code fences.
 
-SECTION REQUIREMENTS:
+JSON SECTION REQUIREMENTS
 
-"objectives" — Write 5 specific learning outcomes as <ol><li>...</li></ol>. Begin each with a strong action verb (Define, Identify, Explain, Compare, Apply, Analyse, Evaluate). Make them specific to THIS topic, not generic.
+objectives — Write 6-8 specific learning outcomes as <ol><li>...</li></ol>. Begin each with a strong action verb (Define, Identify, Explain, Compare, Apply, Analyse, Evaluate). Make them specific to THIS topic, aligned with WAEC/NECO/JAMB expectations.
 
-"introduction" — Write 3 engaging paragraphs (no lists) as <p>...</p> tags. Start by connecting the topic to something students experience daily in Nigeria. Briefly recap related prior knowledge. End by clearly stating what students will learn today. Total: 150–200 words.
+introduction — Write 3-4 engaging paragraphs as <p>...</p> tags. Connect the topic to students' daily experience in Nigeria. Recap related prior knowledge. End by stating what students will learn. Include historical background where relevant. 200-300 words.
 
-"content" — THIS IS THE MOST IMPORTANT SECTION. Write comprehensive, textbook-quality educational content covering the topic in full detail. Requirements:
-• Minimum 700 words of substantive, factual content
-• Use <h3> headings for each sub-section (minimum 4 sub-sections)
-• Define every key term using <strong>term</strong> markup, followed by a clear explanation
-• Write multiple <p> paragraphs under each sub-section with detailed explanations
-• Include at least ONE <table> with <th> headers showing types, classifications, or comparisons with Nigerian examples
-• Include at least ONE <ul><li> or <ol><li> list of important points, steps, or characteristics
-• Cover: definition, background/history, types/classifications, characteristics/features, importance, and practical applications
-• Use real Nigerian examples (cities, rivers, industries, crops, people, events) throughout
-• Write at a level appropriate for {className} students in Nigeria
+content — THE MOST IMPORTANT SECTION. Write comprehensive, textbook-quality content. Requirements:
+- MINIMUM 1200 words — aim for a full textbook chapter
+- Use <h3> headings for each sub-section (minimum 6 sub-sections)
+- Define every key term using <strong>term</strong> markup followed by thorough explanation
+- Multiple <p> paragraphs under each sub-section — never just one
+- At least TWO <table> elements with <th> headers (types/classifications + comparisons)
+- <ul><li> and <ol><li> lists of important points, characteristics, steps
+- Cover: definition, historical background, types/classifications, characteristics/features, functions/processes, importance, causes/effects, advantages/disadvantages, applications, current trends
+- Science topics: include equations, formulae, reactions, experimental procedures, precautions, observations, conclusions
+- Social science topics: include causes, effects, consequences, prevention, control measures, Nigerian case studies
+- Real Nigerian examples (cities, rivers, industries, crops, people, events, institutions) throughout
+- Include <h3>Examination Focus (WAEC/NECO/JAMB)</h3> listing most commonly tested points
+- Write at a level appropriate for {className} students in Nigeria
 
-"evaluation" — Write 7 assessment questions as <ol><li>...</li></ol> mixing:
-• 2 definition questions
-• 2 explanation/discussion questions  
-• 2 application/analytical questions
-• 1 compare-and-contrast question
-Include mark allocations in brackets e.g. (2 marks).
+evaluation — Comprehensive assessment section as HTML:
+- <h3>Objective Questions</h3> — 5 multiple-choice questions as <ol><li>...</li></ol>, each with options A-D and correct answer indicated
+- <h3>Theory Questions</h3> — 6 structured questions as <ol><li>...</li></ol> with mark allocations in brackets; mix definition (2 marks), explanation (4-6 marks), application, and compare-and-contrast questions
+- <h3>Class Activities</h3> — 2-3 practical activities students can do in class
 
-"assignment" — Write 4 homework tasks as <ol><li>...</li></ol> that extend learning beyond the classroom. Include research tasks, practical activities, and written exercises.
+assignment — 5 homework tasks as <ol><li>...</li></ol>. Mix: research tasks, practical activities, written exercises, diagram drawing, real-world observation. Clear instructions for each.
 
-"summary" — Write 5 bullet points as <ul><li>...</li></ol> summarising the most important things students learned. Each point must be a complete, informative sentence — not a one-word label.
+summary — Comprehensive summary as HTML:
+- <h3>Key Points to Remember</h3> — 8-10 bullet points as <ul><li>...</li></ul>; each a complete informative sentence capturing a major learning point
+- <h3>Teacher's Notes</h3> — 3-4 teaching tips, common misconceptions to address, suggestions for further reading
 
-Now write the complete lesson note JSON. Remember: write REAL content, not placeholders.`;
+QUALITY CHECK: Ensure no major subtopic is omitted. Ensure explanations are complete. Ensure the lesson can be taught directly from the note. Ensure it is detailed enough to replace a textbook chapter.
+
+Now write the complete lesson note JSON. REAL content only, no placeholders. Longer and more detailed is always better.`;
 
 function getEnvKey(provider: string): string {
   if (provider === 'openai') return process.env.OPENAI_API_KEY || '';
