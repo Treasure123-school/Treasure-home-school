@@ -1,9 +1,28 @@
 import { Router, Request, Response } from 'express';
+import { randomUUID } from 'crypto';
 import { storage } from '../storage';
 import { authenticateUser, authorizeRoles, ROLES } from './middleware';
 import { generateLessonNoteContent, getAIConfig } from '../services/ai-service';
 
 const router = Router();
+
+// ─── In-memory AI generation job store ───────────────────────────────────────
+type JobStatus = 'pending' | 'done' | 'error';
+interface GenerationJob {
+  status: JobStatus;
+  result?: { sections: any; provider: string; model: string };
+  error?: string;
+  createdAt: number;
+}
+const aiJobs = new Map<string, GenerationJob>();
+
+// Expire jobs older than 10 minutes to prevent memory leaks
+setInterval(() => {
+  const cutoff = Date.now() - 10 * 60 * 1000;
+  for (const [id, job] of aiJobs) {
+    if (job.createdAt < cutoff) aiJobs.delete(id);
+  }
+}, 60 * 1000);
 
 function getUser(req: Request) {
   return (req as any).user as { id: string; roleId: number };
@@ -78,52 +97,65 @@ router.post('/', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Req
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
-// ─── POST /generate  (AI-powered lesson note content generation) ─────────────
-router.post('/generate', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
+// ─── POST /generate/start  (kick off AI generation — returns jobId immediately)
+router.post('/generate/start', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   try {
     const { topic, className, subjectName, termName, duration = '40 minutes' } = req.body;
     if (!topic) return res.status(400).json({ message: 'topic is required' });
 
-    const subj = subjectName || 'General';
-    const cls  = className  || 'Secondary School';
-    const t    = topic;
-
-    // Load AI config and check feature toggle
     const config = await getAIConfig();
     if (!config.features.lessonNotes) {
       return res.status(403).json({ message: 'AI lesson note generation is currently disabled by the administrator.' });
     }
-
-    // Attempt AI generation if a key is available
-    if (config.apiKey) {
-      try {
-        const result = await generateLessonNoteContent({
-          topic: t,
-          className: cls,
-          subjectName: subj,
-          termName: termName || 'First Term',
-          duration,
-        });
-        return res.json({ sections: result.sections, aiGenerated: true, provider: result.provider, model: result.model });
-      } catch (err: any) {
-        const aiError = err.message || 'Unknown AI error';
-        console.error('[AI Generation] Failed:', aiError);
-        return res.status(400).json({
-          message: `AI generation failed: ${aiError}`,
-          aiError,
-          provider: config.provider,
-          model: config.model,
-        });
-      }
+    if (!config.apiKey) {
+      return res.status(400).json({
+        message: `No API key configured for provider "${config.provider}". Go to AI Configuration → Providers and add your key.`,
+        aiError: 'no_api_key',
+      });
     }
 
-    // No API key configured
-    return res.status(400).json({
-      message: `No API key configured for provider "${config.provider}". Go to AI Configuration → Providers and add your key.`,
-      aiError: 'no_api_key',
-      provider: config.provider,
+    // Create a job record and start generation in the background
+    const jobId = randomUUID();
+    aiJobs.set(jobId, { status: 'pending', createdAt: Date.now() });
+
+    // Fire and forget — do NOT await
+    generateLessonNoteContent({
+      topic,
+      className:   className   || 'Secondary School',
+      subjectName: subjectName || 'General',
+      termName:    termName    || 'First Term',
+      duration,
+    }).then(result => {
+      aiJobs.set(jobId, { status: 'done', result, createdAt: Date.now() });
+    }).catch(err => {
+      console.error('[AI Generation] Failed:', err.message);
+      aiJobs.set(jobId, { status: 'error', error: err.message || 'Unknown AI error', createdAt: Date.now() });
     });
+
+    return res.json({ jobId });
   } catch (err: any) { res.status(500).json({ message: err.message }); }
+});
+
+// ─── GET /generate/poll/:jobId  (poll for job result) ────────────────────────
+router.get('/generate/poll/:jobId', authenticateUser, authorizeRoles(...ALL_STAFF), (req: Request, res: Response) => {
+  const job = aiJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ message: 'Job not found or expired.' });
+
+  if (job.status === 'pending') return res.json({ status: 'pending' });
+
+  if (job.status === 'error') {
+    aiJobs.delete(req.params.jobId);
+    return res.status(400).json({ status: 'error', message: `AI generation failed: ${job.error}` });
+  }
+
+  // Done — return result and clean up
+  aiJobs.delete(req.params.jobId);
+  return res.json({ status: 'done', ...job.result });
+});
+
+// ─── POST /generate  (legacy — kept for backwards compat, now uses job pattern internally) ─
+router.post('/generate', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
+  return res.status(410).json({ message: 'This endpoint has been replaced. Please refresh the page.' });
 });
 
 // ─── PUT /:id  (teacher=own draft/rejected; admin=any) ───────────────────────

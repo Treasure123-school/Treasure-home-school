@@ -123,19 +123,18 @@ const AI_MESSAGES = [
   'Almost ready...',
 ];
 
-function GeneratingScreen({ topic }: { topic: string }) {
+function GeneratingScreen({ topic, elapsed }: { topic: string; elapsed: number }) {
   const [msgIdx, setMsgIdx] = useState(0);
-  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    const msgTimer = setInterval(() => {
-      setMsgIdx(i => (i + 1) % AI_MESSAGES.length);
-    }, 3000);
-    const progTimer = setInterval(() => {
-      setProgress(p => Math.min(p + 1, 92));
-    }, 300);
-    return () => { clearInterval(msgTimer); clearInterval(progTimer); };
+    const msgTimer = setInterval(() => setMsgIdx(i => (i + 1) % AI_MESSAGES.length), 4000);
+    return () => clearInterval(msgTimer);
   }, []);
+
+  // Progress creeps to ~90% over 3 minutes, then holds
+  const progress = Math.min(Math.round((elapsed / 180) * 90), 90);
+
+  const formatTime = (s: number) => s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col items-center justify-center px-4">
@@ -154,7 +153,7 @@ function GeneratingScreen({ topic }: { topic: string }) {
         {/* Progress bar */}
         <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
           <div
-            className="h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-300 ease-out"
+            className="h-2 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full transition-all duration-1000 ease-out"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -164,7 +163,10 @@ function GeneratingScreen({ topic }: { topic: string }) {
           {AI_MESSAGES[msgIdx]}
         </p>
 
-        <p className="text-xs text-gray-400 dark:text-gray-500">This usually takes 15–30 seconds</p>
+        {/* Live elapsed time — reassures teacher the page is working */}
+        <p className="text-xs text-gray-400 dark:text-gray-500">
+          {elapsed === 0 ? 'Starting…' : `Working… ${formatTime(elapsed)}`}
+        </p>
       </div>
     </div>
   );
@@ -496,100 +498,113 @@ export default function LessonNoteEditorPage() {
     onError: (e: any) => toast({ title: 'Publish failed', description: e.message, variant: 'destructive' }),
   });
 
-  // ── AI Generation ──────────────────────────────────────────────────────────
+  // ── AI Generation (background job + polling — no HTTP timeout issues) ───────
+  const [aiElapsed, setAiElapsed] = useState(0);
+
+  const apiFetch = useCallback(async (method: string, path: string, body?: unknown) => {
+    const token = localStorage.getItem('token');
+    const res = await fetch(getApiUrl(path), {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      credentials: 'include',
+      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+    });
+    return res;
+  }, []);
+
+  const buildNoteHtml = useCallback((data: any) => {
+    const LABELS: Record<string, string> = {
+      objectives:   '1. Learning Objectives',
+      introduction: '2. Introduction',
+      content:      '3. Detailed Lesson Note',
+      evaluation:   '4. Evaluation / Classwork',
+      assignment:   '5. Assignment',
+      summary:      '6. Summary',
+    };
+    const ORDER = ['objectives', 'introduction', 'content', 'evaluation', 'assignment', 'summary'];
+    const metaRows = [
+      query.className   && `<tr><td><strong>Class:</strong></td><td>${query.className}</td></tr>`,
+      query.subjectName && `<tr><td><strong>Subject:</strong></td><td>${query.subjectName}</td></tr>`,
+      query.termName    && `<tr><td><strong>Term:</strong></td><td>${query.termName}</td></tr>`,
+      `<tr><td><strong>Duration:</strong></td><td>40 minutes</td></tr>`,
+    ].filter(Boolean).join('');
+    const header = metaRows
+      ? `<table style="border:none;width:auto;margin-bottom:1em"><tbody>${metaRows}</tbody></table>`
+      : '';
+    let html = `<h1>${title}</h1>${header}`;
+    ORDER.forEach(key => {
+      const val = data.sections[key];
+      if (val?.trim()) html += `<h2>${LABELS[key]}</h2>${val}`;
+    });
+    return html;
+  }, [title, query]);
+
   const generateWithAI = useCallback(async () => {
     if (!title.trim()) {
       toast({ title: 'Topic required', description: 'Enter a topic before generating.', variant: 'destructive' });
       return;
     }
     setAiLoading(true);
+    setAiElapsed(0);
     setMode('generating');
+
+    // Elapsed-time ticker
+    const startTime = Date.now();
+    const ticker = setInterval(() => setAiElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
+
     try {
-      // AI generation can take 60-120s — use a dedicated fetch with a 2-minute timeout
-      // instead of the global 30-second apiRequest timeout.
-      const controller = new AbortController();
-      const aiTimeoutId = setTimeout(() => controller.abort(), 120000);
-      let res: Response;
-      try {
-        const token = localStorage.getItem('token');
-        res = await fetch(getApiUrl('/api/lesson-notes/generate'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-          body: JSON.stringify({
-            topic: title, className: query.className, subjectName: query.subjectName,
-            termName: query.termName, weekNumber: '',
-          }),
-          credentials: 'include',
-          signal: controller.signal,
-        });
-      } finally {
-        clearTimeout(aiTimeoutId);
+      // Step 1: Start the job — returns immediately with a jobId
+      const startRes = await apiFetch('POST', '/api/lesson-notes/generate/start', {
+        topic: title, className: query.className, subjectName: query.subjectName,
+        termName: query.termName,
+      });
+      const startData = await startRes.json();
+      if (!startRes.ok) {
+        throw new Error(startData?.message || 'Could not start generation.');
       }
-      const data = await res.json();
+      const { jobId } = startData;
 
-      // Check for server-side errors
-      if (!res.ok) {
-        const raw = data?.message || 'AI generation failed. Please check your API key in AI Configuration.';
-        const msg = shortAiError(raw);
-        toast({ title: '⚠️ AI Generation Failed', description: msg, variant: 'destructive', duration: 8000 });
-        setMode('choose');
-        return;
+      // Step 2: Poll every 3 seconds until done or error (max 5 minutes)
+      const maxAttempts = 100; // 100 × 3s = 5 minutes
+      for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        await new Promise(r => setTimeout(r, 3000));
+        const pollRes = await apiFetch('GET', `/api/lesson-notes/generate/poll/${jobId}`);
+        const pollData = await pollRes.json();
+
+        if (!pollRes.ok || pollData.status === 'error') {
+          throw new Error(pollData?.message || 'AI generation failed.');
+        }
+
+        if (pollData.status === 'done') {
+          if (pollData.sections) {
+            setContent(buildNoteHtml(pollData));
+            setSaveStatus('unsaved');
+            setMode('editing');
+            toast({
+              title: '✨ AI generation complete',
+              description: `Generated by ${pollData.provider || 'AI'} (${pollData.model || ''}). Review and customise as needed.`,
+            });
+          } else {
+            toast({ title: '⚠️ No content returned', description: 'AI returned an empty response. Try again.', variant: 'destructive', duration: 8000 });
+            setMode('choose');
+          }
+          return;
+        }
+        // status === 'pending' → keep polling
       }
 
-      if (data.sections) {
-        // Convert sections to a single HTML document
-        const LABELS: Record<string, string> = {
-          objectives:   '1. Learning Objectives',
-          introduction: '2. Introduction',
-          content:      '3. Detailed Lesson Note',
-          evaluation:   '4. Evaluation / Classwork',
-          assignment:   '5. Assignment',
-          summary:      '6. Summary',
-        };
-        const ORDER = ['objectives', 'introduction', 'content', 'evaluation', 'assignment', 'summary'];
-
-        // Build header block with lesson metadata
-        const metaRows = [
-          query.className    && `<tr><td><strong>Class:</strong></td><td>${query.className}</td></tr>`,
-          query.subjectName  && `<tr><td><strong>Subject:</strong></td><td>${query.subjectName}</td></tr>`,
-          query.termName     && `<tr><td><strong>Term:</strong></td><td>${query.termName}</td></tr>`,
-          `<tr><td><strong>Duration:</strong></td><td>40 minutes</td></tr>`,
-        ].filter(Boolean).join('');
-        const header = metaRows
-          ? `<table style="border:none;width:auto;margin-bottom:1em"><tbody>${metaRows}</tbody></table>`
-          : '';
-
-        let html = `<h1>${title}</h1>${header}`;
-        ORDER.forEach(key => {
-          const val = data.sections[key];
-          if (val?.trim()) html += `<h2>${LABELS[key]}</h2>${val}`;
-        });
-        setContent(html);
-        setSaveStatus('unsaved');
-        setMode('editing');
-        toast({
-          title: '✨ AI generation complete',
-          description: `Generated by ${data.provider || 'AI'} (${data.model || ''}). Review and customise as needed.`,
-        });
-      } else {
-        toast({ title: '⚠️ No content returned', description: 'AI returned an empty response. Try again or check your AI configuration.', variant: 'destructive', duration: 8000 });
-        setMode('choose');
-      }
+      throw new Error('Timed out after 5 minutes. Try a faster model like Llama 3.1 8B in AI Configuration.');
     } catch (err: any) {
-      const isAbort = err?.name === 'AbortError';
-      const raw = isAbort
-        ? 'The AI took too long (over 2 minutes). Try a faster model like Llama 3.1 8B in AI Configuration.'
-        : (err?.message || 'Could not generate content. Please check your AI provider settings.');
-      const msg = shortAiError(raw);
-      toast({ title: '⚠️ AI Generation Failed', description: msg, variant: 'destructive', duration: 8000 });
+      toast({ title: '⚠️ AI Generation Failed', description: shortAiError(err?.message || 'Unknown error'), variant: 'destructive', duration: 8000 });
       setMode('choose');
     } finally {
+      clearInterval(ticker);
       setAiLoading(false);
     }
-  }, [title, query, toast]);
+  }, [title, query, toast, apiFetch, buildNoteHtml]);
 
   const busy = saveMutation.isPending || submitMutation.isPending || publishMutation.isPending;
 
@@ -610,7 +625,7 @@ export default function LessonNoteEditorPage() {
 
   // ── Generating screen ───────────────────────────────────────────────────────
   if (mode === 'generating') {
-    return <GeneratingScreen topic={title} />;
+    return <GeneratingScreen topic={title} elapsed={aiElapsed} />;
   }
 
   // ── Preview overlay ────────────────────────────────────────────────────────
