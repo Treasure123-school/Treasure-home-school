@@ -4,7 +4,7 @@ export const PROVIDER_DEFAULTS: Record<string, string> = {
   openai: 'gpt-4o-mini',
   anthropic: 'claude-3-5-sonnet-20241022',
   gemini: 'gemini-2.0-flash',
-  nvidia: 'moonshotai/kimi-k2.6',
+  nvidia: 'meta/llama-3.3-70b-instruct',
 };
 
 // Models that are deprecated/removed — auto-migrated to their replacement
@@ -41,14 +41,14 @@ export const GEMINI_MODELS = [
 
 // NVIDIA NIM — OpenAI-compatible API, free credits with daily refresh
 export const NVIDIA_MODELS = [
-  { id: 'moonshotai/kimi-k2.6', label: 'Kimi K2.6 — Moonshot AI (Default)' },
+  { id: 'meta/llama-3.3-70b-instruct', label: 'Llama 3.3 70B — Meta (Recommended)' },
   { id: 'meta/llama-3.1-70b-instruct', label: 'Llama 3.1 70B — Meta (Fast)' },
-  { id: 'meta/llama-3.1-8b-instruct', label: 'Llama 3.1 8B — Meta (Lightest)' },
-  { id: 'meta/llama-3.3-70b-instruct', label: 'Llama 3.3 70B — Meta (Latest)' },
-  { id: 'nvidia/llama-3.3-nemotron-super-49b-v1', label: 'Nemotron Super 49B — NVIDIA' },
-  { id: 'mistralai/mistral-7b-instruct-v0.3', label: 'Mistral 7B — Mistral AI' },
+  { id: 'meta/llama-3.1-8b-instruct', label: 'Llama 3.1 8B — Meta (Fastest)' },
+  { id: 'mistralai/mistral-7b-instruct-v0.3', label: 'Mistral 7B — Mistral AI (Fast)' },
   { id: 'mistralai/mixtral-8x7b-instruct-v0.1', label: 'Mixtral 8x7B — Mistral AI' },
+  { id: 'nvidia/llama-3.3-nemotron-super-49b-v1', label: 'Nemotron Super 49B — NVIDIA' },
   { id: 'google/gemma-2-9b-it', label: 'Gemma 2 9B — Google' },
+  { id: 'moonshotai/kimi-k2.6', label: 'Kimi K2.6 — Moonshot AI (Slow/Thinking)' },
 ];
 
 // Rough average cost per 1M tokens (USD) — input+output blended
@@ -332,11 +332,11 @@ export async function generateLessonNoteContent(params: {
       body: JSON.stringify({
         model,
         messages: [{ role: 'user', content: jsonPrompt }],
-        max_tokens: 8000,
+        max_tokens: 6000,
         temperature: 0.6,
         top_p: 1.0,
       }),
-    });
+    }, 180000);
     if (!resp.ok) {
       const errText = await resp.text();
       let detail = errText;
