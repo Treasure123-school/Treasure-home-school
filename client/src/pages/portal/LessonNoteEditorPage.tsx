@@ -207,6 +207,7 @@ export default function LessonNoteEditorPage() {
   const [imgGenPanel,     setImgGenPanel]     = useState(false);
   const [imgGenUrl,       setImgGenUrl]       = useState<string | null>(null);
   const [imgGenMeta,      setImgGenMeta]      = useState('');
+  const [imgGenDescription, setImgGenDescription] = useState('');
 
   // Refs
   const liveHtmlRef     = useRef('');
@@ -397,18 +398,21 @@ export default function LessonNoteEditorPage() {
 
   // ── Inline AI image generation ─────────────────────────────────────────────
   // Declared AFTER doSave to avoid the TDZ crash ("cannot access before init")
-  const handleGenerateCoverImage = useCallback(async () => {
+  const handleGenerateCoverImage = useCallback(async (description?: string) => {
+    const desc = (description ?? imgGenDescription).trim();
+    if (!desc) {
+      toast({ title: 'Description required', description: 'Enter a description of the image you want to generate.', variant: 'destructive' });
+      return;
+    }
     setImgGenLoading(true);
-    setImgGenPanel(true);
     setImgGenUrl(null);
     setImgGenMeta('');
     try {
       let noteId = savedNoteId.current;
       if (!noteId) {
         if (!title.trim()) {
-          toast({ title: 'Title required', description: 'Enter a title before generating an image.', variant: 'destructive' });
+          toast({ title: 'Title required', description: 'Enter a note title before generating an image.', variant: 'destructive' });
           setImgGenLoading(false);
-          setImgGenPanel(false);
           return;
         }
         noteId = await doSave(liveHtmlRef.current || content);
@@ -418,7 +422,7 @@ export default function LessonNoteEditorPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         credentials: 'include',
-        body: JSON.stringify({ subject: query.subjectName, className: query.className }),
+        body: JSON.stringify({ prompt: desc, subject: query.subjectName, className: query.className }),
       });
       if (!r.ok) {
         const err = await r.json().catch(() => ({}));
@@ -429,11 +433,10 @@ export default function LessonNoteEditorPage() {
       setImgGenMeta([result.provider, result.model].filter(Boolean).join(' · '));
     } catch (err: any) {
       toast({ title: 'Image generation failed', description: err.message || 'Unknown error', variant: 'destructive' });
-      setImgGenPanel(false);
     } finally {
       setImgGenLoading(false);
     }
-  }, [title, doSave, content, query, toast]);
+  }, [title, doSave, content, query, toast, imgGenDescription]);
 
   const handleInsertImage = useCallback(() => {
     if (!imgGenUrl) return;
@@ -776,7 +779,7 @@ export default function LessonNoteEditorPage() {
             {canEdit && (
               <Button size="sm" variant="outline"
                 className="h-8 text-xs gap-1.5 rounded border-orange-200 text-orange-700 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-400 font-semibold"
-                onClick={imgGenPanel ? () => setImgGenPanel(false) : handleGenerateCoverImage}
+                onClick={() => { setImgGenPanel(p => !p); setImgGenUrl(null); }}
                 disabled={aiLoading || isGeneratingImages || busy || imgGenLoading}
                 data-testid="button-generate-image">
                 {imgGenLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
@@ -860,43 +863,32 @@ export default function LessonNoteEditorPage() {
 
       {/* ── AI Image panel ── */}
       {imgGenPanel && (
-        <div className="shrink-0 border-b border-orange-100 dark:border-orange-900/40 bg-orange-50 dark:bg-orange-950/20">
-          <div className="flex items-start gap-3 px-4 py-3">
-            {/* Left: image or skeleton */}
-            <div className="shrink-0 w-32 h-24 rounded-lg border border-orange-200 dark:border-orange-800 overflow-hidden bg-white dark:bg-gray-900 flex items-center justify-center">
-              {imgGenLoading ? (
-                <div className="flex flex-col items-center gap-1.5 text-orange-400">
-                  <Loader2 className="h-6 w-6 animate-spin" />
-                  <span className="text-[10px] text-center px-1">Generating…</span>
-                </div>
-              ) : imgGenUrl ? (
-                <img src={imgGenUrl} alt="AI generated" className="w-full h-full object-cover" />
-              ) : (
-                <ImagePlus className="h-8 w-8 text-orange-200" />
+        <div className="shrink-0 border-b border-orange-100 dark:border-orange-900/40 bg-orange-50 dark:bg-orange-950/20 px-4 py-3 space-y-2.5">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ImagePlus className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+              <span className="text-xs font-semibold text-orange-700 dark:text-orange-400">AI-Generated Image</span>
+              {imgGenMeta && (
+                <span className="text-[10px] text-orange-400 dark:text-orange-500">{imgGenMeta}</span>
               )}
             </div>
+            <button
+              className="text-orange-400 hover:text-orange-600 p-0.5"
+              onClick={() => { setImgGenPanel(false); setImgGenUrl(null); setImgGenDescription(''); }}
+              data-testid="button-dismiss-image">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
 
-            {/* Right: info + actions */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <ImagePlus className="h-3.5 w-3.5 text-orange-500 shrink-0" />
-                <span className="text-xs font-semibold text-orange-700 dark:text-orange-400">AI-Generated Image</span>
-                {imgGenMeta && (
-                  <span className="text-[10px] text-orange-400 dark:text-orange-500 truncate">{imgGenMeta}</span>
-                )}
+          {/* Body: description input → result */}
+          {imgGenUrl ? (
+            <div className="flex items-start gap-3">
+              <div className="shrink-0 w-28 h-20 rounded-lg border border-orange-200 dark:border-orange-800 overflow-hidden bg-white dark:bg-gray-900">
+                <img src={imgGenUrl} alt="AI generated" className="w-full h-full object-cover" />
               </div>
-
-              {imgGenLoading ? (
-                <p className="text-xs text-orange-600 dark:text-orange-400">
-                  Creating an educational diagram for <em>{title || 'your topic'}</em>…
-                </p>
-              ) : imgGenUrl ? (
-                <p className="text-xs text-orange-600 dark:text-orange-400 mb-2">
-                  Image ready. Insert it into your note or generate a new one.
-                </p>
-              ) : null}
-
-              {!imgGenLoading && imgGenUrl && (
+              <div className="flex-1 min-w-0 space-y-2">
+                <p className="text-xs text-orange-600 dark:text-orange-400">Image ready. Insert it into your note or generate a new one.</p>
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <Button size="sm"
                     className="h-7 text-xs gap-1.5 bg-orange-600 hover:bg-orange-700 text-white font-semibold"
@@ -907,22 +899,49 @@ export default function LessonNoteEditorPage() {
                   </Button>
                   <Button size="sm" variant="outline"
                     className="h-7 text-xs gap-1.5 border-orange-200 text-orange-700 hover:bg-orange-50"
-                    onClick={handleGenerateCoverImage}
+                    onClick={() => { setImgGenUrl(null); }}
                     data-testid="button-regenerate-image">
                     <RefreshCw className="h-3 w-3" />
-                    Regenerate
-                  </Button>
-                  <Button size="sm" variant="ghost"
-                    className="h-7 text-xs gap-1 text-orange-500 hover:text-orange-700"
-                    onClick={() => { setImgGenPanel(false); setImgGenUrl(null); }}
-                    data-testid="button-dismiss-image">
-                    <X className="h-3 w-3" />
-                    Dismiss
+                    Change description
                   </Button>
                 </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs text-orange-600 dark:text-orange-400">
+                Describe the image you want to generate — e.g. <em>a labeled diagram of the human digestive system</em>.
+              </p>
+              <div className="flex gap-2">
+                <textarea
+                  className="flex-1 text-xs rounded-md border border-orange-200 dark:border-orange-800 bg-white dark:bg-gray-900 px-2.5 py-1.5 text-gray-800 dark:text-gray-100 placeholder-gray-400 resize-none focus:outline-none focus:ring-1 focus:ring-orange-400"
+                  rows={2}
+                  placeholder="Describe the image or diagram you want…"
+                  value={imgGenDescription}
+                  onChange={e => setImgGenDescription(e.target.value)}
+                  disabled={imgGenLoading}
+                  data-testid="input-image-description"
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleGenerateCoverImage(); } }}
+                />
+                <Button size="sm"
+                  className="h-auto px-3 text-xs bg-orange-600 hover:bg-orange-700 text-white font-semibold self-stretch"
+                  onClick={() => handleGenerateCoverImage()}
+                  disabled={imgGenLoading || !imgGenDescription.trim()}
+                  data-testid="button-do-generate-image">
+                  {imgGenLoading
+                    ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    : <><ImagePlus className="h-3.5 w-3.5" /><span className="ml-1">Generate</span></>
+                  }
+                </Button>
+              </div>
+              {imgGenLoading && (
+                <p className="text-[11px] text-orange-500 dark:text-orange-400 flex items-center gap-1.5">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Generating your image…
+                </p>
               )}
             </div>
-          </div>
+          )}
         </div>
       )}
 

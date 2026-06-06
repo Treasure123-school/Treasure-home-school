@@ -349,31 +349,24 @@ router.post('/:id/approve-publish', authenticateUser, authorizeRoles(...ADMIN_RO
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
-// ─── POST /generate-image  (Pollinations.AI FLUX — free, no API key) ──────────
-// Pollinations blocks server-side requests from cloud IPs (402), so we return
-// the URL directly. The browser loads the image client-side — no 402, no wait.
-// A stable hash seed makes the same prompt always produce the same image.
-router.post('/generate-image', authenticateUser, authorizeRoles(...ALL_STAFF), (req: Request, res: Response) => {
+// ─── POST /generate-image  (System AI — uses active provider from settings) ────
+// Generates a diagram image using the configured system AI provider (Cloudflare
+// or NVIDIA) and saves it to local/cloud storage. No note ID required.
+router.post('/generate-image', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   try {
     const { prompt } = req.body;
     if (!prompt || typeof prompt !== 'string') return res.status(400).json({ error: 'prompt required' });
 
-    // Deterministic seed from prompt → same prompt = same image every time
-    let hash = 0;
-    for (let i = 0; i < prompt.length; i++) {
-      hash = Math.imul(31, hash) + prompt.charCodeAt(i) | 0;
-    }
-    const seed = Math.abs(hash) % 999983;
-
-    // Enhance prompt for educational diagram quality
     const enhancedPrompt = `${prompt}, educational textbook diagram, white background, clear labels, scientific illustration, clean, professional, high quality`;
-    const encoded = encodeURIComponent(enhancedPrompt);
 
-    // Return the Pollinations URL — browser loads the image directly (avoids cloud IP block)
-    const imageUrl = `https://image.pollinations.ai/prompt/${encoded}?seed=${seed}&width=1024&height=768&model=flux&nologo=true`;
+    const activeProvider = await getActiveImageProvider();
+    console.log(`[generate-image] provider=${activeProvider} prompt="${prompt.slice(0, 60)}"`);
 
-    console.log(`[generate-image] Returning Pollinations URL seed=${seed} prompt="${prompt.slice(0, 60)}"`);
-    return res.json({ imageUrl });
+    const { buffer, provider, model } = await generateImage(enhancedPrompt);
+    const imageUrl = await saveGeneratedImage(buffer, `diagram-${Date.now()}`);
+
+    console.log(`[generate-image] saved via ${provider} (${model}): ${imageUrl}`);
+    return res.json({ imageUrl, provider, model });
   } catch (err: any) {
     console.error('[generate-image] error:', err.message);
     return res.status(500).json({ error: err.message });
