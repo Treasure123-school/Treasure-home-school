@@ -10,7 +10,7 @@ interface RichTextViewerProps {
 export default function RichTextViewer({ html, className = '', brandColor = '#3b82f6' }: RichTextViewerProps) {
   const safeHtml = useMemo(() => {
     if (!html) return '';
-    return DOMPurify.sanitize(html, {
+    const clean = DOMPurify.sanitize(html, {
       ADD_TAGS: [
         'table', 'thead', 'tbody', 'tr', 'th', 'td', 'colgroup', 'col',
         'figure', 'figcaption',
@@ -22,6 +22,11 @@ export default function RichTextViewer({ html, className = '', brandColor = '#3b
       ALLOW_DATA_ATTR: false,
       FORCE_BODY: true,
     });
+    // Strip editor-only interactive hints saved in figcaptions from older content
+    return clean
+      .replace(/·\s*click to regenerate/gi, '')
+      .replace(/·\s*regenerating…/gi, '')
+      .replace(/cursor:\s*pointer/gi, 'cursor:default');
   }, [html]);
 
   return (
@@ -34,11 +39,12 @@ export default function RichTextViewer({ html, className = '', brandColor = '#3b
       <style>{`
         @media print { body { background: white; } .lesson-note-viewer { color: black; } }
         .lesson-note-viewer { overflow-x: auto; }
-        .lesson-note-viewer h1 { font-size: 1.75rem; font-weight: 700; line-height: 1.2; margin: 1rem 0 0.5rem; color: var(--viewer-heading-color, #3b82f6); }
-        .lesson-note-viewer h2 { font-size: 1.375rem; font-weight: 600; line-height: 1.3; margin: 0.875rem 0 0.4rem; color: var(--viewer-heading-color, #3b82f6); }
-        .lesson-note-viewer h3 { font-size: 1.125rem; font-weight: 600; line-height: 1.4; margin: 0.75rem 0 0.35rem; color: var(--viewer-heading-color, #3b82f6); }
-        .lesson-note-viewer h4 { font-size: 1rem; font-weight: 600; line-height: 1.4; margin: 0.75rem 0 0.35rem; color: var(--viewer-heading-color, #3b82f6); }
-        .lesson-note-viewer p { margin: 0.35rem 0; line-height: 1.65; }
+        .lesson-note-viewer h1 { font-size: 1.75rem; font-weight: 700; line-height: 1.2; margin: 1rem 0 0.5rem; color: var(--viewer-heading-color, #3b82f6) !important; }
+        .lesson-note-viewer h2 { font-size: 1.375rem; font-weight: 600; line-height: 1.3; margin: 0.875rem 0 0.4rem; color: var(--viewer-heading-color, #3b82f6) !important; }
+        .lesson-note-viewer h3 { font-size: 1.125rem; font-weight: 600; line-height: 1.4; margin: 0.75rem 0 0.35rem; color: var(--viewer-heading-color, #3b82f6) !important; }
+        .lesson-note-viewer h4 { font-size: 1rem; font-weight: 600; line-height: 1.4; margin: 0.75rem 0 0.35rem; color: var(--viewer-heading-color, #3b82f6) !important; }
+        .lesson-note-viewer p { margin: 0.35rem 0; line-height: 1.65; color: #000; }
+        .dark .lesson-note-viewer p { color: #e5e7eb; }
         .lesson-note-viewer ul { list-style: disc; padding-left: 1.5rem; margin: 0.5rem 0; }
         .lesson-note-viewer ol { list-style: decimal; padding-left: 1.5rem; margin: 0.5rem 0; }
         .lesson-note-viewer li { margin: 0.2rem 0; line-height: 1.6; }

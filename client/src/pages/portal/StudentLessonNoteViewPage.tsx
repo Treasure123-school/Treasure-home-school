@@ -86,15 +86,12 @@ export default function StudentLessonNoteViewPage() {
 
       {/* Note header */}
       <div className="space-y-4">
-        <div className="flex items-start justify-between gap-4">
-          <h1 className="text-2xl sm:text-3xl font-bold leading-tight text-foreground break-words">
-            {note.title}
-          </h1>
+        <div className="flex items-center justify-end print:hidden">
           <Button
             variant="outline"
             size="sm"
             onClick={() => window.print()}
-            className="shrink-0 gap-1.5 print:hidden"
+            className="gap-1.5"
           >
             <Printer className="w-4 h-4" />
             <span className="hidden sm:inline">Print</span>

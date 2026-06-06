@@ -299,15 +299,12 @@ export default function LessonNoteViewPage() {
       )}
 
       {/* Note header */}
-      <div className="space-y-4">
-        <h1 className="text-2xl sm:text-3xl font-bold leading-tight text-foreground break-words">{note.title}</h1>
-        <div className="flex flex-wrap gap-x-5 gap-y-2">
-          {note.className   && <MetaChip icon={GraduationCap} label="Class"   value={note.className} />}
-          {note.subjectName && <MetaChip icon={BookOpen}      label="Subject" value={note.subjectName} />}
-          {note.termName    && <MetaChip icon={Calendar}      label="Term"    value={note.termName} />}
-          {note.topicName   && <MetaChip icon={FileText}      label="Topic"   value={note.topicName} />}
-          {note.creatorName && <MetaChip icon={User}          label="Teacher" value={note.creatorName} />}
-        </div>
+      <div className="flex flex-wrap gap-x-5 gap-y-2">
+        {note.className   && <MetaChip icon={GraduationCap} label="Class"   value={note.className} />}
+        {note.subjectName && <MetaChip icon={BookOpen}      label="Subject" value={note.subjectName} />}
+        {note.termName    && <MetaChip icon={Calendar}      label="Term"    value={note.termName} />}
+        {note.topicName   && <MetaChip icon={FileText}      label="Topic"   value={note.topicName} />}
+        {note.creatorName && <MetaChip icon={User}          label="Teacher" value={note.creatorName} />}
       </div>
 
       {note.rejectionReason && (

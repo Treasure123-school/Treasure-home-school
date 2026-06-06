@@ -161,7 +161,7 @@ export function replacePlaceholder(html: string, id: string, imageUrl: string, h
   const eh    = encodeURIComponent(heading);
   const replacement = `<figure data-fig-id="${id}" data-regen-prompt="${ep}" data-regen-heading="${eh}" style="margin:1.25em 0 1.75em;text-align:center;page-break-inside:avoid">
   <img src="${imageUrl}" alt="Diagram: ${heading}" data-fig-id="${id}" data-regen-prompt="${ep}" data-regen-heading="${eh}" style="max-width:100%;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 2px 16px rgba(0,0,0,0.09);cursor:pointer" />
-  <figcaption style="font-size:0.75rem;color:#6b7280;margin-top:0.5em;font-style:italic">Fig: ${heading} · click to regenerate</figcaption>
+  <figcaption style="font-size:0.75rem;color:#6b7280;margin-top:0.5em;font-style:italic">Fig: ${heading}</figcaption>
 </figure>`;
   return html.replace(figRe, replacement);
 }
@@ -191,7 +191,7 @@ export function replaceFigWithSkeleton(html: string, id: string, heading: string
   const eh          = encodeURIComponent(heading);
   const replacement = `<figure data-fig-id="${id}" data-regen-prompt="${ep}" data-regen-heading="${eh}" style="margin:1.25em 0 1.75em;text-align:center;page-break-inside:avoid">
   <img src="${REGEN_LOADING_SRC}" alt="Regenerating: ${heading}" data-fig-id="${id}" data-regen-prompt="${ep}" data-regen-heading="${eh}" style="max-width:100%;border:2px dashed #93c5fd;border-radius:10px;cursor:wait" />
-  <figcaption style="font-size:0.75rem;color:#6b7280;margin-top:0.5em;font-style:italic">Fig: ${heading} · regenerating…</figcaption>
+  <figcaption style="font-size:0.75rem;color:#6b7280;margin-top:0.5em;font-style:italic">Fig: ${heading}</figcaption>
 </figure>`;
 
   const figRe = new RegExp(`<figure[^>]*data-fig-id="${id}"[^>]*>[\\s\\S]*?</figure>`);
