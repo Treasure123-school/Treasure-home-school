@@ -9,6 +9,7 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import { useLocation, useParams } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
+import { getApiUrl } from '@/config/api';
 import { useAuth } from '@/lib/auth';
 import { ROLE_IDS } from '@/lib/roles';
 import { Button } from '@/components/ui/button';
@@ -504,13 +505,32 @@ export default function LessonNoteEditorPage() {
     setAiLoading(true);
     setMode('generating');
     try {
-      const res = await apiRequest('POST', '/api/lesson-notes/generate', {
-        topic: title, className: query.className, subjectName: query.subjectName,
-        termName: query.termName, weekNumber: '',
-      });
+      // AI generation can take 60-120s — use a dedicated fetch with a 2-minute timeout
+      // instead of the global 30-second apiRequest timeout.
+      const controller = new AbortController();
+      const aiTimeoutId = setTimeout(() => controller.abort(), 120000);
+      let res: Response;
+      try {
+        const token = localStorage.getItem('token');
+        res = await fetch(getApiUrl('/api/lesson-notes/generate'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            topic: title, className: query.className, subjectName: query.subjectName,
+            termName: query.termName, weekNumber: '',
+          }),
+          credentials: 'include',
+          signal: controller.signal,
+        });
+      } finally {
+        clearTimeout(aiTimeoutId);
+      }
       const data = await res.json();
 
-      // Check for server-side errors (apiRequest returns the response without throwing on 4xx)
+      // Check for server-side errors
       if (!res.ok) {
         const raw = data?.message || 'AI generation failed. Please check your API key in AI Configuration.';
         const msg = shortAiError(raw);
@@ -559,7 +579,10 @@ export default function LessonNoteEditorPage() {
         setMode('choose');
       }
     } catch (err: any) {
-      const raw = err?.message || 'Could not generate content. Please check your AI provider settings.';
+      const isAbort = err?.name === 'AbortError';
+      const raw = isAbort
+        ? 'The AI took too long (over 2 minutes). Try a faster model like Llama 3.1 8B in AI Configuration.'
+        : (err?.message || 'Could not generate content. Please check your AI provider settings.');
       const msg = shortAiError(raw);
       toast({ title: '⚠️ AI Generation Failed', description: msg, variant: 'destructive', duration: 8000 });
       setMode('choose');
