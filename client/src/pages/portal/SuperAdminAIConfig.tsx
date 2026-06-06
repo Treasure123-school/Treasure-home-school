@@ -29,6 +29,7 @@ import {
   Eye,
   EyeOff,
   FlaskConical,
+  Image,
   Key,
   Loader2,
   RefreshCw,
@@ -47,6 +48,20 @@ interface ProviderInfo {
   apiKeySet: boolean;
   apiKeyMasked: string;
   apiKeyFromEnv: boolean;
+}
+
+interface CloudflareConfig {
+  accountId: string;
+  accountIdMasked: string;
+  accountIdFromEnv: boolean;
+  apiToken: string;
+  apiTokenMasked: string;
+  apiTokenFromEnv: boolean;
+  imageModel: string;
+  imageGenEnabled: boolean;
+  imagePromptTemplate: string;
+  steps: number;
+  availableModels: { id: string; label: string }[];
 }
 
 interface AIConfig {
@@ -167,6 +182,85 @@ export default function SuperAdminAIConfig() {
     },
   });
 
+  // ── Cloudflare Image AI state ─────────────────────────────────────────────
+  const [cfAccountId, setCfAccountId] = useState("");
+  const [cfApiToken, setCfApiToken] = useState("");
+  const [showCfToken, setShowCfToken] = useState(false);
+  const [showCfAccountId, setShowCfAccountId] = useState(false);
+  const [cfTestResult, setCfTestResult] = useState<{ success: boolean; message: string; detail?: string } | null>(null);
+  const [cfTesting, setCfTesting] = useState(false);
+  const [cfPreviewUrl, setCfPreviewUrl] = useState<string | null>(null);
+  const [cfPreviewing, setCfPreviewing] = useState(false);
+  const [localCfConfig, setLocalCfConfig] = useState<Partial<CloudflareConfig>>({});
+
+  const { data: cfConfig, isLoading: cfLoading } = useQuery<CloudflareConfig>({
+    queryKey: ["/api/superadmin/ai-config/cloudflare"],
+  });
+
+  const mergedCf = { ...cfConfig, ...localCfConfig } as CloudflareConfig;
+
+  const saveCfMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("PUT", "/api/superadmin/ai-config/cloudflare", data),
+    onSuccess: () => {
+      toast({ title: "Cloudflare Config Saved", description: "Image generation settings have been updated." });
+      qc.invalidateQueries({ queryKey: ["/api/superadmin/ai-config/cloudflare"] });
+      setCfAccountId("");
+      setCfApiToken("");
+      setLocalCfConfig({});
+    },
+    onError: (err: any) => {
+      toast({ title: "Save Failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const handleSaveCfConfig = () => {
+    saveCfMutation.mutate({
+      accountId: cfAccountId || undefined,
+      apiToken: cfApiToken || undefined,
+      imageModel: mergedCf.imageModel,
+      imageGenEnabled: mergedCf.imageGenEnabled,
+      imagePromptTemplate: mergedCf.imagePromptTemplate,
+      steps: mergedCf.steps,
+    });
+  };
+
+  const handleTestCf = async () => {
+    setCfTesting(true);
+    setCfTestResult(null);
+    try {
+      const res = await apiRequest("POST", "/api/superadmin/ai-config/cloudflare/test", {
+        accountId: cfAccountId || undefined,
+        apiToken: cfApiToken || undefined,
+        imageModel: mergedCf.imageModel,
+      });
+      const result = await res.json();
+      setCfTestResult(result);
+    } catch (err: any) {
+      setCfTestResult({ success: false, message: err.message });
+    } finally {
+      setCfTesting(false);
+    }
+  };
+
+  const handlePreviewImage = async () => {
+    setCfPreviewing(true);
+    setCfPreviewUrl(null);
+    try {
+      const res = await apiRequest("POST", "/api/lesson-notes/generate-image-cf/preview", {
+        topic: "Photosynthesis in Plants",
+        subject: "Biology",
+        className: "SS 2",
+      });
+      const result = await res.json();
+      if (result.imageUrl) setCfPreviewUrl(result.imageUrl);
+      else toast({ title: "Preview Failed", description: result.error || "Unknown error", variant: "destructive" });
+    } catch (err: any) {
+      toast({ title: "Preview Failed", description: err.message, variant: "destructive" });
+    } finally {
+      setCfPreviewing(false);
+    }
+  };
+
   const testConnection = async (provider: string) => {
     setTestingProvider(provider);
     try {
@@ -276,7 +370,7 @@ export default function SuperAdminAIConfig() {
         )}
 
         <Tabs defaultValue="overview">
-          <TabsList className="grid grid-cols-5 w-full">
+          <TabsList className="grid grid-cols-6 w-full">
             <TabsTrigger value="overview" className="flex items-center gap-1.5">
               <TrendingUp className="h-3.5 w-3.5" /> Overview
             </TabsTrigger>
@@ -291,6 +385,9 @@ export default function SuperAdminAIConfig() {
             </TabsTrigger>
             <TabsTrigger value="prompts" className="flex items-center gap-1.5">
               <Settings2 className="h-3.5 w-3.5" /> Prompts
+            </TabsTrigger>
+            <TabsTrigger value="imageai" className="flex items-center gap-1.5">
+              <Image className="h-3.5 w-3.5" /> Image AI
             </TabsTrigger>
           </TabsList>
 
@@ -793,6 +890,296 @@ export default function SuperAdminAIConfig() {
                 Save Prompts
               </Button>
             </div>
+          </TabsContent>
+
+          {/* ── IMAGE AI TAB (Cloudflare Workers AI) ─────────────────── */}
+          <TabsContent value="imageai" className="space-y-6 mt-6">
+            {/* Header info */}
+            <Alert className="border-orange-200 bg-orange-50">
+              <Image className="h-4 w-4 text-orange-600" />
+              <AlertTitle className="text-orange-800">Cloudflare Workers AI — Image Generation</AlertTitle>
+              <AlertDescription className="text-orange-700">
+                Generates educational diagrams for lesson notes using Cloudflare's serverless AI models.
+                Requires a free Cloudflare account with Workers AI enabled.
+                Images are saved to the server and linked to the lesson note.
+              </AlertDescription>
+            </Alert>
+
+            {cfLoading ? (
+              <div className="flex items-center justify-center h-32">
+                <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
+              </div>
+            ) : (
+              <>
+                {/* Enable / Disable toggle */}
+                <Card>
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl mt-0.5">🖼️</span>
+                      <div>
+                        <div className="font-medium">Cloudflare Image Generation</div>
+                        <div className="text-sm text-gray-500">Allow teachers to generate AI educational images for lesson notes</div>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={mergedCf.imageGenEnabled ?? true}
+                      onCheckedChange={(v) => setLocalCfConfig(prev => ({ ...prev, imageGenEnabled: v }))}
+                    />
+                  </CardContent>
+                </Card>
+
+                {/* Credentials */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Key className="h-4 w-4 text-orange-600" />
+                      Cloudflare Credentials
+                    </CardTitle>
+                    <CardDescription>
+                      Find these at dash.cloudflare.com → AI → Workers AI. Account ID is in the right sidebar of any page.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Account ID */}
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-medium flex items-center gap-1.5">
+                        Account ID
+                        {(cfConfig?.accountIdMasked || cfConfig?.accountIdFromEnv) && (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                        )}
+                        {cfConfig?.accountIdFromEnv && (
+                          <Badge className="bg-blue-100 text-blue-700 text-xs ml-1">From ENV</Badge>
+                        )}
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          type={showCfAccountId ? "text" : "password"}
+                          placeholder={cfConfig?.accountIdMasked || "Enter your Cloudflare Account ID"}
+                          value={cfAccountId}
+                          onChange={(e) => setCfAccountId(e.target.value)}
+                          className="pr-10 font-mono text-sm"
+                        />
+                        <button
+                          type="button"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          onClick={() => setShowCfAccountId(p => !p)}
+                        >
+                          {showCfAccountId ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      {cfConfig?.accountIdFromEnv && (
+                        <p className="text-xs text-blue-600">Using CLOUDFLARE_ACCOUNT_ID env variable. Enter above to override.</p>
+                      )}
+                    </div>
+
+                    {/* API Token */}
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-medium flex items-center gap-1.5">
+                        API Token
+                        {(cfConfig?.apiTokenMasked || cfConfig?.apiTokenFromEnv) && (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                        )}
+                        {cfConfig?.apiTokenFromEnv && (
+                          <Badge className="bg-blue-100 text-blue-700 text-xs ml-1">From ENV</Badge>
+                        )}
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          type={showCfToken ? "text" : "password"}
+                          placeholder={cfConfig?.apiTokenMasked || "Enter your Cloudflare API Token"}
+                          value={cfApiToken}
+                          onChange={(e) => setCfApiToken(e.target.value)}
+                          className="pr-10 font-mono text-sm"
+                        />
+                        <button
+                          type="button"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          onClick={() => setShowCfToken(p => !p)}
+                        >
+                          {showCfToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                      {cfConfig?.apiTokenFromEnv && (
+                        <p className="text-xs text-blue-600">Using CLOUDFLARE_API_TOKEN env variable. Enter above to override.</p>
+                      )}
+                      <p className="text-xs text-gray-500">
+                        Create a token at dash.cloudflare.com → Profile → API Tokens with "Workers AI" permission.
+                      </p>
+                    </div>
+
+                    {/* Test connection */}
+                    <div className="space-y-2">
+                      <Button
+                        variant="outline"
+                        onClick={handleTestCf}
+                        disabled={cfTesting || (!cfAccountId && !cfConfig?.accountIdMasked)}
+                        className="w-full"
+                      >
+                        {cfTesting ? (
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <FlaskConical className="h-4 w-4 mr-2" />
+                        )}
+                        Test Cloudflare Connection
+                      </Button>
+                      {cfTestResult && (
+                        <div className={`flex flex-col gap-1 text-xs p-2.5 rounded ${cfTestResult.success ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"}`}>
+                          <div className="flex items-center gap-2">
+                            {cfTestResult.success
+                              ? <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
+                              : <XCircle className="h-3.5 w-3.5 flex-shrink-0" />}
+                            <span className="font-medium">{cfTestResult.message}</span>
+                          </div>
+                          {cfTestResult.detail && (
+                            <p className="ml-5 break-words">{cfTestResult.detail}</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Model & Generation Settings */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Sparkles className="h-4 w-4 text-orange-600" />
+                      Model & Generation Settings
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      {/* Model selector */}
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">Image Model</Label>
+                        <Select
+                          value={mergedCf.imageModel || "@cf/black-forest-labs/flux-1-schnell"}
+                          onValueChange={(v) => setLocalCfConfig(prev => ({ ...prev, imageModel: v }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select model" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(cfConfig?.availableModels || []).map((m) => (
+                              <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-gray-500">FLUX Schnell is fastest and free on Workers AI.</p>
+                      </div>
+
+                      {/* Steps */}
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">Generation Steps</Label>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={20}
+                          value={mergedCf.steps ?? 4}
+                          onChange={(e) => setLocalCfConfig(prev => ({ ...prev, steps: parseInt(e.target.value) || 4 }))}
+                        />
+                        <p className="text-xs text-gray-500">Higher = better quality, slower. 4 is ideal for FLUX.</p>
+                      </div>
+                    </div>
+
+                    {/* Prompt template */}
+                    <div className="space-y-1.5">
+                      <Label className="text-sm font-medium">Image Prompt Template</Label>
+                      <Textarea
+                        rows={4}
+                        className="font-mono text-xs resize-y"
+                        placeholder="Educational diagram for {topic} in {subject}, class {className}..."
+                        value={mergedCf.imagePromptTemplate ?? ""}
+                        onChange={(e) => setLocalCfConfig(prev => ({ ...prev, imagePromptTemplate: e.target.value }))}
+                      />
+                      <div className="bg-gray-50 border rounded p-2 text-xs text-gray-600 space-y-1">
+                        <p className="font-semibold">Template variables:</p>
+                        <div className="grid grid-cols-3 gap-1">
+                          {[
+                            ["{topic}", "Lesson note title"],
+                            ["{subject}", "Subject name"],
+                            ["{className}", "Class name (e.g. SS 2)"],
+                          ].map(([v, d]) => (
+                            <div key={v} className="flex items-center gap-1">
+                              <code className="bg-white border px-1 rounded font-mono">{v}</code>
+                              <span className="text-gray-500">{d}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Image Preview */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Image className="h-4 w-4 text-orange-600" />
+                      Test Image Generation
+                    </CardTitle>
+                    <CardDescription>
+                      Generate a sample image using current settings to verify everything is working.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <Button
+                      variant="outline"
+                      onClick={handlePreviewImage}
+                      disabled={cfPreviewing || (!cfConfig?.accountIdMasked && !cfAccountId)}
+                      className="w-full border-orange-300 text-orange-700 hover:bg-orange-50"
+                    >
+                      {cfPreviewing ? (
+                        <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Generating preview image…</>
+                      ) : (
+                        <><Sparkles className="h-4 w-4 mr-2" /> Generate Sample: "Photosynthesis in Plants"</>
+                      )}
+                    </Button>
+                    {cfPreviewUrl && (
+                      <div className="space-y-2">
+                        <img
+                          src={cfPreviewUrl}
+                          alt="AI-generated preview"
+                          className="w-full rounded-lg border shadow-sm max-h-64 object-contain bg-gray-50"
+                        />
+                        <p className="text-xs text-gray-500 text-center">
+                          Preview saved to server. This is the quality teachers will see.
+                        </p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* How to get credentials */}
+                <Card className="border-dashed">
+                  <CardHeader>
+                    <CardTitle className="text-sm text-gray-600 flex items-center gap-2">
+                      <ChevronRight className="h-4 w-4" /> Setup Instructions
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm text-gray-600">
+                    <ol className="list-decimal list-inside space-y-1.5">
+                      <li>Go to <strong>dash.cloudflare.com</strong> and sign up for a free account</li>
+                      <li>In the right sidebar of any page, copy your <strong>Account ID</strong></li>
+                      <li>Go to <strong>Profile → API Tokens → Create Token</strong></li>
+                      <li>Use the <em>"Workers AI" template</em> or add <strong>Account → Workers AI → Edit</strong> permission</li>
+                      <li>Copy the generated token and paste it above</li>
+                      <li>Alternatively, set <code className="bg-gray-100 px-1 rounded">CLOUDFLARE_ACCOUNT_ID</code> and <code className="bg-gray-100 px-1 rounded">CLOUDFLARE_API_TOKEN</code> as environment variables</li>
+                    </ol>
+                    <p className="text-xs text-gray-500 mt-2">
+                      Workers AI free tier includes 10,000 neurons/day — sufficient for typical school usage.
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <div className="flex justify-end">
+                  <Button onClick={handleSaveCfConfig} disabled={saveCfMutation.isPending} className="bg-orange-600 hover:bg-orange-700">
+                    {saveCfMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                    Save Image AI Settings
+                  </Button>
+                </div>
+              </>
+            )}
           </TabsContent>
         </Tabs>
       </div>

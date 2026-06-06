@@ -637,6 +637,8 @@ export const lessonNotes = pgTable("lesson_notes", {
   objectives: text("objectives"),
   attachmentUrl: text("attachment_url"),
   attachmentName: varchar("attachment_name", { length: 255 }),
+  aiImageUrl: text("ai_image_url"),
+  aiImagePrompt: text("ai_image_prompt"),
   // draft | submitted | approved | rejected | published | archived
   status: varchar("status", { length: 20 }).notNull().default('draft'),
   rejectionReason: text("rejection_reason"),

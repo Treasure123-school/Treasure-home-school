@@ -3,6 +3,12 @@ import { randomUUID } from 'crypto';
 import { storage } from '../storage';
 import { authenticateUser, authorizeRoles, ROLES } from './middleware';
 import { generateLessonNoteContent, streamGenerateLessonNote, getAIConfig } from '../services/ai-service';
+import {
+  getCloudflareConfig,
+  buildImagePrompt,
+  generateImageWithCloudflare,
+  saveGeneratedImage,
+} from '../services/cloudflare-ai-service';
 
 const router = Router();
 
@@ -369,6 +375,116 @@ router.post('/generate-image', authenticateUser, authorizeRoles(...ALL_STAFF), (
     return res.json({ imageUrl });
   } catch (err: any) {
     console.error('[generate-image] error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /:id/generate-image-cf  (Cloudflare Workers AI — generates + saves) ─
+// Calls Cloudflare AI image model, saves the PNG, and stores the URL on the note.
+router.post('/:id/generate-image-cf', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
+  try {
+    const user = getUser(req);
+    const noteId = parseInt(req.params.id);
+    const note = await storage.getLessonNoteById(noteId);
+    if (!note) return res.status(404).json({ error: 'Lesson note not found' });
+
+    // Teachers can only generate images for their own notes
+    if (user.roleId === ROLES.TEACHER && note.createdBy !== user.id)
+      return res.status(403).json({ error: 'Access denied' });
+
+    const cfConfig = await getCloudflareConfig();
+
+    if (!cfConfig.imageGenEnabled)
+      return res.status(403).json({ error: 'Cloudflare image generation is disabled by the administrator.' });
+
+    if (!cfConfig.accountId || !cfConfig.apiToken)
+      return res.status(400).json({
+        error: 'Cloudflare Account ID and API Token are not configured. Go to AI Settings → Image Generation.',
+        cfError: 'no_credentials',
+      });
+
+    // Build prompt from request body (override) or from note fields
+    const { prompt: customPrompt, subject, className } = req.body;
+    const topic = note.title;
+    const prompt = customPrompt ||
+      buildImagePrompt(cfConfig.imagePromptTemplate, { topic, subject, className });
+
+    console.log(`[CF Image] Generating for note ${noteId}, model: ${cfConfig.imageModel}, prompt: "${prompt.slice(0, 80)}"`);
+
+    const imageBuffer = await generateImageWithCloudflare(prompt, cfConfig);
+    const imageUrl = await saveGeneratedImage(imageBuffer, noteId);
+
+    // Persist the image URL and prompt to the lesson note
+    await storage.updateLessonNote(noteId, {
+      aiImageUrl: imageUrl,
+      aiImagePrompt: prompt,
+    });
+
+    console.log(`[CF Image] Saved image for note ${noteId}: ${imageUrl}`);
+    return res.json({ imageUrl, prompt, model: cfConfig.imageModel });
+  } catch (err: any) {
+    console.error('[CF Image] generation error:', err.message);
+    return res.status(500).json({ error: err.message || 'Image generation failed' });
+  }
+});
+
+// ─── POST /generate-image-cf/preview  (Cloudflare image preview — no DB save) ─
+// Useful for testing prompts in the admin panel without attaching to a note.
+router.post('/generate-image-cf/preview', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: Request, res: Response) => {
+  try {
+    const cfConfig = await getCloudflareConfig();
+
+    if (!cfConfig.imageGenEnabled)
+      return res.status(403).json({ error: 'Cloudflare image generation is disabled.' });
+
+    if (!cfConfig.accountId || !cfConfig.apiToken)
+      return res.status(400).json({
+        error: 'Cloudflare Account ID and API Token are not configured.',
+        cfError: 'no_credentials',
+      });
+
+    const { prompt, subject, className, topic } = req.body;
+    const finalPrompt = prompt ||
+      buildImagePrompt(cfConfig.imagePromptTemplate, {
+        topic: topic || 'sample educational topic',
+        subject,
+        className,
+      });
+
+    const imageBuffer = await generateImageWithCloudflare(finalPrompt, cfConfig);
+    const imageUrl = await saveGeneratedImage(imageBuffer, `preview-${Date.now()}`);
+
+    return res.json({ imageUrl, prompt: finalPrompt, model: cfConfig.imageModel });
+  } catch (err: any) {
+    console.error('[CF Image] preview error:', err.message);
+    return res.status(500).json({ error: err.message || 'Image generation failed' });
+  }
+});
+
+// ─── GET /:id/image  (retrieve the stored AI image URL for a lesson note) ──────
+router.get('/:id/image', authenticateUser, async (req: Request, res: Response) => {
+  try {
+    const note = await storage.getLessonNoteById(parseInt(req.params.id));
+    if (!note) return res.status(404).json({ error: 'Lesson note not found' });
+    if (!note.aiImageUrl) return res.status(404).json({ error: 'No AI image for this lesson note' });
+    return res.json({ imageUrl: note.aiImageUrl, prompt: note.aiImagePrompt });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── DELETE /:id/image  (remove AI image from a lesson note) ─────────────────
+router.delete('/:id/image', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
+  try {
+    const user = getUser(req);
+    const note = await storage.getLessonNoteById(parseInt(req.params.id));
+    if (!note) return res.status(404).json({ error: 'Lesson note not found' });
+    if (user.roleId === ROLES.TEACHER && note.createdBy !== user.id)
+      return res.status(403).json({ error: 'Access denied' });
+
+    await storage.updateLessonNote(note.id, { aiImageUrl: null as any, aiImagePrompt: null as any });
+    return res.json({ success: true });
+  } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
 });

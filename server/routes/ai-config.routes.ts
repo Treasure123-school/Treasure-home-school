@@ -11,6 +11,11 @@ import {
   NVIDIA_MODELS,
   PROVIDER_DEFAULTS,
 } from '../services/ai-service';
+import {
+  getCloudflareConfigForAdmin,
+  testCloudflareConnection,
+  getCloudflareConfig,
+} from '../services/cloudflare-ai-service';
 
 const router = Router();
 
@@ -231,6 +236,68 @@ router.post('/api/superadmin/ai-config/reset-usage', authenticateUser, authorize
     res.json({ success: true, message: `Usage for '${period}' reset` });
   } catch (err: any) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+// ── GET /api/superadmin/ai-config/cloudflare ──────────────────────────────
+router.get('/api/superadmin/ai-config/cloudflare', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  try {
+    const data = await getCloudflareConfigForAdmin();
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── PUT /api/superadmin/ai-config/cloudflare ──────────────────────────────
+router.put('/api/superadmin/ai-config/cloudflare', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  try {
+    const userId = (req.user as AuthenticatedUser).id;
+    const { accountId, apiToken, imageModel, imageGenEnabled, imagePromptTemplate, steps } = req.body;
+
+    const save = async (key: string, value: string) => {
+      const existing = await storage.getSetting(`cf.${key}`);
+      if (existing) {
+        await storage.updateSetting(`cf.${key}`, value, userId);
+      } else {
+        await storage.createSetting({ key: `cf.${key}`, value, description: `Cloudflare AI: ${key}`, dataType: 'string', updatedBy: userId });
+      }
+    };
+
+    // Only save credentials if they are new (not masked placeholders)
+    if (accountId && !accountId.includes('...') && accountId !== '••••••••') {
+      await save('accountId', accountId.trim());
+    }
+    if (apiToken && !apiToken.includes('...') && apiToken !== '••••••••') {
+      await save('apiToken', apiToken.trim());
+    }
+    if (imageModel) await save('imageModel', imageModel);
+    if (imageGenEnabled !== undefined) await save('imageGenEnabled', String(imageGenEnabled));
+    if (imagePromptTemplate !== undefined) await save('imagePromptTemplate', imagePromptTemplate);
+    if (steps !== undefined) await save('steps', String(steps));
+
+    res.json({ success: true, message: 'Cloudflare AI configuration saved' });
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// ── POST /api/superadmin/ai-config/cloudflare/test ───────────────────────
+router.post('/api/superadmin/ai-config/cloudflare/test', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  try {
+    // Allow testing with credentials from request body (for before saving)
+    const { accountId, apiToken, imageModel } = req.body;
+    const baseConfig = await getCloudflareConfig();
+    const testConfig = {
+      ...baseConfig,
+      accountId: (accountId && !accountId.includes('...')) ? accountId.trim() : baseConfig.accountId,
+      apiToken: (apiToken && !apiToken.includes('...')) ? apiToken.trim() : baseConfig.apiToken,
+      imageModel: imageModel || baseConfig.imageModel,
+    };
+    const result = await testCloudflareConnection(testConfig);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
