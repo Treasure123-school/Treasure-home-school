@@ -255,6 +255,41 @@ function repairJson(raw: string): string {
   return s;
 }
 
+/**
+ * Read an SSE (Server-Sent Events) stream and collect all `data:` lines.
+ * Returns an array of parsed JSON objects from each data line (skipping [DONE]).
+ */
+async function readSSEStream(resp: Response): Promise<any[]> {
+  if (!resp.body) throw new Error('Response body is null');
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  const events: any[] = [];
+  let buf = '';
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    const lines = buf.split('\n');
+    buf = lines.pop() ?? '';
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed.startsWith('data:')) continue;
+      const payload = trimmed.slice(5).trim();
+      if (payload === '[DONE]') continue;
+      try { events.push(JSON.parse(payload)); } catch { /* partial line, skip */ }
+    }
+  }
+  // Flush remaining buffer
+  if (buf.trim().startsWith('data:')) {
+    const payload = buf.trim().slice(5).trim();
+    if (payload && payload !== '[DONE]') {
+      try { events.push(JSON.parse(payload)); } catch { /* ignore */ }
+    }
+  }
+  return events;
+}
+
 export async function generateLessonNoteContent(params: {
   topic: string;
   className: string;
@@ -278,8 +313,13 @@ export async function generateLessonNoteContent(params: {
   let raw: string;
   let tokensUsed = 0;
 
+  // All providers now use STREAMING mode to prevent server-side idle connection
+  // timeouts (NVIDIA, OpenAI, Anthropic, Gemini all close non-streaming
+  // connections after ~60-90 s when generating large responses).
+  // With streaming, tokens flow continuously so no idle timeout ever fires.
+
   if (provider === 'openai') {
-    const resp = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
+    const resp = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
@@ -288,6 +328,7 @@ export async function generateLessonNoteContent(params: {
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 8000,
         temperature: 0.6,
+        stream: true,
       }),
     });
     if (!resp.ok) {
@@ -296,13 +337,14 @@ export async function generateLessonNoteContent(params: {
       try { detail = JSON.parse(errText)?.error?.message || errText; } catch {}
       throw new Error(`OpenAI error ${resp.status}: ${detail}`);
     }
-    const data = await resp.json() as any;
-    raw = data.choices?.[0]?.message?.content || '';
-    tokensUsed = data.usage?.total_tokens || 0;
+    const events = await readSSEStream(resp);
+    raw = events.map(e => e.choices?.[0]?.delta?.content || '').join('');
+    const lastUsage = events.findLast((e: any) => e.usage)?.usage;
+    tokensUsed = lastUsage?.total_tokens || 0;
 
   } else if (provider === 'anthropic') {
     const jsonPrompt = prompt + '\n\nIMPORTANT: Respond ONLY with valid JSON. No markdown fences, no extra text.';
-    const resp = await fetchWithTimeout('https://api.anthropic.com/v1/messages', {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -313,6 +355,7 @@ export async function generateLessonNoteContent(params: {
         model,
         max_tokens: 8000,
         messages: [{ role: 'user', content: jsonPrompt }],
+        stream: true,
       }),
     });
     if (!resp.ok) {
@@ -321,21 +364,25 @@ export async function generateLessonNoteContent(params: {
       try { detail = JSON.parse(errText)?.error?.message || errText; } catch {}
       throw new Error(`Anthropic error ${resp.status}: ${detail}`);
     }
-    const data = await resp.json() as any;
-    raw = data.content?.[0]?.text || '';
-    tokensUsed = (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0);
+    const events = await readSSEStream(resp);
+    raw = events
+      .filter((e: any) => e.type === 'content_block_delta' && e.delta?.type === 'text_delta')
+      .map((e: any) => e.delta?.text || '')
+      .join('');
+    const msgDelta = events.find((e: any) => e.type === 'message_delta');
+    tokensUsed = (msgDelta?.usage?.output_tokens || 0);
     raw = raw.replace(/^```json\s*/i, '').replace(/\s*```$/, '').trim();
 
   } else if (provider === 'gemini') {
-    const resp = await fetchWithTimeout(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+    // Gemini streaming uses streamGenerateContent with alt=sse
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?key=${apiKey}&alt=sse`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
-            responseMimeType: 'application/json',
             maxOutputTokens: 8192,
             temperature: 0.6,
           },
@@ -348,20 +395,26 @@ export async function generateLessonNoteContent(params: {
       try { detail = JSON.parse(errText)?.error?.message || errText; } catch {}
       throw new Error(`Gemini error ${resp.status}: ${detail}`);
     }
-    const data = await resp.json() as any;
-    raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    tokensUsed = (data.usageMetadata?.promptTokenCount || 0) + (data.usageMetadata?.candidatesTokenCount || 0);
+    const events = await readSSEStream(resp);
+    raw = events
+      .map((e: any) => e.candidates?.[0]?.content?.parts?.[0]?.text || '')
+      .join('');
+    const lastEvent = events[events.length - 1];
+    tokensUsed = (lastEvent?.usageMetadata?.promptTokenCount || 0) +
+                 (lastEvent?.usageMetadata?.candidatesTokenCount || 0);
 
-    // Check finish reason — RECITATION or SAFETY means partial content
-    const finishReason = data.candidates?.[0]?.finishReason;
-    if (finishReason && finishReason !== 'STOP' && finishReason !== 'MAX_TOKENS') {
-      throw new Error(`Gemini generation stopped: ${finishReason}`);
+    // Check finish reason on last candidate chunk
+    const lastFinish = lastEvent?.candidates?.[0]?.finishReason;
+    if (lastFinish && lastFinish !== 'STOP' && lastFinish !== 'MAX_TOKENS') {
+      throw new Error(`Gemini generation stopped: ${lastFinish}`);
     }
+    // Strip JSON fences Gemini sometimes wraps around streaming output
+    raw = raw.replace(/^```json\s*/i, '').replace(/\s*```$/, '').trim();
 
   } else if (provider === 'nvidia') {
-    // NVIDIA NIM uses OpenAI-compatible chat completions endpoint
+    // NVIDIA NIM is OpenAI-compatible — use stream: true
     const jsonPrompt = prompt + '\n\nIMPORTANT: Respond ONLY with valid JSON. No markdown fences, no extra text.';
-    const resp = await fetchWithTimeout('https://integrate.api.nvidia.com/v1/chat/completions', {
+    const resp = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
@@ -370,17 +423,19 @@ export async function generateLessonNoteContent(params: {
         max_tokens: 6000,
         temperature: 0.6,
         top_p: 1.0,
+        stream: true,
       }),
-    }, 300000);
+    });
     if (!resp.ok) {
       const errText = await resp.text();
       let detail = errText;
       try { detail = JSON.parse(errText)?.message || JSON.parse(errText)?.error?.message || errText; } catch {}
       throw new Error(`NVIDIA NIM error ${resp.status}: ${detail}`);
     }
-    const data = await resp.json() as any;
-    raw = data.choices?.[0]?.message?.content || '';
-    tokensUsed = data.usage?.total_tokens || 0;
+    const events = await readSSEStream(resp);
+    raw = events.map((e: any) => e.choices?.[0]?.delta?.content || '').join('');
+    const lastUsage = events.findLast((e: any) => e.usage)?.usage;
+    tokensUsed = lastUsage?.total_tokens || 0;
     raw = raw.replace(/^```json\s*/i, '').replace(/\s*```$/, '').trim();
 
   } else {
