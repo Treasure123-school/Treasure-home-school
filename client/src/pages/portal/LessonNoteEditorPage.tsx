@@ -109,13 +109,20 @@ function SaveIndicator({ status }: { status: SaveStatus }) {
   );
 }
 
-// ── Section extractor: pull completed sections from partial streaming JSON ────
+// ── Section extractor: pull completed AND currently-streaming sections ────────
 
 const SECTION_KEYS = ['objectives', 'introduction', 'content', 'evaluation', 'assignment', 'summary'] as const;
 type SectionKey = typeof SECTION_KEYS[number];
 
-function extractCompletedSections(accum: string): Partial<Record<SectionKey, string>> {
-  const result: Partial<Record<SectionKey, string>> = {};
+function extractStreamingState(accum: string): {
+  completed: Partial<Record<SectionKey, string>>;
+  currentKey: SectionKey | null;
+  currentPartial: string;
+} {
+  const completed: Partial<Record<SectionKey, string>> = {};
+  let currentKey: SectionKey | null = null;
+  let currentPartial = '';
+
   for (const key of SECTION_KEYS) {
     const startRe = new RegExp(`"${key}"\\s*:\\s*"`);
     const startMatch = startRe.exec(accum);
@@ -130,17 +137,49 @@ function extractCompletedSections(accum: string): Partial<Record<SectionKey, str
         const ESC: Record<string, string> = { '"': '"', '\\': '\\', '/': '/', n: '\n', r: '\r', t: '\t', b: '\b', f: '\f' };
         str += ESC[next] ?? next;
         i += 2;
-      } else if (ch === '"') {
-        complete = true;
-        break;
-      } else {
-        str += ch;
-        i++;
-      }
+      } else if (ch === '"') { complete = true; break; }
+      else { str += ch; i++; }
     }
-    if (complete && str.trim()) result[key] = str;
+    if (complete && str.trim()) {
+      completed[key] = str;
+    } else if (!complete && str.length > 20) {
+      currentKey = key;
+      currentPartial = str;
+      break;
+    }
   }
-  return result;
+  return { completed, currentKey, currentPartial };
+}
+
+// ── Apply brand-blue to headings + yellow highlight to <strong> ───────────────
+
+function applyNoteStyles(html: string): string {
+  return html
+    .replace(/<h3>/g, '<h3 style="color:#1d4ed8;margin-top:1.2em">')
+    .replace(/<strong>/g, '<strong style="background:#fef9c3;padding:0 2px;border-radius:2px;color:#1e3a5f">');
+}
+
+// ── Inject Pollinations.AI images after visual h3 headings ───────────────────
+
+function hashStr(s: string): number {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h) ^ s.charCodeAt(i);
+  return Math.abs(h);
+}
+
+function addImagesToNote(html: string, topic: string, subjectName: string): string {
+  const VISUAL = /diagram|structure|process|cycle|classif|chart|system|organ|cell|molecule|flow|stages|mechanism|anatomy|illustration|model|cross.?section|formation|composition|types of|parts of|components/i;
+  return html.replace(/<h3(?:[^>]*)>([^<]+)<\/h3>/g, (match: string, heading: string) => {
+    if (!VISUAL.test(heading) && !VISUAL.test(topic)) return match;
+    const seed = hashStr(heading + topic);
+    const promptText = `${heading.trim()}, educational textbook diagram for ${subjectName || topic}, clear labeled illustration, white background, high detail, scientific style`;
+    const encoded = encodeURIComponent(promptText);
+    const imgUrl = `https://image.pollinations.ai/prompt/${encoded}?width=720&height=440&nologo=true&seed=${seed % 9999}`;
+    return `${match}<figure style="margin:1em 0 1.5em;text-align:center;page-break-inside:avoid">
+  <img src="${imgUrl}" alt="Diagram: ${heading.trim()}" loading="lazy" style="max-width:100%;border:1px solid #e5e7eb;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.08)" />
+  <figcaption style="font-size:0.75rem;color:#6b7280;margin-top:0.4em;font-style:italic">Fig: ${heading.trim()}</figcaption>
+</figure>`;
+  });
 }
 
 // ── AI progress banner (shown inside the editor while generating) ─────────────
@@ -515,7 +554,12 @@ export default function LessonNoteEditorPage() {
   // ── AI Generation (live SSE streaming — content appears in editor) ───────────
   const [aiElapsed, setAiElapsed] = useState(0);
 
-  const buildNoteHtml = useCallback((sections: Record<string, string>) => {
+  const buildNoteHtml = useCallback((
+    sections: Record<string, string>,
+    currentKey?: SectionKey | null,
+    currentPartial?: string,
+  ) => {
+    const BLUE = '#1d4ed8';
     const LABELS: Record<string, string> = {
       objectives:   '1. Learning Objectives',
       introduction: '2. Introduction',
@@ -534,13 +578,21 @@ export default function LessonNoteEditorPage() {
     const header = metaRows
       ? `<table style="border:none;width:auto;margin-bottom:1em"><tbody>${metaRows}</tbody></table>`
       : '';
-    let html = `<h1>${title}</h1>${header}`;
+    let html = `<h1 style="color:${BLUE};border-bottom:3px solid #dbeafe;padding-bottom:0.3em">${title}</h1>${header}`;
     ORDER.forEach(key => {
       const val = sections[key];
-      if (val?.trim()) html += `<h2>${LABELS[key]}</h2>${val}`;
+      const h2 = `<h2 style="color:${BLUE};border-bottom:2px solid #dbeafe;padding-bottom:0.2em;margin-top:1.5em">${LABELS[key]}</h2>`;
+      if (val?.trim()) {
+        html += h2 + applyNoteStyles(val);
+      } else if (key === currentKey && currentPartial) {
+        html += h2 + `<div style="border-left:3px solid #3b82f6;padding-left:1em;color:#374151;min-height:2em">${currentPartial}<span class="ai-cursor"></span></div>`;
+      }
     });
     return html;
   }, [title, query]);
+
+  const rafRef = useRef<number | null>(null);
+  const accumRef = useRef('');
 
   const generateWithAI = useCallback(async () => {
     if (!title.trim()) {
@@ -551,10 +603,11 @@ export default function LessonNoteEditorPage() {
     setAiElapsed(0);
     setAiCompletedSections(0);
     setAiDone(false);
+    accumRef.current = '';
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
 
-    // Switch to editor immediately — content will stream in as sections complete
     setMode('editing');
-    setContent(`<h1>${title}</h1>`);
+    setContent(`<h1 style="color:#1d4ed8;border-bottom:3px solid #dbeafe;padding-bottom:0.3em">${title}</h1><p style="color:#6b7280;font-style:italic">✨ AI is writing your lesson note — content appears instantly as it generates…</p>`);
 
     const startTime = Date.now();
     const ticker = setInterval(() => setAiElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
@@ -584,8 +637,6 @@ export default function LessonNoteEditorPage() {
       const reader = resp.body!.getReader();
       const decoder = new TextDecoder();
       let buf = '';
-      let accumulated = '';
-      const injected: Partial<Record<SectionKey, string>> = {};
 
       outer: while (true) {
         const { done, value } = await reader.read();
@@ -603,15 +654,16 @@ export default function LessonNoteEditorPage() {
             if (evt.error) throw new Error(evt.error);
 
             if (evt.done) {
+              if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
               if (evt.sections) {
-                const finalHtml = buildNoteHtml(evt.sections);
+                const finalHtml = addImagesToNote(buildNoteHtml(evt.sections), title, query.subjectName);
                 setContent(finalHtml);
                 setSaveStatus('unsaved');
                 setAiCompletedSections(6);
                 setAiDone(true);
                 toast({
                   title: '✨ AI generation complete',
-                  description: `Generated by ${evt.provider || 'AI'} (${evt.model || ''}). Review and customise as needed.`,
+                  description: `Generated by ${evt.provider || 'AI'} (${evt.model || ''}). Images are loading in the background.`,
                 });
               } else {
                 toast({ title: '⚠️ No content returned', description: 'AI returned an empty response. Try again.', variant: 'destructive', duration: 8000 });
@@ -620,19 +672,15 @@ export default function LessonNoteEditorPage() {
             }
 
             if (evt.t) {
-              accumulated += evt.t;
-              // Extract completed sections and inject rendered HTML into editor
-              const newSections = extractCompletedSections(accumulated);
-              let updated = false;
-              for (const [key, val] of Object.entries(newSections) as [SectionKey, string][]) {
-                if (!injected[key]) {
-                  injected[key] = val;
-                  updated = true;
-                }
-              }
-              if (updated) {
-                setAiCompletedSections(Object.keys(injected).length);
-                setContent(buildNoteHtml(injected as Record<string, string>));
+              accumRef.current += evt.t;
+              // RAF-throttled update: renders at up to 60fps, shows every character instantly
+              if (!rafRef.current) {
+                rafRef.current = requestAnimationFrame(() => {
+                  rafRef.current = null;
+                  const { completed, currentKey, currentPartial } = extractStreamingState(accumRef.current);
+                  setAiCompletedSections(Object.keys(completed).length);
+                  setContent(buildNoteHtml(completed as Record<string, string>, currentKey, currentPartial));
+                });
               }
             }
           } catch (e: any) {
@@ -644,6 +692,7 @@ export default function LessonNoteEditorPage() {
       toast({ title: '⚠️ AI Generation Failed', description: shortAiError(err?.message || 'Unknown error'), variant: 'destructive', duration: 8000 });
     } finally {
       clearInterval(ticker);
+      if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
       setAiLoading(false);
     }
   }, [title, query, toast, buildNoteHtml]);

@@ -267,3 +267,20 @@
 .typed-cursor {
   @apply text-[#00BFFF] font-bold;
 }
+
+/* AI streaming cursor blink */
+.ai-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background: #3b82f6;
+  vertical-align: middle;
+  margin-left: 2px;
+  border-radius: 1px;
+  animation: ai-blink 0.85s step-end infinite;
+}
+
+@keyframes ai-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
