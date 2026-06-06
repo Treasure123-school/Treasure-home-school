@@ -5,7 +5,8 @@
  */
 
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import { useEditor, EditorContent, ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react';
+import type { NodeViewProps } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import UnderlineExt from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
@@ -436,6 +437,99 @@ function FloatingSelectionMenu({ editor }: { editor: any }) {
   );
 }
 
+// ── Resizable Image Node View ─────────────────────────────────────────────
+
+function ResizableImageView({ node, updateAttributes, deleteNode, selected }: NodeViewProps) {
+  const { src, alt, width } = node.attrs as { src: string; alt?: string; width?: number | null };
+  const innerRef = useRef<HTMLSpanElement>(null);
+  const dragStart = useRef<{ x: number; w: number } | null>(null);
+
+  const displayWidth: string = width ? `${width}px` : 'auto';
+
+  const startResize = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const imgEl = innerRef.current?.querySelector('img') as HTMLImageElement | null;
+    if (!imgEl) return;
+    dragStart.current = { x: e.clientX, w: imgEl.getBoundingClientRect().width };
+
+    const onMove = (me: MouseEvent) => {
+      if (!dragStart.current) return;
+      const newW = Math.max(60, dragStart.current.w + (me.clientX - dragStart.current.x));
+      updateAttributes({ width: Math.round(newW) });
+    };
+    const onUp = () => {
+      dragStart.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
+
+  return (
+    <NodeViewWrapper as="span" style={{ display: 'inline-block', maxWidth: '100%' }}>
+      <span
+        ref={innerRef}
+        style={{ display: 'inline-block', position: 'relative', maxWidth: '100%' }}
+      >
+        <img
+          src={src}
+          alt={alt || ''}
+          className="doc-img"
+          style={{
+            width: displayWidth,
+            height: 'auto',
+            display: 'block',
+            maxWidth: '100%',
+            outline: selected ? '2px solid #3b82f6' : undefined,
+            outlineOffset: selected ? '2px' : undefined,
+          }}
+          draggable={false}
+        />
+
+        {selected && (
+          <>
+            {/* Delete button */}
+            <button
+              className="absolute top-1 right-1 z-20 bg-red-500 hover:bg-red-600 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold shadow-lg leading-none"
+              onMouseDown={e => { e.preventDefault(); e.stopPropagation(); deleteNode(); }}
+              title="Delete image"
+            >
+              ×
+            </button>
+
+            {/* Right-edge resize handle */}
+            <div
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-3 h-10 bg-blue-500/70 hover:bg-blue-500 cursor-e-resize rounded-l flex items-center justify-center"
+              onMouseDown={startResize}
+              title="Drag to resize"
+            />
+
+            {/* Bottom-right corner resize handle */}
+            <div
+              className="absolute bottom-0 right-0 z-20 w-5 h-5 bg-blue-500 hover:bg-blue-600 cursor-se-resize rounded-tl flex items-center justify-center"
+              onMouseDown={startResize}
+              title="Drag to resize"
+            >
+              <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                <path d="M1 7L7 1M4 7L7 4" stroke="white" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </div>
+
+            {/* Width badge */}
+            {width && (
+              <div className="absolute bottom-0 left-0 z-20 bg-black/60 text-white text-[10px] px-1 py-px rounded-tr pointer-events-none">
+                {width}px
+              </div>
+            )}
+          </>
+        )}
+      </span>
+    </NodeViewWrapper>
+  );
+}
+
 // ── Word / character count ─────────────────────────────────────────────────
 
 function countWords(html: string): { words: number; chars: number; readingTime: string } {
@@ -480,7 +574,19 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       Link.configure({ openOnClick: false, HTMLAttributes: { class: 'doc-link' } }),
-      Image.configure({ HTMLAttributes: { class: 'doc-img' }, allowBase64: true }),
+      Image.extend({
+        addAttributes() {
+          return {
+            ...this.parent?.(),
+            width: {
+              default: null,
+              parseHTML: el => el.getAttribute('width') ? parseInt(el.getAttribute('width')!, 10) : null,
+              renderHTML: attrs => attrs.width ? { width: attrs.width } : {},
+            },
+          };
+        },
+        addNodeView() { return ReactNodeViewRenderer(ResizableImageView); },
+      }).configure({ HTMLAttributes: { class: 'doc-img' }, allowBase64: true }),
       Table.configure({ resizable: true, HTMLAttributes: { class: 'doc-table' } }),
       TableRow,
       TableHeader.configure({ HTMLAttributes: { class: 'doc-th' } }),
@@ -515,7 +621,8 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
     if (!editor || editor.isDestroyed) return;
     if (content !== prevContent.current) {
       prevContent.current = content;
-      if (!editor.isFocused) {
+      // Always update when not focused OR when not editable (AI streaming)
+      if (!editor.isFocused || !editor.isEditable) {
         try { editor.commands.setContent(content || '', false); } catch { /* transitional */ }
         setWordStats(countWords(content));
       }
@@ -623,8 +730,12 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
             </TBtn>
             {e?.isActive('table') && (
               <>
+                <TSep />
                 <TBtn title="Add Row Below" onClick={() => e.chain().focus().addRowAfter().run()}><Rows className="h-3.5 w-3.5" /></TBtn>
                 <TBtn title="Add Column After" onClick={() => e.chain().focus().addColumnAfter().run()}><Columns className="h-3.5 w-3.5" /></TBtn>
+                <TSep />
+                <TBtn title="Delete Row" onClick={() => e.chain().focus().deleteRow().run()} danger><Rows className="h-3.5 w-3.5" /></TBtn>
+                <TBtn title="Delete Column" onClick={() => e.chain().focus().deleteColumn().run()} danger><Columns className="h-3.5 w-3.5" /></TBtn>
                 <TBtn title="Delete Table" onClick={() => e.chain().focus().deleteTable().run()} danger><Trash2 className="h-3.5 w-3.5" /></TBtn>
               </>
             )}

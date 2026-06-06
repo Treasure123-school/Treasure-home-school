@@ -109,85 +109,76 @@ function SaveIndicator({ status }: { status: SaveStatus }) {
   );
 }
 
-// ── AI Generating screen ─────────────────────────────────────────────────────
+// ── Section extractor: pull completed sections from partial streaming JSON ────
 
-const AI_MESSAGES = [
-  'Reading the curriculum...',
-  'Crafting learning objectives...',
-  'Writing the introduction...',
-  'Building the lesson content...',
-  'Adding Nigerian examples...',
-  'Preparing evaluation questions...',
-  'Polishing the assignment...',
-  'Reviewing the summary...',
-  'Almost ready...',
-];
+const SECTION_KEYS = ['objectives', 'introduction', 'content', 'evaluation', 'assignment', 'summary'] as const;
+type SectionKey = typeof SECTION_KEYS[number];
 
-function StreamingScreen({ topic, liveText, elapsed, isDone }: {
-  topic: string; liveText: string; elapsed: number; isDone: boolean;
+function extractCompletedSections(accum: string): Partial<Record<SectionKey, string>> {
+  const result: Partial<Record<SectionKey, string>> = {};
+  for (const key of SECTION_KEYS) {
+    const startRe = new RegExp(`"${key}"\\s*:\\s*"`);
+    const startMatch = startRe.exec(accum);
+    if (!startMatch) continue;
+    let i = startMatch.index + startMatch[0].length;
+    let str = '';
+    let complete = false;
+    while (i < accum.length) {
+      const ch = accum[i];
+      if (ch === '\\' && i + 1 < accum.length) {
+        const next = accum[i + 1];
+        const ESC: Record<string, string> = { '"': '"', '\\': '\\', '/': '/', n: '\n', r: '\r', t: '\t', b: '\b', f: '\f' };
+        str += ESC[next] ?? next;
+        i += 2;
+      } else if (ch === '"') {
+        complete = true;
+        break;
+      } else {
+        str += ch;
+        i++;
+      }
+    }
+    if (complete && str.trim()) result[key] = str;
+  }
+  return result;
+}
+
+// ── AI progress banner (shown inside the editor while generating) ─────────────
+
+function AIProgressBanner({ elapsed, completedSections, isDone }: {
+  elapsed: number; completedSections: number; isDone: boolean;
 }) {
-  const boxRef = useRef<HTMLDivElement>(null);
-  const formatTime = (s: number) => s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
-  const charCount = liveText.length;
-
-  // Auto-scroll to bottom as new tokens arrive
-  useEffect(() => {
-    if (boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight;
-  }, [liveText]);
+  const NAMES = ['Objectives', 'Introduction', 'Content', 'Evaluation', 'Assignment', 'Summary'];
+  const fmt = (s: number) => s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`;
+  const pct = isDone ? 100 : Math.round((completedSections / 6) * 92);
+  const label = isDone
+    ? 'Generation complete — review and save your note'
+    : completedSections < 6 ? `Writing ${NAMES[completedSections]}…` : 'Finalising…';
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center px-4 py-8">
-      <div className="w-full max-w-2xl">
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 ${
-            isDone ? 'bg-green-500/20' : 'bg-blue-500/20'
-          }`}>
-            {isDone
-              ? <CheckCircle className="h-8 w-8 text-green-400" />
-              : <Sparkles className="h-8 w-8 text-blue-400 animate-pulse" />}
-          </div>
-          <h1 className="text-xl font-bold text-white mb-1">
-            {isDone ? 'Generation Complete!' : 'AI is writing your lesson note…'}
-          </h1>
-          <p className="text-gray-400 text-sm truncate max-w-xs mx-auto">{topic}</p>
+    <div className="shrink-0 border-b border-primary/20 bg-gradient-to-r from-primary/10 via-primary/5 to-background px-4 py-2.5">
+      <div className="flex items-center gap-3">
+        <div className={`shrink-0 w-7 h-7 rounded-lg flex items-center justify-center ${
+          isDone ? 'bg-green-100 dark:bg-green-900/30' : 'bg-primary/10'
+        }`}>
+          {isDone
+            ? <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+            : <Sparkles className="h-4 w-4 text-primary animate-pulse" />}
         </div>
-
-        {/* Live text box */}
-        <div
-          ref={boxRef}
-          className="bg-gray-900 border border-gray-700 rounded-xl p-4 h-80 overflow-y-auto font-mono text-sm text-gray-200 leading-relaxed whitespace-pre-wrap break-words"
-        >
-          {liveText
-            ? <>
-                {liveText}
-                {!isDone && <span className="inline-block w-0.5 h-[1em] bg-blue-400 animate-pulse ml-0.5 align-text-bottom" />}
-              </>
-            : <span className="text-gray-600 animate-pulse">Connecting to AI provider…</span>
-          }
-        </div>
-
-        {/* Stats */}
-        <div className="flex items-center justify-center gap-4 mt-4 text-sm text-gray-400 flex-wrap">
-          <span>⏱ {elapsed === 0 ? 'Starting…' : formatTime(elapsed)}</span>
-          {charCount > 0 && <>
-            <span>•</span>
-            <span>{charCount.toLocaleString()} characters</span>
-          </>}
-          {!isDone && liveText && <>
-            <span>•</span>
-            <span className="flex items-center gap-1.5">
-              <span className="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              Live
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs font-medium text-foreground truncate">{label}</span>
+            <span className="text-xs text-muted-foreground ml-3 shrink-0 tabular-nums">
+              {completedSections}/6 · {elapsed === 0 ? 'starting…' : fmt(elapsed)}
             </span>
-          </>}
+          </div>
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1 overflow-hidden">
+            <div
+              className={`h-1 rounded-full transition-all duration-700 ${isDone ? 'bg-green-500' : 'bg-primary'}`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
         </div>
-
-        {isDone && (
-          <p className="text-center mt-4 text-green-400 text-sm font-medium animate-pulse">
-            Opening editor…
-          </p>
-        )}
       </div>
     </div>
   );
@@ -381,12 +372,12 @@ export default function LessonNoteEditorPage() {
   const [title,       setTitle]       = useState(query.topicName || '');
   const [content,     setContent]     = useState('');
   const [initialized, setInitialized] = useState(false);
-  const [mode, setMode] = useState<'choose' | 'streaming' | 'editing'>(isEdit ? 'editing' : 'choose');
-  const [preview, setPreview]         = useState(false);
-  const [aiLoading, setAiLoading]     = useState(false);
-  const [liveText, setLiveText]       = useState('');
-  const [streamDone, setStreamDone]   = useState(false);
-  const [saveStatus, setSaveStatus]   = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
+  const [mode, setMode] = useState<'choose' | 'editing'>(isEdit ? 'editing' : 'choose');
+  const [preview, setPreview]           = useState(false);
+  const [aiLoading, setAiLoading]       = useState(false);
+  const [aiCompletedSections, setAiCompletedSections] = useState(0);
+  const [aiDone, setAiDone]             = useState(false);
+  const [saveStatus, setSaveStatus]     = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
   const [copied, setCopied]           = useState(false);
 
   const copyToClipboard = useCallback(() => {
@@ -521,7 +512,7 @@ export default function LessonNoteEditorPage() {
     onError: (e: any) => toast({ title: 'Publish failed', description: e.message, variant: 'destructive' }),
   });
 
-  // ── AI Generation (live SSE streaming — ChatGPT-style) ───────────────────────
+  // ── AI Generation (live SSE streaming — content appears in editor) ───────────
   const [aiElapsed, setAiElapsed] = useState(0);
 
   const buildNoteHtml = useCallback((sections: Record<string, string>) => {
@@ -558,9 +549,12 @@ export default function LessonNoteEditorPage() {
     }
     setAiLoading(true);
     setAiElapsed(0);
-    setLiveText('');
-    setStreamDone(false);
-    setMode('streaming');
+    setAiCompletedSections(0);
+    setAiDone(false);
+
+    // Switch to editor immediately — content will stream in as sections complete
+    setMode('editing');
+    setContent(`<h1>${title}</h1>`);
 
     const startTime = Date.now();
     const ticker = setInterval(() => setAiElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
@@ -582,17 +576,16 @@ export default function LessonNoteEditorPage() {
         }),
       });
 
-      // Non-2xx before SSE headers → plain JSON error
       if (!resp.ok) {
         const data = await resp.json().catch(() => ({}));
         throw new Error(data?.message || `Server error ${resp.status}`);
       }
 
-      // Read the SSE stream token-by-token
       const reader = resp.body!.getReader();
       const decoder = new TextDecoder();
       let buf = '';
       let accumulated = '';
+      const injected: Partial<Record<SectionKey, string>> = {};
 
       outer: while (true) {
         const { done, value } = await reader.read();
@@ -607,31 +600,40 @@ export default function LessonNoteEditorPage() {
           const payload = trimmed.slice(5).trim();
           try {
             const evt = JSON.parse(payload);
-
             if (evt.error) throw new Error(evt.error);
 
             if (evt.done) {
-              // Stream complete — show "done" state briefly then open editor
-              setStreamDone(true);
-              await new Promise(r => setTimeout(r, 900));
               if (evt.sections) {
-                setContent(buildNoteHtml(evt.sections));
+                const finalHtml = buildNoteHtml(evt.sections);
+                setContent(finalHtml);
                 setSaveStatus('unsaved');
-                setMode('editing');
+                setAiCompletedSections(6);
+                setAiDone(true);
                 toast({
                   title: '✨ AI generation complete',
                   description: `Generated by ${evt.provider || 'AI'} (${evt.model || ''}). Review and customise as needed.`,
                 });
               } else {
                 toast({ title: '⚠️ No content returned', description: 'AI returned an empty response. Try again.', variant: 'destructive', duration: 8000 });
-                setMode('choose');
               }
               break outer;
             }
 
             if (evt.t) {
               accumulated += evt.t;
-              setLiveText(accumulated);
+              // Extract completed sections and inject rendered HTML into editor
+              const newSections = extractCompletedSections(accumulated);
+              let updated = false;
+              for (const [key, val] of Object.entries(newSections) as [SectionKey, string][]) {
+                if (!injected[key]) {
+                  injected[key] = val;
+                  updated = true;
+                }
+              }
+              if (updated) {
+                setAiCompletedSections(Object.keys(injected).length);
+                setContent(buildNoteHtml(injected as Record<string, string>));
+              }
             }
           } catch (e: any) {
             if (e?.message) throw e;
@@ -640,7 +642,6 @@ export default function LessonNoteEditorPage() {
       }
     } catch (err: any) {
       toast({ title: '⚠️ AI Generation Failed', description: shortAiError(err?.message || 'Unknown error'), variant: 'destructive', duration: 8000 });
-      setMode('choose');
     } finally {
       clearInterval(ticker);
       setAiLoading(false);
@@ -662,11 +663,6 @@ export default function LessonNoteEditorPage() {
         context={{ className: query.className, subjectName: query.subjectName, termName: query.termName }}
       />
     );
-  }
-
-  // ── Streaming screen (live ChatGPT-style) ──────────────────────────────────
-  if (mode === 'streaming') {
-    return <StreamingScreen topic={title} liveText={liveText} elapsed={aiElapsed} isDone={streamDone} />;
   }
 
   // ── Preview overlay ────────────────────────────────────────────────────────
@@ -796,13 +792,16 @@ export default function LessonNoteEditorPage() {
             <span>This note is <strong>{currentStatus}</strong> and cannot be edited.</span>
           </div>
         )}
-        {aiLoading && (
-          <div className="mx-4 mb-2 flex items-center gap-2 p-2.5 bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800 text-xs text-violet-700 dark:text-violet-300 rounded">
-            <Loader2 className="h-4 w-4 animate-spin shrink-0" />
-            AI is generating your lesson note — this takes 10–20 seconds…
-          </div>
-        )}
       </div>
+
+      {/* ── AI progress banner — shown directly above editor while generating ── */}
+      {aiLoading && (
+        <AIProgressBanner
+          elapsed={aiElapsed}
+          completedSections={aiCompletedSections}
+          isDone={aiDone}
+        />
+      )}
 
       {/* ── Document editor (fills remaining height) ── */}
       <div className="flex-1 min-h-0 overflow-hidden">
@@ -813,8 +812,8 @@ export default function LessonNoteEditorPage() {
         ) : (
           <DocEditor
             content={content}
-            onChange={canEdit ? handleContentChange : () => {}}
-            disabled={!canEdit || busy}
+            onChange={canEdit && !aiLoading ? handleContentChange : () => {}}
+            disabled={!canEdit || busy || aiLoading}
             placeholder={
               canEdit
                 ? 'Start writing your lesson note here, or click "AI Generate" above to fill it automatically…'
