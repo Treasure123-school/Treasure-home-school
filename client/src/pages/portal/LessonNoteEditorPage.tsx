@@ -51,7 +51,7 @@ import {
 import {
   Save, Send, Eye, AlertCircle, Info,
   Sparkles, ChevronLeft, Loader2, GraduationCap, BookMarked, Calendar,
-  Copy, Check,
+  Copy, Check, ImagePlus, X, RefreshCw, DownloadCloud,
 } from 'lucide-react';
 
 // ── Pure helpers ───────────────────────────────────────────────────────────────
@@ -202,6 +202,12 @@ export default function LessonNoteEditorPage() {
   const [regenFig,  setRegenFig]  = useState<RegenFig | null>(null);
   const [regenBusy, setRegenBusy] = useState(false);
 
+  // Inline AI image generation state
+  const [imgGenLoading,   setImgGenLoading]   = useState(false);
+  const [imgGenPanel,     setImgGenPanel]     = useState(false);
+  const [imgGenUrl,       setImgGenUrl]       = useState<string | null>(null);
+  const [imgGenMeta,      setImgGenMeta]      = useState('');
+
   // Refs
   const liveHtmlRef     = useRef('');
   const userEditedRef   = useRef(false);
@@ -286,6 +292,62 @@ export default function LessonNoteEditorPage() {
     progressTimers.current.clear();
     progressValues.current.clear();
   }
+
+  // ── Inline AI image generation ────────────────────────────────────────────
+  const handleGenerateCoverImage = useCallback(async () => {
+    setImgGenLoading(true);
+    setImgGenPanel(true);
+    setImgGenUrl(null);
+    setImgGenMeta('');
+    try {
+      // Auto-save to get an ID if this is a brand-new note
+      let noteId = savedNoteId.current;
+      if (!noteId) {
+        if (!title.trim()) {
+          toast({ title: 'Title required', description: 'Enter a title before generating an image.', variant: 'destructive' });
+          setImgGenLoading(false);
+          setImgGenPanel(false);
+          return;
+        }
+        noteId = await doSave(liveHtmlRef.current || content);
+      }
+      const token = localStorage.getItem('token');
+      const r = await fetch(getApiUrl(`/api/lesson-notes/${noteId}/generate-image-cf`), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: 'include',
+        body: JSON.stringify({ subject: query.subjectName, className: query.className }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.error || `Status ${r.status}`);
+      }
+      const result = await r.json();
+      setImgGenUrl(result.imageUrl);
+      setImgGenMeta([result.provider, result.model].filter(Boolean).join(' · '));
+    } catch (err: any) {
+      toast({ title: 'Image generation failed', description: err.message || 'Unknown error', variant: 'destructive' });
+      setImgGenPanel(false);
+    } finally {
+      setImgGenLoading(false);
+    }
+  }, [title, doSave, content, query, toast]);
+
+  const handleInsertImage = useCallback(() => {
+    if (!imgGenUrl) return;
+    const caption = [title, query.subjectName].filter(Boolean).join(' — ');
+    const imgHtml = `<figure style="text-align:center;margin:1.5em 0"><img src="${imgGenUrl}" alt="${caption}" style="max-width:100%;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,0.12)" /><figcaption style="font-size:0.85em;color:#6b7280;margin-top:0.5em">${caption}</figcaption></figure>`;
+    // Insert after the opening h1 if present, otherwise prepend
+    const updated = /<h1[\s\S]*?<\/h1>/i.test(content)
+      ? content.replace(/(<\/h1>)/i, `$1${imgHtml}`)
+      : imgHtml + content;
+    setContent(updated);
+    liveHtmlRef.current = updated;
+    setSaveStatus('unsaved');
+    setImgGenPanel(false);
+    setImgGenUrl(null);
+    toast({ title: '✅ Image inserted', description: 'AI-generated image added to your lesson note.' });
+  }, [imgGenUrl, content, title, query]);
 
   // ── Clipboard copy ────────────────────────────────────────────────────────
   const copyToClipboard = useCallback(() => {
@@ -712,6 +774,17 @@ export default function LessonNoteEditorPage() {
               </Button>
             )}
 
+            {canEdit && (
+              <Button size="sm" variant="outline"
+                className="h-8 text-xs gap-1.5 rounded border-orange-200 text-orange-700 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-400 font-semibold"
+                onClick={imgGenPanel ? () => setImgGenPanel(false) : handleGenerateCoverImage}
+                disabled={aiLoading || isGeneratingImages || busy || imgGenLoading}
+                data-testid="button-generate-image">
+                {imgGenLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
+                <span className="hidden sm:inline">{imgGenLoading ? 'Generating…' : imgGenPanel ? 'Hide Image' : 'AI Image'}</span>
+              </Button>
+            )}
+
             <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 rounded"
               onClick={copyToClipboard} disabled={!content}>
               {copied ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
@@ -785,6 +858,74 @@ export default function LessonNoteEditorPage() {
           </div>
         )}
       </div>
+
+      {/* ── AI Image panel ── */}
+      {imgGenPanel && (
+        <div className="shrink-0 border-b border-orange-100 dark:border-orange-900/40 bg-orange-50 dark:bg-orange-950/20">
+          <div className="flex items-start gap-3 px-4 py-3">
+            {/* Left: image or skeleton */}
+            <div className="shrink-0 w-32 h-24 rounded-lg border border-orange-200 dark:border-orange-800 overflow-hidden bg-white dark:bg-gray-900 flex items-center justify-center">
+              {imgGenLoading ? (
+                <div className="flex flex-col items-center gap-1.5 text-orange-400">
+                  <Loader2 className="h-6 w-6 animate-spin" />
+                  <span className="text-[10px] text-center px-1">Generating…</span>
+                </div>
+              ) : imgGenUrl ? (
+                <img src={imgGenUrl} alt="AI generated" className="w-full h-full object-cover" />
+              ) : (
+                <ImagePlus className="h-8 w-8 text-orange-200" />
+              )}
+            </div>
+
+            {/* Right: info + actions */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <ImagePlus className="h-3.5 w-3.5 text-orange-500 shrink-0" />
+                <span className="text-xs font-semibold text-orange-700 dark:text-orange-400">AI-Generated Image</span>
+                {imgGenMeta && (
+                  <span className="text-[10px] text-orange-400 dark:text-orange-500 truncate">{imgGenMeta}</span>
+                )}
+              </div>
+
+              {imgGenLoading ? (
+                <p className="text-xs text-orange-600 dark:text-orange-400">
+                  Creating an educational diagram for <em>{title || 'your topic'}</em>…
+                </p>
+              ) : imgGenUrl ? (
+                <p className="text-xs text-orange-600 dark:text-orange-400 mb-2">
+                  Image ready. Insert it into your note or generate a new one.
+                </p>
+              ) : null}
+
+              {!imgGenLoading && imgGenUrl && (
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <Button size="sm"
+                    className="h-7 text-xs gap-1.5 bg-orange-600 hover:bg-orange-700 text-white font-semibold"
+                    onClick={handleInsertImage}
+                    data-testid="button-insert-image">
+                    <DownloadCloud className="h-3 w-3" />
+                    Insert into note
+                  </Button>
+                  <Button size="sm" variant="outline"
+                    className="h-7 text-xs gap-1.5 border-orange-200 text-orange-700 hover:bg-orange-50"
+                    onClick={handleGenerateCoverImage}
+                    data-testid="button-regenerate-image">
+                    <RefreshCw className="h-3 w-3" />
+                    Regenerate
+                  </Button>
+                  <Button size="sm" variant="ghost"
+                    className="h-7 text-xs gap-1 text-orange-500 hover:text-orange-700"
+                    onClick={() => { setImgGenPanel(false); setImgGenUrl(null); }}
+                    data-testid="button-dismiss-image">
+                    <X className="h-3 w-3" />
+                    Dismiss
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── AI progress banner ── */}
       {(aiLoading || isGeneratingImages || (aiDone && aiImgTotal > 0)) && (
