@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
-import { BookOpen, Layers, ChevronRight, GraduationCap, Filter, Eye } from 'lucide-react';
+import { BookOpen, Layers, ChevronRight, Filter, Eye } from 'lucide-react';
 
 function useStudentInfo() {
   return useQuery({
@@ -99,40 +99,26 @@ export default function StudentSchemeOfWork() {
   return (
     <div className="min-h-screen bg-background" data-testid="student-scheme-of-work">
 
-      {/* Header */}
-      <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background border-b">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-              <BookOpen className="w-5 h-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">Scheme of Work</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {loadingStudent ? (
-                  <Skeleton className="h-4 w-32 inline-block" />
-                ) : className ? (
-                  <>Published curriculum topics for <span className="font-medium text-foreground">{className}</span></>
-                ) : (
-                  'Your class curriculum topics'
-                )}
-              </p>
-            </div>
-          </div>
-          {className && (
-            <div className="mt-4 flex items-center gap-1.5">
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-background/60 border text-xs font-medium">
-                <GraduationCap className="w-3.5 h-3.5 text-primary" />
-                <span className="text-muted-foreground">Class:</span>
-                <span className="text-foreground">{className}</span>
-                <span className="ml-0.5 text-[10px] text-emerald-600 font-semibold">AUTO</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <BookOpen className="h-6 w-6 text-primary" />
+              Scheme of Work
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              {loadingStudent ? (
+                <Skeleton className="h-4 w-32 inline-block" />
+              ) : className ? (
+                <>Published curriculum topics for <span className="font-medium text-foreground">{className}</span></>
+              ) : (
+                'Your class curriculum topics'
+              )}
+            </p>
+          </div>
+        </div>
 
         {/* Filter Card */}
         <Card className="shadow-sm">
