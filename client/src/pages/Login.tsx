@@ -341,8 +341,8 @@ export default function Login() {
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 flex flex-col relative overflow-hidden">
       {/* Decorative background elements */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-blue-100/30 dark:bg-blue-900/10 rounded-full blur-[100px]" />
-        <div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-blue-100/30 dark:bg-blue-900/10 rounded-full blur-[100px]" />
+        <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[100px]" />
+        <div className="absolute -bottom-[10%] -right-[10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[100px]" />
       </div>
 
       <div className="relative z-10 p-4">
@@ -378,16 +378,16 @@ export default function Login() {
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-school-name">
                 {schoolName}
               </h1>
-              <p className="text-blue-600 dark:text-blue-400 text-[10px] mt-1.5 font-bold tracking-widest uppercase">{schoolMotto}</p>
+              <p className="text-primary text-[10px] mt-1.5 font-bold tracking-widest uppercase">{schoolMotto}</p>
             </div>
 
             <CardContent className="p-6 pt-2">
               {authPhase === 'authenticating' && (
                 <div className="text-center py-8 animate-in fade-in duration-300">
                   <div className="relative mx-auto w-16 h-16 mb-4">
-                    <div className="absolute inset-0 rounded-full border-4 border-blue-100"></div>
-                    <div className="absolute inset-0 rounded-full border-4 border-blue-600 border-t-transparent animate-spin"></div>
-                    <Shield className="absolute inset-0 m-auto h-6 w-6 text-blue-600" />
+                    <div className="absolute inset-0 rounded-full border-4 border-primary/20"></div>
+                    <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
+                    <Shield className="absolute inset-0 m-auto h-6 w-6 text-primary" />
                   </div>
                   <h3 className="text-lg font-semibold text-foreground mb-1">Authenticating</h3>
                   <p className="text-sm text-muted-foreground">Please wait while we verify your credentials...</p>

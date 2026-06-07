@@ -11,141 +11,13 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import RichTextViewer from '@/components/lesson-notes/RichTextViewer';
-import { StatusBadge, fmtDate, EnrichedNote, parseNoteContent, isV2Sections } from '@/components/lesson-notes/lessonNoteShared';
+import {
+  StatusBadge, fmtDate, MetaChip, NoteContentRenderer, EnrichedNote, isV2Sections,
+} from '@/components/lesson-notes/lessonNoteShared';
 import {
   Edit, Send, Eye, EyeOff, CheckCircle, XCircle, BookOpen, Calendar,
   User, FileText, AlertCircle, Printer, GraduationCap, MoreHorizontal,
-  Target, Package, Brain, Rocket, BookText, UserCog, Users, ClipboardCheck,
-  FileCheck, ExternalLink, Lock, Unlock,
 } from 'lucide-react';
-
-// ── Structured content renderer ──────────────────────────────────────────────
-
-const SECTION_VIEW_DEFS = [
-  { key: 'objectives',        label: 'Learning Objectives',    icon: Target,        iconBg: 'bg-blue-100',   iconColor: 'text-blue-700',   borderColor: 'border-blue-200',   headerBg: 'bg-blue-50'   },
-  { key: 'materials',         label: 'Instructional Materials',icon: Package,       iconBg: 'bg-purple-100', iconColor: 'text-purple-700', borderColor: 'border-purple-200', headerBg: 'bg-purple-50' },
-  { key: 'previousKnowledge', label: 'Previous Knowledge',     icon: Brain,         iconBg: 'bg-cyan-100',   iconColor: 'text-cyan-700',   borderColor: 'border-cyan-200',   headerBg: 'bg-cyan-50'   },
-  { key: 'introduction',      label: 'Introduction',           icon: Rocket,        iconBg: 'bg-green-100',  iconColor: 'text-green-700',  borderColor: 'border-green-200',  headerBg: 'bg-green-50'  },
-  { key: 'content',           label: 'Lesson Content',         icon: BookText,      iconBg: 'bg-indigo-100', iconColor: 'text-indigo-700', borderColor: 'border-indigo-200', headerBg: 'bg-indigo-50' },
-  { key: 'teacherActivities', label: "Teacher's Activities",   icon: UserCog,       iconBg: 'bg-orange-100', iconColor: 'text-orange-700', borderColor: 'border-orange-200', headerBg: 'bg-orange-50' },
-  { key: 'studentActivities', label: "Students' Activities",   icon: Users,         iconBg: 'bg-emerald-100',iconColor: 'text-emerald-700',borderColor: 'border-emerald-200',headerBg: 'bg-emerald-50'},
-  { key: 'evaluation',        label: 'Evaluation',             icon: ClipboardCheck,iconBg: 'bg-rose-100',   iconColor: 'text-rose-700',   borderColor: 'border-rose-200',   headerBg: 'bg-rose-50'   },
-  { key: 'assignment',        label: 'Assignment / Homework',  icon: FileCheck,     iconBg: 'bg-amber-100',  iconColor: 'text-amber-700',  borderColor: 'border-amber-200',  headerBg: 'bg-amber-50'  },
-  { key: 'references',        label: 'References',             icon: ExternalLink,  iconBg: 'bg-gray-100',   iconColor: 'text-gray-600',   borderColor: 'border-gray-200',   headerBg: 'bg-gray-50'   },
-] as const;
-
-interface NoteContentRendererProps {
-  note: EnrichedNote;
-  brandColor?: string;
-  canToggle?: boolean;
-  onToggleSection?: (key: string) => void;
-  toggling?: boolean;
-}
-
-function NoteContentRenderer({ note, brandColor = '#3b82f6', canToggle, onToggleSection, toggling }: NoteContentRendererProps) {
-  const sections = isV2Sections(note.content);
-  const hidden = note.hiddenSections ?? [];
-
-  if (sections) {
-    const hasAny = SECTION_VIEW_DEFS.some(d => sections[d.key]?.trim());
-    if (!hasAny) {
-      return (
-        <div className="flex items-center gap-3 p-6 rounded-xl bg-muted/30 border border-dashed text-muted-foreground">
-          <FileText className="w-5 h-5 shrink-0" />
-          <p className="text-sm">No content has been added yet.</p>
-        </div>
-      );
-    }
-    return (
-      <div className="space-y-1">
-        {canToggle && (
-          <p className="text-xs text-muted-foreground pb-1">
-            <Lock className="inline w-3 h-3 mr-1" />
-            Click the eye icon on any section to hide or show it for students.
-          </p>
-        )}
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden divide-y divide-gray-100 dark:divide-gray-800">
-          {SECTION_VIEW_DEFS.map((def) => {
-            const html = sections[def.key];
-            if (!html?.trim()) return null;
-            const Icon = def.icon;
-            const isHidden = hidden.includes(def.key);
-            return (
-              <div key={def.key} className={isHidden ? 'opacity-60' : ''}>
-                <div className={`flex items-center gap-2.5 px-5 py-3 border-b ${def.borderColor} dark:border-gray-700 ${def.headerBg} dark:bg-transparent`}>
-                  <div className={`flex items-center justify-center w-7 h-7 ${def.iconBg} dark:bg-gray-700 rounded-lg shrink-0`}>
-                    <Icon className={`h-4 w-4 ${def.iconColor} dark:text-gray-300`} />
-                  </div>
-                  <span className={`text-xs font-bold uppercase tracking-widest ${def.iconColor} dark:text-gray-300 flex-1`}>
-                    {def.label}
-                  </span>
-                  {isHidden && (
-                    <span className="inline-flex items-center gap-1 text-[10px] bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-700 px-1.5 py-0.5 rounded-full font-medium">
-                      <EyeOff className="w-2.5 h-2.5" />Hidden from students
-                    </span>
-                  )}
-                  {canToggle && (
-                    <button
-                      onClick={() => onToggleSection?.(def.key)}
-                      disabled={toggling}
-                      title={isHidden ? 'Show section to students' : 'Hide section from students'}
-                      className={`ml-2 p-1 rounded transition-colors ${isHidden
-                        ? 'text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20'
-                        : 'text-green-500 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-900/20'
-                      }`}
-                    >
-                      {isHidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                  )}
-                </div>
-                <div className="px-5 py-4 bg-white dark:bg-gray-900/40">
-                  <div
-                    className="prose prose-sm dark:prose-invert max-w-none text-gray-800 dark:text-gray-200"
-                    dangerouslySetInnerHTML={{ __html: html }}
-                  />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  }
-
-  // v3 (current format) or legacy plain-HTML format:
-  // parseNoteContent handles all cases — extracts .html from JSON wrapper or returns raw HTML
-  const parsedHtml = parseNoteContent(note.content, note.objectives);
-
-  if (!parsedHtml) {
-    return (
-      <div className="flex items-center gap-3 p-6 rounded-xl bg-muted/30 border border-dashed text-muted-foreground">
-        <FileText className="w-5 h-5 shrink-0" />
-        <p className="text-sm">No content has been added yet.</p>
-      </div>
-    );
-  }
-
-  return (
-    <section className="space-y-3">
-      <div className="flex items-center gap-2">
-        <div className="w-1 h-5 rounded-full bg-primary shrink-0" />
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Lesson Content</h2>
-      </div>
-      <RichTextViewer html={parsedHtml} className="min-h-[200px]" brandColor={brandColor} />
-    </section>
-  );
-}
-
-function MetaChip({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-1.5 text-xs">
-      <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-      <span className="text-muted-foreground">{label}:</span>
-      <span className="font-medium text-foreground">{value}</span>
-    </div>
-  );
-}
 
 export default function LessonNoteViewPage() {
   const { id } = useParams<{ id: string }>();
@@ -252,7 +124,7 @@ export default function LessonNoteViewPage() {
   return (
     <div className="max-w-4xl space-y-8 print:max-w-none">
 
-      {/* ── Sticky actions bar (no breadcrumb) ── */}
+      {/* ── Sticky actions bar ── */}
       <div className="sticky top-0 z-10 -mx-2 sm:-mx-4 md:-mx-6 px-2 sm:px-4 md:px-6 py-2 bg-background/95 backdrop-blur border-b print:hidden">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-3 min-w-0">
           <div className="flex items-center gap-2 min-w-0">
@@ -346,7 +218,7 @@ export default function LessonNoteViewPage() {
         </div>
       )}
 
-      {/* Note header */}
+      {/* Note meta chips */}
       <div className="flex flex-wrap gap-x-5 gap-y-2">
         {note.className   && <MetaChip icon={GraduationCap} label="Class"   value={note.className} />}
         {note.subjectName && <MetaChip icon={BookOpen}      label="Subject" value={note.subjectName} />}
@@ -371,6 +243,7 @@ export default function LessonNoteViewPage() {
         <div><span className="text-muted-foreground">Updated:</span> <strong>{fmtDate(note.updatedAt)}</strong></div>
       </div>
 
+      {/* Shared content renderer */}
       <NoteContentRenderer
         note={note}
         brandColor={brandColor}

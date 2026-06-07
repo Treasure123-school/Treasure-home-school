@@ -226,13 +226,13 @@ export default function Home() {
           <div className="container px-6 max-w-3xl mx-auto">
             <motion.div {...fadeIn}>
               <div className="flex items-center gap-3 mb-5">
-                <div className="w-8 h-[2px] bg-[#0000FF]" />
-                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#0000FF]">{aboutLabel}</span>
+                <div className="w-8 h-[2px] bg-primary" />
+                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary">{aboutLabel}</span>
               </div>
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight mb-6">{aboutHeading}</h2>
               {aboutBody1 && <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed mb-5 font-normal">{aboutBody1}</p>}
               {aboutBody2 && <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed mb-8 font-normal">{aboutBody2}</p>}
-              <Link href={aboutCtaLink} className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.15em] text-[#0000FF] hover:opacity-75 transition-opacity mb-10">
+              <Link href={aboutCtaLink} className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.15em] text-primary hover:opacity-75 transition-opacity mb-10">
                 {aboutCtaText}<ArrowRight className="w-4 h-4" />
               </Link>
               <div className="w-full">
@@ -256,9 +256,9 @@ export default function Home() {
                 const Icon = PILLAR_ICONS[f.title] ?? DEFAULT_PILLAR_ICONS[i % DEFAULT_PILLAR_ICONS.length];
                 return (
                   <motion.div key={i} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.07, duration: 0.4 }}>
-                    <div className="group bg-white border border-gray-100 rounded-2xl shadow-sm p-7 md:p-9 hover:border-blue-600 transition-all duration-300 cursor-default">
-                      <div className="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center mb-5 group-hover:bg-blue-600 transition-colors duration-300">
-                        <Icon className="w-6 h-6 text-[#0000FF] group-hover:text-white transition-colors duration-300" />
+                    <div className="group bg-white border border-gray-100 rounded-2xl shadow-sm p-7 md:p-9 hover:border-primary transition-all duration-300 cursor-default">
+                      <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center mb-5 group-hover:bg-primary transition-colors duration-300">
+                        <Icon className="w-6 h-6 text-primary group-hover:text-white transition-colors duration-300" />
                       </div>
                       <h3 className="text-[17px] font-bold text-gray-900 mb-3">{f.title}</h3>
                       <p className="text-[14px] text-gray-500 leading-relaxed font-normal">{f.desc}</p>
@@ -273,13 +273,13 @@ export default function Home() {
 
       {/* ─── Stats ────────────────────────────────────────────────────────── */}
       {isEnabled('stats') && statsItems.length > 0 && (
-        <section className="bg-[#0033CC] py-14 md:py-20">
+        <section className="py-14 md:py-20 bg-primary">
           <div className="container px-6 max-w-3xl mx-auto">
             <div className="grid grid-cols-2 gap-x-8 gap-y-10 md:gap-x-16 md:gap-y-12">
               {statsItems.map((s, i) => (
                 <motion.div key={i} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08, duration: 0.4 }} className="text-center">
                   <div className="text-4xl md:text-5xl font-black text-white mb-2 leading-none">{s.value}</div>
-                  <div className="text-[10px] md:text-[11px] text-blue-200 uppercase tracking-[0.22em] font-bold">{s.label}</div>
+                  <div className="text-[10px] md:text-[11px] text-white/70 uppercase tracking-[0.22em] font-bold">{s.label}</div>
                 </motion.div>
               ))}
             </div>
@@ -292,7 +292,7 @@ export default function Home() {
         <section className="py-16 md:py-24 bg-gray-50">
           <div className="container px-6 max-w-3xl mx-auto">
             <div className="mb-10">
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#0000FF] mb-3 block">Testimonials</span>
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary mb-3 block">Testimonials</span>
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">{testimonialHeading}</h2>
               <p className="text-[14px] md:text-[15px] text-gray-500 font-normal leading-relaxed">{testimonialSubheading}</p>
             </div>
@@ -314,11 +314,11 @@ export default function Home() {
               <AnimatePresence mode="wait">
                 <motion.div key={safeCurrentTestimonial} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.5 }} className="absolute inset-0">
                   <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-7 md:p-9 h-full">
-                    <div className="flex gap-1 mb-5 text-[#0033CC] text-xl">{"★★★★★".split("").map((s, i) => <span key={i}>{s}</span>)}</div>
+                    <div className="flex gap-1 mb-5 text-primary text-xl">{"★★★★★".split("").map((s, i) => <span key={i}>{s}</span>)}</div>
                     <p className="text-[15px] md:text-[16px] text-gray-700 leading-relaxed italic font-normal mb-7">"{testimonialItems[safeCurrentTestimonial]?.text}"</p>
                     <div className="flex items-center gap-4">
-                      <div className="w-11 h-11 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                        <span className="text-[13px] font-black text-[#0033CC]">{testimonialItems[safeCurrentTestimonial]?.initials}</span>
+                      <div className="w-11 h-11 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                        <span className="text-[13px] font-black text-primary">{testimonialItems[safeCurrentTestimonial]?.initials}</span>
                       </div>
                       <div>
                         <h4 className="font-bold text-[15px] text-gray-900 mb-0.5">{testimonialItems[safeCurrentTestimonial]?.name}</h4>
@@ -332,7 +332,7 @@ export default function Home() {
             {testimonialItems.length > 1 && (
               <div className="flex justify-center gap-2">
                 {testimonialItems.map((_, i) => (
-                  <button key={i} onClick={() => setCurrentTestimonial(i)} className={`h-2 rounded-full transition-all duration-300 ${i === safeCurrentTestimonial ? "bg-[#0033CC] w-7" : "bg-gray-300 w-2.5"}`} aria-label={`Go to testimonial ${i + 1}`} />
+                  <button key={i} onClick={() => setCurrentTestimonial(i)} className={`h-2 rounded-full transition-all duration-300 ${i === safeCurrentTestimonial ? "bg-primary w-7" : "bg-gray-300 w-2.5"}`} aria-label={`Go to testimonial ${i + 1}`} />
                 ))}
               </div>
             )}

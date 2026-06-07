@@ -1,5 +1,5 @@
 import DOMPurify from 'dompurify';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 
 interface RichTextViewerProps {
   html: string;
@@ -8,6 +8,8 @@ interface RichTextViewerProps {
 }
 
 export default function RichTextViewer({ html, className = '', brandColor = '#3b82f6' }: RichTextViewerProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const safeHtml = useMemo(() => {
     if (!html) return '';
     const clean = DOMPurify.sanitize(html, {
@@ -21,6 +23,8 @@ export default function RichTextViewer({ html, className = '', brandColor = '#3b
       ],
       ALLOW_DATA_ATTR: false,
       FORCE_BODY: true,
+      // Allow data: URIs so AI-generated diagram loading placeholders display
+      ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|data):|[^a-z]|[a-z+\-.]+(?:[^a-z+\-.]|$))/i,
     });
     // Strip editor-only interactive hints saved in figcaptions from older content
     return clean
@@ -29,9 +33,48 @@ export default function RichTextViewer({ html, className = '', brandColor = '#3b
       .replace(/cursor:\s*pointer/gi, 'cursor:default');
   }, [html]);
 
+  // After render, attach onerror handlers to every <img> so broken diagram
+  // URLs show a styled fallback instead of a broken-image icon
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const imgs = Array.from(container.querySelectorAll<HTMLImageElement>('img'));
+    imgs.forEach((img) => {
+      if (img.dataset.errorHandled) return;
+      img.dataset.errorHandled = '1';
+      const onError = () => {
+        // Skip data: URIs (they are loading placeholders, not broken images)
+        if (img.src.startsWith('data:')) return;
+        const alt = img.alt || 'Diagram';
+        const figure = img.closest('figure');
+        if (!figure) return;
+        // Replace the broken img with a styled placeholder
+        const placeholder = document.createElement('div');
+        placeholder.style.cssText =
+          'display:flex;align-items:center;justify-content:center;min-height:80px;' +
+          'background:#f8faff;border:2px dashed #c7d7fa;border-radius:10px;' +
+          'color:#6b7280;font-size:0.82rem;padding:1em 1.5em;text-align:center;gap:0.6em;flex-direction:column;';
+        placeholder.innerHTML =
+          `<svg width="28" height="28" fill="none" stroke="#93a3c7" stroke-width="1.5" viewBox="0 0 24 24">` +
+          `<rect x="3" y="3" width="18" height="18" rx="2"/>` +
+          `<circle cx="8.5" cy="8.5" r="1.5"/>` +
+          `<path d="M21 15l-5-5L5 21"/>` +
+          `</svg>` +
+          `<span style="color:#9ca3af;font-style:italic">${alt}</span>`;
+        img.replaceWith(placeholder);
+      };
+      img.addEventListener('error', onError, { once: true });
+      // Trigger manually if already errored (cached error state)
+      if (img.complete && img.naturalWidth === 0 && !img.src.startsWith('data:')) {
+        onError();
+      }
+    });
+  }, [safeHtml]);
+
   return (
     <>
       <div
+        ref={containerRef}
         className={`lesson-note-viewer prose prose-sm dark:prose-invert max-w-none ${className}`}
         style={{ '--viewer-heading-color': brandColor } as React.CSSProperties}
         dangerouslySetInnerHTML={{ __html: safeHtml }}

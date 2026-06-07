@@ -4,12 +4,10 @@ import { apiRequest } from '@/lib/queryClient';
 import type { SystemSettings } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import RichTextViewer from '@/components/lesson-notes/RichTextViewer';
+import { MetaChip, NoteContentRenderer } from '@/components/lesson-notes/lessonNoteShared';
 import {
-  BookOpen, Calendar, User, FileText, AlertCircle,
-  GraduationCap, Target, Printer,
+  BookOpen, Calendar, User, FileText, Target, Printer, GraduationCap,
 } from 'lucide-react';
-import { parseNoteContent } from '@/components/lesson-notes/lessonNoteShared';
 
 type LessonNote = {
   id: number; topicId: number;
@@ -20,16 +18,6 @@ type LessonNote = {
   publishedAt: string | null; createdAt: string;
   hiddenSections?: string[] | null;
 };
-
-function MetaChip({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
-  return (
-    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-      <Icon className="w-3.5 h-3.5 shrink-0" />
-      <span>{label}:</span>
-      <span className="font-medium text-foreground">{value}</span>
-    </div>
-  );
-}
 
 export default function StudentLessonNoteViewPage() {
   const { topicId } = useParams<{ topicId: string }>();
@@ -85,15 +73,10 @@ export default function StudentLessonNoteViewPage() {
   return (
     <div className="max-w-3xl space-y-8 print:max-w-none">
 
-      {/* Note header */}
+      {/* Header row */}
       <div className="space-y-4">
         <div className="flex items-center justify-end print:hidden">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.print()}
-            className="gap-1.5"
-          >
+          <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5">
             <Printer className="w-4 h-4" />
             <span className="hidden sm:inline">Print</span>
           </Button>
@@ -101,8 +84,8 @@ export default function StudentLessonNoteViewPage() {
         <div className="flex flex-wrap gap-x-4 gap-y-2">
           {note.className   && <MetaChip icon={GraduationCap} label="Class"     value={note.className} />}
           {note.subjectName && <MetaChip icon={BookOpen}      label="Subject"   value={note.subjectName} />}
-          {note.termName    && <MetaChip icon={Calendar}      label="Term"      value={note.termName} />}
           {note.topicName   && <MetaChip icon={FileText}      label="Topic"     value={note.topicName} />}
+          {note.termName    && <MetaChip icon={Calendar}      label="Term"      value={note.termName} />}
           {note.creatorName && <MetaChip icon={User}          label="Teacher"   value={note.creatorName} />}
           {note.publishedAt && (
             <MetaChip
@@ -116,7 +99,7 @@ export default function StudentLessonNoteViewPage() {
         </div>
       </div>
 
-      {/* Learning Objectives */}
+      {/* Learning Objectives (standalone, from old-format notes) */}
       {note.objectives && (
         <section className="rounded-xl border bg-primary/5 p-5 space-y-3">
           <div className="flex items-center gap-2">
@@ -129,31 +112,12 @@ export default function StudentLessonNoteViewPage() {
         </section>
       )}
 
-      {/* Lesson Content */}
-      {(() => {
-        const parsedHtml = parseNoteContent(note.content, note.objectives, note.hiddenSections);
-        if (!parsedHtml) {
-          return (
-            <div className="flex items-center gap-3 p-6 rounded-xl bg-muted/30 border border-dashed text-muted-foreground">
-              <AlertCircle className="w-5 h-5 shrink-0" />
-              <p className="text-sm">No lesson content has been added yet.</p>
-            </div>
-          );
-        }
-        return (
-          <section className="space-y-4">
-            <div className="flex items-center gap-2">
-              <div className="w-1 h-5 rounded-full bg-primary shrink-0" />
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                Lesson Content
-              </h2>
-            </div>
-            <div className="rounded-xl border bg-card p-4 sm:p-6 overflow-x-auto">
-              <RichTextViewer html={parsedHtml} brandColor={brandColor} />
-            </div>
-          </section>
-        );
-      })()}
+      {/* Shared note body — handles both v2 structured sections and v3/legacy HTML */}
+      <NoteContentRenderer
+        note={note}
+        brandColor={brandColor}
+        canToggle={false}
+      />
 
       <div className="pb-12 print:hidden" />
     </div>
