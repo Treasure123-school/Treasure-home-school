@@ -4,10 +4,8 @@ import { apiRequest } from '@/lib/queryClient';
 import type { SystemSettings } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MetaChip, NoteContentRenderer } from '@/components/lesson-notes/lessonNoteShared';
-import {
-  BookOpen, Calendar, User, FileText, Target, Printer, GraduationCap,
-} from 'lucide-react';
+import { NoteMetaStrip, NoteContentRenderer } from '@/components/lesson-notes/lessonNoteShared';
+import { BookOpen, Target } from 'lucide-react';
 
 type LessonNote = {
   id: number; topicId: number;
@@ -73,33 +71,10 @@ export default function StudentLessonNoteViewPage() {
   return (
     <div className="max-w-3xl space-y-8 print:max-w-none">
 
-      {/* Header row */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-end print:hidden">
-          <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5">
-            <Printer className="w-4 h-4" />
-            <span className="hidden sm:inline">Print</span>
-          </Button>
-        </div>
-        <div className="flex flex-wrap gap-x-4 gap-y-2">
-          {note.className   && <MetaChip icon={GraduationCap} label="Class"     value={note.className} />}
-          {note.subjectName && <MetaChip icon={BookOpen}      label="Subject"   value={note.subjectName} />}
-          {note.topicName   && <MetaChip icon={FileText}      label="Topic"     value={note.topicName} />}
-          {note.termName    && <MetaChip icon={Calendar}      label="Term"      value={note.termName} />}
-          {note.creatorName && <MetaChip icon={User}          label="Teacher"   value={note.creatorName} />}
-          {note.publishedAt && (
-            <MetaChip
-              icon={Calendar}
-              label="Published"
-              value={new Date(note.publishedAt).toLocaleDateString(undefined, {
-                year: 'numeric', month: 'short', day: 'numeric',
-              })}
-            />
-          )}
-        </div>
-      </div>
+      {/* Meta strip — print button + all metadata chips (shared component) */}
+      <NoteMetaStrip note={note} showPublished printButton />
 
-      {/* Learning Objectives (standalone, from old-format notes) */}
+      {/* Learning Objectives (standalone, for legacy notes that store objectives separately) */}
       {note.objectives && (
         <section className="rounded-xl border bg-primary/5 p-5 space-y-3">
           <div className="flex items-center gap-2">
@@ -112,7 +87,7 @@ export default function StudentLessonNoteViewPage() {
         </section>
       )}
 
-      {/* Shared note body — handles both v2 structured sections and v3/legacy HTML */}
+      {/* Shared note body — handles v2 structured sections and v3/legacy HTML */}
       <NoteContentRenderer
         note={note}
         brandColor={brandColor}

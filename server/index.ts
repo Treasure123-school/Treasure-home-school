@@ -330,6 +330,7 @@ function sanitizeLogData(data: any): any {
     await fs.mkdir('server/uploads/study-resources', { recursive: true });
     await fs.mkdir('server/uploads/general', { recursive: true });
     await fs.mkdir('server/uploads/csv', { recursive: true });
+    await fs.mkdir('server/uploads/lesson-images', { recursive: true });
     console.log("✅ Local file storage initialized in server/uploads/");
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";

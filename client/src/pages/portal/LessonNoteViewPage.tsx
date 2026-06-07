@@ -12,11 +12,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import {
-  StatusBadge, fmtDate, MetaChip, NoteContentRenderer, EnrichedNote, isV2Sections,
+  StatusBadge, fmtDate, NoteMetaStrip, NoteContentRenderer, EnrichedNote, isV2Sections,
 } from '@/components/lesson-notes/lessonNoteShared';
 import {
-  Edit, Send, Eye, EyeOff, CheckCircle, XCircle, BookOpen, Calendar,
-  User, FileText, AlertCircle, Printer, GraduationCap, MoreHorizontal,
+  Edit, Send, Eye, EyeOff, CheckCircle, XCircle, BookOpen,
+  FileText, AlertCircle, Printer, MoreHorizontal,
 } from 'lucide-react';
 
 export default function LessonNoteViewPage() {
@@ -218,14 +218,8 @@ export default function LessonNoteViewPage() {
         </div>
       )}
 
-      {/* Note meta chips */}
-      <div className="flex flex-wrap gap-x-5 gap-y-2">
-        {note.className   && <MetaChip icon={GraduationCap} label="Class"   value={note.className} />}
-        {note.subjectName && <MetaChip icon={BookOpen}      label="Subject" value={note.subjectName} />}
-        {note.termName    && <MetaChip icon={Calendar}      label="Term"    value={note.termName} />}
-        {note.topicName   && <MetaChip icon={FileText}      label="Topic"   value={note.topicName} />}
-        {note.creatorName && <MetaChip icon={User}          label="Teacher" value={note.creatorName} />}
-      </div>
+      {/* Note meta chips — shared component */}
+      <NoteMetaStrip note={note} />
 
       {note.rejectionReason && (
         <div className="flex gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-400">

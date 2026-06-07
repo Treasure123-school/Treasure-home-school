@@ -2,7 +2,9 @@ import {
   FileText, Send, CheckCircle, XCircle, Eye, Clock,
   Target, Package, Brain, Rocket, BookText, UserCog, Users,
   ClipboardCheck, FileCheck, ExternalLink, EyeOff, Lock,
+  BookOpen, Calendar, User, GraduationCap, Printer,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import RichTextViewer from './RichTextViewer';
 
 // ── Status badge ─────────────────────────────────────────────────────────────
@@ -69,6 +71,49 @@ export function MetaChip({ icon: Icon, label, value }: { icon: any; label: strin
   );
 }
 
+// ── NoteMetaStrip — shared meta chips row used by all role views ──────────────
+//
+// Renders the standard set of metadata pills for a lesson note.
+// Pass `showPublished` for the student view which also shows the publish date.
+// Pass `printButton` to embed a print button in the top-right corner of the strip.
+
+interface NoteMetaStripProps {
+  note: Pick<EnrichedNote, 'className' | 'subjectName' | 'topicName' | 'termName' | 'creatorName' | 'publishedAt'>;
+  showPublished?: boolean;
+  printButton?: boolean;
+}
+
+export function NoteMetaStrip({ note, showPublished = false, printButton = false }: NoteMetaStripProps) {
+  return (
+    <div className="space-y-2">
+      {printButton && (
+        <div className="flex items-center justify-end print:hidden">
+          <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5">
+            <Printer className="w-4 h-4" />
+            <span className="hidden sm:inline">Print</span>
+          </Button>
+        </div>
+      )}
+      <div className="flex flex-wrap gap-x-4 gap-y-2">
+        {note.className   && <MetaChip icon={GraduationCap} label="Class"   value={note.className} />}
+        {note.subjectName && <MetaChip icon={BookOpen}      label="Subject" value={note.subjectName} />}
+        {note.topicName   && <MetaChip icon={FileText}      label="Topic"   value={note.topicName} />}
+        {note.termName    && <MetaChip icon={Calendar}      label="Term"    value={note.termName} />}
+        {note.creatorName && <MetaChip icon={User}          label="Teacher" value={note.creatorName} />}
+        {showPublished && note.publishedAt && (
+          <MetaChip
+            icon={Calendar}
+            label="Published"
+            value={new Date(note.publishedAt).toLocaleDateString(undefined, {
+              year: 'numeric', month: 'short', day: 'numeric',
+            })}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Structured sections viewer (v2 notes) ────────────────────────────────────
 
 export const SECTION_VIEW_DEFS = [
@@ -97,7 +142,7 @@ interface NoteContentRendererProps {
  * Renders the body of a lesson note.
  * - v2 structured notes → coloured section cards with optional hide/show toggles
  * - v3 / legacy notes   → RichTextViewer (sanitised HTML)
- * Used by both the teacher/admin view page and the student view page.
+ * Used by teacher/admin view page, student view page, and parent view page.
  */
 export function NoteContentRenderer({
   note,
@@ -113,7 +158,7 @@ export function NoteContentRenderer({
     const visibleDefs = SECTION_VIEW_DEFS.filter((d) => {
       const html = sections[d.key];
       if (!html?.trim()) return false;
-      // Students see only non-hidden sections (canToggle=false = student mode)
+      // Students see only non-hidden sections (canToggle=false = student/parent mode)
       if (!canToggle && hidden.includes(d.key)) return false;
       return true;
     });
@@ -168,11 +213,10 @@ export function NoteContentRenderer({
                     </button>
                   )}
                 </div>
+                {/* Use RichTextViewer so images inside sections get proper
+                    DOMPurify sanitisation and broken-image fallbacks */}
                 <div className="px-5 py-4 bg-white dark:bg-gray-900/40">
-                  <div
-                    className="prose prose-sm dark:prose-invert max-w-none text-gray-800 dark:text-gray-200"
-                    dangerouslySetInnerHTML={{ __html: html }}
-                  />
+                  <RichTextViewer html={html} brandColor={brandColor} />
                 </div>
               </div>
             );
@@ -276,8 +320,8 @@ export function parseNoteContent(
 }
 
 /**
- * Returns true if rawContent is the _v:2 structured sections format.
- * Used by view pages that render the fancy section-card UI for v2 notes.
+ * Returns the parsed _v:2 sections object if rawContent is in that format,
+ * otherwise null. Used by view pages that render the fancy section-card UI.
  */
 export function isV2Sections(rawContent: string | null | undefined): Record<string, string> | null {
   if (!rawContent || !rawContent.trimStart().startsWith('{')) return null;

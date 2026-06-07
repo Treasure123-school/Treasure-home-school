@@ -23,18 +23,17 @@ export default function RichTextViewer({ html, className = '', brandColor = '#3b
       ],
       ALLOW_DATA_ATTR: false,
       FORCE_BODY: true,
-      // Allow data: URIs so AI-generated diagram loading placeholders display
       ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|sms|cid|xmpp|data):|[^a-z]|[a-z+\-.]+(?:[^a-z+\-.]|$))/i,
     });
-    // Strip editor-only interactive hints saved in figcaptions from older content
     return clean
       .replace(/·\s*click to regenerate/gi, '')
       .replace(/·\s*regenerating…/gi, '')
       .replace(/cursor:\s*pointer/gi, 'cursor:default');
   }, [html]);
 
-  // After render, attach onerror handlers to every <img> so broken diagram
-  // URLs show a styled fallback instead of a broken-image icon
+  // After render, attach onerror handlers to every <img> so broken image
+  // URLs show a styled fallback instead of a broken-image browser icon.
+  // Works for both figure-wrapped images (AI diagrams) and inline images.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -42,29 +41,32 @@ export default function RichTextViewer({ html, className = '', brandColor = '#3b
     imgs.forEach((img) => {
       if (img.dataset.errorHandled) return;
       img.dataset.errorHandled = '1';
+
       const onError = () => {
-        // Skip data: URIs (they are loading placeholders, not broken images)
+        // Skip data: URIs — they are inline/base64, not broken remote URLs
         if (img.src.startsWith('data:')) return;
-        const alt = img.alt || 'Diagram';
-        const figure = img.closest('figure');
-        if (!figure) return;
-        // Replace the broken img with a styled placeholder
+        const alt = img.alt || 'Image';
+
         const placeholder = document.createElement('div');
         placeholder.style.cssText =
-          'display:flex;align-items:center;justify-content:center;min-height:80px;' +
+          'display:flex;align-items:center;justify-content:center;min-height:72px;' +
           'background:#f8faff;border:2px dashed #c7d7fa;border-radius:10px;' +
-          'color:#6b7280;font-size:0.82rem;padding:1em 1.5em;text-align:center;gap:0.6em;flex-direction:column;';
+          'color:#6b7280;font-size:0.82rem;padding:0.75em 1.25em;text-align:center;' +
+          'gap:0.5em;flex-direction:column;margin:0.5rem 0;';
         placeholder.innerHTML =
-          `<svg width="28" height="28" fill="none" stroke="#93a3c7" stroke-width="1.5" viewBox="0 0 24 24">` +
+          `<svg width="26" height="26" fill="none" stroke="#93a3c7" stroke-width="1.5" viewBox="0 0 24 24">` +
           `<rect x="3" y="3" width="18" height="18" rx="2"/>` +
           `<circle cx="8.5" cy="8.5" r="1.5"/>` +
           `<path d="M21 15l-5-5L5 21"/>` +
           `</svg>` +
-          `<span style="color:#9ca3af;font-style:italic">${alt}</span>`;
+          `<span style="color:#9ca3af;font-style:italic;font-size:0.78rem">${alt}</span>`;
+
+        // Replace the <img> itself, preserving the <figure> wrapper if present
         img.replaceWith(placeholder);
       };
+
       img.addEventListener('error', onError, { once: true });
-      // Trigger manually if already errored (cached error state)
+      // Trigger immediately if the image is already in an error state
       if (img.complete && img.naturalWidth === 0 && !img.src.startsWith('data:')) {
         onError();
       }
