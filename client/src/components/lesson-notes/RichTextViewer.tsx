@@ -93,9 +93,11 @@ export default function RichTextViewer({ html, className = '', brandColor = '#3b
         .lesson-note-viewer ul { list-style: disc; padding-left: 1.5rem; margin: 0.5rem 0; }
         .lesson-note-viewer ol { list-style: decimal; padding-left: 1.5rem; margin: 0.5rem 0; }
         .lesson-note-viewer li { margin: 0.2rem 0; line-height: 1.6; }
-        .lesson-note-viewer table { border-collapse: collapse; width: 100%; margin: 1rem 0; min-width: 320px; }
-        .lesson-note-viewer td, .lesson-note-viewer th { border: 1px solid hsl(var(--border)); padding: 0.5rem 0.75rem; }
-        .lesson-note-viewer th { background: hsl(var(--muted)); font-weight: 600; }
+        .lesson-note-viewer table { border-collapse: collapse !important; width: 100%; margin: 1rem 0; min-width: 280px; }
+        .lesson-note-viewer td, .lesson-note-viewer th { border: 1px solid #d1d5db !important; padding: 0.45rem 0.7rem !important; vertical-align: top; }
+        .dark .lesson-note-viewer td, .dark .lesson-note-viewer th { border-color: #374151 !important; }
+        .lesson-note-viewer th { background: #f3f4f6 !important; font-weight: 600; }
+        .dark .lesson-note-viewer th { background: #1f2937 !important; }
         .lesson-note-viewer a { color: hsl(var(--primary)); text-decoration: underline; }
         .lesson-note-viewer img { max-width: 100%; height: auto; border-radius: 0.5rem; margin: 0.75rem 0; display: block; }
         .lesson-note-viewer figure { margin: 1.25em 0 1.75em; text-align: center; }

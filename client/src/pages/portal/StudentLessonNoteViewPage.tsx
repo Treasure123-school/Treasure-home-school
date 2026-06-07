@@ -20,28 +20,6 @@ type LessonNote = {
   hiddenSections?: string[] | null;
 };
 
-// Subtle decorative pattern used in the banner
-function HexPattern() {
-  return (
-    <svg
-      className="absolute inset-0 w-full h-full opacity-[0.07] pointer-events-none"
-      xmlns="http://www.w3.org/2000/svg"
-    >
-      <defs>
-        <pattern id="hex" x="0" y="0" width="40" height="46" patternUnits="userSpaceOnUse">
-          <path
-            d="M20 2 L38 12 L38 34 L20 44 L2 34 L2 12 Z"
-            fill="none"
-            stroke="white"
-            strokeWidth="1"
-          />
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#hex)" />
-    </svg>
-  );
-}
-
 export default function StudentLessonNoteViewPage() {
   const { topicId } = useParams<{ topicId: string }>();
   const [, navigate] = useLocation();
@@ -63,11 +41,6 @@ export default function StudentLessonNoteViewPage() {
     queryKey: ['/api/public/settings'],
   });
   const brandColor = settings?.primaryColor || '#3b82f6';
-
-  // Derive a slightly darker shade for gradient depth
-  const gradientStyle = {
-    background: `linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 60%, ${brandColor}99 100%)`,
-  };
 
   if (isLoading) {
     return (
@@ -102,47 +75,51 @@ export default function StudentLessonNoteViewPage() {
     <div className="max-w-3xl space-y-4 print:max-w-none">
 
       {/* ── Header ── */}
-      <div className="rounded-xl overflow-hidden border">
+      <div className="rounded-xl border overflow-hidden">
+        {/* Coloured left-accent bar + title area — no background fill */}
+        <div className="flex gap-0">
+          {/* Brand-colour left stripe */}
+          <div className="w-1 shrink-0" style={{ backgroundColor: brandColor }} />
 
-        {/* Gradient banner */}
-        <div className="relative px-5 pt-4 pb-5 overflow-hidden" style={gradientStyle}>
-          <HexPattern />
-          <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+          <div className="flex-1 px-4 pt-4 pb-3">
+            {/* Subject + class + term chips */}
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {note.subjectName && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border"
+                  style={{ color: brandColor, borderColor: `${brandColor}40`, backgroundColor: `${brandColor}0d` }}>
+                  <BookOpen className="w-3 h-3" />{note.subjectName}
+                </span>
+              )}
+              {note.className && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border"
+                  style={{ color: brandColor, borderColor: `${brandColor}40`, backgroundColor: `${brandColor}0d` }}>
+                  <GraduationCap className="w-3 h-3" />{note.className}
+                </span>
+              )}
+              {note.termName && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border"
+                  style={{ color: brandColor, borderColor: `${brandColor}40`, backgroundColor: `${brandColor}0d` }}>
+                  <Calendar className="w-3 h-3" />{note.termName}
+                </span>
+              )}
+            </div>
 
-          {/* Subject + class + term badges */}
-          <div className="relative flex flex-wrap gap-1.5 mb-3">
-            {note.subjectName && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-sm text-white text-xs font-medium">
-                <BookOpen className="w-3 h-3" />{note.subjectName}
-              </span>
-            )}
-            {note.className && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-sm text-white text-xs font-medium">
-                <GraduationCap className="w-3 h-3" />{note.className}
-              </span>
-            )}
-            {note.termName && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-sm text-white text-xs font-medium">
-                <Calendar className="w-3 h-3" />{note.termName}
-              </span>
+            {/* Note title */}
+            <h1 className="text-xl sm:text-2xl font-bold leading-snug text-foreground">
+              {note.title}
+            </h1>
+
+            {/* Topic subtitle if different from title */}
+            {note.topicName && note.topicName.toLowerCase() !== note.title.toLowerCase() && (
+              <p className="mt-0.5 text-xs text-muted-foreground flex items-center gap-1">
+                <FileText className="w-3 h-3 shrink-0" />Topic: {note.topicName}
+              </p>
             )}
           </div>
-
-          {/* Note title */}
-          <h1 className="relative text-xl sm:text-2xl font-bold text-white leading-snug">
-            {note.title}
-          </h1>
-
-          {/* Topic label if different from title */}
-          {note.topicName && note.topicName.toLowerCase() !== note.title.toLowerCase() && (
-            <p className="relative mt-1 text-xs text-white/70 flex items-center gap-1">
-              <FileText className="w-3 h-3 shrink-0" />Topic: {note.topicName}
-            </p>
-          )}
         </div>
 
-        {/* Meta + print bar — compact, no shadow */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 bg-muted/30 border-t">
+        {/* Compact meta + print bar */}
+        <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2 bg-muted/30 border-t">
           <div className="flex flex-wrap gap-x-4 gap-y-1">
             {note.creatorName && (
               <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
