@@ -79,48 +79,70 @@ function hexToHslComponents(hex: string): { h: number; s: number; l: number } | 
 }
 
 function BrandColorSync() {
+  // staleTime=0 ensures the query is always considered stale and will refetch
+  // whenever queryClient.invalidateQueries / refetchQueries is called from the
+  // branding page, giving instant color updates without any caching delay.
   const { data: settings } = useQuery<SystemSettings>({
     queryKey: ['/api/public/settings'],
-    staleTime: 1000 * 60 * 5,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   useEffect(() => {
     const hex = settings?.primaryColor;
     if (!hex) return;
-    const c = hexToHslComponents(hex);
-    if (!c) return;
-    const { h, s, l } = c;
-    const lightHsl = `hsl(${h}, ${s}%, ${l}%)`;
-    const darkL = Math.min(l + 8, 88);
-    const darkHsl = `hsl(${h}, ${s}%, ${darkL}%)`;
-    const styleId = 'brand-color-sync';
-    let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
-    if (!styleEl) {
-      styleEl = document.createElement('style');
-      styleEl.id = styleId;
-      document.head.appendChild(styleEl);
-    }
-    styleEl.textContent = `
-      :root {
-        --primary: ${lightHsl} !important;
-        --accent: ${lightHsl} !important;
-        --ring: ${lightHsl} !important;
-        --sidebar-primary: ${lightHsl} !important;
-        --sidebar-ring: ${lightHsl} !important;
-        --chart-1: ${lightHsl} !important;
-      }
-      .dark {
-        --primary: ${darkHsl} !important;
-        --accent: ${darkHsl} !important;
-        --ring: ${darkHsl} !important;
-        --sidebar-primary: ${darkHsl} !important;
-        --sidebar-ring: ${darkHsl} !important;
-        --chart-1: ${darkHsl} !important;
-      }
-    `;
+    applyBrandColor(hex);
   }, [settings?.primaryColor]);
 
+  // Also apply favicon from public settings on mount / settings change
+  useEffect(() => {
+    const faviconUrl = settings?.favicon;
+    if (!faviconUrl) return;
+    const links = document.querySelectorAll("link[rel*='icon']");
+    links.forEach(l => { (l as HTMLLinkElement).href = faviconUrl; });
+    if (links.length === 0) {
+      const link = document.createElement('link');
+      link.rel = 'icon';
+      link.href = faviconUrl;
+      document.head.appendChild(link);
+    }
+  }, [settings?.favicon]);
+
   return null;
+}
+
+function applyBrandColor(hex: string) {
+  const c = hexToHslComponents(hex);
+  if (!c) return;
+  const { h, s, l } = c;
+  const lightHsl = `hsl(${h}, ${s}%, ${l}%)`;
+  const darkL = Math.min(l + 8, 88);
+  const darkHsl = `hsl(${h}, ${s}%, ${darkL}%)`;
+  const styleId = 'brand-color-sync';
+  let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = styleId;
+    document.head.appendChild(styleEl);
+  }
+  styleEl.textContent = `
+    :root {
+      --primary: ${lightHsl} !important;
+      --accent: ${lightHsl} !important;
+      --ring: ${lightHsl} !important;
+      --sidebar-primary: ${lightHsl} !important;
+      --sidebar-ring: ${lightHsl} !important;
+      --chart-1: ${lightHsl} !important;
+    }
+    .dark {
+      --primary: ${darkHsl} !important;
+      --accent: ${darkHsl} !important;
+      --ring: ${darkHsl} !important;
+      --sidebar-primary: ${darkHsl} !important;
+      --sidebar-ring: ${darkHsl} !important;
+      --chart-1: ${darkHsl} !important;
+    }
+  `;
 }
 
 // ── Real-time updates are now handled by Socket.IO on the backend ─────────────

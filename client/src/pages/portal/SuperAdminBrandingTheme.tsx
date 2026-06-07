@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import SuperAdminLayout from "@/components/SuperAdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,17 +37,25 @@ export default function SuperAdminBrandingTheme() {
     dashboardWelcomeMessage: ""
   });
 
+  // Pending upload states — holds the newly uploaded URL before "Save" is clicked.
+  // These are separate from formData so that cancelling discards them cleanly.
+  const [pendingLogoUrl, setPendingLogoUrl] = useState<string | null>(null);
+  const [pendingFaviconUrl, setPendingFaviconUrl] = useState<string | null>(null);
+
+  // After a successful save we have the confirmed data in hand already.
+  // This ref prevents the useEffect from overwriting formData with stale
+  // query data before the background refetch has completed.
+  const justSavedDataRef = useRef<typeof formData | null>(null);
+
   const uploadLogoMutation = useMutation({
     mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append("uploadType", "logo");
-      formData.append("file", file);
-      
+      const fd = new FormData();
+      fd.append("uploadType", "logo");
+      fd.append("file", file);
       const token = localStorage.getItem('token');
-      console.log('📤 [UPLOAD] Starting logo upload...');
       const res = await fetch("/api/upload", {
         method: "POST",
-        body: formData,
+        body: fd,
         headers: {
           ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
           'Accept': 'application/json'
@@ -56,43 +64,31 @@ export default function SuperAdminBrandingTheme() {
       if (!res.ok) {
         const errorText = await res.text();
         let message = "Upload failed";
-        try {
-          const errorJson = JSON.parse(errorText);
-          message = errorJson.message || message;
-        } catch (e) {
-          message = errorText || message;
-        }
+        try { message = JSON.parse(errorText).message || message; } catch {}
         throw new Error(message);
       }
       return res.json();
     },
     onSuccess: (data) => {
+      // Only show a preview — do NOT save to DB yet, do NOT update any public query cache.
+      setPendingLogoUrl(data.url);
       setFormData(prev => ({ ...prev, schoolLogo: data.url }));
-      // Invalidate both settings queries to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/public/settings"] });
-      toast({ title: "Logo Uploaded", description: "The school logo has been updated successfully. Click 'Save Changes' to apply permanently." });
+      toast({ title: "Logo Ready", description: "Click 'Save Changes' to apply this logo to the portal." });
     },
     onError: (error: any) => {
-      console.error('Logo upload error:', error);
-      toast({ 
-        title: "Upload Failed", 
-        description: error.message || "There was an error uploading your logo. Please try a smaller image or check your internet connection.", 
-        variant: "destructive" 
-      });
+      toast({ title: "Upload Failed", description: error.message || "Error uploading logo.", variant: "destructive" });
     }
   });
 
   const uploadFaviconMutation = useMutation({
     mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append("uploadType", "favicon");
-      formData.append("file", file);
+      const fd = new FormData();
+      fd.append("uploadType", "favicon");
+      fd.append("file", file);
       const token = localStorage.getItem('token');
-      console.log('📤 [UPLOAD] Starting favicon upload...');
       const res = await fetch("/api/upload", {
         method: "POST",
-        body: formData,
+        body: fd,
         headers: {
           ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
           'Accept': 'application/json'
@@ -101,42 +97,19 @@ export default function SuperAdminBrandingTheme() {
       if (!res.ok) {
         const errorText = await res.text();
         let message = "Upload failed";
-        try {
-          const errorJson = JSON.parse(errorText);
-          message = errorJson.message || message;
-        } catch (e) {
-          message = errorText || message;
-        }
+        try { message = JSON.parse(errorText).message || message; } catch {}
         throw new Error(message);
       }
       return res.json();
     },
     onSuccess: (data) => {
+      // Only show a preview — do NOT update browser favicon tab yet.
+      setPendingFaviconUrl(data.url);
       setFormData(prev => ({ ...prev, favicon: data.url }));
-      // Invalidate both settings queries to ensure fresh data
-      queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/public/settings"] });
-      
-      // Update favicon in DOM immediately
-      const favicon = document.querySelector("link[rel*='icon']") as HTMLLinkElement;
-      if (favicon) {
-        favicon.href = data.url;
-      } else {
-        const link = document.createElement('link');
-        link.rel = 'icon';
-        link.href = data.url;
-        document.head.appendChild(link);
-      }
-      
-      toast({ title: "Favicon Uploaded", description: "The school favicon has been updated successfully. Click 'Save Changes' to apply permanently." });
+      toast({ title: "Favicon Ready", description: "Click 'Save Changes' to apply this favicon to the portal." });
     },
     onError: (error: any) => {
-      console.error('Favicon upload error:', error);
-      toast({ 
-        title: "Upload Failed", 
-        description: error.message || "There was an error uploading your favicon. Please ensure it's a valid image file.", 
-        variant: "destructive" 
-      });
+      toast({ title: "Upload Failed", description: error.message || "Error uploading favicon.", variant: "destructive" });
     }
   });
 
@@ -150,10 +123,11 @@ export default function SuperAdminBrandingTheme() {
     if (file) uploadFaviconMutation.mutate(file);
   };
 
-  // Populate form from server data — but ONLY when not actively editing,
-  // to prevent a mid-edit refetch from silently overwriting the user's changes.
-  useEffect(() => {
-    if (settings && !isEditing) {
+  const handleCancel = () => {
+    // Discard pending uploads and revert form to last confirmed settings
+    setPendingLogoUrl(null);
+    setPendingFaviconUrl(null);
+    if (settings) {
       setFormData({
         schoolName: settings.schoolName || "",
         schoolLogo: settings.schoolLogo || "",
@@ -165,36 +139,74 @@ export default function SuperAdminBrandingTheme() {
         dashboardWelcomeMessage: settings.dashboardWelcomeMessage || ""
       });
     }
+    setIsEditing(false);
+  };
+
+  // Populate form from server data — but ONLY when not actively editing and
+  // there is no just-saved data in the ref (to avoid race-condition overwrites).
+  useEffect(() => {
+    if (settings && !isEditing) {
+      if (justSavedDataRef.current) {
+        // A save just completed; use the confirmed saved data, not the potentially
+        // stale refetch. Clear the ref so future refetches flow through normally.
+        setFormData(justSavedDataRef.current);
+        justSavedDataRef.current = null;
+      } else {
+        setFormData({
+          schoolName: settings.schoolName || "",
+          schoolLogo: settings.schoolLogo || "",
+          favicon: settings.favicon || "",
+          primaryColor: settings.primaryColor || "#3b82f6",
+          secondaryColor: settings.secondaryColor || "#1e293b",
+          defaultTheme: settings.defaultTheme || "light",
+          loginPageText: settings.loginPageText || "",
+          dashboardWelcomeMessage: settings.dashboardWelcomeMessage || ""
+        });
+      }
+    }
   }, [settings, isEditing]);
 
   const saveMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      const settingsToSave = { ...data };
-      console.log('[BRANDING SAVE] Sending to server:', JSON.stringify(settingsToSave));
-      const res = await apiRequest("PUT", "/api/superadmin/settings", settingsToSave);
-      const json = await res.json();
-      console.log('[BRANDING SAVE] Server response:', JSON.stringify({ primaryColor: json.primaryColor, secondaryColor: json.secondaryColor, defaultTheme: json.defaultTheme }));
-      return json;
+      const res = await apiRequest("PUT", "/api/superadmin/settings", data);
+      return res.json();
     },
     onSuccess: (savedData: any) => {
-      console.log('[BRANDING SAVE] onSuccess, primaryColor saved:', savedData?.primaryColor);
-      // Pre-load formData with the confirmed-saved values BEFORE setting isEditing=false
-      // so the useEffect re-sync doesn't briefly flash the old color.
-      if (savedData) {
-        setFormData({
-          schoolName: savedData.schoolName || "",
-          schoolLogo: savedData.schoolLogo || "",
-          favicon: savedData.favicon || "",
-          primaryColor: savedData.primaryColor || "#3b82f6",
-          secondaryColor: savedData.secondaryColor || "#1e293b",
-          defaultTheme: savedData.defaultTheme || "light",
-          loginPageText: savedData.loginPageText || "",
-          dashboardWelcomeMessage: savedData.dashboardWelcomeMessage || ""
-        });
+      const confirmed = {
+        schoolName: savedData.schoolName || "",
+        schoolLogo: savedData.schoolLogo || "",
+        favicon: savedData.favicon || "",
+        primaryColor: savedData.primaryColor || "#3b82f6",
+        secondaryColor: savedData.secondaryColor || "#1e293b",
+        defaultTheme: savedData.defaultTheme || "light",
+        loginPageText: savedData.loginPageText || "",
+        dashboardWelcomeMessage: savedData.dashboardWelcomeMessage || ""
+      };
+
+      // Store in ref BEFORE setIsEditing so the useEffect sees it
+      justSavedDataRef.current = confirmed;
+
+      // Apply favicon to browser tab NOW that the save is confirmed
+      if (confirmed.favicon) {
+        applyFaviconToDOM(confirmed.favicon);
       }
+
+      // Apply brand color immediately — no need to wait for the refetch
+      if (confirmed.primaryColor) {
+        applyBrandColorNow(confirmed.primaryColor);
+      }
+
+      // Clear pending states — they are now persisted
+      setPendingLogoUrl(null);
+      setPendingFaviconUrl(null);
+
       toast({ title: "Branding Updated", description: "Your branding and theme settings have been saved." });
+
+      // Force-refetch both settings queries so BrandColorSync and the rest of
+      // the app stay in sync (refetchQueries bypasses staleTime).
       queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/public/settings"] });
+      queryClient.refetchQueries({ queryKey: ["/api/public/settings"] });
+
       setIsEditing(false);
     },
     onError: (error: any) => {
@@ -215,10 +227,10 @@ export default function SuperAdminBrandingTheme() {
           <div className="flex gap-3">
             {isEditing ? (
               <>
-                <Button variant="outline" onClick={() => setIsEditing(false)}>Cancel</Button>
+                <Button variant="outline" onClick={handleCancel}>Cancel</Button>
                 <Button onClick={() => saveMutation.mutate(formData)} disabled={saveMutation.isPending}>
                   <Save className="h-4 w-4 mr-2" />
-                  Save Changes
+                  {saveMutation.isPending ? "Saving..." : "Save Changes"}
                 </Button>
               </>
             ) : (
@@ -242,7 +254,14 @@ export default function SuperAdminBrandingTheme() {
                 <Label className="text-sm font-semibold">School Logo</Label>
                 <div className="flex flex-col items-center gap-4 p-6 border-2 border-dashed rounded-xl bg-slate-50/50 dark:bg-slate-900/20">
                   {formData.schoolLogo ? (
-                    <img src={formData.schoolLogo} alt="School Logo" className="h-24 w-auto object-contain" />
+                    <div className="relative">
+                      <img src={formData.schoolLogo} alt="School Logo" className="h-24 w-auto object-contain" />
+                      {pendingLogoUrl && (
+                        <span className="absolute -top-2 -right-2 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                          PENDING
+                        </span>
+                      )}
+                    </div>
                   ) : (
                     <div className="h-24 w-24 bg-slate-200 dark:bg-slate-800 rounded-lg flex items-center justify-center">
                       <ImageIcon className="h-8 w-8 text-muted-foreground" />
@@ -270,13 +289,25 @@ export default function SuperAdminBrandingTheme() {
                       </label>
                     </Button>
                   </div>
+                  {pendingLogoUrl && isEditing && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
+                      New logo staged — click Save Changes to apply.
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="space-y-4">
                 <Label className="text-sm font-semibold">Favicon</Label>
                 <div className="flex flex-col items-center gap-4 p-6 border-2 border-dashed rounded-xl bg-slate-50/50 dark:bg-slate-900/20">
                   {formData.favicon ? (
-                    <img src={formData.favicon} alt="Favicon" className="h-12 w-12 object-contain" />
+                    <div className="relative">
+                      <img src={formData.favicon} alt="Favicon" className="h-12 w-12 object-contain" />
+                      {pendingFaviconUrl && (
+                        <span className="absolute -top-2 -right-2 bg-amber-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                          PENDING
+                        </span>
+                      )}
+                    </div>
                   ) : (
                     <div className="h-12 w-12 bg-slate-200 dark:bg-slate-800 rounded-lg flex items-center justify-center">
                       <ImageIcon className="h-6 w-6 text-muted-foreground" />
@@ -304,6 +335,11 @@ export default function SuperAdminBrandingTheme() {
                       </label>
                     </Button>
                   </div>
+                  {pendingFaviconUrl && isEditing && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
+                      New favicon staged — click Save Changes to apply.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -488,4 +524,67 @@ export default function SuperAdminBrandingTheme() {
       </div>
     </SuperAdminLayout>
   );
+}
+
+// Helper — updates all favicon <link> tags in the document head
+function applyFaviconToDOM(url: string) {
+  const links = document.querySelectorAll("link[rel*='icon']");
+  links.forEach(l => { (l as HTMLLinkElement).href = url; });
+  if (links.length === 0) {
+    const link = document.createElement('link');
+    link.rel = 'icon';
+    link.href = url;
+    document.head.appendChild(link);
+  }
+}
+
+// Helper — converts hex to HSL and injects/updates the brand-color-sync <style> tag
+function applyBrandColorNow(hex: string) {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!m) return;
+  let r = parseInt(m[1], 16) / 255;
+  let g = parseInt(m[2], 16) / 255;
+  let b = parseInt(m[3], 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  const hDeg = Math.round(h * 360);
+  const sPct = Math.round(s * 100);
+  const lPct = Math.round(l * 100);
+  const lightHsl = `hsl(${hDeg}, ${sPct}%, ${lPct}%)`;
+  const darkHsl = `hsl(${hDeg}, ${sPct}%, ${Math.min(lPct + 8, 88)}%)`;
+  const styleId = 'brand-color-sync';
+  let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
+  if (!styleEl) {
+    styleEl = document.createElement('style');
+    styleEl.id = styleId;
+    document.head.appendChild(styleEl);
+  }
+  styleEl.textContent = `
+    :root {
+      --primary: ${lightHsl} !important;
+      --accent: ${lightHsl} !important;
+      --ring: ${lightHsl} !important;
+      --sidebar-primary: ${lightHsl} !important;
+      --sidebar-ring: ${lightHsl} !important;
+      --chart-1: ${lightHsl} !important;
+    }
+    .dark {
+      --primary: ${darkHsl} !important;
+      --accent: ${darkHsl} !important;
+      --ring: ${darkHsl} !important;
+      --sidebar-primary: ${darkHsl} !important;
+      --sidebar-ring: ${darkHsl} !important;
+      --chart-1: ${darkHsl} !important;
+    }
+  `;
 }
