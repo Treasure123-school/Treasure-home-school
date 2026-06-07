@@ -7946,6 +7946,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     if (existing) {
+      console.log('[SETTINGS UPDATE] primaryColor received:', updateData.primaryColor, '| secondaryColor:', updateData.secondaryColor, '| keys:', Object.keys(updateData).join(','));
       const result = await db
         .update(schema.systemSettings)
         .set({ ...updateData, updatedAt: new Date() })

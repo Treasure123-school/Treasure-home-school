@@ -150,8 +150,10 @@ export default function SuperAdminBrandingTheme() {
     if (file) uploadFaviconMutation.mutate(file);
   };
 
+  // Populate form from server data — but ONLY when not actively editing,
+  // to prevent a mid-edit refetch from silently overwriting the user's changes.
   useEffect(() => {
-    if (settings) {
+    if (settings && !isEditing) {
       setFormData({
         schoolName: settings.schoolName || "",
         schoolLogo: settings.schoolLogo || "",
@@ -163,19 +165,33 @@ export default function SuperAdminBrandingTheme() {
         dashboardWelcomeMessage: settings.dashboardWelcomeMessage || ""
       });
     }
-  }, [settings]);
+  }, [settings, isEditing]);
 
   const saveMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      // Create a copy to avoid mutating state
       const settingsToSave = { ...data };
-      
-      // Ensure we don't send local default paths if they were just placeholders
-      // (though here they are legitimate URLs or empty strings)
-      
-      return apiRequest("PUT", "/api/superadmin/settings", settingsToSave);
+      console.log('[BRANDING SAVE] Sending to server:', JSON.stringify(settingsToSave));
+      const res = await apiRequest("PUT", "/api/superadmin/settings", settingsToSave);
+      const json = await res.json();
+      console.log('[BRANDING SAVE] Server response:', JSON.stringify({ primaryColor: json.primaryColor, secondaryColor: json.secondaryColor, defaultTheme: json.defaultTheme }));
+      return json;
     },
-    onSuccess: () => {
+    onSuccess: (savedData: any) => {
+      console.log('[BRANDING SAVE] onSuccess, primaryColor saved:', savedData?.primaryColor);
+      // Pre-load formData with the confirmed-saved values BEFORE setting isEditing=false
+      // so the useEffect re-sync doesn't briefly flash the old color.
+      if (savedData) {
+        setFormData({
+          schoolName: savedData.schoolName || "",
+          schoolLogo: savedData.schoolLogo || "",
+          favicon: savedData.favicon || "",
+          primaryColor: savedData.primaryColor || "#3b82f6",
+          secondaryColor: savedData.secondaryColor || "#1e293b",
+          defaultTheme: savedData.defaultTheme || "light",
+          loginPageText: savedData.loginPageText || "",
+          dashboardWelcomeMessage: savedData.dashboardWelcomeMessage || ""
+        });
+      }
       toast({ title: "Branding Updated", description: "Your branding and theme settings have been saved." });
       queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/public/settings"] });
