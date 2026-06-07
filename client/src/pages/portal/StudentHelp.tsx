@@ -153,8 +153,11 @@ export default function StudentHelp() {
     <div className="space-y-8 pb-8" data-testid="student-help">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Help & Support</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">Find answers, guides, and contact support</p>
+        <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+          <HelpCircle className="h-6 w-6 text-primary" />
+          Help & Support
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">Find answers, guides, and contact support</p>
       </div>
 
       {/* Quick Help Guides */}

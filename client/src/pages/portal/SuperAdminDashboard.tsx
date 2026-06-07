@@ -122,20 +122,16 @@ export default function SuperAdminDashboard() {
   return (
     <SuperAdminLayout>
       <div className="space-y-6">
-        {/* Modern Welcome Header */}
-        <div className="mb-8 bg-gradient-to-r from-primary to-primary/90 rounded-lg p-6 text-white shadow-lg" data-testid="superadmin-dashboard-header">
-          <div className="flex items-center gap-4">
-            <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm shadow-lg">
-              <Shield className="h-8 w-8 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold mb-1">
-                Welcome back, {user?.lastName || 'Admin'}!
-              </h1>
-              <p className="text-white/70 text-sm">
-                Manage all system aspects of {schoolName}
-              </p>
-            </div>
+        {/* Welcome Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2" data-testid="superadmin-dashboard-header">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <Shield className="h-6 w-6 text-primary" />
+              Welcome back, {user?.lastName || 'Admin'}!
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage all system aspects of {schoolName}
+            </p>
           </div>
         </div>
 

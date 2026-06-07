@@ -147,8 +147,11 @@ export default function StudentLibrary() {
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Library</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Study resources, past papers, videos & more</p>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <BookOpen className="h-6 w-6 text-primary" />
+            Library
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">Study resources, past papers, videos & more</p>
         </div>
         {enriched.length > 0 && (
           <span className="text-sm font-semibold text-primary bg-primary/10 rounded-full px-3 py-1 shrink-0">
