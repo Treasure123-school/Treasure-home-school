@@ -132,7 +132,7 @@ export default function SuperAdminDashboard() {
               <h1 className="text-2xl md:text-3xl font-bold mb-1">
                 Welcome back, {user?.lastName || 'Admin'}!
               </h1>
-              <p className="text-primary/30 text-sm">
+              <p className="text-white/70 text-sm">
                 Manage all system aspects of {schoolName}
               </p>
             </div>
