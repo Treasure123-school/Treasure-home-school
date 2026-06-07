@@ -276,11 +276,6 @@ export default function StudentDashboard() {
               <p className="text-white/70 text-sm">
                 Here's what's happening with your academics today
               </p>
-              {studentData?.admissionNumber && (
-                <p className="text-white/60 text-xs mt-1 font-mono" data-testid="text-admission-number-dashboard">
-                  Admission No: {studentData.admissionNumber}
-                </p>
-              )}
             </div>
           </div>
         </div>
