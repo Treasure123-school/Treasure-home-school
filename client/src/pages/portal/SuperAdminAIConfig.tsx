@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import SuperAdminLayout from "@/components/SuperAdminLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -200,12 +200,13 @@ export default function SuperAdminAIConfig() {
 
   const { data: cfConfig, isLoading: cfLoading } = useQuery<CloudflareConfig>({
     queryKey: ["/api/superadmin/ai-config/cloudflare"],
-    select: (d: any) => {
-      if (d.activeProvider) setActiveImgProvider(d.activeProvider);
-      if (d.sharedPromptTemplate && !sharedPromptTemplate) setSharedPromptTemplate(d.sharedPromptTemplate);
-      return d as CloudflareConfig;
-    },
   });
+
+  useEffect(() => {
+    if (!cfConfig) return;
+    if ((cfConfig as any).activeProvider) setActiveImgProvider((cfConfig as any).activeProvider);
+    if ((cfConfig as any).sharedPromptTemplate && !sharedPromptTemplate) setSharedPromptTemplate((cfConfig as any).sharedPromptTemplate);
+  }, [cfConfig]);
 
   const mergedCf = { ...cfConfig, ...localCfConfig } as CloudflareConfig;
 
