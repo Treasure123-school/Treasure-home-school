@@ -4,8 +4,11 @@ import { apiRequest } from '@/lib/queryClient';
 import type { SystemSettings } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { NoteMetaStrip, NoteContentRenderer } from '@/components/lesson-notes/lessonNoteShared';
-import { BookOpen, Target } from 'lucide-react';
+import { NoteContentRenderer, fmtDate } from '@/components/lesson-notes/lessonNoteShared';
+import {
+  BookOpen, Target, GraduationCap, User, Calendar,
+  Printer, FileText, ArrowLeft,
+} from 'lucide-react';
 
 type LessonNote = {
   id: number; topicId: number;
@@ -16,6 +19,28 @@ type LessonNote = {
   publishedAt: string | null; createdAt: string;
   hiddenSections?: string[] | null;
 };
+
+// Subtle decorative pattern used in the banner
+function HexPattern() {
+  return (
+    <svg
+      className="absolute inset-0 w-full h-full opacity-[0.07] pointer-events-none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <defs>
+        <pattern id="hex" x="0" y="0" width="40" height="46" patternUnits="userSpaceOnUse">
+          <path
+            d="M20 2 L38 12 L38 34 L20 44 L2 34 L2 12 Z"
+            fill="none"
+            stroke="white"
+            strokeWidth="1"
+          />
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#hex)" />
+    </svg>
+  );
+}
 
 export default function StudentLessonNoteViewPage() {
   const { topicId } = useParams<{ topicId: string }>();
@@ -39,11 +64,16 @@ export default function StudentLessonNoteViewPage() {
   });
   const brandColor = settings?.primaryColor || '#3b82f6';
 
+  // Derive a slightly darker shade for gradient depth
+  const gradientStyle = {
+    background: `linear-gradient(135deg, ${brandColor} 0%, ${brandColor}cc 60%, ${brandColor}99 100%)`,
+  };
+
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <Skeleton className="h-10 w-3/4" />
-        <Skeleton className="h-6 w-1/2" />
+      <div className="max-w-3xl space-y-4">
+        <Skeleton className="h-48 rounded-2xl" />
+        <Skeleton className="h-10 rounded-xl" />
         <Skeleton className="h-96 rounded-xl" />
       </div>
     );
@@ -62,19 +92,92 @@ export default function StudentLessonNoteViewPage() {
           </p>
         </div>
         <Button variant="outline" onClick={() => navigate(backUrl)}>
-          Back to Scheme of Work
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Scheme of Work
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-3xl space-y-8 print:max-w-none">
+    <div className="max-w-3xl space-y-6 print:max-w-none">
 
-      {/* Meta strip — print button + all metadata chips (shared component) */}
-      <NoteMetaStrip note={note} showPublished printButton />
+      {/* ── Rich header card ── */}
+      <div className="rounded-2xl overflow-hidden border shadow-md print:shadow-none">
 
-      {/* Learning Objectives (standalone, for legacy notes that store objectives separately) */}
+        {/* Gradient banner */}
+        <div className="relative px-6 pt-5 pb-7 overflow-hidden" style={gradientStyle}>
+          <HexPattern />
+
+          {/* Decorative blobs */}
+          <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+          <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+
+          {/* Subject + class badges */}
+          <div className="relative flex flex-wrap gap-2 mb-4">
+            {note.subjectName && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-white text-xs font-semibold ring-1 ring-white/30">
+                <BookOpen className="w-3.5 h-3.5" />
+                {note.subjectName}
+              </span>
+            )}
+            {note.className && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-white text-xs font-semibold ring-1 ring-white/30">
+                <GraduationCap className="w-3.5 h-3.5" />
+                {note.className}
+              </span>
+            )}
+            {note.termName && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-white text-xs font-semibold ring-1 ring-white/30">
+                <Calendar className="w-3.5 h-3.5" />
+                {note.termName}
+              </span>
+            )}
+          </div>
+
+          {/* Note title */}
+          <h1 className="relative text-2xl sm:text-3xl font-bold text-white leading-snug drop-shadow-sm">
+            {note.title}
+          </h1>
+
+          {/* Topic label if it differs from the note title */}
+          {note.topicName && note.topicName.toLowerCase() !== note.title.toLowerCase() && (
+            <p className="relative mt-1.5 text-sm text-white/75 flex items-center gap-1.5">
+              <FileText className="w-3.5 h-3.5 shrink-0" />
+              Topic: {note.topicName}
+            </p>
+          )}
+        </div>
+
+        {/* Footer meta bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3 bg-muted/40 border-t">
+          <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+            {note.creatorName && (
+              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <User className="w-3.5 h-3.5 shrink-0" />
+                <span className="font-medium text-foreground">{note.creatorName}</span>
+              </span>
+            )}
+            {note.publishedAt && (
+              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                <Calendar className="w-3.5 h-3.5 shrink-0" />
+                Published <span className="font-medium text-foreground">{fmtDate(note.publishedAt)}</span>
+              </span>
+            )}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.print()}
+            className="gap-1.5 h-8 text-xs print:hidden"
+            data-testid="button-print"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Print</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* Learning Objectives — for legacy notes that store objectives separately */}
       {note.objectives && (
         <section className="rounded-xl border bg-primary/5 p-5 space-y-3">
           <div className="flex items-center gap-2">
@@ -87,7 +190,7 @@ export default function StudentLessonNoteViewPage() {
         </section>
       )}
 
-      {/* Shared note body — handles v2 structured sections and v3/legacy HTML */}
+      {/* Note body — handles v2 structured sections and v3/legacy HTML */}
       <NoteContentRenderer
         note={note}
         brandColor={brandColor}
