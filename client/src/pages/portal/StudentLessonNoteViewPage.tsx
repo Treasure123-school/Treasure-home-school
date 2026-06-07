@@ -99,76 +99,69 @@ export default function StudentLessonNoteViewPage() {
   }
 
   return (
-    <div className="max-w-3xl space-y-6 print:max-w-none">
+    <div className="max-w-3xl space-y-4 print:max-w-none">
 
-      {/* ── Rich header card ── */}
-      <div className="rounded-2xl overflow-hidden border shadow-md print:shadow-none">
+      {/* ── Header ── */}
+      <div className="rounded-xl overflow-hidden border">
 
         {/* Gradient banner */}
-        <div className="relative px-6 pt-5 pb-7 overflow-hidden" style={gradientStyle}>
+        <div className="relative px-5 pt-4 pb-5 overflow-hidden" style={gradientStyle}>
           <HexPattern />
+          <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10 blur-2xl pointer-events-none" />
 
-          {/* Decorative blobs */}
-          <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-          <div className="absolute -bottom-8 -left-8 w-32 h-32 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-
-          {/* Subject + class badges */}
-          <div className="relative flex flex-wrap gap-2 mb-4">
+          {/* Subject + class + term badges */}
+          <div className="relative flex flex-wrap gap-1.5 mb-3">
             {note.subjectName && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-white text-xs font-semibold ring-1 ring-white/30">
-                <BookOpen className="w-3.5 h-3.5" />
-                {note.subjectName}
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-sm text-white text-xs font-medium">
+                <BookOpen className="w-3 h-3" />{note.subjectName}
               </span>
             )}
             {note.className && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-white text-xs font-semibold ring-1 ring-white/30">
-                <GraduationCap className="w-3.5 h-3.5" />
-                {note.className}
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-sm text-white text-xs font-medium">
+                <GraduationCap className="w-3 h-3" />{note.className}
               </span>
             )}
             {note.termName && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 backdrop-blur-sm text-white text-xs font-semibold ring-1 ring-white/30">
-                <Calendar className="w-3.5 h-3.5" />
-                {note.termName}
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-white/20 backdrop-blur-sm text-white text-xs font-medium">
+                <Calendar className="w-3 h-3" />{note.termName}
               </span>
             )}
           </div>
 
           {/* Note title */}
-          <h1 className="relative text-2xl sm:text-3xl font-bold text-white leading-snug drop-shadow-sm">
+          <h1 className="relative text-xl sm:text-2xl font-bold text-white leading-snug">
             {note.title}
           </h1>
 
-          {/* Topic label if it differs from the note title */}
+          {/* Topic label if different from title */}
           {note.topicName && note.topicName.toLowerCase() !== note.title.toLowerCase() && (
-            <p className="relative mt-1.5 text-sm text-white/75 flex items-center gap-1.5">
-              <FileText className="w-3.5 h-3.5 shrink-0" />
-              Topic: {note.topicName}
+            <p className="relative mt-1 text-xs text-white/70 flex items-center gap-1">
+              <FileText className="w-3 h-3 shrink-0" />Topic: {note.topicName}
             </p>
           )}
         </div>
 
-        {/* Footer meta bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3 bg-muted/40 border-t">
-          <div className="flex flex-wrap gap-x-5 gap-y-1.5">
+        {/* Meta + print bar — compact, no shadow */}
+        <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 bg-muted/30 border-t">
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
             {note.creatorName && (
-              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                <User className="w-3.5 h-3.5 shrink-0" />
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <User className="w-3 h-3 shrink-0" />
                 <span className="font-medium text-foreground">{note.creatorName}</span>
               </span>
             )}
             {note.publishedAt && (
-              <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                <Calendar className="w-3.5 h-3.5 shrink-0" />
-                Published <span className="font-medium text-foreground">{fmtDate(note.publishedAt)}</span>
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <Calendar className="w-3 h-3 shrink-0" />
+                <span className="font-medium text-foreground">{fmtDate(note.publishedAt)}</span>
               </span>
             )}
           </div>
           <Button
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => window.print()}
-            className="gap-1.5 h-8 text-xs print:hidden"
+            className="gap-1.5 h-7 text-xs px-2 print:hidden"
             data-testid="button-print"
           >
             <Printer className="w-3.5 h-3.5" />
@@ -179,7 +172,7 @@ export default function StudentLessonNoteViewPage() {
 
       {/* Learning Objectives — for legacy notes that store objectives separately */}
       {note.objectives && (
-        <section className="rounded-xl border bg-primary/5 p-5 space-y-3">
+        <section className="rounded-xl border bg-primary/5 p-4 space-y-2">
           <div className="flex items-center gap-2">
             <Target className="w-4 h-4 text-primary shrink-0" />
             <h2 className="text-sm font-semibold uppercase tracking-wide text-primary">
