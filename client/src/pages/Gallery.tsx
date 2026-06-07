@@ -197,7 +197,7 @@ export default function Gallery() {
                 <p className="text-gray-600">
                   Do you want to know more about us? Get in touch via our contact page.
                 </p>
-                <Button asChild className="btn-primary rounded-none px-8 py-6 h-auto text-sm font-bold bg-[#D946EF] hover:bg-[#C026D3] uppercase tracking-wider">
+                <Button asChild className="btn-primary rounded-none px-8 py-6 h-auto text-sm font-bold bg-primary hover:bg-primary/90 uppercase tracking-wider">
                   <Link href="/contact">Contact Us &rarr;</Link>
                 </Button>
               </div>

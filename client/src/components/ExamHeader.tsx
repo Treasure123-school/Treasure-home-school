@@ -60,7 +60,7 @@ export function ExamHeader({
             </div>
             
             <div className="flex flex-col min-w-0">
-              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-[#0000FF] dark:text-primary/70 tracking-tight leading-none truncate mb-2">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-primary tracking-tight leading-none truncate mb-2">
                 {schoolName}
               </h1>
               <div className="grid grid-cols-1 gap-x-4 gap-y-0.5 text-xs sm:text-sm font-medium overflow-hidden">
@@ -95,7 +95,7 @@ export function ExamHeader({
             <div className="relative group">
               <Avatar className="h-12 w-12 sm:h-14 sm:w-14 border-2 border-white dark:border-slate-800 shadow-md ring-1 ring-slate-100 dark:ring-slate-700">
                 <AvatarImage src={profileImageUrl || undefined} alt={studentName} className="object-cover" />
-                <AvatarFallback className="bg-[#0000FF] text-white text-lg font-bold">
+                <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
                   {studentInitials}
                 </AvatarFallback>
               </Avatar>
@@ -106,7 +106,7 @@ export function ExamHeader({
       {/* Animated Progress Line */}
       <div className="absolute bottom-0 left-0 w-full h-0.5 bg-slate-100 dark:bg-slate-800 overflow-hidden">
         <div 
-          className="h-full bg-[#0000FF] dark:bg-primary/85 transition-all duration-500 ease-out shadow-[0_0_8px_rgba(0,0,255,0.4)]"
+          className="h-full bg-primary transition-all duration-500 ease-out shadow-[0_0_8px_hsl(var(--primary)/0.4)]"
           style={{ width: `${(currentQuestion / totalQuestions) * 100}%` }}
         />
       </div>

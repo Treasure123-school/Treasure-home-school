@@ -651,7 +651,7 @@ function SubmitTab({
             onClick={onSubmit}
             disabled={isPending || (!textAnswer.trim() && !selectedFile)}
             data-testid="button-submit-assignment"
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl h-11 font-semibold"
+            className="w-full bg-primary hover:bg-primary/90 text-white rounded-xl h-11 font-semibold"
           >
             {isPending ? (
               <span className="flex items-center gap-2">

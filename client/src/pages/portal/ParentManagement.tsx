@@ -408,7 +408,7 @@ export default function ParentManagement() {
         </div>
         <Button
           onClick={() => setIsAddOpen(true)}
-          className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl gap-2"
+          className="bg-primary hover:bg-primary/90 text-white rounded-xl gap-2"
           data-testid="button-add-parent"
         >
           <Plus className="h-4 w-4" />
@@ -469,7 +469,7 @@ export default function ParentManagement() {
             {search || classFilter !== 'all' ? 'Try adjusting your filters.' : 'Add your first parent to get started.'}
           </p>
           {!search && classFilter === 'all' && (
-            <Button onClick={() => setIsAddOpen(true)} className="bg-violet-600 hover:bg-violet-700 text-white rounded-xl gap-2">
+            <Button onClick={() => setIsAddOpen(true)} className="bg-primary hover:bg-primary/90 text-white rounded-xl gap-2">
               <Plus className="h-4 w-4" />
               Add First Parent
             </Button>
@@ -723,7 +723,7 @@ export default function ParentManagement() {
               <Button
                 onClick={handleCreate}
                 disabled={!form.firstName.trim() || !form.lastName.trim() || createMutation.isPending}
-                className="flex-1 bg-violet-600 hover:bg-violet-700 text-white rounded-xl gap-2"
+                className="flex-1 bg-primary hover:bg-primary/90 text-white rounded-xl gap-2"
                 data-testid="button-submit-parent"
               >
                 <UserPlus className="h-4 w-4" />
@@ -997,7 +997,7 @@ export default function ParentManagement() {
               <Button
                 onClick={() => linkMutation.mutate({ parentId: linkMoreParent!.id, studentIds: linkMoreSelected.map(s => s.id) })}
                 disabled={linkMoreSelected.length === 0 || linkMutation.isPending}
-                className="flex-1 bg-violet-600 hover:bg-violet-700 text-white rounded-xl gap-2"
+                className="flex-1 bg-primary hover:bg-primary/90 text-white rounded-xl gap-2"
                 data-testid="button-confirm-link"
               >
                 <Link className="h-4 w-4" />
