@@ -1,7 +1,8 @@
 import { Switch, Route } from "wouter";
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
+import type { SystemSettings } from "@shared/schema";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth";
@@ -51,7 +52,78 @@ const AssignSubjectTeachers = lazy(() => import("@/pages/portal/AssignSubjectTea
 // Profile Onboarding (used for all authenticated users)
 const ProfileOnboarding = lazy(() => import("@/pages/ProfileOnboarding"));
 
-// Real-time updates are now handled by Socket.IO on the backend
+// ── Brand Color Sync ─────────────────────────────────────────────────────────
+// Converts the stored hex primaryColor into HSL and injects a <style> tag that
+// overrides the Tailwind CSS variables app-wide — so every bg-primary,
+// text-primary, border-primary etc. across the whole app reflects the setting.
+
+function hexToHslComponents(hex: string): { h: number; s: number; l: number } | null {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (!m) return null;
+  let r = parseInt(m[1], 16) / 255;
+  let g = parseInt(m[2], 16) / 255;
+  let b = parseInt(m[3], 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0;
+  const l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+}
+
+function BrandColorSync() {
+  const { data: settings } = useQuery<SystemSettings>({
+    queryKey: ['/api/public/settings'],
+    staleTime: 1000 * 60 * 5,
+  });
+
+  useEffect(() => {
+    const hex = settings?.primaryColor;
+    if (!hex) return;
+    const c = hexToHslComponents(hex);
+    if (!c) return;
+    const { h, s, l } = c;
+    const lightHsl = `hsl(${h}, ${s}%, ${l}%)`;
+    const darkL = Math.min(l + 8, 88);
+    const darkHsl = `hsl(${h}, ${s}%, ${darkL}%)`;
+    const styleId = 'brand-color-sync';
+    let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = styleId;
+      document.head.appendChild(styleEl);
+    }
+    styleEl.textContent = `
+      :root {
+        --primary: ${lightHsl} !important;
+        --accent: ${lightHsl} !important;
+        --ring: ${lightHsl} !important;
+        --sidebar-primary: ${lightHsl} !important;
+        --sidebar-ring: ${lightHsl} !important;
+        --chart-1: ${lightHsl} !important;
+      }
+      .dark {
+        --primary: ${darkHsl} !important;
+        --accent: ${darkHsl} !important;
+        --ring: ${darkHsl} !important;
+        --sidebar-primary: ${darkHsl} !important;
+        --sidebar-ring: ${darkHsl} !important;
+        --chart-1: ${darkHsl} !important;
+      }
+    `;
+  }, [settings?.primaryColor]);
+
+  return null;
+}
+
+// ── Real-time updates are now handled by Socket.IO on the backend ─────────────
 function ActivityHeartbeat() {
   const { user, isAuthenticated } = useAuth();
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -701,6 +773,7 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
+        <BrandColorSync />
         <TooltipProvider>
           <AuthProvider>
             <RealtimeProvider>

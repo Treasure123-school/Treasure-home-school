@@ -315,37 +315,103 @@ export default function SuperAdminBrandingTheme() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Primary Color */}
               <div className="space-y-3">
-                <Label className="text-sm font-semibold">Primary Color</Label>
-                <div className="flex gap-3">
-                  <div 
-                    className="h-10 w-10 rounded-lg border shadow-sm" 
-                    style={{ backgroundColor: formData.primaryColor }}
-                  />
-                  <Input 
+                <Label className="text-sm font-semibold">Brand / Primary Color</Label>
+                <p className="text-xs text-muted-foreground -mt-1">Used for buttons, links, badges, and highlights across the entire portal.</p>
+                <div className="flex gap-3 items-center">
+                  <label
+                    className={`relative h-10 w-10 rounded-lg border shadow-sm overflow-hidden shrink-0 ${isEditing ? 'cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-primary transition-all' : 'cursor-not-allowed opacity-60'}`}
+                    title={isEditing ? 'Click to open color picker' : 'Enable editing to change color'}
+                  >
+                    <div className="absolute inset-0" style={{ backgroundColor: formData.primaryColor }} />
+                    <input
+                      type="color"
+                      disabled={!isEditing}
+                      value={formData.primaryColor}
+                      onChange={(e) => setFormData({...formData, primaryColor: e.target.value})}
+                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer disabled:cursor-not-allowed"
+                    />
+                  </label>
+                  <Input
                     disabled={!isEditing}
                     value={formData.primaryColor}
-                    onChange={(e) => setFormData({...formData, primaryColor: e.target.value})}
-                    className="flex-1"
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (/^#([0-9a-fA-F]{0,6})$/.test(v)) setFormData({...formData, primaryColor: v});
+                    }}
+                    placeholder="#3b82f6"
+                    className="flex-1 font-mono text-sm"
+                    maxLength={7}
                   />
                 </div>
+                {isEditing && (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {['#3b82f6','#2563eb','#1d4ed8','#0ea5e9','#10b981','#8b5cf6','#f59e0b','#ef4444','#ec4899','#14b8a6'].map(c => (
+                      <button
+                        key={c}
+                        onClick={() => setFormData({...formData, primaryColor: c})}
+                        title={c}
+                        className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${formData.primaryColor === c ? 'border-gray-900 dark:border-white scale-110' : 'border-transparent'}`}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
+
+              {/* Secondary Color */}
               <div className="space-y-3">
-                <Label className="text-sm font-semibold">Secondary Color</Label>
-                <div className="flex gap-3">
-                  <div 
-                    className="h-10 w-10 rounded-lg border shadow-sm" 
-                    style={{ backgroundColor: formData.secondaryColor }}
-                  />
-                  <Input 
+                <Label className="text-sm font-semibold">Secondary / Accent Color</Label>
+                <p className="text-xs text-muted-foreground -mt-1">Used for secondary buttons, badges, and subtle accents.</p>
+                <div className="flex gap-3 items-center">
+                  <label
+                    className={`relative h-10 w-10 rounded-lg border shadow-sm overflow-hidden shrink-0 ${isEditing ? 'cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-primary transition-all' : 'cursor-not-allowed opacity-60'}`}
+                    title={isEditing ? 'Click to open color picker' : 'Enable editing to change color'}
+                  >
+                    <div className="absolute inset-0" style={{ backgroundColor: formData.secondaryColor }} />
+                    <input
+                      type="color"
+                      disabled={!isEditing}
+                      value={formData.secondaryColor}
+                      onChange={(e) => setFormData({...formData, secondaryColor: e.target.value})}
+                      className="absolute inset-0 opacity-0 w-full h-full cursor-pointer disabled:cursor-not-allowed"
+                    />
+                  </label>
+                  <Input
                     disabled={!isEditing}
                     value={formData.secondaryColor}
-                    onChange={(e) => setFormData({...formData, secondaryColor: e.target.value})}
-                    className="flex-1"
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (/^#([0-9a-fA-F]{0,6})$/.test(v)) setFormData({...formData, secondaryColor: v});
+                    }}
+                    placeholder="#1e293b"
+                    className="flex-1 font-mono text-sm"
+                    maxLength={7}
                   />
                 </div>
               </div>
             </div>
+
+            {/* Live Preview */}
+            {isEditing && (
+              <div className="rounded-xl border p-4 space-y-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Live Preview</p>
+                <div className="flex flex-wrap gap-3 items-center">
+                  <button className="px-4 py-2 rounded-lg text-white text-sm font-medium shadow-sm" style={{ backgroundColor: formData.primaryColor }}>
+                    Primary Button
+                  </button>
+                  <button className="px-4 py-2 rounded-lg text-sm font-medium border-2 shadow-sm" style={{ borderColor: formData.primaryColor, color: formData.primaryColor }}>
+                    Outline Button
+                  </button>
+                  <span className="px-2.5 py-1 rounded-full text-white text-xs font-medium" style={{ backgroundColor: formData.primaryColor }}>Badge</span>
+                  <span className="text-sm font-medium" style={{ color: formData.primaryColor }}>Link text</span>
+                  <div className="h-2 w-24 rounded-full" style={{ backgroundColor: formData.primaryColor + '33' }}>
+                    <div className="h-2 rounded-full w-3/4" style={{ backgroundColor: formData.primaryColor }} />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-3">
               <Label className="text-sm font-semibold">Default Portal Theme</Label>
