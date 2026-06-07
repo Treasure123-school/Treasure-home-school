@@ -208,10 +208,10 @@ export default function StudentMessages() {
         <div className="p-4 border-b border-border space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-blue-600" />
+              <MessageSquare className="w-5 h-5 text-primary" />
               Messages
               {totalUnread > 0 && (
-                <Badge className="h-5 rounded-full px-1.5 text-[10px] bg-blue-600">{totalUnread}</Badge>
+                <Badge className="h-5 rounded-full px-1.5 text-[10px] bg-primary">{totalUnread}</Badge>
               )}
             </h2>
             <Button
@@ -253,12 +253,12 @@ export default function StudentMessages() {
             filteredConversations.map(conv => (
               <button
                 key={conv.contactId}
-                className={`w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors border-b border-border text-left relative ${selectedContactId === conv.contactId ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}
+                className={`w-full flex items-center gap-3 p-4 hover:bg-muted/50 transition-colors border-b border-border text-left relative ${selectedContactId === conv.contactId ? 'bg-primary/5 dark:bg-primary/5' : ''}`}
                 onClick={() => { setSelectedContactId(conv.contactId); setShowConversations(false); }}
                 data-testid={`conversation-${conv.contactId}`}
               >
                 <Avatar className="h-11 w-11 border-2 border-background shadow-sm flex-shrink-0">
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-medium">
+                  <AvatarFallback className="bg-gradient-to-br from-primary/85 to-indigo-600 text-white font-medium">
                     {conv.contactInitials}
                   </AvatarFallback>
                 </Avatar>
@@ -270,7 +270,7 @@ export default function StudentMessages() {
                   <p className={`text-sm truncate ${conv.unreadCount > 0 ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>{conv.lastMessage}</p>
                 </div>
                 {conv.unreadCount > 0 && (
-                  <Badge className="h-5 w-5 rounded-full p-0 flex items-center justify-center bg-blue-600 shrink-0 text-[10px]">
+                  <Badge className="h-5 w-5 rounded-full p-0 flex items-center justify-center bg-primary shrink-0 text-[10px]">
                     {conv.unreadCount}
                   </Badge>
                 )}
@@ -290,7 +290,7 @@ export default function StudentMessages() {
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <Avatar className="h-9 w-9 border border-border flex-shrink-0">
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-medium text-sm">
+                <AvatarFallback className="bg-gradient-to-br from-primary/85 to-indigo-600 text-white font-medium text-sm">
                   {selectedConversation.contactInitials}
                 </AvatarFallback>
               </Avatar>
@@ -320,7 +320,7 @@ export default function StudentMessages() {
                       <div className="max-w-[75%] sm:max-w-[60%]">
                         <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
                           isSent
-                            ? 'bg-blue-600 text-white rounded-br-md'
+                            ? 'bg-primary text-white rounded-br-md'
                             : 'bg-muted text-foreground rounded-bl-md'
                         }`}>
                           {msg.content}
@@ -329,7 +329,7 @@ export default function StudentMessages() {
                           <span className="text-[10px] text-muted-foreground">{formatTime(msg.createdAt)}</span>
                           {isSent && (
                             msg.isRead
-                              ? <CheckCheck className="h-3 w-3 text-blue-500" />
+                              ? <CheckCheck className="h-3 w-3 text-primary" />
                               : <Check className="h-3 w-3 text-muted-foreground" />
                           )}
                         </div>
@@ -364,7 +364,7 @@ export default function StudentMessages() {
                 <Button
                   onClick={handleSendInThread}
                   disabled={!messageText.trim() || sendMessageMutation.isPending}
-                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-full h-10 w-10 p-0 flex-shrink-0 shadow-md active:scale-95 transition-all"
+                  className="bg-primary hover:bg-primary/90 text-white rounded-full h-10 w-10 p-0 flex-shrink-0 shadow-md active:scale-95 transition-all"
                   data-testid="button-send-message"
                 >
                   <Send className="h-4 w-4" />
@@ -375,7 +375,7 @@ export default function StudentMessages() {
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-6 bg-muted/5">
             <div className="bg-card p-8 rounded-full shadow-lg border border-border">
-              <MessageSquare className="w-16 h-16 text-blue-200" />
+              <MessageSquare className="w-16 h-16 text-primary/50" />
             </div>
             <div className="max-w-xs space-y-2">
               <h3 className="text-xl font-bold">Your Messages</h3>

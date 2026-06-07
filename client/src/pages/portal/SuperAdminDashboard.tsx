@@ -50,8 +50,8 @@ export default function SuperAdminDashboard() {
       value: stats?.totalAdmins || 0,
       icon: Shield,
       description: "System administrators",
-      gradient: "from-blue-500 to-blue-600",
-      bgGradient: "from-blue-500/10",
+      gradient: "from-primary/85 to-primary",
+      bgGradient: "from-primary/85/10",
     },
     {
       title: "Total Users",
@@ -92,7 +92,7 @@ export default function SuperAdminDashboard() {
     {
       title: "Admin Management",
       icon: Shield,
-      color: "from-blue-500 to-blue-600",
+      color: "from-primary/85 to-primary",
       href: "/portal/superadmin/admins",
       description: "Manage system admins"
     },
@@ -123,7 +123,7 @@ export default function SuperAdminDashboard() {
     <SuperAdminLayout>
       <div className="space-y-6">
         {/* Modern Welcome Header */}
-        <div className="mb-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-6 text-white shadow-lg" data-testid="superadmin-dashboard-header">
+        <div className="mb-8 bg-gradient-to-r from-primary to-primary/90 rounded-lg p-6 text-white shadow-lg" data-testid="superadmin-dashboard-header">
           <div className="flex items-center gap-4">
             <div className="p-3 rounded-xl bg-white/20 backdrop-blur-sm shadow-lg">
               <Shield className="h-8 w-8 text-white" />
@@ -132,7 +132,7 @@ export default function SuperAdminDashboard() {
               <h1 className="text-2xl md:text-3xl font-bold mb-1">
                 Welcome back, {user?.lastName || 'Admin'}!
               </h1>
-              <p className="text-blue-100 text-sm">
+              <p className="text-primary/30 text-sm">
                 Manage all system aspects of {schoolName}
               </p>
             </div>
@@ -212,8 +212,8 @@ export default function SuperAdminDashboard() {
           <Card className="shadow-lg border-none animate-in fade-in slide-in-from-bottom-4 duration-1000 overflow-hidden">
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-blue-500/10">
-                  <Activity className="h-5 w-5 text-blue-600" />
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Activity className="h-5 w-5 text-primary" />
                 </div>
                 <CardTitle className="text-lg">System Health</CardTitle>
               </div>
@@ -229,7 +229,7 @@ export default function SuperAdminDashboard() {
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Database Sync</span>
-                  <span className="text-blue-600 font-medium">Real-time</span>
+                  <span className="text-primary font-medium">Real-time</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Active WebSockets</span>

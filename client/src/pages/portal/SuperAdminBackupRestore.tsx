@@ -95,15 +95,15 @@ export default function SuperAdminBackupRestore() {
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5 text-blue-600" />
+              <Database className="h-5 w-5 text-primary" />
               System Backup
             </CardTitle>
             <CardDescription>Configure how and when the system secures data.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="flex items-center justify-between p-4 border rounded-lg bg-blue-50/30 dark:bg-blue-900/10">
+            <div className="flex items-center justify-between p-4 border rounded-lg bg-primary/5 dark:bg-primary/5">
               <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600">
+                <div className="h-10 w-10 rounded-full bg-primary/10 dark:bg-primary/5 flex items-center justify-center text-primary">
                   <Calendar className="h-5 w-5" />
                 </div>
                 <div className="space-y-0.5">

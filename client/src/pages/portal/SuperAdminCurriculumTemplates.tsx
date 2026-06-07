@@ -57,7 +57,7 @@ const LEVEL_LABELS: Record<Level, string> = {
 
 const LEVEL_COLORS: Record<Level, string> = {
   primary: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
-  jss: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
+  jss: "bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/60",
   ss: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300",
   custom: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
 };
@@ -252,7 +252,7 @@ export default function SuperAdminCurriculumTemplates() {
       {stats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {[
-            { label: "Total Templates", value: stats.total, icon: Layers, color: "text-blue-600" },
+            { label: "Total Templates", value: stats.total, icon: Layers, color: "text-primary" },
             { label: "Published", value: stats.published, icon: Globe, color: "text-green-600" },
             { label: "Drafts", value: stats.draft, icon: Clock, color: "text-amber-600" },
             { label: "Total Topics", value: stats.totalTopics, icon: FileText, color: "text-purple-600" },

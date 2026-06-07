@@ -29,7 +29,7 @@ type ClassForm = z.infer<typeof classFormSchema>;
 
 const LEVEL_COLORS: Record<string, string> = {
   primary: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300',
-  jss: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+  jss: 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/60',
   ss: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
 };
 
@@ -210,7 +210,7 @@ export default function ClassesManagement() {
         {[
           { label: 'Total Classes', value: classes.length, icon: School, color: 'text-primary' },
           { label: 'Active', value: classes.filter((c: any) => c.isActive !== false).length, icon: BookOpen, color: 'text-green-600' },
-          { label: 'Shown', value: filteredClasses.length, icon: Filter, color: 'text-blue-600' },
+          { label: 'Shown', value: filteredClasses.length, icon: Filter, color: 'text-primary' },
         ].map(s => (
           <Card key={s.label} className="p-4">
             <div className="flex items-center justify-between">

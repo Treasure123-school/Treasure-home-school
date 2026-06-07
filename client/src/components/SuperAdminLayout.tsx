@@ -270,7 +270,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
       <div className="flex flex-col h-full">
         {/* Brand header — only shown on mobile since desktop header handles branding */}
         {showBrand && (
-          <div className="flex-shrink-0 h-[72px] flex items-center border-b border-gray-200 dark:border-gray-700 px-4 bg-gradient-to-br from-blue-50 to-white dark:from-gray-800 dark:to-gray-900">
+          <div className="flex-shrink-0 h-[72px] flex items-center border-b border-gray-200 dark:border-gray-700 px-4 bg-gradient-to-br from-primary/5 to-white dark:from-gray-800 dark:to-gray-900">
             <div className="flex items-center w-full gap-3">
               <img 
                 src={schoolLogoUrl} 
@@ -278,7 +278,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
                 className="h-12 w-12 object-contain flex-shrink-0 drop-shadow-md"
               />
               <div className="flex-1 min-w-0">
-                <h1 className="font-bold text-base bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-400 dark:to-blue-500 bg-clip-text text-transparent whitespace-nowrap leading-tight">{schoolName}</h1>
+                <h1 className="font-bold text-base bg-gradient-to-r from-primary to-primary/90 dark:from-primary dark:to-primary/85 bg-clip-text text-transparent whitespace-nowrap leading-tight">{schoolName}</h1>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-normal whitespace-nowrap">{schoolMotto}</p>
                 <p className="text-xs text-gray-600 dark:text-gray-400 font-semibold mt-0.5 whitespace-nowrap">Super Admin Portal</p>
               </div>
@@ -316,8 +316,8 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
                       collapsed ? 'justify-center px-2' : 'justify-start px-3'
                     } py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ease-in-out w-full ${
                       childActive 
-                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300' 
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 dark:hover:from-blue-900/20 dark:hover:to-blue-800/20 hover:text-blue-700 dark:hover:text-blue-300'
+                        ? 'bg-primary/5 dark:bg-primary/5 text-primary dark:text-primary/60' 
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-primary/5 hover:to-primary/10 dark:hover:from-primary/5/20 dark:hover:to-primary/80/20 hover:text-primary dark:hover:text-primary/60'
                     }`}
                     title={collapsed ? item.label : undefined}
                   >
@@ -338,7 +338,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
                           onClick={() => handleNavigation(child.path)}
                           className={`flex items-center px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 w-full text-left ${
                             isActive(child.path)
-                              ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/50 dark:shadow-blue-500/30' 
+                              ? 'bg-gradient-to-r from-primary to-primary/90 text-white shadow-lg shadow-primary/50 dark:shadow-primary/30' 
                               : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100'
                           }`}
                         >
@@ -358,8 +358,8 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
                 onClick={() => item.path && handleNavigation(item.path)}
                 className={`flex items-center ${collapsed ? 'justify-center px-2' : 'px-3'} py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ease-in-out w-full ${
                   navItemActive 
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/50 dark:shadow-blue-500/30 scale-105' 
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-50 hover:to-blue-100 dark:hover:from-blue-900/20 dark:hover:to-blue-800/20 hover:text-blue-700 dark:hover:text-blue-300 hover:scale-102'
+                    ? 'bg-gradient-to-r from-primary to-primary/90 text-white shadow-lg shadow-primary/50 dark:shadow-primary/30 scale-105' 
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gradient-to-r hover:from-primary/5 hover:to-primary/10 dark:hover:from-primary/5/20 dark:hover:to-primary/80/20 hover:text-primary dark:hover:text-primary/60 hover:scale-102'
                 }`}
                 title={collapsed ? item.label : undefined}
               >
@@ -389,7 +389,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary/5 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex flex-col">
 
       {/* Full-Width Header — spans above sidebar and content */}
       <header className="sticky top-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm h-[72px] flex items-center px-4 sm:px-5 md:px-6 flex-shrink-0">
@@ -424,7 +424,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
                 className="hidden sm:block h-10 w-10 object-contain flex-shrink-0 drop-shadow-md"
               />
               <div className="flex flex-col min-w-0">
-                <h1 className="text-base md:text-lg font-bold truncate bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-400 dark:to-blue-500 bg-clip-text text-transparent leading-tight">
+                <h1 className="text-base md:text-lg font-bold truncate bg-gradient-to-r from-primary to-primary/90 dark:from-primary dark:to-primary/85 bg-clip-text text-transparent leading-tight">
                   {schoolName}
                 </h1>
                 <p className="text-gray-500 dark:text-gray-400 text-[10px] sm:text-xs truncate font-medium">
@@ -440,8 +440,8 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center space-x-2 bg-gray-50 dark:bg-gray-800 rounded-full px-2 sm:px-3 py-1.5 shadow-sm border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200 outline-none group">
-                  <Avatar className="h-7 w-7 sm:h-8 sm:w-8 ring-2 ring-white dark:ring-gray-800 group-hover:ring-blue-100 dark:group-hover:ring-blue-900 transition-all">
-                    <AvatarFallback className="bg-gradient-to-br from-blue-600 to-blue-700 text-white text-xs sm:text-sm font-bold">
+                  <Avatar className="h-7 w-7 sm:h-8 sm:w-8 ring-2 ring-white dark:ring-gray-800 group-hover:ring-primary/20 dark:group-hover:ring-primary/30 transition-all">
+                    <AvatarFallback className="bg-gradient-to-br from-primary to-primary/90 text-white text-xs sm:text-sm font-bold">
                       {user?.firstName?.[0]}{user?.lastName?.[0]}
                     </AvatarFallback>
                   </Avatar>
@@ -451,7 +451,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
                     </span>
                     <span className="text-[10px] text-gray-500 dark:text-gray-400 leading-none">Super Admin</span>
                   </div>
-                  <ChevronDown className="h-3.5 w-3.5 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                  <ChevronDown className="h-3.5 w-3.5 text-gray-400 group-hover:text-primary transition-colors" />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56 mt-2 rounded-xl shadow-xl border-gray-200 dark:border-gray-700 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm">
@@ -462,15 +462,15 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator className="bg-gray-100 dark:bg-gray-800" />
-                <DropdownMenuItem onClick={() => navigate("/portal/superadmin/profile")} className="p-2.5 cursor-pointer focus:bg-blue-50 dark:focus:bg-blue-900/20 focus:text-blue-700 dark:focus:text-blue-300 rounded-lg mx-1 transition-colors">
+                <DropdownMenuItem onClick={() => navigate("/portal/superadmin/profile")} className="p-2.5 cursor-pointer focus:bg-primary/5 dark:focus:bg-primary/5 focus:text-primary dark:focus:text-primary/60 rounded-lg mx-1 transition-colors">
                   <User className="mr-2.5 h-4 w-4" />
                   <span>My Profile</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/portal/superadmin/settings")} className="p-2.5 cursor-pointer focus:bg-blue-50 dark:focus:bg-blue-900/20 focus:text-blue-700 dark:focus:text-blue-300 rounded-lg mx-1 transition-colors">
+                <DropdownMenuItem onClick={() => navigate("/portal/superadmin/settings")} className="p-2.5 cursor-pointer focus:bg-primary/5 dark:focus:bg-primary/5 focus:text-primary dark:focus:text-primary/60 rounded-lg mx-1 transition-colors">
                   <Settings className="mr-2.5 h-4 w-4" />
                   <span>Account Settings</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/portal/superadmin/logs")} className="p-2.5 cursor-pointer focus:bg-blue-50 dark:focus:bg-blue-900/20 focus:text-blue-700 dark:focus:text-blue-300 rounded-lg mx-1 transition-colors">
+                <DropdownMenuItem onClick={() => navigate("/portal/superadmin/logs")} className="p-2.5 cursor-pointer focus:bg-primary/5 dark:focus:bg-primary/5 focus:text-primary dark:focus:text-primary/60 rounded-lg mx-1 transition-colors">
                   <Activity className="mr-2.5 h-4 w-4" />
                   <span>Activity Log</span>
                 </DropdownMenuItem>

@@ -58,7 +58,7 @@ export function ProfessionalReportCard({
         return 'bg-green-100 text-green-800';
       case 'B+':
       case 'B':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-primary/10 text-primary';
       case 'C':
         return 'bg-yellow-100 text-yellow-800';
       default:
@@ -77,11 +77,11 @@ export function ProfessionalReportCard({
   return (
     <div className="max-w-4xl mx-auto bg-white shadow-lg print:shadow-none">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-900 to-blue-700 text-white p-6 print:bg-blue-900">
+      <div className="bg-gradient-to-r from-primary/5 to-primary/90 text-white p-6 print:bg-primary/5">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
             <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center">
-              <span className="text-blue-900 font-bold text-xl">
+              <span className="text-primary font-bold text-xl">
                 {settings?.schoolLogo ? (
                   <img src={settings.schoolLogo} alt="Logo" className="w-8 h-8 object-contain" />
                 ) : (
@@ -91,8 +91,8 @@ export function ProfessionalReportCard({
             </div>
             <div>
               <h1 className="text-xl font-bold uppercase">{settings?.schoolName || ""}</h1>
-              <p className="text-blue-100 italic">{settings?.schoolMotto || ""}</p>
-              <p className="text-xs text-blue-200">
+              <p className="text-primary/30 italic">{settings?.schoolMotto || ""}</p>
+              <p className="text-xs text-primary/50">
                 {settings?.schoolAddress || ""} | Contact: {primaryPhone} {primaryEmail && ` | Email: ${primaryEmail}`}
               </p>
             </div>
@@ -111,7 +111,7 @@ export function ProfessionalReportCard({
       </div>
 
       {/* Report Card Title */}
-      <div className="bg-gradient-to-r from-cyan-100 to-blue-100 p-4 text-center">
+      <div className="bg-gradient-to-r from-cyan-100 to-primary/10 p-4 text-center">
         <h2 className="text-2xl font-bold text-gray-800">STUDENT REPORT CARD</h2>
       </div>
 
@@ -136,7 +136,7 @@ export function ProfessionalReportCard({
         <div className="mb-6 overflow-x-auto">
           <table className="w-full border-collapse border border-gray-300">
             <thead>
-              <tr className="bg-gradient-to-r from-cyan-50 to-blue-50">
+              <tr className="bg-gradient-to-r from-cyan-50 to-primary/5">
                 <th className="border border-gray-300 p-3 text-left font-semibold">Subject</th>
                 <th className="border border-gray-300 p-3 text-center font-semibold">Test (40)</th>
                 <th className="border border-gray-300 p-3 text-center font-semibold">Exam (60)</th>
@@ -175,7 +175,7 @@ export function ProfessionalReportCard({
               </div>
               <div>
                 <p className="text-sm text-gray-600">Overall Percentage:</p>
-                <p className="text-xl font-bold text-blue-600">{summary.percentage}%</p>
+                <p className="text-xl font-bold text-primary">{summary.percentage}%</p>
               </div>
               {summary.classRank && (
                 <div>

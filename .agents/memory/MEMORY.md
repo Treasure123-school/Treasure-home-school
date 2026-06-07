@@ -1,3 +1,4 @@
 - [Tiptap v3 breaking changes](tiptap-v3-rules.md) — critical rules for Tiptap v3 editor (BubbleMenu removed, disabled dep crash, ESM imports)
 - [Gemini model deprecation](gemini-model-migration.md) — gemini-1.5-pro removed from v1beta API; auto-migrate to gemini-2.0-flash
 - [AI test endpoint fix](ai-test-endpoint.md) — OpenAI test must use chat/completions not /v1/models; project-scoped keys can't list models
+- [Brand color CSS variable format](brand-color-css-format.md) — primary/accent/ring/sidebar-primary use raw H S% L% channels; tailwind config uses hsl(var(--primary) / <alpha-value>) for opacity support

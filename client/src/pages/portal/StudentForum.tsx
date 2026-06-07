@@ -118,7 +118,7 @@ function timeAgo(date: Date) {
 
 function getCategoryColor(cat: string) {
   const map: Record<string, string> = {
-    Mathematics: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+    Mathematics: 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/60',
     English: 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300',
     Physics: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300',
     Chemistry: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300',
@@ -131,7 +131,7 @@ function getCategoryColor(cat: string) {
 
 function Avatar({ initials, role, size = 'md' }: { initials: string; role: 'student' | 'teacher'; size?: 'sm' | 'md' }) {
   const sz = size === 'sm' ? 'w-7 h-7 text-[11px]' : 'w-9 h-9 text-xs';
-  const bg = role === 'teacher' ? 'bg-blue-600 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
+  const bg = role === 'teacher' ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300';
   return <div className={`${sz} ${bg} rounded-full flex items-center justify-center font-bold flex-shrink-0`}>{initials}</div>;
 }
 
@@ -299,7 +299,7 @@ export default function StudentForum() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-semibold text-sm text-gray-800 dark:text-gray-200">{selectedThread.author}</span>
                   {selectedThread.authorRole === 'teacher' && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 uppercase tracking-wide">Teacher</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/60 uppercase tracking-wide">Teacher</span>
                   )}
                   <span className="text-xs text-muted-foreground">{timeAgo(selectedThread.createdAt)}</span>
                 </div>
@@ -323,7 +323,7 @@ export default function StudentForum() {
             <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line">{selectedThread.content}</p>
 
             {selectedThread.attachment && (
-              <div className="mt-3 flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+              <div className="mt-3 flex items-center gap-2 text-sm text-primary dark:text-primary/70">
                 <Paperclip className="h-4 w-4" />
                 <span className="underline cursor-pointer">{selectedThread.attachment}</span>
               </div>
@@ -369,12 +369,12 @@ export default function StudentForum() {
         <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
           <CardContent className="p-4">
             {replyingTo && (
-              <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900">
-                <span className="text-xs text-blue-700 dark:text-blue-300 font-medium">
+              <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-lg bg-primary/5 dark:bg-primary/5 border border-primary/20 dark:border-primary/30">
+                <span className="text-xs text-primary dark:text-primary/60 font-medium">
                   Replying to: {selectedThread.replies.find(r => r.id === replyingTo)?.author}
                 </span>
                 <button onClick={() => setReplyingTo(null)} className="ml-auto" data-testid="button-cancel-reply-to">
-                  <X className="h-3.5 w-3.5 text-blue-500" />
+                  <X className="h-3.5 w-3.5 text-primary" />
                 </button>
               </div>
             )}
@@ -451,7 +451,7 @@ export default function StudentForum() {
       {/* Stats row */}
       <div className="flex gap-3 flex-wrap">
         {[
-          { icon: MessagesSquare, label: 'Threads', value: threads.length, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/40' },
+          { icon: MessagesSquare, label: 'Threads', value: threads.length, color: 'text-primary', bg: 'bg-primary/5 dark:bg-primary/5' },
           { icon: MessageSquare, label: 'Replies', value: threads.reduce((s, t) => s + t.replies.length, 0), color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-950/40' },
           { icon: CheckCircle, label: 'Answered', value: threads.filter(t => t.replies.some(r => r.isCorrect)).length, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/40' },
         ].map(({ icon: Icon, label, value, color, bg }) => (
@@ -488,8 +488,8 @@ export default function StudentForum() {
             onClick={() => setActiveCategory(cat)}
             className={`flex-shrink-0 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all duration-200 ${
               activeCategory === cat
-                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:text-blue-600 dark:hover:text-blue-400'
+                ? 'bg-primary text-white border-primary shadow-sm'
+                : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-primary/40 hover:text-primary dark:hover:text-primary/70'
             }`}
             data-testid={`filter-category-${cat}`}
           >
@@ -534,7 +534,7 @@ export default function StudentForum() {
                 className="w-full text-left block"
                 data-testid={`thread-item-${thread.id}`}
               >
-                <Card className="border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md hover:border-blue-200 dark:hover:border-blue-700 transition-all duration-200">
+                <Card className="border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md hover:border-primary/30 dark:hover:border-primary/70 transition-all duration-200">
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
                       {/* Status indicator column */}
@@ -625,8 +625,8 @@ export default function StudentForum() {
                       onClick={() => setNewCategory(cat)}
                       className={`px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
                         newCategory === cat
-                          ? 'bg-blue-600 text-white border-blue-600'
-                          : 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-blue-300'
+                          ? 'bg-primary text-white border-primary'
+                          : 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-primary/40'
                       }`}
                       data-testid={`select-cat-${cat}`}
                     >
@@ -651,18 +651,18 @@ export default function StudentForum() {
               <div>
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1.5 block">Attachment (optional)</label>
                 {newFile ? (
-                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 text-sm">
-                    <Paperclip className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                    <span className="text-blue-700 dark:text-blue-300 flex-1 truncate">{newFile}</span>
+                  <div className="flex items-center gap-2 p-2.5 rounded-lg bg-primary/5 dark:bg-primary/5 border border-primary/20 dark:border-primary/30 text-sm">
+                    <Paperclip className="h-4 w-4 text-primary flex-shrink-0" />
+                    <span className="text-primary dark:text-primary/60 flex-1 truncate">{newFile}</span>
                     <button onClick={() => setNewFile(null)} data-testid="button-remove-file">
-                      <X className="h-4 w-4 text-blue-500" />
+                      <X className="h-4 w-4 text-primary" />
                     </button>
                   </div>
                 ) : (
                   <button
                     type="button"
                     onClick={() => fileRef.current?.click()}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 text-sm text-muted-foreground hover:border-blue-400 hover:text-blue-600 transition-colors w-full"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 text-sm text-muted-foreground hover:border-primary/60 hover:text-primary transition-colors w-full"
                     data-testid="button-attach-file"
                   >
                     <Paperclip className="h-4 w-4" />
@@ -740,7 +740,7 @@ function ReplyCard({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-semibold text-sm text-gray-800 dark:text-gray-200">{reply.author}</span>
               {reply.authorRole === 'teacher' && (
-                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 uppercase tracking-wide">Teacher</span>
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/60 uppercase tracking-wide">Teacher</span>
               )}
               <span className="text-xs text-muted-foreground">{timeAgo(reply.createdAt)}</span>
               {/* Overflow menu */}
@@ -785,8 +785,8 @@ function ReplyCard({
                 onClick={onLike}
                 className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border transition-all ${
                   reply.liked
-                    ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border-blue-200 dark:border-blue-800'
-                    : 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:text-blue-600'
+                    ? 'bg-primary/5 dark:bg-primary/5 text-primary dark:text-primary/70 border-primary/30 dark:border-primary/30'
+                    : 'bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-primary/40 hover:text-primary'
                 }`}
                 data-testid={`button-like-reply-${reply.id}`}
               >

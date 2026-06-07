@@ -39,7 +39,7 @@ function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     open: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
     closed: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-    filled: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+    filled: 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/60',
     pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
     approved: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
     rejected: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
@@ -163,7 +163,7 @@ export default function VacancyManagement() {
           { label: 'Total Vacancies', value: vacancies.length, icon: Briefcase, color: 'text-primary' },
           { label: 'Open', value: vacancies.filter((v: any) => v.status === 'open').length, icon: CheckCircle, color: 'text-green-600' },
           { label: 'Pending Review', value: pendingApplications.length, icon: AlertCircle, color: 'text-yellow-600' },
-          { label: 'Approved', value: approvedApplications.length, icon: CheckCircle, color: 'text-blue-600' },
+          { label: 'Approved', value: approvedApplications.length, icon: CheckCircle, color: 'text-primary' },
         ].map(s => (
           <Card key={s.label} className="p-3">
             <div className="flex items-center justify-between">

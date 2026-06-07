@@ -106,7 +106,7 @@ interface TrendPoint {
 function SummaryCards({ overview, loading }: { overview?: Overview; loading: boolean }) {
   const pct = overview?.attendancePercentage ?? 0;
   const items = [
-    { label: 'Total Students', value: overview?.totalStudents ?? 0, icon: Users, color: 'text-blue-600' },
+    { label: 'Total Students', value: overview?.totalStudents ?? 0, icon: Users, color: 'text-primary' },
     { label: 'Present', value: overview?.totalPresent ?? 0, icon: UserCheck, color: 'text-green-600', sub: overview?.totalLate ? `+${overview.totalLate} late` : undefined },
     { label: 'Absent', value: overview?.totalAbsent ?? 0, icon: UserX, color: 'text-red-500', sub: overview?.totalExcused ? `${overview.totalExcused} excused` : undefined },
     { label: 'Rate', value: `${pct}%`, icon: TrendingUp, color: pct >= 80 ? 'text-green-600' : 'text-red-500', sub: `${overview?.classBreakdown?.filter(c => c.hasAttendance).length ?? 0}/${overview?.classBreakdown?.length ?? 0} classes recorded` },

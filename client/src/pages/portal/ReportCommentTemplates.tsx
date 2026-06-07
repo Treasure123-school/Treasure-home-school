@@ -32,7 +32,7 @@ import {
 
 const PERFORMANCE_LEVELS = [
   { value: 'excellent', label: 'Excellent', minDefault: 70, maxDefault: 100, color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100' },
-  { value: 'very_good', label: 'Very Good', minDefault: 60, maxDefault: 69, color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100' },
+  { value: 'very_good', label: 'Very Good', minDefault: 60, maxDefault: 69, color: 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/30' },
   { value: 'good', label: 'Good', minDefault: 50, maxDefault: 59, color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100' },
   { value: 'fair', label: 'Fair', minDefault: 40, maxDefault: 49, color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-100' },
   { value: 'needs_improvement', label: 'Needs Improvement', minDefault: 0, maxDefault: 39, color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100' },

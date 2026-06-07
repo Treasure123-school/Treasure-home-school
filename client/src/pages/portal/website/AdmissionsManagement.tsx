@@ -33,7 +33,7 @@ interface AdmissionsEnquiry {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; className: string; icon: any }> = {
-  new: { label: 'New', className: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', icon: AlertCircle },
+  new: { label: 'New', className: 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/70', icon: AlertCircle },
   reviewing: { label: 'Reviewing', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', icon: Loader },
   accepted: { label: 'Accepted', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', icon: CheckCircle },
   rejected: { label: 'Rejected', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', icon: XCircle },

@@ -235,19 +235,19 @@ export default function TeacherMessages() {
       {/* Page Header */}
       <div className="flex items-center justify-between mb-4 flex-shrink-0">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-            <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <div className="p-2 bg-primary/10 dark:bg-primary/5 rounded-xl">
+            <MessageSquare className="h-5 w-5 text-primary dark:text-primary/70" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Messages</h1>
             {totalUnread > 0 && (
-              <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">{totalUnread} unread message{totalUnread !== 1 ? 's' : ''}</p>
+              <p className="text-xs text-primary dark:text-primary/70 font-medium">{totalUnread} unread message{totalUnread !== 1 ? 's' : ''}</p>
             )}
           </div>
         </div>
         <Button
           onClick={() => setIsNewMessageOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl gap-2"
+          className="bg-primary hover:bg-primary/90 text-white rounded-xl gap-2"
           data-testid="button-new-message"
         >
           <Plus className="h-4 w-4" />
@@ -303,19 +303,19 @@ export default function TeacherMessages() {
                   onClick={() => handleSelectConversation(conv.contactId)}
                   className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-colors ${
                     selectedContactId === conv.contactId
-                      ? 'bg-blue-50 dark:bg-blue-900/20 border-r-2 border-r-blue-600'
+                      ? 'bg-primary/5 dark:bg-primary/5 border-r-2 border-r-primary'
                       : 'hover:bg-gray-50 dark:hover:bg-gray-800'
                   }`}
                   data-testid={`conversation-${conv.contactId}`}
                 >
                   <div className="relative flex-shrink-0">
                     <Avatar className="h-10 w-10">
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-700 text-white text-sm font-bold">
+                      <AvatarFallback className="bg-gradient-to-br from-primary/85 to-primary/90 text-white text-sm font-bold">
                         {conv.contactInitials}
                       </AvatarFallback>
                     </Avatar>
                     {conv.unreadCount > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 bg-blue-600 text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                      <span className="absolute -top-0.5 -right-0.5 bg-primary text-white text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
                         {conv.unreadCount > 9 ? '9+' : conv.unreadCount}
                       </span>
                     )}
@@ -341,8 +341,8 @@ export default function TeacherMessages() {
         <div className={`${!showConversations ? 'flex' : 'hidden'} w-full flex-1 flex-col min-w-0`}>
           {!selectedConversation ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
-              <div className="bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-full p-6 mb-4">
-                <MessageSquare className="h-12 w-12 text-blue-500 dark:text-blue-400" />
+              <div className="bg-gradient-to-br from-primary/10 to-primary/5 dark:from-primary/5 dark:to-primary/5 rounded-full p-6 mb-4">
+                <MessageSquare className="h-12 w-12 text-primary dark:text-primary/70" />
               </div>
               <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-1">Select a Conversation</h3>
               <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs">
@@ -351,7 +351,7 @@ export default function TeacherMessages() {
               <Button
                 onClick={() => setIsNewMessageOpen(true)}
                 variant="outline"
-                className="mt-4 rounded-xl gap-2 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400"
+                className="mt-4 rounded-xl gap-2 border-primary/30 dark:border-primary/30 text-primary dark:text-primary/70"
               >
                 <Plus className="h-4 w-4" />
                 New Message
@@ -368,7 +368,7 @@ export default function TeacherMessages() {
                   <ArrowLeft className="h-5 w-5 text-gray-600 dark:text-gray-400" />
                 </button>
                 <Avatar className="h-9 w-9 flex-shrink-0">
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-700 text-white text-sm font-bold">
+                  <AvatarFallback className="bg-gradient-to-br from-primary/85 to-primary/90 text-white text-sm font-bold">
                     {selectedConversation.contactInitials}
                   </AvatarFallback>
                 </Avatar>
@@ -398,7 +398,7 @@ export default function TeacherMessages() {
                         <div className={`max-w-[75%] sm:max-w-[60%] group`}>
                           <div className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
                             isSent
-                              ? 'bg-blue-600 text-white rounded-br-md'
+                              ? 'bg-primary text-white rounded-br-md'
                               : 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 rounded-bl-md'
                           }`}>
                             {msg.content}
@@ -407,7 +407,7 @@ export default function TeacherMessages() {
                             <span className="text-[10px] text-gray-400">{formatTime(msg.createdAt)}</span>
                             {isSent && (
                               msg.isRead
-                                ? <CheckCheck className="h-3 w-3 text-blue-500" />
+                                ? <CheckCheck className="h-3 w-3 text-primary" />
                                 : <Check className="h-3 w-3 text-gray-400" />
                             )}
                           </div>
@@ -443,7 +443,7 @@ export default function TeacherMessages() {
                   <Button
                     onClick={handleSend}
                     disabled={!messageText.trim() || sendMutation.isPending}
-                    className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl h-10 w-10 p-0 flex-shrink-0"
+                    className="bg-primary hover:bg-primary/90 text-white rounded-xl h-10 w-10 p-0 flex-shrink-0"
                     data-testid="button-send-message"
                   >
                     <Send className="h-4 w-4" />

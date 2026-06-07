@@ -48,7 +48,7 @@ const ROLE_CONFIG: Record<string, { label: string; icon: typeof Shield; color: s
   super_admin:   { label: 'Super Admin', icon: Shield,        color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/30' },
   'super admin': { label: 'Super Admin', icon: Shield,        color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/30' },
   admin:         { label: 'Admin',       icon: Shield,        color: 'text-red-600 dark:text-red-400',    bg: 'bg-red-100 dark:bg-red-900/30' },
-  teacher:       { label: 'Teacher',     icon: BookOpen,      color: 'text-blue-600 dark:text-blue-400',  bg: 'bg-blue-100 dark:bg-blue-900/30' },
+  teacher:       { label: 'Teacher',     icon: BookOpen,      color: 'text-primary dark:text-primary/70',  bg: 'bg-primary/10 dark:bg-primary/5' },
   student:       { label: 'Student',     icon: GraduationCap, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/30' },
   parent:        { label: 'Parent',      icon: UserCheck,     color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-900/30' },
 };
@@ -158,7 +158,7 @@ const FEED_ICONS: Record<ActivityFeedEvent['type'], { icon: typeof LogIn; color:
   login:  { icon: LogIn,       color: 'text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400',  label: 'signed in' },
   logout: { icon: LogOut,      color: 'text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400',          label: 'signed out' },
   idle:   { icon: Clock,       color: 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400', label: 'went idle' },
-  active: { icon: Zap,         color: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400',      label: 'became active' },
+  active: { icon: Zap,         color: 'text-primary bg-primary/10 dark:bg-primary/5 dark:text-primary/70',      label: 'became active' },
 };
 
 function FeedRow({ event }: { event: ActivityFeedEvent }) {
@@ -351,8 +351,8 @@ export default function OnlineUsers() {
         <Card className="col-span-2 sm:col-span-1 lg:col-span-2" data-testid="stat-total">
           <CardContent className="pt-4 pb-3">
             <div className="flex items-center gap-3">
-              <div className="bg-blue-100 dark:bg-blue-900/30 rounded-xl p-2.5 shrink-0">
-                <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="bg-primary/10 dark:bg-primary/5 rounded-xl p-2.5 shrink-0">
+                <Users className="h-5 w-5 text-primary dark:text-primary/70" />
               </div>
               <div>
                 <p className="text-2xl font-bold tabular-nums" data-testid="text-total-count">{totalOnline}</p>
@@ -374,7 +374,7 @@ export default function OnlineUsers() {
 
         {[
           { label: 'Students',  count: studentCount,  icon: GraduationCap, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/30', testId: 'stat-students' },
-          { label: 'Teachers',  count: teacherCount,  icon: BookOpen,      color: 'text-blue-600 dark:text-blue-400',   bg: 'bg-blue-100 dark:bg-blue-900/30',   testId: 'stat-teachers' },
+          { label: 'Teachers',  count: teacherCount,  icon: BookOpen,      color: 'text-primary dark:text-primary/70',   bg: 'bg-primary/10 dark:bg-primary/5',   testId: 'stat-teachers' },
           { label: 'Admins',    count: adminCount,    icon: Shield,        color: 'text-red-600 dark:text-red-400',     bg: 'bg-red-100 dark:bg-red-900/30',     testId: 'stat-admins' },
           { label: 'Parents',   count: parentCount,   icon: UserCheck,     color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-900/30', testId: 'stat-parents' },
         ].map(({ label, count, icon: Icon, color, bg, testId }) => (

@@ -115,8 +115,13 @@ function applyBrandColor(hex: string) {
   const c = hexToHslComponents(hex);
   if (!c) return;
   const { h, s, l } = c;
-  const lightHsl = `hsl(${h}, ${s}%, ${l}%)`;
+  // Raw H S% L% format (no hsl() wrapper) — required so Tailwind opacity modifiers
+  // like bg-primary/10 can inject the alpha: hsl(var(--primary) / 0.1)
+  const lightRaw = `${h} ${s}% ${l}%`;
   const darkL = Math.min(l + 8, 88);
+  const darkRaw = `${h} ${s}% ${darkL}%`;
+  // Full hsl() value for chart-1 (used directly, not via opacity modifier)
+  const lightHsl = `hsl(${h}, ${s}%, ${l}%)`;
   const darkHsl = `hsl(${h}, ${s}%, ${darkL}%)`;
   const styleId = 'brand-color-sync';
   let styleEl = document.getElementById(styleId) as HTMLStyleElement | null;
@@ -127,19 +132,19 @@ function applyBrandColor(hex: string) {
   }
   styleEl.textContent = `
     :root {
-      --primary: ${lightHsl} !important;
-      --accent: ${lightHsl} !important;
-      --ring: ${lightHsl} !important;
-      --sidebar-primary: ${lightHsl} !important;
-      --sidebar-ring: ${lightHsl} !important;
+      --primary: ${lightRaw} !important;
+      --accent: ${lightRaw} !important;
+      --ring: ${lightRaw} !important;
+      --sidebar-primary: ${lightRaw} !important;
+      --sidebar-ring: ${lightRaw} !important;
       --chart-1: ${lightHsl} !important;
     }
     .dark {
-      --primary: ${darkHsl} !important;
-      --accent: ${darkHsl} !important;
-      --ring: ${darkHsl} !important;
-      --sidebar-primary: ${darkHsl} !important;
-      --sidebar-ring: ${darkHsl} !important;
+      --primary: ${darkRaw} !important;
+      --accent: ${darkRaw} !important;
+      --ring: ${darkRaw} !important;
+      --sidebar-primary: ${darkRaw} !important;
+      --sidebar-ring: ${darkRaw} !important;
       --chart-1: ${darkHsl} !important;
     }
   `;

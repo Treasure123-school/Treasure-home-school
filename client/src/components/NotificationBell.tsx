@@ -100,13 +100,13 @@ export function NotificationBell() {
       case 'grade':
         return <GraduationCap className="h-4 w-4 text-green-600" />;
       case 'schedule':
-        return <Calendar className="h-4 w-4 text-blue-600" />;
+        return <Calendar className="h-4 w-4 text-primary" />;
       case 'message':
         return <MessageSquare className="h-4 w-4 text-cyan-600" />;
       case 'announcement':
         return <Bell className="h-4 w-4 text-pink-600" />;
       default:
-        return <AlertCircle className="h-4 w-4 text-blue-600" />;
+        return <AlertCircle className="h-4 w-4 text-primary" />;
     }
   };
 

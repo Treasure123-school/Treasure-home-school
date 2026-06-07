@@ -91,14 +91,14 @@ export default function SuperAdminAllUsers() {
 
         {/* ── Stats ── */}
         <div className="grid grid-cols-3 gap-3">
-          <Card className="p-4 bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/20" data-testid="card-total-active">
+          <Card className="p-4 bg-primary/5 dark:bg-primary/5 border-primary/20 dark:border-primary/30/20" data-testid="card-total-active">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-blue-600 dark:text-blue-400 font-medium uppercase tracking-wider">Active</p>
+                <p className="text-xs text-primary dark:text-primary/70 font-medium uppercase tracking-wider">Active</p>
                 <p className="text-2xl font-bold mt-0.5" data-testid="text-total-active">{totalActive}</p>
               </div>
-              <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <Users className="h-5 w-5 text-blue-600" />
+              <div className="h-10 w-10 rounded-full bg-primary/10 dark:bg-primary/5 flex items-center justify-center">
+                <Users className="h-5 w-5 text-primary" />
               </div>
             </div>
           </Card>

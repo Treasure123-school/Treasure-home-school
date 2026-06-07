@@ -115,7 +115,7 @@ const PROVIDER_LABELS: Record<string, string> = {
 const PROVIDER_COLORS: Record<string, string> = {
   openai: "bg-green-100 text-green-800 border-green-200",
   anthropic: "bg-orange-100 text-orange-800 border-orange-200",
-  gemini: "bg-blue-100 text-blue-800 border-blue-200",
+  gemini: "bg-primary/10 text-primary border-primary/30",
   nvidia: "bg-emerald-100 text-emerald-800 border-emerald-200",
 };
 
@@ -397,7 +397,7 @@ export default function SuperAdminAIConfig() {
     return (
       <SuperAdminLayout>
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       </SuperAdminLayout>
     );
@@ -633,7 +633,7 @@ export default function SuperAdminAIConfig() {
                       <span>{PROVIDER_ICONS[p]}</span>
                       {PROVIDER_LABELS[p]}
                       {p === activeProvider && <Badge className="bg-purple-100 text-purple-700 text-xs">Active</Badge>}
-                      {info?.apiKeyFromEnv && <Badge className="bg-blue-100 text-blue-700 text-xs">Key from ENV</Badge>}
+                      {info?.apiKeyFromEnv && <Badge className="bg-primary/10 text-primary text-xs">Key from ENV</Badge>}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -695,7 +695,7 @@ export default function SuperAdminAIConfig() {
                         </Button>
                       </div>
                       {info?.apiKeyFromEnv && (
-                        <p className="text-xs text-blue-600">Using key from environment variable. Enter a new key above to override.</p>
+                        <p className="text-xs text-primary">Using key from environment variable. Enter a new key above to override.</p>
                       )}
                       {!info?.apiKeySet && !editKeys[p] && (
                         <p className="text-xs text-gray-500">No API key configured. AI generation will use the template fallback.</p>
@@ -913,7 +913,7 @@ export default function SuperAdminAIConfig() {
                       {(localPrompts[promptTab] ?? config?.prompts?.[promptTab as keyof typeof config.prompts] ?? "").length.toLocaleString()} characters
                     </span>
                     <button
-                      className="text-blue-600 hover:underline flex items-center gap-1"
+                      className="text-primary hover:underline flex items-center gap-1"
                       disabled={savePromptsMutation.isPending}
                       onClick={() => {
                         const toSave = {
@@ -1090,7 +1090,7 @@ export default function SuperAdminAIConfig() {
                       <Label className="text-sm font-medium flex items-center gap-1.5">
                         Account ID
                         {cfConfig?.accountIdMasked && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
-                        {cfConfig?.accountIdFromEnv && <Badge className="bg-blue-100 text-blue-700 text-xs ml-1">ENV</Badge>}
+                        {cfConfig?.accountIdFromEnv && <Badge className="bg-primary/10 text-primary text-xs ml-1">ENV</Badge>}
                       </Label>
                       <div className="relative">
                         <Input type={showCfAccountId ? "text" : "password"} placeholder={cfConfig?.accountIdMasked || "Paste Account ID"} value={cfAccountId} onChange={(e) => setCfAccountId(e.target.value)} className="pr-10 font-mono text-sm" />
@@ -1098,7 +1098,7 @@ export default function SuperAdminAIConfig() {
                           {showCfAccountId ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
                       </div>
-                      {cfConfig?.accountIdFromEnv && <p className="text-xs text-blue-600">Using CLOUDFLARE_ACCOUNT_ID env var.</p>}
+                      {cfConfig?.accountIdFromEnv && <p className="text-xs text-primary">Using CLOUDFLARE_ACCOUNT_ID env var.</p>}
                     </div>
 
                     {/* API Token */}
@@ -1106,7 +1106,7 @@ export default function SuperAdminAIConfig() {
                       <Label className="text-sm font-medium flex items-center gap-1.5">
                         API Token
                         {cfConfig?.apiTokenMasked && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
-                        {cfConfig?.apiTokenFromEnv && <Badge className="bg-blue-100 text-blue-700 text-xs ml-1">ENV</Badge>}
+                        {cfConfig?.apiTokenFromEnv && <Badge className="bg-primary/10 text-primary text-xs ml-1">ENV</Badge>}
                       </Label>
                       <div className="relative">
                         <Input type={showCfToken ? "text" : "password"} placeholder={cfConfig?.apiTokenMasked || "Paste API Token"} value={cfApiToken} onChange={(e) => setCfApiToken(e.target.value)} className="pr-10 font-mono text-sm" />
@@ -1179,7 +1179,7 @@ export default function SuperAdminAIConfig() {
                       <Label className="text-sm font-medium flex items-center gap-1.5">
                         API Key (nvapi-…)
                         {nvConfig?.apiKeyMasked && <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />}
-                        {nvConfig?.apiKeyFromEnv && <Badge className="bg-blue-100 text-blue-700 text-xs ml-1">ENV</Badge>}
+                        {nvConfig?.apiKeyFromEnv && <Badge className="bg-primary/10 text-primary text-xs ml-1">ENV</Badge>}
                         {nvConfig?.apiKeyFromTextAI && <Badge className="bg-purple-100 text-purple-700 text-xs ml-1">From Text AI</Badge>}
                       </Label>
                       <div className="relative">
@@ -1192,7 +1192,7 @@ export default function SuperAdminAIConfig() {
                         <p className="text-xs text-purple-600">Reusing API key configured for NVIDIA text AI. Enter above to use a separate image key.</p>
                       )}
                       {nvConfig?.apiKeyFromEnv && (
-                        <p className="text-xs text-blue-600">Using NVIDIA_API_KEY env variable.</p>
+                        <p className="text-xs text-primary">Using NVIDIA_API_KEY env variable.</p>
                       )}
                       <p className="text-xs text-gray-500">Get your key at <strong>build.nvidia.com</strong> → API Keys. Free credits included on sign-up.</p>
                     </div>

@@ -18,7 +18,7 @@ const FAQ_ITEMS = [
   {
     category: 'Exams',
     icon: <BookOpen className="h-4 w-4" />,
-    color: 'text-blue-600 dark:text-blue-400',
+    color: 'text-primary dark:text-primary/70',
     questions: [
       {
         q: 'How do I take an exam?',

@@ -210,7 +210,7 @@ export default function ParentAttendance() {
               { key: 'present', label: 'Present', value: attendanceData.summary.present, icon: CheckCircle, colorClass: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' },
               { key: 'absent', label: 'Absent', value: attendanceData.summary.absent, icon: XCircle, colorClass: 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400' },
               { key: 'late', label: 'Late', value: attendanceData.summary.late, icon: Clock, colorClass: 'bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400' },
-              { key: 'excused', label: 'Excused', value: attendanceData.summary.excused, icon: AlertCircle, colorClass: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' },
+              { key: 'excused', label: 'Excused', value: attendanceData.summary.excused, icon: AlertCircle, colorClass: 'bg-primary/10 dark:bg-primary/5 text-primary dark:text-primary/70' },
             ].map(({ key, label, value, icon: Icon, colorClass }) => (
               <div key={key} className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 p-4 flex items-start gap-3" data-testid={`stat-${key}`}>
                 <div className={`p-2 rounded-xl flex-shrink-0 ${colorClass}`}><Icon className="h-4 w-4" /></div>
@@ -289,7 +289,7 @@ export default function ParentAttendance() {
                 { dot: 'bg-emerald-500', label: 'Present' },
                 { dot: 'bg-red-500', label: 'Absent' },
                 { dot: 'bg-amber-500', label: 'Late' },
-                { dot: 'bg-blue-400', label: 'Excused' },
+                { dot: 'bg-primary/70', label: 'Excused' },
               ].map(({ dot, label }) => (
                 <div key={label} className="flex items-center gap-1.5">
                   <div className={`w-2.5 h-2.5 rounded-full ${dot}`} />

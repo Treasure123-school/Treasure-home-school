@@ -572,8 +572,8 @@ export default function Login() {
                       type="submit"
                       className={`w-full h-12 text-base font-semibold transition-all duration-300 shadow-sm ${
                         isButtonDisabled 
-                          ? 'bg-blue-400 cursor-not-allowed' 
-                          : 'bg-blue-600 hover:bg-blue-700 hover:shadow-md active:scale-[0.98]'
+                          ? 'bg-primary/70 cursor-not-allowed' 
+                          : 'bg-primary hover:bg-primary/90 hover:shadow-md active:scale-[0.98]'
                       }`}
                       disabled={isButtonDisabled}
                       data-testid="button-login"

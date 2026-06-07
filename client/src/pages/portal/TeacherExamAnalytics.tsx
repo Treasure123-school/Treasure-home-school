@@ -285,7 +285,7 @@ export default function TeacherExamAnalytics() {
               {/* Stat cards */}
               <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
                 <StatCard icon={Users} label="Total Students" value={analytics.overview.totalStudents} testId="total-students" />
-                <StatCard icon={Target} label="Average Score" value={`${analytics.overview.avgPercent}%`} color="text-blue-600" testId="avg-score" />
+                <StatCard icon={Target} label="Average Score" value={`${analytics.overview.avgPercent}%`} color="text-primary" testId="avg-score" />
                 <StatCard icon={TrendingUp} label="Highest Score" value={`${analytics.overview.highestPercent}%`} color="text-green-600" testId="highest-score" />
                 <StatCard icon={TrendingDown} label="Lowest Score" value={`${analytics.overview.lowestPercent}%`} color="text-orange-500" testId="lowest-score" />
                 <StatCard icon={CheckCircle2} label="Pass Rate" value={`${analytics.overview.passRate}%`} sub={`${analytics.overview.passCount} passed`} color="text-emerald-600" testId="pass-rate" />

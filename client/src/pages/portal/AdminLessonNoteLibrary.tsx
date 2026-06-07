@@ -124,7 +124,7 @@ function NoteEditor({ note, onSave, onCancel, isSaving }: {
       <div><Label>References</Label><Textarea rows={2} value={form.references ?? ""} onChange={e => set("references", e.target.value)} /></div>
       <div className="sticky bottom-0 bg-white dark:bg-gray-900 pt-4 border-t flex gap-2 justify-end">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
-        <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => onSave(form)} disabled={isSaving}>
+        <Button className="bg-primary hover:bg-primary/90" onClick={() => onSave(form)} disabled={isSaving}>
           {isSaving ? "Saving..." : "Save Note"}
         </Button>
       </div>
@@ -133,7 +133,7 @@ function NoteEditor({ note, onSave, onCancel, isSaving }: {
 }
 
 const subjectColors = [
-  "bg-blue-100 text-blue-700 border-blue-200",
+  "bg-primary/10 text-primary border-primary/30",
   "bg-purple-100 text-purple-700 border-purple-200",
   "bg-emerald-100 text-emerald-700 border-emerald-200",
   "bg-orange-100 text-orange-700 border-orange-200",
@@ -155,7 +155,7 @@ function getSubjectColor(subjectName: string) {
 const statusConfig: Record<string, { label: string; cls: string }> = {
   draft:     { label: "Draft",     cls: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700" },
   approved:  { label: "Approved",  cls: "bg-green-100 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800" },
-  published: { label: "Published", cls: "bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800" },
+  published: { label: "Published", cls: "bg-primary/10 text-primary border-primary/30 dark:bg-primary/5 dark:text-primary/70 dark:border-primary/30" },
   archived:  { label: "Archived",  cls: "bg-red-100 text-red-600 border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800" },
 };
 
@@ -275,8 +275,8 @@ export default function AdminLessonNoteLibrary() {
       {/* Page Header */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-5">
         <div className="max-w-7xl mx-auto flex items-center gap-3">
-          <div className="p-2.5 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-            <Library className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+          <div className="p-2.5 bg-primary/10 dark:bg-primary/5 rounded-xl">
+            <Library className="h-6 w-6 text-primary dark:text-primary/70" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">Lesson Note Library</h1>
@@ -292,17 +292,17 @@ export default function AdminLessonNoteLibrary() {
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-1.5 mb-5 flex gap-1 w-fit">
             <button
               onClick={() => setActiveTab("library")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === "library" ? "bg-blue-600 text-white shadow-sm" : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === "library" ? "bg-primary text-white shadow-sm" : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
             >
               <Library className="h-4 w-4" /> Browse Library
             </button>
             <button
               onClick={() => setActiveTab("school-notes")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === "school-notes" ? "bg-blue-600 text-white shadow-sm" : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === "school-notes" ? "bg-primary text-white shadow-sm" : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
             >
               <BookMarked className="h-4 w-4" /> School Notes
               {snPag.total > 0 && (
-                <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${activeTab === "school-notes" ? "bg-white/20 text-white" : "bg-blue-100 text-blue-700"}`}>
+                <span className={`text-xs px-1.5 py-0.5 rounded-full font-bold ${activeTab === "school-notes" ? "bg-white/20 text-white" : "bg-primary/10 text-primary"}`}>
                   {snPag.total}
                 </span>
               )}
@@ -394,7 +394,7 @@ export default function AdminLessonNoteLibrary() {
                       {/* Body */}
                       <div className="px-4 py-3 flex-1">
                         <h3 className="font-semibold text-sm text-gray-900 dark:text-white line-clamp-2 leading-snug mb-1.5">{t.title}</h3>
-                        <p className="text-xs font-medium text-blue-600 dark:text-blue-400 italic line-clamp-1 mb-3">{t.topic}</p>
+                        <p className="text-xs font-medium text-primary dark:text-primary/70 italic line-clamp-1 mb-3">{t.topic}</p>
                         <div className="space-y-1.5">
                           <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
                             <GraduationCap className="h-3.5 w-3.5 text-gray-400 shrink-0" />
@@ -415,7 +415,7 @@ export default function AdminLessonNoteLibrary() {
                         <Button size="sm" variant="outline" className="flex-1 h-8 text-xs rounded-xl border-gray-200 dark:border-gray-700" onClick={() => setPreviewId(t.id)}>
                           <Eye className="h-3 w-3 mr-1" /> Preview
                         </Button>
-                        <Button size="sm" className="flex-1 h-8 text-xs rounded-xl bg-blue-600 hover:bg-blue-700 text-white"
+                        <Button size="sm" className="flex-1 h-8 text-xs rounded-xl bg-primary hover:bg-primary/90 text-white"
                           onClick={() => { setImportId(t.id); setImportClassId(""); setImportSubjectId(""); setImportTermId(""); }}>
                           <Download className="h-3 w-3 mr-1" /> Import
                         </Button>
@@ -465,7 +465,7 @@ export default function AdminLessonNoteLibrary() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Button onClick={() => setCreateNote(true)} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl">
+                <Button onClick={() => setCreateNote(true)} className="bg-primary hover:bg-primary/90 text-white rounded-xl">
                   <Plus className="h-4 w-4 mr-1" /> New Note
                 </Button>
               </div>
@@ -488,7 +488,7 @@ export default function AdminLessonNoteLibrary() {
                   <Button variant="outline" size="sm" className="rounded-xl" onClick={() => setActiveTab("library")}>
                     <Library className="h-4 w-4 mr-1" /> Browse Library
                   </Button>
-                  <Button size="sm" className="rounded-xl bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setCreateNote(true)}>
+                  <Button size="sm" className="rounded-xl bg-primary hover:bg-primary/90 text-white" onClick={() => setCreateNote(true)}>
                     <Plus className="h-4 w-4 mr-1" /> Create Note
                   </Button>
                 </div>
@@ -528,7 +528,7 @@ export default function AdminLessonNoteLibrary() {
                         {/* Body */}
                         <div className="px-4 py-3 flex-1">
                           <h3 className="font-semibold text-sm text-gray-900 dark:text-white line-clamp-2 leading-snug mb-1">{n.title}</h3>
-                          {n.topic && <p className="text-xs font-medium text-blue-600 dark:text-blue-400 italic line-clamp-1 mb-2">{n.topic}</p>}
+                          {n.topic && <p className="text-xs font-medium text-primary dark:text-primary/70 italic line-clamp-1 mb-2">{n.topic}</p>}
                           <div className="space-y-1.5">
                             {(n.className || n.subjectName) && (
                               <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
@@ -590,12 +590,12 @@ export default function AdminLessonNoteLibrary() {
       <Dialog open={!!previewId} onOpenChange={() => setPreviewId(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Eye className="h-5 w-5 text-blue-600" /> Lesson Note Preview</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><Eye className="h-5 w-5 text-primary" /> Lesson Note Preview</DialogTitle>
             <DialogDescription>Review the full content of this template before importing.</DialogDescription>
           </DialogHeader>
           {previewTemplate && (
             <div>
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-4 mb-4 border border-blue-100 dark:border-blue-800">
+              <div className="bg-primary/5 dark:bg-primary/5 rounded-2xl p-4 mb-4 border border-primary/20 dark:border-primary/30">
                 <h2 className="text-lg font-bold text-gray-900 dark:text-white">{previewTemplate.title}</h2>
                 <div className="flex flex-wrap gap-4 mt-2 text-sm text-gray-600 dark:text-gray-300">
                   <span><strong>Class:</strong> {previewTemplate.className}</span>
@@ -604,7 +604,7 @@ export default function AdminLessonNoteLibrary() {
                   <span><strong>Week:</strong> {previewTemplate.weekNumber}</span>
                   {previewTemplate.duration && <span><strong>Duration:</strong> {previewTemplate.duration}</span>}
                 </div>
-                <p className="mt-1.5 text-sm font-semibold text-blue-700 dark:text-blue-300">{previewTemplate.topic}</p>
+                <p className="mt-1.5 text-sm font-semibold text-primary dark:text-primary/60">{previewTemplate.topic}</p>
               </div>
               <ContentSection label="Learning Objectives" value={previewTemplate.objectives} />
               <ContentSection label="Entry Behaviour" value={previewTemplate.entryBehaviour} />
@@ -620,7 +620,7 @@ export default function AdminLessonNoteLibrary() {
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setPreviewId(null)}>Close</Button>
             {previewId && (
-              <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => { setImportId(previewId); setPreviewId(null); setImportClassId(""); setImportSubjectId(""); setImportTermId(""); }}>
+              <Button className="bg-primary hover:bg-primary/90" onClick={() => { setImportId(previewId); setPreviewId(null); setImportClassId(""); setImportSubjectId(""); setImportTermId(""); }}>
                 <Download className="h-4 w-4 mr-1" /> Import This Template
               </Button>
             )}
@@ -632,13 +632,13 @@ export default function AdminLessonNoteLibrary() {
       <Dialog open={!!importId && !previewId} onOpenChange={() => setImportId(null)}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Download className="h-5 w-5 text-blue-600" /> Import Lesson Note Template</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><Download className="h-5 w-5 text-primary" /> Import Lesson Note Template</DialogTitle>
             <DialogDescription>
               A school-specific copy will be created. The master template remains unchanged. You can edit the copy freely after importing.
             </DialogDescription>
           </DialogHeader>
           {importTemplate && (
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-3 mb-2 text-sm border border-blue-100 dark:border-blue-800">
+            <div className="bg-primary/5 dark:bg-primary/5 rounded-xl p-3 mb-2 text-sm border border-primary/20 dark:border-primary/30">
               <p className="font-semibold text-gray-800 dark:text-gray-200 line-clamp-2">{importTemplate.title}</p>
               <p className="text-gray-500 text-xs mt-0.5">{importTemplate.className} · {importTemplate.subjectName} · Wk {importTemplate.weekNumber}</p>
             </div>
@@ -682,7 +682,7 @@ export default function AdminLessonNoteLibrary() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setImportId(null)}>Cancel</Button>
             <Button
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-primary hover:bg-primary/90"
               disabled={!importClassId || !importSubjectId || !importTermId || importMutation.isPending}
               onClick={() => importMutation.mutate({ classId: parseInt(importClassId), subjectId: parseInt(importSubjectId), termId: parseInt(importTermId) })}
             >
@@ -696,11 +696,11 @@ export default function AdminLessonNoteLibrary() {
       <Dialog open={!!viewNoteId} onOpenChange={() => setViewNoteId(null)}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-blue-600" /> School Lesson Note</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /> School Lesson Note</DialogTitle>
           </DialogHeader>
           {viewNote && (
             <div>
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-4 mb-4 border border-blue-100 dark:border-blue-800">
+              <div className="bg-primary/5 dark:bg-primary/5 rounded-2xl p-4 mb-4 border border-primary/20 dark:border-primary/30">
                 <div className="flex items-center gap-2 mb-1">
                   <h2 className="text-lg font-bold text-gray-900 dark:text-white">{viewNote.title}</h2>
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border capitalize ${(statusConfig[viewNote.status] ?? statusConfig.draft).cls}`}>
@@ -714,7 +714,7 @@ export default function AdminLessonNoteLibrary() {
                   {viewNote.weekNumber && <span><strong>Week:</strong> {viewNote.weekNumber}</span>}
                   {viewNote.duration && <span><strong>Duration:</strong> {viewNote.duration}</span>}
                 </div>
-                {viewNote.topic && <p className="mt-1.5 text-sm font-semibold text-blue-700 dark:text-blue-300">{viewNote.topic}</p>}
+                {viewNote.topic && <p className="mt-1.5 text-sm font-semibold text-primary dark:text-primary/60">{viewNote.topic}</p>}
               </div>
               <ContentSection label="Learning Objectives" value={viewNote.objectives} />
               <ContentSection label="Entry Behaviour" value={viewNote.entryBehaviour} />
@@ -730,7 +730,7 @@ export default function AdminLessonNoteLibrary() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewNoteId(null)}>Close</Button>
             {viewNote && (
-              <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => { setEditingNote(viewNote); setViewNoteId(null); }}>
+              <Button className="bg-primary hover:bg-primary/90" onClick={() => { setEditingNote(viewNote); setViewNoteId(null); }}>
                 <Edit className="h-4 w-4 mr-1" /> Edit
               </Button>
             )}
@@ -742,7 +742,7 @@ export default function AdminLessonNoteLibrary() {
       <Dialog open={!!editingNote} onOpenChange={() => setEditingNote(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Edit className="h-5 w-5 text-blue-600" /> Edit School Lesson Note</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><Edit className="h-5 w-5 text-primary" /> Edit School Lesson Note</DialogTitle>
             <DialogDescription>Customise this lesson note for your school. The original library template is not affected.</DialogDescription>
           </DialogHeader>
           {editingNote && (
@@ -760,7 +760,7 @@ export default function AdminLessonNoteLibrary() {
       <Dialog open={createNote} onOpenChange={setCreateNote}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><Plus className="h-5 w-5 text-blue-600" /> Create School Lesson Note</DialogTitle>
+            <DialogTitle className="flex items-center gap-2"><Plus className="h-5 w-5 text-primary" /> Create School Lesson Note</DialogTitle>
             <DialogDescription>Create a new lesson note from scratch for your school.</DialogDescription>
           </DialogHeader>
           <NoteEditor

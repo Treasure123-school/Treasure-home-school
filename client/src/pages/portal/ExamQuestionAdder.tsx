@@ -813,7 +813,7 @@ export default function ExamQuestionAdder({
                                             <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <Button
                                                     variant="ghost" size="sm"
-                                                    className="h-7 w-7 p-0 text-muted-foreground hover:text-blue-600"
+                                                    className="h-7 w-7 p-0 text-muted-foreground hover:text-primary"
                                                     onClick={() => replaceAutoQuestionMutation.mutate(q.id)}
                                                     disabled={replaceAutoQuestionMutation.isPending}
                                                     title="Replace with another question"

@@ -251,7 +251,7 @@ export default function ExamPaymentManagement() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <CreditCard className="h-6 w-6 text-blue-600" />
+            <CreditCard className="h-6 w-6 text-primary" />
             Exam Fee Payments
           </h1>
           <p className="text-sm text-slate-500 mt-1">Manage and track student exam fee payments</p>
@@ -261,7 +261,7 @@ export default function ExamPaymentManagement() {
             <Settings className="h-4 w-4" />
             Fee Settings
           </Button>
-          <Button size="sm" onClick={() => openAddDialog()} className="gap-2 bg-blue-600 hover:bg-blue-700 text-white">
+          <Button size="sm" onClick={() => openAddDialog()} className="gap-2 bg-primary hover:bg-primary/90 text-white">
             <Plus className="h-4 w-4" />
             Record Payment
           </Button>
@@ -544,7 +544,7 @@ export default function ExamPaymentManagement() {
             <Button
               onClick={() => recordPaymentMutation.mutate(addForm)}
               disabled={recordPaymentMutation.isPending || !addForm.studentId || !addForm.termId}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-primary hover:bg-primary/90 text-white"
             >
               {recordPaymentMutation.isPending ? 'Saving...' : 'Record Payment'}
             </Button>
@@ -586,7 +586,7 @@ export default function ExamPaymentManagement() {
             <Button
               onClick={() => updateSettingsMutation.mutate(settingsForm)}
               disabled={updateSettingsMutation.isPending}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-primary hover:bg-primary/90 text-white"
             >
               {updateSettingsMutation.isPending ? 'Saving...' : 'Save Settings'}
             </Button>

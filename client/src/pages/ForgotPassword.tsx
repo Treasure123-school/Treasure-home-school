@@ -60,9 +60,9 @@ export default function ForgotPassword() {
                 {data.message}
               </p>
               {data.resetToken && (
-                <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded border border-blue-300">
+                <div className="mt-2 p-3 bg-primary/5 dark:bg-primary/5 rounded border border-primary/40">
                   <p className="text-xs font-semibold mb-1">🔑 Reset Code:</p>
-                  <p className="text-sm font-mono font-bold text-blue-700 dark:text-blue-300">
+                  <p className="text-sm font-mono font-bold text-primary dark:text-primary/60">
                     {data.resetToken.substring(0, 8).toUpperCase()}
                   </p>
                   <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
@@ -74,7 +74,7 @@ export default function ForgotPassword() {
                 <p className="text-xs font-semibold mb-1">🔗 Or use this link:</p>
                 <a
                   href={data.resetLink}
-                  className="text-xs text-blue-600 hover:underline break-all"
+                  className="text-xs text-primary hover:underline break-all"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -146,10 +146,10 @@ export default function ForgotPassword() {
           </p>
         </div>
 
-        <Card className="w-full border-2 border-blue-200 dark:border-blue-800">
+        <Card className="w-full border-2 border-primary/30 dark:border-primary/30">
           <CardHeader className="text-center">
-            <div className="bg-blue-100 dark:bg-blue-900/30 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Mail className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+            <div className="bg-primary/10 dark:bg-primary/5 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Mail className="h-8 w-8 text-primary dark:text-primary/70" />
             </div>
             <CardTitle className="text-2xl">Reset Your Password</CardTitle>
             <p className="text-muted-foreground mt-2">
@@ -183,46 +183,46 @@ export default function ForgotPassword() {
                   )}
                 </div>
 
-                <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/30 rounded-lg border border-blue-200 dark:border-blue-800 space-y-3">
+                <div className="p-4 bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/5 dark:to-primary/5 rounded-lg border border-primary/30 dark:border-primary/30 space-y-3">
                   <div className="flex items-center gap-2">
-                    <div className="p-1.5 bg-blue-600 rounded-full">
+                    <div className="p-1.5 bg-primary rounded-full">
                       <Mail className="h-3.5 w-3.5 text-white" />
                     </div>
-                    <p className="text-sm text-blue-900 dark:text-blue-100 font-semibold flex items-center gap-1">
+                    <p className="text-sm text-primary dark:text-primary/30 font-semibold flex items-center gap-1">
                       <AlertCircle className="h-4 w-4" />
                       How Password Reset Works
                     </p>
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-start gap-2">
-                      <div className="mt-1 h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">1</span>
+                      <div className="mt-1 h-5 w-5 rounded-full bg-primary/10 dark:bg-primary/5 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-semibold text-primary dark:text-primary/60">1</span>
                       </div>
-                      <p className="text-xs text-blue-800 dark:text-blue-200">Enter your THS username or email address</p>
+                      <p className="text-xs text-primary dark:text-primary/50">Enter your THS username or email address</p>
                     </div>
                     <div className="flex items-start gap-2">
-                      <div className="mt-1 h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">2</span>
+                      <div className="mt-1 h-5 w-5 rounded-full bg-primary/10 dark:bg-primary/5 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-semibold text-primary dark:text-primary/60">2</span>
                       </div>
-                      <p className="text-xs text-blue-800 dark:text-blue-200">Receive a secure reset link via email (valid for 15 minutes)</p>
+                      <p className="text-xs text-primary dark:text-primary/50">Receive a secure reset link via email (valid for 15 minutes)</p>
                     </div>
                     <div className="flex items-start gap-2">
-                      <div className="mt-1 h-5 w-5 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">3</span>
+                      <div className="mt-1 h-5 w-5 rounded-full bg-primary/10 dark:bg-primary/5 flex items-center justify-center flex-shrink-0">
+                        <span className="text-xs font-semibold text-primary dark:text-primary/60">3</span>
                       </div>
-                      <p className="text-xs text-blue-800 dark:text-blue-200">Click the link to create a new strong password</p>
+                      <p className="text-xs text-primary dark:text-primary/50">Click the link to create a new strong password</p>
                     </div>
                   </div>
-                  <div className="space-y-1 pt-2 border-t border-blue-200 dark:border-blue-700">
+                  <div className="space-y-1 pt-2 border-t border-primary/30 dark:border-primary/70">
                     <div className="flex items-start gap-2">
                       <AlertCircle className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400 mt-0.5 flex-shrink-0" />
-                      <p className="text-xs text-blue-700 dark:text-blue-300">
+                      <p className="text-xs text-primary dark:text-primary/60">
                         Check spam/junk folder if you don't see the email within 2 minutes
                       </p>
                     </div>
                     <div className="flex items-start gap-2">
                       <CheckCircle className="h-3.5 w-3.5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
-                      <p className="text-xs text-blue-700 dark:text-blue-300">
+                      <p className="text-xs text-primary dark:text-primary/60">
                         <strong>For Teachers/Admins:</strong> Use Google account recovery if you can't access your Google email
                       </p>
                     </div>
@@ -265,10 +265,10 @@ export default function ForgotPassword() {
                   </div>
                 </div>
 
-                <div className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="p-3 sm:p-4 bg-primary/5 dark:bg-primary/5 rounded-lg border border-primary/30 dark:border-primary/30">
                   <div className="flex items-start gap-2">
-                    <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-                    <div className="text-[10px] sm:text-xs text-blue-800 dark:text-blue-200">
+                    <Mail className="h-4 w-4 text-primary dark:text-primary/70 mt-0.5 flex-shrink-0" />
+                    <div className="text-[10px] sm:text-xs text-primary dark:text-primary/50">
                       <p className="font-medium mb-1.5">Didn't receive the email?</p>
                       <ul className="space-y-1 ml-3 list-disc">
                         <li>Wait a few minutes - delivery may take time</li>

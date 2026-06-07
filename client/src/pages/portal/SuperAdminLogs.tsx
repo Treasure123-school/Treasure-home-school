@@ -39,7 +39,7 @@ export default function SuperAdminLogs() {
     const colors: Record<string, string> = {
       login: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300",
       logout: "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300",
-      user_created: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300",
+      user_created: "bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/60",
       user_suspended: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
       user_deleted: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300",
       settings_updated: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300",

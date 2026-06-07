@@ -424,10 +424,10 @@ export default function ExamFeePayment() {
       {/* ── Waiting for payment (Paystack Popup) ── */}
       {step === "paying" && (
         <Card className="overflow-hidden border-none shadow-xl animate-in fade-in duration-300">
-          <div className="h-1.5 bg-blue-500 animate-pulse" />
+          <div className="h-1.5 bg-primary/85 animate-pulse" />
           <CardContent className="pt-8 space-y-6 text-center">
-            <div className="mx-auto w-20 h-20 rounded-full bg-blue-500/10 flex items-center justify-center">
-              <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+            <div className="mx-auto w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
             </div>
             <div className="space-y-1">
               <p className="font-bold text-xl">Waiting for Payment</p>
@@ -435,7 +435,7 @@ export default function ExamFeePayment() {
                 Please complete your payment in the secure window provided.
               </p>
             </div>
-            <div className="rounded-2xl bg-muted/50 p-4 border border-blue-500/10 text-sm text-muted-foreground leading-relaxed">
+            <div className="rounded-2xl bg-muted/50 p-4 border border-primary/10 text-sm text-muted-foreground leading-relaxed">
               <p>Keep this page open while you pay. We'll automatically detect your payment.</p>
             </div>
             <div className="flex flex-col gap-3">
@@ -443,7 +443,7 @@ export default function ExamFeePayment() {
                 <Button
                   onClick={handleOpenLink}
                   variant="outline"
-                  className="h-12 border-blue-500/20 hover:bg-blue-500/5 gap-2 font-bold"
+                  className="h-12 border-primary/20 hover:bg-primary/5 gap-2 font-bold"
                   data-testid="button-open-payment"
                 >
                   <ExternalLink className="h-4 w-4" /> Open Payment Window Manually
@@ -644,10 +644,10 @@ export default function ExamFeePayment() {
               </TabsList>
 
               <TabsContent value="card" className="space-y-6 animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
-                <div className="p-5 rounded-2xl bg-blue-500/5 border border-blue-500/10 flex items-start gap-4">
-                  <ShieldCheck className="h-6 w-6 text-blue-500 shrink-0 mt-0.5" />
+                <div className="p-5 rounded-2xl bg-primary/5 border border-primary/10 flex items-start gap-4">
+                  <ShieldCheck className="h-6 w-6 text-primary shrink-0 mt-0.5" />
                   <div className="space-y-1">
-                    <p className="text-sm font-bold text-blue-900 dark:text-blue-300">Secure Online Payment</p>
+                    <p className="text-sm font-bold text-primary dark:text-primary/60">Secure Online Payment</p>
                     <p className="text-xs text-muted-foreground leading-relaxed">
                       Instant activation via Credit/Debit card. Your details are never stored and are fully protected by <span className="font-bold text-foreground">Paystack</span>.
                     </p>

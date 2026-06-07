@@ -19,8 +19,8 @@ export function ChangePasswordLinkCard({ href }: ChangePasswordLinkCardProps) {
       <CardContent className="p-4 sm:p-5">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="shrink-0 h-10 w-10 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-              <ShieldCheck className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div className="shrink-0 h-10 w-10 rounded-full bg-primary/5 dark:bg-primary/5 flex items-center justify-center">
+              <ShieldCheck className="h-5 w-5 text-primary dark:text-primary/70" />
             </div>
             <div className="min-w-0">
               <p className="font-semibold text-sm dark:text-white">Change Password</p>
@@ -65,7 +65,7 @@ function getStrength(pwd: string) {
   if (/[^A-Za-z0-9]/.test(pwd)) score++;
   if (score <= 1) return { label: "Weak", color: "bg-red-500", textColor: "text-red-600", width: "w-1/4" };
   if (score === 2) return { label: "Fair", color: "bg-amber-500", textColor: "text-amber-600", width: "w-2/4" };
-  if (score === 3) return { label: "Good", color: "bg-blue-500", textColor: "text-blue-600", width: "w-3/4" };
+  if (score === 3) return { label: "Good", color: "bg-primary/85", textColor: "text-primary", width: "w-3/4" };
   return { label: "Strong", color: "bg-green-500", textColor: "text-green-600", width: "w-full" };
 }
 
@@ -127,7 +127,7 @@ export function ChangePasswordCard() {
     <Card className="dark:bg-slate-800 dark:border-slate-700">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 dark:text-white">
-          <ShieldCheck className="h-5 w-5 text-blue-600" />
+          <ShieldCheck className="h-5 w-5 text-primary" />
           Change Password
         </CardTitle>
         <CardDescription className="dark:text-slate-400">

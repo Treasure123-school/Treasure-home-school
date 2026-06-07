@@ -95,7 +95,7 @@ function parseAttachments(raw: string): Attachment[] {
 
 function attachmentIcon(type: Attachment['type']) {
   if (type === 'pdf') return <FileText className="h-4 w-4 text-red-500" />;
-  if (type === 'image') return <ImageIcon className="h-4 w-4 text-blue-500" />;
+  if (type === 'image') return <ImageIcon className="h-4 w-4 text-primary" />;
   if (type === 'link') return <Link2 className="h-4 w-4 text-purple-500" />;
   return <Paperclip className="h-4 w-4 text-gray-500" />;
 }
@@ -103,7 +103,7 @@ function attachmentIcon(type: Attachment['type']) {
 function fileIcon(name: string | null) {
   if (!name) return <FileText className="h-5 w-5" />;
   const ext = name.split('.').pop()?.toLowerCase();
-  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) return <ImageIcon className="h-5 w-5 text-blue-500" />;
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) return <ImageIcon className="h-5 w-5 text-primary" />;
   if (ext === 'pdf') return <FileText className="h-5 w-5 text-red-500" />;
   return <FileText className="h-5 w-5 text-gray-500" />;
 }
@@ -112,13 +112,13 @@ const STATUS_CFG: Record<SubmissionStatus, { label: string; color: string; bg: s
   pending:   { label: 'Pending',   color: 'text-amber-700 dark:text-amber-400',   bg: 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800',   icon: <Clock className="h-3.5 w-3.5" /> },
   submitted: { label: 'Submitted', color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800', icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
   late:      { label: 'Late',      color: 'text-red-700 dark:text-red-400',       bg: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800',           icon: <AlertTriangle className="h-3.5 w-3.5" /> },
-  graded:    { label: 'Graded',    color: 'text-blue-700 dark:text-blue-400',     bg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',       icon: <Award className="h-3.5 w-3.5" /> },
+  graded:    { label: 'Graded',    color: 'text-primary dark:text-primary/70',     bg: 'bg-primary/5 dark:bg-primary/5 border-primary/30 dark:border-primary/30',       icon: <Award className="h-3.5 w-3.5" /> },
 };
 
 const SUBJECT_COLORS = [
-  'from-violet-500 to-purple-600', 'from-blue-500 to-cyan-600',
+  'from-violet-500 to-purple-600', 'from-primary/85 to-cyan-600',
   'from-emerald-500 to-teal-600', 'from-orange-500 to-amber-600',
-  'from-pink-500 to-rose-600', 'from-indigo-500 to-blue-600',
+  'from-pink-500 to-rose-600', 'from-indigo-500 to-primary',
 ];
 function subjectColor(id: number) { return SUBJECT_COLORS[id % SUBJECT_COLORS.length]; }
 
@@ -242,7 +242,7 @@ function AssignmentCard({ row, onClick }: { row: AssignmentRow; onClick: () => v
             {/* Score badge if graded */}
             {status === 'graded' && row.score !== null && (
               <div className="mt-2 flex items-center gap-2">
-                <span className="flex items-center gap-1.5 text-sm font-semibold text-blue-700 dark:text-blue-400">
+                <span className="flex items-center gap-1.5 text-sm font-semibold text-primary dark:text-primary/70">
                   <Star className="h-3.5 w-3.5" />
                   Score: {row.score} / {row.maxScore}
                 </span>
@@ -464,12 +464,12 @@ function DetailsTab({ row, attachments, status }: { row: AssignmentRow; attachme
       {/* Score + Feedback (if graded) */}
       {status === 'graded' && (
         <div className="space-y-3">
-          <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-            <Star className="h-6 w-6 text-blue-600 flex-shrink-0" />
+          <div className="flex items-center gap-3 bg-primary/5 dark:bg-primary/5 border border-primary/30 dark:border-primary/30 rounded-xl p-4">
+            <Star className="h-6 w-6 text-primary flex-shrink-0" />
             <div>
-              <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wide">Your Score</p>
-              <p className="text-2xl font-bold text-blue-700 dark:text-blue-300" data-testid="text-score">
-                {row.score ?? '—'} <span className="text-base font-normal text-blue-500">/ {row.maxScore}</span>
+              <p className="text-xs font-semibold text-primary dark:text-primary/70 uppercase tracking-wide">Your Score</p>
+              <p className="text-2xl font-bold text-primary dark:text-primary/60" data-testid="text-score">
+                {row.score ?? '—'} <span className="text-base font-normal text-primary">/ {row.maxScore}</span>
               </p>
             </div>
           </div>
@@ -519,8 +519,8 @@ function SubmitTab({
   if (graded) {
     return (
       <div className="flex flex-col items-center gap-4 py-6 text-center">
-        <div className="h-14 w-14 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-          <Award className="h-7 w-7 text-blue-600" />
+        <div className="h-14 w-14 rounded-2xl bg-primary/5 dark:bg-primary/5 flex items-center justify-center">
+          <Award className="h-7 w-7 text-primary" />
         </div>
         <div>
           <p className="font-bold text-gray-900 dark:text-gray-100">Assignment Graded</p>

@@ -43,7 +43,7 @@ interface Class {
 const PRIORITY_CONFIG: Record<string, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ElementType }> = {
   urgent: { label: 'Urgent', color: 'text-red-700 dark:text-red-300', bgColor: 'bg-red-50 dark:bg-red-900/20', borderColor: 'border-l-red-500', icon: AlertTriangle },
   important: { label: 'Important', color: 'text-amber-700 dark:text-amber-300', bgColor: 'bg-amber-50 dark:bg-amber-900/20', borderColor: 'border-l-amber-500', icon: Bell },
-  normal: { label: 'General', color: 'text-blue-700 dark:text-blue-300', bgColor: 'bg-blue-50/60 dark:bg-blue-900/10', borderColor: 'border-l-blue-400', icon: Info },
+  normal: { label: 'General', color: 'text-primary dark:text-primary/60', bgColor: 'bg-primary/5 dark:bg-primary/5', borderColor: 'border-l-primary/60', icon: Info },
 };
 
 const TYPE_OPTIONS = [
@@ -254,8 +254,8 @@ export default function TeacherAnnouncements() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-            <Megaphone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+          <div className="p-2 bg-primary/10 dark:bg-primary/5 rounded-xl">
+            <Megaphone className="h-5 w-5 text-primary dark:text-primary/70" />
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Announcements</h1>
@@ -264,7 +264,7 @@ export default function TeacherAnnouncements() {
         </div>
         <Button
           onClick={handleOpenCreate}
-          className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl gap-2"
+          className="bg-primary hover:bg-primary/90 text-white rounded-xl gap-2"
           data-testid="button-create-announcement"
         >
           <Plus className="h-4 w-4" />
@@ -288,7 +288,7 @@ export default function TeacherAnnouncements() {
           <Button
             variant="outline"
             onClick={() => setShowFilters(f => !f)}
-            className={`rounded-xl gap-2 border-gray-200 dark:border-gray-700 ${showFilters ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600' : 'text-gray-600 dark:text-gray-400'}`}
+            className={`rounded-xl gap-2 border-gray-200 dark:border-gray-700 ${showFilters ? 'bg-primary/5 dark:bg-primary/5 border-primary/30 dark:border-primary/30 text-primary' : 'text-gray-600 dark:text-gray-400'}`}
             data-testid="button-toggle-filters"
           >
             <Filter className="h-4 w-4" />
@@ -357,7 +357,7 @@ export default function TeacherAnnouncements() {
             {searchTerm || filterPriority !== 'all' || filterType !== 'all' ? 'Try adjusting your filters.' : 'Create your first announcement to get started.'}
           </p>
           {!searchTerm && filterPriority === 'all' && filterType === 'all' && (
-            <Button onClick={handleOpenCreate} className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl gap-2">
+            <Button onClick={handleOpenCreate} className="bg-primary hover:bg-primary/90 text-white rounded-xl gap-2">
               <Plus className="h-4 w-4" />
               New Announcement
             </Button>
@@ -431,7 +431,7 @@ export default function TeacherAnnouncements() {
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 dark:border-gray-800">
                     <button
                       onClick={() => toggleExpand(ann.id)}
-                      className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors"
+                      className="flex items-center gap-1 text-xs text-primary dark:text-primary/70 hover:text-primary dark:hover:text-primary/60 font-medium transition-colors"
                       data-testid={`button-expand-${ann.id}`}
                     >
                       {isExpanded ? <><ChevronUp className="h-3.5 w-3.5" />Show less</> : <><Eye className="h-3.5 w-3.5" />Read more</>}
@@ -447,7 +447,7 @@ export default function TeacherAnnouncements() {
                       </button>
                       <button
                         onClick={() => handleOpenEdit(ann)}
-                        className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-primary hover:bg-primary/5 dark:hover:bg-primary/5 transition-colors"
                         title="Edit"
                         data-testid={`button-edit-${ann.id}`}
                       >
@@ -475,7 +475,7 @@ export default function TeacherAnnouncements() {
         <DialogContent className="sm:max-w-2xl rounded-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
-              <Megaphone className="h-5 w-5 text-blue-600" />
+              <Megaphone className="h-5 w-5 text-primary" />
               {editingAnnouncement ? 'Edit Announcement' : 'New Announcement'}
             </DialogTitle>
           </DialogHeader>
@@ -549,8 +549,8 @@ export default function TeacherAnnouncements() {
                     }}
                     className={`px-3 py-1.5 rounded-xl text-sm font-medium border transition-colors ${
                       form.targetRoles.includes(role)
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-blue-300'
+                        ? 'bg-primary text-white border-primary'
+                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-primary/40'
                     }`}
                     data-testid={`button-target-${role.toLowerCase()}`}
                   >
@@ -579,8 +579,8 @@ export default function TeacherAnnouncements() {
                       }}
                       className={`px-3 py-1 rounded-xl text-xs font-medium border transition-colors ${
                         form.targetClasses.includes(cls.name)
-                          ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700'
-                          : 'bg-white dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-700 hover:border-blue-200'
+                          ? 'bg-primary/10 dark:bg-primary/5 text-primary dark:text-primary/60 border-primary/40 dark:border-primary/70'
+                          : 'bg-white dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-700 hover:border-primary/30'
                       }`}
                       data-testid={`button-class-${cls.id}`}
                     >
@@ -595,7 +595,7 @@ export default function TeacherAnnouncements() {
               <button
                 type="button"
                 onClick={() => setForm(f => ({ ...f, isPublished: !f.isPublished }))}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.isPublished ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}`}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${form.isPublished ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'}`}
                 data-testid="toggle-publish"
               >
                 <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${form.isPublished ? 'translate-x-4' : 'translate-x-0.5'}`} />
@@ -616,7 +616,7 @@ export default function TeacherAnnouncements() {
               <Button
                 onClick={handleSubmit}
                 disabled={!form.title.trim() || !form.content.trim() || isSubmitting}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl gap-2"
+                className="flex-1 bg-primary hover:bg-primary/90 text-white rounded-xl gap-2"
                 data-testid="button-submit-announcement"
               >
                 <Megaphone className="h-4 w-4" />

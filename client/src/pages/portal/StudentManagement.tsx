@@ -627,14 +627,14 @@ export default function StudentManagement() {
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
+              <div className="p-3 bg-primary/5 dark:bg-primary/5 rounded-md border border-primary/30 dark:border-primary/30">
                 <div className="flex items-start gap-2">
-                  <Info className="h-4 w-4 text-blue-700 dark:text-blue-300 mt-0.5 flex-shrink-0" />
+                  <Info className="h-4 w-4 text-primary dark:text-primary/60 mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-sm text-blue-800 dark:text-blue-200 font-medium">
+                    <p className="text-sm text-primary dark:text-primary/50 font-medium">
                       Quick Student Onboarding
                     </p>
-                    <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
+                    <p className="text-xs text-primary dark:text-primary/60 mt-1">
                       Enter only essential information. Login credentials will be auto-generated. 
                       Student can complete their full profile later.
                     </p>
@@ -820,8 +820,8 @@ export default function StudentManagement() {
             </DialogHeader>
             <div className="space-y-4">
               {/* Student Credentials */}
-              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                <p className="text-sm text-blue-800 dark:text-blue-200 font-medium mb-3 flex items-center gap-2">
+              <div className="p-4 bg-primary/5 dark:bg-primary/5 rounded-lg border border-primary/30 dark:border-primary/30">
+                <p className="text-sm text-primary dark:text-primary/50 font-medium mb-3 flex items-center gap-2">
                   <UserPlus className="h-4 w-4" />
                   Student Login Credentials:
                 </p>
@@ -882,7 +882,7 @@ export default function StudentManagement() {
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-blue-600" />
+                <AlertCircle className="h-5 w-5 text-primary" />
                 CSV Import Preview
               </DialogTitle>
             </DialogHeader>
@@ -902,9 +902,9 @@ export default function StudentManagement() {
                     <p className="text-xs text-muted-foreground">Invalid</p>
                     <p className="text-2xl font-bold text-red-600">{csvPreview.summary.invalidCount}</p>
                   </Card>
-                  <Card className="p-3 border-blue-200">
+                  <Card className="p-3 border-primary/30">
                     <p className="text-xs text-muted-foreground">New Parents</p>
-                    <p className="text-2xl font-bold text-blue-600">{csvPreview.summary.newParents}</p>
+                    <p className="text-2xl font-bold text-primary">{csvPreview.summary.newParents}</p>
                   </Card>
                 </div>
 
@@ -964,7 +964,7 @@ export default function StudentManagement() {
                                 {item.parentExists ? (
                                   <Badge variant="outline" className="text-xs">Link Existing</Badge>
                                 ) : (
-                                  <Badge variant="default" className="text-xs bg-blue-600">Create New</Badge>
+                                  <Badge variant="default" className="text-xs bg-primary">Create New</Badge>
                                 )}
                               </TableCell>
                             </TableRow>
@@ -1648,7 +1648,7 @@ export default function StudentManagement() {
                           variant="outline"
                           className={`text-xs capitalize ${
                             student.department === 'science'
-                              ? 'border-blue-400 text-blue-700 dark:text-blue-300'
+                              ? 'border-primary/60 text-primary dark:text-primary/60'
                               : student.department === 'art'
                                 ? 'border-purple-400 text-purple-700 dark:text-purple-300'
                                 : 'border-green-400 text-green-700 dark:text-green-300'

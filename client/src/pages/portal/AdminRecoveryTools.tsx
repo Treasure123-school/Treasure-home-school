@@ -209,7 +209,7 @@ export default function AdminRecoveryTools() {
 
   const getRoleBadgeColor = (roleName: string) => {
     switch (roleName) {
-      case 'Student': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'Student': return 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/50';
       case 'Teacher': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
       case 'Parent': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
       case 'Admin': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
@@ -273,7 +273,7 @@ export default function AdminRecoveryTools() {
               <CardHeader className="flex flex-row items-center justify-between gap-4">
                 <div>
                   <CardTitle className="flex items-center gap-2">
-                    <RotateCcw className="h-5 w-5 text-blue-600" />
+                    <RotateCcw className="h-5 w-5 text-primary" />
                     Recover Deleted Users
                   </CardTitle>
                   <CardDescription>
@@ -411,7 +411,7 @@ export default function AdminRecoveryTools() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Key className="h-5 w-5 text-blue-600" />
+                    <Key className="h-5 w-5 text-primary" />
                     Reset User Password
                   </CardTitle>
                 </CardHeader>
@@ -440,8 +440,8 @@ export default function AdminRecoveryTools() {
                       Password must be at least 8 characters with uppercase, lowercase, numbers, and symbols
                     </p>
                   </div>
-                  <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <p className="text-xs text-blue-800 dark:text-blue-200 flex items-center gap-2">
+                  <div className="p-3 bg-primary/5 dark:bg-primary/5 rounded-lg border border-primary/30 dark:border-primary/30">
+                    <p className="text-xs text-primary dark:text-primary/50 flex items-center gap-2">
                       <AlertCircle className="h-4 w-4 flex-shrink-0" />
                       <span><strong>Security Policy:</strong> Users will be required to change this password on next login.</span>
                     </p>
@@ -449,7 +449,7 @@ export default function AdminRecoveryTools() {
                   <Button
                     onClick={handleResetPassword}
                     disabled={resetPasswordMutation.isPending}
-                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    className="w-full bg-primary hover:bg-primary/90"
                     data-testid="button-reset-password"
                   >
                     {resetPasswordMutation.isPending ? 'Resetting...' : 'Reset Password'}

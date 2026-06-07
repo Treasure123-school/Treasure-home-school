@@ -100,7 +100,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                   {schoolName}
                 </span>
                 {settings?.schoolMotto && (
-                  <span className="text-blue-600 text-[10px] md:text-xs font-semibold tracking-wider uppercase">
+                  <span className="text-primary text-[10px] md:text-xs font-semibold tracking-wider uppercase">
                     {settings.schoolMotto}
                   </span>
                 )}
@@ -111,7 +111,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-10">
             {navigation.map((item) => (
-              <Link key={item.name} href={item.href} className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${isActive(item.href) ? 'text-blue-600' : 'text-gray-900 hover:text-blue-600'}`}>{item.name}</Link>
+              <Link key={item.name} href={item.href} className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${isActive(item.href) ? 'text-primary' : 'text-gray-900 hover:text-primary'}`}>{item.name}</Link>
             ))}
             <Button asChild className="btn-primary"><Link href="/contact" className="flex items-center gap-2"><span>Contact Us</span><ArrowRight className="w-3 h-3" /></Link></Button>
           </nav>
@@ -149,7 +149,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                   isMobileMenuOpen
                     ? 'opacity-100 translate-x-0'
                     : 'opacity-0 -translate-x-10'
-                } ${isActive(item.href) ? 'text-blue-600' : 'text-gray-900'}`}
+                } ${isActive(item.href) ? 'text-primary' : 'text-gray-900'}`}
               >
                 {item.name}
               </Link>

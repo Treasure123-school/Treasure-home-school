@@ -440,10 +440,10 @@ function AutomationBanner({ enabled, isAdmin, isPending, onToggle }: { enabled: 
           </>
         ) : (
           <>
-            <div className="flex items-start gap-2"><Info className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" /><span className="text-muted-foreground">Use <strong className="text-foreground">Set as Current</strong> on a session to make it active</span></div>
-            <div className="flex items-start gap-2"><Info className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" /><span className="text-muted-foreground">Use <strong className="text-foreground">Set as Current</strong> on a term to make it active</span></div>
-            <div className="flex items-start gap-2"><Info className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" /><span className="text-muted-foreground">Use <strong className="text-foreground">Deactivate</strong> to clear the active state</span></div>
-            <div className="flex items-start gap-2"><Info className="h-3.5 w-3.5 text-blue-500 shrink-0 mt-0.5" /><span className="text-muted-foreground">No automatic transitions will occur until re-enabled</span></div>
+            <div className="flex items-start gap-2"><Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" /><span className="text-muted-foreground">Use <strong className="text-foreground">Set as Current</strong> on a session to make it active</span></div>
+            <div className="flex items-start gap-2"><Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" /><span className="text-muted-foreground">Use <strong className="text-foreground">Set as Current</strong> on a term to make it active</span></div>
+            <div className="flex items-start gap-2"><Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" /><span className="text-muted-foreground">Use <strong className="text-foreground">Deactivate</strong> to clear the active state</span></div>
+            <div className="flex items-start gap-2"><Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" /><span className="text-muted-foreground">No automatic transitions will occur until re-enabled</span></div>
           </>
         )}
       </div>
@@ -538,7 +538,7 @@ function SessionsTable({ sessions, isAdmin, getStatus, termsBySession, getTermSt
                             </DropdownMenuItem>
                           ) : (
                             <DropdownMenuItem onClick={() => onUnarchive(s.id)} data-testid={`btn-session-unarchive-${s.id}`}>
-                              <Eye className="h-4 w-4 mr-2 text-blue-500" /> Unarchive
+                              <Eye className="h-4 w-4 mr-2 text-primary" /> Unarchive
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuSeparator />
@@ -625,7 +625,7 @@ function SessionsTable({ sessions, isAdmin, getStatus, termsBySession, getTermSt
                         </DropdownMenuItem>
                       ) : (
                         <DropdownMenuItem onClick={() => onUnarchive(s.id)} data-testid={`btn-session-unarchive-mob-${s.id}`}>
-                          <Eye className="h-4 w-4 mr-2 text-blue-500" /> Restore
+                          <Eye className="h-4 w-4 mr-2 text-primary" /> Restore
                         </DropdownMenuItem>
                       )}
                       <DropdownMenuSeparator />
@@ -1110,7 +1110,7 @@ export default function AcademicTermsManagement() {
           <StatCard icon={Play} label="Active Term" value={currentTerm?.name ?? '—'} sub={currentTerm ? `Ends ${fmtShort(currentTerm.endDate)}` : undefined} color="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400" />
           <StatCard icon={Layers} label="Session" value={currentSession?.year ?? (currentYear ?? '—')} sub={currentSession ? currentSession.name : currentYear ? 'No session linked' : undefined} color="bg-primary/10 text-primary" />
           <StatCard icon={ChevronRight} label="Next Term" value={upcomingTerm?.name ?? (allTerms.length > 0 ? 'None yet' : '—')} sub={upcomingTerm ? (daysToNext !== null && daysToNext >= 0 ? `in ${daysToNext}d` : fmtShort(upcomingTerm.startDate)) : (allTerms.length > 0 ? 'Add a future term' : undefined)} color="bg-amber-100 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400" />
-          <StatCard icon={CalendarDays} label="Term/Yr Start" value={currentSession ? fmtShort(currentSession.startDate) : (fallbackSessionStart ? fmtShort(fallbackSessionStart) : '—')} sub={currentSession ? undefined : (fallbackSessionStart ? currentYear ?? undefined : undefined)} color="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400" />
+          <StatCard icon={CalendarDays} label="Term/Yr Start" value={currentSession ? fmtShort(currentSession.startDate) : (fallbackSessionStart ? fmtShort(fallbackSessionStart) : '—')} sub={currentSession ? undefined : (fallbackSessionStart ? currentYear ?? undefined : undefined)} color="bg-primary/10 dark:bg-primary/5 text-primary dark:text-primary/70" />
           <StatCard icon={Target} label="Term/Yr End" value={currentSession ? fmtShort(currentSession.endDate) : (fallbackSessionEnd ? fmtShort(fallbackSessionEnd) : '—')} sub={currentSession ? undefined : (fallbackSessionEnd ? currentYear ?? undefined : undefined)} color="bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400" />
           <StatCard icon={Zap} label="Records" value={`${allSessions.length}S · ${allTerms.length}T`} sub={`${allSessions.length} session${allSessions.length !== 1 ? 's' : ''}, ${allTerms.length} term${allTerms.length !== 1 ? 's' : ''}`} color="bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400" />
         </>}
@@ -1144,11 +1144,11 @@ export default function AcademicTermsManagement() {
         </div>
       )}
       {!isLoading && !autoDetect && isAdmin && !currentSession && !currentTerm && allSessions.length > 0 && (
-        <div className="flex items-start gap-3 p-3.5 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10 text-sm" data-testid="info-manual-mode-no-active">
-          <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 p-3.5 rounded-xl border border-primary/30 dark:border-primary/30 bg-primary/5 dark:bg-primary/5 text-sm" data-testid="info-manual-mode-no-active">
+          <Info className="h-4 w-4 text-primary dark:text-primary/70 shrink-0 mt-0.5" />
           <div>
-            <p className="font-semibold text-blue-800 dark:text-blue-300">Manual mode — no active session or term</p>
-            <p className="text-xs text-blue-700 dark:text-blue-400 mt-0.5">Use <strong>Set as Current</strong> on a session and term below to activate them for the portal.</p>
+            <p className="font-semibold text-primary dark:text-primary/60">Manual mode — no active session or term</p>
+            <p className="text-xs text-primary dark:text-primary/70 mt-0.5">Use <strong>Set as Current</strong> on a session and term below to activate them for the portal.</p>
           </div>
         </div>
       )}

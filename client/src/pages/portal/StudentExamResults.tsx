@@ -218,7 +218,7 @@ export default function StudentExamResults() {
   const getPerformanceLevel = (percentage: number) => {
     if (percentage >= 90) return { label: 'Outstanding', color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-900/30' };
     if (percentage >= 80) return { label: 'Excellent', color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-100 dark:bg-green-900/30' };
-    if (percentage >= 70) return { label: 'Very Good', color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-900/30' };
+    if (percentage >= 70) return { label: 'Very Good', color: 'text-primary dark:text-primary/70', bgColor: 'bg-primary/10 dark:bg-primary/5' };
     if (percentage >= 60) return { label: 'Good', color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-100 dark:bg-yellow-900/30' };
     if (percentage >= 50) return { label: 'Fair', color: 'text-orange-600 dark:text-orange-400', bgColor: 'bg-orange-100 dark:bg-orange-900/30' };
     return { label: 'Needs Improvement', color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-900/30' };
@@ -255,7 +255,7 @@ export default function StudentExamResults() {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center space-y-4">
-          <Loader className="w-12 h-12 animate-spin mx-auto text-blue-600" />
+          <Loader className="w-12 h-12 animate-spin mx-auto text-primary" />
           <p className="text-gray-600 dark:text-gray-400">
             {specificExamId ? 'Loading exam score...' : 'Loading your exam results...'}
           </p>
@@ -351,7 +351,7 @@ export default function StudentExamResults() {
           <Card className="bg-white dark:bg-gray-800 shadow-lg" data-testid="card-score-overview">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Target className="w-5 h-5 text-blue-600" />
+                <Target className="w-5 h-5 text-primary" />
                 Score Overview
               </CardTitle>
             </CardHeader>
@@ -404,7 +404,7 @@ export default function StudentExamResults() {
           <Card className="bg-white dark:bg-gray-800 shadow-lg" data-testid="card-detailed-stats">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-blue-600" />
+                <BarChart3 className="w-5 h-5 text-primary" />
                 Detailed Statistics
               </CardTitle>
             </CardHeader>
@@ -447,14 +447,14 @@ export default function StudentExamResults() {
                 </span>
               </div>
 
-              <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <div className="flex items-center justify-between p-3 bg-primary/5 dark:bg-primary/5 rounded-lg">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/40 rounded-full flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-blue-600" />
+                  <div className="w-10 h-10 bg-primary/10 dark:bg-primary/5 rounded-full flex items-center justify-center">
+                    <FileText className="w-5 h-5 text-primary" />
                   </div>
-                  <span className="font-medium text-blue-700 dark:text-blue-300">Total Questions</span>
+                  <span className="font-medium text-primary dark:text-primary/60">Total Questions</span>
                 </div>
-                <span className="text-xl font-bold text-blue-600" data-testid="value-total">
+                <span className="text-xl font-bold text-primary" data-testid="value-total">
                   {result.questionDetails ? result.questionDetails.length : (result.total_questions ?? result.breakdown?.totalQuestions ?? 0)}
                 </span>
               </div>
@@ -503,7 +503,7 @@ export default function StudentExamResults() {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-blue-600" />
+                  <FileText className="w-5 h-5 text-primary" />
                   Question-by-Question Breakdown
                 </div>
                 <Badge variant="outline">
@@ -568,9 +568,9 @@ export default function StudentExamResults() {
                           </div>
                           
                           {question.isCorrect !== true && (
-                            <div className="p-2 rounded border bg-blue-50/50 border-blue-100 dark:bg-blue-900/10 dark:border-blue-800">
+                            <div className="p-2 rounded border bg-primary/5 border-primary/20 dark:bg-primary/5 dark:border-primary/30">
                               <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-1 block">Correct Answer</span>
-                              <p className="text-sm text-blue-700 dark:text-blue-400 font-semibold">
+                              <p className="text-sm text-primary dark:text-primary/70 font-semibold">
                                 {question.correctAnswer || "Not available"}
                               </p>
                             </div>
@@ -603,7 +603,7 @@ export default function StudentExamResults() {
           </Button>
           <Button 
             onClick={() => setLocation('/portal/student')}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90"
             data-testid="button-go-to-dashboard"
           >
             <GraduationCap className="w-4 h-4" />

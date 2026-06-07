@@ -740,7 +740,7 @@ export default function HomepageManagement() {
                     <p className="text-sm font-medium truncate">{cfg.title}</p>
                     <div className="flex items-center gap-1 mt-0.5">
                       <StatusBadge status={status} isEnabled={enabled} />
-                      {hasDraft && enabled && <Badge className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 border-blue-200">Has draft</Badge>}
+                      {hasDraft && enabled && <Badge className="text-[10px] px-1.5 py-0.5 bg-primary/5 text-primary border-primary/30">Has draft</Badge>}
                     </div>
                   </div>
                   <Switch
@@ -771,7 +771,7 @@ export default function HomepageManagement() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <StatusBadge status={activeStatus} isEnabled={activeEnabled} />
-                    {hasDraftInDB && <Badge className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-600 border-blue-200">Has draft</Badge>}
+                    {hasDraftInDB && <Badge className="text-[10px] px-1.5 py-0.5 bg-primary/5 text-primary border-primary/30">Has draft</Badge>}
                     {activeDbSection?.updatedAt && (
                       <span className="text-xs text-muted-foreground hidden sm:block">Updated {relativeTime(activeDbSection.updatedAt)}</span>
                     )}
@@ -782,10 +782,10 @@ export default function HomepageManagement() {
 
             {/* Draft notification */}
             {hasDraftInDB && !hasLocalChanges && activeSection !== 'gallery' && (
-              <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-700">
+              <div className="flex items-center gap-3 px-4 py-3 bg-primary/5 border border-primary/30 rounded-xl text-sm text-primary">
                 <Clock className="h-4 w-4 shrink-0" />
                 <span className="flex-1">This section has a saved draft that hasn't been published yet.</span>
-                <Button size="sm" variant="outline" className="border-blue-300 text-blue-700 hover:bg-blue-100 h-8"
+                <Button size="sm" variant="outline" className="border-primary/40 text-primary hover:bg-primary/10 h-8"
                   onClick={() => {
                     const draftC = activeDbSection?.draftContent ?? {};
                     const defaults = activeCfg.defaultContent;
@@ -793,7 +793,7 @@ export default function HomepageManagement() {
                   }} data-testid="button-load-draft">
                   <FileEdit className="h-3.5 w-3.5 mr-1" /> Edit Draft
                 </Button>
-                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 h-8"
+                <Button size="sm" className="bg-primary hover:bg-primary/90 h-8"
                   onClick={() => saveMutation.mutate({ sectionKey: activeSection, action: 'publish', contentToSave: { ...activeCfg.defaultContent, ...activeDbSection?.draftContent } })}
                   disabled={saveMutation.isPending} data-testid="button-publish-draft">
                   <CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Publish Draft

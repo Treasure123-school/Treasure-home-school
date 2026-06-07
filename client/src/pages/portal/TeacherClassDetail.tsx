@@ -85,7 +85,7 @@ function OverviewTab({ classDetail }: { classDetail: ClassDetail }) {
   const totalStudents = classDetail.students.length;
 
   const quickActions = [
-    { label: 'Take Attendance', icon: ClipboardCheck, color: 'bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/30 border border-blue-200 dark:border-blue-800', href: `/portal/teacher/attendance?classId=${cls.id}` },
+    { label: 'Take Attendance', icon: ClipboardCheck, color: 'bg-primary/5 text-primary hover:bg-primary/10 dark:bg-primary/5 dark:text-primary/70 dark:hover:bg-primary/5 border border-primary/30 dark:border-primary/30', href: `/portal/teacher/attendance?classId=${cls.id}` },
     { label: 'Create Exam', icon: PenTool, color: 'bg-purple-50 text-purple-700 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-400 dark:hover:bg-purple-900/30 border border-purple-200 dark:border-purple-800', href: `/portal/teacher/exams?openCreate=true&classId=${cls.id}` },
     { label: 'Send Message', icon: MessageSquare, color: 'bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-900/20 dark:text-green-400 dark:hover:bg-green-900/30 border border-green-200 dark:border-green-800', href: '/portal/teacher/messages' },
     { label: 'Post Announcement', icon: Bell, color: 'bg-orange-50 text-orange-700 hover:bg-orange-100 dark:bg-orange-900/20 dark:text-orange-400 dark:hover:bg-orange-900/30 border border-orange-200 dark:border-orange-800', href: '/portal/teacher/announcements' },
@@ -119,7 +119,7 @@ function OverviewTab({ classDetail }: { classDetail: ClassDetail }) {
     <div className="space-y-6">
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Total Students', value: totalStudents, icon: Users, color: 'text-blue-600' },
+          { label: 'Total Students', value: totalStudents, icon: Users, color: 'text-primary' },
           { label: 'Active', value: activeStudents, icon: CheckCircle2, color: 'text-green-600' },
           { label: 'Subjects', value: classDetail.subjects.length, icon: BookOpen, color: 'text-purple-600' },
           { label: "Today's Attendance", value: `${attendancePct}%`, icon: ClipboardCheck, color: 'text-orange-600' },

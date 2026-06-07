@@ -693,7 +693,7 @@ function AcademicSettingsSection() {
       <SettingCard title="Assessment Weights" description="How CA (test) and examination scores are weighted for the final grade" icon={Percent}>
         <div className="space-y-4">
           <div className="flex justify-between text-sm font-medium">
-            <span className="text-blue-600 dark:text-blue-400">CA / Test: {testWeight}%</span>
+            <span className="text-primary dark:text-primary/70">CA / Test: {testWeight}%</span>
             <span className="text-purple-600 dark:text-purple-400">Exam: {100 - testWeight}%</span>
           </div>
           <Slider
@@ -704,8 +704,8 @@ function AcademicSettingsSection() {
             data-testid="slider-test-weight"
           />
           <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-              <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-primary/5 dark:bg-primary/5 border border-primary/30 dark:border-primary/30">
+              <div className="w-2.5 h-2.5 rounded-full bg-primary/85" />
               <span>CA Score carries <strong>{testWeight}%</strong> of total</span>
             </div>
             <div className="flex items-center gap-2 p-2.5 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
@@ -996,7 +996,7 @@ function GradingScaleSection() {
   const gradeColor = (grade: string) => {
     const g = grade.toUpperCase();
     if (g.startsWith('A')) return 'text-green-600 dark:text-green-400';
-    if (g.startsWith('B')) return 'text-blue-600 dark:text-blue-400';
+    if (g.startsWith('B')) return 'text-primary dark:text-primary/70';
     if (g.startsWith('C')) return 'text-yellow-600 dark:text-yellow-400';
     if (g.startsWith('D')) return 'text-orange-600 dark:text-orange-400';
     return 'text-red-600 dark:text-red-400';
@@ -1004,7 +1004,7 @@ function GradingScaleSection() {
   const gradeBg = (grade: string) => {
     const g = grade.toUpperCase();
     if (g.startsWith('A')) return 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800';
-    if (g.startsWith('B')) return 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800';
+    if (g.startsWith('B')) return 'bg-primary/5 dark:bg-primary/5 border-primary/30 dark:border-primary/30';
     if (g.startsWith('C')) return 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800';
     if (g.startsWith('D')) return 'bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800';
     return 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
@@ -1584,15 +1584,15 @@ function ReportCardSection() {
 function AttendanceSection() {
   return (
     <div className="space-y-4">
-      <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10">
+      <Card className="border-primary/30 dark:border-primary/30 bg-primary/5 dark:bg-primary/5">
         <CardContent className="pt-5">
           <div className="flex items-start gap-3">
-            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
-              <CalendarCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 rounded-lg bg-primary/10 dark:bg-primary/5">
+              <CalendarCheck className="w-4 h-4 text-primary dark:text-primary/70" />
             </div>
             <div>
-              <p className="font-medium text-sm text-blue-800 dark:text-blue-300">Attendance is module-managed</p>
-              <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">Attendance status types (Present, Absent, Late, Excused) are built-in. Recording permissions and visibility are controlled per-teacher via the Attendance management page.</p>
+              <p className="font-medium text-sm text-primary dark:text-primary/60">Attendance is module-managed</p>
+              <p className="text-xs text-primary dark:text-primary/70 mt-1">Attendance status types (Present, Absent, Late, Excused) are built-in. Recording permissions and visibility are controlled per-teacher via the Attendance management page.</p>
             </div>
           </div>
         </CardContent>

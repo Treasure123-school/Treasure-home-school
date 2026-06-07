@@ -104,7 +104,7 @@ export default function SuperAdminSecurityPolicies() {
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <KeyRound className="h-5 w-5 text-blue-600" />
+              <KeyRound className="h-5 w-5 text-primary" />
               Password Policy
             </CardTitle>
             <CardDescription>Set minimum requirements for user account passwords.</CardDescription>

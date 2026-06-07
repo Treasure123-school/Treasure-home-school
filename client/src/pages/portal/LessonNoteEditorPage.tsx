@@ -840,7 +840,7 @@ export default function LessonNoteEditorPage() {
             )}
 
             {isTeacher && canEdit && (
-              <Button size="sm" className="h-8 text-xs gap-1.5 rounded bg-blue-600 hover:bg-blue-700 font-semibold"
+              <Button size="sm" className="h-8 text-xs gap-1.5 rounded bg-primary hover:bg-primary/90 font-semibold"
                 onClick={() => submitMutation.mutate()} disabled={busy || isGeneratingImages}>
                 <Send className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{submitMutation.isPending ? 'Submitting…' : 'Submit'}</span>
@@ -886,7 +886,7 @@ export default function LessonNoteEditorPage() {
           </div>
         )}
         {!canEdit && isTeacher && (
-          <div className="mx-4 mb-2 flex gap-2 p-2.5 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 text-xs text-blue-700 dark:text-blue-400 rounded">
+          <div className="mx-4 mb-2 flex gap-2 p-2.5 bg-primary/5 dark:bg-primary/5 border border-primary/30 dark:border-primary/30 text-xs text-primary dark:text-primary/70 rounded">
             <Info className="h-4 w-4 shrink-0 mt-0.5" />
             <span>This note is <strong>{currentStatus}</strong> and cannot be edited.</span>
           </div>

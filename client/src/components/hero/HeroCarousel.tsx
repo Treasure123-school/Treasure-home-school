@@ -18,7 +18,7 @@ const preloadImage = (src: string): Promise<void> => {
 };
 
 const HeroSkeleton = () => (
-  <div className="relative rounded-3xl overflow-hidden shadow-2xl aspect-[4/3] bg-gradient-to-br from-blue-500/20 to-blue-600/20 backdrop-blur-sm border border-white/20">
+  <div className="relative rounded-3xl overflow-hidden shadow-2xl aspect-[4/3] bg-gradient-to-br from-primary/85/20 to-primary/20 backdrop-blur-sm border border-white/20">
     <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center space-y-6">
       <div className="space-y-3">
         <h3 className="text-3xl lg:text-4xl font-bold text-white animate-pulse">
@@ -27,7 +27,7 @@ const HeroSkeleton = () => (
         <p className="text-xl lg:text-2xl text-yellow-300 font-semibold animate-pulse" style={{ animationDelay: '0.2s' }}>
           Excellence in Education
         </p>
-        <p className="text-lg lg:text-xl text-blue-100 animate-pulse" style={{ animationDelay: '0.4s' }}>
+        <p className="text-lg lg:text-xl text-primary/30 animate-pulse" style={{ animationDelay: '0.4s' }}>
           &amp; Moral Excellence
         </p>
       </div>
@@ -152,7 +152,7 @@ export function HeroCarousel({
   return (
     <div className="relative max-w-lg mx-auto lg:max-w-none">
       <div className="relative rounded-3xl overflow-hidden shadow-2xl group">
-        <div className="relative aspect-[4/3] bg-gradient-to-br from-blue-500/20 to-blue-600/20">
+        <div className="relative aspect-[4/3] bg-gradient-to-br from-primary/85/20 to-primary/20">
           {/* Current image - always visible */}
           {currentImage?.imageUrl && (
             <img

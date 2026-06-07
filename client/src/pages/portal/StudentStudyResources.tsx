@@ -53,7 +53,7 @@ function StudentStudyResourcesContent({ user }: { user: any }) {
   const getResourceIcon = (type: string) => {
     switch (type) {
       case 'past_paper':
-        return <FileText className="h-5 w-5 text-blue-600" />;
+        return <FileText className="h-5 w-5 text-primary" />;
       case 'study_guide':
         return <BookOpen className="h-5 w-5 text-green-600" />;
       case 'notes':
@@ -68,7 +68,7 @@ function StudentStudyResourcesContent({ user }: { user: any }) {
   const getResourceColor = (type: string) => {
     switch (type) {
       case 'past_paper':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-primary/10 text-primary';
       case 'study_guide':
         return 'bg-green-100 text-green-800';
       case 'notes':

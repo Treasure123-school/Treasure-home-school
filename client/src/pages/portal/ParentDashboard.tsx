@@ -53,7 +53,7 @@ interface Announcement {
 
 function gradeColor(percentage: number) {
   if (percentage >= 80) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-  if (percentage >= 65) return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+  if (percentage >= 65) return 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/50';
   if (percentage >= 50) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
   return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
 }
@@ -153,8 +153,8 @@ export default function ParentDashboard() {
       description: 'View student profiles',
       icon: Users,
       href: '/portal/parent/children',
-      gradient: 'from-blue-500 to-indigo-600',
-      bgGradient: 'from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/20',
+      gradient: 'from-primary/85 to-indigo-600',
+      bgGradient: 'from-primary/5 to-indigo-50 dark:from-primary/5 dark:to-indigo-950/20',
     },
     {
       title: 'Report Cards',
@@ -199,11 +199,11 @@ export default function ParentDashboard() {
 
       {/* Child Selector */}
       {children.length > 0 && (
-        <Card className="border-2 border-blue-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/30">
+        <Card className="border-2 border-primary/30 dark:border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10 dark:from-primary/5 dark:to-primary/5">
           <CardContent className="p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="bg-blue-600 p-3 rounded-xl flex-shrink-0">
+                <div className="bg-primary p-3 rounded-xl flex-shrink-0">
                   <GraduationCap className="h-6 w-6 text-white" />
                 </div>
                 <div>
@@ -215,7 +215,7 @@ export default function ParentDashboard() {
               </div>
               {children.length > 1 && (
                 <Select value={selectedChildId} onValueChange={setSelectedChildId} data-testid="select-child">
-                  <SelectTrigger className="w-full sm:w-[260px] bg-white dark:bg-gray-900 border-2 border-blue-300 dark:border-blue-700">
+                  <SelectTrigger className="w-full sm:w-[260px] bg-white dark:bg-gray-900 border-2 border-primary/40 dark:border-primary/70">
                     <SelectValue placeholder="Select a child" />
                   </SelectTrigger>
                   <SelectContent>
@@ -251,12 +251,12 @@ export default function ParentDashboard() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="overflow-hidden border-none shadow-lg" data-testid="stat-children">
-          <div className="bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 p-5 text-white">
+          <div className="bg-gradient-to-br from-primary/85 via-primary to-indigo-600 p-5 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-blue-100 text-xs font-medium">Children</p>
+                <p className="text-primary/30 text-xs font-medium">Children</p>
                 <AnimatedCounter value={children.length} className="text-3xl font-bold mt-1" />
-                <p className="text-blue-100 text-xs mt-1">Enrolled</p>
+                <p className="text-primary/30 text-xs mt-1">Enrolled</p>
               </div>
               <div className="p-2.5 bg-white/20 rounded-xl"><Users className="h-7 w-7 text-white" /></div>
             </div>

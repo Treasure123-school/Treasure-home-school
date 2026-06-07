@@ -149,13 +149,13 @@ export default function Contact() {
                     info.color === 'primary' ? 'bg-primary/10' :
                     info.color === 'secondary' ? 'bg-secondary/10' :
                     info.color === 'green' ? 'bg-green-100' :
-                    'bg-blue-100'
+                    'bg-primary/10'
                   }`}>
                     <info.icon className={`${
                       info.color === 'primary' ? 'text-primary' :
                       info.color === 'secondary' ? 'text-secondary' :
                       info.color === 'green' ? 'text-green-600' :
-                      'text-blue-600'
+                      'text-primary'
                     } w-8 h-8`} />
                   </div>
                   <h3 className="font-semibold mb-2" data-testid={`text-contact-info-title-${index}`}>

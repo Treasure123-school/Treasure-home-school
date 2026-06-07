@@ -1296,20 +1296,20 @@ export default function AdminResultPublishing() {
         <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
           {/* Bulk export progress banner */}
           {isBulkExporting && (
-            <div className="flex items-center gap-3 mb-4 p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-md" data-testid="bulk-export-progress">
-              <Loader2 className="w-4 h-4 animate-spin text-blue-600 shrink-0" />
+            <div className="flex items-center gap-3 mb-4 p-3 bg-primary/5 dark:bg-primary/5 border border-primary/30 dark:border-primary/30 rounded-md" data-testid="bulk-export-progress">
+              <Loader2 className="w-4 h-4 animate-spin text-primary shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-300">
+                <p className="text-xs sm:text-sm font-medium text-primary dark:text-primary/60">
                   {bulkExportType === 'pdf' ? 'Generating PDF' : bulkExportType === 'zip' ? 'Building ZIP' : 'Preparing Print'}… {bulkExportProgress} of {bulkExportTotal} report cards
                 </p>
-                <div className="mt-1 w-full bg-blue-200 dark:bg-blue-900 rounded-full h-1.5">
+                <div className="mt-1 w-full bg-primary/20 dark:bg-primary/5 rounded-full h-1.5">
                   <div
-                    className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
+                    className="bg-primary h-1.5 rounded-full transition-all duration-300"
                     style={{ width: `${bulkExportTotal > 0 ? (bulkExportProgress / bulkExportTotal) * 100 : 0}%` }}
                   />
                 </div>
               </div>
-              <span className="text-xs text-blue-600 dark:text-blue-400 shrink-0 font-medium">
+              <span className="text-xs text-primary dark:text-primary/70 shrink-0 font-medium">
                 {bulkExportTotal > 0 ? Math.round((bulkExportProgress / bulkExportTotal) * 100) : 0}%
               </span>
             </div>

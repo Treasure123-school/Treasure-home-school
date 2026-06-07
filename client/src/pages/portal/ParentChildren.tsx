@@ -62,7 +62,7 @@ function ChildCard({ child }: { child: Child }) {
 
   return (
     <Card className="overflow-hidden border border-border hover:shadow-lg transition-all duration-300" data-testid={`child-card-${child.id}`}>
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6">
+      <div className="bg-gradient-to-r from-primary to-indigo-600 p-6">
         <div className="flex items-center gap-4">
           <Avatar className="h-16 w-16 border-2 border-white/30">
             <AvatarImage src={child.profileImageUrl ?? undefined} />
@@ -74,7 +74,7 @@ function ChildCard({ child }: { child: Child }) {
             <h3 className="text-xl font-bold text-white" data-testid={`text-child-name-${child.id}`}>
               {child.firstName} {child.lastName}
             </h3>
-            <p className="text-blue-100 text-sm">{child.email}</p>
+            <p className="text-primary/30 text-sm">{child.email}</p>
           </div>
         </div>
       </div>
@@ -134,7 +134,7 @@ function ChildCard({ child }: { child: Child }) {
               { label: 'Present', value: attendance.summary.present, icon: CheckCircle, color: 'text-green-600' },
               { label: 'Absent', value: attendance.summary.absent, icon: XCircle, color: 'text-red-500' },
               { label: 'Late', value: attendance.summary.late, icon: Clock, color: 'text-yellow-600' },
-              { label: 'Excused', value: attendance.summary.excused, icon: AlertCircle, color: 'text-blue-500' },
+              { label: 'Excused', value: attendance.summary.excused, icon: AlertCircle, color: 'text-primary' },
             ].map(({ label, value, icon: Icon, color }) => (
               <div key={label} className="bg-muted/30 rounded p-2">
                 <Icon className={`h-4 w-4 mx-auto mb-1 ${color}`} />

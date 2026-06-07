@@ -60,7 +60,7 @@ export function ExamHeader({
             </div>
             
             <div className="flex flex-col min-w-0">
-              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-[#0000FF] dark:text-blue-400 tracking-tight leading-none truncate mb-2">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-[#0000FF] dark:text-primary/70 tracking-tight leading-none truncate mb-2">
                 {schoolName}
               </h1>
               <div className="grid grid-cols-1 gap-x-4 gap-y-0.5 text-xs sm:text-sm font-medium overflow-hidden">
@@ -106,7 +106,7 @@ export function ExamHeader({
       {/* Animated Progress Line */}
       <div className="absolute bottom-0 left-0 w-full h-0.5 bg-slate-100 dark:bg-slate-800 overflow-hidden">
         <div 
-          className="h-full bg-[#0000FF] dark:bg-blue-500 transition-all duration-500 ease-out shadow-[0_0_8px_rgba(0,0,255,0.4)]"
+          className="h-full bg-[#0000FF] dark:bg-primary/85 transition-all duration-500 ease-out shadow-[0_0_8px_rgba(0,0,255,0.4)]"
           style={{ width: `${(currentQuestion / totalQuestions) * 100}%` }}
         />
       </div>

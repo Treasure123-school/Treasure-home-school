@@ -99,7 +99,7 @@ export default function ExamReports() {
   const getGradeColor = (grade: string) => {
     const colors = {
       'A': 'text-green-600',
-      'B': 'text-blue-600',
+      'B': 'text-primary',
       'C': 'text-yellow-600',
       'D': 'text-orange-600',
       'F': 'text-red-600'
@@ -181,7 +181,7 @@ export default function ExamReports() {
                   <p className="text-sm font-medium text-muted-foreground">Total Exams</p>
                   <p className="text-2xl font-bold">{totalExams}</p>
                 </div>
-                <FileText className="h-8 w-8 text-blue-600" />
+                <FileText className="h-8 w-8 text-primary" />
               </div>
             </CardContent>
           </Card>

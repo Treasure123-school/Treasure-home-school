@@ -216,7 +216,7 @@ export default function SuperAdminSettings() {
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5 text-blue-600" />
+              <Building2 className="h-5 w-5 text-primary" />
               School Information
             </CardTitle>
             <CardDescription>Fundamental details about the educational institution.</CardDescription>
@@ -504,10 +504,10 @@ export default function SuperAdminSettings() {
         </Card>
 
         {/* 5. DESIGNATE PRINCIPAL */}
-        <Card className="shadow-sm border-blue-100 dark:border-blue-900">
+        <Card className="shadow-sm border-primary/20 dark:border-primary/30">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <UserCheck className="h-5 w-5 text-blue-600" />
+              <UserCheck className="h-5 w-5 text-primary" />
               Designate School Principal
             </CardTitle>
             <CardDescription>

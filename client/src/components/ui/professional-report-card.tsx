@@ -662,9 +662,9 @@ export function ProfessionalReportCard({
                 {classStats.lowestScore}%
               </p>
             </div>
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-2 sm:p-3 rounded-md text-center">
+            <div className="bg-primary/5 dark:bg-primary/5 p-2 sm:p-3 rounded-md text-center">
               <p className="text-xs text-muted-foreground">Class Average</p>
-              <p className="text-lg sm:text-xl font-bold text-blue-600" data-testid="text-class-average">
+              <p className="text-lg sm:text-xl font-bold text-primary" data-testid="text-class-average">
                 {classStats.classAverage}%
               </p>
             </div>
@@ -847,9 +847,9 @@ export function ProfessionalReportCard({
                   <p className="text-xs text-muted-foreground">Days Absent</p>
                   <p className="text-xl font-bold text-red-600">{attendance.timesAbsent}</p>
                 </div>
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md text-center">
+                <div className="bg-primary/5 dark:bg-primary/5 p-3 rounded-md text-center">
                   <p className="text-xs text-muted-foreground">Attendance %</p>
-                  <p className="text-xl font-bold text-blue-600">{attendance.attendancePercentage}%</p>
+                  <p className="text-xl font-bold text-primary">{attendance.attendancePercentage}%</p>
                 </div>
               </div>
             </CardContent>

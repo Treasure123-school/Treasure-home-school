@@ -882,7 +882,7 @@ export default function ParentManagement() {
         <DialogContent className="sm:max-w-md rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
-              <Edit2 className="h-4 w-4 text-blue-600" />
+              <Edit2 className="h-4 w-4 text-primary" />
               Edit Parent
             </DialogTitle>
           </DialogHeader>
@@ -966,7 +966,7 @@ export default function ParentManagement() {
               <Button
                 onClick={handleUpdate}
                 disabled={updateMutation.isPending}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white rounded-xl"
+                className="flex-1 bg-primary hover:bg-primary/90 text-white rounded-xl"
                 data-testid="button-save-edit"
               >
                 {updateMutation.isPending ? 'Saving...' : 'Save Changes'}

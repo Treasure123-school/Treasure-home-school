@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 const EVENT_TYPES = [
-  { value: 'event', label: 'General Event', color: '#3b82f6', bg: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
+  { value: 'event', label: 'General Event', color: '#3b82f6', bg: 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/60' },
   { value: 'exam', label: 'Exam', color: '#ef4444', bg: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' },
   { value: 'holiday', label: 'Holiday', color: '#22c55e', bg: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
   { value: 'sports', label: 'Sports', color: '#f97316', bg: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' },

@@ -35,7 +35,7 @@ export default function PortalComingSoon() {
             </h4>
             <ul className="space-y-3">
               <li className="flex items-start gap-3 text-sm text-muted-foreground">
-                <Rocket className="h-4 w-4 mt-0.5 text-blue-500 flex-shrink-0" />
+                <Rocket className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
                 <span>A fully functional module designed with your needs in mind</span>
               </li>
               <li className="flex items-start gap-3 text-sm text-muted-foreground">

@@ -34,13 +34,13 @@ const DEPARTMENTS = ['science', 'art', 'commercial'] as const;
 
 const CATEGORY_CONFIG = {
   general: { label: 'General', icon: BookMarked, color: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300', description: 'Core subjects for all students' },
-  science: { label: 'Science', icon: GraduationCap, color: 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300', description: 'Science department subjects' },
+  science: { label: 'Science', icon: GraduationCap, color: 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/60', description: 'Science department subjects' },
   art: { label: 'Art', icon: Palette, color: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300', description: 'Art department subjects' },
   commercial: { label: 'Commercial', icon: Briefcase, color: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300', description: 'Commercial department subjects' },
 };
 
 const DEPARTMENT_CONFIG = {
-  science: { label: 'Science Department', icon: GraduationCap, color: 'bg-blue-500', bgLight: 'bg-blue-50 dark:bg-blue-950' },
+  science: { label: 'Science Department', icon: GraduationCap, color: 'bg-primary/85', bgLight: 'bg-primary/5 dark:bg-primary/5' },
   art: { label: 'Art Department', icon: Palette, color: 'bg-purple-500', bgLight: 'bg-purple-50 dark:bg-purple-950' },
   commercial: { label: 'Commercial Department', icon: Briefcase, color: 'bg-amber-500', bgLight: 'bg-amber-50 dark:bg-amber-950' },
 };
@@ -778,13 +778,13 @@ export default function UnifiedSubjectAssignment() {
 
       {/* Info Banner — dismissible */}
       {!infoDismissed && (
-        <div className="flex items-start gap-3 p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/40">
-          <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center mt-0.5">
-            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        <div className="flex items-start gap-3 p-4 rounded-xl border border-primary/30 dark:border-primary/30 bg-primary/5 dark:bg-primary/5">
+          <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-primary/10 dark:bg-primary/5 flex items-center justify-center mt-0.5">
+            <Info className="h-4 w-4 text-primary dark:text-primary/70" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">How this page works</p>
-            <p className="text-sm text-blue-700 dark:text-blue-300 mt-0.5">
+            <p className="text-sm font-semibold text-primary dark:text-primary/50">How this page works</p>
+            <p className="text-sm text-primary dark:text-primary/60 mt-0.5">
               Use this page to control which subjects appear for each class and department. 
               Changes here affect report cards, exams, student portals, and teacher assignments — all at once.
             </p>
@@ -792,7 +792,7 @@ export default function UnifiedSubjectAssignment() {
           <button
             onClick={dismissInfo}
             aria-label="Dismiss"
-            className="flex-shrink-0 mt-0.5 p-1 rounded-lg text-blue-400 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/60 transition-colors"
+            className="flex-shrink-0 mt-0.5 p-1 rounded-lg text-primary/70 hover:text-primary hover:bg-primary/10 dark:hover:bg-primary/5 transition-colors"
             data-testid="button-dismiss-info"
           >
             <X className="w-4 h-4" />
@@ -900,7 +900,7 @@ export default function UnifiedSubjectAssignment() {
                           <ScrollArea className="h-auto max-h-[420px]">
                             <div className="space-y-5 pr-2">
                               {renderSubjectCategory('General Subjects', generalSubjects, cls.id, null, <BookMarked className="w-4 h-4 text-slate-500" />)}
-                              {renderSubjectCategory('Science Subjects', scienceSubjects, cls.id, null, <GraduationCap className="w-4 h-4 text-blue-500" />)}
+                              {renderSubjectCategory('Science Subjects', scienceSubjects, cls.id, null, <GraduationCap className="w-4 h-4 text-primary" />)}
                               {renderSubjectCategory('Art Subjects', artSubjects, cls.id, null, <Palette className="w-4 h-4 text-purple-500" />)}
                               {renderSubjectCategory('Commercial Subjects', commercialSubjects, cls.id, null, <Briefcase className="w-4 h-4 text-amber-500" />)}
                             </div>
@@ -967,22 +967,22 @@ export default function UnifiedSubjectAssignment() {
                       <TabsContent key={dept} value={dept} className="space-y-4 mt-0">
                         {/* Quick Actions for this dept */}
                         <div className={`rounded-xl border overflow-hidden
-                          ${dept === 'science' ? 'border-blue-200 dark:border-blue-800' : ''}
+                          ${dept === 'science' ? 'border-primary/30 dark:border-primary/30' : ''}
                           ${dept === 'art' ? 'border-purple-200 dark:border-purple-800' : ''}
                           ${dept === 'commercial' ? 'border-amber-200 dark:border-amber-800' : ''}
                         `}>
                           <div className={`flex items-center gap-2 px-4 py-3 border-b
-                            ${dept === 'science' ? 'bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800' : ''}
+                            ${dept === 'science' ? 'bg-primary/5 dark:bg-primary/5 border-primary/30 dark:border-primary/30' : ''}
                             ${dept === 'art' ? 'bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800' : ''}
                             ${dept === 'commercial' ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800' : ''}
                           `}>
                             <Icon className={`w-4 h-4
-                              ${dept === 'science' ? 'text-blue-600 dark:text-blue-400' : ''}
+                              ${dept === 'science' ? 'text-primary dark:text-primary/70' : ''}
                               ${dept === 'art' ? 'text-purple-600 dark:text-purple-400' : ''}
                               ${dept === 'commercial' ? 'text-amber-600 dark:text-amber-400' : ''}
                             `} />
                             <span className={`text-sm font-semibold
-                              ${dept === 'science' ? 'text-blue-800 dark:text-blue-200' : ''}
+                              ${dept === 'science' ? 'text-primary dark:text-primary/50' : ''}
                               ${dept === 'art' ? 'text-purple-800 dark:text-purple-200' : ''}
                               ${dept === 'commercial' ? 'text-amber-800 dark:text-amber-200' : ''}
                             `}>
@@ -1067,7 +1067,7 @@ export default function UnifiedSubjectAssignment() {
                                 >
                                   <div className="flex items-center gap-3">
                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold
-                                      ${dept === 'science' ? 'bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300' : ''}
+                                      ${dept === 'science' ? 'bg-primary/10 dark:bg-primary/5 text-primary dark:text-primary/60' : ''}
                                       ${dept === 'art' ? 'bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300' : ''}
                                       ${dept === 'commercial' ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300' : ''}
                                     `}>
@@ -1086,7 +1086,7 @@ export default function UnifiedSubjectAssignment() {
                                   <ScrollArea className="h-auto max-h-[420px]">
                                     <div className="space-y-5 pr-2">
                                       {renderSubjectCategory('General Subjects', generalSubjects, cls.id, dept, <BookMarked className="w-4 h-4 text-slate-500" />)}
-                                      {renderSubjectCategory(`${config.label} Subjects`, deptSubjects, cls.id, dept, <Icon className={`w-4 h-4 ${dept === 'science' ? 'text-blue-500' : dept === 'art' ? 'text-purple-500' : 'text-amber-500'}`} />)}
+                                      {renderSubjectCategory(`${config.label} Subjects`, deptSubjects, cls.id, dept, <Icon className={`w-4 h-4 ${dept === 'science' ? 'text-primary' : dept === 'art' ? 'text-purple-500' : 'text-amber-500'}`} />)}
                                     </div>
                                   </ScrollArea>
                                 </AccordionContent>

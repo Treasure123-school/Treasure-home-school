@@ -105,7 +105,7 @@ function StepIndicator({ currentStep, totalSteps }: StepIndicatorProps) {
                   transition={{ duration: 0.3 }}
                   className={`
                     w-12 h-12 rounded-full flex items-center justify-center
-                    ${isCompleted ? 'bg-green-500 text-white' : isCurrent ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}
+                    ${isCompleted ? 'bg-green-500 text-white' : isCurrent ? 'bg-primary/85 text-white' : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500'}
                     transition-all duration-300 shadow-lg
                   `}
                   data-testid={`step-indicator-${step.id}`}
@@ -117,7 +117,7 @@ function StepIndicator({ currentStep, totalSteps }: StepIndicatorProps) {
                   )}
                 </motion.div>
                 <div className="mt-2 text-center">
-                  <p className={`text-xs font-medium ${isCurrent ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>
+                  <p className={`text-xs font-medium ${isCurrent ? 'text-primary dark:text-primary/70' : 'text-gray-500 dark:text-gray-400'}`}>
                     Step {step.id}
                   </p>
                   <p className={`text-xs ${isCurrent ? 'text-gray-900 dark:text-white font-semibold' : 'text-gray-600 dark:text-gray-400'} hidden sm:block`}>
@@ -406,9 +406,9 @@ export default function CreateExam() {
             transition={{ duration: 0.3 }}
           >
             <Card className="shadow-2xl rounded-2xl border-border">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-t-2xl">
+              <CardHeader className="bg-gradient-to-r from-primary/5 to-indigo-50 dark:from-primary/5 dark:to-indigo-900/10 rounded-t-2xl">
                 <CardTitle className="text-2xl flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-500 text-white">
+                  <div className="p-2 rounded-lg bg-primary/85 text-white">
                     <FileText className="w-6 h-6" />
                   </div>
                   Exam Details
@@ -707,7 +707,7 @@ export default function CreateExam() {
                               <SelectItem key={term.id} value={term.id.toString()}>
                                 {term.name} ({term.year})
                                 {term.isCurrent && (
-                                  <span className="ml-2 text-xs bg-blue-500 text-white px-2 py-0.5 rounded">
+                                  <span className="ml-2 text-xs bg-primary/85 text-white px-2 py-0.5 rounded">
                                     Current
                                   </span>
                                 )}
@@ -781,7 +781,7 @@ export default function CreateExam() {
                         >
                           <div className={`
                             flex items-start space-x-3 p-4 rounded-lg border-2 transition-all cursor-pointer
-                            ${field.value === 'individual' ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}
+                            ${field.value === 'individual' ? 'border-primary bg-primary/5 dark:bg-primary/5' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}
                           `}>
                             <RadioGroupItem value="individual" id="timer-individual" data-testid="radio-timer-individual" />
                             <div className="flex-1">
@@ -797,7 +797,7 @@ export default function CreateExam() {
 
                           <div className={`
                             flex items-start space-x-3 p-4 rounded-lg border-2 transition-all cursor-pointer
-                            ${field.value === 'global' ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}
+                            ${field.value === 'global' ? 'border-primary bg-primary/5 dark:bg-primary/5' : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'}
                           `}>
                             <RadioGroupItem value="global" id="timer-global" data-testid="radio-timer-global" />
                             <div className="flex-1">
@@ -842,7 +842,7 @@ export default function CreateExam() {
               <CardContent className="pt-6 space-y-6">
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <Settings className="w-5 h-5 text-blue-600" />
+                    <Settings className="w-5 h-5 text-primary" />
                     Publishing Options
                   </h3>
                   
@@ -1135,7 +1135,7 @@ export default function CreateExam() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-4xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-primary/85 to-indigo-600 shadow-lg">
                   <GraduationCap className="w-10 h-10 text-white" />
                 </div>
                 Create New Exam
@@ -1209,7 +1209,7 @@ export default function CreateExam() {
                       type="submit"
                       disabled={createExamMutation.isPending}
                       data-testid="button-create-exam"
-                      className="h-12 min-w-[180px] bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700"
+                      className="h-12 min-w-[180px] bg-gradient-to-r from-primary/85 to-indigo-600 hover:from-primary hover:to-indigo-700"
                     >
                       {createExamMutation.isPending ? (
                         <>

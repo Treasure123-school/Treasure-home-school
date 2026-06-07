@@ -66,7 +66,7 @@ function SummaryCards({
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
       {[
-        { label: 'Total Days', value: total, icon: BookOpen, color: 'text-blue-600' },
+        { label: 'Total Days', value: total, icon: BookOpen, color: 'text-primary' },
         { label: 'Present', value: present, icon: CheckCircle2, color: 'text-green-600' },
         { label: 'Absent', value: absent, icon: XCircle, color: 'text-red-500' },
         { label: 'Late / Excused', value: late + excused, icon: Clock, color: 'text-orange-500' },
@@ -325,7 +325,7 @@ export default function StudentAttendance() {
                   { dot: 'bg-green-500', label: 'Present' },
                   { dot: 'bg-red-500', label: 'Absent' },
                   { dot: 'bg-orange-500', label: 'Late' },
-                  { dot: 'bg-blue-400', label: 'Excused' },
+                  { dot: 'bg-primary/70', label: 'Excused' },
                   { dot: 'bg-muted-foreground/30', label: 'No Record' },
                 ].map(({ dot, label }) => (
                   <div key={label} className="flex items-center gap-1.5">
@@ -463,7 +463,7 @@ export default function StudentAttendance() {
                   { label: 'Present', value: stats.present, color: 'text-green-600' },
                   { label: 'Absent', value: stats.absent, color: 'text-red-500' },
                   { label: 'Late', value: stats.late, color: 'text-orange-500' },
-                  { label: 'Excused', value: stats.excused, color: 'text-blue-500' },
+                  { label: 'Excused', value: stats.excused, color: 'text-primary' },
                 ].map(s => (
                   <span key={s.label} className={`text-xs font-semibold ${s.color}`}>
                     {s.label}: {s.value}

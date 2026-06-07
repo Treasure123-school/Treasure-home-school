@@ -95,7 +95,7 @@ export default function StudentAnnouncements() {
   return (
     <div className="space-y-6">
       {/* Hero header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-700 p-6 text-white shadow-lg">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-indigo-700 p-6 text-white shadow-lg">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute -top-8 -right-8 w-48 h-48 rounded-full bg-white" />
           <div className="absolute -bottom-12 -left-6 w-36 h-36 rounded-full bg-white" />
@@ -103,15 +103,15 @@ export default function StudentAnnouncements() {
         <div className="relative flex items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Megaphone className="h-5 w-5 text-blue-200" />
-              <span className="text-blue-200 text-sm font-medium uppercase tracking-widest">School Board</span>
+              <Megaphone className="h-5 w-5 text-primary/50" />
+              <span className="text-primary/50 text-sm font-medium uppercase tracking-widest">School Board</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold mb-1">Announcements</h1>
-            <p className="text-blue-200 text-sm">Stay informed with the latest school news and updates</p>
+            <p className="text-primary/50 text-sm">Stay informed with the latest school news and updates</p>
           </div>
           <div className="flex-shrink-0 hidden sm:flex flex-col items-end gap-1">
             <div className="text-4xl font-black">{counts.all}</div>
-            <div className="text-blue-200 text-xs font-medium">total posts</div>
+            <div className="text-primary/50 text-xs font-medium">total posts</div>
           </div>
         </div>
       </div>
@@ -169,8 +169,8 @@ export default function StudentAnnouncements() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 p-12 text-center">
-          <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Megaphone className="h-8 w-8 text-blue-400" />
+          <div className="w-16 h-16 bg-primary/5 dark:bg-primary/5 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Megaphone className="h-8 w-8 text-primary/70" />
           </div>
           <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">
             {searchTerm ? 'No matching announcements' : 'No announcements yet'}
@@ -239,7 +239,7 @@ export default function StudentAnnouncements() {
                   {isLong && (
                     <button
                       onClick={() => toggleExpand(announcement.id)}
-                      className="mt-2 flex items-center gap-1 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors"
+                      className="mt-2 flex items-center gap-1 text-xs font-semibold text-primary dark:text-primary/70 hover:text-primary dark:hover:text-primary/60 transition-colors"
                       data-testid={`button-expand-${announcement.id}`}
                     >
                       {isExpanded ? (

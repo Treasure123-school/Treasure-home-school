@@ -90,7 +90,7 @@ export default function SuperAdminRolesPermissions() {
               {roles.map((role) => (
                 <Card 
                   key={role.id} 
-                  className={`cursor-pointer transition-all hover:border-blue-300 dark:hover:border-blue-900 shadow-sm ${role.id === 1 ? 'border-blue-500 ring-1 ring-blue-500/20' : ''}`}
+                  className={`cursor-pointer transition-all hover:border-primary/40 dark:hover:border-primary/30 shadow-sm ${role.id === 1 ? 'border-primary ring-1 ring-primary/20' : ''}`}
                 >
                   <CardContent className="p-4">
                     <div className="flex justify-between items-start">
@@ -132,13 +132,13 @@ export default function SuperAdminRolesPermissions() {
                 {permissionGroups.map((group) => (
                   <div key={group.title} className="space-y-4">
                     <div className="flex items-center gap-2 border-b pb-2">
-                      <group.icon className="h-5 w-5 text-blue-600" />
+                      <group.icon className="h-5 w-5 text-primary" />
                       <h3 className="font-bold text-slate-900 dark:text-slate-100">{group.title}</h3>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {group.permissions.map((perm) => (
                         <div key={perm} className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors">
-                          <Checkbox id={perm} checked disabled className="data-[state=checked]:bg-blue-600" />
+                          <Checkbox id={perm} checked disabled className="data-[state=checked]:bg-primary" />
                           <Label htmlFor={perm} className="text-sm font-medium cursor-pointer flex-1">
                             {perm}
                           </Label>

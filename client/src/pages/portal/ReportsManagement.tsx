@@ -199,8 +199,8 @@ export default function ReportsManagement() {
       title: "Total Students",
       value: overviewStats?.totalStudents || 0,
       icon: Users,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
+      color: "text-primary",
+      bgColor: "bg-primary/5",
     },
     {
       title: "Total Teachers", 
@@ -244,8 +244,8 @@ export default function ReportsManagement() {
       title: "Pass Rate",
       value: performanceData?.passRate ? `${performanceData.passRate}%` : '0%',
       icon: TrendingUp,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
+      color: "text-primary",
+      bgColor: "bg-primary/5",
     },
     {
       title: "Attendance Rate",
@@ -828,8 +828,8 @@ export default function ReportsManagement() {
                       {loadingAttendance ? '-' : attendanceData?.totalRecords || 0}
                     </p>
                   </div>
-                  <div className="p-3 rounded-full bg-blue-50">
-                    <Activity className="h-6 w-6 text-blue-600" />
+                  <div className="p-3 rounded-full bg-primary/5">
+                    <Activity className="h-6 w-6 text-primary" />
                   </div>
                 </div>
               </CardContent>

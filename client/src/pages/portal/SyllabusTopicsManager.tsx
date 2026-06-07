@@ -313,7 +313,7 @@ export default function SyllabusTopicsManager() {
 
           {/* Stat Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
-            <StatCard icon={Layers} label="Total Topics" value={stats?.total} iconClass="bg-blue-50 dark:bg-blue-950/40 text-blue-600" loading={!stats} />
+            <StatCard icon={Layers} label="Total Topics" value={stats?.total} iconClass="bg-primary/5 dark:bg-primary/5 text-primary" loading={!stats} />
             <StatCard icon={Globe} label="Published" value={stats?.published} iconClass="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600" loading={!stats} />
             <StatCard icon={EyeOff} label="Drafts" value={stats?.draft} iconClass="bg-amber-50 dark:bg-amber-950/40 text-amber-600" loading={!stats} />
             <StatCard icon={BookOpen} label="Subjects" value={stats?.subjects} iconClass="bg-violet-50 dark:bg-violet-950/40 text-violet-600" loading={!stats} />

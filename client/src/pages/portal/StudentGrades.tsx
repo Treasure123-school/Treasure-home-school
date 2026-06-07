@@ -144,7 +144,7 @@ function StudentGradesContent({ user }: { user: any }) {
       {/* Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[
-          { label: 'Overall Average', value: `${overallAvg}%`, icon: TrendingUp, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/40' },
+          { label: 'Overall Average', value: `${overallAvg}%`, icon: TrendingUp, color: 'text-primary', bg: 'bg-primary/5 dark:bg-primary/5' },
           { label: 'Overall Grade', value: overallGrade, icon: Award, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-950/40' },
           { label: 'Highest Score', value: filtered.length ? `${highest}%` : '—', icon: Star, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/40' },
           { label: 'Subjects', value: subjectCount, icon: BookOpen, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/40' },
@@ -269,8 +269,8 @@ function StudentGradesContent({ user }: { user: any }) {
                   data-testid={`expand-subject-${subject}`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center">
-                      <BookOpen className="h-4 w-4 text-blue-600" />
+                    <div className="w-9 h-9 rounded-lg bg-primary/5 dark:bg-primary/5 flex items-center justify-center">
+                      <BookOpen className="h-4 w-4 text-primary" />
                     </div>
                     <div className="text-left">
                       <p className="font-semibold text-sm text-gray-800 dark:text-gray-200">{subject}</p>
@@ -311,11 +311,11 @@ function StudentGradesContent({ user }: { user: any }) {
                       })}
 
                       {comment && (
-                        <div className="flex gap-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 mt-2">
-                          <MessageSquare className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                        <div className="flex gap-2 p-3 rounded-lg bg-primary/5 dark:bg-primary/5 border border-primary/20 dark:border-primary/30 mt-2">
+                          <MessageSquare className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
                           <div>
-                            <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 mb-0.5">Teacher's Comment{teacher ? ` · ${teacher}` : ''}</p>
-                            <p className="text-xs text-blue-800 dark:text-blue-200">{comment}</p>
+                            <p className="text-xs font-semibold text-primary dark:text-primary/60 mb-0.5">Teacher's Comment{teacher ? ` · ${teacher}` : ''}</p>
+                            <p className="text-xs text-primary dark:text-primary/50">{comment}</p>
                           </div>
                         </div>
                       )}

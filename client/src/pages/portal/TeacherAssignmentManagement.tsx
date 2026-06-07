@@ -310,7 +310,7 @@ export default function TeacherAssignmentManagement() {
       case 'created':
         return <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Created</Badge>;
       case 'updated':
-        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">Updated</Badge>;
+        return <Badge className="bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/50">Updated</Badge>;
       case 'deleted':
         return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Deleted</Badge>;
       case 'disabled':
@@ -372,8 +372,8 @@ export default function TeacherAssignmentManagement() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                  <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                <div className="p-3 bg-primary/10 dark:bg-primary/5 rounded-lg">
+                  <Users className="w-6 h-6 text-primary dark:text-primary/70" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Teachers Assigned</p>

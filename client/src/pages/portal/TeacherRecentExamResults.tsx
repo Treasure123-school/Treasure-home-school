@@ -141,7 +141,7 @@ export default function TeacherRecentExamResults() {
           <Card data-testid="card-total-exams">
             <CardHeader className="p-3 sm:p-4 pb-2">
               <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
-                <FileText className="h-4 w-4 text-blue-500" />
+                <FileText className="h-4 w-4 text-primary" />
                 Total Exams
               </CardTitle>
             </CardHeader>

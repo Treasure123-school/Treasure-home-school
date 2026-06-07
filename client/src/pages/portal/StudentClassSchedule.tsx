@@ -99,8 +99,8 @@ const STATUS_CONFIG: Record<ClassStatus, { label: string; color: string; dot: st
   },
   upcoming: {
     label: 'Upcoming',
-    color: 'text-blue-600',
-    dot: 'bg-blue-500',
+    color: 'text-primary',
+    dot: 'bg-primary/85',
     border: 'border-border',
     ring: '',
   },
@@ -114,9 +114,9 @@ const STATUS_CONFIG: Record<ClassStatus, { label: string; color: string; dot: st
 };
 
 const SUBJECT_COLORS = [
-  'from-violet-500 to-purple-600', 'from-blue-500 to-cyan-600',
+  'from-violet-500 to-purple-600', 'from-primary/85 to-cyan-600',
   'from-emerald-500 to-teal-600', 'from-orange-500 to-amber-600',
-  'from-pink-500 to-rose-600', 'from-indigo-500 to-blue-600',
+  'from-pink-500 to-rose-600', 'from-indigo-500 to-primary',
   'from-teal-500 to-green-600', 'from-red-500 to-orange-600',
 ];
 function subjectColor(id: number) { return SUBJECT_COLORS[id % SUBJECT_COLORS.length]; }
@@ -216,7 +216,7 @@ export default function StudentClassSchedule() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: "Today's Classes", value: todaySchedule.length, icon: BookOpen, color: 'text-blue-600' },
+            { label: "Today's Classes", value: todaySchedule.length, icon: BookOpen, color: 'text-primary' },
             { label: 'This Week',       value: totalWeekClasses,      icon: CalendarDays, color: 'text-violet-600' },
             { label: 'Completed',       value: completedToday,        icon: CheckCircle2, color: 'text-emerald-600' },
             { label: 'Upcoming',        value: todaySchedule.filter(e => getStatus(e) === 'upcoming').length, icon: Timer, color: 'text-orange-500' },
@@ -263,11 +263,11 @@ export default function StudentClassSchedule() {
             ) : nextClass && (
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                    <Timer className="h-4 w-4 text-blue-600" />
+                  <div className="h-9 w-9 rounded-full bg-primary/10 dark:bg-primary/5 flex items-center justify-center flex-shrink-0">
+                    <Timer className="h-4 w-4 text-primary" />
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Up Next</p>
+                    <p className="text-xs font-semibold text-primary uppercase tracking-wide">Up Next</p>
                     <p className="text-sm font-bold text-foreground">{nextClass.subjectName ?? 'Class'}</p>
                     <p className="text-xs text-muted-foreground">{formatTime12(nextClass.startTime)} – {formatTime12(nextClass.endTime)}</p>
                   </div>
@@ -275,7 +275,7 @@ export default function StudentClassSchedule() {
                 {countdownSeconds !== null && countdownSeconds > 0 && (
                   <div className="text-right">
                     <p className="text-xs text-muted-foreground">Starts in</p>
-                    <p className="text-lg font-bold text-blue-600 tabular-nums" data-testid="text-countdown-banner">
+                    <p className="text-lg font-bold text-primary tabular-nums" data-testid="text-countdown-banner">
                       {formatCountdown(countdownSeconds)}
                     </p>
                   </div>

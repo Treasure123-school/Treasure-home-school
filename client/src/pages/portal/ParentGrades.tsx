@@ -38,7 +38,7 @@ interface GradeResult {
 
 function gradeColor(grade: string | null, percentage: number) {
   if (grade === 'A+' || grade === 'A' || percentage >= 80) return 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300';
-  if (grade === 'B+' || grade === 'B' || percentage >= 65) return 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300';
+  if (grade === 'B+' || grade === 'B' || percentage >= 65) return 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/60';
   if (grade === 'C+' || grade === 'C' || percentage >= 50) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300';
   return 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300';
 }
@@ -217,10 +217,10 @@ export default function ParentGrades() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-xs text-muted-foreground font-medium">Subjects Taken</p>
-                      <p className="text-3xl font-bold mt-1 text-blue-600 dark:text-blue-400" data-testid="text-subjects-count">{subjects.length}</p>
+                      <p className="text-3xl font-bold mt-1 text-primary dark:text-primary/70" data-testid="text-subjects-count">{subjects.length}</p>
                       <p className="text-xs text-muted-foreground mt-1">across {termFilter === 'all' ? 'all terms' : 'this term'}</p>
                     </div>
-                    <div className="p-2.5 bg-blue-100 dark:bg-blue-900/30 rounded-xl"><BookOpen className="h-5 w-5 text-blue-600 dark:text-blue-400" /></div>
+                    <div className="p-2.5 bg-primary/10 dark:bg-primary/5 rounded-xl"><BookOpen className="h-5 w-5 text-primary dark:text-primary/70" /></div>
                   </div>
                 </CardContent>
               </Card>

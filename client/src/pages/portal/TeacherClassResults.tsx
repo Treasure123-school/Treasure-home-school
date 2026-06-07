@@ -102,7 +102,7 @@ export default function TeacherClassResults() {
           <Card data-testid="card-total-students">
             <CardHeader className="p-3 sm:p-4 pb-2 sm:pb-3">
               <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
-                <Users className="h-4 w-4 text-blue-500" />
+                <Users className="h-4 w-4 text-primary" />
                 Total Students
               </CardTitle>
             </CardHeader>

@@ -52,7 +52,7 @@ export function PreviewOverlay({ title, content, settings, meta, note, onClose }
         <div className="flex-1" />
         <button
           onClick={() => window.print()}
-          className="flex items-center gap-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded transition-colors"
+          className="flex items-center gap-1.5 text-sm bg-primary hover:bg-primary/90 text-white px-3 py-1.5 rounded transition-colors"
         >
           <Printer className="h-4 w-4" />Print / Export PDF
         </button>

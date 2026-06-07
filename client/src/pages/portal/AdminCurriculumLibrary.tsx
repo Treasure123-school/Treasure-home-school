@@ -60,7 +60,7 @@ interface SubjectItem { id: number; name: string; }
 const LEVEL_LABELS: Record<Level, string> = { primary: "Primary", jss: "JSS", ss: "SS", custom: "Custom" };
 const LEVEL_COLORS: Record<Level, string> = {
   primary: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
-  jss: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
+  jss: "bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/60",
   ss: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300",
   custom: "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
 };
@@ -242,11 +242,11 @@ export default function AdminCurriculumLibrary() {
       </div>
 
       {/* Info banner */}
-      <div className="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg">
-        <Info className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
-        <div className="text-sm text-blue-800 dark:text-blue-300">
+      <div className="flex items-start gap-3 p-4 bg-primary/5 dark:bg-primary/5 border border-primary/30 dark:border-primary/30 rounded-lg">
+        <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+        <div className="text-sm text-primary dark:text-primary/60">
           <p className="font-medium">How importing works</p>
-          <p className="mt-0.5 text-blue-700 dark:text-blue-400">
+          <p className="mt-0.5 text-primary dark:text-primary/70">
             After importing, topics are added to your school's scheme of work as fully editable copies.
             Editing them won't affect the global template. You can add, edit, or delete topics freely after import.
           </p>

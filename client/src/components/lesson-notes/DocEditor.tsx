@@ -125,7 +125,7 @@ function TBtn({
             'inline-flex items-center justify-center rounded transition-colors select-none shrink-0',
             small ? 'h-6 w-6 text-xs' : 'h-7 w-7 text-sm',
             disabled ? 'opacity-30 cursor-not-allowed' :
-            active ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' :
+            active ? 'bg-primary/10 dark:bg-primary/5 text-primary dark:text-primary/60' :
             danger ? 'hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500' :
             'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300',
           ].join(' ')}
@@ -165,7 +165,7 @@ function TSelect({
           <button
             type="button"
             onMouseDown={e => { e.preventDefault(); setOpen(o => !o); }}
-            className="w-full h-7 pl-2 pr-6 text-xs rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-left truncate hover:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors"
+            className="w-full h-7 pl-2 pr-6 text-xs rounded border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 text-left truncate hover:border-primary/60 focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
           >
             {current?.label || options[0]?.label}
           </button>
@@ -183,7 +183,7 @@ function TSelect({
               className={[
                 'w-full text-left px-3 py-2 text-xs whitespace-nowrap transition-colors',
                 o.value === value
-                  ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+                  ? 'bg-primary/5 dark:bg-primary/5 text-primary dark:text-primary/60 font-medium'
                   : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800',
               ].join(' ')}
             >
@@ -284,7 +284,7 @@ function ColorPicker({ value, colors, onChange, icon: Icon, title }: {
                 onPointerDown={e => { e.preventDefault(); onChange(c); setOpen(false); }}
                 className={[
                   'rounded transition-transform hover:scale-125 focus:outline-none border',
-                  value === c ? 'ring-2 ring-offset-1 ring-blue-500 scale-110' : 'border-gray-200 dark:border-gray-600',
+                  value === c ? 'ring-2 ring-offset-1 ring-primary scale-110' : 'border-gray-200 dark:border-gray-600',
                   c === '#ffffff' ? 'border-gray-300' : '',
                 ].join(' ')}
                 style={{ background: c, width: 20, height: 20 }}
@@ -325,12 +325,12 @@ function ColorPicker({ value, colors, onChange, icon: Icon, title }: {
               value={hexInput}
               onChange={e => setHexInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') applyHex(); }}
-              className="flex-1 text-xs border border-gray-200 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-mono focus:outline-none focus:ring-1 focus:ring-blue-400"
+              className="flex-1 text-xs border border-gray-200 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-mono focus:outline-none focus:ring-1 focus:ring-primary/70"
             />
             <button
               type="button"
               onPointerDown={e => { e.preventDefault(); applyHex(); }}
-              className="text-xs bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded transition-colors"
+              className="text-xs bg-primary hover:bg-primary/90 text-white px-2 py-1 rounded transition-colors"
             >
               OK
             </button>
@@ -412,10 +412,10 @@ function FloatingSelectionMenu({ editor }: { editor: any }) {
             autoFocus value={linkUrl} onChange={e => setLinkUrl(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') applyLink(); if (e.key === 'Escape') setShowLink(false); }}
             placeholder="https://…"
-            className="text-xs border border-gray-200 rounded px-2 py-1 w-44 focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+            className="text-xs border border-gray-200 rounded px-2 py-1 w-44 focus:outline-none focus:ring-1 focus:ring-primary bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           />
           <button onMouseDown={e => { e.preventDefault(); applyLink(); }}
-            className="text-xs bg-blue-600 text-white rounded px-2 py-1 hover:bg-blue-700">OK</button>
+            className="text-xs bg-primary text-white rounded px-2 py-1 hover:bg-primary/90">OK</button>
           <button onMouseDown={e => { e.preventDefault(); setShowLink(false); }}
             className="text-xs text-gray-500 hover:text-gray-700 px-1 leading-none">✕</button>
         </div>
@@ -509,14 +509,14 @@ function ResizableImageView({ node, updateAttributes, deleteNode, selected }: No
 
             {/* Right-edge resize handle */}
             <div
-              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-3 h-10 bg-blue-500/70 hover:bg-blue-500 cursor-e-resize rounded-l flex items-center justify-center"
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-3 h-10 bg-primary/70 hover:bg-primary/85 cursor-e-resize rounded-l flex items-center justify-center"
               onMouseDown={startResize}
               title="Drag to resize"
             />
 
             {/* Bottom-right corner resize handle */}
             <div
-              className="absolute bottom-0 right-0 z-20 w-5 h-5 bg-blue-500 hover:bg-blue-600 cursor-se-resize rounded-tl flex items-center justify-center"
+              className="absolute bottom-0 right-0 z-20 w-5 h-5 bg-primary/85 hover:bg-primary cursor-se-resize rounded-tl flex items-center justify-center"
               onMouseDown={startResize}
               title="Drag to resize"
             >

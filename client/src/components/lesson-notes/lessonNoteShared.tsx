@@ -11,7 +11,7 @@ import RichTextViewer from './RichTextViewer';
 
 export const STATUS_CFG = {
   draft:     { label: 'Draft',     cls: 'bg-muted text-muted-foreground border border-border',                                      icon: FileText,    canEdit: true,  canDelete: true,  canSubmit: true  },
-  submitted: { label: 'Submitted', cls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',                        icon: Send,        canEdit: false, canDelete: false, canSubmit: false },
+  submitted: { label: 'Submitted', cls: 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/70',                        icon: Send,        canEdit: false, canDelete: false, canSubmit: false },
   approved:  { label: 'Approved',  cls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',                    icon: CheckCircle, canEdit: false, canDelete: false, canSubmit: false },
   rejected:  { label: 'Rejected',  cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',                            icon: XCircle,     canEdit: true,  canDelete: false, canSubmit: true  },
   published: { label: 'Published', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',            icon: Eye,         canEdit: false, canDelete: false, canSubmit: false },
@@ -117,7 +117,7 @@ export function NoteMetaStrip({ note, showPublished = false, printButton = false
 // ── Structured sections viewer (v2 notes) ────────────────────────────────────
 
 export const SECTION_VIEW_DEFS = [
-  { key: 'objectives',        label: 'Learning Objectives',    icon: Target,        iconBg: 'bg-blue-100',   iconColor: 'text-blue-700',   borderColor: 'border-blue-200',   headerBg: 'bg-blue-50'   },
+  { key: 'objectives',        label: 'Learning Objectives',    icon: Target,        iconBg: 'bg-primary/10',   iconColor: 'text-primary',   borderColor: 'border-primary/30',   headerBg: 'bg-primary/5'   },
   { key: 'materials',         label: 'Instructional Materials',icon: Package,       iconBg: 'bg-purple-100', iconColor: 'text-purple-700', borderColor: 'border-purple-200', headerBg: 'bg-purple-50' },
   { key: 'previousKnowledge', label: 'Previous Knowledge',     icon: Brain,         iconBg: 'bg-cyan-100',   iconColor: 'text-cyan-700',   borderColor: 'border-cyan-200',   headerBg: 'bg-cyan-50'   },
   { key: 'introduction',      label: 'Introduction',           icon: Rocket,        iconBg: 'bg-green-100',  iconColor: 'text-green-700',  borderColor: 'border-green-200',  headerBg: 'bg-green-50'  },

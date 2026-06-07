@@ -263,7 +263,7 @@ export default function StudentDashboard() {
       )}
 
       {/* Smart Dashboard Welcome Box */}
-      <div className="mb-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-6 text-white shadow-lg" data-testid="student-dashboard-header">
+      <div className="mb-8 bg-gradient-to-r from-primary to-primary/90 rounded-lg p-6 text-white shadow-lg" data-testid="student-dashboard-header">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 shadow-lg">
@@ -273,11 +273,11 @@ export default function StudentDashboard() {
               <h1 className="text-2xl md:text-3xl font-bold mb-1">
                 Welcome back, {user.lastName}!
               </h1>
-              <p className="text-blue-100 text-sm">
+              <p className="text-primary/30 text-sm">
                 Here's what's happening with your academics today
               </p>
               {studentData?.admissionNumber && (
-                <p className="text-blue-200 text-xs mt-1 font-mono" data-testid="text-admission-number-dashboard">
+                <p className="text-primary/50 text-xs mt-1 font-mono" data-testid="text-admission-number-dashboard">
                   Admission No: {studentData.admissionNumber}
                 </p>
               )}
@@ -299,12 +299,12 @@ export default function StudentDashboard() {
                   <AnimatedCounter 
                     value={displayScore} 
                     suffix="%"
-                    className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent"
+                    className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/90 bg-clip-text text-transparent"
                   />
                   <TrendingUp className="h-4 w-4 text-green-600" />
                 </div>
               </div>
-              <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-primary/85 to-primary text-white shadow-lg">
                 <TrendingUp className="h-6 w-6" />
               </div>
             </div>
@@ -382,20 +382,20 @@ export default function StudentDashboard() {
         {/* Messages Card */}
         <Link href="/portal/student/messages">
           <Card className="relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 animate-in fade-in slide-in-from-bottom-4 duration-1000 cursor-pointer" data-testid="card-messages">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-transparent rounded-full -mr-16 -mt-16"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/85/10 to-transparent rounded-full -mr-16 -mt-16"></div>
             <CardContent className="p-6 relative z-10">
               <div className="flex items-start justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Messages</p>
                   <AnimatedCounter 
                     value={unreadCount} 
-                    className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent"
+                    className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/90 bg-clip-text text-transparent"
                   />
                   {unreadCount > 0 ? (
-                    <p className="text-xs text-blue-600 mt-2 flex items-center gap-1" data-testid="text-unread-count">
+                    <p className="text-xs text-primary mt-2 flex items-center gap-1" data-testid="text-unread-count">
                       <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/70 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary/85"></span>
                       </span>
                       {unreadCount} unread
                     </p>
@@ -405,7 +405,7 @@ export default function StudentDashboard() {
                     </p>
                   )}
                 </div>
-                <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg">
+                <div className="p-3 rounded-xl bg-gradient-to-br from-primary/85 to-primary text-white shadow-lg">
                   <MessageSquare className="h-6 w-6" />
                 </div>
               </div>
@@ -459,7 +459,7 @@ export default function StudentDashboard() {
                         </span>
                         <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
                           grade.grade.startsWith('A') ? 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400' :
-                          grade.grade.startsWith('B') ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400' :
+                          grade.grade.startsWith('B') ? 'bg-primary/10 dark:bg-primary/5 text-primary dark:text-primary/70' :
                           'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-400'
                         }`}>
                           {grade.grade}
@@ -523,7 +523,7 @@ export default function StudentDashboard() {
                         </p>
                       </div>
                     </div>
-                    <div className="bg-blue-600 text-white text-xs font-medium px-3 py-1 rounded-full inline-block mb-3">
+                    <div className="bg-primary text-white text-xs font-medium px-3 py-1 rounded-full inline-block mb-3">
                       Available
                     </div>
                     <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-3">
@@ -537,7 +537,7 @@ export default function StudentDashboard() {
                       </div>
                     </div>
                     <Link to="/portal/student/exams">
-                      <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                      <Button className="w-full bg-primary hover:bg-primary/90 text-white">
                         <Play className="w-4 h-4 mr-2" />
                         Start Exam
                       </Button>
@@ -554,12 +554,12 @@ export default function StudentDashboard() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-lg font-semibold">
-                <div className="p-2 rounded-lg bg-blue-500/10">
-                  <MessageSquare className="h-5 w-5 text-blue-600" />
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <MessageSquare className="h-5 w-5 text-primary" />
                 </div>
                 Latest Announcements
               </CardTitle>
-              <Button variant="ghost" size="sm" asChild className="hover:bg-blue-500/10">
+              <Button variant="ghost" size="sm" asChild className="hover:bg-primary/10">
                 <Link href="/portal/student/announcements" className="flex items-center gap-1">
                   View All
                   <ChevronRight className="h-4 w-4" />
@@ -578,7 +578,7 @@ export default function StudentDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {announcements.slice(0, 4).map((announcement: any, index: number) => {
                   const colors = [
-                    'from-blue-500/10 border-blue-200 dark:border-blue-800/30',
+                    'from-primary/85/10 border-primary/30 dark:border-primary/30/30',
                     'from-purple-500/10 border-purple-200 dark:border-purple-800/30',
                     'from-green-500/10 border-green-200 dark:border-green-800/30',
                     'from-orange-500/10 border-orange-200 dark:border-orange-800/30'

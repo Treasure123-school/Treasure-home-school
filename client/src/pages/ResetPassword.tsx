@@ -148,23 +148,23 @@ export default function ResetPassword() {
                       {errors.newPassword.message}
                     </p>
                   )}
-                  <div className="mt-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-md border border-blue-200 dark:border-blue-800">
-                    <p className="text-xs font-medium text-blue-900 dark:text-blue-100 mb-2">Password must include:</p>
-                    <ul className="text-xs text-blue-800 dark:text-blue-200 space-y-1">
+                  <div className="mt-2 p-3 bg-primary/5 dark:bg-primary/5 rounded-md border border-primary/30 dark:border-primary/30">
+                    <p className="text-xs font-medium text-primary dark:text-primary/30 mb-2">Password must include:</p>
+                    <ul className="text-xs text-primary dark:text-primary/50 space-y-1">
                       <li className="flex items-center gap-1.5">
-                        <span className="text-blue-600 dark:text-blue-400">✓</span>
+                        <span className="text-primary dark:text-primary/70">✓</span>
                         At least 8 characters long
                       </li>
                       <li className="flex items-center gap-1.5">
-                        <span className="text-blue-600 dark:text-blue-400">✓</span>
+                        <span className="text-primary dark:text-primary/70">✓</span>
                         One uppercase letter (A-Z)
                       </li>
                       <li className="flex items-center gap-1.5">
-                        <span className="text-blue-600 dark:text-blue-400">✓</span>
+                        <span className="text-primary dark:text-primary/70">✓</span>
                         One lowercase letter (a-z)
                       </li>
                       <li className="flex items-center gap-1.5">
-                        <span className="text-blue-600 dark:text-blue-400">✓</span>
+                        <span className="text-primary dark:text-primary/70">✓</span>
                         One number (0-9)
                       </li>
                     </ul>
@@ -188,8 +188,8 @@ export default function ResetPassword() {
                   )}
                 </div>
 
-                <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                <div className="p-3 bg-primary/5 dark:bg-primary/5 rounded-lg border border-primary/30 dark:border-primary/30">
+                  <p className="text-sm text-primary dark:text-primary/50">
                     <strong>Security Tips:</strong> Use a mix of uppercase and lowercase letters, numbers, 
                     and symbols. Avoid using personal information.
                   </p>
@@ -247,9 +247,9 @@ export default function ResetPassword() {
                   </div>
                 </div>
 
-                <div className="p-3 sm:p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <p className="text-xs sm:text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">📋 Next Steps:</p>
-                  <ul className="text-[10px] sm:text-xs text-blue-800 dark:text-blue-200 space-y-1.5 ml-4 list-disc">
+                <div className="p-3 sm:p-4 bg-primary/5 dark:bg-primary/5 rounded-lg border border-primary/30 dark:border-primary/30">
+                  <p className="text-xs sm:text-sm font-medium text-primary dark:text-primary/30 mb-2">📋 Next Steps:</p>
+                  <ul className="text-[10px] sm:text-xs text-primary dark:text-primary/50 space-y-1.5 ml-4 list-disc">
                     <li>Return to the <strong>Forgot Password</strong> page</li>
                     <li>Request a new password reset link with your username/email</li>
                     <li>Check your email inbox (and spam folder)</li>

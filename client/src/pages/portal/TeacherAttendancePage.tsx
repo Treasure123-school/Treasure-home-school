@@ -59,7 +59,7 @@ const STATUS_COLORS: Record<AttendanceStatus, string> = {
   Present: 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800',
   Absent: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800',
   Late: 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800',
-  Excused: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
+  Excused: 'bg-primary/10 text-primary border-primary/30 dark:bg-primary/5 dark:text-primary/70 dark:border-primary/30',
 };
 
 const STATUS_ICONS: Record<AttendanceStatus, React.ReactElement> = {
@@ -73,7 +73,7 @@ const STATUS_SELECTED: Record<AttendanceStatus, string> = {
   Present: 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/40 dark:text-green-400 dark:border-green-700',
   Absent: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/40 dark:text-red-400 dark:border-red-700',
   Late: 'bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/40 dark:text-orange-400 dark:border-orange-700',
-  Excused: 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-700',
+  Excused: 'bg-primary/10 text-primary border-primary/40 dark:bg-primary/5 dark:text-primary/70 dark:border-primary/70',
 };
 
 function StatusButton({ status, selected, onClick }: {
@@ -110,7 +110,7 @@ function SummaryBar({ statuses }: { statuses: Record<string, AttendanceStatus> }
         { label: 'Present', value: present, pct: `${pct}%`, color: 'text-green-600', icon: CheckCircle2 },
         { label: 'Absent', value: absent, color: 'text-red-500', icon: XCircle },
         { label: 'Late', value: late, color: 'text-orange-500', icon: Clock },
-        { label: 'Excused', value: excused, color: 'text-blue-500', icon: AlertCircle },
+        { label: 'Excused', value: excused, color: 'text-primary', icon: AlertCircle },
       ].map((item, i) => (
         <Card key={i} data-testid={`card-summary-${item.label.toLowerCase()}`}>
           <CardContent className="p-3">
@@ -207,7 +207,7 @@ function HistorySection({ classId }: { classId: number }) {
                       <span className="text-green-600">{present} present</span>
                       <span className="text-red-500">{absent} absent</span>
                       {late > 0 && <span className="text-orange-500">{late} late</span>}
-                      {excused > 0 && <span className="text-blue-500">{excused} excused</span>}
+                      {excused > 0 && <span className="text-primary">{excused} excused</span>}
                     </div>
                   </div>
                   <span className={`text-sm font-bold ${pct >= 80 ? 'text-green-600' : pct >= 60 ? 'text-orange-500' : 'text-red-500'}`}>

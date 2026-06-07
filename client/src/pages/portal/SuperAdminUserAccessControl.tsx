@@ -73,7 +73,7 @@ export default function SuperAdminUserAccessControl() {
                     <button
                       key={user.id}
                       onClick={() => setSelectedUser(user)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left ${selectedUser?.id === user.id ? 'border-blue-500 bg-blue-50/50 ring-1 ring-blue-500/20' : 'hover:bg-slate-50'}`}
+                      className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left ${selectedUser?.id === user.id ? 'border-primary bg-primary/5 ring-1 ring-primary/20' : 'hover:bg-slate-50'}`}
                     >
                       <div className="h-8 w-8 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
                         {user.firstName[0]}{user.lastName[0]}
@@ -92,10 +92,10 @@ export default function SuperAdminUserAccessControl() {
           {/* Access Status Editor */}
           <div className="md:col-span-7 space-y-6">
             {selectedUser ? (
-              <Card className="shadow-sm border-l-4 border-l-blue-500">
+              <Card className="shadow-sm border-l-4 border-l-primary">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <ShieldCheck className="h-5 w-5 text-blue-600" />
+                    <ShieldCheck className="h-5 w-5 text-primary" />
                     Access Status: {selectedUser.firstName} {selectedUser.lastName}
                   </CardTitle>
                   <CardDescription>Individual login permission and account state.</CardDescription>

@@ -229,7 +229,7 @@ export default function AdminLessonNoteReview() {
 
   const STAT_CARDS = [
     { label: 'Total',    value: stats?.total     ?? 0, cls: '',                                                                               Icon: BookOpen,    tc: '' },
-    { label: 'Pending',  value: stats?.submitted ?? 0, cls: 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800',           Icon: Send,        tc: 'text-blue-700 dark:text-blue-400' },
+    { label: 'Pending',  value: stats?.submitted ?? 0, cls: 'bg-primary/5 dark:bg-primary/5 border-primary/30 dark:border-primary/30',           Icon: Send,        tc: 'text-primary dark:text-primary/70' },
     { label: 'Approved', value: stats?.approved  ?? 0, cls: 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800',       Icon: CheckCircle, tc: 'text-green-700 dark:text-green-400' },
     { label: 'Published',value: stats?.published ?? 0, cls: 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800',Icon: Eye,         tc: 'text-emerald-700 dark:text-emerald-400' },
     { label: 'Rejected', value: stats?.rejected  ?? 0, cls: 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800',               Icon: XCircle,     tc: 'text-red-700 dark:text-red-400' },
@@ -349,7 +349,7 @@ export default function AdminLessonNoteReview() {
             <TabsTrigger value="review" className="flex-1 sm:flex-none" data-testid="tab-review">
               Pending
               {(stats?.submitted ?? 0) > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-blue-600 text-white text-[10px] font-bold">
+                <span className="ml-1.5 px-1.5 py-0.5 rounded-full bg-primary text-white text-[10px] font-bold">
                   {stats?.submitted}
                 </span>
               )}

@@ -47,9 +47,9 @@ const STATUS_CONFIG: Record<ClassStatus, { label: string; color: string; bg: str
   },
   upcoming: {
     label: 'Upcoming',
-    color: 'text-blue-700 dark:text-blue-400',
-    bg: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800',
-    dot: 'bg-blue-500',
+    color: 'text-primary dark:text-primary/70',
+    bg: 'bg-primary/5 dark:bg-primary/5 border-primary/30 dark:border-primary/30',
+    dot: 'bg-primary/85',
   },
   completed: {
     label: 'Completed',
@@ -61,11 +61,11 @@ const STATUS_CONFIG: Record<ClassStatus, { label: string; color: string; bg: str
 
 const SUBJECT_COLORS = [
   'from-violet-500 to-purple-600',
-  'from-blue-500 to-cyan-600',
+  'from-primary/85 to-cyan-600',
   'from-emerald-500 to-teal-600',
   'from-orange-500 to-amber-600',
   'from-pink-500 to-rose-600',
-  'from-indigo-500 to-blue-600',
+  'from-indigo-500 to-primary',
   'from-teal-500 to-green-600',
   'from-red-500 to-orange-600',
 ];
@@ -204,7 +204,7 @@ export default function TeacherTimetable() {
       {!isLoading && (
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: 'Total Periods', value: totalPeriods, icon: <CalendarDays className="h-4 w-4" />, color: 'text-blue-600' },
+            { label: 'Total Periods', value: totalPeriods, icon: <CalendarDays className="h-4 w-4" />, color: 'text-primary' },
             { label: "Today's Classes", value: classesToday, icon: <Layers className="h-4 w-4" />, color: 'text-emerald-600' },
             { label: 'Classes Assigned', value: uniqueClasses, icon: <GraduationCap className="h-4 w-4" />, color: 'text-violet-600' },
           ].map(s => (
@@ -289,7 +289,7 @@ function TodayView({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold flex items-center gap-2">
-          <BookOpen className="h-5 w-5 text-blue-600" />
+          <BookOpen className="h-5 w-5 text-primary" />
           Today's Classes
           <span className="text-sm font-normal text-muted-foreground">— {todayName}</span>
         </h2>
@@ -330,7 +330,7 @@ function WeeklyView({
   return (
     <div className="space-y-4">
       <h2 className="text-lg font-bold flex items-center gap-2">
-        <CalendarDays className="h-5 w-5 text-blue-600" />
+        <CalendarDays className="h-5 w-5 text-primary" />
         Weekly Schedule
       </h2>
 
@@ -499,7 +499,7 @@ function PeriodDetailDialog({
               </Button>
             </Link>
           )}
-          <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-sm text-blue-800 dark:text-blue-300">
+          <div className="flex items-center gap-2 bg-primary/5 dark:bg-primary/5 border border-primary/30 dark:border-primary/30 rounded-xl p-3 text-sm text-primary dark:text-primary/60">
             <Bell className="h-4 w-4 flex-shrink-0" />
             <span>Set a reminder so you never miss a class.</span>
           </div>
@@ -524,8 +524,8 @@ function InfoRow({ icon, label, value, testId }: { icon: React.ReactNode; label:
 function EmptyDay({ message, sub }: { message: string; sub?: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center" data-testid="empty-state-day">
-      <div className="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center mb-4">
-        <CalendarDays className="h-7 w-7 text-blue-400" />
+      <div className="w-14 h-14 rounded-2xl bg-primary/5 dark:bg-primary/5 flex items-center justify-center mb-4">
+        <CalendarDays className="h-7 w-7 text-primary/70" />
       </div>
       <h3 className="text-base font-semibold mb-1">{message}</h3>
       {sub && <p className="text-sm text-muted-foreground">{sub}</p>}

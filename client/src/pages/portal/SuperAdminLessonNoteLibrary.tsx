@@ -135,7 +135,7 @@ function ContentSection({ label, value }: { label: string; value?: string }) {
 }
 
 const subjectColors = [
-  "bg-blue-100 text-blue-700 border-blue-200",
+  "bg-primary/10 text-primary border-primary/30",
   "bg-purple-100 text-purple-700 border-purple-200",
   "bg-emerald-100 text-emerald-700 border-emerald-200",
   "bg-orange-100 text-orange-700 border-orange-200",
@@ -272,7 +272,7 @@ export default function SuperAdminLessonNoteLibrary() {
   const previewTemplate: Template | null = previewData ?? null;
 
   const statCards = [
-    { label: "Total Templates", value: stats.total ?? 0, icon: BookOpen, iconBg: "bg-blue-100", iconColor: "text-blue-600", numColor: "text-blue-600" },
+    { label: "Total Templates", value: stats.total ?? 0, icon: BookOpen, iconBg: "bg-primary/10", iconColor: "text-primary", numColor: "text-primary" },
     { label: "Published", value: stats.published ?? 0, icon: CheckCircle, iconBg: "bg-green-100", iconColor: "text-green-600", numColor: "text-green-600" },
     { label: "Drafts", value: stats.draft ?? 0, icon: FileText, iconBg: "bg-amber-100", iconColor: "text-amber-600", numColor: "text-amber-600" },
     { label: "Classes Covered", value: stats.classesCovered ?? 0, icon: GraduationCap, iconBg: "bg-purple-100", iconColor: "text-purple-600", numColor: "text-purple-600" },
@@ -287,8 +287,8 @@ export default function SuperAdminLessonNoteLibrary() {
         <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-5">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                <Library className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              <div className="p-2.5 bg-primary/10 dark:bg-primary/5 rounded-xl">
+                <Library className="h-6 w-6 text-primary dark:text-primary/70" />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-gray-900 dark:text-white">Lesson Note Library</h1>
@@ -308,7 +308,7 @@ export default function SuperAdminLessonNoteLibrary() {
               )}
               <Button
                 onClick={() => { setForm({ ...EMPTY_FORM }); setShowCreate(true); }}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl"
+                className="bg-primary hover:bg-primary/90 text-white font-semibold rounded-xl"
               >
                 <Plus className="h-4 w-4 mr-2" /> New Template
               </Button>
@@ -398,7 +398,7 @@ export default function SuperAdminLessonNoteLibrary() {
               </div>
               <p className="text-gray-700 dark:text-gray-300 font-semibold text-base">No templates found</p>
               <p className="text-gray-400 text-sm mt-1">Try adjusting your filters or create a new template.</p>
-              <Button className="mt-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl" onClick={() => { setForm({ ...EMPTY_FORM }); setShowCreate(true); }}>
+              <Button className="mt-4 bg-primary hover:bg-primary/90 text-white rounded-xl" onClick={() => { setForm({ ...EMPTY_FORM }); setShowCreate(true); }}>
                 <Plus className="h-4 w-4 mr-2" /> Create Template
               </Button>
             </div>
@@ -433,7 +433,7 @@ export default function SuperAdminLessonNoteLibrary() {
                     {/* Card Body */}
                     <div className="px-4 py-3 flex-1">
                       <h3 className="font-semibold text-gray-900 dark:text-white text-sm leading-snug line-clamp-2 mb-2">{t.title}</h3>
-                      <p className="text-xs font-medium text-blue-600 dark:text-blue-400 italic line-clamp-1 mb-3">{t.topic}</p>
+                      <p className="text-xs font-medium text-primary dark:text-primary/70 italic line-clamp-1 mb-3">{t.topic}</p>
 
                       <div className="space-y-1.5">
                         <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
@@ -512,13 +512,13 @@ export default function SuperAdminLessonNoteLibrary() {
         <Dialog open={showCreate} onOpenChange={setShowCreate}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2"><Plus className="h-5 w-5 text-blue-600" /> Create Lesson Note Template</DialogTitle>
+              <DialogTitle className="flex items-center gap-2"><Plus className="h-5 w-5 text-primary" /> Create Lesson Note Template</DialogTitle>
               <DialogDescription>Add a new original lesson note template to the master library.</DialogDescription>
             </DialogHeader>
             <TemplateForm form={form} onChange={onChange} />
             <DialogFooter className="sticky bottom-0 bg-white dark:bg-gray-900 pt-4 border-t">
               <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
-              <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => createMutation.mutate(form)} disabled={createMutation.isPending}>
+              <Button className="bg-primary hover:bg-primary/90" onClick={() => createMutation.mutate(form)} disabled={createMutation.isPending}>
                 {createMutation.isPending ? "Creating..." : "Create Template"}
               </Button>
             </DialogFooter>
@@ -529,12 +529,12 @@ export default function SuperAdminLessonNoteLibrary() {
         <Dialog open={!!editingId} onOpenChange={() => setEditingId(null)}>
           <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2"><Edit className="h-5 w-5 text-blue-600" /> Edit Lesson Note Template</DialogTitle>
+              <DialogTitle className="flex items-center gap-2"><Edit className="h-5 w-5 text-primary" /> Edit Lesson Note Template</DialogTitle>
             </DialogHeader>
             <TemplateForm form={form} onChange={onChange} />
             <DialogFooter className="sticky bottom-0 bg-white dark:bg-gray-900 pt-4 border-t">
               <Button variant="outline" onClick={() => setEditingId(null)}>Cancel</Button>
-              <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => editingId && updateMutation.mutate({ id: editingId, data: form })} disabled={updateMutation.isPending}>
+              <Button className="bg-primary hover:bg-primary/90" onClick={() => editingId && updateMutation.mutate({ id: editingId, data: form })} disabled={updateMutation.isPending}>
                 {updateMutation.isPending ? "Saving..." : "Save Changes"}
               </Button>
             </DialogFooter>
@@ -545,11 +545,11 @@ export default function SuperAdminLessonNoteLibrary() {
         <Dialog open={!!previewId} onOpenChange={() => setPreviewId(null)}>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="flex items-center gap-2"><Eye className="h-5 w-5 text-blue-600" /> Lesson Note Preview</DialogTitle>
+              <DialogTitle className="flex items-center gap-2"><Eye className="h-5 w-5 text-primary" /> Lesson Note Preview</DialogTitle>
             </DialogHeader>
             {previewTemplate && (
               <div>
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-4 mb-4 border border-blue-100 dark:border-blue-800">
+                <div className="bg-primary/5 dark:bg-primary/5 rounded-2xl p-4 mb-4 border border-primary/20 dark:border-primary/30">
                   <h2 className="text-lg font-bold text-gray-900 dark:text-white">{previewTemplate.title}</h2>
                   <div className="flex flex-wrap gap-3 mt-2 text-sm text-gray-600 dark:text-gray-300">
                     <span><strong>Class:</strong> {previewTemplate.className}</span>
@@ -558,7 +558,7 @@ export default function SuperAdminLessonNoteLibrary() {
                     <span><strong>Week:</strong> {previewTemplate.weekNumber}</span>
                     {previewTemplate.duration && <span><strong>Duration:</strong> {previewTemplate.duration}</span>}
                   </div>
-                  <p className="mt-1 text-sm font-semibold text-blue-700 dark:text-blue-300">{previewTemplate.topic}</p>
+                  <p className="mt-1 text-sm font-semibold text-primary dark:text-primary/60">{previewTemplate.topic}</p>
                 </div>
                 <ContentSection label="Learning Objectives" value={previewTemplate.objectives} />
                 <ContentSection label="Entry Behaviour" value={previewTemplate.entryBehaviour} />
@@ -574,7 +574,7 @@ export default function SuperAdminLessonNoteLibrary() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setPreviewId(null)}>Close</Button>
               {previewTemplate && (
-                <Button className="bg-blue-600 hover:bg-blue-700" onClick={() => { openEdit(previewTemplate); setPreviewId(null); }}>
+                <Button className="bg-primary hover:bg-primary/90" onClick={() => { openEdit(previewTemplate); setPreviewId(null); }}>
                   <Edit className="h-4 w-4 mr-1" /> Edit Template
                 </Button>
               )}

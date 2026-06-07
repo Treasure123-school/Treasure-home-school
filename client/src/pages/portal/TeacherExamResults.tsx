@@ -309,7 +309,7 @@ export default function TeacherExamResults() {
   const getGrade = (percentage: number) => {
     if (percentage >= 90) return { grade: 'A+', color: 'text-green-600' };
     if (percentage >= 80) return { grade: 'A', color: 'text-green-500' };
-    if (percentage >= 70) return { grade: 'B', color: 'text-blue-500' };
+    if (percentage >= 70) return { grade: 'B', color: 'text-primary' };
     if (percentage >= 60) return { grade: 'C', color: 'text-yellow-500' };
     if (percentage >= 50) return { grade: 'D', color: 'text-orange-500' };
     return { grade: 'F', color: 'text-red-500' };
@@ -443,7 +443,7 @@ export default function TeacherExamResults() {
           <Card data-testid="card-total-submissions">
             <CardHeader className="p-3 sm:p-4 pb-2 sm:pb-3">
               <CardTitle className="text-xs sm:text-sm font-medium flex items-center gap-2">
-                <Users className="h-4 w-4 text-blue-500" />
+                <Users className="h-4 w-4 text-primary" />
                 Total Submissions
               </CardTitle>
             </CardHeader>

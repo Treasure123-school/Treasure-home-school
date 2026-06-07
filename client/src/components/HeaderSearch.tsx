@@ -59,7 +59,7 @@ export function HeaderSearch({ userRole }: HeaderSearchProps) {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'student': return <GraduationCap className="h-3.5 w-3.5 text-blue-500" />;
+      case 'student': return <GraduationCap className="h-3.5 w-3.5 text-primary" />;
       case 'teacher': return <Users className="h-3.5 w-3.5 text-green-500" />;
       case 'class': return <BookOpen className="h-3.5 w-3.5 text-purple-500" />;
       case 'exam': return <FileText className="h-3.5 w-3.5 text-orange-500" />;

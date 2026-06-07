@@ -10,8 +10,8 @@ import { SkeletonShimmer, StatsCardSkeleton } from "./skeletons";
 export function StudentDashboardSkeleton() {
   return (
     <div className="animate-in fade-in duration-200" data-testid="skeleton-student-dashboard">
-      {/* Welcome Banner — mirrors: mb-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-6 */}
-      <div className="mb-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-6">
+      {/* Welcome Banner — mirrors: mb-8 bg-gradient-to-r from-primary to-primary/90 rounded-lg p-6 */}
+      <div className="mb-8 bg-gradient-to-r from-primary to-primary/90 rounded-lg p-6">
         <div className="flex items-center gap-4">
           {/* Icon box — mirrors: bg-white/20 backdrop-blur-sm rounded-2xl p-4 */}
           <div className="bg-white/20 rounded-2xl p-4 flex-shrink-0">
@@ -32,7 +32,7 @@ export function StudentDashboardSkeleton() {
           "rounded-xl bg-primary/10",
           "rounded-xl bg-green-500/10",
           "rounded-xl bg-yellow-500/10",
-          "rounded-xl bg-blue-500/10",
+          "rounded-xl bg-primary/10",
         ].map((iconBg, i) => (
           <div key={i} className="rounded-lg bg-card shadow-xl overflow-hidden">
             <div className="p-6">
@@ -135,7 +135,7 @@ export function AdminDashboardSkeleton() {
           Icon colors: blue, emerald/teal, purple/violet, orange/red */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {[
-          "rounded-xl bg-blue-500/10",
+          "rounded-xl bg-primary/10",
           "rounded-xl bg-emerald-500/10",
           "rounded-xl bg-purple-500/10",
           "rounded-xl bg-orange-500/10",
@@ -250,7 +250,7 @@ export function TeacherDashboardSkeleton() {
       {/* Stat card icon colors: blue, emerald/teal, purple/violet, orange/red */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {[
-          "rounded-xl bg-blue-500/10",
+          "rounded-xl bg-primary/10",
           "rounded-xl bg-emerald-500/10",
           "rounded-xl bg-purple-500/10",
           "rounded-xl bg-orange-500/10",
@@ -308,7 +308,7 @@ export function TeacherDashboardSkeleton() {
 export function ParentDashboardSkeleton() {
   // Colored gradient backgrounds mirroring the parent's fully-colored stat cards
   const statCardGradients = [
-    "from-blue-600 to-blue-700",
+    "from-primary to-primary/90",
     "from-emerald-600 to-teal-700",
     "from-purple-600 to-violet-700",
     "from-amber-500 to-orange-600",
@@ -407,9 +407,9 @@ export function ParentDashboardSkeleton() {
 export function SuperAdminDashboardSkeleton() {
   return (
     <div className="animate-in fade-in duration-200" data-testid="skeleton-superadmin-dashboard">
-      {/* Welcome Banner — mirrors: mb-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-6 shadow-lg
+      {/* Welcome Banner — mirrors: mb-8 bg-gradient-to-r from-primary to-primary/90 rounded-lg p-6 shadow-lg
           NOTE: SuperAdmin uses rounded-lg (not rounded-2xl) and a smaller p-3 rounded-xl icon container */}
-      <div className="mb-8 bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg p-6 shadow-lg">
+      <div className="mb-8 bg-gradient-to-r from-primary to-primary/90 rounded-lg p-6 shadow-lg">
         <div className="flex items-center gap-4">
           {/* Icon box — mirrors: p-3 rounded-xl bg-white/20 backdrop-blur-sm shadow-lg */}
           <div className="p-3 rounded-xl bg-white/20 flex-shrink-0">
@@ -426,7 +426,7 @@ export function SuperAdminDashboardSkeleton() {
           Stat card icon colors per actual: blue, green, purple, orange */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {[
-          "rounded-xl bg-blue-500/10",
+          "rounded-xl bg-primary/10",
           "rounded-xl bg-green-500/10",
           "rounded-xl bg-purple-500/10",
           "rounded-xl bg-orange-500/10",

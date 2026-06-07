@@ -47,7 +47,7 @@ type TermData = { id: number; name: string; isCurrent: boolean | number };
 
 const SUBJECT_COLORS = [
   'bg-violet-100 border-violet-300 text-violet-800 dark:bg-violet-900/30 dark:border-violet-700 dark:text-violet-300',
-  'bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300',
+  'bg-primary/10 border-primary/40 text-primary dark:bg-primary/5 dark:border-primary/70 dark:text-primary/60',
   'bg-emerald-100 border-emerald-300 text-emerald-800 dark:bg-emerald-900/30 dark:border-emerald-700 dark:text-emerald-300',
   'bg-orange-100 border-orange-300 text-orange-800 dark:bg-orange-900/30 dark:border-orange-700 dark:text-orange-300',
   'bg-pink-100 border-pink-300 text-pink-800 dark:bg-pink-900/30 dark:border-pink-700 dark:text-pink-300',
@@ -348,7 +348,7 @@ export default function AdminTimetable() {
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Total Periods', value: entries.length, icon: <Calendar className="h-4 w-4" />, color: 'text-blue-600' },
+          { label: 'Total Periods', value: entries.length, icon: <Calendar className="h-4 w-4" />, color: 'text-primary' },
           { label: 'Classes Covered', value: new Set(entries.map(e => e.classId)).size, icon: <GraduationCap className="h-4 w-4" />, color: 'text-emerald-600' },
           { label: 'Teachers Assigned', value: new Set(entries.map(e => e.teacherId)).size, icon: <User className="h-4 w-4" />, color: 'text-violet-600' },
           { label: 'Subjects', value: new Set(entries.map(e => e.subjectId)).size, icon: <BookOpen className="h-4 w-4" />, color: 'text-orange-600' },

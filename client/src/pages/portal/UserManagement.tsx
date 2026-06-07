@@ -270,7 +270,7 @@ export default function UserManagement() {
     if (/[^A-Za-z0-9]/.test(pwd)) score++;
     if (score <= 1) return { label: 'Weak', color: 'bg-red-500', textColor: 'text-red-600' };
     if (score === 2) return { label: 'Fair', color: 'bg-amber-500', textColor: 'text-amber-600' };
-    if (score === 3) return { label: 'Good', color: 'bg-blue-500', textColor: 'text-blue-600' };
+    if (score === 3) return { label: 'Good', color: 'bg-primary/85', textColor: 'text-primary' };
     return { label: 'Strong', color: 'bg-green-500', textColor: 'text-green-600' };
   };
 
@@ -662,7 +662,7 @@ export default function UserManagement() {
               {/* Auto-generate toggle */}
               <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
                 <div className="flex items-center gap-2">
-                  <Wand2 className="h-4 w-4 text-blue-500" />
+                  <Wand2 className="h-4 w-4 text-primary" />
                   <div>
                     <p className="text-sm font-semibold">Auto-generate password</p>
                     <p className="text-xs text-muted-foreground">System creates a secure temporary password</p>

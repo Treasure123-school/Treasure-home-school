@@ -969,7 +969,7 @@ export default function TeachersManagement() {
                               <Badge 
                                 variant="outline" 
                                 className={`text-xs ${
-                                  (subject.category || 'general').toLowerCase() === 'science' ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800' :
+                                  (subject.category || 'general').toLowerCase() === 'science' ? 'bg-primary/5 text-primary border-primary/30 dark:bg-primary/5 dark:text-primary/60 dark:border-primary/30' :
                                   (subject.category || 'general').toLowerCase() === 'art' ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800' :
                                   (subject.category || 'general').toLowerCase() === 'commercial' ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800' :
                                   'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
@@ -1152,7 +1152,7 @@ export default function TeachersManagement() {
                                 <Badge 
                                   variant="outline" 
                                   className={`text-xs ${
-                                    (subject.category || 'general').toLowerCase() === 'science' ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800' :
+                                    (subject.category || 'general').toLowerCase() === 'science' ? 'bg-primary/5 text-primary border-primary/30 dark:bg-primary/5 dark:text-primary/60 dark:border-primary/30' :
                                     (subject.category || 'general').toLowerCase() === 'art' ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800' :
                                     (subject.category || 'general').toLowerCase() === 'commercial' ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800' :
                                     'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'
@@ -1641,8 +1641,8 @@ export default function TeachersManagement() {
                 </div>
               </div>
 
-              <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
-                <p className="text-xs text-blue-700 dark:text-blue-300">
+              <div className="bg-primary/5 dark:bg-primary/5 p-3 rounded-lg border border-primary/30 dark:border-primary/30">
+                <p className="text-xs text-primary dark:text-primary/60">
                   <strong>Note:</strong> The teacher will be required to change their password on first login.
                 </p>
               </div>
@@ -1808,7 +1808,7 @@ export default function TeachersManagement() {
                                 <Badge 
                                   variant="outline" 
                                   className={`text-xs ${
-                                    (subject.category || 'general').toLowerCase() === 'science' ? 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:border-blue-800' :
+                                    (subject.category || 'general').toLowerCase() === 'science' ? 'bg-primary/5 text-primary border-primary/30 dark:bg-primary/5 dark:text-primary/60 dark:border-primary/30' :
                                     (subject.category || 'general').toLowerCase() === 'art' ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800' :
                                     (subject.category || 'general').toLowerCase() === 'commercial' ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800' :
                                     'bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700'

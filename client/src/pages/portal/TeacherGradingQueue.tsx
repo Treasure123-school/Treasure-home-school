@@ -156,8 +156,8 @@ function QuestionBreakdown({ questions }: { questions: QuestionWithAnswer[] }) {
                   <p className="text-xs text-muted-foreground italic">No answer submitted for this question.</p>
                 )}
                 {q.answer?.feedbackText && (
-                  <div className="rounded bg-blue-50 dark:bg-blue-950/20 p-2">
-                    <p className="text-xs text-blue-600 font-medium mb-0.5">Feedback:</p>
+                  <div className="rounded bg-primary/5 dark:bg-primary/5 p-2">
+                    <p className="text-xs text-primary font-medium mb-0.5">Feedback:</p>
                     <p className="text-xs">{q.answer.feedbackText}</p>
                   </div>
                 )}

@@ -781,7 +781,7 @@ export default function TeacherReportCards() {
     if (!grade) return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
     const gradeUpper = grade.toUpperCase();
     if (gradeUpper.startsWith('A')) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-    if (gradeUpper.startsWith('B')) return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+    if (gradeUpper.startsWith('B')) return 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/50';
     if (gradeUpper.startsWith('C')) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
     if (gradeUpper.startsWith('D') || gradeUpper.startsWith('E')) return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
     return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
@@ -1044,10 +1044,10 @@ export default function TeacherReportCards() {
                   <span className="text-xs text-red-700 dark:text-red-300">Failed:</span>
                   <span className="text-sm font-semibold text-red-700 dark:text-red-300">{statistics.failedStudents}</span>
                 </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-100 dark:bg-blue-900/30 whitespace-nowrap">
-                  <TrendingUp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
-                  <span className="text-xs text-blue-700 dark:text-blue-300">Avg:</span>
-                  <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">{statistics.classAverage}%</span>
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 dark:bg-primary/5 whitespace-nowrap">
+                  <TrendingUp className="w-3.5 h-3.5 text-primary dark:text-primary/70" />
+                  <span className="text-xs text-primary dark:text-primary/60">Avg:</span>
+                  <span className="text-sm font-semibold text-primary dark:text-primary/60">{statistics.classAverage}%</span>
                 </div>
               </div>
 
@@ -1059,7 +1059,7 @@ export default function TeacherReportCards() {
                 </div>
                 <div className="w-px h-3 bg-border" />
                 <div className="flex items-center gap-1" title="Finalized">
-                  <FileCheck className="w-3 h-3 text-blue-500" />
+                  <FileCheck className="w-3 h-3 text-primary" />
                   <span className="text-xs font-medium">{statistics.finalizedCount}</span>
                 </div>
                 <div className="w-px h-3 bg-border" />
@@ -1089,7 +1089,7 @@ export default function TeacherReportCards() {
                     {/* Mobile status indicators */}
                     <div className="flex sm:hidden items-center gap-2 text-xs">
                       <span className="flex items-center gap-1 text-yellow-600"><Clock className="w-3 h-3" />{statistics?.draftCount || 0}</span>
-                      <span className="flex items-center gap-1 text-blue-600"><FileCheck className="w-3 h-3" />{statistics?.finalizedCount || 0}</span>
+                      <span className="flex items-center gap-1 text-primary"><FileCheck className="w-3 h-3" />{statistics?.finalizedCount || 0}</span>
                       <span className="flex items-center gap-1 text-green-600"><Send className="w-3 h-3" />{statistics?.publishedCount || 0}</span>
                     </div>
                   </div>
@@ -1146,7 +1146,7 @@ export default function TeacherReportCards() {
                                 </Badge>
                               )}
                               {rc.status === 'finalized' && (
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800">
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 bg-primary/5 text-primary border-primary/30 dark:bg-primary/5 dark:text-primary/70 dark:border-primary/30">
                                   <FileCheck className="w-3 h-3 mr-0.5" aria-hidden="true" />
                                   <span className="sr-only">Finalized</span>
                                 </Badge>
@@ -1334,7 +1334,7 @@ export default function TeacherReportCards() {
                               <Badge className={`w-12 justify-center ${getGradeColor(gradePrefix)}`}>{gradePrefix}</Badge>
                               <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-full h-4">
                                 <div
-                                  className={`h-4 rounded-full ${gradePrefix === 'A' ? 'bg-green-500' : gradePrefix === 'B' ? 'bg-blue-500' : gradePrefix === 'C' ? 'bg-yellow-500' : gradePrefix === 'D' || gradePrefix === 'E' ? 'bg-orange-500' : 'bg-red-500'}`}
+                                  className={`h-4 rounded-full ${gradePrefix === 'A' ? 'bg-green-500' : gradePrefix === 'B' ? 'bg-primary/85' : gradePrefix === 'C' ? 'bg-yellow-500' : gradePrefix === 'D' || gradePrefix === 'E' ? 'bg-orange-500' : 'bg-red-500'}`}
                                   style={{ width: `${percentage}%` }}
                                 ></div>
                               </div>
@@ -1363,7 +1363,7 @@ export default function TeacherReportCards() {
                         </div>
                         <div className="flex items-center justify-between">
                           <span className="flex items-center gap-2">
-                            <CheckCircle className="w-4 h-4 text-blue-500" />
+                            <CheckCircle className="w-4 h-4 text-primary" />
                             Finalized
                           </span>
                           <span className="font-medium">{statistics.finalizedCount}</span>
@@ -1423,7 +1423,7 @@ export default function TeacherReportCards() {
                       </Badge>
                     )}
                     {fullReportCard.status === 'finalized' && (
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800 text-xs">
+                      <Badge variant="outline" className="bg-primary/5 text-primary border-primary/30 dark:bg-primary/5 dark:text-primary/70 dark:border-primary/30 text-xs">
                         <FileCheck className="w-3 h-3 mr-1" />
                         Awaiting Approval
                       </Badge>

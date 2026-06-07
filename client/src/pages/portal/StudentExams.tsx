@@ -2662,7 +2662,7 @@ export default function StudentExams() {
     switch (status) {
       case 'saving':
         return (
-          <div className="flex items-center space-x-1 text-blue-500">
+          <div className="flex items-center space-x-1 text-primary">
             <Loader className="w-3 h-3 animate-spin" />
             <span className="text-xs">Saving...</span>
           </div>
@@ -2906,23 +2906,23 @@ export default function StudentExams() {
         <div className="container mx-auto px-4 pb-12 max-w-4xl">
           {/* Back / Forward Navigation Warning (not a violation) */}
           {showBackNavWarning && (
-            <div className="mb-4 border-l-4 border-blue-500 bg-blue-50 dark:bg-blue-900/20 rounded-r-lg p-3 flex items-start gap-3 shadow-sm">
+            <div className="mb-4 border-l-4 border-primary bg-primary/5 dark:bg-primary/5 rounded-r-lg p-3 flex items-start gap-3 shadow-sm">
               <div className="flex-shrink-0 mt-0.5">
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 text-primary dark:text-primary/70" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z" />
                 </svg>
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">
+                <p className="text-sm font-semibold text-primary dark:text-primary/50">
                   Navigation Blocked
                 </p>
-                <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
+                <p className="text-xs text-primary dark:text-primary/60 mt-0.5">
                   You cannot navigate away during an exam. Please stay on this page and complete your exam. Use the <strong>Submit</strong> button when you are done.
                 </p>
               </div>
               <button
                 onClick={() => setShowBackNavWarning(false)}
-                className="flex-shrink-0 text-blue-400 hover:text-blue-600 dark:hover:text-blue-200 transition-colors"
+                className="flex-shrink-0 text-primary/70 hover:text-primary dark:hover:text-primary/50 transition-colors"
                 aria-label="Dismiss"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -2986,7 +2986,7 @@ export default function StudentExams() {
 
             {/* Question Card - Responsive */}
             {currentQuestion && (
-              <div className="bg-white dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-gray-700 shadow-md p-5 sm:p-7 md:p-9 mb-6">
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-primary/30 dark:border-gray-700 shadow-md p-5 sm:p-7 md:p-9 mb-6">
                 <div className="mb-5 sm:mb-7">
                   <div className="flex items-center justify-between mb-4 sm:mb-5">
                     <h3 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 dark:text-white">
@@ -3013,7 +3013,7 @@ export default function StudentExams() {
                         key={option.id}
                         className={`border rounded-lg p-4 sm:p-5 cursor-pointer transition-colors ${
                           answers[currentQuestion.id] === String(option.id)
-                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30'
+                            ? 'border-primary bg-primary/5 dark:bg-primary/5'
                             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                         }`}
                       >
@@ -3050,7 +3050,7 @@ export default function StudentExams() {
 
                 {/* Save Status */}
                 {questionSaveStatus[currentQuestion.id] === 'saving' && (
-                  <div className="mt-4 flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400">
+                  <div className="mt-4 flex items-center gap-2 text-sm text-primary dark:text-primary/70">
                     <Loader className="w-4 h-4 animate-spin" />
                     Saving...
                   </div>
@@ -3081,7 +3081,7 @@ export default function StudentExams() {
                   setCurrentQuestionIndex(prev => Math.max(0, prev - 1));
                 }}
                 disabled={currentQuestionIndex === 0}
-                className="px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg md:text-xl border-blue-300 hover:bg-blue-50 dark:border-blue-700 dark:hover:bg-blue-950"
+                className="px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg md:text-xl border-primary/40 hover:bg-primary/5 dark:border-primary/70 dark:hover:bg-primary/5"
                 data-testid="button-previous"
               >
                 ← Previous
@@ -3126,7 +3126,7 @@ export default function StudentExams() {
                     setCurrentQuestionIndex(prev => Math.min(examQuestions.length - 1, prev + 1));
                   }}
                   disabled={currentQuestionIndex === examQuestions.length - 1}
-                  className="px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg md:text-xl bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
+                  className="px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg md:text-xl bg-primary hover:bg-primary/90 dark:bg-primary/90 dark:hover:bg-primary/80"
                   data-testid="button-next"
                 >
                   Next →
@@ -3190,7 +3190,7 @@ export default function StudentExams() {
                       }}
                       className={`h-8 w-8 rounded text-xs font-medium transition-colors ${
                         isCurrent 
-                          ? 'bg-blue-600 text-white' 
+                          ? 'bg-primary text-white' 
                           : isAnswered 
                             ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-300 dark:border-green-700' 
                             : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600'
@@ -3212,7 +3212,7 @@ export default function StudentExams() {
               data-testid="calculator-panel"
             >
               {/* Calculator Header */}
-              <div className="flex items-center justify-between px-4 py-2.5 bg-blue-600 dark:bg-blue-700">
+              <div className="flex items-center justify-between px-4 py-2.5 bg-primary dark:bg-primary/90">
                 <div className="flex items-center gap-2 text-white">
                   <Calculator className="w-4 h-4" />
                   <span className="text-sm font-semibold">Calculator</span>
@@ -3269,9 +3269,9 @@ export default function StudentExams() {
                   const typeClass =
                     type === 'fn'  ? 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-500' :
                     type === 'op'  ? isActiveOp
-                      ? 'bg-white dark:bg-white text-blue-600 dark:text-blue-600 hover:bg-gray-100'
-                      : 'bg-blue-500 dark:bg-blue-600 text-white hover:bg-blue-400 dark:hover:bg-blue-500'
-                    : type === 'eq' ? 'bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-500 dark:hover:bg-blue-600'
+                      ? 'bg-white dark:bg-white text-primary dark:text-primary hover:bg-gray-100'
+                      : 'bg-primary/85 dark:bg-primary text-white hover:bg-primary/70 dark:hover:bg-primary/85'
+                    : type === 'eq' ? 'bg-primary dark:bg-primary/90 text-white hover:bg-primary/85 dark:hover:bg-primary'
                     : 'bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600';
                   return (
                     <button
@@ -3293,8 +3293,8 @@ export default function StudentExams() {
             onClick={() => setShowCalculator(prev => !prev)}
             className={`fixed bottom-6 right-4 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 active:scale-95 ${
               showCalculator
-                ? 'bg-blue-700 dark:bg-blue-600 text-white shadow-blue-300 dark:shadow-blue-900'
-                : 'bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600'
+                ? 'bg-primary/90 dark:bg-primary text-white shadow-primary/20 dark:shadow-primary/30'
+                : 'bg-primary dark:bg-primary/90 text-white hover:bg-primary/90 dark:hover:bg-primary'
             }`}
             title={showCalculator ? 'Hide Calculator' : 'Open Calculator'}
             data-testid="button-toggle-calculator"
@@ -3304,17 +3304,17 @@ export default function StudentExams() {
 
           {/* Custom Submit Confirmation Dialog */}
           <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
-            <DialogContent className="sm:max-w-md bg-white dark:bg-gray-800 border-blue-200 dark:border-blue-800">
+            <DialogContent className="sm:max-w-md bg-white dark:bg-gray-800 border-primary/30 dark:border-primary/30">
               <DialogHeader>
                 <DialogTitle className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <AlertCircle className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  <AlertCircle className="w-6 h-6 text-primary dark:text-primary/70" />
                   Submit Exam
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <div className="bg-primary/5 dark:bg-primary/5 border border-primary/30 dark:border-primary/30 rounded-lg p-4">
                   <p className="text-sm text-gray-700 dark:text-gray-300">
-                    You have answered <span className="font-bold text-blue-600 dark:text-blue-400">{Object.keys(answers).length}</span> out of <span className="font-bold text-blue-600 dark:text-blue-400">{examQuestions.length}</span> questions.
+                    You have answered <span className="font-bold text-primary dark:text-primary/70">{Object.keys(answers).length}</span> out of <span className="font-bold text-primary dark:text-primary/70">{examQuestions.length}</span> questions.
                   </p>
                 </div>
                 <p className="text-sm text-gray-700 dark:text-gray-300">
@@ -3335,7 +3335,7 @@ export default function StudentExams() {
                     setShowSubmitDialog(false);
                     handleSubmitExam();
                   }}
-                  className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white"
+                  className="bg-primary hover:bg-primary/90 dark:bg-primary/90 dark:hover:bg-primary/80 text-white"
                   data-testid="button-confirm-submit"
                 >
                   Yes, Submit
@@ -3418,7 +3418,7 @@ export default function StudentExams() {
                   <div className="relative w-48 h-48">
                     <svg className="w-48 h-48 transform -rotate-90" viewBox="0 0 200 200">
                       <circle cx="100" cy="100" r={radius} stroke="currentColor" strokeWidth="10" fill="transparent" className="text-slate-100 dark:text-slate-800" />
-                      <circle cx="100" cy="100" r={radius} stroke="currentColor" strokeWidth="10" fill="transparent" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} className="text-blue-600 transition-all duration-1000" strokeLinecap="round" />
+                      <circle cx="100" cy="100" r={radius} stroke="currentColor" strokeWidth="10" fill="transparent" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} className="text-primary transition-all duration-1000" strokeLinecap="round" />
                     </svg>
                     <div className="absolute inset-0 flex items-center justify-center">
                       <span className="text-4xl font-bold">{normalizedResults.percentage}%</span>
@@ -3447,7 +3447,7 @@ export default function StudentExams() {
                   {normalizedResults.timeTakenFormatted && (
                     <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900 rounded-lg">
                       <div className="flex items-center gap-2">
-                        <Clock className="w-5 h-5 text-blue-500" />
+                        <Clock className="w-5 h-5 text-primary" />
                         <span>Time Taken</span>
                       </div>
                       <span className="font-bold">{normalizedResults.timeTakenFormatted}</span>
@@ -3459,7 +3459,7 @@ export default function StudentExams() {
           </Card>
 
           <div className="flex justify-center">
-            <Button onClick={() => setShowResults(false)} className="bg-blue-600 hover:bg-blue-700 text-white">
+            <Button onClick={() => setShowResults(false)} className="bg-primary hover:bg-primary/90 text-white">
               Back to Exams
             </Button>
           </div>
@@ -3470,7 +3470,7 @@ export default function StudentExams() {
   if (isScoring) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px]">
-        <Loader className="w-12 h-12 animate-spin text-blue-600 mb-4" />
+        <Loader className="w-12 h-12 animate-spin text-primary mb-4" />
         <h2 className="text-2xl font-bold">Scoring Your Exam</h2>
         <p className="text-slate-500">Please wait while we calculate your results...</p>
       </div>
@@ -3484,7 +3484,7 @@ export default function StudentExams() {
       <div className="p-2 sm:p-4 space-y-4 max-w-5xl mx-auto">
         <div className="flex flex-col space-y-1">
           <div className="flex items-center gap-2 text-black dark:text-white">
-            <BookOpen className="h-6 w-6 text-blue-600 dark:text-blue-500" />
+            <BookOpen className="h-6 w-6 text-primary dark:text-primary" />
             <h1 className="text-2xl font-bold tracking-tight">My Exams</h1>
           </div>
           <p className="text-muted-foreground text-xs">
@@ -3567,8 +3567,8 @@ export default function StudentExams() {
                       {/* Details Grid */}
                       <div className="grid grid-cols-2 gap-4 bg-slate-50/80 dark:bg-slate-900/30 rounded-xl p-4">
                         <div className="flex items-center gap-3">
-                          <div className="bg-blue-100/50 dark:bg-blue-900/30 p-2 rounded-lg">
-                            <Trophy className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                          <div className="bg-primary/10 dark:bg-primary/5 p-2 rounded-lg">
+                            <Trophy className="h-5 w-5 text-primary dark:text-primary/70" />
                           </div>
                           <div>
                             <p className="text-xs text-slate-500 font-medium">Total Marks</p>
@@ -3631,7 +3631,7 @@ export default function StudentExams() {
                       {/* Action Button */}
                       <Button 
                         onClick={() => status.isCompleted ? setLocation(`/portal/student/exam-results?examId=${exam.id}`) : handleStartExam(exam)}
-                        className={`w-full h-9 rounded-md font-medium shadow-none transition-all group/btn text-sm text-white ${isLocked ? 'bg-slate-400 hover:bg-slate-500 cursor-not-allowed' : 'bg-[#3b82f6] hover:bg-blue-700'}`}
+                        className={`w-full h-9 rounded-md font-medium shadow-none transition-all group/btn text-sm text-white ${isLocked ? 'bg-slate-400 hover:bg-slate-500 cursor-not-allowed' : 'bg-primary hover:bg-primary/90'}`}
                         data-testid={`button-action-${exam.id}`}
                       >
                         <div className="flex items-center justify-center gap-2">
@@ -3655,7 +3655,7 @@ export default function StudentExams() {
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto" data-testid="dialog-exam-instructions">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-xl">
-              <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <Shield className="h-5 w-5 text-primary dark:text-primary/70" />
               Exam Instructions & Rules
             </DialogTitle>
             {pendingExamForInstructions && (
@@ -3670,11 +3670,11 @@ export default function StudentExams() {
             {pendingExamForInstructions && (
               <div className="grid grid-cols-2 gap-3">
                 {pendingExamForInstructions.timeLimit && (
-                  <div className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                    <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <div className="flex items-center gap-2 p-3 bg-primary/5 dark:bg-primary/5 rounded-lg border border-primary/30 dark:border-primary/30">
+                    <Clock className="h-4 w-4 text-primary dark:text-primary/70 shrink-0" />
                     <div>
                       <p className="text-xs text-muted-foreground">Time Limit</p>
-                      <p className="text-sm font-semibold text-blue-700 dark:text-blue-300">{pendingExamForInstructions.timeLimit} min</p>
+                      <p className="text-sm font-semibold text-primary dark:text-primary/60">{pendingExamForInstructions.timeLimit} min</p>
                     </div>
                   </div>
                 )}
@@ -3755,7 +3755,7 @@ export default function StudentExams() {
                 setPendingExamForInstructions(null);
                 setInstructionsAccepted(false);
               }}
-              className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 text-white"
+              className="bg-primary hover:bg-primary/90 dark:bg-primary/90 dark:hover:bg-primary/80 text-white"
               data-testid="button-instructions-begin"
             >
               {startExamMutation.isPending ? (

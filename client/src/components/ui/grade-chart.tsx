@@ -22,7 +22,7 @@ export function GradeChart({ grades }: GradeChartProps) {
           {grades.map((grade, index) => {
             const percentage = (grade.score / grade.maxScore) * 100;
             const barColor = percentage >= 80 ? 'bg-green-500' : 
-                           percentage >= 70 ? 'bg-blue-500' : 
+                           percentage >= 70 ? 'bg-primary/85' : 
                            percentage >= 60 ? 'bg-yellow-500' : 'bg-red-500';
             
             return (
@@ -33,7 +33,7 @@ export function GradeChart({ grades }: GradeChartProps) {
                     <span className="text-sm font-bold">{grade.score}/{grade.maxScore}</span>
                     <span className={`px-2 py-1 rounded text-xs font-medium ${
                       grade.grade === 'A' || grade.grade === 'A+' ? 'bg-green-100 text-green-800' :
-                      grade.grade === 'B' || grade.grade === 'B+' ? 'bg-blue-100 text-blue-800' :
+                      grade.grade === 'B' || grade.grade === 'B+' ? 'bg-primary/10 text-primary' :
                       grade.grade === 'C' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
                     }`}>
                       {grade.grade}

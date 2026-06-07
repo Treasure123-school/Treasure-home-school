@@ -169,9 +169,9 @@ export default function ExamSessions() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Completed Today</p>
-                  <p className="text-2xl font-bold text-blue-600">{completedSessionsCount}</p>
+                  <p className="text-2xl font-bold text-primary">{completedSessionsCount}</p>
                 </div>
-                <CheckCircle className="h-8 w-8 text-blue-600" />
+                <CheckCircle className="h-8 w-8 text-primary" />
               </div>
             </CardContent>
           </Card>
@@ -281,7 +281,7 @@ export default function ExamSessions() {
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-1.5">
                             <div 
-                              className="bg-blue-600 h-1.5 rounded-full" 
+                              className="bg-primary h-1.5 rounded-full" 
                               style={{ 
                                 width: `${getProgressPercentage(session.answeredQuestions, session.totalQuestions)}%` 
                               }}

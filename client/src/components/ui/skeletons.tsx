@@ -264,11 +264,11 @@ export function PortalLayoutSkeleton({ storageKey = 'sidebarCollapsed' }: { stor
   }, [storageKey]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex" data-testid="skeleton-portal-layout">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-primary/5 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex" data-testid="skeleton-portal-layout">
       {!isMobile && (
         <div className={`${sidebarCollapsed ? 'w-20' : 'w-64'} bg-white dark:bg-gray-900 shadow-xl border-r border-gray-200 dark:border-gray-700 h-screen sticky top-0 transition-all duration-300 ease-in-out`}>
           <div className="flex flex-col h-full">
-            <div className="flex-shrink-0 h-[84px] flex items-center border-b border-gray-200 dark:border-gray-700 px-4 bg-gradient-to-br from-blue-50 to-white dark:from-gray-800 dark:to-gray-900">
+            <div className="flex-shrink-0 h-[84px] flex items-center border-b border-gray-200 dark:border-gray-700 px-4 bg-gradient-to-br from-primary/5 to-white dark:from-gray-800 dark:to-gray-900">
               <div className={`flex items-center w-full transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'justify-center' : 'space-x-3'}`}>
                 <SkeletonShimmer className={`${sidebarCollapsed ? 'h-7 w-7' : 'h-11 w-11'} rounded-2xl transition-all duration-300 ease-in-out`} />
                 {!sidebarCollapsed && (
@@ -333,11 +333,11 @@ export function SuperAdminLayoutSkeleton() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-gray-900 dark:to-slate-900 flex" data-testid="skeleton-superadmin-layout">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-primary/5 dark:from-gray-900 dark:to-slate-900 flex" data-testid="skeleton-superadmin-layout">
       {!isMobile && (
         <div className={`${sidebarCollapsed ? 'w-20' : 'w-72'} bg-white dark:bg-gray-900 shadow-xl border-r border-gray-200 dark:border-gray-700 h-screen sticky top-0 transition-all duration-300 ease-in-out`}>
           <div className="flex flex-col h-full">
-            <div className="flex-shrink-0 h-[80px] flex items-center border-b border-gray-200 dark:border-gray-700 px-4 bg-gradient-to-r from-blue-600 to-blue-700">
+            <div className="flex-shrink-0 h-[80px] flex items-center border-b border-gray-200 dark:border-gray-700 px-4 bg-gradient-to-r from-primary to-primary/90">
               <div className={`flex items-center w-full transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'justify-center' : 'space-x-3'}`}>
                 <SkeletonShimmer className={`${sidebarCollapsed ? 'h-8 w-8' : 'h-12 w-12'} rounded-2xl bg-white/20`} />
                 {!sidebarCollapsed && (

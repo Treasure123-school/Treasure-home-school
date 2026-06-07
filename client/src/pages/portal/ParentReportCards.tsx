@@ -331,8 +331,8 @@ export default function ParentReportCards() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg">
-                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                      <Award className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <div className="p-2 bg-primary/10 dark:bg-primary/5 rounded-lg">
+                      <Award className="h-4 w-4 text-primary dark:text-primary/70" />
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Overall Grade</p>
@@ -360,9 +360,9 @@ export default function ParentReportCards() {
 
                 {/* Principal remarks */}
                 {report.principalRemarks && (
-                  <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-lg">
-                    <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-1">Principal's Remarks</h4>
-                    <p className="text-sm text-blue-800 dark:text-blue-300">{report.principalRemarks}</p>
+                  <div className="p-4 bg-primary/5 dark:bg-primary/5 border border-primary/20 dark:border-primary/30/30 rounded-lg">
+                    <h4 className="text-sm font-semibold text-primary dark:text-primary/50 mb-1">Principal's Remarks</h4>
+                    <p className="text-sm text-primary dark:text-primary/60">{report.principalRemarks}</p>
                   </div>
                 )}
 

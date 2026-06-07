@@ -1731,7 +1731,7 @@ export default function ExamManagement() {
                     {examErrors.termId && <p className="text-sm text-red-500 mt-1">{examErrors.termId.message}</p>}
                   </div>
 
-                  <div className="space-y-3 p-3 border rounded-lg bg-blue-50 dark:bg-blue-950/20">
+                  <div className="space-y-3 p-3 border rounded-lg bg-primary/5 dark:bg-primary/5">
                     <h4 className="font-medium text-sm flex items-center gap-2"><Clock className="w-4 h-4" />Timer Mode</h4>
                     <Controller name="timerMode" control={examControl} render={({ field }) => (
                       <Select onValueChange={field.onChange} value={field.value || 'individual'}>
@@ -1766,7 +1766,7 @@ export default function ExamManagement() {
                   </div>
 
                   {watchTimerMode === 'global' && (
-                    <div className="border rounded-lg p-3 bg-blue-50 dark:bg-blue-950/20 space-y-3">
+                    <div className="border rounded-lg p-3 bg-primary/5 dark:bg-primary/5 space-y-3">
                       <h4 className="font-medium text-sm flex items-center gap-2"><Clock className="w-4 h-4" />Global Timer Window</h4>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
@@ -2188,7 +2188,7 @@ export default function ExamManagement() {
                                 className="cursor-pointer"
                                 data-testid={`menu-manage-questions-${exam.id}`}
                               >
-                                <Edit className="w-4 h-4 mr-2 text-blue-500" />
+                                <Edit className="w-4 h-4 mr-2 text-primary" />
                                 Manage Questions
                               </DropdownMenuItem>
                               
@@ -2503,9 +2503,9 @@ export default function ExamManagement() {
                             <p className="mb-2 font-medium">{question.questionText}</p>
 
                             {question.instructions && (
-                              <div className="mb-2 p-2 bg-blue-50 rounded text-sm">
-                                <span className="font-medium text-blue-800">Instructions: </span>
-                                <span className="text-blue-700">{question.instructions}</span>
+                              <div className="mb-2 p-2 bg-primary/5 rounded text-sm">
+                                <span className="font-medium text-primary">Instructions: </span>
+                                <span className="text-primary">{question.instructions}</span>
                               </div>
                             )}
 
@@ -2592,7 +2592,7 @@ export default function ExamManagement() {
 
             <div className="space-y-6">
               {/* Exam Info */}
-              <Card className="bg-blue-50 dark:bg-blue-950/20">
+              <Card className="bg-primary/5 dark:bg-primary/5">
                 <CardContent className="pt-4">
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>

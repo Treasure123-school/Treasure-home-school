@@ -23,7 +23,7 @@ import {
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 
 const SUBJECT_CATEGORIES = [
-  { value: 'general', label: 'General', description: 'For all classes (KG1–SS3)', icon: BookMarked, color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300' },
+  { value: 'general', label: 'General', description: 'For all classes (KG1–SS3)', icon: BookMarked, color: 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/60' },
   { value: 'science', label: 'Science', description: 'For SS1–SS3 Science dept', icon: GraduationCap, color: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300' },
   { value: 'art', label: 'Art', description: 'For SS1–SS3 Art dept', icon: Palette, color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300' },
   { value: 'commercial', label: 'Commercial', description: 'For SS1–SS3 Commercial dept', icon: Briefcase, color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300' },

@@ -267,7 +267,7 @@ function OverviewTab({ analytics }: { analytics: AnalyticsData }) {
       {/* Performance Stat Cards */}
       <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
         <StatCard icon={Users} label="Attempted" value={overview.totalStudents} testId="total-students" />
-        <StatCard icon={Target} label="Average Score" value={`${overview.avgPercent}%`} color="text-blue-600" testId="avg-score" />
+        <StatCard icon={Target} label="Average Score" value={`${overview.avgPercent}%`} color="text-primary" testId="avg-score" />
         <StatCard icon={TrendingUp} label="Highest Score" value={`${overview.highestPercent}%`} color="text-green-600" testId="highest-score" />
         <StatCard icon={TrendingDown} label="Lowest Score" value={`${overview.lowestPercent}%`} color="text-orange-500" testId="lowest-score" />
         <StatCard icon={CheckCircle2} label="Pass Rate" value={`${overview.passRate}%`} sub={`${overview.passCount} passed`} color="text-emerald-600" testId="pass-rate" />
@@ -754,7 +754,7 @@ function ParticipationTab({ analytics }: { analytics: AnalyticsData }) {
     <div className="space-y-6">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={Users} label="Total in Class" value={participation.totalClassStudents} testId="class-total" />
-        <StatCard icon={CheckCircle2} label="Attempted" value={participation.attempted} color="text-blue-600" testId="attempted" />
+        <StatCard icon={CheckCircle2} label="Attempted" value={participation.attempted} color="text-primary" testId="attempted" />
         <StatCard icon={XCircle} label="Not Attempted" value={participation.notAttempted} color="text-red-500" testId="not-attempted" />
         <StatCard icon={Activity} label="Participation Rate" value={`${participation.participationRate}%`} color="text-emerald-600" testId="participation-rate" />
       </div>

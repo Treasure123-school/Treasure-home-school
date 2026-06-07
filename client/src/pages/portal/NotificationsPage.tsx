@@ -31,10 +31,10 @@ function getNotificationIcon(type: string) {
     case "pending_user":  return <UserPlus     className="h-5 w-5 text-orange-500" />;
     case "exam":          return <BookOpen     className="h-5 w-5 text-purple-500" />;
     case "grade":         return <GraduationCap className="h-5 w-5 text-green-500" />;
-    case "schedule":      return <Calendar     className="h-5 w-5 text-blue-500"   />;
+    case "schedule":      return <Calendar     className="h-5 w-5 text-primary"   />;
     case "message":       return <MessageSquare className="h-5 w-5 text-cyan-500"  />;
     case "announcement":  return <Bell         className="h-5 w-5 text-pink-500"   />;
-    default:              return <AlertCircle  className="h-5 w-5 text-blue-500"   />;
+    default:              return <AlertCircle  className="h-5 w-5 text-primary"   />;
   }
 }
 
@@ -43,10 +43,10 @@ function getIconBg(type: string) {
     case "pending_user":  return "bg-orange-100 dark:bg-orange-900/30";
     case "exam":          return "bg-purple-100 dark:bg-purple-900/30";
     case "grade":         return "bg-green-100  dark:bg-green-900/30";
-    case "schedule":      return "bg-blue-100   dark:bg-blue-900/30";
+    case "schedule":      return "bg-primary/10   dark:bg-primary/5";
     case "message":       return "bg-cyan-100   dark:bg-cyan-900/30";
     case "announcement":  return "bg-pink-100   dark:bg-pink-900/30";
-    default:              return "bg-blue-100   dark:bg-blue-900/30";
+    default:              return "bg-primary/10   dark:bg-primary/5";
   }
 }
 
@@ -78,7 +78,7 @@ function NotificationCard({
     <Card
       className={`transition-colors hover:shadow-sm ${
         !notification.isRead
-          ? "border-blue-200 dark:border-blue-800 bg-blue-50/40 dark:bg-blue-950/20"
+          ? "border-primary/30 dark:border-primary/30 bg-primary/5 dark:bg-primary/5"
           : ""
       }`}
       data-testid={`notification-card-${notification.id}`}
@@ -97,7 +97,7 @@ function NotificationCard({
             }`}>
               {notification.title}
               {!notification.isRead && (
-                <span className="ml-2 inline-block h-2 w-2 rounded-full bg-blue-500 align-middle" />
+                <span className="ml-2 inline-block h-2 w-2 rounded-full bg-primary/85 align-middle" />
               )}
             </p>
             {!notification.isRead && (
@@ -231,9 +231,9 @@ export default function NotificationsPage() {
             <p className="text-xs text-muted-foreground mt-0.5">Total</p>
           </CardContent>
         </Card>
-        <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+        <Card className="border-primary/30 dark:border-primary/30 bg-primary/5 dark:bg-primary/5">
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-blue-600 dark:text-blue-400" data-testid="stat-unread">{unreadCount}</p>
+            <p className="text-2xl font-bold text-primary dark:text-primary/70" data-testid="stat-unread">{unreadCount}</p>
             <p className="text-xs text-muted-foreground mt-0.5">Unread</p>
           </CardContent>
         </Card>

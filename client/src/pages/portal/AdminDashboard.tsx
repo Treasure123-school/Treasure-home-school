@@ -30,7 +30,7 @@ interface OnlineUser {
 const ROLE_COLORS: Record<string, string> = {
   superadmin: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
   admin:      'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
-  teacher:    'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  teacher:    'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/60',
   student:    'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
   parent:     'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
 };
@@ -160,7 +160,7 @@ export default function AdminDashboard() {
           className="relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105"
           data-testid="stat-total-students"
         >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 to-transparent rounded-full -mr-16 -mt-16" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/85/10 to-transparent rounded-full -mr-16 -mt-16" />
           <CardContent className="p-6 relative z-10">
             <div className="flex items-start justify-between mb-4">
               <div>
@@ -168,13 +168,13 @@ export default function AdminDashboard() {
                 <div className="flex items-baseline gap-2">
                   <AnimatedCounter
                     value={isLoading ? 0 : (analyticsData?.totalStudents || 0)}
-                    className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent"
+                    className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/90 bg-clip-text text-transparent"
                   />
-                  <GraduationCap className="h-4 w-4 text-blue-600" />
+                  <GraduationCap className="h-4 w-4 text-primary" />
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">Enrolled students</p>
               </div>
-              <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg">
+              <div className="p-3 rounded-xl bg-gradient-to-br from-primary/85 to-primary text-white shadow-lg">
                 <GraduationCap className="h-6 w-6" />
               </div>
             </div>
@@ -478,7 +478,7 @@ export default function AdminDashboard() {
                     return t > 0 ? `${Math.round(s / t)}:1` : '—';
                   })(),
                   testId: 'text-student-teacher-ratio',
-                  color: 'text-blue-600',
+                  color: 'text-primary',
                 },
                 {
                   label: 'Pending Grading',

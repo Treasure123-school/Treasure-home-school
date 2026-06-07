@@ -243,7 +243,7 @@ export default function SuperAdminBrandingTheme() {
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <ImageIcon className="h-5 w-5 text-blue-600" />
+              <ImageIcon className="h-5 w-5 text-primary" />
               School Branding
             </CardTitle>
             <CardDescription>Manage logos and the primary display name.</CardDescription>

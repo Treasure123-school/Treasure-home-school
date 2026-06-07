@@ -219,7 +219,7 @@ export default function ProfileOnboarding() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-900 dark:to-gray-800">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/5 to-primary/10 dark:from-gray-900 dark:to-gray-800">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
@@ -227,7 +227,7 @@ export default function ProfileOnboarding() {
   const completionPercentage = profileData ? (profileData as any).completionPercentage || 0 : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-primary/10 dark:from-gray-900 dark:to-gray-800 py-12 px-4">
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">

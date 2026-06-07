@@ -20,7 +20,7 @@ type CategoryKey = 'all' | 'general' | 'science' | 'art' | 'commercial';
 const CATEGORY_CFG: Record<Exclude<CategoryKey, 'all'>, {
   label: string; icon: any; iconColor: string; bg: string;
 }> = {
-  general:    { label: 'General',    icon: BookMarked,   iconColor: 'text-blue-600',    bg: 'bg-blue-50 dark:bg-blue-900/30' },
+  general:    { label: 'General',    icon: BookMarked,   iconColor: 'text-primary',    bg: 'bg-primary/5 dark:bg-primary/5' },
   science:    { label: 'Science',    icon: GraduationCap,iconColor: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
   art:        { label: 'Art',        icon: Palette,      iconColor: 'text-violet-600',  bg: 'bg-violet-50 dark:bg-violet-900/30' },
   commercial: { label: 'Commercial', icon: Briefcase,    iconColor: 'text-amber-600',   bg: 'bg-amber-50 dark:bg-amber-900/30' },
@@ -105,8 +105,8 @@ export default function StudentSubjects() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: 'Total Subjects', value: assignedSubjects.length, icon: BookMarked, color: 'text-blue-600' },
-            { label: 'General',        value: counts.general,          icon: BookOpen,   color: 'text-blue-500' },
+            { label: 'Total Subjects', value: assignedSubjects.length, icon: BookMarked, color: 'text-primary' },
+            { label: 'General',        value: counts.general,          icon: BookOpen,   color: 'text-primary' },
             { label: 'Science / Art',  value: counts.science + counts.art, icon: GraduationCap, color: 'text-emerald-600' },
             { label: 'Active Exams',   value: totalActive,             icon: Sparkles,   color: 'text-amber-600' },
           ].map(item => (

@@ -175,7 +175,7 @@ export default function StudentLibrary() {
             value={subjectFilter}
             onChange={e => setSubjectFilter(e.target.value)}
             data-testid="select-subject-filter"
-            className="flex-1 h-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="flex-1 h-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:outline-none"
           >
             <option value="all">All Subjects</option>
             {subjects.map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
@@ -186,7 +186,7 @@ export default function StudentLibrary() {
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value)}
             data-testid="select-type-filter"
-            className="flex-1 h-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+            className="flex-1 h-10 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm px-3 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-primary focus:outline-none"
           >
             {typeOptions.map(t => (
               <option key={t} value={t}>

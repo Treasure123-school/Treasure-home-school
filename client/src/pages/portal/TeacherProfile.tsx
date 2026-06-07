@@ -459,31 +459,31 @@ export default function TeacherProfile() {
         }
 
         return (
-          <div className="rounded-xl border border-blue-200 dark:border-blue-800/60 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/30 overflow-hidden shadow-sm animate-in fade-in slide-in-from-top-3 duration-500" data-testid="profile-completion-banner">
+          <div className="rounded-xl border border-primary/30 dark:border-primary/20 bg-gradient-to-br from-primary/5 to-indigo-50 dark:from-primary/5 dark:to-indigo-900/10 overflow-hidden shadow-sm animate-in fade-in slide-in-from-top-3 duration-500" data-testid="profile-completion-banner">
             <div className="px-5 pt-4 pb-3">
               <div className="flex items-start gap-3 mb-3">
-                <div className="flex-shrink-0 bg-blue-100 dark:bg-blue-900/50 rounded-full p-2 mt-0.5">
-                  <ShieldAlert className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <div className="flex-shrink-0 bg-primary/10 dark:bg-primary/5 rounded-full p-2 mt-0.5">
+                  <ShieldAlert className="h-4 w-4 text-primary dark:text-primary/70" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-blue-900 dark:text-blue-200 text-sm sm:text-base" data-testid="text-completion-title">
+                  <p className="font-semibold text-primary dark:text-primary/50 text-sm sm:text-base" data-testid="text-completion-title">
                     Complete your profile — {pct}% done ({filledCount} of {bannerFields.length} fields)
                   </p>
-                  <p className="text-xs sm:text-sm text-blue-700 dark:text-blue-300/90 mt-0.5">
+                  <p className="text-xs sm:text-sm text-primary dark:text-primary/60/90 mt-0.5">
                     Fill in the fields below to get the most out of your teacher profile.
                   </p>
                 </div>
               </div>
-              <Progress value={pct} className="h-2 mb-3 bg-blue-100 dark:bg-blue-900/40" data-testid="progress-completion" />
+              <Progress value={pct} className="h-2 mb-3 bg-primary/10 dark:bg-primary/5" data-testid="progress-completion" />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1">
                 {bannerFields.map(field => (
                   <div key={field.key} className="flex items-center gap-2 py-0.5">
                     {field.filled ? (
                       <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0 text-green-500 dark:text-green-400" />
                     ) : (
-                      <Circle className="h-3.5 w-3.5 flex-shrink-0 text-blue-400 dark:text-blue-500" />
+                      <Circle className="h-3.5 w-3.5 flex-shrink-0 text-primary/70 dark:text-primary" />
                     )}
-                    <span className={`text-xs font-medium ${field.filled ? 'text-green-700 dark:text-green-400 line-through decoration-green-400/70' : 'text-blue-800 dark:text-blue-200'}`}>
+                    <span className={`text-xs font-medium ${field.filled ? 'text-green-700 dark:text-green-400 line-through decoration-green-400/70' : 'text-primary dark:text-primary/50'}`}>
                       {field.label}
                     </span>
                   </div>

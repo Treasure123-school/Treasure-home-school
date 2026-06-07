@@ -89,7 +89,7 @@ export default function SuperAdminIntegrations() {
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Puzzle className="h-5 w-5 text-blue-600" />
+              <Puzzle className="h-5 w-5 text-primary" />
               Service Toggles
             </CardTitle>
             <CardDescription>Enable or disable specific external system integrations.</CardDescription>
@@ -97,8 +97,8 @@ export default function SuperAdminIntegrations() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-slate-50/50 transition-colors">
               <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                  <Mail className="h-5 w-5 text-blue-600" />
+                <div className="h-10 w-10 rounded-full bg-primary/10 dark:bg-primary/5 flex items-center justify-center">
+                  <Mail className="h-5 w-5 text-primary" />
                 </div>
                 <div className="space-y-0.5">
                   <Label className="text-base font-semibold">Email Notifications</Label>
@@ -170,7 +170,7 @@ export default function SuperAdminIntegrations() {
                     href="https://paystack.com"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                   >
                     paystack.com <ExternalLink className="h-3 w-3" />
                   </a>
@@ -203,7 +203,7 @@ export default function SuperAdminIntegrations() {
                 <div className="space-y-1">
                   <p className="text-sm font-medium">Configure webhook URL (optional but recommended)</p>
                   <p className="text-xs text-muted-foreground">In Paystack dashboard, add your webhook URL to receive instant payment confirmations even if a student closes their browser:</p>
-                  <div className="mt-1 p-2 bg-slate-900 dark:bg-black rounded-md font-mono text-xs text-blue-400">
+                  <div className="mt-1 p-2 bg-slate-900 dark:bg-black rounded-md font-mono text-xs text-primary/70">
                     https://your-domain.com/api/exam-payments/webhook
                   </div>
                 </div>
@@ -245,7 +245,7 @@ export default function SuperAdminIntegrations() {
                 <div className="space-y-1">
                   <p className="text-sm font-medium">Create an OpenAI account</p>
                   <p className="text-xs text-muted-foreground">Sign up at platform.openai.com and add billing (GPT-4o Mini is very affordable — ~$0.001 per lesson note).</p>
-                  <a href="https://platform.openai.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                  <a href="https://platform.openai.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
                     platform.openai.com <ExternalLink className="h-3 w-3" />
                   </a>
                 </div>
@@ -256,7 +256,7 @@ export default function SuperAdminIntegrations() {
                 <div className="space-y-1">
                   <p className="text-sm font-medium">Generate an API key</p>
                   <p className="text-xs text-muted-foreground">Go to <strong>API Keys</strong> in the OpenAI dashboard and create a new secret key.</p>
-                  <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                  <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
                     platform.openai.com/api-keys <ExternalLink className="h-3 w-3" />
                   </a>
                 </div>

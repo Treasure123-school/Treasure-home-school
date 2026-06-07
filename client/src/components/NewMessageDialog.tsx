@@ -94,8 +94,8 @@ export function NewMessageDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader className="space-y-2 pb-1">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
-              <Send className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div className="p-2.5 bg-primary/10 dark:bg-primary/5 rounded-lg">
+              <Send className="h-5 w-5 text-primary dark:text-primary/70" />
             </div>
             <div>
               <DialogTitle className="text-lg font-bold text-gray-900 dark:text-gray-100">
@@ -123,7 +123,7 @@ export function NewMessageDialog({
                 />
                 {isVerifying && (
                   <div className="absolute right-3 top-2.5">
-                    <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
                   </div>
                 )}
                 {recipientInfo && !isVerifying && (
@@ -192,7 +192,7 @@ export function NewMessageDialog({
 
           <div className="space-y-2 pt-1">
             <Button
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white gap-2"
+              className="w-full bg-primary hover:bg-primary/90 text-white gap-2"
               onClick={() => sendMutation.mutate()}
               disabled={!recipientId || !content.trim() || sendMutation.isPending}
               data-testid="button-send-new-message"

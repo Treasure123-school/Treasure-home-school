@@ -19,7 +19,7 @@ export function StatsCard({ title, value, icon: Icon, color = 'primary', change,
       case 'green':
         return 'bg-green-100 text-green-600';
       case 'blue':
-        return 'bg-blue-100 text-blue-600';
+        return 'bg-primary/10 text-primary';
       case 'orange':
         return 'bg-orange-100 text-orange-600';
       case 'red':

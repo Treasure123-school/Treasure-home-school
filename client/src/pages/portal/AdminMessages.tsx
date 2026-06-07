@@ -231,7 +231,7 @@ export default function AdminMessages() {
         <div className="p-4 border-b border-border space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-blue-600" />
+              <MessageSquare className="w-5 h-5 text-primary" />
               Messages
             </h2>
             <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full" onClick={() => setIsNewMessageOpen(true)}>
@@ -264,14 +264,14 @@ export default function AdminMessages() {
             filteredConversations.map(conv => (
               <button
                 key={conv.contactId}
-                className={`w-full flex items-center gap-3 p-4 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border-b border-gray-100 dark:border-gray-800 text-left relative ${selectedContactId === conv.contactId ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}
+                className={`w-full flex items-center gap-3 p-4 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border-b border-gray-100 dark:border-gray-800 text-left relative ${selectedContactId === conv.contactId ? 'bg-primary/5 dark:bg-primary/5' : ''}`}
                 onClick={() => {
                   setSelectedContactId(conv.contactId);
                   setShowConversations(false);
                 }}
               >
                 <Avatar className="h-11 w-11 border-2 border-white dark:border-gray-800 shadow-sm">
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-medium">
+                  <AvatarFallback className="bg-gradient-to-br from-primary/85 to-indigo-600 text-white font-medium">
                     {conv.contactInitials}
                   </AvatarFallback>
                 </Avatar>
@@ -283,7 +283,7 @@ export default function AdminMessages() {
                   <p className="text-sm text-muted-foreground truncate line-clamp-1">{conv.lastMessage}</p>
                 </div>
                 {conv.unreadCount > 0 && (
-                  <Badge className="h-5 w-5 rounded-full p-0 flex items-center justify-center bg-blue-600 shrink-0">
+                  <Badge className="h-5 w-5 rounded-full p-0 flex items-center justify-center bg-primary shrink-0">
                     {conv.unreadCount}
                   </Badge>
                 )}
@@ -303,7 +303,7 @@ export default function AdminMessages() {
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <Avatar className="h-9 w-9 border border-gray-200 dark:border-gray-700">
-                <AvatarFallback className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 font-medium text-xs">
+                <AvatarFallback className="bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/60 font-medium text-xs">
                   {selectedConversation.contactInitials}
                 </AvatarFallback>
               </Avatar>
@@ -328,14 +328,14 @@ export default function AdminMessages() {
                   <div key={msg.id} className={`flex flex-col ${isMine ? 'items-end' : 'items-start'} space-y-1`}>
                     <div className={`max-w-[85%] md:max-w-[70%] px-4 py-2.5 rounded-2xl shadow-sm border ${
                       isMine 
-                        ? 'bg-blue-600 text-white rounded-br-none border-blue-600' 
+                        ? 'bg-primary text-white rounded-br-none border-primary' 
                         : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-none border-gray-200 dark:border-gray-700'
                     }`}>
                       <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
-                      <div className={`flex items-center justify-end gap-1.5 mt-1 ${isMine ? 'text-blue-50' : 'text-muted-foreground'}`}>
+                      <div className={`flex items-center justify-end gap-1.5 mt-1 ${isMine ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
                         <span className="text-[10px] opacity-70 font-medium uppercase">{formatTime(msg.createdAt)}</span>
                         {isMine && (
-                          msg.isRead ? <CheckCheck className="w-3 h-3 text-blue-200" /> : <Check className="w-3 h-3 opacity-60" />
+                          msg.isRead ? <CheckCheck className="w-3 h-3 text-primary/50" /> : <Check className="w-3 h-3 opacity-60" />
                         )}
                       </div>
                     </div>
@@ -353,14 +353,14 @@ export default function AdminMessages() {
               <input type="file" ref={fileInputRef} className="hidden" />
               <Input
                 placeholder="Type your message..."
-                className="flex-1 bg-muted border-0 h-10 focus-visible:ring-1 focus-visible:ring-blue-500 rounded-full px-4"
+                className="flex-1 bg-muted border-0 h-10 focus-visible:ring-1 focus-visible:ring-primary rounded-full px-4"
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
               />
               <Button 
                 type="submit" 
                 size="icon" 
-                className="h-10 w-10 rounded-full bg-blue-600 hover:bg-blue-700 shadow-md transition-all active:scale-95 shrink-0"
+                className="h-10 w-10 rounded-full bg-primary hover:bg-primary/90 shadow-md transition-all active:scale-95 shrink-0"
                 disabled={!messageText.trim() || sendMessageMutation.isPending}
               >
                 <Send className="h-4 w-4" />
@@ -370,7 +370,7 @@ export default function AdminMessages() {
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-6 bg-muted/5">
             <div className="bg-card p-8 rounded-full shadow-lg border border-border">
-              <MessageSquare className="w-16 h-16 text-blue-200" />
+              <MessageSquare className="w-16 h-16 text-primary/50" />
             </div>
             <div className="max-w-xs space-y-2">
               <h3 className="text-xl font-bold">Your Messages</h3>

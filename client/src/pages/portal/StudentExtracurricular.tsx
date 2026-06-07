@@ -55,9 +55,9 @@ const DEMO_ACTIVITIES = [
     coach: 'Mr. Samuel Bello',
     members: 32,
     maxMembers: 40,
-    color: 'bg-blue-50 dark:bg-blue-950/40 border-blue-200 dark:border-blue-800',
-    iconColor: 'text-blue-600',
-    badgeColor: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300',
+    color: 'bg-primary/5 dark:bg-primary/5 border-primary/30 dark:border-primary/30',
+    iconColor: 'text-primary',
+    badgeColor: 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/60',
     achievements: ['State Choir Competition Silver 2024'],
   },
   {
@@ -106,7 +106,7 @@ const DEMO_ACTIVITIES = [
 
 const UPCOMING_EVENTS = [
   { id: 1, title: 'Inter-School Football Tournament', type: 'Competition', date: '2026-04-05', activity: 'Football Club', color: 'border-l-emerald-500', typeBadge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300' },
-  { id: 2, title: 'Annual School Concert', type: 'Performance', date: '2026-04-12', activity: 'Music & Choir', color: 'border-l-blue-500', typeBadge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300' },
+  { id: 2, title: 'Annual School Concert', type: 'Performance', date: '2026-04-12', activity: 'Music & Choir', color: 'border-l-primary', typeBadge: 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/60' },
   { id: 3, title: 'State Science Olympiad', type: 'Competition', date: '2026-04-20', activity: 'Science Quiz Team', color: 'border-l-amber-500', typeBadge: 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300' },
   { id: 4, title: 'Coding Hackathon 2026', type: 'Event', date: '2026-05-03', activity: 'Coding Club', color: 'border-l-cyan-500', typeBadge: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300' },
   { id: 5, title: 'End-of-Term Drama Show', type: 'Performance', date: '2026-05-15', activity: 'Drama & Theatre', color: 'border-l-purple-500', typeBadge: 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300' },
@@ -152,9 +152,9 @@ export default function StudentExtracurricular() {
           <p className="text-sm text-muted-foreground mt-1">Explore clubs, teams, and activities at your school</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
-            <Trophy className="h-3.5 w-3.5 text-blue-600" />
-            <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">{DEMO_ACTIVITIES.length} Activities</span>
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/5 dark:bg-primary/5 border border-primary/30 dark:border-primary/30">
+            <Trophy className="h-3.5 w-3.5 text-primary" />
+            <span className="text-xs font-semibold text-primary dark:text-primary/60">{DEMO_ACTIVITIES.length} Activities</span>
           </div>
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
             <Star className="h-3.5 w-3.5 text-emerald-600" />
@@ -199,8 +199,8 @@ export default function StudentExtracurricular() {
             onClick={() => setFilterCategory(cat)}
             className={`flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all duration-200 border ${
               filterCategory === cat
-                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:text-blue-600'
+                ? 'bg-primary text-white border-primary shadow-sm'
+                : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:border-primary/40 hover:text-primary'
             }`}
             data-testid={`filter-cat-${cat}`}
           >
@@ -274,7 +274,7 @@ export default function StudentExtracurricular() {
                   {/* Members bar */}
                   <div className="w-full bg-gray-100 dark:bg-gray-800 rounded-full h-1.5 mb-4 overflow-hidden">
                     <div
-                      className={`h-1.5 rounded-full transition-all ${fillPct >= 90 ? 'bg-red-400' : 'bg-blue-400'}`}
+                      className={`h-1.5 rounded-full transition-all ${fillPct >= 90 ? 'bg-red-400' : 'bg-primary/70'}`}
                       style={{ width: `${fillPct}%` }}
                     />
                   </div>
@@ -311,7 +311,7 @@ export default function StudentExtracurricular() {
       <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
         <CardHeader className="pb-3 border-b border-gray-100 dark:border-gray-800">
           <CardTitle className="text-base flex items-center gap-2">
-            <Calendar className="h-4 w-4 text-blue-600" />
+            <Calendar className="h-4 w-4 text-primary" />
             Upcoming Events
           </CardTitle>
         </CardHeader>
@@ -377,8 +377,8 @@ export default function StudentExtracurricular() {
 
               <div className="space-y-3">
                 <div className="flex items-center gap-3 text-sm">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/40 flex items-center justify-center flex-shrink-0">
-                    <Clock className="h-4 w-4 text-blue-600" />
+                  <div className="w-8 h-8 rounded-lg bg-primary/5 dark:bg-primary/5 flex items-center justify-center flex-shrink-0">
+                    <Clock className="h-4 w-4 text-primary" />
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Schedule</p>

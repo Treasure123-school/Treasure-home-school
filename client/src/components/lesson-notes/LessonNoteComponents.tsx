@@ -157,7 +157,7 @@ export function RegenPanel({
       <button
         disabled={busy}
         onClick={() => onRegen(fig.figId, fig.prompt, fig.heading)}
-        className="flex items-center justify-center gap-2 w-full text-xs bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white rounded-lg px-3 py-2 font-semibold transition-colors"
+        className="flex items-center justify-center gap-2 w-full text-xs bg-primary hover:bg-primary/90 disabled:opacity-60 text-white rounded-lg px-3 py-2 font-semibold transition-colors"
       >
         {busy
           ? <Loader2 className="h-3.5 w-3.5 animate-spin" />

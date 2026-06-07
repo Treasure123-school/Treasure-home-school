@@ -111,10 +111,10 @@ export default function SuperAdminAuthenticationSettings() {
         </div>
 
         {/* 1. LOGIN METHODS */}
-        <Card className="border-t-4 border-t-blue-500 shadow-sm">
+        <Card className="border-t-4 border-t-primary shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <LogIn className="h-5 w-5 text-blue-500" />
+              <LogIn className="h-5 w-5 text-primary" />
               Login Methods
             </CardTitle>
             <CardDescription>Configure how users identify themselves during login.</CardDescription>

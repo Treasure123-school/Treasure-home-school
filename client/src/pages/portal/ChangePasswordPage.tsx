@@ -29,7 +29,7 @@ function getStrength(pwd: string) {
   if (/[^A-Za-z0-9]/.test(pwd)) score++;
   if (score <= 1) return { label: "Weak", color: "bg-red-500", textColor: "text-red-600", width: "w-1/4" };
   if (score === 2) return { label: "Fair", color: "bg-amber-500", textColor: "text-amber-600", width: "w-2/4" };
-  if (score === 3) return { label: "Good", color: "bg-blue-500", textColor: "text-blue-600", width: "w-3/4" };
+  if (score === 3) return { label: "Good", color: "bg-primary/85", textColor: "text-primary", width: "w-3/4" };
   return { label: "Strong", color: "bg-green-500", textColor: "text-green-600", width: "w-full" };
 }
 
@@ -100,7 +100,7 @@ export default function ChangePasswordPage() {
       <Card className="dark:bg-slate-800 dark:border-slate-700">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 dark:text-white">
-            <ShieldCheck className="h-5 w-5 text-blue-600" />
+            <ShieldCheck className="h-5 w-5 text-primary" />
             Update Password
           </CardTitle>
           <CardDescription className="dark:text-slate-400">
