@@ -402,6 +402,20 @@ export async function saveImageToCloudinary(
   noteId: number | string,
 ): Promise<string> {
   const { v2: cloudinary } = await import('cloudinary');
+
+  // Ensure Cloudinary is configured (safe to call repeatedly — it's a no-op if already set)
+  if (
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET
+  ) {
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+  }
+
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
@@ -419,28 +433,36 @@ export async function saveImageToCloudinary(
   });
 }
 
+/**
+ * Saves a generated image to Cloudinary (preferred — permanent, CDN-served) when
+ * credentials are available, or falls back to local disk.
+ *
+ * Cloudinary is always used when the three CLOUDINARY_* env vars are set,
+ * regardless of NODE_ENV. This ensures images survive server restarts and
+ * environment resets in both development and production.
+ */
 export async function saveGeneratedImage(
   imageBuffer: Buffer,
   noteId: number | string,
 ): Promise<string> {
-  const isProduction = process.env.NODE_ENV === 'production';
+  const hasCloudinary =
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET;
 
-  if (isProduction) {
-    const hasCloudinary =
-      process.env.CLOUDINARY_CLOUD_NAME &&
-      process.env.CLOUDINARY_API_KEY &&
-      process.env.CLOUDINARY_API_SECRET;
-
-    if (hasCloudinary) {
-      try {
-        return await saveImageToCloudinary(imageBuffer, noteId);
-      } catch (err) {
-        console.warn('[Image AI] Cloudinary upload failed, falling back to local:', (err as Error).message);
-      }
+  if (hasCloudinary) {
+    try {
+      const url = await saveImageToCloudinary(imageBuffer, noteId);
+      console.log(`[Image AI] Saved to Cloudinary: ${url}`);
+      return url;
+    } catch (err) {
+      console.warn('[Image AI] Cloudinary upload failed, falling back to local:', (err as Error).message);
     }
   }
 
-  return saveImageLocally(imageBuffer, noteId);
+  const localUrl = await saveImageLocally(imageBuffer, noteId);
+  console.log(`[Image AI] Saved locally: ${localUrl}`);
+  return localUrl;
 }
 
 // ─── Admin config helpers ─────────────────────────────────────────────────────
