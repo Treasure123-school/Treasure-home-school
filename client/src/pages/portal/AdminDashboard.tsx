@@ -126,7 +126,7 @@ export default function AdminDashboard() {
     <>
       {/* Admin Role Header */}
       <div
-        className="mb-6 bg-gradient-to-r from-red-600 via-rose-600 to-pink-600 rounded-2xl p-6 text-white shadow-xl"
+        className="mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 text-white shadow-xl"
         data-testid="admin-role-header"
       >
         <div className="flex items-center justify-between">
@@ -138,7 +138,7 @@ export default function AdminDashboard() {
               <h2 className="text-2xl font-bold tracking-tight" data-testid="text-admin-greeting">
                 Welcome back, {user.lastName}!
               </h2>
-              <p className="text-red-100 text-sm mt-1" data-testid="text-admin-subtitle">
+              <p className="text-white/70 text-sm mt-1" data-testid="text-admin-subtitle">
                 School Administration Portal
               </p>
             </div>

@@ -192,21 +192,21 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               <h4 className="text-gray-800 font-black uppercase tracking-widest text-[11px]">Useful Links</h4>
               <ul className="space-y-3">
                 {navigation.map((item) => (
-                  <li key={item.name}><Link href={item.href} className="text-[13px] text-gray-700 font-bold hover:text-[#0000FF] transition-colors">{item.name}</Link></li>
+                  <li key={item.name}><Link href={item.href} className="text-[13px] text-gray-700 font-bold hover:text-primary transition-colors">{item.name}</Link></li>
                 ))}
               </ul>
             </div>
             <div className="space-y-6">
               <h4 className="text-gray-800 font-black uppercase tracking-widest text-[11px]">Contact Info</h4>
               <ul className="space-y-4">
-                <li className="flex gap-4"><MapPin className="h-5 w-5 text-[#0000FF] shrink-0" /><span className="text-[13px] text-gray-700 font-bold">{schoolAddress}</span></li>
+                <li className="flex gap-4"><MapPin className="h-5 w-5 text-primary shrink-0" /><span className="text-[13px] text-gray-700 font-bold">{schoolAddress}</span></li>
                 {schoolPhone && (
                   <li className="flex gap-4">
-                    <Phone className="h-5 w-5 text-[#0000FF] shrink-0" />
+                    <Phone className="h-5 w-5 text-primary shrink-0" />
                     <span className="text-[13px] text-gray-700 font-bold">{schoolPhone}</span>
                   </li>
                 )}
-                <li className="flex gap-4"><Mail className="h-5 w-5 text-[#0000FF] shrink-0" /><span className="text-[13px] text-gray-700 font-bold">{schoolEmail}</span></li>
+                <li className="flex gap-4"><Mail className="h-5 w-5 text-primary shrink-0" /><span className="text-[13px] text-gray-700 font-bold">{schoolEmail}</span></li>
               </ul>
             </div>
           </div>

@@ -263,7 +263,7 @@ export default function TeacherDashboard() {
       )}
 
       {/* Teacher Role Header - Clean Welcome */}
-      <div className="mb-6 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-2xl p-6 text-white shadow-xl" data-testid="teacher-role-header">
+      <div className="mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 text-white shadow-xl" data-testid="teacher-role-header">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4 flex-1">
             <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 shadow-lg">
@@ -273,7 +273,7 @@ export default function TeacherDashboard() {
               <h2 className="text-2xl font-bold tracking-tight" data-testid="text-personalized-greeting">
                 Welcome back, {user.lastName}!
               </h2>
-              <p className="text-emerald-100 text-sm mt-1" data-testid="text-teacher-assignment">
+              <p className="text-white/70 text-sm mt-1" data-testid="text-teacher-assignment">
                 Ready to inspire minds today?
               </p>
             </div>

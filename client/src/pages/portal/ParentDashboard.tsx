@@ -185,14 +185,14 @@ export default function ParentDashboard() {
   return (
     <div className="space-y-6 sm:space-y-8" data-testid="page-parent-dashboard">
       {/* Header */}
-      <div className="bg-gradient-to-r from-amber-600 via-orange-600 to-yellow-600 rounded-2xl p-6 text-white shadow-xl" data-testid="parent-role-header">
+      <div className="bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 text-white shadow-xl" data-testid="parent-role-header">
         <div className="flex items-center gap-4">
           <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 shadow-lg">
             <Heart className="h-10 w-10 text-white" />
           </div>
           <div>
             <h2 className="text-2xl font-bold tracking-tight">Welcome back, {user.firstName}!</h2>
-            <p className="text-amber-100 text-sm mt-0.5">Stay connected with your child's education</p>
+            <p className="text-white/70 text-sm mt-0.5">Stay connected with your child's education</p>
           </div>
         </div>
       </div>
@@ -251,12 +251,12 @@ export default function ParentDashboard() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="overflow-hidden border-none shadow-lg" data-testid="stat-children">
-          <div className="bg-gradient-to-br from-primary/85 via-primary to-indigo-600 p-5 text-white">
+          <div className="bg-gradient-to-br from-primary to-primary/80 p-5 text-white">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-primary/30 text-xs font-medium">Children</p>
+                <p className="text-white/70 text-xs font-medium">Children</p>
                 <AnimatedCounter value={children.length} className="text-3xl font-bold mt-1" />
-                <p className="text-primary/30 text-xs mt-1">Enrolled</p>
+                <p className="text-white/70 text-xs mt-1">Enrolled</p>
               </div>
               <div className="p-2.5 bg-white/20 rounded-xl"><Users className="h-7 w-7 text-white" /></div>
             </div>

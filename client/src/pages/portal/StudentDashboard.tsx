@@ -273,11 +273,11 @@ export default function StudentDashboard() {
               <h1 className="text-2xl md:text-3xl font-bold mb-1">
                 Welcome back, {user.lastName}!
               </h1>
-              <p className="text-primary/30 text-sm">
+              <p className="text-white/70 text-sm">
                 Here's what's happening with your academics today
               </p>
               {studentData?.admissionNumber && (
-                <p className="text-primary/50 text-xs mt-1 font-mono" data-testid="text-admission-number-dashboard">
+                <p className="text-white/60 text-xs mt-1 font-mono" data-testid="text-admission-number-dashboard">
                   Admission No: {studentData.admissionNumber}
                 </p>
               )}
