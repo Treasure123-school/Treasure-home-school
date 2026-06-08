@@ -119,7 +119,7 @@ export function NotificationBell() {
           className="relative" 
           data-testid="button-notifications"
         >
-          <Bell className={`h-5 w-5 ${unreadCount > 0 ? 'animate-pulse text-orange-600' : ''}`} />
+          <Bell className="h-5 w-5 text-foreground" />
           {unreadCount > 0 && (
             <Badge 
               className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs animate-pulse"
@@ -132,9 +132,9 @@ export function NotificationBell() {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 sm:w-96 p-0" align="end">
-        <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-950/30 dark:to-yellow-950/30">
+        <div className="flex items-center justify-between p-4 border-b bg-primary/10">
           <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-orange-600" />
+            <Bell className="h-5 w-5 text-primary" />
             <h3 className="font-semibold">Notifications</h3>
             {unreadCount > 0 && (
               <Badge variant="destructive" className="ml-1">
@@ -168,7 +168,7 @@ export function NotificationBell() {
                   key={notification.id}
                   onClick={() => handleNotificationClick(notification)}
                   className={`w-full p-4 text-left hover:bg-muted/50 transition-colors ${
-                    !notification.isRead ? 'bg-orange-50/50 dark:bg-orange-950/30' : ''
+                    !notification.isRead ? 'bg-primary/5' : ''
                   }`}
                   data-testid={`notification-${notification.id}`}
                 >
@@ -189,7 +189,7 @@ export function NotificationBell() {
                       </p>
                     </div>
                     {!notification.isRead && (
-                      <div className="h-2 w-2 rounded-full bg-orange-500 flex-shrink-0 mt-1 animate-pulse" />
+                      <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-1 animate-pulse" />
                     )}
                   </div>
                 </button>
