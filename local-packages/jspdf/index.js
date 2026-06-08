@@ -16,5 +16,3 @@ class jsPDF {
   get internal() { return { pageSize: { getWidth: () => 210, getHeight: () => 297 } }; }
 }
 export default jsPDF;
-module.exports = jsPDF;
-module.exports.default = jsPDF;
