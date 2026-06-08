@@ -290,39 +290,32 @@ export default function SyllabusTopicsManager() {
   return (
     <div className="min-h-screen bg-background">
 
-      {/* ── Header ──────────────────────────────────────── */}
-      <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background border-b">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                <Layers className="w-5 h-5 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold text-foreground">Scheme of Work</h1>
-                <p className="text-sm text-muted-foreground mt-0.5">Define and publish curriculum topics per class, subject, and term</p>
-              </div>
-            </div>
-            {filtersSet && (
-              <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="w-full sm:w-auto" data-testid="btn-add-topic">
-                <Plus className="w-4 h-4 mr-1.5" /> Add Topics
-              </Button>
-            )}
-          </div>
-
-          {/* Stat Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
-            <StatCard icon={Layers} label="Total Topics" value={stats?.total} iconClass="bg-primary/5 dark:bg-primary/5 text-primary" loading={!stats} />
-            <StatCard icon={Globe} label="Published" value={stats?.published} iconClass="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600" loading={!stats} />
-            <StatCard icon={EyeOff} label="Drafts" value={stats?.draft} iconClass="bg-amber-50 dark:bg-amber-950/40 text-amber-600" loading={!stats} />
-            <StatCard icon={BookOpen} label="Subjects" value={stats?.subjects} iconClass="bg-violet-50 dark:bg-violet-950/40 text-violet-600" loading={!stats} />
-          </div>
-        </div>
-      </div>
-
       {/* ── Content ─────────────────────────────────────── */}
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <Layers className="h-6 w-6 text-primary" />
+              Scheme of Work
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">Define and publish curriculum topics per class, subject, and term</p>
+          </div>
+          {filtersSet && (
+            <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="w-full sm:w-auto shrink-0" data-testid="btn-add-topic">
+              <Plus className="w-4 h-4 mr-1.5" /> Add Topics
+            </Button>
+          )}
+        </div>
+
+        {/* Stat Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <StatCard icon={Layers} label="Total Topics" value={stats?.total} iconClass="bg-primary/5 dark:bg-primary/5 text-primary" loading={!stats} />
+          <StatCard icon={Globe} label="Published" value={stats?.published} iconClass="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600" loading={!stats} />
+          <StatCard icon={EyeOff} label="Drafts" value={stats?.draft} iconClass="bg-amber-50 dark:bg-amber-950/40 text-amber-600" loading={!stats} />
+          <StatCard icon={BookOpen} label="Subjects" value={stats?.subjects} iconClass="bg-violet-50 dark:bg-violet-950/40 text-violet-600" loading={!stats} />
+        </div>
 
         {/* Filter Card */}
         <Card className="shadow-sm">
