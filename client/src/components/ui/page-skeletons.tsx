@@ -111,8 +111,8 @@ export function StudentDashboardSkeleton() {
 export function AdminDashboardSkeleton() {
   return (
     <div className="animate-in fade-in duration-200" data-testid="skeleton-admin-dashboard">
-      {/* Welcome Banner — mirrors: mb-6 bg-gradient-to-r from-red-600 via-rose-600 to-pink-600 rounded-2xl p-6 shadow-xl */}
-      <div className="mb-6 bg-gradient-to-r from-red-600 via-rose-600 to-pink-600 rounded-2xl p-6 shadow-xl">
+      {/* Welcome Banner — mirrors: mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 shadow-xl */}
+      <div className="mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 shadow-xl">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4 flex-1">
             {/* Icon box — mirrors: bg-white/20 backdrop-blur-sm rounded-2xl p-4 shadow-lg */}
@@ -232,8 +232,8 @@ export function AdminDashboardSkeleton() {
 export function TeacherDashboardSkeleton() {
   return (
     <div className="animate-in fade-in duration-200" data-testid="skeleton-teacher-dashboard">
-      {/* Welcome Banner — mirrors: mb-6 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-2xl p-6 shadow-xl */}
-      <div className="mb-6 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 rounded-2xl p-6 shadow-xl">
+      {/* Welcome Banner — mirrors: mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 shadow-xl */}
+      <div className="mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 shadow-xl">
         <div className="flex items-center gap-4">
           {/* Icon box — mirrors: bg-white/20 backdrop-blur-sm rounded-2xl p-4 shadow-lg */}
           <div className="bg-white/20 rounded-2xl p-4 flex-shrink-0">
@@ -315,8 +315,8 @@ export function ParentDashboardSkeleton() {
   ];
   return (
     <div className="animate-in fade-in duration-200" data-testid="skeleton-parent-dashboard">
-      {/* Welcome Banner — mirrors: mb-6 bg-gradient-to-r from-amber-600 via-orange-600 to-yellow-600 rounded-2xl p-6 shadow-xl */}
-      <div className="mb-6 bg-gradient-to-r from-amber-600 via-orange-600 to-yellow-600 rounded-2xl p-6 shadow-xl">
+      {/* Welcome Banner — mirrors: mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 shadow-xl */}
+      <div className="mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 shadow-xl">
         <div className="flex items-center gap-4">
           {/* Icon box — mirrors: bg-white/20 backdrop-blur-sm rounded-2xl p-4 shadow-lg */}
           <div className="bg-white/20 rounded-2xl p-4 flex-shrink-0">
@@ -407,17 +407,22 @@ export function ParentDashboardSkeleton() {
 export function SuperAdminDashboardSkeleton() {
   return (
     <div className="animate-in fade-in duration-200" data-testid="skeleton-superadmin-dashboard">
-      {/* Welcome Banner — mirrors: mb-8 bg-gradient-to-r from-primary to-primary/90 rounded-lg p-6 shadow-lg
-          NOTE: SuperAdmin uses rounded-lg (not rounded-2xl) and a smaller p-3 rounded-xl icon container */}
-      <div className="mb-8 bg-gradient-to-r from-primary to-primary/90 rounded-lg p-6 shadow-lg">
-        <div className="flex items-center gap-4">
-          {/* Icon box — mirrors: p-3 rounded-xl bg-white/20 backdrop-blur-sm shadow-lg */}
-          <div className="p-3 rounded-xl bg-white/20 flex-shrink-0">
-            <SkeletonShimmer className="h-8 w-8 bg-white/30" />
+      {/* Welcome Banner — mirrors: mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 shadow-xl */}
+      <div className="mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 shadow-xl">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4 flex-1">
+            {/* Icon box — mirrors: bg-white/20 backdrop-blur-sm rounded-2xl p-4 shadow-lg */}
+            <div className="bg-white/20 rounded-2xl p-4 flex-shrink-0">
+              <SkeletonShimmer className="h-10 w-10 bg-white/30" />
+            </div>
+            <div className="space-y-2 flex-1 min-w-0">
+              <SkeletonShimmer className="h-8 w-52 sm:w-64 bg-white/30" />
+              <SkeletonShimmer className="h-4 w-60 sm:w-80 bg-white/20" />
+            </div>
           </div>
-          <div className="space-y-2 flex-1 min-w-0">
-            <SkeletonShimmer className="h-8 w-52 sm:w-64 bg-white/30" />
-            <SkeletonShimmer className="h-4 w-60 sm:w-80 bg-white/20" />
+          {/* Date pill — hidden on mobile, visible md+ */}
+          <div className="hidden md:block bg-white/10 rounded-lg px-4 py-2">
+            <SkeletonShimmer className="h-5 w-32 bg-white/20" />
           </div>
         </div>
       </div>
