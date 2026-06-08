@@ -3,18 +3,18 @@ import { useQuery } from '@tanstack/react-query';
 import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { StatusBadge } from '@/components/lesson-notes/lessonNoteShared';
 import type { EnrichedNote } from '@/components/lesson-notes/lessonNoteShared';
 import {
-  BookOpen, Layers, CheckCircle2, ChevronRight, X, Info, ListChecks,
-  Plus, ArrowRight, GraduationCap, BookMarked, Calendar, Hash,
-  Eye, Edit, AlertCircle,
+  BookOpen, Layers, CheckCircle2, ChevronRight, Info,
+  Plus, ArrowRight, BookMarked, Filter, Eye, AlertCircle, Hash,
 } from 'lucide-react';
 
 type Topic = { id: number; name: string; description: string | null; orderNumber: number | null; isPublished: boolean };
@@ -71,37 +71,10 @@ function useExistingNotes(classId: string, subjectId: string, termId: string) {
   });
 }
 
-function StepChip({ label, value, onClear }: { label: string; value: string; onClear: () => void }) {
+function TopicsLoadingSkeleton() {
   return (
-    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary">
-      <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-      <span className="text-muted-foreground text-xs mr-0.5">{label}:</span>
-      {value}
-      <button
-        type="button"
-        onClick={onClear}
-        className="ml-0.5 w-4 h-4 rounded-full hover:bg-primary/20 flex items-center justify-center transition-colors"
-        aria-label={`Clear ${label}`}
-      >
-        <X className="w-2.5 h-2.5" />
-      </button>
-    </span>
-  );
-}
-
-function SelectStep({ stepNum, label, hint, children }: {
-  stepNum: number; label: string; hint?: string; children: React.ReactNode;
-}) {
-  return (
-    <div className="flex gap-4 items-start py-4 border-b last:border-b-0">
-      <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
-        {stepNum}
-      </div>
-      <div className="flex-1 min-w-0 space-y-2">
-        <p className="text-sm font-semibold">{label}</p>
-        {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-        {children}
-      </div>
+    <div className="space-y-2">
+      {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}
     </div>
   );
 }
@@ -110,45 +83,36 @@ export default function AdminLessonNoteCreate() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
 
-  const [classId,         setClassId]         = useState('');
-  const [subjectId,       setSubjectId]       = useState('');
-  const [termId,          setTermId]          = useState('');
-  const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
+  const [classId,   setClassId]   = useState('');
+  const [subjectId, setSubjectId] = useState('');
+  const [termId,    setTermId]    = useState('');
 
-  const { data: classes  = [],         isLoading: loadingClasses  } = useClasses();
-  const { data: allSubjects = [] }                                   = useAllSubjects();
-  const { data: mappings = [] }                                      = useSubjectMappings(classId);
-  const { currentTerm, allTerms: terms } = useAcademicCalendar();
+  const { data: classes    = [], isLoading: loadingClasses   } = useClasses();
+  const { data: allSubjects = [] }                              = useAllSubjects();
+  const { data: mappings   = [] }                              = useSubjectMappings(classId);
+  const { currentTerm, allTerms: terms, isLoading: loadingTerms } = useAcademicCalendar();
 
-  // Auto-select current term when it loads
   useEffect(() => {
-    if (currentTerm && !termId) {
-      setTermId(String(currentTerm.id));
-    }
+    if (currentTerm && !termId) setTermId(String(currentTerm.id));
   }, [currentTerm, termId]);
-  const { data: topics   = [], isLoading: loadingTopics }           = useAllTopics(classId, subjectId, termId);
-  const { data: notes    = [], isLoading: loadingNotes  }           = useExistingNotes(classId, subjectId, termId);
+
+  const { data: topics = [], isLoading: loadingTopics } = useAllTopics(classId, subjectId, termId);
+  const { data: notes  = [], isLoading: loadingNotes  } = useExistingNotes(classId, subjectId, termId);
 
   const availableSubjects = useMemo(() => {
     if (!classId) return allSubjects;
     return allSubjects.filter((s: any) => mappings.some((m: any) => m.subjectId === s.id));
   }, [allSubjects, mappings, classId]);
 
-  const selectedClass   = (classes  as any[]).find((c: any) => String(c.id) === classId);
+  const selectedClass   = (classes       as any[]).find((c: any) => String(c.id) === classId);
   const selectedSubject = (availableSubjects as any[]).find((s: any) => String(s.id) === subjectId);
-  const selectedTerm    = (terms    as any[]).find((t: any) => String(t.id) === termId);
+  const selectedTerm    = (terms         as any[]).find((t: any) => String(t.id) === termId);
   const sortedTopics    = useMemo(() => [...topics].sort((a, b) => (a.orderNumber ?? 0) - (b.orderNumber ?? 0)), [topics]);
-  const selectedTopic   = topics.find(t => t.id === selectedTopicId) ?? null;
-
   const noteByTopicId   = useMemo(() => new Map(notes.map(n => [n.topicId, n])), [notes]);
 
-  const allFiltered   = !!(classId && subjectId && termId);
-  const topicSelected = allFiltered && selectedTopicId !== null;
+  const filtersComplete = !!(classId && subjectId && termId);
 
-  const clearClass   = () => { setClassId(''); setSubjectId(''); setTermId(''); setSelectedTopicId(null); };
-  const clearSubject = () => { setSubjectId(''); setTermId(''); setSelectedTopicId(null); };
-  const clearTerm    = () => { setTermId(''); setSelectedTopicId(null); };
-  const clearTopic   = () => setSelectedTopicId(null);
+  const handleClassChange = (v: string) => { setClassId(v); setSubjectId(''); };
 
   const buildEditorParams = (topic: Topic) => new URLSearchParams({
     topicId:     String(topic.id),
@@ -166,137 +130,98 @@ export default function AdminLessonNoteCreate() {
     if (existing) {
       navigate(`/portal/admin/lesson-notes/view/${existing.id}`);
     } else {
-      setSelectedTopicId(topic.id);
+      navigate(`/portal/admin/lesson-notes/editor/new?${buildEditorParams(topic)}`);
     }
   };
 
-  const handleCreateNote = () => {
-    if (!selectedTopic) return;
-    const params = buildEditorParams(selectedTopic);
-    navigate(`/portal/admin/lesson-notes/editor/new?${params}`);
-  };
-
-  const handleGoBack = () => navigate('/portal/admin/lesson-notes');
-
   return (
     <div className="min-h-screen bg-background" data-testid="admin-lesson-note-create">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
 
-      {/* Header */}
-      <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-              <BookMarked className="w-5 h-5 text-primary" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-bold text-foreground">Create Lesson Note</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">Select Class → Subject → Term → Topic, then create the note</p>
-            </div>
-          </div>
-
-          {/* Selection breadcrumb */}
-          {classId && (
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <StepChip label="Class" value={selectedClass?.name ?? classId} onClear={clearClass} />
-              {subjectId && selectedSubject && (
-                <>
-                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
-                  <StepChip label="Subject" value={selectedSubject.name} onClear={clearSubject} />
-                </>
-              )}
-              {termId && selectedTerm && (
-                <>
-                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
-                  <StepChip label="Term" value={selectedTerm.name} onClear={clearTerm} />
-                </>
-              )}
-              {topicSelected && selectedTopic && (
-                <>
-                  <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/40 shrink-0" />
-                  <StepChip label="Topic" value={selectedTopic.name} onClear={clearTopic} />
-                </>
-              )}
-            </div>
-          )}
+        {/* Header */}
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <BookMarked className="h-6 w-6 text-primary" />
+            Create Lesson Note
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Select a class, subject, and term to browse topics and create notes
+          </p>
         </div>
-      </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+        {/* Filter Card */}
+        <Card className="shadow-sm">
+          <CardHeader className="pb-3 pt-5 px-5">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
+                <Filter className="w-3.5 h-3.5 text-primary" />
+              </div>
+              Select Context
+              <span className="text-xs font-normal text-muted-foreground ml-0.5">— choose class, subject, then term</span>
+            </div>
+          </CardHeader>
+          <CardContent className="px-5 pb-5 space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
-        {/* ── Steps 1-3 wizard ── */}
-        {!allFiltered && (
-          <Card className="shadow-sm">
-            <CardContent className="px-5 py-1 divide-y">
-
-              {/* Step 1: Class */}
-              <SelectStep stepNum={1} label="Select Class" hint={!classId ? 'Choose the class this lesson note is for' : undefined}>
+              {/* Class */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Class <span className="text-destructive">*</span>
+                </Label>
                 {loadingClasses ? (
                   <Skeleton className="h-10 rounded-md" />
-                ) : !classId ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {(classes as any[]).map((c: any) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => setClassId(String(c.id))}
-                        className="flex items-center gap-2 px-3 py-2.5 rounded-lg border bg-muted/20 hover:bg-primary/5 hover:border-primary/40 transition-colors text-sm font-medium text-left"
-                        data-testid={`class-btn-${c.id}`}
-                      >
-                        <span className="w-5 h-5 rounded bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center shrink-0">
-                          {c.name.charAt(0)}
-                        </span>
-                        {c.name}
-                      </button>
-                    ))}
-                  </div>
                 ) : (
-                  <div className="text-sm text-muted-foreground flex items-center gap-1.5 opacity-60">
-                    <CheckCircle2 className="w-4 h-4 text-primary" />{selectedClass?.name}
-                  </div>
+                  <Select value={classId} onValueChange={handleClassChange}>
+                    <SelectTrigger data-testid="select-class">
+                      <SelectValue placeholder="Select class…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(classes as any[]).map((c: any) => (
+                        <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
-              </SelectStep>
+              </div>
 
-              {/* Step 2: Subject */}
-              {classId && (
-                <SelectStep stepNum={2} label="Select Subject"
-                  hint={!subjectId ? `Subjects available for ${selectedClass?.name}` : undefined}>
-                  {!subjectId ? (
-                    availableSubjects.length === 0 ? (
-                      <div className="flex items-center gap-2 h-10 px-3 border rounded-md bg-muted/30 text-xs text-muted-foreground">
-                        <Info className="w-3.5 h-3.5 shrink-0" />No subjects mapped to this class yet
+              {/* Subject */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Subject <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={subjectId}
+                  onValueChange={setSubjectId}
+                  disabled={!classId}
+                >
+                  <SelectTrigger data-testid="select-subject">
+                    <SelectValue placeholder={!classId ? 'Select class first' : availableSubjects.length === 0 ? 'No subjects mapped' : 'Select subject…'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableSubjects.length === 0 && classId ? (
+                      <div className="flex items-center gap-2 px-3 py-2 text-xs text-muted-foreground">
+                        <Info className="w-3.5 h-3.5 shrink-0" />No subjects mapped to this class
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {(availableSubjects as any[]).map((s: any) => (
-                          <button
-                            key={s.id}
-                            type="button"
-                            onClick={() => setSubjectId(String(s.id))}
-                            className="flex items-center gap-2 px-3 py-2.5 rounded-lg border bg-muted/20 hover:bg-primary/5 hover:border-primary/40 transition-colors text-sm font-medium text-left"
-                            data-testid={`subject-btn-${s.id}`}
-                          >
-                            <span className="w-5 h-5 rounded bg-primary/10 text-primary text-[10px] font-bold flex items-center justify-center shrink-0">
-                              {s.name.charAt(0)}
-                            </span>
-                            <span className="truncate">{s.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )
-                  ) : (
-                    <div className="text-sm text-muted-foreground flex items-center gap-1.5 opacity-60">
-                      <CheckCircle2 className="w-4 h-4 text-primary" />{selectedSubject?.name}
-                    </div>
-                  )}
-                </SelectStep>
-              )}
+                      (availableSubjects as any[]).map((s: any) => (
+                        <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
 
-              {/* Step 3: Term */}
-              {classId && subjectId && (
-                <SelectStep stepNum={3} label="Select Term" hint="Choose the academic term">
-                  <Select value={termId} onValueChange={setTermId}>
-                    <SelectTrigger className="w-full sm:w-72" data-testid="select-term">
-                      <SelectValue placeholder="Select term…" />
+              {/* Term */}
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Term <span className="text-destructive">*</span>
+                </Label>
+                {loadingTerms ? (
+                  <Skeleton className="h-10 rounded-md" />
+                ) : (
+                  <Select value={termId} onValueChange={setTermId} disabled={!subjectId}>
+                    <SelectTrigger data-testid="select-term">
+                      <SelectValue placeholder={!subjectId ? 'Select subject first' : 'Select term…'} />
                     </SelectTrigger>
                     <SelectContent>
                       {(terms as any[]).map((t: any) => (
@@ -306,90 +231,89 @@ export default function AdminLessonNoteCreate() {
                       ))}
                     </SelectContent>
                   </Select>
-                </SelectStep>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ── Step 4: Topic list ── */}
-        {allFiltered && !topicSelected && (
-          <>
-            {/* Compact context bar */}
-            <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 rounded-lg bg-muted/30 border text-xs">
-              <ListChecks className="w-3.5 h-3.5 text-primary shrink-0" />
-              <span className="text-muted-foreground">Context:</span>
-              <Badge variant="secondary">{selectedClass?.name}</Badge>
-              <ChevronRight className="w-3 h-3 text-muted-foreground/40" />
-              <Badge variant="secondary">{selectedSubject?.name}</Badge>
-              <ChevronRight className="w-3 h-3 text-muted-foreground/40" />
-              <Badge variant="secondary">{selectedTerm?.name}</Badge>
-              <button
-                type="button"
-                onClick={clearClass}
-                className="ml-auto text-muted-foreground hover:text-foreground transition-colors underline"
-              >
-                Change
-              </button>
-            </div>
-
-            {/* Step 4 instruction */}
-            <div className="flex items-start gap-3 px-4 py-3 rounded-lg bg-primary/5 border border-primary/20">
-              <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">4</div>
-              <div>
-                <p className="text-sm font-semibold">Select a Topic</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  All topics for this context are shown below. Topics without an existing note can be selected to create one. Topics with existing notes will open the view page.
-                </p>
+                )}
               </div>
             </div>
 
-            <Card className="shadow-sm">
-              <CardContent className="px-5 py-4">
-                <div className="flex items-center gap-2 mb-4">
+            {/* Progress hint */}
+            {!filtersComplete && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1">
+                <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold shrink-0 ${classId ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>1</span>
+                <ChevronRight className="w-3 h-3 shrink-0" />
+                <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold shrink-0 ${subjectId ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>2</span>
+                <ChevronRight className="w-3 h-3 shrink-0" />
+                <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold shrink-0 ${termId ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>3</span>
+                <span className="ml-1">
+                  {!classId ? 'Select a class to start' : !subjectId ? 'Now select a subject' : 'Now select a term to view topics'}
+                </span>
+              </div>
+            )}
+
+            {/* Active context breadcrumb */}
+            {filtersComplete && (
+              <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                <span className="text-xs text-muted-foreground">Showing:</span>
+                <Badge variant="secondary" className="text-xs">{selectedClass?.name}</Badge>
+                <ChevronRight className="w-3 h-3 text-muted-foreground/50" />
+                <Badge variant="secondary" className="text-xs">{selectedSubject?.name}</Badge>
+                <ChevronRight className="w-3 h-3 text-muted-foreground/50" />
+                <Badge variant="secondary" className="text-xs">{selectedTerm?.name}</Badge>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Topics Results */}
+        {filtersComplete && (
+          <Card className="shadow-sm" data-testid="topics-results-card">
+            <CardHeader className="pb-3 pt-4 px-5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center shrink-0">
                     <Layers className="w-3.5 h-3.5 text-primary" />
                   </div>
-                  <h2 className="font-semibold text-sm">Topics</h2>
-                  {!loadingTopics && sortedTopics.length > 0 && (
-                    <Badge variant="secondary" className="text-xs">{sortedTopics.length}</Badge>
-                  )}
-                  {!loadingTopics && (
-                    <div className="ml-auto flex gap-1.5">
-                      {sortedTopics.filter(t => t.isPublished).length > 0 && (
-                        <Badge className="text-xs bg-emerald-500 hover:bg-emerald-500">
-                          {sortedTopics.filter(t => t.isPublished).length} published
-                        </Badge>
-                      )}
-                      {sortedTopics.filter(t => !t.isPublished).length > 0 && (
-                        <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
-                          {sortedTopics.filter(t => !t.isPublished).length} draft
-                        </Badge>
-                      )}
-                    </div>
-                  )}
+                  <h2 className="font-semibold text-sm truncate">{selectedSubject?.name}</h2>
+                  <span className="text-xs text-muted-foreground shrink-0">· {selectedTerm?.name}</span>
                 </div>
-
-                {(loadingTopics || loadingNotes) && (
-                  <div className="space-y-2">
-                    {[1, 2, 3, 4].map(i => <Skeleton key={i} className="h-16 rounded-lg" />)}
+                {!loadingTopics && sortedTopics.length > 0 && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {sortedTopics.filter(t => noteByTopicId.has(t.id)).length > 0 && (
+                      <Badge className="text-xs bg-emerald-500 hover:bg-emerald-500">
+                        {sortedTopics.filter(t => noteByTopicId.has(t.id)).length} noted
+                      </Badge>
+                    )}
+                    <Badge variant="secondary" className="text-xs">
+                      {sortedTopics.length} topic{sortedTopics.length !== 1 ? 's' : ''}
+                    </Badge>
                   </div>
                 )}
+              </div>
+            </CardHeader>
+            <CardContent className="px-5 pb-5">
 
-                {!loadingTopics && !loadingNotes && sortedTopics.length === 0 && (
-                  <div className="text-center py-12">
-                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
-                      <BookOpen className="w-6 h-6 text-muted-foreground/30" />
-                    </div>
-                    <p className="font-medium text-sm">No Topics Found</p>
-                    <p className="text-xs text-muted-foreground mt-1 mb-4">No topics exist for this class/subject/term combination.</p>
-                    <Button size="sm" variant="outline" onClick={() => navigate('/portal/admin/syllabus-topics')}>
-                      Go to Scheme of Work to add topics
-                    </Button>
+              {(loadingTopics || loadingNotes) && <TopicsLoadingSkeleton />}
+
+              {!loadingTopics && !loadingNotes && sortedTopics.length === 0 && (
+                <div className="text-center py-12">
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                    <BookOpen className="w-6 h-6 text-muted-foreground/30" />
                   </div>
-                )}
+                  <p className="font-medium text-sm">No Topics Found</p>
+                  <p className="text-xs text-muted-foreground mt-1 mb-4 max-w-xs mx-auto">
+                    No topics exist for <strong>{selectedSubject?.name}</strong> in <strong>{selectedTerm?.name}</strong>.
+                  </p>
+                  <Button size="sm" variant="outline" onClick={() => navigate('/portal/admin/syllabus-topics')}>
+                    Go to Scheme of Work to add topics
+                  </Button>
+                </div>
+              )}
 
-                {!loadingTopics && !loadingNotes && sortedTopics.length > 0 && (
+              {!loadingTopics && !loadingNotes && sortedTopics.length > 0 && (
+                <>
+                  <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1.5">
+                    <Plus className="w-3 h-3 text-primary" />
+                    Click a topic to create a note, or <Eye className="w-3 h-3 mx-0.5 inline" /> view an existing one
+                  </p>
                   <div className="space-y-2">
                     {sortedTopics.map((topic, idx) => {
                       const note    = noteByTopicId.get(topic.id);
@@ -424,100 +348,45 @@ export default function AdminLessonNoteCreate() {
                               <p className="text-xs text-muted-foreground mt-0.5 truncate">{topic.description}</p>
                             )}
                           </div>
-
                           <div className="shrink-0 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity pr-1">
                             {hasNote ? (
-                              <><Eye className="w-3.5 h-3.5 text-muted-foreground" /><span className="text-xs text-muted-foreground hidden sm:inline">View Note</span></>
+                              <>
+                                <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground hidden sm:inline">View Note</span>
+                              </>
                             ) : (
-                              <><Plus className="w-3.5 h-3.5 text-primary" /><span className="text-xs text-primary hidden sm:inline">Select</span></>
+                              <>
+                                <Plus className="w-3.5 h-3.5 text-primary" />
+                                <span className="text-xs text-primary hidden sm:inline">Create Note</span>
+                                <ArrowRight className="w-3.5 h-3.5 text-primary" />
+                              </>
                             )}
                           </div>
                         </div>
                       );
                     })}
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </>
-        )}
-
-        {/* ── Phase 5: Summary + Create CTA ── */}
-        {topicSelected && selectedTopic && (
-          <Card className="shadow-sm border-primary/30">
-            <CardContent className="px-5 py-5">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-6 h-6 rounded bg-emerald-500/10 flex items-center justify-center shrink-0">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                </div>
-                <h2 className="font-semibold text-sm">Selection Summary</h2>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-                <div className="flex items-center gap-2.5 p-3 rounded-lg bg-muted/30 border">
-                  <GraduationCap className="w-4 h-4 text-primary shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Class</p>
-                    <p className="text-sm font-semibold truncate">{selectedClass?.name}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2.5 p-3 rounded-lg bg-muted/30 border">
-                  <BookMarked className="w-4 h-4 text-primary shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Subject</p>
-                    <p className="text-sm font-semibold truncate">{selectedSubject?.name}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2.5 p-3 rounded-lg bg-muted/30 border">
-                  <Calendar className="w-4 h-4 text-primary shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Term</p>
-                    <p className="text-sm font-semibold truncate">{selectedTerm?.name}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2.5 p-3 rounded-lg bg-primary/5 border border-primary/20">
-                  <Hash className="w-4 h-4 text-primary shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">Topic</p>
-                    <p className="text-sm font-semibold truncate text-primary">{selectedTopic.name}</p>
-                  </div>
-                </div>
-              </div>
-
-              {selectedTopic.description && (
-                <p className="text-xs text-muted-foreground mb-4 px-1 italic">{selectedTopic.description}</p>
+                </>
               )}
-
-              {!selectedTopic.isPublished && (
-                <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 mb-4">
-                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-700 dark:text-amber-400">
-                    This topic is still in <strong>draft</strong> (not published to teachers). You can create a note for it, but teachers won't see it until you publish the topic.
-                  </p>
-                </div>
-              )}
-
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Button
-                  className="flex-1 gap-2"
-                  onClick={handleCreateNote}
-                  data-testid="button-create-lesson-note"
-                >
-                  <Plus className="w-4 h-4" />
-                  Create Lesson Note
-                  <ArrowRight className="w-4 h-4 ml-auto" />
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={clearTopic}
-                  data-testid="button-back-to-topics"
-                >
-                  ← Back to Topics
-                </Button>
-              </div>
             </CardContent>
           </Card>
         )}
+
+        {/* Prompt when filters not complete */}
+        {!filtersComplete && (
+          <Card className="shadow-sm">
+            <CardContent className="py-14 text-center">
+              <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                <Hash className="w-7 h-7 text-muted-foreground/30" />
+              </div>
+              <p className="font-medium text-sm">Select Class, Subject & Term</p>
+              <p className="text-xs text-muted-foreground mt-1.5 max-w-xs mx-auto">
+                Choose a class, subject, and term above to browse topics and create lesson notes.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
       </div>
     </div>
   );
