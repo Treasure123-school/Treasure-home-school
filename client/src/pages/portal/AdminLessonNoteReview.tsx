@@ -3,9 +3,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,7 +18,7 @@ import {
 import { StatusBadge, STATUS_CFG, fmtDate, EnrichedNote } from '@/components/lesson-notes/lessonNoteShared';
 import {
   BookOpen, CheckCircle, XCircle, Eye, EyeOff, Send, FileText, ClipboardCheck,
-  AlertCircle, Search, Edit, Plus, User, Calendar, MoreHorizontal,
+  AlertCircle, Search, Edit, Plus, User, Calendar, MoreHorizontal, Filter,
 } from 'lucide-react';
 
 function useLessonNotes(filters: Record<string, string>) {
@@ -259,17 +260,16 @@ export default function AdminLessonNoteReview() {
   };
 
   return (
-    <div className="min-h-screen bg-background" data-testid="admin-lesson-notes">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+    <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-5" data-testid="admin-lesson-notes">
 
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
           <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2" data-testid="page-title">
-              <ClipboardCheck className="h-8 w-8 text-primary" />
+            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2" data-testid="page-title">
+              <ClipboardCheck className="h-6 w-6 text-primary" />
               Lesson Notes Review
             </h1>
-            <p className="text-muted-foreground mt-1">Manage, approve, and publish teacher lesson notes</p>
+            <p className="text-sm text-muted-foreground mt-1">Manage, approve, and publish teacher lesson notes</p>
           </div>
           <Button onClick={handleCreate} data-testid="button-create-note" className="w-full sm:w-auto shrink-0">
             <Plus className="w-4 h-4 mr-1.5" />
@@ -294,50 +294,71 @@ export default function AdminLessonNoteReview() {
 
         {/* Filters */}
         <Card className="shadow-sm">
-          <CardContent className="p-3 sm:p-4 space-y-3">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-              <Select value={filterClass} onValueChange={setFilterClass}>
-                <SelectTrigger className="h-9 text-xs sm:text-sm" data-testid="filter-class">
-                  <SelectValue placeholder="All classes" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_all">All classes</SelectItem>
-                  {classes.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={filterSubject} onValueChange={setFilterSubject}>
-                <SelectTrigger className="h-9 text-xs sm:text-sm" data-testid="filter-subject">
-                  <SelectValue placeholder="All subjects" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_all">All subjects</SelectItem>
-                  {subjects.map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={filterTerm} onValueChange={setFilterTerm}>
-                <SelectTrigger className="h-9 text-xs sm:text-sm" data-testid="filter-term">
-                  <SelectValue placeholder="All terms" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_all">All terms</SelectItem>
-                  {terms.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="h-9 text-xs sm:text-sm" data-testid="filter-status">
-                  <SelectValue placeholder="All statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_all">All statuses</SelectItem>
-                  {Object.entries(STATUS_CFG).map(([s, cfg]) => (
-                    <SelectItem key={s} value={s}>{cfg.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <CardHeader className="pb-3 pt-5 px-5">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
+                <Filter className="w-3.5 h-3.5 text-primary" />
+              </div>
+              Filter Notes
+              <span className="text-xs font-normal text-muted-foreground ml-0.5">— narrow by class, subject, term, or status</span>
+            </div>
+          </CardHeader>
+          <CardContent className="px-5 pb-5 space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Class</Label>
+                <Select value={filterClass} onValueChange={setFilterClass}>
+                  <SelectTrigger data-testid="filter-class">
+                    <SelectValue placeholder="All classes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_all">All classes</SelectItem>
+                    {classes.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Subject</Label>
+                <Select value={filterSubject} onValueChange={setFilterSubject}>
+                  <SelectTrigger data-testid="filter-subject">
+                    <SelectValue placeholder="All subjects" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_all">All subjects</SelectItem>
+                    {subjects.map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Term</Label>
+                <Select value={filterTerm} onValueChange={setFilterTerm}>
+                  <SelectTrigger data-testid="filter-term">
+                    <SelectValue placeholder="All terms" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_all">All terms</SelectItem>
+                    {terms.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Status</Label>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger data-testid="filter-status">
+                    <SelectValue placeholder="All statuses" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_all">All statuses</SelectItem>
+                    {Object.entries(STATUS_CFG).map(([s, cfg]) => (
+                      <SelectItem key={s} value={s}>{cfg.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input className="pl-9 h-9 text-sm" placeholder="Search by title, teacher, or topic…"
+              <Input className="pl-9 text-sm" placeholder="Search by title, teacher, or topic…"
                 value={search} onChange={e => setSearch(e.target.value)} data-testid="input-search" />
             </div>
           </CardContent>
@@ -372,7 +393,6 @@ export default function AdminLessonNoteReview() {
             {renderList(filtered, BookOpen, 'No lesson notes', 'No notes match your current filters.')}
           </TabsContent>
         </Tabs>
-      </div>
     </div>
   );
 }

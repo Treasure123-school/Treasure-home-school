@@ -281,18 +281,17 @@ export default function SuperAdminLessonNoteLibrary() {
 
   return (
     <SuperAdminLayout>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto">
 
         {/* Page Header */}
-        <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-5">
-          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 bg-primary/10 dark:bg-primary/5 rounded-xl">
-                <Library className="h-6 w-6 text-primary dark:text-primary/70" />
+              <div className="p-2.5 bg-primary/10 rounded-xl">
+                <Library className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">Lesson Note Library</h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Master library of curriculum-aligned lesson note templates</p>
+                <h1 className="text-2xl font-bold text-foreground">Lesson Note Library</h1>
+                <p className="text-sm text-muted-foreground">Master library of curriculum-aligned lesson note templates</p>
               </div>
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -314,14 +313,11 @@ export default function SuperAdminLessonNoteLibrary() {
               </Button>
             </div>
           </div>
-        </div>
-
-        <div className="max-w-7xl mx-auto px-4 py-6 space-y-5">
 
           {/* Stat Cards */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {statCards.map(s => (
-              <div key={s.label} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 shadow-sm">
+              <div key={s.label} className="bg-card border border-border rounded-2xl p-4 shadow-sm">
                 <div className="flex items-center gap-2 mb-2">
                   <div className={`p-1.5 rounded-lg ${s.iconBg} dark:bg-opacity-20`}>
                     <s.icon className={`h-4 w-4 ${s.iconColor}`} />
@@ -334,40 +330,40 @@ export default function SuperAdminLessonNoteLibrary() {
           </div>
 
           {/* Search & Filters */}
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 shadow-sm">
+          <div className="bg-card border border-border rounded-2xl p-4 shadow-sm">
             <div className="flex flex-col md:flex-row gap-3">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search by title, topic, subject..."
-                  className="pl-9 rounded-xl border-gray-200 dark:border-gray-700"
+                  className="pl-9 rounded-xl"
                   value={search}
                   onChange={e => { setSearch(e.target.value); setPage(1); }}
                 />
               </div>
               <Select value={filterLevel} onValueChange={v => { setFilterLevel(v); setPage(1); }}>
-                <SelectTrigger className="w-full md:w-36 rounded-xl border-gray-200 dark:border-gray-700"><SelectValue placeholder="Level" /></SelectTrigger>
+                <SelectTrigger className="w-full md:w-36 rounded-xl"><SelectValue placeholder="Level" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Levels</SelectItem>
                   {LEVELS.map(l => <SelectItem key={l} value={l}>{levelLabel(l)}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={filterClass} onValueChange={v => { setFilterClass(v); setPage(1); }}>
-                <SelectTrigger className="w-full md:w-36 rounded-xl border-gray-200 dark:border-gray-700"><SelectValue placeholder="Class" /></SelectTrigger>
+                <SelectTrigger className="w-full md:w-36 rounded-xl"><SelectValue placeholder="Class" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Classes</SelectItem>
                   {(opts.classNames ?? []).map((c: string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={filterSubject} onValueChange={v => { setFilterSubject(v); setPage(1); }}>
-                <SelectTrigger className="w-full md:w-44 rounded-xl border-gray-200 dark:border-gray-700"><SelectValue placeholder="Subject" /></SelectTrigger>
+                <SelectTrigger className="w-full md:w-44 rounded-xl"><SelectValue placeholder="Subject" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Subjects</SelectItem>
                   {(opts.subjectNames ?? []).map((s: string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                 </SelectContent>
               </Select>
               <Select value={filterTerm} onValueChange={v => { setFilterTerm(v); setPage(1); }}>
-                <SelectTrigger className="w-full md:w-36 rounded-xl border-gray-200 dark:border-gray-700"><SelectValue placeholder="Term" /></SelectTrigger>
+                <SelectTrigger className="w-full md:w-36 rounded-xl"><SelectValue placeholder="Term" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Terms</SelectItem>
                   {TERMS.map(t => <SelectItem key={t} value={t}>{termLabel(t)}</SelectItem>)}
@@ -388,11 +384,11 @@ export default function SuperAdminLessonNoteLibrary() {
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm animate-pulse h-52" />
+                <div key={i} className="bg-card border border-border rounded-2xl shadow-sm animate-pulse h-52" />
               ))}
             </div>
           ) : templates.length === 0 ? (
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-14 text-center">
+            <div className="bg-card border border-border rounded-2xl shadow-sm p-14 text-center">
               <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full w-fit mx-auto mb-4">
                 <BookOpen className="h-8 w-8 text-gray-400" />
               </div>
@@ -406,9 +402,9 @@ export default function SuperAdminLessonNoteLibrary() {
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {templates.map((t) => (
-                  <div key={t.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm hover:shadow-md transition-all group flex flex-col">
+                  <div key={t.id} className="bg-card border border-border rounded-2xl shadow-sm hover:shadow-md transition-all group flex flex-col">
                     {/* Card Top Bar */}
-                    <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2">
+                    <div className="px-4 pt-4 pb-3 border-b border-border flex items-center justify-between gap-2">
                       <div className="flex gap-1.5 flex-wrap">
                         <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700">
                           {levelLabel(t.level)}
@@ -418,10 +414,10 @@ export default function SuperAdminLessonNoteLibrary() {
                         </span>
                       </div>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors" onClick={() => setPreviewId(t.id)} title="Preview">
+                        <button className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground transition-colors" onClick={() => setPreviewId(t.id)} title="Preview">
                           <Eye className="h-3.5 w-3.5" />
                         </button>
-                        <button className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-500 transition-colors" onClick={() => openEdit(t)} title="Edit">
+                        <button className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-muted text-muted-foreground transition-colors" onClick={() => openEdit(t)} title="Edit">
                           <Edit className="h-3.5 w-3.5" />
                         </button>
                         <button className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-colors" onClick={() => setDeleteId(t.id)} title="Delete">
@@ -488,7 +484,7 @@ export default function SuperAdminLessonNoteLibrary() {
                   >
                     <ChevronLeft className="h-3.5 w-3.5" /> Previous
                   </Button>
-                  <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-1.5 text-sm text-gray-600 dark:text-gray-400 shadow-sm">
+                  <div className="bg-card border border-border rounded-xl px-4 py-1.5 text-sm text-muted-foreground shadow-sm">
                     Page {page} of {pagination.pages} <span className="text-gray-400 dark:text-gray-600">({pagination.total} total)</span>
                   </div>
                   <Button
@@ -504,7 +500,6 @@ export default function SuperAdminLessonNoteLibrary() {
               )}
             </>
           )}
-        </div>
 
         {/* ── DIALOGS ─────────────────────────────────────────── */}
 
@@ -516,7 +511,7 @@ export default function SuperAdminLessonNoteLibrary() {
               <DialogDescription>Add a new original lesson note template to the master library.</DialogDescription>
             </DialogHeader>
             <TemplateForm form={form} onChange={onChange} />
-            <DialogFooter className="sticky bottom-0 bg-white dark:bg-gray-900 pt-4 border-t">
+            <DialogFooter className="sticky bottom-0 bg-card pt-4 border-t border-border">
               <Button variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
               <Button className="bg-primary hover:bg-primary/90" onClick={() => createMutation.mutate(form)} disabled={createMutation.isPending}>
                 {createMutation.isPending ? "Creating..." : "Create Template"}
@@ -532,7 +527,7 @@ export default function SuperAdminLessonNoteLibrary() {
               <DialogTitle className="flex items-center gap-2"><Edit className="h-5 w-5 text-primary" /> Edit Lesson Note Template</DialogTitle>
             </DialogHeader>
             <TemplateForm form={form} onChange={onChange} />
-            <DialogFooter className="sticky bottom-0 bg-white dark:bg-gray-900 pt-4 border-t">
+            <DialogFooter className="sticky bottom-0 bg-card pt-4 border-t border-border">
               <Button variant="outline" onClick={() => setEditingId(null)}>Cancel</Button>
               <Button className="bg-primary hover:bg-primary/90" onClick={() => editingId && updateMutation.mutate({ id: editingId, data: form })} disabled={updateMutation.isPending}>
                 {updateMutation.isPending ? "Saving..." : "Save Changes"}

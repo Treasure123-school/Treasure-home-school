@@ -122,7 +122,7 @@ function NoteEditor({ note, onSave, onCancel, isSaving }: {
       <div><Label>Evaluation Questions</Label><Textarea rows={4} value={form.evaluationQuestions ?? ""} onChange={e => set("evaluationQuestions", e.target.value)} /></div>
       <div><Label>Assignment / Homework</Label><Textarea rows={3} value={form.assignments ?? ""} onChange={e => set("assignments", e.target.value)} /></div>
       <div><Label>References</Label><Textarea rows={2} value={form.references ?? ""} onChange={e => set("references", e.target.value)} /></div>
-      <div className="sticky bottom-0 bg-white dark:bg-gray-900 pt-4 border-t flex gap-2 justify-end">
+      <div className="sticky bottom-0 bg-card pt-4 border-t border-border flex gap-2 justify-end">
         <Button variant="outline" onClick={onCancel}>Cancel</Button>
         <Button className="bg-primary hover:bg-primary/90" onClick={() => onSave(form)} disabled={isSaving}>
           {isSaving ? "Saving..." : "Save Note"}
@@ -270,35 +270,32 @@ export default function AdminLessonNoteLibrary() {
   const libHasFilters = libSearch || libClass !== "all" || libSubject !== "all" || libTerm !== "all";
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+    <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto">
 
       {/* Page Header */}
-      <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-6 py-5">
-        <div className="max-w-7xl mx-auto flex items-center gap-3">
-          <div className="p-2.5 bg-primary/10 dark:bg-primary/5 rounded-xl">
-            <Library className="h-6 w-6 text-primary dark:text-primary/70" />
+      <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-primary/10 rounded-xl">
+            <Library className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Lesson Note Library</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Browse, preview, and import curriculum-aligned lesson note templates</p>
+            <h1 className="text-2xl font-bold text-foreground">Lesson Note Library</h1>
+            <p className="text-sm text-muted-foreground">Browse, preview, and import curriculum-aligned lesson note templates</p>
           </div>
-        </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
 
           {/* Tab Bar */}
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-1.5 mb-5 flex gap-1 w-fit">
+          <div className="bg-card border border-border rounded-2xl shadow-sm p-1.5 mb-5 flex gap-1 w-fit">
             <button
               onClick={() => setActiveTab("library")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === "library" ? "bg-primary text-white shadow-sm" : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === "library" ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
             >
               <Library className="h-4 w-4" /> Browse Library
             </button>
             <button
               onClick={() => setActiveTab("school-notes")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === "school-notes" ? "bg-primary text-white shadow-sm" : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${activeTab === "school-notes" ? "bg-primary text-white shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}
             >
               <BookMarked className="h-4 w-4" /> School Notes
               {snPag.total > 0 && (
@@ -313,33 +310,33 @@ export default function AdminLessonNoteLibrary() {
           <TabsContent value="library" className="space-y-4 mt-0">
 
             {/* Filters */}
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-4">
+            <div className="bg-card border border-border rounded-2xl shadow-sm p-4">
               <div className="flex flex-col md:flex-row gap-3">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search topic, subject, class..."
-                    className="pl-9 rounded-xl border-gray-200 dark:border-gray-700"
+                    className="pl-9 rounded-xl"
                     value={libSearch}
                     onChange={e => { setLibSearch(e.target.value); setLibPage(1); }}
                   />
                 </div>
                 <Select value={libClass} onValueChange={v => { setLibClass(v); setLibPage(1); }}>
-                  <SelectTrigger className="w-full md:w-36 rounded-xl border-gray-200 dark:border-gray-700"><SelectValue placeholder="Class" /></SelectTrigger>
+                  <SelectTrigger className="w-full md:w-36 rounded-xl"><SelectValue placeholder="Class" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Classes</SelectItem>
                     {(opts.classNames ?? []).map((c: string) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <Select value={libSubject} onValueChange={v => { setLibSubject(v); setLibPage(1); }}>
-                  <SelectTrigger className="w-full md:w-44 rounded-xl border-gray-200 dark:border-gray-700"><SelectValue placeholder="Subject" /></SelectTrigger>
+                  <SelectTrigger className="w-full md:w-44 rounded-xl"><SelectValue placeholder="Subject" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Subjects</SelectItem>
                     {(opts.subjectNames ?? []).map((s: string) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                   </SelectContent>
                 </Select>
                 <Select value={libTerm} onValueChange={v => { setLibTerm(v); setLibPage(1); }}>
-                  <SelectTrigger className="w-full md:w-36 rounded-xl border-gray-200 dark:border-gray-700"><SelectValue placeholder="Term" /></SelectTrigger>
+                  <SelectTrigger className="w-full md:w-36 rounded-xl"><SelectValue placeholder="Term" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Terms</SelectItem>
                     {TERMS.map(t => <SelectItem key={t} value={t}>{termLabel(t)}</SelectItem>)}
@@ -359,11 +356,11 @@ export default function AdminLessonNoteLibrary() {
             {libLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm animate-pulse h-52" />
+                  <div key={i} className="bg-card border border-border rounded-2xl shadow-sm animate-pulse h-52" />
                 ))}
               </div>
             ) : templates.length === 0 ? (
-              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-14 text-center">
+              <div className="bg-card border border-border rounded-2xl shadow-sm p-14 text-center">
                 <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full w-fit mx-auto mb-4">
                   <BookOpen className="h-8 w-8 text-gray-400" />
                 </div>
@@ -376,11 +373,11 @@ export default function AdminLessonNoteLibrary() {
                   {templates.map(t => (
                     <div
                       key={t.id}
-                      className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm hover:shadow-md transition-all group cursor-pointer flex flex-col"
+                      className="bg-card border border-border rounded-2xl shadow-sm hover:shadow-md transition-all group cursor-pointer flex flex-col"
                       onClick={() => setPreviewId(t.id)}
                     >
                       {/* Top bar */}
-                      <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2">
+                      <div className="px-4 pt-4 pb-3 border-b border-border flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-200 dark:border-gray-700 uppercase">
                             {t.level}
@@ -411,7 +408,7 @@ export default function AdminLessonNoteLibrary() {
                       </div>
 
                       {/* Footer */}
-                      <div className="px-4 pb-4 pt-3 border-t border-gray-100 dark:border-gray-800 flex gap-2" onClick={e => e.stopPropagation()}>
+                      <div className="px-4 pb-4 pt-3 border-t border-border flex gap-2" onClick={e => e.stopPropagation()}>
                         <Button size="sm" variant="outline" className="flex-1 h-8 text-xs rounded-xl border-gray-200 dark:border-gray-700" onClick={() => setPreviewId(t.id)}>
                           <Eye className="h-3 w-3 mr-1" /> Preview
                         </Button>
@@ -429,7 +426,7 @@ export default function AdminLessonNoteLibrary() {
                     <Button variant="outline" size="sm" disabled={libPage <= 1} onClick={() => setLibPage(p => p - 1)} className="rounded-xl border-gray-200 dark:border-gray-700 gap-1">
                       <ChevronLeft className="h-3.5 w-3.5" /> Previous
                     </Button>
-                    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-1.5 text-sm text-gray-600 dark:text-gray-400 shadow-sm">
+                    <div className="bg-card border border-border rounded-xl px-4 py-1.5 text-sm text-muted-foreground shadow-sm">
                       Page {libPage} of {libPag.pages}
                     </div>
                     <Button variant="outline" size="sm" disabled={libPage >= libPag.pages} onClick={() => setLibPage(p => p + 1)} className="rounded-xl border-gray-200 dark:border-gray-700 gap-1">
@@ -445,19 +442,19 @@ export default function AdminLessonNoteLibrary() {
           <TabsContent value="school-notes" className="space-y-4 mt-0">
 
             {/* Filters + Actions */}
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-4">
+            <div className="bg-card border border-border rounded-2xl shadow-sm p-4">
               <div className="flex flex-col md:flex-row gap-3">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search school lesson notes..."
-                    className="pl-9 rounded-xl border-gray-200 dark:border-gray-700"
+                    className="pl-9 rounded-xl"
                     value={snSearch}
                     onChange={e => { setSnSearch(e.target.value); setSnPage(1); }}
                   />
                 </div>
                 <Select value={snStatus} onValueChange={v => { setSnStatus(v); setSnPage(1); }}>
-                  <SelectTrigger className="w-full md:w-36 rounded-xl border-gray-200 dark:border-gray-700"><SelectValue placeholder="Status" /></SelectTrigger>
+                  <SelectTrigger className="w-full md:w-36 rounded-xl"><SelectValue placeholder="Status" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
                     {["draft", "approved", "published", "archived"].map(s => (
@@ -474,11 +471,11 @@ export default function AdminLessonNoteLibrary() {
             {snLoading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {Array.from({ length: 6 }).map((_, i) => (
-                  <div key={i} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm animate-pulse h-44" />
+                  <div key={i} className="bg-card border border-border rounded-2xl shadow-sm animate-pulse h-44" />
                 ))}
               </div>
             ) : schoolNotes.length === 0 ? (
-              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm p-14 text-center">
+              <div className="bg-card border border-border rounded-2xl shadow-sm p-14 text-center">
                 <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full w-fit mx-auto mb-4">
                   <BookMarked className="h-8 w-8 text-gray-400" />
                 </div>
@@ -499,9 +496,9 @@ export default function AdminLessonNoteLibrary() {
                   {schoolNotes.map(n => {
                     const sc = statusConfig[n.status] ?? statusConfig.draft;
                     return (
-                      <div key={n.id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-sm hover:shadow-md transition-all group flex flex-col">
+                      <div key={n.id} className="bg-card border border-border rounded-2xl shadow-sm hover:shadow-md transition-all group flex flex-col">
                         {/* Top bar */}
-                        <div className="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2">
+                        <div className="px-4 pt-4 pb-3 border-b border-border flex items-center justify-between gap-2">
                           <div className="flex gap-1.5 flex-wrap">
                             {n.templateId && (
                               <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800 flex items-center gap-1">
@@ -570,7 +567,7 @@ export default function AdminLessonNoteLibrary() {
                     <Button variant="outline" size="sm" disabled={snPage <= 1} onClick={() => setSnPage(p => p - 1)} className="rounded-xl border-gray-200 dark:border-gray-700 gap-1">
                       <ChevronLeft className="h-3.5 w-3.5" /> Previous
                     </Button>
-                    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl px-4 py-1.5 text-sm text-gray-600 dark:text-gray-400 shadow-sm">
+                    <div className="bg-card border border-border rounded-xl px-4 py-1.5 text-sm text-muted-foreground shadow-sm">
                       Page {snPage} of {snPag.pages}
                     </div>
                     <Button variant="outline" size="sm" disabled={snPage >= snPag.pages} onClick={() => setSnPage(p => p + 1)} className="rounded-xl border-gray-200 dark:border-gray-700 gap-1">
@@ -582,7 +579,6 @@ export default function AdminLessonNoteLibrary() {
             )}
           </TabsContent>
         </Tabs>
-      </div>
 
       {/* ── DIALOGS ─────────────────────────────────────────── */}
 

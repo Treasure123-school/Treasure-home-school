@@ -253,10 +253,10 @@ export default function StudentExamResults() {
   // FALLBACK MODE: Show loading only if we don't have latestResult from sessionStorage
   if (isLoading && (specificExamId || !latestResult)) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="min-h-[40vh] flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader className="w-12 h-12 animate-spin mx-auto text-primary" />
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-muted-foreground">
             {specificExamId ? 'Loading exam score...' : 'Loading your exam results...'}
           </p>
         </div>
