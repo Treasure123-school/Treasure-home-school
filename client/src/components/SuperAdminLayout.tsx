@@ -280,7 +280,7 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
               <div className="ml-3 mt-0.5 mb-0.5 pl-2.5 border-l border-border space-y-0.5">
                 {item.children.map((child) => {
                   const ChildIcon = child.icon;
-                  const active    = isActive(child.path);
+                  const active    = location === child.path;
                   return (
                     <button
                       key={child.path}
