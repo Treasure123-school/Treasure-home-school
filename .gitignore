@@ -76,3 +76,8 @@ attached_assets/**/*.env
 .config/
 .upm/
 .cache/
+.replit
+replit.nix
+
+# Vite temp timestamp files
+vite.config.ts.timestamp-*

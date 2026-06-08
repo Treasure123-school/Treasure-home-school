@@ -110,7 +110,7 @@
     "html2canvas": "^1.4.1",
     "input-otp": "^1.4.2",
     "jsonwebtoken": "^9.0.2",
-    "jspdf": "^3.0.4",
+    "jspdf": "file:local-packages/jspdf",
     "jszip": "^3.10.1",
     "lodash": "^4.17.23",
     "lucide-react": "^0.544.0",

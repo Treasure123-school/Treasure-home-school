@@ -3,7 +3,7 @@ services:
     name: school-management-backend
     env: node
     region: oregon
-    buildCommand: npm install --include=dev && npm run build
+    buildCommand: npm install --legacy-peer-deps && npm run build
     startCommand: npm run start
     # Production Configuration:
     # - Database: Neon PostgreSQL (via DATABASE_URL)
