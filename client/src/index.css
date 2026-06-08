@@ -268,7 +268,8 @@
 }
 
 .footer-dark {
-  @apply bg-gray-50 text-gray-800 py-16;
+  background-color: hsl(var(--primary) / 0.06);
+  @apply text-foreground py-16;
 }
 
 .typed-cursor {
