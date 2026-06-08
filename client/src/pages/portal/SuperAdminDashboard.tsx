@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SuperAdminDashboardSkeleton } from "@/components/ui/page-skeletons";
-import { Users, Shield, Activity, Database, TrendingUp, UserPlus, Settings, Award, ChevronRight } from "lucide-react";
+import { Users, Shield, Activity, Database, TrendingUp, UserPlus, Settings, Award, ChevronRight, Clock } from "lucide-react";
 import SuperAdminLayout from "@/components/SuperAdminLayout";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { Button } from "@/components/ui/button";
@@ -122,16 +122,33 @@ export default function SuperAdminDashboard() {
   return (
     <SuperAdminLayout>
       <div className="space-y-6">
-        {/* Welcome Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-2" data-testid="superadmin-dashboard-header">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-              <Shield className="h-6 w-6 text-primary" />
-              Welcome back, {user?.lastName || 'Admin'}!
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Manage all system aspects of {schoolName}
-            </p>
+        {/* Welcome Header Card */}
+        <div
+          className="mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 text-white shadow-xl"
+          data-testid="superadmin-dashboard-header"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4 flex-1">
+              <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 shadow-lg">
+                <Shield className="h-10 w-10 text-white" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold tracking-tight" data-testid="text-superadmin-greeting">
+                  Welcome back, {user?.lastName || 'Admin'}!
+                </h2>
+                <p className="text-white/70 text-sm mt-1" data-testid="text-superadmin-subtitle">
+                  Super Admin · {schoolName}
+                </p>
+              </div>
+            </div>
+            <div className="hidden md:flex items-center gap-3">
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2">
+                <Clock className="h-4 w-4" />
+                <span className="text-sm">
+                  {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
