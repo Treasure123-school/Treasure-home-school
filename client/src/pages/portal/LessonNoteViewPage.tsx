@@ -27,6 +27,8 @@ export default function LessonNoteViewPage() {
   const qc = useQueryClient();
   const [showReject,   setShowReject]   = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [showReturn,   setShowReturn]   = useState(false);
+  const [returnReason, setReturnReason] = useState('');
   const [busy, setBusy] = useState(false);
 
   const isAdmin   = user?.roleId === ROLE_IDS.ADMIN || user?.roleId === ROLE_IDS.SUPER_ADMIN;
@@ -62,7 +64,7 @@ export default function LessonNoteViewPage() {
       await apiRequest('POST', `/api/lesson-notes/${note.id}/${action}`, extra ?? {});
       qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] });
       const labels: Record<string, string> = {
-        approve: 'Approved', reject: 'Rejected', publish: 'Published',
+        approve: 'Approved', reject: 'Rejected', return: 'Returned for revision', publish: 'Published',
         unpublish: 'Unpublished', 'approve-publish': 'Approved & Published', submit: 'Submitted',
       };
       toast({ title: labels[action] || 'Done' });
@@ -72,7 +74,9 @@ export default function LessonNoteViewPage() {
     } finally { setBusy(false); }
   };
 
-  const canEdit  = note ? (['draft', 'rejected'].includes(note.status) || isAdmin) : false;
+  // Teacher-editable statuses must match the backend TEACHER_EDITABLE_STATUSES constant
+  const TEACHER_EDITABLE_STATUSES = ['draft', 'rejected', 'returned'] as const;
+  const canEdit  = note ? ((TEACHER_EDITABLE_STATUSES as readonly string[]).includes(note.status) || isAdmin) : false;
   const isMyNote = note?.createdBy === user?.id;
   const editUrl  = `${basePortal}/lesson-notes/edit/${id}`;
 
@@ -80,7 +84,7 @@ export default function LessonNoteViewPage() {
 
   const adminPrimaryAction = () => {
     if (!note) return null;
-    if (['draft', 'submitted', 'rejected'].includes(note.status)) {
+    if (['draft', 'submitted', 'rejected', 'returned'].includes(note.status)) {
       return (
         <Button size="sm" disabled={busy} onClick={() => act('approve-publish')}
           className="bg-emerald-600 hover:bg-emerald-700 gap-1.5 shrink-0" data-testid="button-approve-publish">
@@ -142,7 +146,7 @@ export default function LessonNoteViewPage() {
               </Button>
             )}
 
-            {isAdmin && !showReject && adminPrimaryAction()}
+            {isAdmin && !showReject && !showReturn && adminPrimaryAction()}
 
             {isAdmin && (
               <DropdownMenu>
@@ -155,13 +159,26 @@ export default function LessonNoteViewPage() {
                   <DropdownMenuItem onClick={() => window.print()} className="sm:hidden">
                     <Printer className="w-4 h-4 mr-2" /> Print
                   </DropdownMenuItem>
-                  {['draft', 'submitted', 'rejected'].includes(note.status) && (
+                  {['draft', 'submitted', 'rejected', 'returned'].includes(note.status) && (
                     <DropdownMenuItem onClick={() => act('approve')}>
                       <CheckCircle className="w-4 h-4 mr-2 text-green-600" /> Approve only
                     </DropdownMenuItem>
                   )}
                   {['submitted', 'approved'].includes(note.status) && (
-                    <DropdownMenuItem onClick={() => setShowReject(true)} className="text-destructive focus:text-destructive">
+                    <DropdownMenuItem
+                      onClick={() => { setShowReturn(true); setShowReject(false); }}
+                      className="text-amber-600 focus:text-amber-700"
+                      data-testid="button-return-for-revision"
+                    >
+                      <AlertCircle className="w-4 h-4 mr-2" /> Return for Revision
+                    </DropdownMenuItem>
+                  )}
+                  {['submitted', 'approved', 'returned'].includes(note.status) && (
+                    <DropdownMenuItem
+                      onClick={() => { setShowReject(true); setShowReturn(false); }}
+                      className="text-destructive focus:text-destructive"
+                      data-testid="button-reject"
+                    >
                       <XCircle className="w-4 h-4 mr-2" /> Reject
                     </DropdownMenuItem>
                   )}
@@ -177,7 +194,7 @@ export default function LessonNoteViewPage() {
               </DropdownMenu>
             )}
 
-            {isTeacher && isMyNote && ['draft', 'rejected'].includes(note.status) && (
+            {isTeacher && isMyNote && (TEACHER_EDITABLE_STATUSES as readonly string[]).includes(note.status) && (
               <Button size="sm" onClick={() => act('submit')} disabled={busy} className="gap-1.5" data-testid="button-submit">
                 <Send className="w-4 h-4" />
                 <span className="hidden sm:inline">Submit for Review</span>
@@ -218,13 +235,53 @@ export default function LessonNoteViewPage() {
         </div>
       )}
 
+      {/* Return for Revision inline form */}
+      {showReturn && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-4 print:hidden">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <div className="flex-1 space-y-2">
+              <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                Return reason / revision notes <span className="text-destructive">*</span>
+              </p>
+              <textarea
+                value={returnReason}
+                onChange={(e) => setReturnReason(e.target.value)}
+                placeholder="Describe what the teacher should revise before resubmitting…"
+                rows={2}
+                className="w-full rounded border border-amber-200 bg-white dark:bg-amber-950/30 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
+                data-testid="input-return-reason"
+              />
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => { setShowReturn(false); setReturnReason(''); }}>Cancel</Button>
+                <Button size="sm"
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
+                  disabled={!returnReason.trim() || busy}
+                  onClick={() => act('return', { reason: returnReason }).then(() => { setShowReturn(false); setReturnReason(''); })}
+                  data-testid="button-confirm-return"
+                >
+                  {busy ? 'Returning…' : 'Return for Revision'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Note meta chips — shared component */}
       <NoteMetaStrip note={note} />
 
-      {note.rejectionReason && (
+      {note.rejectionReason && note.status === 'rejected' && (
         <div className="flex gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-400">
           <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
           <div><strong>Rejection reason:</strong> {note.rejectionReason}</div>
+        </div>
+      )}
+
+      {note.rejectionReason && note.status === 'returned' && (
+        <div className="flex gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-sm text-amber-700 dark:text-amber-400">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+          <div><strong>Revision notes from admin:</strong> {note.rejectionReason}</div>
         </div>
       )}
 

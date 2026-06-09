@@ -159,14 +159,21 @@ router.post('/', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Req
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
-// ─── PATCH /:id/hidden-sections  (teacher=own; admin=any) ───────────────────
+// ─── PATCH /:id/hidden-sections  (teacher=own editable notes only; admin=any) ──
 router.patch('/:id/hidden-sections', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   try {
     const user = getUser(req);
     const note = await storage.getLessonNoteById(parseInt(req.params.id));
     if (!note) return res.status(404).json({ message: 'Lesson note not found' });
-    if (user.roleId === ROLES.TEACHER && note.createdBy !== user.id)
-      return res.status(403).json({ message: 'Access denied' });
+
+    if (user.roleId === ROLES.TEACHER) {
+      if (note.createdBy !== user.id)
+        return res.status(403).json({ message: 'Access denied' });
+      // Teachers can only toggle sections on unlocked notes
+      if (!(TEACHER_EDITABLE_STATUSES as readonly string[]).includes(note.status))
+        return res.status(400).json({ message: 'Cannot modify a locked note. Only admin can change section visibility on approved notes.' });
+    }
+
     const { hiddenSections } = req.body;
     if (!Array.isArray(hiddenSections))
       return res.status(400).json({ message: 'hiddenSections must be an array of section keys' });
@@ -290,9 +297,11 @@ router.post('/generate', authenticateUser, authorizeRoles(...ALL_STAFF), async (
 });
 
 // ─── PUT /:id  ────────────────────────────────────────────────────────────────
-// Teachers can only edit their OWN notes while status is draft or rejected.
-// Approved/published notes are locked — even for the original author.
+// Teachers can only edit their OWN notes while status is: draft, rejected, or returned.
+// Submitted, approved, and published notes are locked — even for the original author.
 // Admins can edit any note.
+const TEACHER_EDITABLE_STATUSES = ['draft', 'rejected', 'returned'] as const;
+
 router.put('/:id', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   try {
     const user = getUser(req);
@@ -301,12 +310,10 @@ router.put('/:id', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: R
     if (!note) return res.status(404).json({ message: 'Lesson note not found' });
 
     if (isTeacher) {
-      // Must be their own note
       if (note.createdBy !== user.id)
         return res.status(403).json({ message: 'Access denied' });
-      // Can only edit draft or rejected notes — approved/published are locked
-      if (!['draft', 'rejected'].includes(note.status))
-        return res.status(400).json({ message: 'You can only edit draft or rejected notes. Submitted and approved notes are locked.' });
+      if (!(TEACHER_EDITABLE_STATUSES as readonly string[]).includes(note.status))
+        return res.status(400).json({ message: 'This note is locked. You can only edit notes in Draft, Rejected, or Returned for Revision status.' });
     }
 
     const { title, content, objectives, attachmentUrl, attachmentName } = req.body;
@@ -334,7 +341,7 @@ router.delete('/:id', authenticateUser, authorizeRoles(...ALL_STAFF), async (req
 });
 
 // ─── POST /:id/submit  ────────────────────────────────────────────────────────
-// Teachers submit their own draft/rejected notes for admin review.
+// Teachers submit their own draft/rejected/returned notes for admin review.
 router.post('/:id/submit', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   try {
     const user = getUser(req);
@@ -343,8 +350,8 @@ router.post('/:id/submit', authenticateUser, authorizeRoles(...ALL_STAFF), async
     if (!note) return res.status(404).json({ message: 'Lesson note not found' });
     if (isTeacher && note.createdBy !== user.id)
       return res.status(403).json({ message: 'Access denied' });
-    if (!['draft', 'rejected'].includes(note.status))
-      return res.status(400).json({ message: 'Only draft or rejected notes can be submitted' });
+    if (!(TEACHER_EDITABLE_STATUSES as readonly string[]).includes(note.status))
+      return res.status(400).json({ message: 'Only draft, rejected, or returned notes can be submitted for review' });
     const updated = await storage.updateLessonNote(note.id, {
       status: 'submitted', submittedBy: user.id, submittedAt: new Date(), rejectionReason: null as any,
     });
@@ -369,17 +376,36 @@ router.post('/:id/approve', authenticateUser, authorizeRoles(...ADMIN_ROLES), as
 });
 
 // ─── POST /:id/reject  (admin only) ──────────────────────────────────────────
+// Can reject notes in: submitted, approved, returned status.
 router.post('/:id/reject', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: Request, res: Response) => {
   try {
     const user = getUser(req);
     const note = await storage.getLessonNoteById(parseInt(req.params.id));
     if (!note) return res.status(404).json({ message: 'Lesson note not found' });
-    if (['draft', 'rejected', 'archived'].includes(note.status))
-      return res.status(400).json({ message: 'Cannot reject a draft or already-rejected note' });
+    if (!['submitted', 'approved', 'returned'].includes(note.status))
+      return res.status(400).json({ message: 'Only submitted, approved, or returned notes can be rejected' });
     const { reason } = req.body;
     const updated = await storage.updateLessonNote(note.id, {
       status: 'rejected', rejectedBy: user.id, rejectedAt: new Date(),
       rejectionReason: reason?.trim() || 'No reason provided',
+    });
+    res.json(updated);
+  } catch (err: any) { res.status(500).json({ message: err.message }); }
+});
+
+// ─── POST /:id/return  (admin only) ──────────────────────────────────────────
+// Admin returns a submitted or approved note to the teacher for revision.
+// Teacher can then edit and re-submit. Uses rejectionReason field for the feedback.
+router.post('/:id/return', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: Request, res: Response) => {
+  try {
+    const note = await storage.getLessonNoteById(parseInt(req.params.id));
+    if (!note) return res.status(404).json({ message: 'Lesson note not found' });
+    if (!['submitted', 'approved'].includes(note.status))
+      return res.status(400).json({ message: 'Only submitted or approved notes can be returned for revision' });
+    const { reason } = req.body;
+    const updated = await storage.updateLessonNote(note.id, {
+      status: 'returned',
+      rejectionReason: reason?.trim() || 'Please revise and resubmit',
     });
     res.json(updated);
   } catch (err: any) { res.status(500).json({ message: err.message }); }
@@ -451,7 +477,7 @@ router.post('/generate-image', authenticateUser, authorizeRoles(...ALL_STAFF), a
 });
 
 // ─── POST /:id/generate-image-cf  (AI image generation — saves URL to note) ──
-// Teachers can only generate images on their own notes.
+// Teachers can only generate images on their own notes in an editable status.
 router.post('/:id/generate-image-cf', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   try {
     const user = getUser(req);
@@ -459,8 +485,12 @@ router.post('/:id/generate-image-cf', authenticateUser, authorizeRoles(...ALL_ST
     const note = await storage.getLessonNoteById(noteId);
     if (!note) return res.status(404).json({ error: 'Lesson note not found' });
 
-    if (user.roleId === ROLES.TEACHER && note.createdBy !== user.id)
-      return res.status(403).json({ error: 'Access denied' });
+    if (user.roleId === ROLES.TEACHER) {
+      if (note.createdBy !== user.id)
+        return res.status(403).json({ error: 'Access denied' });
+      if (!(TEACHER_EDITABLE_STATUSES as readonly string[]).includes(note.status))
+        return res.status(400).json({ error: 'This note is locked. Images can only be added to editable notes.' });
+    }
 
     const { prompt: customPrompt, subject, className } = req.body;
     const topic = note.title;

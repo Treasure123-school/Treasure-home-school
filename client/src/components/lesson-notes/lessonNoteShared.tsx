@@ -10,12 +10,13 @@ import RichTextViewer from './RichTextViewer';
 // ── Status badge ─────────────────────────────────────────────────────────────
 
 export const STATUS_CFG = {
-  draft:     { label: 'Draft',     cls: 'bg-muted text-muted-foreground border border-border',                                      icon: FileText,    canEdit: true,  canDelete: true,  canSubmit: true  },
-  submitted: { label: 'Submitted', cls: 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/70',                        icon: Send,        canEdit: false, canDelete: false, canSubmit: false },
-  approved:  { label: 'Approved',  cls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',                    icon: CheckCircle, canEdit: false, canDelete: false, canSubmit: false },
-  rejected:  { label: 'Rejected',  cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',                            icon: XCircle,     canEdit: true,  canDelete: false, canSubmit: true  },
-  published: { label: 'Published', cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',            icon: Eye,         canEdit: false, canDelete: false, canSubmit: false },
-  archived:  { label: 'Archived',  cls: 'bg-muted text-muted-foreground border border-border',                                      icon: Clock,       canEdit: false, canDelete: false, canSubmit: false },
+  draft:     { label: 'Draft',               cls: 'bg-muted text-muted-foreground border border-border',                                                     icon: FileText,    canEdit: true,  canDelete: true,  canSubmit: true  },
+  submitted: { label: 'Submitted',           cls: 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/70',                                       icon: Send,        canEdit: false, canDelete: false, canSubmit: false },
+  approved:  { label: 'Approved',            cls: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',                                    icon: CheckCircle, canEdit: false, canDelete: false, canSubmit: false },
+  rejected:  { label: 'Rejected',            cls: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',                                            icon: XCircle,     canEdit: true,  canDelete: false, canSubmit: true  },
+  returned:  { label: 'Returned for Revision', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200',          icon: Clock,       canEdit: true,  canDelete: false, canSubmit: true  },
+  published: { label: 'Published',           cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',                            icon: Eye,         canEdit: false, canDelete: false, canSubmit: false },
+  archived:  { label: 'Archived',            cls: 'bg-muted text-muted-foreground border border-border',                                                     icon: Clock,       canEdit: false, canDelete: false, canSubmit: false },
 } as const;
 
 export type StatusKey = keyof typeof STATUS_CFG;

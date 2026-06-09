@@ -251,7 +251,9 @@ export default function LessonNoteEditorPage() {
 
   // ── Derived permissions ────────────────────────────────────────────────────
   const currentStatus = note?.status;
-  const canEdit = !currentStatus || ['draft', 'rejected'].includes(currentStatus) || isAdmin;
+  // Editable statuses for teachers: draft, rejected, returned. Admins can always edit.
+  const TEACHER_EDITABLE = ['draft', 'rejected', 'returned'] as const;
+  const canEdit = !currentStatus || (TEACHER_EDITABLE as readonly string[]).includes(currentStatus) || isAdmin;
 
   // ── Per-image progress helpers ─────────────────────────────────────────────
 
