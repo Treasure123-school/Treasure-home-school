@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
+import { useAuth } from '@/lib/auth';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,7 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { StatusBadge, STATUS_CFG, EnrichedNote } from '@/components/lesson-notes/lessonNoteShared';
 import {
   BookOpen, Layers, Edit, Trash2, Send, AlertCircle,
-  ChevronRight, Eye, FileText, Info, Plus, ArrowRight, Filter,
+  ChevronRight, Eye, FileText, Info, Plus, ArrowRight, Filter, Lock,
 } from 'lucide-react';
 
 type Topic = { id: number; name: string; description: string | null; orderNumber: number | null };
@@ -66,6 +67,7 @@ export default function TeacherLessonNotes() {
   const { toast } = useToast();
   const qc        = useQueryClient();
   const [, navigate] = useLocation();
+  const { user }  = useAuth();
 
   const [classId,   setClassId]   = useState('');
   const [subjectId, setSubjectId] = useState('');
@@ -105,9 +107,10 @@ export default function TeacherLessonNotes() {
 
   const statusCounts = useMemo(() => {
     const out: Record<string, number> = {};
-    notes.forEach(n => { out[n.status] = (out[n.status] ?? 0) + 1; });
+    // Only count teacher's own notes in the status summary
+    notes.filter(n => n.createdBy === user?.id).forEach(n => { out[n.status] = (out[n.status] ?? 0) + 1; });
     return out;
-  }, [notes]);
+  }, [notes, user?.id]);
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest('DELETE', `/api/lesson-notes/${id}`),
@@ -135,11 +138,14 @@ export default function TeacherLessonNotes() {
   const handleTopicClick = (topic: Topic) => {
     const existing = noteByTopicId.get(topic.id) ?? null;
     if (existing) {
-      const cfg = STATUS_CFG[existing.status as keyof typeof STATUS_CFG];
       const params = buildEditorParams(topic);
-      if (cfg?.canEdit) {
+      const isOwnNote = existing.createdBy === user?.id;
+      const cfg = STATUS_CFG[existing.status as keyof typeof STATUS_CFG];
+      // Only allow editing if teacher owns the note AND status allows editing
+      if (isOwnNote && cfg?.canEdit) {
         navigate(`/portal/teacher/lesson-notes/edit/${existing.id}?${params}`);
       } else {
+        // Read-only: either not their note, or status locks editing
         navigate(`/portal/teacher/lesson-notes/view/${existing.id}`);
       }
     } else {
@@ -338,9 +344,12 @@ export default function TeacherLessonNotes() {
                   </p>
                   <div className="space-y-2">
                     {sortedTopics.map((topic, idx) => {
-                      const note = noteByTopicId.get(topic.id);
-                      const cfg  = note ? STATUS_CFG[note.status as keyof typeof STATUS_CFG] : null;
-                      const hasNote = !!note;
+                      const note      = noteByTopicId.get(topic.id);
+                      const cfg       = note ? STATUS_CFG[note.status as keyof typeof STATUS_CFG] : null;
+                      const hasNote   = !!note;
+                      // Is this note owned by the current teacher, or is it a reference note from admin/another teacher?
+                      const isOwnNote = hasNote && note.createdBy === user?.id;
+                      const isRef     = hasNote && !isOwnNote; // approved/published note from admin or another teacher
 
                       return (
                         <div
@@ -364,11 +373,16 @@ export default function TeacherLessonNotes() {
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="font-medium text-sm">{topic.name}</p>
                               {note && <StatusBadge status={note.status} />}
+                              {isRef && (
+                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 border border-blue-200 dark:border-blue-700">
+                                  <Lock className="w-2.5 h-2.5" />Reference
+                                </span>
+                              )}
                             </div>
                             {topic.description && (
                               <p className="text-xs text-muted-foreground mt-0.5 truncate">{topic.description}</p>
                             )}
-                            {note?.rejectionReason && (
+                            {isOwnNote && note?.rejectionReason && (
                               <div className="flex items-center gap-1 mt-1 text-xs text-red-600 dark:text-red-400">
                                 <AlertCircle className="w-3 h-3 shrink-0" />
                                 <span className="truncate">{note.rejectionReason}</span>
@@ -379,7 +393,7 @@ export default function TeacherLessonNotes() {
                           {/* Hover action hint */}
                           <div className="shrink-0 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                             {hasNote ? (
-                              cfg?.canEdit
+                              isOwnNote && cfg?.canEdit
                                 ? <><Edit className="w-3.5 h-3.5 text-muted-foreground" /><span className="text-xs text-muted-foreground hidden sm:inline">Edit</span></>
                                 : <><Eye className="w-3.5 h-3.5 text-muted-foreground" /><span className="text-xs text-muted-foreground hidden sm:inline">View</span></>
                             ) : (
@@ -387,8 +401,8 @@ export default function TeacherLessonNotes() {
                             )}
                           </div>
 
-                          {/* Quick action buttons for draft/pending notes */}
-                          {note && cfg?.canDelete && (
+                          {/* Quick action: delete (own draft only) */}
+                          {isOwnNote && cfg?.canDelete && (
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); deleteMutation.mutate(note.id); }}
@@ -399,7 +413,8 @@ export default function TeacherLessonNotes() {
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           )}
-                          {note && cfg?.canSubmit && !cfg?.canEdit && (
+                          {/* Quick action: submit (own note, submittable but not editable inline) */}
+                          {isOwnNote && cfg?.canSubmit && !cfg?.canEdit && (
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); submitMutation.mutate(note.id); }}

@@ -264,6 +264,8 @@ export interface IStorage {
   updateLessonNote(id: number, data: Partial<InsertLessonNote>): Promise<LessonNote | undefined>;
   deleteLessonNote(id: number): Promise<boolean>;
   getLessonNotesStats(): Promise<{ total: number; draft: number; submitted: number; approved: number; rejected: number; published: number }>;
+  getLessonNotesForTeacherView(teacherId: string, filters: { classId?: number; subjectId?: number; termId?: number }): Promise<Array<LessonNote & { creatorName: string | null; subjectName: string | null; className: string | null; topicName: string | null; termName: string | null }>>;
+  isTeacherAssignedToSubject(teacherId: string, classId: number, subjectId: number): Promise<boolean>;
 
   // Enhanced Question Bank Queries
   getQuestionBankItemsFiltered(filters: { bankId?: number; classId?: number; subjectId?: number; termId?: number; topicId?: number; difficulty?: string; questionType?: string; status?: string; createdBy?: string; statuses?: string[] }): Promise<QuestionBankItem[]>;
@@ -3441,6 +3443,96 @@ export class DatabaseStorage implements IStorage {
       rejected: all.filter((n: LessonNote) => n.status === 'rejected').length,
       published: all.filter((n: LessonNote) => n.status === 'published').length,
     };
+  }
+
+  async getLessonNotesForTeacherView(
+    teacherId: string,
+    filters: { classId?: number; subjectId?: number; termId?: number },
+  ): Promise<Array<LessonNote & { creatorName: string | null; subjectName: string | null; className: string | null; topicName: string | null; termName: string | null }>> {
+    // 1. Fetch teacher's active class+subject assignments
+    const assignments = await db
+      .select({
+        classId: schema.teacherClassAssignments.classId,
+        subjectId: schema.teacherClassAssignments.subjectId,
+      })
+      .from(schema.teacherClassAssignments)
+      .where(
+        and(
+          eq(schema.teacherClassAssignments.teacherId, teacherId),
+          eq(schema.teacherClassAssignments.isActive, true),
+        ),
+      );
+
+    if (assignments.length === 0) return [];
+
+    // 2. Build OR conditions: (classId=A AND subjectId=B) OR (classId=C AND subjectId=D) ...
+    const pairConds = assignments.map((a) =>
+      and(
+        eq(schema.lessonNotes.classId, a.classId),
+        eq(schema.lessonNotes.subjectId, a.subjectId),
+      ),
+    );
+    const inAssignedSubjects = or(...pairConds);
+
+    // 3. Visibility rule:
+    //    - Teacher's OWN notes for their assigned subjects (any status)
+    //    - OR approved/published notes from ANY creator for their assigned subjects
+    const visibility = or(
+      and(eq(schema.lessonNotes.createdBy, teacherId), inAssignedSubjects),
+      and(inArray(schema.lessonNotes.status, ['approved', 'published']), inAssignedSubjects),
+    );
+
+    const conditions: any[] = [visibility];
+    if (filters.classId)   conditions.push(eq(schema.lessonNotes.classId,   filters.classId));
+    if (filters.subjectId) conditions.push(eq(schema.lessonNotes.subjectId, filters.subjectId));
+    if (filters.termId)    conditions.push(eq(schema.lessonNotes.termId,    filters.termId));
+
+    const creatorAlias = alias(schema.users, 'creator');
+    const rows = await db
+      .select({
+        note:             schema.lessonNotes,
+        creatorFirstName: creatorAlias.firstName,
+        creatorLastName:  creatorAlias.lastName,
+        subjectName:      schema.subjects.name,
+        className:        schema.classes.name,
+        topicName:        schema.syllabusTopics.name,
+        termName:         schema.academicTerms.name,
+      })
+      .from(schema.lessonNotes)
+      .leftJoin(creatorAlias,          eq(schema.lessonNotes.createdBy,  creatorAlias.id))
+      .leftJoin(schema.subjects,       eq(schema.lessonNotes.subjectId,  schema.subjects.id))
+      .leftJoin(schema.classes,        eq(schema.lessonNotes.classId,    schema.classes.id))
+      .leftJoin(schema.syllabusTopics, eq(schema.lessonNotes.topicId,    schema.syllabusTopics.id))
+      .leftJoin(schema.academicTerms,  eq(schema.lessonNotes.termId,     schema.academicTerms.id))
+      .where(and(...conditions))
+      .orderBy(desc(schema.lessonNotes.createdAt));
+
+    return rows.map((row) => ({
+      ...row.note,
+      creatorName: row.creatorFirstName && row.creatorLastName
+        ? `${row.creatorFirstName} ${row.creatorLastName}`.trim()
+        : (row.creatorFirstName || row.creatorLastName || null),
+      subjectName: row.subjectName ?? null,
+      className:   row.className   ?? null,
+      topicName:   row.topicName   ?? null,
+      termName:    row.termName    ?? null,
+    }));
+  }
+
+  async isTeacherAssignedToSubject(teacherId: string, classId: number, subjectId: number): Promise<boolean> {
+    const result = await db
+      .select({ id: schema.teacherClassAssignments.id })
+      .from(schema.teacherClassAssignments)
+      .where(
+        and(
+          eq(schema.teacherClassAssignments.teacherId, teacherId),
+          eq(schema.teacherClassAssignments.classId,   classId),
+          eq(schema.teacherClassAssignments.subjectId, subjectId),
+          eq(schema.teacherClassAssignments.isActive,  true),
+        ),
+      )
+      .limit(1);
+    return result.length > 0;
   }
 
   // ═══════════ ENHANCED QUESTION BANK QUERIES ═══════════

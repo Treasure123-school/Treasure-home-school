@@ -45,55 +45,110 @@ router.get('/stats', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (re
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
-// ─── GET /  (admin sees all enriched; teacher sees own enriched) ─────────────
+// ─── GET /  ──────────────────────────────────────────────────────────────────
+// Admin/SuperAdmin: see ALL notes (enriched), filtered by query params.
+// Teacher: see their OWN notes (any status) for their assigned subjects PLUS
+//          approved/published notes from any creator for those same subjects.
 router.get('/', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   try {
     const user = getUser(req);
     const isTeacher = user.roleId === ROLES.TEACHER;
+
     const filters: any = {};
     if (req.query.classId)   filters.classId   = parseInt(req.query.classId as string);
     if (req.query.subjectId) filters.subjectId = parseInt(req.query.subjectId as string);
     if (req.query.termId)    filters.termId    = parseInt(req.query.termId as string);
     if (req.query.status)    filters.status    = req.query.status as string;
-    if (isTeacher) filters.createdBy = user.id;
+
+    if (isTeacher) {
+      const notes = await storage.getLessonNotesForTeacherView(user.id, filters);
+      return res.json(notes);
+    }
+
     const notes = await storage.getLessonNotesEnriched(filters);
     res.json(notes);
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
-// ─── GET /by-topic/:topicId  (student=published only; staff=any) ────────────
+// ─── GET /by-topic/:topicId ──────────────────────────────────────────────────
+// Students / Parents: published notes only.
+// Teachers: own notes (any status) OR approved/published notes for assigned subjects.
+// Admin: any note.
 router.get('/by-topic/:topicId', authenticateUser, async (req: Request, res: Response) => {
   try {
     const user = getUser(req);
     const isStudent = user.roleId === ROLES.STUDENT;
-    const note = await storage.getLessonNoteByTopicId(parseInt(req.params.topicId), isStudent);
+    const isParent  = user.roleId === ROLES.PARENT;
+    const isTeacher = user.roleId === ROLES.TEACHER;
+
+    if (isStudent || isParent) {
+      const note = await storage.getLessonNoteByTopicId(parseInt(req.params.topicId), true);
+      if (!note) return res.status(404).json({ message: 'No lesson note for this topic' });
+      return res.json(note);
+    }
+
+    const note = await storage.getLessonNoteByTopicId(parseInt(req.params.topicId));
     if (!note) return res.status(404).json({ message: 'No lesson note for this topic' });
+
+    if (isTeacher) {
+      const isAssigned = await storage.isTeacherAssignedToSubject(user.id, note.classId, note.subjectId);
+      if (!isAssigned) return res.status(403).json({ message: 'Access denied' });
+
+      const isOwn = note.createdBy === user.id;
+      if (!isOwn && !['approved', 'published'].includes(note.status))
+        return res.status(403).json({ message: 'Access denied' });
+    }
+
     res.json(note);
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
-// ─── GET /:id  (admin=any; teacher=own) ─────────────────────────────────────
+// ─── GET /:id ────────────────────────────────────────────────────────────────
+// Admin: any note.
+// Teacher: own notes (any status) OR approved/published notes for their assigned subjects.
 router.get('/:id', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   try {
     const user = getUser(req);
     const note = await storage.getLessonNoteById(parseInt(req.params.id));
     if (!note) return res.status(404).json({ message: 'Lesson note not found' });
-    if (user.roleId === ROLES.TEACHER && note.createdBy !== user.id)
-      return res.status(403).json({ message: 'Access denied' });
+
+    if (user.roleId === ROLES.TEACHER) {
+      const isOwn = note.createdBy === user.id;
+      if (isOwn) return res.json(note);
+
+      // Not their own: must be approved/published AND teacher must be assigned to that subject
+      if (!['approved', 'published'].includes(note.status))
+        return res.status(403).json({ message: 'Access denied' });
+
+      const isAssigned = await storage.isTeacherAssignedToSubject(user.id, note.classId, note.subjectId);
+      if (!isAssigned) return res.status(403).json({ message: 'Access denied' });
+    }
+
     res.json(note);
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
 // ─── POST /  (teacher or admin creates) ──────────────────────────────────────
+// Teachers can only create notes for their assigned class+subject combinations.
+// Admin-created notes go straight through without the assignment check.
 router.post('/', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   try {
     const user = getUser(req);
     const { topicId, classId, subjectId, termId, title, content, objectives, attachmentUrl, attachmentName } = req.body;
     if (!topicId || !classId || !subjectId || !termId || !title)
       return res.status(400).json({ message: 'topicId, classId, subjectId, termId, and title are required' });
+
+    // Teachers must be assigned to the target class+subject
+    if (user.roleId === ROLES.TEACHER) {
+      const isAssigned = await storage.isTeacherAssignedToSubject(user.id, parseInt(classId), parseInt(subjectId));
+      if (!isAssigned)
+        return res.status(403).json({ message: 'You are not assigned to this class and subject' });
+    }
+
     // One note per topic — if exists return it so UI can redirect
     const existing = await storage.getLessonNoteByTopicId(parseInt(topicId));
     if (existing) return res.status(409).json({ message: 'A lesson note already exists for this topic', existingId: existing.id });
+
     const note = await storage.createLessonNote({
       topicId: parseInt(topicId), classId: parseInt(classId),
       subjectId: parseInt(subjectId), termId: parseInt(termId),
@@ -104,7 +159,7 @@ router.post('/', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Req
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
-// ─── PATCH /:id/hidden-sections  (teacher=own or admin toggles section visibility) ─
+// ─── PATCH /:id/hidden-sections  (teacher=own; admin=any) ───────────────────
 router.patch('/:id/hidden-sections', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   try {
     const user = getUser(req);
@@ -202,7 +257,7 @@ router.post('/generate/stream-live', authenticateUser, authorizeRoles(...ALL_STA
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('Transfer-Encoding', 'chunked');
-  res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx/Replit proxy buffering
+  res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
 
   let closed = false;
@@ -211,8 +266,6 @@ router.post('/generate/stream-live', authenticateUser, authorizeRoles(...ALL_STA
   const send = (payload: object) => {
     if (!closed && !res.writableEnded) {
       res.write(`data: ${JSON.stringify(payload)}\n\n`);
-      // Flush the compression middleware buffer so every token reaches the
-      // browser immediately instead of being held until the stream ends.
       (res as any).flush?.();
     }
   };
@@ -231,30 +284,40 @@ router.post('/generate/stream-live', authenticateUser, authorizeRoles(...ALL_STA
   }
 });
 
-// ─── POST /generate  (legacy — kept for backwards compat, now uses job pattern internally) ─
+// ─── POST /generate  (legacy — removed) ──────────────────────────────────────
 router.post('/generate', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   return res.status(410).json({ message: 'This endpoint has been replaced. Please refresh the page.' });
 });
 
-// ─── PUT /:id  (teacher=own draft/rejected; admin=any) ───────────────────────
+// ─── PUT /:id  ────────────────────────────────────────────────────────────────
+// Teachers can only edit their OWN notes while status is draft or rejected.
+// Approved/published notes are locked — even for the original author.
+// Admins can edit any note.
 router.put('/:id', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   try {
     const user = getUser(req);
     const isTeacher = user.roleId === ROLES.TEACHER;
     const note = await storage.getLessonNoteById(parseInt(req.params.id));
     if (!note) return res.status(404).json({ message: 'Lesson note not found' });
+
     if (isTeacher) {
-      if (note.createdBy !== user.id) return res.status(403).json({ message: 'Access denied' });
+      // Must be their own note
+      if (note.createdBy !== user.id)
+        return res.status(403).json({ message: 'Access denied' });
+      // Can only edit draft or rejected notes — approved/published are locked
       if (!['draft', 'rejected'].includes(note.status))
-        return res.status(400).json({ message: 'You can only edit draft or rejected notes' });
+        return res.status(400).json({ message: 'You can only edit draft or rejected notes. Submitted and approved notes are locked.' });
     }
+
     const { title, content, objectives, attachmentUrl, attachmentName } = req.body;
     const updated = await storage.updateLessonNote(note.id, { title, content, objectives, attachmentUrl, attachmentName });
     res.json(updated);
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
-// ─── DELETE /:id  (teacher=own draft; admin=any) ─────────────────────────────
+// ─── DELETE /:id  ─────────────────────────────────────────────────────────────
+// Teachers can only delete their own draft notes.
+// Admins can delete any note.
 router.delete('/:id', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   try {
     const user = getUser(req);
@@ -270,7 +333,8 @@ router.delete('/:id', authenticateUser, authorizeRoles(...ALL_STAFF), async (req
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
-// ─── POST /:id/submit  (teacher submits; admin can submit any) ───────────────
+// ─── POST /:id/submit  ────────────────────────────────────────────────────────
+// Teachers submit their own draft/rejected notes for admin review.
 router.post('/:id/submit', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   try {
     const user = getUser(req);
@@ -288,7 +352,7 @@ router.post('/:id/submit', authenticateUser, authorizeRoles(...ALL_STAFF), async
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
-// ─── POST /:id/approve  (admin approves from submitted or draft) ─────────────
+// ─── POST /:id/approve  (admin only) ─────────────────────────────────────────
 router.post('/:id/approve', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: Request, res: Response) => {
   try {
     const user = getUser(req);
@@ -296,7 +360,6 @@ router.post('/:id/approve', authenticateUser, authorizeRoles(...ADMIN_ROLES), as
     if (!note) return res.status(404).json({ message: 'Lesson note not found' });
     if (note.status === 'published') return res.status(400).json({ message: 'Note is already published' });
     if (note.status === 'approved')  return res.status(400).json({ message: 'Note is already approved' });
-    // Admin can approve from draft, submitted, or rejected
     const updated = await storage.updateLessonNote(note.id, {
       status: 'approved', approvedBy: user.id, approvedAt: new Date(), rejectionReason: null as any,
       submittedBy: note.submittedBy ?? user.id, submittedAt: note.submittedAt ?? new Date(),
@@ -305,7 +368,7 @@ router.post('/:id/approve', authenticateUser, authorizeRoles(...ADMIN_ROLES), as
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
-// ─── POST /:id/reject  (admin rejects) ───────────────────────────────────────
+// ─── POST /:id/reject  (admin only) ──────────────────────────────────────────
 router.post('/:id/reject', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: Request, res: Response) => {
   try {
     const user = getUser(req);
@@ -322,7 +385,7 @@ router.post('/:id/reject', authenticateUser, authorizeRoles(...ADMIN_ROLES), asy
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
-// ─── POST /:id/publish  (admin publishes approved note) ──────────────────────
+// ─── POST /:id/publish  (admin only) ─────────────────────────────────────────
 router.post('/:id/publish', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: Request, res: Response) => {
   try {
     const user = getUser(req);
@@ -336,7 +399,7 @@ router.post('/:id/publish', authenticateUser, authorizeRoles(...ADMIN_ROLES), as
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
-// ─── POST /:id/unpublish  (admin unpublishes back to approved) ───────────────
+// ─── POST /:id/unpublish  (admin only) ───────────────────────────────────────
 router.post('/:id/unpublish', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: Request, res: Response) => {
   try {
     const note = await storage.getLessonNoteById(parseInt(req.params.id));
@@ -365,9 +428,7 @@ router.post('/:id/approve-publish', authenticateUser, authorizeRoles(...ADMIN_RO
   } catch (err: any) { res.status(500).json({ message: err.message }); }
 });
 
-// ─── POST /generate-image  (System AI — uses active provider from settings) ────
-// Generates a diagram image using the configured system AI provider (Cloudflare
-// or NVIDIA) and saves it to local/cloud storage. No note ID required.
+// ─── POST /generate-image  (System AI image generation — no note ID required) ─
 router.post('/generate-image', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   try {
     const { prompt } = req.body;
@@ -389,9 +450,8 @@ router.post('/generate-image', authenticateUser, authorizeRoles(...ALL_STAFF), a
   }
 });
 
-// ─── POST /:id/generate-image-cf  (AI image generation — Cloudflare or NVIDIA) ─
-// Unified endpoint: dispatches to Cloudflare or NVIDIA based on the active
-// imageProvider setting. Saves the PNG and stores the URL on the lesson note.
+// ─── POST /:id/generate-image-cf  (AI image generation — saves URL to note) ──
+// Teachers can only generate images on their own notes.
 router.post('/:id/generate-image-cf', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   try {
     const user = getUser(req);
@@ -402,7 +462,6 @@ router.post('/:id/generate-image-cf', authenticateUser, authorizeRoles(...ALL_ST
     if (user.roleId === ROLES.TEACHER && note.createdBy !== user.id)
       return res.status(403).json({ error: 'Access denied' });
 
-    // Build prompt
     const { prompt: customPrompt, subject, className } = req.body;
     const topic = note.title;
     const promptTemplate = await getActiveImagePromptTemplate();
@@ -449,7 +508,7 @@ router.post('/generate-image-cf/preview', authenticateUser, authorizeRoles(...AD
   }
 });
 
-// ─── GET /:id/image  (retrieve the stored AI image URL for a lesson note) ──────
+// ─── GET /:id/image  (retrieve stored AI image URL) ──────────────────────────
 router.get('/:id/image', authenticateUser, async (req: Request, res: Response) => {
   try {
     const note = await storage.getLessonNoteById(parseInt(req.params.id));
@@ -461,7 +520,7 @@ router.get('/:id/image', authenticateUser, async (req: Request, res: Response) =
   }
 });
 
-// ─── DELETE /:id/image  (remove AI image from a lesson note) ─────────────────
+// ─── DELETE /:id/image  (remove AI image — teacher=own; admin=any) ────────────
 router.delete('/:id/image', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
   try {
     const user = getUser(req);
