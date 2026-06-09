@@ -22,7 +22,8 @@ export default defineConfig({
   optimizeDeps: {
     // lodash — pre-bundle for fast dev startup
     // fflate — jspdf peer dep (belt-and-suspenders; jspdf itself is aliased to stub)
-    include: ['lodash', 'fflate'],
+    // lucide-react — force CJS bundle pre-bundling (individual ESM icon files unavailable in this env)
+    include: ['lodash', 'fflate', 'lucide-react'],
     // canvg — imported by real jspdf; stubbed out via alias so exclude prevents
     // esbuild from trying to pre-bundle a package that may not exist on Vercel
     exclude: ['canvg', 'jspdf'],
