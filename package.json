@@ -12,7 +12,8 @@
     "prebuild": "echo TypeScript check skipped for deployment",
     "predeploy": "npm run check:types && npm run build",
     "db:push": "drizzle-kit push",
-    "test": "npx tsx tests/grading-utils.test.ts"
+    "test": "npx tsx tests/grading-utils.test.ts",
+    "postinstall": "node scripts/clean-lockfile.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
