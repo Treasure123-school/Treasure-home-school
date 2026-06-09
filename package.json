@@ -4,7 +4,7 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development tsx server/index.ts",
+    "dev": "NODE_ENV=development node node_modules/tsx/dist/cli.mjs server/index.ts",
     "build": "vite build && node scripts/build-server.mjs",
     "start": "node dist/index.js",
     "check": "npx tsc --noEmit",
@@ -171,5 +171,8 @@
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
+  },
+  "overrides": {
+    "shell-quote": "1.8.2"
   }
 }
