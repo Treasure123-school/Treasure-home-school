@@ -11,12 +11,21 @@ export default defineConfig({
       "@": path.resolve(import.meta.dirname, "client", "src"),
       "@shared": path.resolve(import.meta.dirname, "shared"),
       "@assets": path.resolve(import.meta.dirname, "attached_assets"),
+      // Stub packages that have undeclared/broken deps in their real dist bundles.
+      // These aliases ensure both Replit dev and Vercel production builds always
+      // resolve to our safe stubs — never to the real npm packages.
+      "jspdf": path.resolve(import.meta.dirname, "local-packages", "jspdf", "index.js"),
+      "fast-xml-parser": path.resolve(import.meta.dirname, "local-packages", "fast-xml-parser", "index.js"),
     },
   },
   root: path.resolve(import.meta.dirname, "client"),
   optimizeDeps: {
+    // lodash — pre-bundle for fast dev startup
+    // fflate — jspdf peer dep (belt-and-suspenders; jspdf itself is aliased to stub)
     include: ['lodash', 'fflate'],
-    exclude: ['canvg'],
+    // canvg — imported by real jspdf; stubbed out via alias so exclude prevents
+    // esbuild from trying to pre-bundle a package that may not exist on Vercel
+    exclude: ['canvg', 'jspdf'],
     esbuildOptions: {
       plugins: [
         {
@@ -41,8 +50,14 @@ export default defineConfig({
     },
     rollupOptions: {
       onwarn(warning, warn) {
-        // Suppress core-js resolution warnings from canvg/jspdf
-        if (warning.message?.includes('core-js') || warning.message?.includes('internals/function-call')) {
+        // Suppress known noisy-but-harmless warnings
+        if (
+          warning.message?.includes('core-js') ||
+          warning.message?.includes('internals/function-call') ||
+          warning.message?.includes('fast-png') ||
+          warning.message?.includes('jspdf') ||
+          warning.message?.includes('canvg')
+        ) {
           return;
         }
         warn(warning);
