@@ -15,7 +15,7 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname, "client"),
   optimizeDeps: {
-    include: ['lodash'],
+    include: ['lodash', 'fflate'],
     exclude: ['canvg'],
     esbuildOptions: {
       plugins: [
