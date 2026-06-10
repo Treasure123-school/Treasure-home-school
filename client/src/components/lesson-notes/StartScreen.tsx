@@ -25,8 +25,6 @@ export function StartScreen({
   aiLoading,
   context,
 }: StartScreenProps) {
-  const [, navigate] = useLocation();
-
   const contextPills = [
     context.className   && { icon: GraduationCap, label: context.className },
     context.subjectName && { icon: BookMarked,    label: context.subjectName },

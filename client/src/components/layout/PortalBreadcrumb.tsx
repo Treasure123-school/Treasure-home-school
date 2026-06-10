@@ -67,8 +67,9 @@ function buildRouteTable(): RouteEntry[] {
     { pattern: '/portal/teacher/change-password', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'Profile', href: '/portal/teacher/profile' }, { label: 'Change Password' }] },
     { pattern: '/portal/teacher/lesson-notes', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'My Lesson Notes' }] },
     { pattern: '/portal/teacher/lesson-notes/editor/new', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'My Lesson Notes', href: '/portal/teacher/lesson-notes' }, { label: 'New Note' }] },
+    { pattern: '/portal/teacher/lesson-notes/create', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'My Lesson Notes', href: '/portal/teacher/lesson-notes' }, { label: 'Create Note' }] },
     { pattern: /^\/portal\/teacher\/lesson-notes\/edit\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'My Lesson Notes', href: '/portal/teacher/lesson-notes' }, { label: 'Edit Note' }] },
-    { pattern: /^\/portal\/teacher\/lesson-notes\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'My Lesson Notes', href: '/portal/teacher/lesson-notes' }, { label: 'View Note' }] },
+    { pattern: /^\/portal\/teacher\/lesson-notes\/view\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'My Lesson Notes', href: '/portal/teacher/lesson-notes' }, { label: 'View Note' }] },
 
     // ── Admin ────────────────────────────────────────────────────────
     { pattern: '/portal/admin', crumbs: [{ label: 'Dashboard' }] },
