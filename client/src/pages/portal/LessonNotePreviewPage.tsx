@@ -56,30 +56,42 @@ export default function LessonNotePreviewPage() {
   return (
     <div className="max-w-3xl space-y-4 print:max-w-none">
 
-      {/* ── Slim meta strip ── */}
-      <div className="flex items-center rounded-lg border overflow-hidden print:hidden">
+      {/* ── Meta strip ── */}
+      <div className="flex rounded-lg border overflow-hidden print:hidden">
         <div className="w-1 self-stretch shrink-0" style={{ backgroundColor: brandColor }} />
-        <div className="flex flex-1 items-center justify-between gap-3 px-3 py-2">
-          <p className="text-xs text-muted-foreground truncate">
-            {contextParts.join(' · ')}
-            {note.creatorName && (
-              <span className="ml-3 font-medium text-foreground">{note.creatorName}</span>
-            )}
-            {(note.publishedAt || note.createdAt) && (
-              <span className="ml-2 text-muted-foreground/70">
-                · {fmtDate(note.publishedAt || note.createdAt)}
-              </span>
-            )}
-          </p>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => window.print()}
-            className="shrink-0 gap-1.5 h-7 text-xs px-2"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Print</span>
-          </Button>
+        <div className="flex flex-1 flex-col gap-0.5 px-3 py-2.5 min-w-0">
+
+          {/* Row 1 — context breadcrumb */}
+          {contextParts.length > 0 && (
+            <p className="text-xs text-muted-foreground leading-snug">
+              {contextParts.join(' · ')}
+            </p>
+          )}
+
+          {/* Row 2 — attribution + print */}
+          <div className="flex items-center justify-between gap-2 min-w-0">
+            <p className="text-xs min-w-0 leading-snug">
+              {note.creatorName && (
+                <span className="font-medium text-foreground">{note.creatorName}</span>
+              )}
+              {(note.publishedAt || note.createdAt) && (
+                <span className="text-muted-foreground/70">
+                  {note.creatorName ? ' · ' : ''}
+                  {fmtDate(note.publishedAt || note.createdAt)}
+                </span>
+              )}
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => window.print()}
+              className="shrink-0 gap-1.5 h-7 text-xs px-2 text-muted-foreground hover:text-foreground"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Print</span>
+            </Button>
+          </div>
+
         </div>
       </div>
 
