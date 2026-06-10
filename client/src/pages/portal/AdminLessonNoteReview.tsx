@@ -4,6 +4,7 @@ import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { StatCard, StatCardGrid } from '@/components/ui/stat-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -229,11 +230,11 @@ export default function AdminLessonNoteReview() {
   const handleCreate = () => navigate('/portal/admin/lesson-notes/create');
 
   const STAT_CARDS = [
-    { label: 'Total',    value: stats?.total     ?? 0, cls: '',                                                                               Icon: BookOpen,    tc: '' },
-    { label: 'Pending',  value: stats?.submitted ?? 0, cls: 'bg-primary/5 dark:bg-primary/5 border-primary/30 dark:border-primary/30',           Icon: Send,        tc: 'text-primary dark:text-primary/70' },
-    { label: 'Approved', value: stats?.approved  ?? 0, cls: 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800',       Icon: CheckCircle, tc: 'text-green-700 dark:text-green-400' },
-    { label: 'Published',value: stats?.published ?? 0, cls: 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800',Icon: Eye,         tc: 'text-emerald-700 dark:text-emerald-400' },
-    { label: 'Rejected', value: stats?.rejected  ?? 0, cls: 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800',               Icon: XCircle,     tc: 'text-red-700 dark:text-red-400' },
+    { label: 'Total',     value: stats?.total     ?? 0, icon: BookOpen,    color: 'text-primary' },
+    { label: 'Pending',   value: stats?.submitted ?? 0, icon: Send,        color: 'text-blue-500' },
+    { label: 'Approved',  value: stats?.approved  ?? 0, icon: CheckCircle, color: 'text-green-600' },
+    { label: 'Published', value: stats?.published ?? 0, icon: Eye,         color: 'text-emerald-600' },
+    { label: 'Rejected',  value: stats?.rejected  ?? 0, icon: XCircle,     color: 'text-red-500' },
   ];
 
   const renderList = (list: EnrichedNote[], emptyIcon: any, emptyTitle: string, emptyMsg: string) => {
@@ -277,21 +278,19 @@ export default function AdminLessonNoteReview() {
           </Button>
         </div>
 
-        {/* Stat cards — attendance-page style */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {STAT_CARDS.map(({ label, value, cls, Icon, tc }) => (
-            <div key={label} className={`rounded-2xl border bg-white dark:bg-gray-900 p-4 ${cls}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-current/10`}
-                  style={{ backgroundColor: 'transparent' }}>
-                  <Icon className={`w-4 h-4 ${tc || 'text-muted-foreground'}`} />
-                </div>
-                <p className="text-xs font-medium text-muted-foreground leading-tight">{label}</p>
-              </div>
-              <p className={`text-2xl font-bold ${tc || 'text-foreground'}`}>{value}</p>
-            </div>
+        {/* Stat cards */}
+        <StatCardGrid cols={5}>
+          {STAT_CARDS.map(({ label, value, icon, color }) => (
+            <StatCard
+              key={label}
+              label={label}
+              value={value}
+              icon={icon}
+              color={color}
+              data-testid={`stat-card-${label.toLowerCase()}`}
+            />
           ))}
-        </div>
+        </StatCardGrid>
 
         {/* Filters */}
         <Card className="shadow-sm">
