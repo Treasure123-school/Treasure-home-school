@@ -268,7 +268,6 @@ export default function LessonNoteViewPage() {
         </div>
       )}
 
-      {/* ── Meta strip ── */}
       {(() => {
         const contextParts = [note.subjectName, note.className, note.termName].filter(Boolean) as string[];
         return (
@@ -280,15 +279,10 @@ export default function LessonNoteViewPage() {
                   {contextParts.join(' · ')}
                 </p>
               )}
-              <p className="text-xs leading-snug">
-                {note.creatorName && (
-                  <span className="font-medium text-foreground">{note.creatorName}</span>
-                )}
+              <p className="text-xs text-muted-foreground leading-snug">
+                By <span className="font-medium text-foreground">School Admin</span>
                 {note.createdAt && (
-                  <span className="text-muted-foreground/70">
-                    {note.creatorName ? ' · ' : ''}
-                    {fmtDate(note.createdAt)}
-                  </span>
+                  <span> / {fmtDate(note.createdAt)}</span>
                 )}
               </p>
             </div>

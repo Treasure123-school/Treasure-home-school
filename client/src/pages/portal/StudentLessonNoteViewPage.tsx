@@ -118,7 +118,6 @@ export default function StudentLessonNoteViewPage() {
           </div>
         </div>
 
-        {/* Compact meta + print bar */}
         <div className="flex items-center justify-between gap-2 px-4 py-2 bg-muted/30 border-t min-w-0">
           <div className="flex flex-col gap-0.5 min-w-0">
             {(note.subjectName || note.className || note.termName) && (
@@ -126,14 +125,10 @@ export default function StudentLessonNoteViewPage() {
                 {[note.subjectName, note.className, note.termName].filter(Boolean).join(' · ')}
               </p>
             )}
-            <p className="text-xs leading-snug">
-              {note.creatorName && (
-                <span className="font-medium text-foreground">{note.creatorName}</span>
-              )}
+            <p className="text-xs text-muted-foreground leading-snug">
+              By <span className="font-medium text-foreground">School Admin</span>
               {note.publishedAt && (
-                <span className="text-muted-foreground/70">
-                  {note.creatorName ? ' · ' : ''}{fmtDate(note.publishedAt)}
-                </span>
+                <span> / {fmtDate(note.publishedAt)}</span>
               )}
             </p>
           </div>

@@ -52,33 +52,24 @@ export default function LessonNotePreviewPage() {
   }
 
   const contextParts = [note.subjectName, note.className, note.termName].filter(Boolean);
+  const date = note.publishedAt || note.createdAt;
 
   return (
     <div className="max-w-3xl space-y-4 print:max-w-none">
 
-      {/* ── Meta strip ── */}
       <div className="flex rounded-lg border overflow-hidden print:hidden">
         <div className="w-1 self-stretch shrink-0" style={{ backgroundColor: brandColor }} />
         <div className="flex flex-1 flex-col gap-0.5 px-3 py-2.5 min-w-0">
-
-          {/* Row 1 — context breadcrumb */}
           {contextParts.length > 0 && (
             <p className="text-xs text-muted-foreground leading-snug">
               {contextParts.join(' · ')}
             </p>
           )}
-
-          {/* Row 2 — attribution + print */}
           <div className="flex items-center justify-between gap-2 min-w-0">
-            <p className="text-xs min-w-0 leading-snug">
-              {note.creatorName && (
-                <span className="font-medium text-foreground">{note.creatorName}</span>
-              )}
-              {(note.publishedAt || note.createdAt) && (
-                <span className="text-muted-foreground/70">
-                  {note.creatorName ? ' · ' : ''}
-                  {fmtDate(note.publishedAt || note.createdAt)}
-                </span>
+            <p className="text-xs text-muted-foreground leading-snug">
+              By <span className="font-medium text-foreground">School Admin</span>
+              {date && (
+                <span> / {fmtDate(date)}</span>
               )}
             </p>
             <Button
@@ -91,11 +82,9 @@ export default function LessonNotePreviewPage() {
               <span className="hidden sm:inline">Print</span>
             </Button>
           </div>
-
         </div>
       </div>
 
-      {/* ── Learning Objectives ── */}
       {note.objectives && (
         <section className="rounded-xl border bg-primary/5 p-4 space-y-2">
           <div className="flex items-center gap-2">
@@ -108,7 +97,6 @@ export default function LessonNotePreviewPage() {
         </section>
       )}
 
-      {/* ── Note body ── */}
       <NoteContentRenderer
         note={note}
         brandColor={brandColor}
