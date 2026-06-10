@@ -70,6 +70,7 @@ function buildRouteTable(): RouteEntry[] {
     { pattern: '/portal/teacher/lesson-notes/create', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'My Lesson Notes', href: '/portal/teacher/lesson-notes' }, { label: 'Create Note' }] },
     { pattern: /^\/portal\/teacher\/lesson-notes\/edit\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'My Lesson Notes', href: '/portal/teacher/lesson-notes' }, { label: 'Edit Note' }] },
     { pattern: /^\/portal\/teacher\/lesson-notes\/view\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'My Lesson Notes', href: '/portal/teacher/lesson-notes' }, { label: 'View Note' }] },
+    { pattern: /^\/portal\/teacher\/lesson-notes\/preview\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'My Lesson Notes', href: '/portal/teacher/lesson-notes' }, { label: 'Preview Note' }] },
 
     // ── Admin ────────────────────────────────────────────────────────
     { pattern: '/portal/admin', crumbs: [{ label: 'Dashboard' }] },
@@ -104,6 +105,7 @@ function buildRouteTable(): RouteEntry[] {
     { pattern: '/portal/admin/lesson-notes/create', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Lesson Notes Review', href: '/portal/admin/lesson-notes' }, { label: 'Create Note' }] },
     { pattern: '/portal/admin/lesson-notes/editor/new', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Lesson Notes Review', href: '/portal/admin/lesson-notes' }, { label: 'New Note' }] },
     { pattern: /^\/portal\/admin\/lesson-notes\/edit\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Lesson Notes Review', href: '/portal/admin/lesson-notes' }, { label: 'Edit Note' }] },
+    { pattern: /^\/portal\/admin\/lesson-notes\/preview\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Lesson Notes Review', href: '/portal/admin/lesson-notes' }, { label: 'Preview Note' }] },
     { pattern: /^\/portal\/admin\/lesson-notes\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Lesson Notes Review', href: '/portal/admin/lesson-notes' }, { label: 'View Note' }] },
     { pattern: '/portal/admin/notifications', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Notifications' }] },
     { pattern: '/portal/admin/change-password', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Profile', href: '/portal/admin/profile' }, { label: 'Change Password' }] },

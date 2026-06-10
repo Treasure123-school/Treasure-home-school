@@ -32,7 +32,6 @@ import { useToast } from '@/hooks/use-toast';
 import { StatusBadge, EnrichedNote } from '@/components/lesson-notes/lessonNoteShared';
 import DocEditor from '@/components/lesson-notes/DocEditor';
 import { StartScreen } from '@/components/lesson-notes/StartScreen';
-import { PreviewOverlay } from '@/components/lesson-notes/PreviewOverlay';
 import {
   SaveIndicator,
   AIProgressBanner,
@@ -182,7 +181,6 @@ export default function LessonNoteEditorPage() {
   const [content,     setContent]     = useState('');
   const [initialized, setInitialized] = useState(false);
   const [mode,        setMode]        = useState<'choose' | 'editing'>(isEdit ? 'editing' : 'choose');
-  const [preview,     setPreview]     = useState(false);
   const [saveStatus,  setSaveStatus]  = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
 
   // AI text generation state
@@ -814,7 +812,18 @@ export default function LessonNoteEditorPage() {
             </Button>
 
             <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 rounded"
-              onClick={() => setPreview(true)}>
+              onClick={async () => {
+                if (!title.trim()) {
+                  toast({ title: 'Title required', description: 'Enter a note title before previewing.', variant: 'destructive' });
+                  return;
+                }
+                try {
+                  const nid = await doSave(liveHtmlRef.current || content);
+                  navigate(`${basePortal}/lesson-notes/preview/${nid}`);
+                } catch (err: any) {
+                  toast({ title: 'Save failed', description: err.message, variant: 'destructive' });
+                }
+              }}>
               <Eye className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Preview</span>
             </Button>
@@ -1029,16 +1038,6 @@ export default function LessonNoteEditorPage() {
         </div>
       )}
 
-      {/* ── Preview dialog — portal layout stays visible ── */}
-      <PreviewOverlay
-        open={preview}
-        title={title}
-        content={content}
-        settings={settings}
-        meta={{ className: query.className, subjectName: query.subjectName, termName: query.termName }}
-        note={note}
-        onClose={() => setPreview(false)}
-      />
     </div>
   );
 }
