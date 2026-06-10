@@ -5,10 +5,7 @@ import type { SystemSettings } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NoteContentRenderer, fmtDate, EnrichedNote } from '@/components/lesson-notes/lessonNoteShared';
-import {
-  BookOpen, Target, GraduationCap, User, Calendar,
-  Printer, FileText,
-} from 'lucide-react';
+import { BookOpen, Target, Printer } from 'lucide-react';
 
 export default function LessonNotePreviewPage() {
   const { id } = useParams<{ id: string }>();
@@ -32,8 +29,7 @@ export default function LessonNotePreviewPage() {
   if (isLoading) {
     return (
       <div className="max-w-3xl space-y-4">
-        <Skeleton className="h-48 rounded-2xl" />
-        <Skeleton className="h-10 rounded-xl" />
+        <Skeleton className="h-10 rounded-lg" />
         <Skeleton className="h-96 rounded-xl" />
       </div>
     );
@@ -55,68 +51,31 @@ export default function LessonNotePreviewPage() {
     );
   }
 
+  const contextParts = [note.subjectName, note.className, note.termName].filter(Boolean);
+
   return (
     <div className="max-w-3xl space-y-4 print:max-w-none">
 
-      {/* ── Header card ── */}
-      <div className="rounded-xl border overflow-hidden">
-        <div className="flex gap-0">
-          <div className="w-1 shrink-0" style={{ backgroundColor: brandColor }} />
-
-          <div className="flex-1 px-4 pt-4 pb-3">
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {note.subjectName && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border"
-                  style={{ color: brandColor, borderColor: `${brandColor}40`, backgroundColor: `${brandColor}0d` }}>
-                  <BookOpen className="w-3 h-3" />{note.subjectName}
-                </span>
-              )}
-              {note.className && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border"
-                  style={{ color: brandColor, borderColor: `${brandColor}40`, backgroundColor: `${brandColor}0d` }}>
-                  <GraduationCap className="w-3 h-3" />{note.className}
-                </span>
-              )}
-              {note.termName && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border"
-                  style={{ color: brandColor, borderColor: `${brandColor}40`, backgroundColor: `${brandColor}0d` }}>
-                  <Calendar className="w-3 h-3" />{note.termName}
-                </span>
-              )}
-            </div>
-
-            <h1 className="text-xl sm:text-2xl font-bold leading-snug text-foreground">
-              {note.title}
-            </h1>
-
-            {note.topicName && note.topicName.toLowerCase() !== note.title.toLowerCase() && (
-              <p className="mt-0.5 text-xs text-muted-foreground flex items-center gap-1">
-                <FileText className="w-3 h-3 shrink-0" />Topic: {note.topicName}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2 bg-muted/30 border-t">
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
+      {/* ── Slim meta strip ── */}
+      <div className="flex items-center rounded-lg border overflow-hidden print:hidden">
+        <div className="w-1 self-stretch shrink-0" style={{ backgroundColor: brandColor }} />
+        <div className="flex flex-1 items-center justify-between gap-3 px-3 py-2">
+          <p className="text-xs text-muted-foreground truncate">
+            {contextParts.join(' · ')}
             {note.creatorName && (
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <User className="w-3 h-3 shrink-0" />
-                <span className="font-medium text-foreground">{note.creatorName}</span>
-              </span>
+              <span className="ml-3 font-medium text-foreground">{note.creatorName}</span>
             )}
             {(note.publishedAt || note.createdAt) && (
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <Calendar className="w-3 h-3 shrink-0" />
-                <span className="font-medium text-foreground">{fmtDate(note.publishedAt || note.createdAt)}</span>
+              <span className="ml-2 text-muted-foreground/70">
+                · {fmtDate(note.publishedAt || note.createdAt)}
               </span>
             )}
-          </div>
+          </p>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => window.print()}
-            className="gap-1.5 h-7 text-xs px-2 print:hidden"
+            className="shrink-0 gap-1.5 h-7 text-xs px-2"
           >
             <Printer className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Print</span>
