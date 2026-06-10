@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SectionCard } from "@/components/ui/section-card";
+import { StatCard, StatCardGrid } from "@/components/ui/stat-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -90,35 +91,6 @@ function DifficultyBadge({ difficulty }: { difficulty: string }) {
   );
 }
 
-// ─────────────────────────────────────────────────────────────
-//  Stat Card
-// ─────────────────────────────────────────────────────────────
-
-function StatCard({
-  icon: Icon, label, value, iconClass, loading,
-}: {
-  icon: any; label: string; value: number | string; iconClass: string; loading?: boolean;
-}) {
-  return (
-    <Card className="border shadow-sm">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${iconClass}`}>
-            <Icon className="w-4.5 h-4.5" />
-          </div>
-          <div className="min-w-0">
-            {loading ? (
-              <Skeleton className="h-5 w-10 mb-1" />
-            ) : (
-              <p className="text-xl font-bold leading-none">{value}</p>
-            )}
-            <p className="text-xs text-muted-foreground mt-0.5 truncate">{label}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 // ─────────────────────────────────────────────────────────────
 //  Context Filter Bar  (Class → Subject → Term → Bank)
@@ -1361,9 +1333,9 @@ export default function QuestionBankManager() {
 
   // ── Render
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       {/* ── Header ─────────────────────────────────────────── */}
-      <div className="bg-gradient-to-r from-primary/10 via-primary/5 to-background border-b">
+      <div className="border-b">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -1388,27 +1360,29 @@ export default function QuestionBankManager() {
 
           {/* Stats row (admin only) */}
           {isAdminRole && (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-5">
-              <StatCard
-                icon={Database} label="Total Banks"
-                value={statsData?.totalBanks ?? "—"} iconClass="bg-primary/5 dark:bg-primary/5 text-primary"
-                loading={!statsData}
-              />
-              <StatCard
-                icon={FileQuestion} label="Total Questions"
-                value={statsData?.totalQuestions ?? "—"} iconClass="bg-violet-50 dark:bg-violet-950/40 text-violet-600"
-                loading={!statsData}
-              />
-              <StatCard
-                icon={Clock} label="Pending Review"
-                value={pendingTotal} iconClass="bg-amber-50 dark:bg-amber-950/40 text-amber-600"
-                loading={!pendingData}
-              />
-              <StatCard
-                icon={Globe} label="Published"
-                value={statsData?.publishedQuestions ?? "—"} iconClass="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600"
-                loading={!statsData}
-              />
+            <div className="mt-5">
+              <StatCardGrid cols={4}>
+                <StatCard
+                  icon={Database} label="Total Banks"
+                  value={statsData?.totalBanks ?? "—"} color="text-primary"
+                  loading={!statsData}
+                />
+                <StatCard
+                  icon={FileQuestion} label="Total Questions"
+                  value={statsData?.totalQuestions ?? "—"} color="text-violet-600"
+                  loading={!statsData}
+                />
+                <StatCard
+                  icon={Clock} label="Pending Review"
+                  value={pendingTotal} color="text-amber-600"
+                  loading={!pendingData}
+                />
+                <StatCard
+                  icon={Globe} label="Published"
+                  value={statsData?.publishedQuestions ?? "—"} color="text-emerald-600"
+                  loading={!statsData}
+                />
+              </StatCardGrid>
             </div>
           )}
         </div>
