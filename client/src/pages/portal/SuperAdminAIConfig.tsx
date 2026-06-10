@@ -440,7 +440,7 @@ export default function SuperAdminAIConfig() {
         )}
 
         <Tabs defaultValue="overview">
-          <TabsList className="grid grid-cols-6 w-full">
+          <TabsList className="w-full flex-wrap h-auto py-1">
             <TabsTrigger value="overview" className="flex items-center gap-1.5">
               <TrendingUp className="h-3.5 w-3.5" /> Overview
             </TabsTrigger>

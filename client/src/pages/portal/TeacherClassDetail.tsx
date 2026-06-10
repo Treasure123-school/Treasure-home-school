@@ -541,7 +541,7 @@ export default function TeacherClassDetail() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid grid-cols-5 w-full h-auto">
+        <TabsList className="w-full flex-wrap h-auto py-1">
           {[
             { value: 'overview', label: 'Overview', icon: GraduationCap },
             { value: 'students', label: 'Students', icon: Users },

@@ -935,7 +935,7 @@ export default function AdminExamAnalysis() {
       {/* Content */}
       {analytics && !isLoading && (
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4" data-testid="tabs-analysis">
+          <TabsList data-testid="tabs-analysis">
             <TabsTrigger value="overview" data-testid="tab-overview">
               <BarChart2 className="h-3.5 w-3.5 mr-1.5" />Overview
             </TabsTrigger>

@@ -253,7 +253,7 @@ export default function AdminRecoveryTools() {
         </Card>
 
         <Tabs defaultValue="deleted-users" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList>
             <TabsTrigger value="deleted-users" className="flex items-center gap-2" data-testid="tab-deleted-users">
               <Users className="h-4 w-4" />
               Deleted Users

@@ -259,7 +259,7 @@ export default function TeacherExamAnalytics() {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full sm:w-auto grid grid-cols-4 sm:inline-flex mb-2" data-testid="tabs-analytics">
+            <TabsList data-testid="tabs-analytics">
               <TabsTrigger value="overview" className="text-xs sm:text-sm" data-testid="tab-overview">
                 Overview
               </TabsTrigger>
