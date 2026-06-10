@@ -49,15 +49,33 @@ jobs:
       - name: Deploy to Vercel (preview)
         id: deploy
         run: |
-          PREVIEW_URL=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} 2>&1 | tail -1)
+          OUTPUT=$(vercel deploy --prebuilt --token=${{ secrets.VERCEL_TOKEN }} 2>&1)
+          EXIT_CODE=$?
+          if [ $EXIT_CODE -ne 0 ]; then
+            echo "❌ Vercel deploy failed:"
+            echo "$OUTPUT"
+            exit 1
+          fi
+          PREVIEW_URL=$(echo "$OUTPUT" | tail -1)
           echo "preview_url=$PREVIEW_URL" >> $GITHUB_OUTPUT
+          echo "✅ Preview URL: $PREVIEW_URL"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
+      - name: Print preview URL to log
+        run: |
+          echo ""
+          echo "============================================"
+          echo "  VERCEL PREVIEW URL"
+          echo "  ${{ steps.deploy.outputs.preview_url }}"
+          echo "============================================"
+          echo ""
+
       - name: Find existing PR comment
         uses: peter-evans/find-comment@v3
         id: find_comment
+        if: github.event.pull_request.number != ''
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-author: 'github-actions[bot]'
@@ -73,22 +91,13 @@ jobs:
           edit-mode: replace
           body: |
             <!-- vercel-preview -->
-            ## 🔍 Vercel Preview Deployment
+            ## Vercel Preview Deployment
 
             | | |
             |---|---|
             | **Preview URL** | ${{ steps.deploy.outputs.preview_url }} |
             | **Branch** | `${{ github.ref_name }}` |
             | **Commit** | `${{ github.sha }}` |
-            | **Status** | ✅ Ready |
+            | **Status** | Ready |
 
             > Preview updates automatically on every push to this branch.
-
-      - name: Print preview URL to log
-        run: |
-          echo ""
-          echo "============================================"
-          echo "  VERCEL PREVIEW URL"
-          echo "  ${{ steps.deploy.outputs.preview_url }}"
-          echo "============================================"
-          echo ""
