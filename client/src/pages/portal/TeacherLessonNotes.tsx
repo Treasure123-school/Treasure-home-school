@@ -157,8 +157,7 @@ export default function TeacherLessonNotes() {
   const handleClassChange = (v: string) => { setClassId(v); setSubjectId(''); };
 
   return (
-    <div className="min-h-screen bg-background" data-testid="teacher-lesson-notes">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5" data-testid="teacher-lesson-notes">
 
         {/* Header */}
         <div>
@@ -455,7 +454,6 @@ export default function TeacherLessonNotes() {
           </Card>
         )}
 
-      </div>
     </div>
   );
 }

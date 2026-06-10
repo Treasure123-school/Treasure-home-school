@@ -74,7 +74,7 @@ function NoteRow({ note, onView, onAction }: {
   const isPublished  = note.status === 'published';
 
   return (
-    <div className="rounded-lg border bg-card overflow-hidden" data-testid={`note-row-${note.id}`}>
+    <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 overflow-hidden" data-testid={`note-row-${note.id}`}>
       <div className="flex items-start gap-3 p-3 sm:p-4">
         <div className="flex-1 min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -277,18 +277,19 @@ export default function AdminLessonNoteReview() {
           </Button>
         </div>
 
-        {/* Stat cards */}
+        {/* Stat cards — attendance-page style */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {STAT_CARDS.map(({ label, value, cls, Icon, tc }) => (
-            <Card key={label} className={`shadow-sm border ${cls}`}>
-              <CardContent className="p-3 sm:p-4">
-                <div className="flex items-center justify-between mb-1.5">
-                  <p className="text-xs font-medium text-muted-foreground">{label}</p>
+            <div key={label} className={`rounded-2xl border bg-white dark:bg-gray-900 p-4 ${cls}`}>
+              <div className="flex items-center gap-2 mb-2">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 bg-current/10`}
+                  style={{ backgroundColor: 'transparent' }}>
                   <Icon className={`w-4 h-4 ${tc || 'text-muted-foreground'}`} />
                 </div>
-                <p className={`text-2xl font-bold ${tc || 'text-foreground'}`}>{value}</p>
-              </CardContent>
-            </Card>
+                <p className="text-xs font-medium text-muted-foreground leading-tight">{label}</p>
+              </div>
+              <p className={`text-2xl font-bold ${tc || 'text-foreground'}`}>{value}</p>
+            </div>
           ))}
         </div>
 
