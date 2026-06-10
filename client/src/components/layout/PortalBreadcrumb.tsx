@@ -180,18 +180,21 @@ export default function PortalBreadcrumb() {
     const params = new URLSearchParams(search);
     const from = params.get('from');
 
-    // /portal/(admin|teacher)/lesson-notes/preview/:id?from=edit
+    // /portal/(admin|teacher)/lesson-notes/preview/:id?from=edit|create
     const previewMatch = location.match(/^(\/portal\/(?:admin|teacher))\/lesson-notes\/preview\/([^/?]+)/);
-    if (previewMatch && from === 'edit') {
+    if (previewMatch && (from === 'edit' || from === 'create')) {
       const portalBase = previewMatch[1];
       const noteId = previewMatch[2];
-      const listLabel = portalBase.includes('admin') ? 'Lesson Notes Review' : 'My Lesson Notes';
-      const listHref  = `${portalBase}/lesson-notes`;
-      const editHref  = `${portalBase}/lesson-notes/edit/${noteId}`;
+      const listLabel  = portalBase.includes('admin') ? 'Lesson Notes Review' : 'My Lesson Notes';
+      const listHref   = `${portalBase}/lesson-notes`;
+      const parentLabel = from === 'edit' ? 'Edit Note' : 'Create Note';
+      const parentHrefVal = from === 'edit'
+        ? `${portalBase}/lesson-notes/edit/${noteId}`
+        : `${portalBase}/lesson-notes/create`;
       return [
-        { label: 'Dashboard', href: portalBase },
-        { label: listLabel,   href: listHref },
-        { label: 'Edit Note', href: editHref },
+        { label: 'Dashboard',   href: portalBase },
+        { label: listLabel,     href: listHref },
+        { label: parentLabel,   href: parentHrefVal },
         { label: 'Preview Note' },
       ];
     }
