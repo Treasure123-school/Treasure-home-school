@@ -129,9 +129,9 @@ export default function StudentAnnouncements() {
           />
         </div>
         <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterType)}>
-          <TabsList>
+          <TabsList className="w-full">
             {(['all', 'urgent', 'important', 'normal'] as FilterType[]).map((f) => (
-              <TabsTrigger key={f} value={f} data-testid={`filter-${f}`}>
+              <TabsTrigger key={f} value={f} className="flex-1 text-xs sm:text-sm" data-testid={`filter-${f}`}>
                 {f === 'all' ? 'All' : PRIORITY_CONFIG[f].label} ({counts[f === 'all' ? 'all' : f]})
               </TabsTrigger>
             ))}

@@ -398,13 +398,13 @@ export default function TeacherAssignmentManagement() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="assignments" data-testid="tab-assignments">
-              <BookOpen className="w-4 h-4 mr-2" />
+          <TabsList className="w-full">
+            <TabsTrigger value="assignments" className="flex-1 text-xs sm:text-sm" data-testid="tab-assignments">
+              <BookOpen className="w-4 h-4 mr-2 shrink-0" />
               Assignments
             </TabsTrigger>
-            <TabsTrigger value="history" data-testid="tab-history">
-              <History className="w-4 h-4 mr-2" />
+            <TabsTrigger value="history" className="flex-1 text-xs sm:text-sm" data-testid="tab-history">
+              <History className="w-4 h-4 mr-2 shrink-0" />
               History
             </TabsTrigger>
           </TabsList>

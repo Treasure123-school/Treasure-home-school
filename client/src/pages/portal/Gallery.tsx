@@ -125,9 +125,9 @@ export default function Gallery() {
 
         {/* Gallery Content */}
         <Tabs defaultValue="all" className="w-full">
-          <TabsList>
-            <TabsTrigger value="all">All Images</TabsTrigger>
-            <TabsTrigger value="recent">Recently Added</TabsTrigger>
+          <TabsList className="w-full">
+            <TabsTrigger value="all" className="flex-1">All Images</TabsTrigger>
+            <TabsTrigger value="recent" className="flex-1">Recently Added</TabsTrigger>
           </TabsList>
           
           <TabsContent value="all" className="space-y-4">

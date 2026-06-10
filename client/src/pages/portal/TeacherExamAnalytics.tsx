@@ -259,23 +259,23 @@ export default function TeacherExamAnalytics() {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList data-testid="tabs-analytics">
-              <TabsTrigger value="overview" className="text-xs sm:text-sm" data-testid="tab-overview">
+            <TabsList className="w-full" data-testid="tabs-analytics">
+              <TabsTrigger value="overview" className="flex-1 text-xs sm:text-sm" data-testid="tab-overview">
                 Overview
               </TabsTrigger>
-              <TabsTrigger value="students" className="text-xs sm:text-sm" data-testid="tab-students">
+              <TabsTrigger value="students" className="flex-1 text-xs sm:text-sm" data-testid="tab-students">
                 Students
                 <Badge variant="secondary" className="ml-1.5 text-xs hidden sm:inline-flex">
                   {analytics.studentPerformance.length}
                 </Badge>
               </TabsTrigger>
-              <TabsTrigger value="questions" className="text-xs sm:text-sm" data-testid="tab-questions">
+              <TabsTrigger value="questions" className="flex-1 text-xs sm:text-sm" data-testid="tab-questions">
                 Questions
                 <Badge variant="secondary" className="ml-1.5 text-xs hidden sm:inline-flex">
                   {analytics.questionAnalysis.length}
                 </Badge>
               </TabsTrigger>
-              <TabsTrigger value="trends" className="text-xs sm:text-sm" data-testid="tab-trends">
+              <TabsTrigger value="trends" className="flex-1 text-xs sm:text-sm" data-testid="tab-trends">
                 Trends
               </TabsTrigger>
             </TabsList>

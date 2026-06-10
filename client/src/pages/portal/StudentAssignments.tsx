@@ -156,9 +156,9 @@ export default function StudentAssignments() {
 
       {/* Filter tabs */}
       <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterTab)}>
-        <TabsList>
+        <TabsList className="w-full">
           {(['all', 'pending', 'submitted', 'late'] as FilterTab[]).map(tab => (
-            <TabsTrigger key={tab} value={tab} data-testid={`button-filter-${tab}`}>
+            <TabsTrigger key={tab} value={tab} className="flex-1 text-xs sm:text-sm" data-testid={`button-filter-${tab}`}>
               {tab.charAt(0).toUpperCase() + tab.slice(1)} ({counts[tab]})
             </TabsTrigger>
           ))}

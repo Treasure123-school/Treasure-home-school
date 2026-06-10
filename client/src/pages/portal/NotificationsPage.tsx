@@ -247,9 +247,9 @@ export default function NotificationsPage() {
 
       {/* ── Filter Tabs ── */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FilterTab)}>
-        <TabsList>
+        <TabsList className="w-full">
           {tabs.map(({ key, label, count }) => (
-            <TabsTrigger key={key} value={key} data-testid={`button-filter-${key}`}>
+            <TabsTrigger key={key} value={key} className="flex-1 text-xs sm:text-sm" data-testid={`button-filter-${key}`}>
               {label} ({count})
             </TabsTrigger>
           ))}

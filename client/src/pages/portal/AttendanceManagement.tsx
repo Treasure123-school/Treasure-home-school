@@ -362,9 +362,9 @@ export default function AttendanceManagement() {
 
       {/* ── Tabs ─────────────────────────────────────────────────────────── */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Tab)}>
-        <TabsList>
+        <TabsList className="w-full">
           {tabs.map(tab => (
-            <TabsTrigger key={tab.id} value={tab.id} data-testid={`tab-${tab.id}`} className="flex items-center gap-1.5">
+            <TabsTrigger key={tab.id} value={tab.id} data-testid={`tab-${tab.id}`} className="flex-1 flex items-center gap-1.5 text-xs sm:text-sm">
               <tab.icon className="h-3.5 w-3.5 flex-shrink-0" />
               <span>{tab.label}</span>
               {tab.badge ? (

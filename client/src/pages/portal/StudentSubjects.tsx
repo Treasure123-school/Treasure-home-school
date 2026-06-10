@@ -149,14 +149,14 @@ export default function StudentSubjects() {
       {/* ── Category Filter Tabs ── */}
       {!isLoading && assignedSubjects.length > 0 && (
         <Tabs value={activeCategory} onValueChange={v => setActiveCategory(v as CategoryKey)}>
-          <TabsList>
+          <TabsList className="w-full">
             {ALL_TABS.map(cat => {
               const count = counts[cat];
               if (cat !== 'all' && count === 0) return null;
               const label = cat === 'all' ? 'All' : CATEGORY_CFG[cat]?.label ?? cat;
               const Icon = cat === 'all' ? BookOpen : CATEGORY_CFG[cat]?.icon;
               return (
-                <TabsTrigger key={cat} value={cat} data-testid={`button-category-${cat}`} className="flex items-center gap-1.5">
+                <TabsTrigger key={cat} value={cat} data-testid={`button-category-${cat}`} className="flex-1 flex items-center gap-1.5 text-xs sm:text-sm">
                   {Icon && <Icon className="h-3.5 w-3.5" />}
                   {label}
                   <span className="ml-0.5 opacity-60 text-[10px] font-bold">({count})</span>

@@ -1391,17 +1391,17 @@ export default function QuestionBankManager() {
       {/* ── Content ────────────────────────────────────────── */}
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <Tabs defaultValue="browse" className="space-y-5">
-          <TabsList>
-            <TabsTrigger value="browse" className="text-xs sm:text-sm" data-testid="tab-browse">
+          <TabsList className="w-full">
+            <TabsTrigger value="browse" className="flex-1 text-xs sm:text-sm" data-testid="tab-browse">
               <Search className="w-3.5 h-3.5" />
               {isAdminRole ? "Browse Banks" : "Browse"}
             </TabsTrigger>
-            <TabsTrigger value="my" className="text-xs sm:text-sm" data-testid="tab-my">
+            <TabsTrigger value="my" className="flex-1 text-xs sm:text-sm" data-testid="tab-my">
               <BookOpen className="w-3.5 h-3.5" />
               My Questions
             </TabsTrigger>
             {isAdminRole && (
-              <TabsTrigger value="pending" className="text-xs sm:text-sm" data-testid="tab-pending">
+              <TabsTrigger value="pending" className="flex-1 text-xs sm:text-sm" data-testid="tab-pending">
                 <ListChecks className="w-3.5 h-3.5" />
                 Approval Queue
                 {pendingTotal > 0 && (

@@ -253,17 +253,17 @@ export default function AdminRecoveryTools() {
         </Card>
 
         <Tabs defaultValue="deleted-users" className="w-full">
-          <TabsList>
-            <TabsTrigger value="deleted-users" className="flex items-center gap-2" data-testid="tab-deleted-users">
-              <Users className="h-4 w-4" />
-              Deleted Users
+          <TabsList className="w-full">
+            <TabsTrigger value="deleted-users" className="flex-1 flex items-center gap-2 text-xs sm:text-sm" data-testid="tab-deleted-users">
+              <Users className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">Deleted </span>Users
             </TabsTrigger>
-            <TabsTrigger value="password-recovery" className="flex items-center gap-2" data-testid="tab-password-recovery">
-              <Key className="h-4 w-4" />
-              Password Recovery
+            <TabsTrigger value="password-recovery" className="flex-1 flex items-center gap-2 text-xs sm:text-sm" data-testid="tab-password-recovery">
+              <Key className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">Password </span>Recovery
             </TabsTrigger>
-            <TabsTrigger value="utilities" className="flex items-center gap-2" data-testid="tab-utilities">
-              <UserCog className="h-4 w-4" />
+            <TabsTrigger value="utilities" className="flex-1 flex items-center gap-2 text-xs sm:text-sm" data-testid="tab-utilities">
+              <UserCog className="h-4 w-4 shrink-0" />
               Utilities
             </TabsTrigger>
           </TabsList>
