@@ -819,7 +819,7 @@ export default function LessonNoteEditorPage() {
                 }
                 try {
                   const nid = await doSave(liveHtmlRef.current || content);
-                  navigate(`${basePortal}/lesson-notes/preview/${nid}`);
+                  navigate(`${basePortal}/lesson-notes/preview/${nid}?from=edit`);
                 } catch (err: any) {
                   toast({ title: 'Save failed', description: err.message, variant: 'destructive' });
                 }
