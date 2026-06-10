@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import {
-  StatusBadge, fmtDate, NoteMetaStrip, NoteContentRenderer, EnrichedNote, isV2Sections,
+  StatusBadge, fmtDate, NoteContentRenderer, EnrichedNote, isV2Sections,
 } from '@/components/lesson-notes/lessonNoteShared';
 import {
   Edit, Send, Eye, EyeOff, CheckCircle, XCircle, BookOpen,
@@ -268,8 +268,33 @@ export default function LessonNoteViewPage() {
         </div>
       )}
 
-      {/* Note meta chips — shared component */}
-      <NoteMetaStrip note={note} />
+      {/* ── Meta strip ── */}
+      {(() => {
+        const contextParts = [note.subjectName, note.className, note.termName].filter(Boolean) as string[];
+        return (
+          <div className="flex rounded-lg border overflow-hidden print:hidden">
+            <div className="w-1 self-stretch shrink-0" style={{ backgroundColor: brandColor }} />
+            <div className="flex flex-1 flex-col gap-0.5 px-3 py-2.5 min-w-0">
+              {contextParts.length > 0 && (
+                <p className="text-xs text-muted-foreground leading-snug">
+                  {contextParts.join(' · ')}
+                </p>
+              )}
+              <p className="text-xs leading-snug">
+                {note.creatorName && (
+                  <span className="font-medium text-foreground">{note.creatorName}</span>
+                )}
+                {note.createdAt && (
+                  <span className="text-muted-foreground/70">
+                    {note.creatorName ? ' · ' : ''}
+                    {fmtDate(note.createdAt)}
+                  </span>
+                )}
+              </p>
+            </div>
+          </div>
+        );
+      })()}
 
       {note.rejectionReason && note.status === 'rejected' && (
         <div className="flex gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-400">

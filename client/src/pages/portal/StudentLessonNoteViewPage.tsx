@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NoteContentRenderer, fmtDate } from '@/components/lesson-notes/lessonNoteShared';
 import {
-  BookOpen, Target, GraduationCap, User, Calendar,
+  BookOpen, Target, GraduationCap, Calendar,
   Printer, FileText, ArrowLeft,
 } from 'lucide-react';
 
@@ -119,26 +119,29 @@ export default function StudentLessonNoteViewPage() {
         </div>
 
         {/* Compact meta + print bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2 bg-muted/30 border-t">
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
-            {note.creatorName && (
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <User className="w-3 h-3 shrink-0" />
+        <div className="flex items-center justify-between gap-2 px-4 py-2 bg-muted/30 border-t min-w-0">
+          <div className="flex flex-col gap-0.5 min-w-0">
+            {(note.subjectName || note.className || note.termName) && (
+              <p className="text-xs text-muted-foreground leading-snug">
+                {[note.subjectName, note.className, note.termName].filter(Boolean).join(' · ')}
+              </p>
+            )}
+            <p className="text-xs leading-snug">
+              {note.creatorName && (
                 <span className="font-medium text-foreground">{note.creatorName}</span>
-              </span>
-            )}
-            {note.publishedAt && (
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <Calendar className="w-3 h-3 shrink-0" />
-                <span className="font-medium text-foreground">{fmtDate(note.publishedAt)}</span>
-              </span>
-            )}
+              )}
+              {note.publishedAt && (
+                <span className="text-muted-foreground/70">
+                  {note.creatorName ? ' · ' : ''}{fmtDate(note.publishedAt)}
+                </span>
+              )}
+            </p>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => window.print()}
-            className="gap-1.5 h-7 text-xs px-2 print:hidden"
+            className="shrink-0 gap-1.5 h-7 text-xs px-2 text-muted-foreground hover:text-foreground print:hidden"
             data-testid="button-print"
           >
             <Printer className="w-3.5 h-3.5" />
