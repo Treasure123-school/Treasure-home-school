@@ -935,18 +935,22 @@ export default function AdminExamAnalysis() {
       {/* Content */}
       {analytics && !isLoading && (
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4" data-testid="tabs-analysis">
-            <TabsTrigger value="overview" data-testid="tab-overview">
-              <BarChart2 className="h-3.5 w-3.5 mr-1.5" />Overview
+          <TabsList className="w-full" data-testid="tabs-analysis">
+            <TabsTrigger value="overview" className="flex-1" data-testid="tab-overview">
+              <BarChart2 className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline">Overview</span>
             </TabsTrigger>
-            <TabsTrigger value="students" data-testid="tab-students">
-              <Users className="h-3.5 w-3.5 mr-1.5" />Students
+            <TabsTrigger value="students" className="flex-1" data-testid="tab-students">
+              <Users className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline">Students</span>
             </TabsTrigger>
-            <TabsTrigger value="questions" data-testid="tab-questions">
-              <Target className="h-3.5 w-3.5 mr-1.5" />Questions
+            <TabsTrigger value="questions" className="flex-1" data-testid="tab-questions">
+              <Target className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline">Questions</span>
             </TabsTrigger>
-            <TabsTrigger value="participation" data-testid="tab-participation">
-              <Activity className="h-3.5 w-3.5 mr-1.5" />Participation
+            <TabsTrigger value="participation" className="flex-1" data-testid="tab-participation">
+              <Activity className="h-3.5 w-3.5 shrink-0" />
+              <span className="hidden sm:inline">Participation</span>
             </TabsTrigger>
           </TabsList>
 

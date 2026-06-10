@@ -237,13 +237,13 @@ export default function ReportCommentTemplates() {
       </Alert>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="teacher" data-testid="tab-teacher">
-            <User className="w-4 h-4 mr-2" />
+        <TabsList className="w-full">
+          <TabsTrigger value="teacher" className="flex-1 text-xs sm:text-sm" data-testid="tab-teacher">
+            <User className="w-4 h-4 mr-2 shrink-0" />
             Teacher Comments
           </TabsTrigger>
-          <TabsTrigger value="principal" data-testid="tab-principal">
-            <Award className="w-4 h-4 mr-2" />
+          <TabsTrigger value="principal" className="flex-1 text-xs sm:text-sm" data-testid="tab-principal">
+            <Award className="w-4 h-4 mr-2 shrink-0" />
             Principal Comments
           </TabsTrigger>
         </TabsList>

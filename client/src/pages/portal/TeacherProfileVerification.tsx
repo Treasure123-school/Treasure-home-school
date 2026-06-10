@@ -356,11 +356,11 @@ export default function TeacherProfileVerification() {
 
         {/* Tabs for Pending and Verified */}
         <Tabs defaultValue="pending" className="space-y-4">
-          <TabsList data-testid="tabs-list">
-            <TabsTrigger value="pending" data-testid="tab-pending">
+          <TabsList className="w-full" data-testid="tabs-list">
+            <TabsTrigger value="pending" className="flex-1 text-xs sm:text-sm" data-testid="tab-pending">
               Pending ({pendingProfiles.length})
             </TabsTrigger>
-            <TabsTrigger value="verified" data-testid="tab-verified">
+            <TabsTrigger value="verified" className="flex-1 text-xs sm:text-sm" data-testid="tab-verified">
               Verified ({verifiedProfiles.length})
             </TabsTrigger>
           </TabsList>

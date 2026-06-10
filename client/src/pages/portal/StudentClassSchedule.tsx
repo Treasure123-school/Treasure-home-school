@@ -288,13 +288,13 @@ export default function StudentClassSchedule() {
 
       {/* ── View Tabs ── */}
       <Tabs value={view} onValueChange={v => setView(v as ViewMode)}>
-        <TabsList>
-          <TabsTrigger value="today" data-testid="button-today-view" className="flex items-center gap-2">
-            <Layers className="h-4 w-4" />
+        <TabsList className="w-full">
+          <TabsTrigger value="today" data-testid="button-today-view" className="flex-1 flex items-center gap-2 text-xs sm:text-sm">
+            <Layers className="h-4 w-4 shrink-0" />
             Today View
           </TabsTrigger>
-          <TabsTrigger value="weekly" data-testid="button-weekly-view" className="flex items-center gap-2">
-            <CalendarDays className="h-4 w-4" />
+          <TabsTrigger value="weekly" data-testid="button-weekly-view" className="flex-1 flex items-center gap-2 text-xs sm:text-sm">
+            <CalendarDays className="h-4 w-4 shrink-0" />
             Weekly View
           </TabsTrigger>
         </TabsList>
@@ -365,7 +365,7 @@ function WeeklyView({
   return (
     <div className="space-y-4">
       <Tabs value={activeDay} onValueChange={setActiveDay}>
-        <TabsList>
+        <TabsList className="w-full">
           {DAYS.map(day => {
             const isToday = day === todayName;
             const count = weeklySchedule[day]?.length ?? 0;
@@ -373,6 +373,7 @@ function WeeklyView({
               <TabsTrigger
                 key={day}
                 value={day}
+                className="flex-1 text-xs sm:text-sm px-1 sm:px-3"
                 data-testid={`button-day-${day.toLowerCase()}`}
               >
                 {DAY_SHORT[day]}

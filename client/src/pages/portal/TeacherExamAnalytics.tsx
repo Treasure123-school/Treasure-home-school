@@ -259,24 +259,28 @@ export default function TeacherExamAnalytics() {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full sm:w-auto grid grid-cols-4 sm:inline-flex mb-2" data-testid="tabs-analytics">
-              <TabsTrigger value="overview" className="text-xs sm:text-sm" data-testid="tab-overview">
-                Overview
+            <TabsList className="w-full" data-testid="tabs-analytics">
+              <TabsTrigger value="overview" className="flex-1" data-testid="tab-overview">
+                <BarChart2 className="h-3.5 w-3.5 shrink-0 sm:hidden" />
+                <span className="hidden sm:inline">Overview</span>
               </TabsTrigger>
-              <TabsTrigger value="students" className="text-xs sm:text-sm" data-testid="tab-students">
-                Students
+              <TabsTrigger value="students" className="flex-1" data-testid="tab-students">
+                <Users className="h-3.5 w-3.5 shrink-0 sm:hidden" />
+                <span className="hidden sm:inline">Students</span>
                 <Badge variant="secondary" className="ml-1.5 text-xs hidden sm:inline-flex">
                   {analytics.studentPerformance.length}
                 </Badge>
               </TabsTrigger>
-              <TabsTrigger value="questions" className="text-xs sm:text-sm" data-testid="tab-questions">
-                Questions
+              <TabsTrigger value="questions" className="flex-1" data-testid="tab-questions">
+                <Target className="h-3.5 w-3.5 shrink-0 sm:hidden" />
+                <span className="hidden sm:inline">Questions</span>
                 <Badge variant="secondary" className="ml-1.5 text-xs hidden sm:inline-flex">
                   {analytics.questionAnalysis.length}
                 </Badge>
               </TabsTrigger>
-              <TabsTrigger value="trends" className="text-xs sm:text-sm" data-testid="tab-trends">
-                Trends
+              <TabsTrigger value="trends" className="flex-1" data-testid="tab-trends">
+                <TrendingUp className="h-3.5 w-3.5 shrink-0 sm:hidden" />
+                <span className="hidden sm:inline">Trends</span>
               </TabsTrigger>
             </TabsList>
 
