@@ -1,14 +1,22 @@
 /**
  * PreviewOverlay.tsx
- * Full-screen print preview overlay for a lesson note.
+ * Lesson note preview rendered inside a Dialog — portal layout (sidebar + header) remains visible.
  */
 
 import { useMemo } from 'react';
 import DOMPurify from 'dompurify';
-import { EyeOff, Printer } from 'lucide-react';
+import { Printer } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import type { EnrichedNote } from '@/components/lesson-notes/lessonNoteShared';
 
 export interface PreviewOverlayProps {
+  open: boolean;
   title: string;
   content: string;
   settings: any;
@@ -17,7 +25,7 @@ export interface PreviewOverlayProps {
   onClose: () => void;
 }
 
-export function PreviewOverlay({ title, content, settings, meta, note, onClose }: PreviewOverlayProps) {
+export function PreviewOverlay({ open, title, content, settings, meta, onClose }: PreviewOverlayProps) {
   const today = new Date().toLocaleDateString('en-GB', {
     day: 'numeric', month: 'long', year: 'numeric',
   });
@@ -39,74 +47,95 @@ export function PreviewOverlay({ title, content, settings, meta, note, onClose }
   }, [content]);
 
   return (
-    <div className="fixed inset-0 z-50 bg-gray-200 dark:bg-gray-900 overflow-auto print:bg-white">
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-4xl w-full h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
 
-      {/* Action bar — hidden in print */}
-      <div className="print:hidden sticky top-0 z-10 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 py-2.5 flex items-center gap-3">
-        <button
-          onClick={onClose}
-          className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
-        >
-          <EyeOff className="h-4 w-4" />Close Preview
-        </button>
-        <div className="flex-1" />
-        <button
-          onClick={() => window.print()}
-          className="flex items-center gap-1.5 text-sm bg-primary hover:bg-primary/90 text-white px-3 py-1.5 rounded transition-colors"
-        >
-          <Printer className="h-4 w-4" />Print / Export PDF
-        </button>
-      </div>
+        {/* Dialog header — title + print action */}
+        <DialogHeader className="shrink-0 flex-row items-center justify-between border-b px-5 py-3 space-y-0">
+          <DialogTitle className="text-sm font-semibold truncate pr-4">
+            {title || 'Lesson Note Preview'}
+          </DialogTitle>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 shrink-0 print:hidden"
+            onClick={() => window.print()}
+          >
+            <Printer className="h-4 w-4" />
+            Print / Export PDF
+          </Button>
+        </DialogHeader>
 
-      {/* Paper */}
-      <div className="fixed inset-0 flex items-start justify-center overflow-auto py-8 print:block print:overflow-visible print:py-0">
-        <div className="bg-white w-[794px] max-w-full shadow-xl print:shadow-none print:w-full">
+        {/* Scrollable paper area */}
+        <div className="flex-1 overflow-y-auto bg-gray-100 dark:bg-gray-900 py-6 px-4 print:bg-white print:p-0 print:overflow-visible">
+          <div className="bg-white shadow-md mx-auto w-full max-w-[794px] print:shadow-none print:w-full">
 
-          {/* School header */}
-          <div className="border-b border-gray-200 px-12 py-6 text-center">
-            {settings?.schoolLogoUrl && (
-              <img src={settings.schoolLogoUrl} alt="School Logo"
-                className="h-16 w-16 mx-auto mb-2 object-contain" />
-            )}
-            <p className="text-xl font-bold text-gray-900">{settings?.schoolName || 'School Name'}</p>
-            {settings?.schoolAddress && (
-              <p className="text-xs text-gray-500 mt-0.5">{settings.schoolAddress}</p>
-            )}
-            <div className="inline-block mt-3 border rounded px-3 py-1"
-              style={{ background: `${brandColor}10`, borderColor: `${brandColor}40` }}>
-              <span className="text-xs font-semibold uppercase tracking-wide"
-                style={{ color: brandColor }}>Lesson Note</span>
+            {/* School header */}
+            <div className="border-b border-gray-200 px-10 py-6 text-center">
+              {settings?.schoolLogoUrl && (
+                <img
+                  src={settings.schoolLogoUrl}
+                  alt="School Logo"
+                  className="h-16 w-16 mx-auto mb-2 object-contain"
+                />
+              )}
+              <p className="text-xl font-bold text-gray-900">
+                {settings?.schoolName || 'School Name'}
+              </p>
+              {settings?.schoolAddress && (
+                <p className="text-xs text-gray-500 mt-0.5">{settings.schoolAddress}</p>
+              )}
+              <div
+                className="inline-block mt-3 border rounded px-3 py-1"
+                style={{ background: `${brandColor}10`, borderColor: `${brandColor}40` }}
+              >
+                <span
+                  className="text-xs font-semibold uppercase tracking-wide"
+                  style={{ color: brandColor }}
+                >
+                  Lesson Note
+                </span>
+              </div>
             </div>
-          </div>
 
-          {/* Meta row */}
-          {(meta.className || meta.subjectName || meta.termName) && (
-            <div className="border-b border-gray-100 px-12 py-3 flex flex-wrap gap-6 text-xs text-gray-500">
-              {meta.className   && <span><strong className="text-gray-700">Class:</strong> {meta.className}</span>}
-              {meta.subjectName && <span><strong className="text-gray-700">Subject:</strong> {meta.subjectName}</span>}
-              {meta.termName    && <span><strong className="text-gray-700">Term:</strong> {meta.termName}</span>}
+            {/* Meta row */}
+            {(meta.className || meta.subjectName || meta.termName) && (
+              <div className="border-b border-gray-100 px-10 py-3 flex flex-wrap gap-6 text-xs text-gray-500">
+                {meta.className   && <span><strong className="text-gray-700">Class:</strong> {meta.className}</span>}
+                {meta.subjectName && <span><strong className="text-gray-700">Subject:</strong> {meta.subjectName}</span>}
+                {meta.termName    && <span><strong className="text-gray-700">Term:</strong> {meta.termName}</span>}
+              </div>
+            )}
+
+            {/* Content */}
+            <div
+              className="px-10 py-8 preview-content"
+              style={{ '--preview-heading-color': brandColor } as React.CSSProperties}
+              dangerouslySetInnerHTML={{ __html: safeHtml }}
+            />
+
+            {/* Footer */}
+            <div className="border-t border-gray-100 px-10 py-4 flex items-center justify-between text-xs text-gray-400">
+              <span>{settings?.schoolName || ''}</span>
+              <span>{today}</span>
             </div>
-          )}
-
-          {/* Content — note already starts with H1 title, no separate heading needed */}
-          <div
-            className="px-12 py-8 preview-content"
-            style={{ '--preview-heading-color': brandColor } as React.CSSProperties}
-            dangerouslySetInnerHTML={{ __html: safeHtml }}
-          />
-
-          {/* Footer */}
-          <div className="border-t border-gray-100 px-12 py-4 flex items-center justify-between text-xs text-gray-400">
-            <span>{settings?.schoolName || ''}</span>
-            <span>{today}</span>
           </div>
         </div>
-      </div>
+
+      </DialogContent>
 
       <style>{`
         @media print {
-          body > *:not(.fixed) { display: none !important; }
-          .fixed { position: static !important; inset: auto !important; }
+          body > *:not([data-radix-dialog-content]) { display: none !important; }
+          [data-radix-dialog-overlay] { display: none !important; }
+          [data-radix-dialog-content] {
+            position: static !important;
+            max-width: none !important;
+            height: auto !important;
+            transform: none !important;
+            box-shadow: none !important;
+            border: none !important;
+          }
         }
         .preview-content h1 { font-size: 1.75rem; font-weight: 700; line-height: 1.25; margin: 0.75em 0 0.4em; color: var(--preview-heading-color, #3b82f6) !important; border-bottom: 2px solid currentColor; padding-bottom: 0.25em; }
         .preview-content h2 { font-size: 1.25rem; font-weight: 700; line-height: 1.3; margin: 1em 0 0.35em; color: var(--preview-heading-color, #3b82f6) !important; }
@@ -131,6 +160,6 @@ export function PreviewOverlay({ title, content, settings, meta, note, onClose }
         .preview-content pre { background: #f1f5f9; padding: 1em; border-radius: 6px; overflow-x: auto; }
         .preview-content pre code { background: none; padding: 0; }
       `}</style>
-    </div>
+    </Dialog>
   );
 }

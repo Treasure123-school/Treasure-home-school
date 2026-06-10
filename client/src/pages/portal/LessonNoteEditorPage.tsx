@@ -758,20 +758,6 @@ export default function LessonNoteEditorPage() {
     );
   }
 
-  // ── Preview overlay ────────────────────────────────────────────────────────
-  if (preview) {
-    return (
-      <PreviewOverlay
-        title={title}
-        content={content}
-        settings={settings}
-        meta={{ className: query.className, subjectName: query.subjectName, termName: query.termName }}
-        note={note}
-        onClose={() => setPreview(false)}
-      />
-    );
-  }
-
   // ── Full-page editor ───────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-gray-900 overflow-hidden">
@@ -1042,6 +1028,17 @@ export default function LessonNoteEditorPage() {
           )}
         </div>
       )}
+
+      {/* ── Preview dialog — portal layout stays visible ── */}
+      <PreviewOverlay
+        open={preview}
+        title={title}
+        content={content}
+        settings={settings}
+        meta={{ className: query.className, subjectName: query.subjectName, termName: query.termName }}
+        note={note}
+        onClose={() => setPreview(false)}
+      />
     </div>
   );
 }
