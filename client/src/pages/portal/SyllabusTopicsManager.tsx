@@ -3,6 +3,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { SectionCard } from '@/components/ui/section-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -318,17 +319,7 @@ export default function SyllabusTopicsManager() {
         </div>
 
         {/* Filter Card */}
-        <Card className="shadow-sm">
-          <CardHeader className="pb-3 pt-5 px-5">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
-                <Filter className="w-3.5 h-3.5 text-primary" />
-              </div>
-              Filter Context
-              <span className="text-xs font-normal text-muted-foreground ml-1">— select all three to load topics</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-5 pb-5 space-y-4">
+        <SectionCard icon={Filter} title="Filter Context" subtitle="— select all three to load topics">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Class <span className="text-destructive">*</span></Label>
@@ -379,33 +370,29 @@ export default function SyllabusTopicsManager() {
                 <span className="ml-1">Class → Subject → Term</span>
               </div>
             )}
-          </CardContent>
-        </Card>
+        </SectionCard>
 
         {/* Topics Card */}
         {filtersSet ? (
-          <Card className="shadow-sm">
-            <CardHeader className="pb-3 pt-5 px-5">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
-                    <BookOpen className="w-3.5 h-3.5 text-primary" />
-                  </div>
-                  <span className="hidden sm:inline truncate max-w-xs">
-                    {getClassName(+selectedClassId)} → {getSubjectName(+selectedSubjectId)} → {getTermName(+selectedTermId)}
-                  </span>
-                  <span className="sm:hidden">Topics</span>
-                </CardTitle>
-                {!loadingTopics && (topics as any[]).length > 0 && (
-                  <div className="flex gap-1.5">
-                    <Badge variant="secondary" className="text-xs">{(topics as any[]).length} total</Badge>
-                    {publishedCount > 0 && <Badge className="text-xs bg-emerald-500 hover:bg-emerald-500">{publishedCount} published</Badge>}
-                    {draftCount > 0 && <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">{draftCount} draft</Badge>}
-                  </div>
-                )}
+          <SectionCard
+            icon={BookOpen}
+            title={
+              <>
+                <span className="hidden sm:inline truncate max-w-xs">
+                  {getClassName(+selectedClassId)} → {getSubjectName(+selectedSubjectId)} → {getTermName(+selectedTermId)}
+                </span>
+                <span className="sm:hidden">Topics</span>
+              </>
+            }
+            rightContent={!loadingTopics && (topics as any[]).length > 0 ? (
+              <div className="flex gap-1.5">
+                <Badge variant="secondary" className="text-xs">{(topics as any[]).length} total</Badge>
+                {publishedCount > 0 && <Badge className="text-xs bg-emerald-500 hover:bg-emerald-500">{publishedCount} published</Badge>}
+                {draftCount > 0 && <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">{draftCount} draft</Badge>}
               </div>
-            </CardHeader>
-            <CardContent className="px-0 pb-0">
+            ) : undefined}
+            contentClassName="px-0 pb-0"
+          >
               {loadingTopics ? (
                 <div className="px-5 pb-5 space-y-2.5">
                   {[1, 2, 3].map(i => <Skeleton key={i} className="h-12 rounded-lg" />)}
@@ -541,8 +528,7 @@ export default function SyllabusTopicsManager() {
                   </div>
                 </>
               )}
-            </CardContent>
-          </Card>
+          </SectionCard>
         ) : (
           <Card className="shadow-sm">
             <CardContent className="py-16 text-center">

@@ -5,6 +5,7 @@ import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { StatCard, StatCardGrid } from '@/components/ui/stat-card';
+import { SectionCard } from '@/components/ui/section-card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -293,17 +294,7 @@ export default function AdminLessonNoteReview() {
         </StatCardGrid>
 
         {/* Filters */}
-        <Card className="shadow-sm">
-          <CardHeader className="pb-3 pt-5 px-5">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
-                <Filter className="w-3.5 h-3.5 text-primary" />
-              </div>
-              Filter Notes
-              <span className="text-xs font-normal text-muted-foreground ml-0.5">— narrow by class, subject, term, or status</span>
-            </div>
-          </CardHeader>
-          <CardContent className="px-5 pb-5 space-y-4">
+        <SectionCard icon={Filter} title="Filter Notes" subtitle="— narrow by class, subject, term, or status">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Class</Label>
@@ -361,8 +352,7 @@ export default function AdminLessonNoteReview() {
               <Input className="pl-9 text-sm" placeholder="Search by title, teacher, or topic…"
                 value={search} onChange={e => setSearch(e.target.value)} data-testid="input-search" />
             </div>
-          </CardContent>
-        </Card>
+        </SectionCard>
 
         {/* Tabs */}
         <Tabs defaultValue="review">

@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SectionCard } from "@/components/ui/section-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -1440,22 +1441,9 @@ export default function QuestionBankManager() {
 
           {/* ══ Browse Tab ══════════════════════════════════ */}
           <TabsContent value="browse" className="space-y-4 mt-0">
-            <Card className="shadow-sm">
-              <CardHeader className="pb-3 pt-5 px-5">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
-                    <Filter className="w-3.5 h-3.5 text-primary" />
-                  </div>
-                  Filter Context
-                  <span className="text-xs font-normal text-muted-foreground ml-1">
-                    — all four fields required before questions load
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-5 pb-5">
-                <ContextFilterBar value={browseCtx} onChange={handleBrowseCtxChange} showBank />
-              </CardContent>
-            </Card>
+            <SectionCard icon={Filter} title="Filter Context" subtitle="— all four fields required before questions load" contentClassName="px-5 pb-5">
+              <ContextFilterBar value={browseCtx} onChange={handleBrowseCtxChange} showBank />
+            </SectionCard>
 
             {/* Refinement filters */}
             {browseReady && (
@@ -1588,26 +1576,13 @@ export default function QuestionBankManager() {
 
           {/* ══ My Questions Tab ═══════════════════════════ */}
           <TabsContent value="my" className="space-y-4 mt-0">
-            <Card className="shadow-sm">
-              <CardHeader className="pb-3 pt-5 px-5">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
-                    <Filter className="w-3.5 h-3.5 text-primary" />
-                  </div>
-                  Filter Context
-                  <span className="text-xs font-normal text-muted-foreground ml-1">
-                    — Class &amp; Subject required, Term optional
-                  </span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-5 pb-5">
-                <ContextFilterBar
-                  value={myCtx}
-                  onChange={handleMyCtxChange}
-                  showBank={false}
-                />
-              </CardContent>
-            </Card>
+            <SectionCard icon={Filter} title="Filter Context" subtitle="— Class &amp; Subject required, Term optional" contentClassName="px-5 pb-5">
+              <ContextFilterBar
+                value={myCtx}
+                onChange={handleMyCtxChange}
+                showBank={false}
+              />
+            </SectionCard>
 
             {myReady && (
               <div className="flex flex-wrap gap-2">

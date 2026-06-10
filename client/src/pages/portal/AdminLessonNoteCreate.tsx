@@ -4,6 +4,7 @@ import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { SectionCard } from '@/components/ui/section-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -150,17 +151,7 @@ export default function AdminLessonNoteCreate() {
         </div>
 
         {/* Filter Card */}
-        <Card className="shadow-sm">
-          <CardHeader className="pb-3 pt-5 px-5">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center">
-                <Filter className="w-3.5 h-3.5 text-primary" />
-              </div>
-              Select Context
-              <span className="text-xs font-normal text-muted-foreground ml-0.5">— choose class, subject, then term</span>
-            </div>
-          </CardHeader>
-          <CardContent className="px-5 pb-5 space-y-4">
+        <SectionCard icon={Filter} title="Select Context" subtitle="— choose class, subject, then term">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
 
               {/* Class */}
@@ -260,36 +251,30 @@ export default function AdminLessonNoteCreate() {
                 <Badge variant="secondary" className="text-xs">{selectedTerm?.name}</Badge>
               </div>
             )}
-          </CardContent>
-        </Card>
+        </SectionCard>
 
         {/* Topics Results */}
         {filtersComplete && (
-          <Card className="shadow-sm" data-testid="topics-results-card">
-            <CardHeader className="pb-3 pt-4 px-5">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center shrink-0">
-                    <Layers className="w-3.5 h-3.5 text-primary" />
-                  </div>
-                  <h2 className="font-semibold text-sm truncate">{selectedSubject?.name}</h2>
-                  <span className="text-xs text-muted-foreground shrink-0">· {selectedTerm?.name}</span>
-                </div>
-                {!loadingTopics && sortedTopics.length > 0 && (
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {sortedTopics.filter(t => noteByTopicId.has(t.id)).length > 0 && (
-                      <Badge className="text-xs bg-emerald-500 hover:bg-emerald-500">
-                        {sortedTopics.filter(t => noteByTopicId.has(t.id)).length} noted
-                      </Badge>
-                    )}
-                    <Badge variant="secondary" className="text-xs">
-                      {sortedTopics.length} topic{sortedTopics.length !== 1 ? 's' : ''}
-                    </Badge>
-                  </div>
+          <SectionCard
+            icon={Layers}
+            title={selectedSubject?.name ?? ''}
+            subtitle={selectedTerm ? `· ${selectedTerm.name}` : undefined}
+            rightContent={!loadingTopics && sortedTopics.length > 0 ? (
+              <div className="flex items-center gap-1.5">
+                {sortedTopics.filter(t => noteByTopicId.has(t.id)).length > 0 && (
+                  <Badge className="text-xs bg-emerald-500 hover:bg-emerald-500">
+                    {sortedTopics.filter(t => noteByTopicId.has(t.id)).length} noted
+                  </Badge>
                 )}
+                <Badge variant="secondary" className="text-xs">
+                  {sortedTopics.length} topic{sortedTopics.length !== 1 ? 's' : ''}
+                </Badge>
               </div>
-            </CardHeader>
-            <CardContent className="px-5 pb-5">
+            ) : undefined}
+            headerPadding="compact"
+            contentClassName="px-5 pb-5"
+            data-testid="topics-results-card"
+          >
 
               {(loadingTopics || loadingNotes) && <TopicsLoadingSkeleton />}
 
@@ -368,8 +353,7 @@ export default function AdminLessonNoteCreate() {
                   </div>
                 </>
               )}
-            </CardContent>
-          </Card>
+          </SectionCard>
         )}
 
         {/* Prompt when filters not complete */}
