@@ -6,8 +6,7 @@
  * (e.g. My Attendance page) — white cards, subtle borders, inline header icon.
  */
 
-import { useLocation } from 'wouter';
-import { BookOpen, Sparkles, Pencil, Loader2, GraduationCap, BookMarked, Calendar, ChevronLeft } from 'lucide-react';
+import { BookOpen, Sparkles, Pencil, Loader2, GraduationCap, BookMarked, Calendar } from 'lucide-react';
 
 export interface StartScreenProps {
   title: string;
@@ -37,16 +36,6 @@ export function StartScreen({
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 px-4 pt-6 pb-16">
       <div className="w-full max-w-xl mx-auto space-y-4">
-
-        {/* Back button */}
-        <button
-          onClick={() => navigate(-1 as any)}
-          className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors mb-2"
-          data-testid="button-back"
-        >
-          <ChevronLeft className="w-4 h-4" />
-          Back
-        </button>
 
         {/* Page header — inline icon + title (matches attendance page style) */}
         <div className="flex items-center gap-3 mb-1">
