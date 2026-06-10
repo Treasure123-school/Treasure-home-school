@@ -1335,7 +1335,7 @@ export default function QuestionBankManager() {
   return (
     <div className="min-h-screen">
       {/* ── Header ─────────────────────────────────────────── */}
-      <div className="border-b">
+      <div>
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="flex items-center gap-3">
