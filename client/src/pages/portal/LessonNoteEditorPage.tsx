@@ -385,13 +385,24 @@ export default function LessonNoteEditorPage() {
     const body = buildPayload(html);
     const nid  = savedNoteId.current;
     if (nid) { await apiRequest('PUT', `/api/lesson-notes/${nid}`, body); return nid; }
-    const created: EnrichedNote = await (await apiRequest('POST', '/api/lesson-notes', {
+    const res = await apiRequest('POST', '/api/lesson-notes', {
       ...body,
       topicId:   parseInt(query.topicId),
       classId:   parseInt(query.classId),
       subjectId: parseInt(query.subjectId),
       termId:    parseInt(query.termId),
-    })).json();
+    });
+    if (res.status === 409) {
+      const { existingId } = await res.json();
+      if (!existingId) throw new Error('A note already exists for this topic');
+      savedNoteId.current = existingId;
+      return existingId;
+    }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Save failed' }));
+      throw new Error(err.message || 'Save failed');
+    }
+    const created: EnrichedNote = await res.json();
     savedNoteId.current = created.id;
     return created.id;
   }, [title, query]);
