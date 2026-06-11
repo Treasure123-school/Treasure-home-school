@@ -60,6 +60,55 @@ export type EnrichedNote = {
   hiddenSections?: string[] | null;
 };
 
+// ── NotePageHeader — unified header for all note view pages ──────────────────
+//
+// Shows: Subject · Class (brand-coloured, prominent) on the first line
+//        By [creator] · Term / Date in small muted text below
+// One component, used by admin, teacher, student and preview pages.
+
+interface NotePageHeaderProps {
+  note: Pick<EnrichedNote, 'subjectName' | 'className' | 'termName' | 'creatorName'>;
+  brandColor: string;
+  date?: string | null;
+  printButton?: boolean;
+}
+
+export function NotePageHeader({ note, brandColor, date, printButton = false }: NotePageHeaderProps) {
+  return (
+    <div className="flex rounded-lg border overflow-hidden">
+      <div className="w-1 self-stretch shrink-0" style={{ backgroundColor: brandColor }} />
+      <div className="flex flex-1 items-center justify-between gap-2 px-3 py-2.5 min-w-0">
+        <div className="min-w-0">
+          {(note.subjectName || note.className) && (
+            <p className="text-base font-bold leading-snug" style={{ color: brandColor }}>
+              {[note.subjectName, note.className].filter(Boolean).join(' · ')}
+            </p>
+          )}
+          <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+            By{' '}
+            <span className="font-medium text-foreground">
+              {note.creatorName || 'School Admin'}
+            </span>
+            {note.termName && <span> · {note.termName}</span>}
+            {date && <span> / {fmtDate(date)}</span>}
+          </p>
+        </div>
+        {printButton && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.print()}
+            className="shrink-0 gap-1.5 h-8 text-xs px-2 text-muted-foreground hover:text-foreground print:hidden"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Print</span>
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── MetaChip — shared metadata pill ──────────────────────────────────────────
 
 export function MetaChip({ icon: Icon, label, value }: { icon: any; label: string; value: string }) {
