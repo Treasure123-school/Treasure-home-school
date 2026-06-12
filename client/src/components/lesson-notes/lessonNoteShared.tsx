@@ -74,37 +74,37 @@ interface NotePageHeaderProps {
 }
 
 export function NotePageHeader({ note, brandColor, date, printButton = false }: NotePageHeaderProps) {
+  const title = [note.subjectName, note.className].filter(Boolean).join(' ');
+  const meta: string[] = [];
+  if (note.termName) meta.push(note.termName);
+  if (note.creatorName) meta.push(`By ${note.creatorName}`);
+  if (date) meta.push(fmtDate(date));
+
   return (
-    <div className="flex rounded-lg border overflow-hidden">
-      <div className="w-1 self-stretch shrink-0" style={{ backgroundColor: brandColor }} />
-      <div className="flex flex-1 items-center justify-between gap-2 px-3 py-2.5 min-w-0">
-        <div className="min-w-0">
-          {(note.subjectName || note.className) && (
-            <p className="text-base font-bold leading-snug" style={{ color: brandColor }}>
-              {[note.subjectName, note.className].filter(Boolean).join(' · ')}
-            </p>
-          )}
-          <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
-            By{' '}
-            <span className="font-medium text-foreground">
-              {note.creatorName || 'School Admin'}
-            </span>
-            {note.termName && <span> · {note.termName}</span>}
-            {date && <span> / {fmtDate(date)}</span>}
+    <div className="flex items-start justify-between gap-2">
+      <div>
+        {title && (
+          <p className="text-2xl font-bold uppercase leading-tight" style={{ color: brandColor }}>
+            {title}
           </p>
-        </div>
-        {printButton && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => window.print()}
-            className="shrink-0 gap-1.5 h-8 text-xs px-2 text-muted-foreground hover:text-foreground print:hidden"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Print</span>
-          </Button>
+        )}
+        {meta.length > 0 && (
+          <p className="text-sm text-muted-foreground mt-1">
+            {meta.join(' / ')}
+          </p>
         )}
       </div>
+      {printButton && (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => window.print()}
+          className="shrink-0 gap-1.5 h-8 text-xs px-2 text-muted-foreground hover:text-foreground print:hidden mt-1"
+        >
+          <Printer className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Print</span>
+        </Button>
+      )}
     </div>
   );
 }
