@@ -81,41 +81,46 @@ export function NotePageHeader({ note, brandColor, date, printButton = false }: 
   if (date) meta.push(fmtDate(date));
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2.5">
+      {/* Title row */}
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-stretch gap-3">
-          <div className="w-1 rounded-full shrink-0" style={{ backgroundColor: brandColor }} />
-          <div>
-            {title && (
-              <p className="text-2xl font-bold uppercase leading-tight" style={{ color: brandColor }}>
-                {title}
-              </p>
-            )}
-            {meta.length > 0 && (
-              <p className="text-sm text-muted-foreground mt-1">
-                {meta.join(' / ')}
-              </p>
-            )}
-          </div>
+        <div className="min-w-0">
+          {title && (
+            <h1
+              className="text-xl sm:text-2xl font-bold uppercase leading-tight tracking-wide break-words"
+              style={{ color: brandColor }}
+            >
+              {title}
+            </h1>
+          )}
+          {meta.length > 0 && (
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-snug">
+              {meta.join(' / ')}
+            </p>
+          )}
         </div>
         {printButton && (
           <Button
             variant="ghost"
             size="sm"
             onClick={() => window.print()}
-            className="shrink-0 gap-1.5 h-8 text-xs px-2 text-muted-foreground hover:text-foreground print:hidden mt-1"
+            className="shrink-0 gap-1.5 h-8 text-xs px-2 text-muted-foreground hover:text-foreground print:hidden mt-0.5"
           >
             <Printer className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Print</span>
           </Button>
         )}
       </div>
-      <p className="text-sm leading-relaxed text-foreground">
-        <span className="font-semibold">Welcome to class!</span>
-        {note.topicName
-          ? ` In today's class, we will be talking about ${note.topicName}. Enjoy the class!`
-          : ` Enjoy the class!`}
-      </p>
+
+      {/* Intro block: greeting on its own line, topic sentence below */}
+      <div className="text-sm leading-relaxed">
+        <span className="block font-semibold text-foreground">Welcome to class!</span>
+        <span className="block text-muted-foreground">
+          {note.topicName
+            ? `In today's class, we will be talking about ${note.topicName}. Enjoy the class!`
+            : 'Enjoy the class!'}
+        </span>
+      </div>
     </div>
   );
 }
