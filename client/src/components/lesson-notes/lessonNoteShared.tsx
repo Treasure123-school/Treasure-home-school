@@ -289,10 +289,6 @@ export function NoteContentRenderer({
 
   return (
     <section className="space-y-3">
-      <div className="flex items-center gap-2">
-        <div className="w-1 h-5 rounded-full bg-primary shrink-0" />
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Lesson Content</h2>
-      </div>
       <RichTextViewer html={parsedHtml} className="min-h-[200px]" brandColor={brandColor} />
     </section>
   );
