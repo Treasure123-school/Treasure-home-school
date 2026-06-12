@@ -111,7 +111,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-10">
             {navigation.map((item) => (
-              <Link key={item.name} href={item.href} className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${isActive(item.href) ? 'text-primary' : 'text-gray-900 hover:text-primary'}`}>{item.name}</Link>
+              <Link key={item.name} href={item.href} className={`font-display text-[11px] font-bold uppercase tracking-widest transition-colors ${isActive(item.href) ? 'text-primary' : 'text-gray-900 hover:text-primary'}`}>{item.name}</Link>
             ))}
             <Button asChild className="btn-primary"><Link href="/contact" className="flex items-center gap-2"><span>Contact Us</span><ArrowRight className="w-3 h-3" /></Link></Button>
           </nav>
@@ -145,7 +145,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                 style={{
                   transitionDelay: isMobileMenuOpen ? `${index * 70 + 80}ms` : '0ms',
                 }}
-                className={`text-2xl font-black uppercase tracking-[0.2em] transition-all duration-500 ease-out ${
+                className={`font-display text-2xl font-black uppercase tracking-[0.2em] transition-all duration-500 ease-out ${
                   isMobileMenuOpen
                     ? 'opacity-100 translate-x-0'
                     : 'opacity-0 -translate-x-10'
@@ -192,7 +192,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               <h4 className="text-foreground font-black uppercase tracking-widest text-[11px]">Useful Links</h4>
               <ul className="space-y-3">
                 {navigation.map((item) => (
-                  <li key={item.name}><Link href={item.href} className="text-[13px] text-muted-foreground font-bold hover:text-primary transition-colors">{item.name}</Link></li>
+                  <li key={item.name}><Link href={item.href} className="font-display text-[13px] text-muted-foreground font-semibold hover:text-primary transition-colors">{item.name}</Link></li>
                 ))}
               </ul>
             </div>
