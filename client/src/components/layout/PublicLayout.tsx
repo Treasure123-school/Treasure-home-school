@@ -96,7 +96,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                 />
               ) : null}
               <div className="flex flex-col">
-                <span className="text-gray-900 font-bold text-xl md:text-2xl tracking-tight leading-tight">
+                <span className="font-display text-gray-900 font-bold text-xl md:text-2xl tracking-tight leading-tight">
                   {schoolName}
                 </span>
                 {settings?.schoolMotto && (
