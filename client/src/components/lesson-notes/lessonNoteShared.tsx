@@ -115,7 +115,7 @@ export function NotePageHeader({ note, brandColor, date, printButton = false }: 
       {/* Intro block: greeting on its own line, topic sentence below */}
       <div className="text-sm leading-relaxed">
         <span className="block font-semibold text-foreground">Welcome to class!</span>
-        <span className="block text-muted-foreground">
+        <span className="block text-muted-foreground italic">
           {note.topicName
             ? `In today's class, we will be talking about ${note.topicName}. Enjoy the class!`
             : 'Enjoy the class!'}
