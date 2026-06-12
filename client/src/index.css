@@ -115,8 +115,8 @@
     box-shadow: 0 0 0 2px hsl(var(--primary) / 0.25) !important;
     opacity: 1;
   }
-  p, span, div, li {
-    @apply font-semibold;
+  p {
+    @apply font-normal;
   }
 }
 
