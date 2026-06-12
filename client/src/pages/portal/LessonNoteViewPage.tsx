@@ -268,7 +268,7 @@ export default function LessonNoteViewPage() {
         </div>
       )}
 
-      <div className="print:hidden">
+      <div>
         <NotePageHeader note={note} brandColor={brandColor} date={note.createdAt} />
         <h1 className="text-xl sm:text-2xl font-bold leading-snug text-foreground px-1 mt-3">
           {note.title}
@@ -288,15 +288,6 @@ export default function LessonNoteViewPage() {
           <div><strong>Revision notes from admin:</strong> {note.rejectionReason}</div>
         </div>
       )}
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-muted/30 border text-xs overflow-hidden">
-        <div><span className="text-muted-foreground">Created:</span> <strong>{fmtDate(note.createdAt)}</strong></div>
-        {note.submittedAt && <div><span className="text-muted-foreground">Submitted:</span> <strong>{fmtDate(note.submittedAt)}</strong></div>}
-        {note.approvedAt  && <div><span className="text-muted-foreground">Approved:</span>  <strong>{fmtDate(note.approvedAt)}</strong></div>}
-        {note.rejectedAt  && <div><span className="text-muted-foreground">Rejected:</span>  <strong>{fmtDate(note.rejectedAt)}</strong></div>}
-        {note.publishedAt && <div><span className="text-muted-foreground">Published:</span> <strong>{fmtDate(note.publishedAt)}</strong></div>}
-        <div><span className="text-muted-foreground">Updated:</span> <strong>{fmtDate(note.updatedAt)}</strong></div>
-      </div>
 
       {/* Shared content renderer */}
       <NoteContentRenderer

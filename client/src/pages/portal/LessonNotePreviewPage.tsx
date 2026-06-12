@@ -4,7 +4,7 @@ import { apiRequest } from '@/lib/queryClient';
 import type { SystemSettings } from '@shared/schema';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NoteContentRenderer, NotePageHeader, EnrichedNote } from '@/components/lesson-notes/lessonNoteShared';
-import { BookOpen, Target } from 'lucide-react';
+import { BookOpen } from 'lucide-react';
 
 export default function LessonNotePreviewPage() {
   const { id } = useParams<{ id: string }>();
@@ -55,21 +55,10 @@ export default function LessonNotePreviewPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 space-y-4 print:max-w-none print:px-0">
 
-      <div className="print:hidden">
-        <NotePageHeader note={note} brandColor={brandColor} date={date} printButton />
-      </div>
-
-      {note.objectives && (
-        <section className="rounded-xl border bg-primary/5 p-4 space-y-2">
-          <div className="flex items-center gap-2">
-            <Target className="w-4 h-4 text-primary shrink-0" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-primary">
-              Learning Objectives
-            </h2>
-          </div>
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{note.objectives}</p>
-        </section>
-      )}
+      <NotePageHeader note={note} brandColor={brandColor} date={date} printButton />
+      <h1 className="text-xl sm:text-2xl font-bold leading-snug text-foreground px-1">
+        {note.title}
+      </h1>
 
       <NoteContentRenderer
         note={note}

@@ -5,7 +5,7 @@ import type { SystemSettings } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NoteContentRenderer, NotePageHeader } from '@/components/lesson-notes/lessonNoteShared';
-import { BookOpen, Target, ArrowLeft } from 'lucide-react';
+import { BookOpen, ArrowLeft } from 'lucide-react';
 
 type LessonNote = {
   id: number; topicId: number;
@@ -71,33 +71,16 @@ export default function StudentLessonNoteViewPage() {
   return (
     <div className="max-w-3xl space-y-4 print:max-w-none">
 
-      {/* ── Header ── */}
-      <div className="space-y-2">
-        <NotePageHeader
-          note={note}
-          brandColor={brandColor}
-          date={note.publishedAt || note.createdAt}
-          printButton
-        />
-        <h1 className="text-xl sm:text-2xl font-bold leading-snug text-foreground px-1">
-          {note.title}
-        </h1>
-      </div>
+      <NotePageHeader
+        note={note}
+        brandColor={brandColor}
+        date={note.publishedAt || note.createdAt}
+        printButton
+      />
+      <h1 className="text-xl sm:text-2xl font-bold leading-snug text-foreground px-1">
+        {note.title}
+      </h1>
 
-      {/* Learning Objectives — for legacy notes that store objectives separately */}
-      {note.objectives && (
-        <section className="rounded-xl border bg-primary/5 p-4 space-y-2">
-          <div className="flex items-center gap-2">
-            <Target className="w-4 h-4 text-primary shrink-0" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-primary">
-              Learning Objectives
-            </h2>
-          </div>
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{note.objectives}</p>
-        </section>
-      )}
-
-      {/* Note body — handles v2 structured sections and v3/legacy HTML */}
       <NoteContentRenderer
         note={note}
         brandColor={brandColor}
