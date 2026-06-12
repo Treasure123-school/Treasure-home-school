@@ -67,7 +67,7 @@ export type EnrichedNote = {
 // One component, used by admin, teacher, student and preview pages.
 
 interface NotePageHeaderProps {
-  note: Pick<EnrichedNote, 'subjectName' | 'className' | 'termName' | 'creatorName'>;
+  note: Pick<EnrichedNote, 'subjectName' | 'className' | 'termName' | 'creatorName' | 'topicName'>;
   brandColor: string;
   date?: string | null;
   printButton?: boolean;
@@ -81,33 +81,41 @@ export function NotePageHeader({ note, brandColor, date, printButton = false }: 
   if (date) meta.push(fmtDate(date));
 
   return (
-    <div className="flex items-start justify-between gap-2">
-      <div className="flex items-stretch gap-3">
-        <div className="w-1 rounded-full shrink-0" style={{ backgroundColor: brandColor }} />
-        <div>
-          {title && (
-            <p className="text-2xl font-bold uppercase leading-tight" style={{ color: brandColor }}>
-              {title}
-            </p>
-          )}
-          {meta.length > 0 && (
-            <p className="text-sm text-muted-foreground mt-1">
-              {meta.join(' / ')}
-            </p>
-          )}
+    <div className="space-y-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-stretch gap-3">
+          <div className="w-1 rounded-full shrink-0" style={{ backgroundColor: brandColor }} />
+          <div>
+            {title && (
+              <p className="text-2xl font-bold uppercase leading-tight" style={{ color: brandColor }}>
+                {title}
+              </p>
+            )}
+            {meta.length > 0 && (
+              <p className="text-sm text-muted-foreground mt-1">
+                {meta.join(' / ')}
+              </p>
+            )}
+          </div>
         </div>
+        {printButton && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.print()}
+            className="shrink-0 gap-1.5 h-8 text-xs px-2 text-muted-foreground hover:text-foreground print:hidden mt-1"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Print</span>
+          </Button>
+        )}
       </div>
-      {printButton && (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => window.print()}
-          className="shrink-0 gap-1.5 h-8 text-xs px-2 text-muted-foreground hover:text-foreground print:hidden mt-1"
-        >
-          <Printer className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Print</span>
-        </Button>
-      )}
+      <p className="text-sm leading-relaxed text-foreground">
+        <span className="font-semibold">Welcome to class!</span>
+        {note.topicName
+          ? ` In today's class, we will be talking about ${note.topicName}. Enjoy the class!`
+          : ` Enjoy the class!`}
+      </p>
     </div>
   );
 }
