@@ -82,17 +82,20 @@ export function NotePageHeader({ note, brandColor, date, printButton = false }: 
 
   return (
     <div className="flex items-start justify-between gap-2">
-      <div>
-        {title && (
-          <p className="text-2xl font-bold uppercase leading-tight" style={{ color: brandColor }}>
-            {title}
-          </p>
-        )}
-        {meta.length > 0 && (
-          <p className="text-sm text-muted-foreground mt-1">
-            {meta.join(' / ')}
-          </p>
-        )}
+      <div className="flex items-stretch gap-3">
+        <div className="w-1 rounded-full shrink-0" style={{ backgroundColor: brandColor }} />
+        <div>
+          {title && (
+            <p className="text-2xl font-bold uppercase leading-tight" style={{ color: brandColor }}>
+              {title}
+            </p>
+          )}
+          {meta.length > 0 && (
+            <p className="text-sm text-muted-foreground mt-1">
+              {meta.join(' / ')}
+            </p>
+          )}
+        </div>
       </div>
       {printButton && (
         <Button
