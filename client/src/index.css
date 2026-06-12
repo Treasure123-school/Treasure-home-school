@@ -120,6 +120,50 @@
   }
 }
 
+/* ── Montserrat heading weight utilities ──────────────────────────────────────
+   Apply these classes anywhere to get the right Montserrat weight for context.
+   They all use font-display (Montserrat) and tight letter-spacing.
+
+   Usage examples:
+     <h1 className="heading-hero">     → 900 black  — big hero / splash text
+     <h2 className="heading-section">  → 800 extrabold — section titles
+     <h3 className="heading-card">     → 700 bold — card / panel headings
+     <p  className="heading-label">    → 600 semibold — labels, nav items, badges
+     <span className="heading-caption">→ 500 medium — captions, meta, small tags
+   ─────────────────────────────────────────────────────────────────────────── */
+@layer components {
+  .heading-hero {
+    font-family: var(--font-display);
+    font-weight: 900;
+    letter-spacing: -0.03em;
+    line-height: 1.05;
+  }
+  .heading-section {
+    font-family: var(--font-display);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  .heading-card {
+    font-family: var(--font-display);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
+  }
+  .heading-label {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: 0em;
+    line-height: 1.4;
+  }
+  .heading-caption {
+    font-family: var(--font-display);
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    line-height: 1.5;
+  }
+}
+
 .btn-primary {
   @apply relative overflow-hidden text-white border-none shadow-lg transition-all flex items-center justify-center gap-2 font-bold uppercase tracking-widest px-8 py-3 text-[10px] rounded-sm;
   background-color: hsl(var(--primary));
