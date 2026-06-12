@@ -77,7 +77,7 @@ export default function RichTextViewer({ html, className = '', brandColor = '#3b
     <>
       <div
         ref={containerRef}
-        className={`lesson-note-viewer prose prose-sm dark:prose-invert max-w-none ${className}`}
+        className={`lesson-note-viewer font-reading prose prose-sm dark:prose-invert max-w-none ${className}`}
         style={{ '--viewer-heading-color': brandColor } as React.CSSProperties}
         dangerouslySetInnerHTML={{ __html: safeHtml }}
       />
