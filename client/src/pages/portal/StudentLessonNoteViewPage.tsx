@@ -77,9 +77,6 @@ export default function StudentLessonNoteViewPage() {
         date={note.publishedAt || note.createdAt}
         printButton
       />
-      <h1 className="text-xl sm:text-2xl font-bold leading-snug text-foreground px-1">
-        {note.title}
-      </h1>
 
       <NoteContentRenderer
         note={note}

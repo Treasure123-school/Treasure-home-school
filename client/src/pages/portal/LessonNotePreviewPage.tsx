@@ -56,9 +56,6 @@ export default function LessonNotePreviewPage() {
     <div className="max-w-3xl mx-auto px-4 sm:px-6 space-y-4 print:max-w-none print:px-0">
 
       <NotePageHeader note={note} brandColor={brandColor} date={date} printButton />
-      <h1 className="text-xl sm:text-2xl font-bold leading-snug text-foreground px-1">
-        {note.title}
-      </h1>
 
       <NoteContentRenderer
         note={note}

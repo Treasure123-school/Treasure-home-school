@@ -270,9 +270,6 @@ export default function LessonNoteViewPage() {
 
       <div>
         <NotePageHeader note={note} brandColor={brandColor} date={note.createdAt} />
-        <h1 className="text-xl sm:text-2xl font-bold leading-snug text-foreground px-1 mt-3">
-          {note.title}
-        </h1>
       </div>
 
       {note.rejectionReason && note.status === 'rejected' && (
