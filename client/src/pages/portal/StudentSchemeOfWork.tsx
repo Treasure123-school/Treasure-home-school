@@ -98,7 +98,7 @@ export default function StudentSchemeOfWork() {
   };
 
   return (
-    <div className="min-h-screen bg-background" data-testid="student-scheme-of-work">
+    <div className="min-h-screen" data-testid="student-scheme-of-work">
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
 
