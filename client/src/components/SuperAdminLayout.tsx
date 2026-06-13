@@ -367,8 +367,8 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
           <div className="flex items-center gap-2 px-3 flex-1 min-w-0">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg" data-testid="button-mobile-menu">
-                  <Menu className="h-4 w-4" />
+                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 text-primary hover:bg-transparent hover:text-primary/80" data-testid="button-mobile-menu">
+                  <Menu className="h-[18px] w-[18px]" />
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-[260px] p-0 [&>button]:hidden">
@@ -396,7 +396,6 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
                 </div>
               </SheetContent>
             </Sheet>
-            <img src={schoolLogoUrl} alt="logo" className="h-7 w-7 object-contain flex-shrink-0" />
             <div className="min-w-0 flex-1">
               <p className="font-display text-sm font-bold text-primary leading-tight truncate">{schoolName}</p>
               {schoolMotto && <p className="text-[9px] text-muted-foreground uppercase tracking-wide truncate leading-tight">{schoolMotto}</p>}
