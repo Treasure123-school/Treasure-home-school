@@ -367,7 +367,7 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
           <div className="flex items-center gap-2 px-3 flex-1 min-w-0">
             <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" data-testid="button-mobile-menu">
+                <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg" data-testid="button-mobile-menu">
                   <Menu className="h-4 w-4" />
                 </Button>
               </SheetTrigger>
