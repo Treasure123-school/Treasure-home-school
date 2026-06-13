@@ -521,7 +521,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
                 className={`object-contain flex-shrink-0 transition-all duration-300 ease-in-out ${sidebarCollapsed ? 'h-7 w-7' : 'h-8 w-8'}`}
               />
               <div className={`min-w-0 flex-1 transition-opacity duration-300 ease-in-out ${sidebarCollapsed ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
-                <p className="text-[13px] font-bold text-primary leading-tight truncate">{schoolName}</p>
+                <p className="font-display text-[13px] font-bold text-primary leading-tight truncate">{schoolName}</p>
                 <p className="text-[10px] text-muted-foreground truncate capitalize">{getRoleTitle()} Portal</p>
               </div>
             </div>
@@ -529,8 +529,8 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             <div className="flex items-center gap-2 px-3 flex-1 min-w-0">
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0" data-testid="button-mobile-menu">
-                    <Menu className="h-4 w-4" />
+                  <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0 border border-gray-300 dark:border-gray-600 rounded-md text-gray-800 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800" data-testid="button-mobile-menu">
+                    <Menu className="h-[18px] w-[18px]" />
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-[260px] p-0 [&>button]:hidden">
@@ -538,7 +538,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
                     <div className="flex-shrink-0 h-14 flex items-center gap-3 px-4 border-b border-border">
                       <img src={displayLogo} alt="School logo" className="h-9 w-9 object-contain flex-shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-bold text-primary leading-tight truncate">{schoolName}</p>
+                        <p className="font-display text-sm font-bold text-primary leading-tight truncate">{schoolName}</p>
                         <p className="text-[10px] text-muted-foreground truncate">{schoolMotto}</p>
                       </div>
                     </div>
@@ -558,8 +558,10 @@ export default function PortalLayout({ children, userRole, userName, userInitial
                   </div>
                 </SheetContent>
               </Sheet>
-              <img src={displayLogo} alt="logo" className="h-7 w-7 object-contain flex-shrink-0" />
-              <span className="text-sm font-bold text-primary truncate">{schoolName}</span>
+              <div className="min-w-0 flex-1">
+                <p className="font-display text-sm font-bold text-primary leading-tight truncate">{schoolName}</p>
+                {schoolMotto && <p className="text-[9px] text-muted-foreground uppercase tracking-wide truncate leading-tight">{schoolMotto}</p>}
+              </div>
             </div>
           )}
 

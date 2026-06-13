@@ -78,6 +78,7 @@ const AdminLessonNoteReview = lazy(() => import('@/pages/portal/AdminLessonNoteR
 const AdminLessonNoteCreate = lazy(() => import('@/pages/portal/AdminLessonNoteCreate'));
 const LessonNoteEditorPage = lazy(() => import('@/pages/portal/LessonNoteEditorPage'));
 const LessonNoteViewPage = lazy(() => import('@/pages/portal/LessonNoteViewPage'));
+const LessonNotePreviewPage = lazy(() => import('@/pages/portal/LessonNotePreviewPage'));
 const StudentLessonNoteViewPage = lazy(() => import('@/pages/portal/StudentLessonNoteViewPage'));
 const ExamPaymentManagement = lazy(() => import('@/pages/portal/ExamPaymentManagement'));
 const AttendanceManagement = lazy(() => import('@/pages/portal/AttendanceManagement'));
@@ -185,6 +186,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/teacher/question-bank" component={QuestionBankManager} />
             <Route path="/portal/teacher/lesson-notes/create" component={LessonNoteEditorPage} />
             <Route path="/portal/teacher/lesson-notes/edit/:id" component={LessonNoteEditorPage} />
+            <Route path="/portal/teacher/lesson-notes/preview/:id" component={LessonNotePreviewPage} />
             <Route path="/portal/teacher/lesson-notes/view/:id" component={LessonNoteViewPage} />
             <Route path="/portal/teacher/lesson-notes" component={TeacherLessonNotes} />
             <Route path="/portal/teacher/lesson-note-library" component={AdminLessonNoteLibrary} />
@@ -244,6 +246,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/lesson-notes/create" component={AdminLessonNoteCreate} />
             <Route path="/portal/admin/lesson-notes/editor/new" component={LessonNoteEditorPage} />
             <Route path="/portal/admin/lesson-notes/edit/:id" component={LessonNoteEditorPage} />
+            <Route path="/portal/admin/lesson-notes/preview/:id" component={LessonNotePreviewPage} />
             <Route path="/portal/admin/lesson-notes/view/:id" component={LessonNoteViewPage} />
             <Route path="/portal/admin/lesson-notes" component={AdminLessonNoteReview} />
             <Route path="/portal/admin/exam-payments" component={ExamPaymentManagement} />

@@ -52,13 +52,84 @@ export type EnrichedNote = {
   status: string; rejectionReason: string | null;
   createdBy: string | null; submittedBy?: string | null; approvedBy?: string | null;
   rejectedBy?: string | null; publishedBy?: string | null;
-  creatorName: string | null; subjectName: string | null;
+  creatorName: string | null; approverName?: string | null; subjectName: string | null;
   className: string | null; topicName: string | null; termName: string | null;
   submittedAt: string | null; approvedAt: string | null;
   rejectedAt: string | null; publishedAt: string | null;
   createdAt: string; updatedAt: string;
   hiddenSections?: string[] | null;
 };
+
+// ── NotePageHeader — unified header for all note view pages ──────────────────
+//
+// Shows: Subject · Class (brand-coloured, prominent) on the first line
+//        By [creator] · Term / Date in small muted text below
+// One component, used by admin, teacher, student and preview pages.
+
+interface NotePageHeaderProps {
+  note: Pick<EnrichedNote, 'subjectName' | 'className' | 'termName' | 'creatorName' | 'approverName' | 'topicName'>;
+  brandColor: string;
+  date?: string | null;
+  printButton?: boolean;
+}
+
+export function NotePageHeader({ note, brandColor, date, printButton = false }: NotePageHeaderProps) {
+  const title = [note.subjectName, note.className].filter(Boolean).join(' ');
+  const meta: string[] = [];
+  if (note.termName) meta.push(note.termName);
+  if (note.creatorName) meta.push(`By ${note.creatorName}`);
+  if (date) meta.push(fmtDate(date));
+
+  return (
+    <div className="space-y-2.5">
+      {/* Title row */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          {title && (
+            <h1
+              className="text-xl sm:text-2xl font-bold uppercase leading-tight tracking-wide break-words"
+              style={{ color: brandColor }}
+            >
+              {title}
+            </h1>
+          )}
+          {meta.length > 0 && (
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1 leading-snug">
+              {meta.join(' / ')}
+            </p>
+          )}
+          {note.approverName && (
+            <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-0.5 flex items-center gap-1">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+              Approved by {note.approverName}
+            </p>
+          )}
+        </div>
+        {printButton && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => window.print()}
+            className="shrink-0 gap-1.5 h-8 text-xs px-2 text-muted-foreground hover:text-foreground print:hidden mt-0.5"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Print</span>
+          </Button>
+        )}
+      </div>
+
+      {/* Intro block: greeting on its own line, topic sentence below */}
+      <div className="text-sm leading-relaxed mt-4">
+        <span className="block font-semibold italic text-foreground">Welcome to class!</span>
+        <span className="block text-muted-foreground italic">
+          {note.topicName
+            ? `In today's class, we will be talking about ${note.topicName}. Enjoy the class!`
+            : 'Enjoy the class!'}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 // ── MetaChip — shared metadata pill ──────────────────────────────────────────
 
@@ -79,7 +150,7 @@ export function MetaChip({ icon: Icon, label, value }: { icon: any; label: strin
 // Pass `printButton` to embed a print button in the top-right corner of the strip.
 
 interface NoteMetaStripProps {
-  note: Pick<EnrichedNote, 'className' | 'subjectName' | 'topicName' | 'termName' | 'creatorName' | 'publishedAt'>;
+  note: Pick<EnrichedNote, 'className' | 'subjectName' | 'topicName' | 'termName' | 'creatorName' | 'approverName' | 'publishedAt'>;
   showPublished?: boolean;
   printButton?: boolean;
 }
@@ -100,7 +171,8 @@ export function NoteMetaStrip({ note, showPublished = false, printButton = false
         {note.subjectName && <MetaChip icon={BookOpen}      label="Subject" value={note.subjectName} />}
         {note.topicName   && <MetaChip icon={FileText}      label="Topic"   value={note.topicName} />}
         {note.termName    && <MetaChip icon={Calendar}      label="Term"    value={note.termName} />}
-        {note.creatorName && <MetaChip icon={User}          label="Teacher" value={note.creatorName} />}
+        {note.creatorName && <MetaChip icon={User}          label="Teacher"      value={note.creatorName} />}
+        {note.approverName && <MetaChip icon={User}         label="Approved by"  value={note.approverName} />}
         {showPublished && note.publishedAt && (
           <MetaChip
             icon={Calendar}
@@ -240,10 +312,6 @@ export function NoteContentRenderer({
 
   return (
     <section className="space-y-3">
-      <div className="flex items-center gap-2">
-        <div className="w-1 h-5 rounded-full bg-primary shrink-0" />
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">Lesson Content</h2>
-      </div>
       <RichTextViewer html={parsedHtml} className="min-h-[200px]" brandColor={brandColor} />
     </section>
   );

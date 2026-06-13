@@ -204,7 +204,7 @@ export default function Home() {
                   {line3Colored}
                 </motion.span>
               </h1>
-              <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ delay: 0.9, duration: 0.6 }} className="text-sm md:text-base mb-8 text-gray-200 italic font-medium max-w-2xl mx-auto">
+              <motion.p initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} transition={{ delay: 0.9, duration: 0.6 }} className="text-sm md:text-base mb-8 text-gray-200 italic font-light max-w-2xl mx-auto tracking-wide">
                 {subheading}
               </motion.p>
               <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 1.1, duration: 0.5 }} className="flex flex-row gap-3 justify-center items-center">
@@ -227,7 +227,7 @@ export default function Home() {
             <motion.div {...fadeIn}>
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-8 h-[2px] bg-primary" />
-                <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary">{aboutLabel}</span>
+                <span className="font-display text-[11px] font-bold uppercase tracking-[0.2em] text-primary">{aboutLabel}</span>
               </div>
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight mb-6">{aboutHeading}</h2>
               {aboutBody1 && <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed mb-5 font-normal">{aboutBody1}</p>}
@@ -278,8 +278,8 @@ export default function Home() {
             <div className="grid grid-cols-2 gap-x-8 gap-y-10 md:gap-x-16 md:gap-y-12">
               {statsItems.map((s, i) => (
                 <motion.div key={i} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08, duration: 0.4 }} className="text-center">
-                  <div className="text-4xl md:text-5xl font-black text-white mb-2 leading-none">{s.value}</div>
-                  <div className="text-[10px] md:text-[11px] text-white/70 uppercase tracking-[0.22em] font-bold">{s.label}</div>
+                  <div className="font-display text-4xl md:text-5xl font-black text-white mb-2 leading-none">{s.value}</div>
+                  <div className="font-display text-[10px] md:text-[11px] text-white/70 uppercase tracking-[0.22em] font-bold">{s.label}</div>
                 </motion.div>
               ))}
             </div>
@@ -292,7 +292,7 @@ export default function Home() {
         <section className="py-16 md:py-24 bg-gray-50">
           <div className="container px-6 max-w-3xl mx-auto">
             <div className="mb-10">
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-primary mb-3 block">Testimonials</span>
+              <span className="font-display text-[11px] font-bold uppercase tracking-[0.2em] text-primary mb-3 block">Testimonials</span>
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">{testimonialHeading}</h2>
               <p className="text-[14px] md:text-[15px] text-gray-500 font-normal leading-relaxed">{testimonialSubheading}</p>
             </div>

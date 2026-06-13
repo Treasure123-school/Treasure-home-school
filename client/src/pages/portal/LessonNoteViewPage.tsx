@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import {
-  StatusBadge, fmtDate, NoteMetaStrip, NoteContentRenderer, EnrichedNote, isV2Sections,
+  StatusBadge, fmtDate, NoteContentRenderer, NotePageHeader, EnrichedNote, isV2Sections,
 } from '@/components/lesson-notes/lessonNoteShared';
 import {
   Edit, Send, Eye, EyeOff, CheckCircle, XCircle, BookOpen,
@@ -268,8 +268,9 @@ export default function LessonNoteViewPage() {
         </div>
       )}
 
-      {/* Note meta chips — shared component */}
-      <NoteMetaStrip note={note} />
+      <div>
+        <NotePageHeader note={note} brandColor={brandColor} date={note.createdAt} />
+      </div>
 
       {note.rejectionReason && note.status === 'rejected' && (
         <div className="flex gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-400">
@@ -284,15 +285,6 @@ export default function LessonNoteViewPage() {
           <div><strong>Revision notes from admin:</strong> {note.rejectionReason}</div>
         </div>
       )}
-
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 p-4 rounded-xl bg-muted/30 border text-xs overflow-hidden">
-        <div><span className="text-muted-foreground">Created:</span> <strong>{fmtDate(note.createdAt)}</strong></div>
-        {note.submittedAt && <div><span className="text-muted-foreground">Submitted:</span> <strong>{fmtDate(note.submittedAt)}</strong></div>}
-        {note.approvedAt  && <div><span className="text-muted-foreground">Approved:</span>  <strong>{fmtDate(note.approvedAt)}</strong></div>}
-        {note.rejectedAt  && <div><span className="text-muted-foreground">Rejected:</span>  <strong>{fmtDate(note.rejectedAt)}</strong></div>}
-        {note.publishedAt && <div><span className="text-muted-foreground">Published:</span> <strong>{fmtDate(note.publishedAt)}</strong></div>}
-        <div><span className="text-muted-foreground">Updated:</span> <strong>{fmtDate(note.updatedAt)}</strong></div>
-      </div>
 
       {/* Shared content renderer */}
       <NoteContentRenderer

@@ -1,4 +1,4 @@
-import { useLocation } from 'wouter';
+import { useLocation, useSearch } from 'wouter';
 import { ChevronRight, Home } from 'lucide-react';
 import { Link } from 'wouter';
 
@@ -70,6 +70,7 @@ function buildRouteTable(): RouteEntry[] {
     { pattern: '/portal/teacher/lesson-notes/create', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'My Lesson Notes', href: '/portal/teacher/lesson-notes' }, { label: 'Create Note' }] },
     { pattern: /^\/portal\/teacher\/lesson-notes\/edit\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'My Lesson Notes', href: '/portal/teacher/lesson-notes' }, { label: 'Edit Note' }] },
     { pattern: /^\/portal\/teacher\/lesson-notes\/view\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'My Lesson Notes', href: '/portal/teacher/lesson-notes' }, { label: 'View Note' }] },
+    { pattern: /^\/portal\/teacher\/lesson-notes\/preview\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'My Lesson Notes', href: '/portal/teacher/lesson-notes' }, { label: 'Preview Note' }] },
 
     // ── Admin ────────────────────────────────────────────────────────
     { pattern: '/portal/admin', crumbs: [{ label: 'Dashboard' }] },
@@ -104,6 +105,7 @@ function buildRouteTable(): RouteEntry[] {
     { pattern: '/portal/admin/lesson-notes/create', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Lesson Notes Review', href: '/portal/admin/lesson-notes' }, { label: 'Create Note' }] },
     { pattern: '/portal/admin/lesson-notes/editor/new', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Lesson Notes Review', href: '/portal/admin/lesson-notes' }, { label: 'New Note' }] },
     { pattern: /^\/portal\/admin\/lesson-notes\/edit\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Lesson Notes Review', href: '/portal/admin/lesson-notes' }, { label: 'Edit Note' }] },
+    { pattern: /^\/portal\/admin\/lesson-notes\/preview\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Lesson Notes Review', href: '/portal/admin/lesson-notes' }, { label: 'Preview Note' }] },
     { pattern: /^\/portal\/admin\/lesson-notes\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Lesson Notes Review', href: '/portal/admin/lesson-notes' }, { label: 'View Note' }] },
     { pattern: '/portal/admin/notifications', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Notifications' }] },
     { pattern: '/portal/admin/change-password', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Profile', href: '/portal/admin/profile' }, { label: 'Change Password' }] },
@@ -168,8 +170,39 @@ function getParentHref(crumbs: BreadcrumbSegment[]): string | null {
 
 export default function PortalBreadcrumb() {
   const [location] = useLocation();
+  const search = useSearch();
 
-  const crumbs = matchRoute(location);
+  // Dynamically override preview-note crumbs when reached from the editor
+  function resolvecrumbs(): BreadcrumbSegment[] | null {
+    const base = matchRoute(location);
+    if (!base) return null;
+
+    const params = new URLSearchParams(search);
+    const from = params.get('from');
+
+    // /portal/(admin|teacher)/lesson-notes/preview/:id?from=edit|create
+    const previewMatch = location.match(/^(\/portal\/(?:admin|teacher))\/lesson-notes\/preview\/([^/?]+)/);
+    if (previewMatch && (from === 'edit' || from === 'create')) {
+      const portalBase = previewMatch[1];
+      const noteId = previewMatch[2];
+      const listLabel  = portalBase.includes('admin') ? 'Lesson Notes Review' : 'My Lesson Notes';
+      const listHref   = `${portalBase}/lesson-notes`;
+      const parentLabel = from === 'edit' ? 'Edit Note' : 'Create Note';
+      const parentHrefVal = from === 'edit'
+        ? `${portalBase}/lesson-notes/edit/${noteId}`
+        : `${portalBase}/lesson-notes/create`;
+      return [
+        { label: 'Dashboard',   href: portalBase },
+        { label: listLabel,     href: listHref },
+        { label: parentLabel,   href: parentHrefVal },
+        { label: 'Preview Note' },
+      ];
+    }
+
+    return base;
+  }
+
+  const crumbs = resolvecrumbs();
   if (!crumbs || crumbs.length <= 1) return null;
 
   const parentHref = getParentHref(crumbs);

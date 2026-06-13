@@ -136,7 +136,7 @@ export default function AdminLessonNoteCreate() {
   };
 
   return (
-    <div className="min-h-screen bg-background" data-testid="admin-lesson-note-create">
+    <div data-testid="admin-lesson-note-create">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 space-y-5">
 
         {/* Header */}

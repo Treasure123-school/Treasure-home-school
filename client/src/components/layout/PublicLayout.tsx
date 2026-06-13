@@ -96,7 +96,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                 />
               ) : null}
               <div className="flex flex-col">
-                <span className="text-gray-900 font-bold text-xl md:text-2xl tracking-tight leading-tight">
+                <span className="font-display text-gray-900 font-bold text-xl md:text-2xl tracking-tight leading-tight">
                   {schoolName}
                 </span>
                 {settings?.schoolMotto && (
@@ -111,7 +111,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center gap-10">
             {navigation.map((item) => (
-              <Link key={item.name} href={item.href} className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${isActive(item.href) ? 'text-primary' : 'text-gray-900 hover:text-primary'}`}>{item.name}</Link>
+              <Link key={item.name} href={item.href} className={`font-display text-[11px] font-bold uppercase tracking-widest transition-colors ${isActive(item.href) ? 'text-primary' : 'text-gray-900 hover:text-primary'}`}>{item.name}</Link>
             ))}
             <Button asChild className="btn-primary"><Link href="/contact" className="flex items-center gap-2"><span>Contact Us</span><ArrowRight className="w-3 h-3" /></Link></Button>
           </nav>
@@ -145,7 +145,7 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                 style={{
                   transitionDelay: isMobileMenuOpen ? `${index * 70 + 80}ms` : '0ms',
                 }}
-                className={`text-2xl font-black uppercase tracking-[0.2em] transition-all duration-500 ease-out ${
+                className={`font-display text-2xl font-black uppercase tracking-[0.2em] transition-all duration-500 ease-out ${
                   isMobileMenuOpen
                     ? 'opacity-100 translate-x-0'
                     : 'opacity-0 -translate-x-10'
@@ -186,31 +186,31 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                   className="h-20 w-auto object-contain" 
                 />
               ) : null}
-              <p className="text-[13px] text-muted-foreground font-bold leading-relaxed">{settings?.schoolName || "Treasure-Home School"} — nurturing young minds with quality education, strong values, and a lifelong love for learning, one student at a time.</p>
+              <p className="font-sans text-[13px] text-muted-foreground font-normal leading-relaxed">{settings?.schoolName || "Treasure-Home School"} — nurturing young minds with quality education, strong values, and a lifelong love for learning, one student at a time.</p>
             </div>
             <div className="space-y-6">
-              <h4 className="text-foreground font-black uppercase tracking-widest text-[11px]">Useful Links</h4>
+              <h4 className="font-display text-foreground font-bold uppercase tracking-widest text-[11px]">Useful Links</h4>
               <ul className="space-y-3">
                 {navigation.map((item) => (
-                  <li key={item.name}><Link href={item.href} className="text-[13px] text-muted-foreground font-bold hover:text-primary transition-colors">{item.name}</Link></li>
+                  <li key={item.name}><Link href={item.href} className="font-sans text-[13px] text-muted-foreground font-normal hover:text-primary transition-colors">{item.name}</Link></li>
                 ))}
               </ul>
             </div>
             <div className="space-y-6">
-              <h4 className="text-foreground font-black uppercase tracking-widest text-[11px]">Contact Info</h4>
+              <h4 className="font-display text-foreground font-bold uppercase tracking-widest text-[11px]">Contact Info</h4>
               <ul className="space-y-4">
-                <li className="flex gap-4"><MapPin className="h-5 w-5 text-primary shrink-0" /><span className="text-[13px] text-muted-foreground font-bold">{schoolAddress}</span></li>
+                <li className="flex gap-4"><MapPin className="h-5 w-5 text-primary shrink-0" /><span className="font-sans text-[13px] text-muted-foreground font-normal">{schoolAddress}</span></li>
                 {schoolPhone && (
                   <li className="flex gap-4">
                     <Phone className="h-5 w-5 text-primary shrink-0" />
-                    <span className="text-[13px] text-muted-foreground font-bold">{schoolPhone}</span>
+                    <span className="font-sans text-[13px] text-muted-foreground font-normal">{schoolPhone}</span>
                   </li>
                 )}
-                <li className="flex gap-4"><Mail className="h-5 w-5 text-primary shrink-0" /><span className="text-[13px] text-muted-foreground font-bold">{schoolEmail}</span></li>
+                <li className="flex gap-4"><Mail className="h-5 w-5 text-primary shrink-0" /><span className="font-sans text-[13px] text-muted-foreground font-normal">{schoolEmail}</span></li>
               </ul>
             </div>
           </div>
-          <div className="pt-8 border-t border-border text-center text-[10px] text-muted-foreground font-black uppercase tracking-widest">© {new Date().getFullYear()} {schoolName}. All Rights Reserved.</div>
+          <div className="font-display pt-8 border-t border-border text-center text-[10px] text-muted-foreground font-semibold uppercase tracking-widest">© {new Date().getFullYear()} {schoolName}. All Rights Reserved.</div>
         </div>
       </footer>
     </div>

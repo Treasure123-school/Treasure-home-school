@@ -4,17 +4,14 @@ import { apiRequest } from '@/lib/queryClient';
 import type { SystemSettings } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { NoteContentRenderer, fmtDate } from '@/components/lesson-notes/lessonNoteShared';
-import {
-  BookOpen, Target, GraduationCap, User, Calendar,
-  Printer, FileText, ArrowLeft,
-} from 'lucide-react';
+import { NoteContentRenderer, NotePageHeader } from '@/components/lesson-notes/lessonNoteShared';
+import { BookOpen, ArrowLeft } from 'lucide-react';
 
 type LessonNote = {
   id: number; topicId: number;
   title: string; content: string | null; objectives: string | null;
   status: string;
-  creatorName: string | null; subjectName: string | null;
+  creatorName: string | null; approverName?: string | null; subjectName: string | null;
   className: string | null; topicName: string | null; termName: string | null;
   publishedAt: string | null; createdAt: string;
   hiddenSections?: string[] | null;
@@ -74,93 +71,13 @@ export default function StudentLessonNoteViewPage() {
   return (
     <div className="max-w-3xl space-y-4 print:max-w-none">
 
-      {/* ── Header ── */}
-      <div className="rounded-xl border overflow-hidden">
-        {/* Coloured left-accent bar + title area — no background fill */}
-        <div className="flex gap-0">
-          {/* Brand-colour left stripe */}
-          <div className="w-1 shrink-0" style={{ backgroundColor: brandColor }} />
+      <NotePageHeader
+        note={note}
+        brandColor={brandColor}
+        date={note.publishedAt || note.createdAt}
+        printButton
+      />
 
-          <div className="flex-1 px-4 pt-4 pb-3">
-            {/* Subject + class + term chips */}
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {note.subjectName && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border"
-                  style={{ color: brandColor, borderColor: `${brandColor}40`, backgroundColor: `${brandColor}0d` }}>
-                  <BookOpen className="w-3 h-3" />{note.subjectName}
-                </span>
-              )}
-              {note.className && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border"
-                  style={{ color: brandColor, borderColor: `${brandColor}40`, backgroundColor: `${brandColor}0d` }}>
-                  <GraduationCap className="w-3 h-3" />{note.className}
-                </span>
-              )}
-              {note.termName && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border"
-                  style={{ color: brandColor, borderColor: `${brandColor}40`, backgroundColor: `${brandColor}0d` }}>
-                  <Calendar className="w-3 h-3" />{note.termName}
-                </span>
-              )}
-            </div>
-
-            {/* Note title */}
-            <h1 className="text-xl sm:text-2xl font-bold leading-snug text-foreground">
-              {note.title}
-            </h1>
-
-            {/* Topic subtitle if different from title */}
-            {note.topicName && note.topicName.toLowerCase() !== note.title.toLowerCase() && (
-              <p className="mt-0.5 text-xs text-muted-foreground flex items-center gap-1">
-                <FileText className="w-3 h-3 shrink-0" />Topic: {note.topicName}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Compact meta + print bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-2 bg-muted/30 border-t">
-          <div className="flex flex-wrap gap-x-4 gap-y-1">
-            {note.creatorName && (
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <User className="w-3 h-3 shrink-0" />
-                <span className="font-medium text-foreground">{note.creatorName}</span>
-              </span>
-            )}
-            {note.publishedAt && (
-              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                <Calendar className="w-3 h-3 shrink-0" />
-                <span className="font-medium text-foreground">{fmtDate(note.publishedAt)}</span>
-              </span>
-            )}
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => window.print()}
-            className="gap-1.5 h-7 text-xs px-2 print:hidden"
-            data-testid="button-print"
-          >
-            <Printer className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Print</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Learning Objectives — for legacy notes that store objectives separately */}
-      {note.objectives && (
-        <section className="rounded-xl border bg-primary/5 p-4 space-y-2">
-          <div className="flex items-center gap-2">
-            <Target className="w-4 h-4 text-primary shrink-0" />
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-primary">
-              Learning Objectives
-            </h2>
-          </div>
-          <p className="text-sm leading-relaxed whitespace-pre-wrap">{note.objectives}</p>
-        </section>
-      )}
-
-      {/* Note body — handles v2 structured sections and v3/legacy HTML */}
       <NoteContentRenderer
         note={note}
         brandColor={brandColor}

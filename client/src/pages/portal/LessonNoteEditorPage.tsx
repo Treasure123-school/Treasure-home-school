@@ -32,7 +32,6 @@ import { useToast } from '@/hooks/use-toast';
 import { StatusBadge, EnrichedNote } from '@/components/lesson-notes/lessonNoteShared';
 import DocEditor from '@/components/lesson-notes/DocEditor';
 import { StartScreen } from '@/components/lesson-notes/StartScreen';
-import { PreviewOverlay } from '@/components/lesson-notes/PreviewOverlay';
 import {
   SaveIndicator,
   AIProgressBanner,
@@ -182,7 +181,6 @@ export default function LessonNoteEditorPage() {
   const [content,     setContent]     = useState('');
   const [initialized, setInitialized] = useState(false);
   const [mode,        setMode]        = useState<'choose' | 'editing'>(isEdit ? 'editing' : 'choose');
-  const [preview,     setPreview]     = useState(false);
   const [saveStatus,  setSaveStatus]  = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
 
   // AI text generation state
@@ -387,13 +385,24 @@ export default function LessonNoteEditorPage() {
     const body = buildPayload(html);
     const nid  = savedNoteId.current;
     if (nid) { await apiRequest('PUT', `/api/lesson-notes/${nid}`, body); return nid; }
-    const created: EnrichedNote = await (await apiRequest('POST', '/api/lesson-notes', {
+    const res = await apiRequest('POST', '/api/lesson-notes', {
       ...body,
       topicId:   parseInt(query.topicId),
       classId:   parseInt(query.classId),
       subjectId: parseInt(query.subjectId),
       termId:    parseInt(query.termId),
-    })).json();
+    });
+    if (res.status === 409) {
+      const { existingId } = await res.json();
+      if (!existingId) throw new Error('A note already exists for this topic');
+      savedNoteId.current = existingId;
+      return existingId;
+    }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: 'Save failed' }));
+      throw new Error(err.message || 'Save failed');
+    }
+    const created: EnrichedNote = await res.json();
     savedNoteId.current = created.id;
     return created.id;
   }, [title, query]);
@@ -758,20 +767,6 @@ export default function LessonNoteEditorPage() {
     );
   }
 
-  // ── Preview overlay ────────────────────────────────────────────────────────
-  if (preview) {
-    return (
-      <PreviewOverlay
-        title={title}
-        content={content}
-        settings={settings}
-        meta={{ className: query.className, subjectName: query.subjectName, termName: query.termName }}
-        note={note}
-        onClose={() => setPreview(false)}
-      />
-    );
-  }
-
   // ── Full-page editor ───────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-screen bg-white dark:bg-gray-900 overflow-hidden">
@@ -828,7 +823,18 @@ export default function LessonNoteEditorPage() {
             </Button>
 
             <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5 rounded"
-              onClick={() => setPreview(true)}>
+              onClick={async () => {
+                if (!title.trim()) {
+                  toast({ title: 'Title required', description: 'Enter a note title before previewing.', variant: 'destructive' });
+                  return;
+                }
+                try {
+                  const nid = await doSave(liveHtmlRef.current || content);
+                  navigate(`${basePortal}/lesson-notes/preview/${nid}?from=${isEdit ? 'edit' : 'create'}`);
+                } catch (err: any) {
+                  toast({ title: 'Save failed', description: err.message, variant: 'destructive' });
+                }
+              }}>
               <Eye className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Preview</span>
             </Button>
@@ -1042,6 +1048,7 @@ export default function LessonNoteEditorPage() {
           )}
         </div>
       )}
+
     </div>
   );
 }
