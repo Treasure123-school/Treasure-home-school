@@ -397,7 +397,10 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
               </SheetContent>
             </Sheet>
             <img src={schoolLogoUrl} alt="logo" className="h-7 w-7 object-contain flex-shrink-0" />
-            <span className="text-sm font-bold text-primary truncate">{schoolName}</span>
+            <div className="min-w-0 flex-1">
+              <p className="font-display text-sm font-bold text-primary leading-tight truncate">{schoolName}</p>
+              {schoolMotto && <p className="text-[9px] text-muted-foreground uppercase tracking-wide truncate leading-tight">{schoolMotto}</p>}
+            </div>
           </div>
         )}
 
