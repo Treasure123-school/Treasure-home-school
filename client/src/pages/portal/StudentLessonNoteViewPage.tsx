@@ -11,7 +11,7 @@ type LessonNote = {
   id: number; topicId: number;
   title: string; content: string | null; objectives: string | null;
   status: string;
-  creatorName: string | null; subjectName: string | null;
+  creatorName: string | null; approverName?: string | null; subjectName: string | null;
   className: string | null; topicName: string | null; termName: string | null;
   publishedAt: string | null; createdAt: string;
   hiddenSections?: string[] | null;

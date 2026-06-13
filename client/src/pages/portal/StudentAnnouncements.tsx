@@ -103,15 +103,15 @@ export default function StudentAnnouncements() {
         <div className="relative flex items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <Megaphone className="h-5 w-5 text-primary/50" />
-              <span className="text-primary/50 text-sm font-medium uppercase tracking-widest">School Board</span>
+              <Megaphone className="h-5 w-5 text-white/70" />
+              <span className="text-white/70 text-sm font-medium uppercase tracking-widest">School Board</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold mb-1">Announcements</h1>
-            <p className="text-primary/50 text-sm">Stay informed with the latest school news and updates</p>
+            <p className="text-white/70 text-sm">Stay informed with the latest school news and updates</p>
           </div>
           <div className="flex-shrink-0 hidden sm:flex flex-col items-end gap-1">
             <div className="text-4xl font-black">{counts.all}</div>
-            <div className="text-primary/50 text-xs font-medium">total posts</div>
+            <div className="text-white/70 text-xs font-medium">total posts</div>
           </div>
         </div>
       </div>

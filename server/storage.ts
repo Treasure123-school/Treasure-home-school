@@ -257,9 +257,9 @@ export interface IStorage {
 
   // Lesson Notes
   getLessonNotes(filters: { classId?: number; subjectId?: number; termId?: number; status?: string; createdBy?: string }): Promise<LessonNote[]>;
-  getLessonNotesEnriched(filters: { classId?: number; subjectId?: number; termId?: number; status?: string; createdBy?: string }): Promise<Array<LessonNote & { creatorName: string | null; subjectName: string | null; className: string | null; topicName: string | null; termName: string | null }>>;
-  getLessonNoteById(id: number): Promise<(LessonNote & { creatorName: string | null; subjectName: string | null; className: string | null; topicName: string | null; termName: string | null }) | undefined>;
-  getLessonNoteByTopicId(topicId: number, publishedOnly?: boolean): Promise<(LessonNote & { creatorName: string | null; subjectName: string | null; className: string | null; topicName: string | null; termName: string | null }) | undefined>;
+  getLessonNotesEnriched(filters: { classId?: number; subjectId?: number; termId?: number; status?: string; createdBy?: string }): Promise<Array<LessonNote & { creatorName: string | null; approverName: string | null; subjectName: string | null; className: string | null; topicName: string | null; termName: string | null }>>;
+  getLessonNoteById(id: number): Promise<(LessonNote & { creatorName: string | null; approverName: string | null; subjectName: string | null; className: string | null; topicName: string | null; termName: string | null }) | undefined>;
+  getLessonNoteByTopicId(topicId: number, publishedOnly?: boolean): Promise<(LessonNote & { creatorName: string | null; approverName: string | null; subjectName: string | null; className: string | null; topicName: string | null; termName: string | null }) | undefined>;
   createLessonNote(data: InsertLessonNote): Promise<LessonNote>;
   updateLessonNote(id: number, data: Partial<InsertLessonNote>): Promise<LessonNote | undefined>;
   deleteLessonNote(id: number): Promise<boolean>;
@@ -3372,7 +3372,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(schema.lessonNotes).where(and(...conditions)).orderBy(desc(schema.lessonNotes.createdAt));
   }
 
-  async getLessonNotesEnriched(filters: { classId?: number; subjectId?: number; termId?: number; status?: string; createdBy?: string }): Promise<Array<LessonNote & { creatorName: string | null; subjectName: string | null; className: string | null; topicName: string | null; termName: string | null }>> {
+  async getLessonNotesEnriched(filters: { classId?: number; subjectId?: number; termId?: number; status?: string; createdBy?: string }): Promise<Array<LessonNote & { creatorName: string | null; approverName: string | null; subjectName: string | null; className: string | null; topicName: string | null; termName: string | null }>> {
     const conditions: any[] = [];
     if (filters.classId)   conditions.push(eq(schema.lessonNotes.classId,   filters.classId));
     if (filters.subjectId) conditions.push(eq(schema.lessonNotes.subjectId, filters.subjectId));
@@ -3380,19 +3380,23 @@ export class DatabaseStorage implements IStorage {
     if (filters.status)    conditions.push(eq(schema.lessonNotes.status,    filters.status));
     if (filters.createdBy) conditions.push(eq(schema.lessonNotes.createdBy, filters.createdBy));
 
-    const creatorAlias = alias(schema.users, 'creator');
+    const creatorAlias  = alias(schema.users, 'creator');
+    const approverAlias = alias(schema.users, 'approver');
 
     const rows = await db.select({
-      note: schema.lessonNotes,
-      creatorFirstName: creatorAlias.firstName,
-      creatorLastName:  creatorAlias.lastName,
-      subjectName:      schema.subjects.name,
-      className:        schema.classes.name,
-      topicName:        schema.syllabusTopics.name,
-      termName:         schema.academicTerms.name,
+      note:              schema.lessonNotes,
+      creatorFirstName:  creatorAlias.firstName,
+      creatorLastName:   creatorAlias.lastName,
+      approverFirstName: approverAlias.firstName,
+      approverLastName:  approverAlias.lastName,
+      subjectName:       schema.subjects.name,
+      className:         schema.classes.name,
+      topicName:         schema.syllabusTopics.name,
+      termName:          schema.academicTerms.name,
     })
       .from(schema.lessonNotes)
       .leftJoin(creatorAlias,           eq(schema.lessonNotes.createdBy,  creatorAlias.id))
+      .leftJoin(approverAlias,          eq(schema.lessonNotes.approvedBy, approverAlias.id))
       .leftJoin(schema.subjects,        eq(schema.lessonNotes.subjectId,  schema.subjects.id))
       .leftJoin(schema.classes,         eq(schema.lessonNotes.classId,    schema.classes.id))
       .leftJoin(schema.syllabusTopics,  eq(schema.lessonNotes.topicId,    schema.syllabusTopics.id))
@@ -3405,26 +3409,33 @@ export class DatabaseStorage implements IStorage {
       creatorName: row.creatorFirstName && row.creatorLastName
         ? `${row.creatorFirstName} ${row.creatorLastName}`.trim()
         : (row.creatorFirstName || row.creatorLastName || null),
+      approverName: row.approverFirstName && row.approverLastName
+        ? `${row.approverFirstName} ${row.approverLastName}`.trim()
+        : (row.approverFirstName || row.approverLastName || null),
       subjectName: row.subjectName ?? null,
       className:   row.className   ?? null,
       topicName:   row.topicName   ?? null,
       termName:    row.termName    ?? null,
     }));
   }
-  async getLessonNoteById(id: number): Promise<(LessonNote & { creatorName: string | null; subjectName: string | null; className: string | null; topicName: string | null; termName: string | null }) | undefined> {
-    const creatorAlias = alias(schema.users, 'creator');
+  async getLessonNoteById(id: number): Promise<(LessonNote & { creatorName: string | null; approverName: string | null; subjectName: string | null; className: string | null; topicName: string | null; termName: string | null }) | undefined> {
+    const creatorAlias  = alias(schema.users, 'creator');
+    const approverAlias = alias(schema.users, 'approver');
     const rows = await db
       .select({
-        note:             schema.lessonNotes,
-        creatorFirstName: creatorAlias.firstName,
-        creatorLastName:  creatorAlias.lastName,
-        subjectName:      schema.subjects.name,
-        className:        schema.classes.name,
-        topicName:        schema.syllabusTopics.name,
-        termName:         schema.academicTerms.name,
+        note:              schema.lessonNotes,
+        creatorFirstName:  creatorAlias.firstName,
+        creatorLastName:   creatorAlias.lastName,
+        approverFirstName: approverAlias.firstName,
+        approverLastName:  approverAlias.lastName,
+        subjectName:       schema.subjects.name,
+        className:         schema.classes.name,
+        topicName:         schema.syllabusTopics.name,
+        termName:          schema.academicTerms.name,
       })
       .from(schema.lessonNotes)
       .leftJoin(creatorAlias,          eq(schema.lessonNotes.createdBy,  creatorAlias.id))
+      .leftJoin(approverAlias,         eq(schema.lessonNotes.approvedBy, approverAlias.id))
       .leftJoin(schema.subjects,       eq(schema.lessonNotes.subjectId,  schema.subjects.id))
       .leftJoin(schema.classes,        eq(schema.lessonNotes.classId,    schema.classes.id))
       .leftJoin(schema.syllabusTopics, eq(schema.lessonNotes.topicId,    schema.syllabusTopics.id))
@@ -3438,28 +3449,35 @@ export class DatabaseStorage implements IStorage {
       creatorName: row.creatorFirstName && row.creatorLastName
         ? `${row.creatorFirstName} ${row.creatorLastName}`.trim()
         : (row.creatorFirstName || row.creatorLastName || null),
+      approverName: row.approverFirstName && row.approverLastName
+        ? `${row.approverFirstName} ${row.approverLastName}`.trim()
+        : (row.approverFirstName || row.approverLastName || null),
       subjectName: row.subjectName ?? null,
       className:   row.className   ?? null,
       topicName:   row.topicName   ?? null,
       termName:    row.termName    ?? null,
     };
   }
-  async getLessonNoteByTopicId(topicId: number, publishedOnly = false): Promise<(LessonNote & { creatorName: string | null; subjectName: string | null; className: string | null; topicName: string | null; termName: string | null }) | undefined> {
-    const creatorAlias = alias(schema.users, 'creator');
+  async getLessonNoteByTopicId(topicId: number, publishedOnly = false): Promise<(LessonNote & { creatorName: string | null; approverName: string | null; subjectName: string | null; className: string | null; topicName: string | null; termName: string | null }) | undefined> {
+    const creatorAlias  = alias(schema.users, 'creator');
+    const approverAlias = alias(schema.users, 'approver');
     const conditions: any[] = [eq(schema.lessonNotes.topicId, topicId)];
     if (publishedOnly) conditions.push(eq(schema.lessonNotes.status, 'published'));
     const rows = await db
       .select({
-        note:             schema.lessonNotes,
-        creatorFirstName: creatorAlias.firstName,
-        creatorLastName:  creatorAlias.lastName,
-        subjectName:      schema.subjects.name,
-        className:        schema.classes.name,
-        topicName:        schema.syllabusTopics.name,
-        termName:         schema.academicTerms.name,
+        note:              schema.lessonNotes,
+        creatorFirstName:  creatorAlias.firstName,
+        creatorLastName:   creatorAlias.lastName,
+        approverFirstName: approverAlias.firstName,
+        approverLastName:  approverAlias.lastName,
+        subjectName:       schema.subjects.name,
+        className:         schema.classes.name,
+        topicName:         schema.syllabusTopics.name,
+        termName:          schema.academicTerms.name,
       })
       .from(schema.lessonNotes)
       .leftJoin(creatorAlias,          eq(schema.lessonNotes.createdBy,  creatorAlias.id))
+      .leftJoin(approverAlias,         eq(schema.lessonNotes.approvedBy, approverAlias.id))
       .leftJoin(schema.subjects,       eq(schema.lessonNotes.subjectId,  schema.subjects.id))
       .leftJoin(schema.classes,        eq(schema.lessonNotes.classId,    schema.classes.id))
       .leftJoin(schema.syllabusTopics, eq(schema.lessonNotes.topicId,    schema.syllabusTopics.id))
@@ -3473,6 +3491,9 @@ export class DatabaseStorage implements IStorage {
       creatorName: row.creatorFirstName && row.creatorLastName
         ? `${row.creatorFirstName} ${row.creatorLastName}`.trim()
         : (row.creatorFirstName || row.creatorLastName || null),
+      approverName: row.approverFirstName && row.approverLastName
+        ? `${row.approverFirstName} ${row.approverLastName}`.trim()
+        : (row.approverFirstName || row.approverLastName || null),
       subjectName: row.subjectName ?? null,
       className:   row.className   ?? null,
       topicName:   row.topicName   ?? null,

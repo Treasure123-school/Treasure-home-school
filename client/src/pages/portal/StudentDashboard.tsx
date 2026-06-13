@@ -564,31 +564,41 @@ export default function StudentDashboard() {
           </CardHeader>
           <CardContent>
             {isLoadingAnnouncements ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {[1, 2].map((i) => (
-                  <Skeleton key={i} className="h-24 w-full rounded-xl" />
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex gap-3 py-3 border-b border-border last:border-0">
+                    <Skeleton className="h-2 w-2 rounded-full mt-1.5 shrink-0" />
+                    <div className="flex-1 space-y-1.5">
+                      <Skeleton className="h-3.5 w-3/4" />
+                      <Skeleton className="h-3 w-full" />
+                      <Skeleton className="h-3 w-1/3" />
+                    </div>
+                  </div>
                 ))}
               </div>
             ) : announcements && announcements.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {announcements.slice(0, 4).map((announcement: any, index: number) => {
-                  const colors = [
-                    'from-primary/85/10 border-primary/30 dark:border-primary/30/30',
-                    'from-purple-500/10 border-purple-200 dark:border-purple-800/30',
-                    'from-green-500/10 border-green-200 dark:border-green-800/30',
-                    'from-orange-500/10 border-orange-200 dark:border-orange-800/30'
-                  ];
+              <div className="divide-y divide-border">
+                {announcements.slice(0, 4).map((announcement: any) => {
+                  const priority: string = announcement.priority || 'normal';
+                  const dotColor =
+                    priority === 'urgent'    ? 'bg-red-500' :
+                    priority === 'important' ? 'bg-amber-500' :
+                    'bg-slate-300 dark:bg-slate-600';
                   return (
-                    <div 
-                      key={announcement.id} 
-                      className={`p-4 rounded-xl bg-gradient-to-br ${colors[index % 4]} to-transparent border hover:shadow-md transition-all duration-200`}
-                    >
-                      <h3 className="font-semibold text-sm mb-2 line-clamp-1">{announcement.title}</h3>
-                      <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{announcement.content}</p>
-                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {new Date(announcement.createdAt).toLocaleDateString()}
-                      </p>
+                    <div key={announcement.id} className="flex gap-3 py-3 group">
+                      <span className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${dotColor}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-foreground line-clamp-1 group-hover:text-primary transition-colors">
+                          {announcement.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                          {announcement.content}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(announcement.createdAt || announcement.publishedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                      </div>
                     </div>
                   );
                 })}
