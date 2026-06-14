@@ -116,18 +116,21 @@ export default function StudentDashboard() {
 
   const { currentTerm } = useAcademicCalendar();
 
-  // Fetch position from report card (authoritative source — finalized class positions)
-  const { data: reportCardPositionData } = useQuery({
-    queryKey: ['/api/reports/student-report-card', user?.id, currentTerm?.id, 'position-only'],
+  // Fetch published report card stats (authoritative source for position + academic average)
+  const { data: reportCardStats } = useQuery({
+    queryKey: ['/api/reports/student-report-card', user?.id, currentTerm?.id, 'stats'],
     queryFn: async () => {
       if (!user?.id || !currentTerm?.id) return null;
       const response = await apiRequest('GET', `/api/reports/student-report-card/${user.id}?termId=${currentTerm.id}`);
       if (!response.ok) return null;
       const data = await response.json();
-      // Extract only what we need for the stat card
+      // Guard: only use data from a published report card
+      if (!data || data.status === 'not_published') return null;
       return {
         position: data?.position ?? null,
         totalStudentsInClass: data?.totalStudentsInClass ?? data?.classStatistics?.totalStudents ?? null,
+        averagePercentage: data?.averagePercentage ?? null,
+        overallGrade: data?.overallGrade ?? null,
       };
     },
     enabled: !!user?.id && !!currentTerm?.id,
@@ -219,11 +222,11 @@ export default function StudentDashboard() {
     }
   });
 
-  // Subscribe to report cards for live report card updates
+  // Subscribe to report cards — invalidates both position and academic average
   useSocketIORealtime({
     table: 'report_cards',
-    queryKey: ['/api/student/report-cards'],
-    enabled: !!user,
+    queryKey: ['/api/reports/student-report-card', user?.id, currentTerm?.id, 'stats'],
+    enabled: !!user && !!currentTerm?.id,
     onEvent: (event) => {
       console.log('📥 Student Dashboard: Report card update received', event.eventType);
     }
@@ -275,13 +278,21 @@ export default function StudentDashboard() {
     ? Math.round((attendanceStats.present / attendanceStats.total) * 100)
     : 95;
 
-  // Calculate average score as percentage
-  const averageScore = formattedGrades.length > 0
+  // Live average from exam results (fallback when no published report card)
+  const liveAverageScore = formattedGrades.length > 0
     ? formattedGrades.reduce((sum: number, g: any) => sum + g.score, 0) / formattedGrades.length
     : 0;
-  const displayScore = parseFloat(averageScore.toFixed(1));
 
-  // Trend data based on last 6 assessment scores (as percentages)
+  // Academic Average — report card is authoritative; fall back to live exam results
+  const displayScore = reportCardStats?.averagePercentage != null
+    ? parseFloat(Number(reportCardStats.averagePercentage).toFixed(1))
+    : parseFloat(liveAverageScore.toFixed(1));
+
+  const averageGrade: string = reportCardStats?.overallGrade != null
+    ? String(reportCardStats.overallGrade)
+    : calculateGrade(displayScore);
+
+  // Trend data based on last 6 raw assessment scores (always from live results for chart continuity)
   const scoreTrendData = formattedGrades.slice(-6).map((g: any) => g.score);
   const hasScoreData = scoreTrendData.length > 0;
 
@@ -293,18 +304,18 @@ export default function StudentDashboard() {
   // Absent count derived from attendance
   const absentCount = attendanceStats.total - attendanceStats.present;
 
-  // Grade letter for academic average
-  const averageGrade = calculateGrade(displayScore);
-
   // Class position — report card is authoritative (finalized positions); fall back to live rank
   const resolvedPosition: number | null =
-    reportCardPositionData?.position ?? classRankData?.rank ?? null;
+    reportCardStats?.position ?? classRankData?.rank ?? null;
   const resolvedTotal: number | null =
-    reportCardPositionData?.totalStudentsInClass ?? classRankData?.total ?? null;
+    reportCardStats?.totalStudentsInClass ?? classRankData?.total ?? null;
 
   const classPositionLabel = resolvedPosition != null
     ? `${resolvedPosition}${getOrdinalSuffix(resolvedPosition)}`
     : '—';
+
+  // Source label so the UI can hint whether data is from report card or live
+  const usingPublishedData = reportCardStats != null;
 
   // Streak calculation (simple version based on attendance)
   const attendanceImprovement = attendancePercentage >= 90;
@@ -416,7 +427,14 @@ export default function StudentDashboard() {
           <CardContent className="p-6 relative z-10">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <p className="text-sm text-muted-foreground mb-1">Academic Average</p>
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-sm text-muted-foreground">Academic Average</p>
+                  {usingPublishedData && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-400 leading-none">
+                      Published
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-baseline gap-2">
                   <AnimatedCounter
                     value={displayScore}
