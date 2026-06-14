@@ -17,6 +17,7 @@ import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { useLoginSuccess } from '@/hooks/use-login-success';
 import { useProfileCompletion } from '@/hooks/useProfileCompletion';
 import ProfileIncompleteBanner from '@/components/ProfileIncompleteBanner';
+import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 
 export default function StudentDashboard() {
   const { user, updateUser } = useAuth();
@@ -113,13 +114,31 @@ export default function StudentDashboard() {
     }
   });
 
+  const { currentTerm } = useAcademicCalendar();
+
+  // Fetch position from report card (authoritative source — finalized class positions)
+  const { data: reportCardPositionData } = useQuery({
+    queryKey: ['/api/reports/student-report-card', user?.id, currentTerm?.id, 'position-only'],
+    queryFn: async () => {
+      if (!user?.id || !currentTerm?.id) return null;
+      const response = await apiRequest('GET', `/api/reports/student-report-card/${user.id}?termId=${currentTerm.id}`);
+      if (!response.ok) return null;
+      const data = await response.json();
+      // Extract only what we need for the stat card
+      return {
+        position: data?.position ?? null,
+        totalStudentsInClass: data?.totalStudentsInClass ?? data?.classStatistics?.totalStudents ?? null,
+      };
+    },
+    enabled: !!user?.id && !!currentTerm?.id,
+  });
+
+  // Live class-rank fallback (calculated from exam scores when no report card exists yet)
   const { data: classRankData } = useQuery({
     queryKey: ['/api/student/class-rank'],
     queryFn: async () => {
-      const response = await fetch('/api/student/class-rank', {
-        credentials: 'include'
-      });
-      if (!response.ok) throw new Error('Failed to fetch class rank');
+      const response = await apiRequest('GET', '/api/student/class-rank');
+      if (!response.ok) return null;
       return response.json();
     },
     enabled: !!user,
@@ -277,9 +296,14 @@ export default function StudentDashboard() {
   // Grade letter for academic average
   const averageGrade = calculateGrade(displayScore);
 
-  // Class position formatted (e.g. "5th")
-  const classPositionLabel = classRankData?.rank != null
-    ? `${classRankData.rank}${getOrdinalSuffix(classRankData.rank)}`
+  // Class position — report card is authoritative (finalized positions); fall back to live rank
+  const resolvedPosition: number | null =
+    reportCardPositionData?.position ?? classRankData?.rank ?? null;
+  const resolvedTotal: number | null =
+    reportCardPositionData?.totalStudentsInClass ?? classRankData?.total ?? null;
+
+  const classPositionLabel = resolvedPosition != null
+    ? `${resolvedPosition}${getOrdinalSuffix(resolvedPosition)}`
     : '—';
 
   // Streak calculation (simple version based on attendance)
@@ -324,149 +348,147 @@ export default function StudentDashboard() {
       </div>
 
       {/* Stats Cards — Class Position · Pending Assignments · Academic Average · Attendance */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
 
         {/* 1 — Class Position */}
-        <Card
-          className="relative overflow-hidden border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 animate-in fade-in slide-in-from-bottom-4 duration-500"
-          data-testid="card-rank"
-        >
-          <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-br from-yellow-400/15 to-transparent rounded-full -mr-14 -mt-14 pointer-events-none" />
-          <CardContent className="p-5 relative z-10">
-            <div className="flex items-start justify-between mb-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Class Position</p>
-              <div className="p-2.5 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 text-white shadow-md">
-                <Trophy className="h-5 w-5" />
+        <Card className="relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 animate-in fade-in slide-in-from-bottom-4 duration-500" data-testid="card-rank">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-yellow-500/10 to-transparent rounded-full -mr-16 -mt-16"></div>
+          <CardContent className="p-6 relative z-10">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Class Position</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-4xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent" data-testid="text-class-position">
+                    {classPositionLabel}
+                  </span>
+                  <Trophy className="h-5 w-5 text-yellow-600" />
+                </div>
+                <p className="text-xs text-muted-foreground mt-2" data-testid="text-class-rank-detail">
+                  {resolvedPosition != null && resolvedTotal != null
+                    ? `of ${resolvedTotal} students`
+                    : 'No class data yet'}
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 text-white shadow-lg animate-bounce">
+                <Trophy className="h-6 w-6" />
               </div>
             </div>
-            <div className="flex items-baseline gap-1 mb-1">
-              <span className="text-4xl font-extrabold bg-gradient-to-r from-yellow-500 to-orange-500 bg-clip-text text-transparent leading-none" data-testid="text-class-position">
-                {classPositionLabel}
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2" data-testid="text-class-rank-detail">
-              {classRankData?.rank != null && classRankData?.total != null
-                ? `of ${classRankData.total} students`
-                : 'No class data yet'}
-            </p>
           </CardContent>
         </Card>
 
         {/* 2 — Pending Assignments */}
         <Link href="/portal/student/assignments">
-          <Card
-            className="relative overflow-hidden border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 animate-in fade-in slide-in-from-bottom-4 duration-600 cursor-pointer"
-            data-testid="card-pending-assignments"
-          >
-            <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-br from-violet-500/15 to-transparent rounded-full -mr-14 -mt-14 pointer-events-none" />
-            <CardContent className="p-5 relative z-10">
-              <div className="flex items-start justify-between mb-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pending Assignments</p>
-                <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-md">
-                  <ClipboardCheck className="h-5 w-5" />
+          <Card className="relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 animate-in fade-in slide-in-from-bottom-4 duration-700 cursor-pointer" data-testid="card-pending-assignments">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-violet-500/10 to-transparent rounded-full -mr-16 -mt-16"></div>
+            <CardContent className="p-6 relative z-10">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Pending Assignments</p>
+                  <AnimatedCounter
+                    value={pendingAssignmentsCount}
+                    className="text-4xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent"
+                  />
+                  <p className="text-xs mt-2">
+                    {pendingAssignmentsCount === 0 ? (
+                      <span className="text-green-600 font-medium">All caught up!</span>
+                    ) : (
+                      <span className="text-orange-500 font-medium flex items-center gap-1">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+                        </span>
+                        {pendingAssignmentsCount} awaiting submission
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className="p-3 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg">
+                  <ClipboardCheck className="h-6 w-6" />
                 </div>
               </div>
-              <div className="flex items-baseline gap-1 mb-1">
-                <AnimatedCounter
-                  value={pendingAssignmentsCount}
-                  className="text-4xl font-extrabold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent leading-none"
-                />
-              </div>
-              <p className="text-xs mt-2">
-                {pendingAssignmentsCount === 0 ? (
-                  <span className="text-green-600 font-medium">All caught up!</span>
-                ) : pendingAssignmentsCount === 1 ? (
-                  <span className="text-orange-500 font-medium">1 awaiting submission</span>
-                ) : (
-                  <span className="text-orange-500 font-medium">{pendingAssignmentsCount} awaiting submission</span>
-                )}
-              </p>
             </CardContent>
           </Card>
         </Link>
 
         {/* 3 — Academic Average */}
-        <Card
-          className="relative overflow-hidden border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 animate-in fade-in slide-in-from-bottom-4 duration-700"
-          data-testid="card-gpa"
-        >
-          <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-br from-primary/15 to-transparent rounded-full -mr-14 -mt-14 pointer-events-none" />
-          <CardContent className="p-5 relative z-10">
-            <div className="flex items-start justify-between mb-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Academic Average</p>
-              <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary to-primary/80 text-white shadow-md">
-                <TrendingUp className="h-5 w-5" />
+        <Card className="relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 animate-in fade-in slide-in-from-bottom-4 duration-500" data-testid="card-gpa">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/10 to-transparent rounded-full -mr-16 -mt-16"></div>
+          <CardContent className="p-6 relative z-10">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Academic Average</p>
+                <div className="flex items-baseline gap-2">
+                  <AnimatedCounter
+                    value={displayScore}
+                    suffix="%"
+                    className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/90 bg-clip-text text-transparent"
+                  />
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Grade:{' '}
+                  <span className={`font-semibold ${
+                    averageGrade.startsWith('A') ? 'text-green-600' :
+                    averageGrade.startsWith('B') ? 'text-primary' :
+                    averageGrade === 'C' ? 'text-yellow-600' : 'text-red-500'
+                  }`}>
+                    {averageGrade}
+                  </span>
+                </p>
+              </div>
+              <div className="p-3 rounded-xl bg-gradient-to-br from-primary/85 to-primary text-white shadow-lg">
+                <TrendingUp className="h-6 w-6" />
               </div>
             </div>
-            <div className="flex items-baseline gap-2 mb-1">
-              <AnimatedCounter
-                value={displayScore}
-                suffix="%"
-                className="text-4xl font-extrabold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent leading-none"
-              />
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              Grade:{' '}
-              <span className={`font-semibold ${
-                averageGrade.startsWith('A') ? 'text-green-600' :
-                averageGrade.startsWith('B') ? 'text-primary' :
-                averageGrade === 'C' ? 'text-yellow-600' : 'text-red-500'
-              }`}>
-                {averageGrade}
-              </span>
-            </p>
-            {hasScoreData && (
-              <div className="mt-3">
-                <MiniLineChart data={scoreTrendData} color="#6C63FF" height={36} />
-              </div>
-            )}
+            {hasScoreData && <MiniLineChart data={scoreTrendData} color="#6C63FF" height={40} />}
           </CardContent>
         </Card>
 
         {/* 4 — Attendance */}
-        <Card
-          className="relative overflow-hidden border-none shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-0.5 animate-in fade-in slide-in-from-bottom-4 duration-800"
-          data-testid="card-attendance"
-        >
-          <div className="absolute top-0 right-0 w-28 h-28 bg-gradient-to-br from-emerald-500/15 to-transparent rounded-full -mr-14 -mt-14 pointer-events-none" />
-          <CardContent className="p-5 relative z-10">
-            <div className="flex items-start justify-between mb-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Attendance</p>
+        <Card className="relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 animate-in fade-in slide-in-from-bottom-4 duration-700" data-testid="card-attendance">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-green-500/10 to-transparent rounded-full -mr-16 -mt-16"></div>
+          <CardContent className="p-6 relative z-10">
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex-1">
+                <p className="text-sm text-muted-foreground mb-1">Attendance</p>
+                <div className="flex items-center gap-2">
+                  <AnimatedCounter
+                    value={attendancePercentage}
+                    suffix="%"
+                    className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent"
+                  />
+                  {attendanceImprovement && (
+                    <Award className="h-5 w-5 text-green-600" />
+                  )}
+                </div>
+                {attendanceStats.total > 0 ? (
+                  <div className="flex items-center gap-3 mt-1">
+                    <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+                      Present: {attendanceStats.present}
+                    </span>
+                    <span className="text-xs text-rose-600 dark:text-rose-400 font-medium">
+                      Absent: {absentCount}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground mt-1">No records yet</p>
+                )}
+              </div>
               <div className="flex-shrink-0">
                 {isLoadingAttendance ? (
-                  <Skeleton className="h-12 w-12 rounded-full" />
+                  <Skeleton className="h-16 w-16 rounded-full" />
                 ) : (
-                  <CircularProgress
-                    value={attendancePercentage}
-                    size={52}
-                    strokeWidth={5}
-                    color="#10b981"
-                  />
+                  <div className="scale-75">
+                    <CircularProgress
+                      value={attendancePercentage}
+                      size={80}
+                      strokeWidth={6}
+                      color="#10b981"
+                    />
+                  </div>
                 )}
               </div>
             </div>
-            <div className="flex items-baseline gap-1 mb-1">
-              <AnimatedCounter
-                value={attendancePercentage}
-                suffix="%"
-                className="text-4xl font-extrabold bg-gradient-to-r from-emerald-600 to-green-500 bg-clip-text text-transparent leading-none"
-              />
-              {attendanceImprovement && (
-                <Award className="h-4 w-4 text-emerald-600 mb-0.5" />
-              )}
-            </div>
-            {attendanceStats.total > 0 ? (
-              <div className="flex items-center gap-3 mt-2">
-                <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium">
-                  Present: {attendanceStats.present}
-                </span>
-                <span className="text-xs text-rose-600 dark:text-rose-400 font-medium">
-                  Absent: {absentCount}
-                </span>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground mt-2">No records yet</p>
-            )}
           </CardContent>
         </Card>
 
