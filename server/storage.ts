@@ -144,16 +144,20 @@ export interface IStorage {
 
   // Subject management
   getSubjects(): Promise<Subject[]>;
+  getActiveSubjects(): Promise<Subject[]>;
   getSubject(id: number): Promise<Subject | undefined>;
   createSubject(subject: InsertSubject): Promise<Subject>;
   updateSubject(id: number, subject: Partial<InsertSubject>): Promise<Subject | undefined>;
+  archiveSubject(id: number, userId: string): Promise<Subject | undefined>;
+  restoreSubject(id: number, userId: string): Promise<Subject | undefined>;
   getSubjectAudit(id: number): Promise<{
     classLinks: number; studentAssignments: number; exams: number; assignments: number;
-    lessonNotes: number; syllabusTopics: number; reportCardItems: number;
-    continuousAssessments: number; timetableEntries: number; studyResources: number;
+    lessonNotes: number; syllabusTopics: number; questionBanks: number;
+    reportCardItems: number; continuousAssessments: number;
+    timetableEntries: number; studyResources: number; teacherAssignments: number;
     isClean: boolean;
   }>;
-  deleteSubject(id: number): Promise<boolean>;
+  deleteSubject(id: number, userId?: string): Promise<boolean>;
 
   // Academic sessions
   getAcademicSessions(): Promise<AcademicSession[]>;
@@ -2014,6 +2018,13 @@ export class DatabaseStorage implements IStorage {
   async getSubjects(): Promise<Subject[]> {
     return await db.select().from(schema.subjects).orderBy(asc(schema.subjects.name));
   }
+
+  async getActiveSubjects(): Promise<Subject[]> {
+    return await db.select().from(schema.subjects)
+      .where(eq(schema.subjects.isActive, true))
+      .orderBy(asc(schema.subjects.name));
+  }
+
   async getSubject(id: number): Promise<Subject | undefined> {
     const result = await db.select().from(schema.subjects).where(eq(schema.subjects.id, id)).limit(1);
     return result[0];
@@ -2026,6 +2037,51 @@ export class DatabaseStorage implements IStorage {
     const result = await db.update(schema.subjects).set(subject).where(eq(schema.subjects.id, id)).returning();
     return result[0];
   }
+
+  async archiveSubject(id: number, userId: string): Promise<Subject | undefined> {
+    const subject = await this.getSubject(id);
+    if (!subject) return undefined;
+    const result = await db.update(schema.subjects)
+      .set({ status: 'archived', isActive: false })
+      .where(eq(schema.subjects.id, id))
+      .returning();
+    if (result[0]) {
+      try {
+        await this.createAuditLog({
+          userId,
+          action: 'subject.archived',
+          entityType: 'subject',
+          entityId: String(id),
+          oldValue: JSON.stringify({ name: subject.name, status: subject.status ?? 'active' }),
+          newValue: JSON.stringify({ name: result[0].name, status: 'archived' }),
+        });
+      } catch (e) { /* audit log failure must not block the operation */ }
+    }
+    return result[0];
+  }
+
+  async restoreSubject(id: number, userId: string): Promise<Subject | undefined> {
+    const subject = await this.getSubject(id);
+    if (!subject) return undefined;
+    const result = await db.update(schema.subjects)
+      .set({ status: 'active', isActive: true })
+      .where(eq(schema.subjects.id, id))
+      .returning();
+    if (result[0]) {
+      try {
+        await this.createAuditLog({
+          userId,
+          action: 'subject.restored',
+          entityType: 'subject',
+          entityId: String(id),
+          oldValue: JSON.stringify({ name: subject.name, status: 'archived' }),
+          newValue: JSON.stringify({ name: result[0].name, status: 'active' }),
+        });
+      } catch (e) { /* audit log failure must not block the operation */ }
+    }
+    return result[0];
+  }
+
   async getSubjectAudit(id: number): Promise<{
     classLinks: number;
     studentAssignments: number;
@@ -2033,16 +2089,18 @@ export class DatabaseStorage implements IStorage {
     assignments: number;
     lessonNotes: number;
     syllabusTopics: number;
+    questionBanks: number;
     reportCardItems: number;
     continuousAssessments: number;
     timetableEntries: number;
     studyResources: number;
+    teacherAssignments: number;
     isClean: boolean;
   }> {
     const [
       classLinks, studentAssignments, exams, assignments,
-      lessonNotes, syllabusTopics, reportCardItems,
-      continuousAssessments, timetableEntries, studyResources,
+      lessonNotes, syllabusTopics, questionBanks, reportCardItems,
+      continuousAssessments, timetableEntries, studyResources, teacherAssignments,
     ] = await Promise.all([
       db.select({ count: sql<number>`count(*)::int` }).from(schema.classSubjectMappings).where(eq(schema.classSubjectMappings.subjectId, id)),
       db.select({ count: sql<number>`count(*)::int` }).from(schema.studentSubjectAssignments).where(eq(schema.studentSubjectAssignments.subjectId, id)),
@@ -2050,10 +2108,12 @@ export class DatabaseStorage implements IStorage {
       db.select({ count: sql<number>`count(*)::int` }).from(schema.assignments).where(eq(schema.assignments.subjectId, id)),
       db.select({ count: sql<number>`count(*)::int` }).from(schema.lessonNotes).where(eq(schema.lessonNotes.subjectId, id)),
       db.select({ count: sql<number>`count(*)::int` }).from(schema.syllabusTopics).where(eq(schema.syllabusTopics.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.questionBanks).where(eq(schema.questionBanks.subjectId, id)),
       db.select({ count: sql<number>`count(*)::int` }).from(schema.reportCardItems).where(eq(schema.reportCardItems.subjectId, id)),
       db.select({ count: sql<number>`count(*)::int` }).from(schema.continuousAssessment).where(eq(schema.continuousAssessment.subjectId, id)),
       db.select({ count: sql<number>`count(*)::int` }).from(schema.timetable).where(eq(schema.timetable.subjectId, id)),
       db.select({ count: sql<number>`count(*)::int` }).from(schema.studyResources).where(eq(schema.studyResources.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.teacherClassAssignments).where(eq(schema.teacherClassAssignments.subjectId, id)),
     ]);
 
     const counts = {
@@ -2063,88 +2123,53 @@ export class DatabaseStorage implements IStorage {
       assignments: assignments[0]?.count ?? 0,
       lessonNotes: lessonNotes[0]?.count ?? 0,
       syllabusTopics: syllabusTopics[0]?.count ?? 0,
+      questionBanks: questionBanks[0]?.count ?? 0,
       reportCardItems: reportCardItems[0]?.count ?? 0,
       continuousAssessments: continuousAssessments[0]?.count ?? 0,
       timetableEntries: timetableEntries[0]?.count ?? 0,
       studyResources: studyResources[0]?.count ?? 0,
+      teacherAssignments: teacherAssignments[0]?.count ?? 0,
     };
 
     const isClean = Object.values(counts).every(v => v === 0);
     return { ...counts, isClean };
   }
 
-  async deleteSubject(id: number): Promise<boolean> {
-    // Raw SQL subquery approach — bypasses ORM transformation issues.
-    // Order: leaf tables first, working up to subjects.
+  async deleteSubject(id: number, userId?: string): Promise<boolean> {
+    // Safety check: only allow deletion when there are zero linked records.
+    // Admins must archive, reassign, or remove linked data first.
+    const audit = await this.getSubjectAudit(id);
+    if (!audit.isClean) {
+      throw new Error('SUBJECT_HAS_LINKED_RECORDS');
+    }
+
+    const subject = await this.getSubject(id);
+
     const pool = getPgPool();
     if (!pool) throw new Error('No database pool available');
     const run = (q: string) => pool.query(q, [id]);
 
-    // — Exam session children (NO ACTION FKs on session_id) —
-    // grading_tasks → session_id → exam_sessions → exam_id → exams → subject_id
-    await run(`DELETE FROM grading_tasks WHERE session_id IN (
-      SELECT es.id FROM exam_sessions es
-      JOIN exams e ON e.id = es.exam_id
-      WHERE e.subject_id = $1
-    )`);
-    // student_answers → session_id → exam_sessions
-    await run(`DELETE FROM student_answers WHERE session_id IN (
-      SELECT es.id FROM exam_sessions es
-      JOIN exams e ON e.id = es.exam_id
-      WHERE e.subject_id = $1
-    )`);
-    // exam_sessions (performance_events CASCADE auto-deleted)
-    await run(`DELETE FROM exam_sessions WHERE exam_id IN (
-      SELECT id FROM exams WHERE subject_id = $1
-    )`);
-
-    // — Other exam children (NO ACTION FKs on exam_id) —
-    await run(`DELETE FROM exam_results WHERE exam_id IN (SELECT id FROM exams WHERE subject_id = $1)`);
-    await run(`DELETE FROM exam_submissions_archive WHERE exam_id IN (SELECT id FROM exams WHERE subject_id = $1)`);
-    // question_options → question_id → exam_questions (NO ACTION)
-    // student_answers.selected_option_id → question_options (NO ACTION) — student_answers already deleted above
-    await run(`DELETE FROM question_options WHERE question_id IN (
-      SELECT eq.id FROM exam_questions eq
-      JOIN exams e ON e.id = eq.exam_id
-      WHERE e.subject_id = $1
-    )`);
-    // exam_questions (exam_question_bank_links CASCADE auto-deleted)
-    await run(`DELETE FROM exam_questions WHERE exam_id IN (SELECT id FROM exams WHERE subject_id = $1)`);
-
-    // — Exams —
-    await run(`DELETE FROM exams WHERE subject_id = $1`);
-
-    // — Question banks (question_bank_items CASCADE auto-deleted) —
-    await run(`DELETE FROM question_banks WHERE subject_id = $1`);
-
-    // — Assignments (assignment_submissions CASCADE auto-deleted) —
-    await run(`DELETE FROM assignments WHERE subject_id = $1`);
-
-    // — Teacher & class records —
-    await run(`DELETE FROM teacher_assignment_history WHERE subject_id = $1`);
-    await run(`DELETE FROM teacher_class_assignments WHERE subject_id = $1`);
-    await run(`DELETE FROM student_subject_assignments WHERE subject_id = $1`);
-    await run(`DELETE FROM class_subject_mappings WHERE subject_id = $1`);
-
-    // — Assessment & grading —
-    await run(`DELETE FROM report_card_items WHERE subject_id = $1`);
-    await run(`DELETE FROM continuous_assessment WHERE subject_id = $1`);
-    await run(`DELETE FROM grading_boundaries WHERE subject_id = $1`);
-
-    // — Lesson notes: NOT NULL FK, must precede syllabus_topics —
-    await run(`DELETE FROM lesson_notes WHERE subject_id = $1`);
-    await run(`DELETE FROM syllabus_topics WHERE subject_id = $1`);
-
-    // — Nullable FKs: null out to keep audit trail —
+    // Null out nullable FKs to preserve audit trail
     await run(`UPDATE school_lesson_notes SET subject_id = NULL WHERE subject_id = $1`);
     await run(`UPDATE unauthorized_access_logs SET subject_id = NULL WHERE subject_id = $1`);
 
-    // — Other subject children —
-    await run(`DELETE FROM study_resources WHERE subject_id = $1`);
-    await run(`DELETE FROM timetable WHERE subject_id = $1`);
+    // Delete grading_boundaries (subject-specific boundaries that may exist even if isClean)
+    await run(`DELETE FROM grading_boundaries WHERE subject_id = $1`);
 
-    // — Finally: the subject itself —
+    // Delete the subject
     await run(`DELETE FROM subjects WHERE id = $1`);
+
+    if (userId && subject) {
+      try {
+        await this.createAuditLog({
+          userId,
+          action: 'subject.deleted',
+          entityType: 'subject',
+          entityId: String(id),
+          oldValue: JSON.stringify({ name: subject.name, status: subject.status ?? 'active', category: subject.category }),
+        });
+      } catch (e) { /* audit log failure must not block the operation */ }
+    }
     return true;
   }
   // Academic sessions

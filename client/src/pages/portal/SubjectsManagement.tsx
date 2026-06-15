@@ -20,7 +20,8 @@ import {
   Plus, Edit, Search, BookOpen, Trash2, GraduationCap,
   Palette, Briefcase, BookMarked, MoreVertical, AlertTriangle,
   CheckCircle2, Loader2, BookText, FileText, ClipboardList,
-  Calendar, Users, BarChart2, Library,
+  Calendar, Users, BarChart2, Library, Archive, ArchiveRestore,
+  ExternalLink, Ban,
 } from 'lucide-react';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 
@@ -33,10 +34,12 @@ interface SubjectAudit {
   assignments: number;
   lessonNotes: number;
   syllabusTopics: number;
+  questionBanks: number;
   reportCardItems: number;
   continuousAssessments: number;
   timetableEntries: number;
   studyResources: number;
+  teacherAssignments: number;
   isClean: boolean;
 }
 
@@ -81,17 +84,27 @@ const SUBJECT_CATEGORIES = [
   },
 ] as const;
 
-const AUDIT_FIELDS: { key: keyof Omit<SubjectAudit, 'isClean'>; label: string; icon: any }[] = [
-  { key: 'classLinks', label: 'Linked classes', icon: BookOpen },
-  { key: 'studentAssignments', label: 'Student assignments', icon: Users },
-  { key: 'exams', label: 'Exams', icon: ClipboardList },
-  { key: 'assignments', label: 'Assignments', icon: FileText },
-  { key: 'lessonNotes', label: 'Lesson notes', icon: BookText },
+interface AuditField {
+  key: keyof Omit<SubjectAudit, 'isClean'>;
+  label: string;
+  icon: any;
+  navLabel?: string;
+  navPath?: string;
+}
+
+const AUDIT_FIELDS: AuditField[] = [
+  { key: 'exams', label: 'Exams', icon: ClipboardList, navLabel: 'Manage Exams', navPath: '/portal/superadmin/results/exams' },
+  { key: 'lessonNotes', label: 'Lesson notes', icon: BookText, navLabel: 'Manage Lessons', navPath: '/portal/superadmin/content/lessons' },
+  { key: 'questionBanks', label: 'Question banks', icon: Library, navLabel: 'Manage Questions', navPath: '/portal/superadmin/results/exams' },
+  { key: 'assignments', label: 'Assignments', icon: FileText, navLabel: 'Manage Assignments', navPath: '/portal/superadmin/content/assignments' },
   { key: 'syllabusTopics', label: 'Syllabus topics', icon: Library },
   { key: 'reportCardItems', label: 'Report card entries', icon: BarChart2 },
   { key: 'continuousAssessments', label: 'CA records', icon: BarChart2 },
+  { key: 'classLinks', label: 'Class links', icon: BookOpen },
+  { key: 'studentAssignments', label: 'Student assignments', icon: Users },
   { key: 'timetableEntries', label: 'Timetable entries', icon: Calendar },
   { key: 'studyResources', label: 'Study resources', icon: BookOpen },
+  { key: 'teacherAssignments', label: 'Teacher assignments', icon: Users },
 ];
 
 const subjectFormSchema = z.object({
@@ -109,8 +122,12 @@ function getCategoryInfo(cat: string) {
   return SUBJECT_CATEGORIES.find(c => c.value === cat) ?? SUBJECT_CATEGORIES[0];
 }
 
-function pluralise(n: number, word: string) {
-  return `${n} ${word}${n !== 1 ? 's' : ''}`;
+function pluralise(n: number, singular: string) {
+  return `${n.toLocaleString()} ${n === 1 ? singular : singular + 's'}`;
+}
+
+function isArchived(subject: any) {
+  return subject?.status === 'archived' || subject?.isActive === false;
 }
 
 // ─── SubjectCard ──────────────────────────────────────────────────────────────
@@ -118,16 +135,17 @@ function pluralise(n: number, word: string) {
 interface SubjectCardProps {
   subject: any;
   onEdit: (subject: any) => void;
-  onDelete: (subject: any) => void;
+  onAction: (subject: any, action: 'archive' | 'restore' | 'delete') => void;
 }
 
-function SubjectCard({ subject, onEdit, onDelete }: SubjectCardProps) {
+function SubjectCard({ subject, onEdit, onAction }: SubjectCardProps) {
   const cat = getCategoryInfo(subject.category || 'general');
   const Icon = cat.icon;
+  const archived = isArchived(subject);
 
   return (
     <Card
-      className="hover:border-primary/40 hover:shadow-sm transition-all"
+      className={`transition-all ${archived ? 'opacity-60 border-dashed' : 'hover:border-primary/40 hover:shadow-sm'}`}
       data-testid={`card-subject-${subject.id}`}
     >
       <CardContent className="p-4 space-y-3">
@@ -157,14 +175,35 @@ function SubjectCard({ subject, onEdit, onDelete }: SubjectCardProps) {
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={() => onEdit(subject)} data-testid={`button-edit-subject-${subject.id}`}>
-                <Edit className="h-4 w-4 mr-2" /> Edit
-              </DropdownMenuItem>
+            <DropdownMenuContent align="end" className="w-44">
+              {!archived && (
+                <DropdownMenuItem onClick={() => onEdit(subject)} data-testid={`button-edit-subject-${subject.id}`}>
+                  <Edit className="h-4 w-4 mr-2" /> Edit
+                </DropdownMenuItem>
+              )}
+              {!archived && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => onAction(subject, 'archive')}
+                    data-testid={`button-archive-subject-${subject.id}`}
+                  >
+                    <Archive className="h-4 w-4 mr-2" /> Archive
+                  </DropdownMenuItem>
+                </>
+              )}
+              {archived && (
+                <DropdownMenuItem
+                  onClick={() => onAction(subject, 'restore')}
+                  data-testid={`button-restore-subject-${subject.id}`}
+                >
+                  <ArchiveRestore className="h-4 w-4 mr-2" /> Restore
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
-                onClick={() => onDelete(subject)}
+                onClick={() => onAction(subject, 'delete')}
                 data-testid={`button-delete-subject-${subject.id}`}
               >
                 <Trash2 className="h-4 w-4 mr-2" /> Delete
@@ -173,9 +212,16 @@ function SubjectCard({ subject, onEdit, onDelete }: SubjectCardProps) {
           </DropdownMenu>
         </div>
 
-        <Badge className={`text-[10px] border-0 ${cat.color}`} data-testid={`text-category-${subject.id}`}>
-          {cat.label}
-        </Badge>
+        <div className="flex flex-wrap gap-1.5">
+          <Badge className={`text-[10px] border-0 ${cat.color}`} data-testid={`text-category-${subject.id}`}>
+            {cat.label}
+          </Badge>
+          {archived && (
+            <Badge className="text-[10px] border-0 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" data-testid={`badge-archived-${subject.id}`}>
+              Archived
+            </Badge>
+          )}
+        </div>
 
         {subject.description && (
           <p className="text-xs text-muted-foreground line-clamp-2">{subject.description}</p>
@@ -217,22 +263,23 @@ function CategoryStatCard({
   );
 }
 
-// ─── SafeDeleteDialog ─────────────────────────────────────────────────────────
+// ─── SubjectActionDialog ──────────────────────────────────────────────────────
 
-interface SafeDeleteDialogProps {
+interface SubjectActionDialogProps {
   subject: any;
+  action: 'archive' | 'restore' | 'delete' | null;
   onConfirm: () => void;
   onCancel: () => void;
-  isDeleting: boolean;
+  isPending: boolean;
 }
 
-function SafeDeleteDialog({ subject, onConfirm, onCancel, isDeleting }: SafeDeleteDialogProps) {
+function SubjectActionDialog({ subject, action, onConfirm, onCancel, isPending }: SubjectActionDialogProps) {
   const [confirmText, setConfirmText] = useState('');
 
   const { data: audit, isLoading: isAuditing } = useQuery<SubjectAudit>({
     queryKey: ['/api/subjects', subject?.id, 'audit'],
     queryFn: async () => (await apiRequest('GET', `/api/subjects/${subject.id}/audit`)).json(),
-    enabled: !!subject,
+    enabled: !!subject && !!action,
     staleTime: 0,
   });
 
@@ -240,32 +287,42 @@ function SafeDeleteDialog({ subject, onConfirm, onCancel, isDeleting }: SafeDele
     ? AUDIT_FIELDS.filter(f => (audit[f.key] ?? 0) > 0)
     : [];
 
-  const confirmPhrase = subject?.name ?? '';
-  const canConfirm = confirmText === confirmPhrase && !isAuditing;
+  const isOpen = !!subject && !!action;
 
   function handleOpenChange(open: boolean) {
     if (!open) { setConfirmText(''); onCancel(); }
   }
 
+  if (!subject || !action) return null;
+
+  const confirmPhrase = subject.name ?? '';
+  const canDelete = confirmText.toLowerCase() === confirmPhrase.toLowerCase() && !isAuditing && !!audit?.isClean;
+  const hasLinked = !audit?.isClean;
+
   return (
-    <Dialog open={!!subject} onOpenChange={handleOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-5 w-5 shrink-0" />
-            Delete Subject
+          <DialogTitle className="flex items-center gap-2">
+            {action === 'archive' && <><Archive className="h-5 w-5 text-amber-600 shrink-0" /> Archive Subject</>}
+            {action === 'restore' && <><ArchiveRestore className="h-5 w-5 text-green-600 shrink-0" /> Restore Subject</>}
+            {action === 'delete' && <><Trash2 className="h-5 w-5 text-destructive shrink-0" /> Permanently Delete Subject</>}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 mt-1">
           {/* Subject name */}
           <p className="text-sm text-muted-foreground">
-            You are about to permanently delete{' '}
-            <strong className="text-foreground">{subject?.name}</strong>.
+            {action === 'archive' && <>Archive <strong className="text-foreground">{subject.name}</strong>? It will be hidden from all new assignments but all historical data is preserved.</>}
+            {action === 'restore' && <>Restore <strong className="text-foreground">{subject.name}</strong>? It will become active and available in all dropdowns again.</>}
+            {action === 'delete' && <>You are about to permanently delete <strong className="text-foreground">{subject.name}</strong>. This cannot be undone.</>}
           </p>
 
-          {/* Audit panel */}
+          {/* Dependency summary */}
           <div className="rounded-lg border bg-muted/40 p-4 space-y-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Linked Records — {subject.name}
+            </p>
             {isAuditing ? (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -274,39 +331,49 @@ function SafeDeleteDialog({ subject, onConfirm, onCancel, isDeleting }: SafeDele
             ) : audit?.isClean ? (
               <div className="flex items-start gap-2 text-sm text-green-700 dark:text-green-400">
                 <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
-                <span>
-                  <strong>Nothing is linked to this subject.</strong>
-                  {' '}It is safe to delete.
-                </span>
+                <span>No linked records found. Safe to delete.</span>
               </div>
             ) : (
-              <>
-                <div className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-400">
-                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                  <span>
-                    <strong>Linked data will be permanently removed</strong> along with this subject:
-                  </span>
-                </div>
-                <ul className="space-y-1.5">
-                  {linkedItems.map(({ key, label, icon: Icon }) => (
-                    <li key={key} className="flex items-center gap-2 text-sm">
+              <ul className="space-y-1.5">
+                {linkedItems.map(({ key, label, icon: Icon, navLabel, navPath }) => (
+                  <li key={key} className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 text-sm">
                       <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                       <span className="text-muted-foreground">{label}:</span>
-                      <span className="font-semibold text-foreground">
-                        {pluralise(audit![key] as number, label.split(' ').pop()!)}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </>
+                      <span className="font-semibold text-foreground">{(audit![key] as number).toLocaleString()}</span>
+                    </div>
+                    {navPath && (
+                      <a
+                        href={navPath}
+                        className="flex items-center gap-1 text-[11px] text-primary hover:underline shrink-0"
+                        data-testid={`link-manage-${key}`}
+                      >
+                        Manage <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                  </li>
+                ))}
+              </ul>
             )}
           </div>
 
-          {/* Type-to-confirm */}
-          {!isAuditing && (
+          {/* Delete-specific: block if has linked records */}
+          {action === 'delete' && !isAuditing && hasLinked && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2 text-sm text-destructive">
+              <Ban className="h-4 w-4 mt-0.5 shrink-0" />
+              <div>
+                <strong>Deletion not allowed.</strong> This subject still has linked records.
+                <br />
+                <span className="text-muted-foreground">Remove, archive, or reassign the linked data before deleting. Consider archiving the subject instead.</span>
+              </div>
+            </div>
+          )}
+
+          {/* Delete-specific: name confirmation (only when clean) */}
+          {action === 'delete' && !isAuditing && audit?.isClean && (
             <div className="space-y-1.5">
               <Label htmlFor="confirm-input" className="text-sm">
-                Type <strong className="select-all font-mono">{confirmPhrase}</strong> to confirm
+                Type <strong className="select-all font-mono">{confirmPhrase}</strong> to confirm permanent deletion
               </Label>
               <Input
                 id="confirm-input"
@@ -316,7 +383,7 @@ function SafeDeleteDialog({ subject, onConfirm, onCancel, isDeleting }: SafeDele
                 className="font-mono text-sm"
                 autoComplete="off"
                 data-testid="input-delete-confirm"
-                disabled={isDeleting}
+                disabled={isPending}
               />
             </div>
           )}
@@ -326,23 +393,44 @@ function SafeDeleteDialog({ subject, onConfirm, onCancel, isDeleting }: SafeDele
             <Button
               variant="outline"
               onClick={() => handleOpenChange(false)}
-              disabled={isDeleting}
-              data-testid="button-cancel-delete"
+              disabled={isPending}
+              data-testid="button-cancel-action"
             >
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={onConfirm}
-              disabled={!canConfirm || isDeleting}
-              data-testid="button-confirm-delete"
-            >
-              {isDeleting ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Deleting…</>
-              ) : (
-                <><Trash2 className="h-4 w-4 mr-2" />Permanently Delete</>
-              )}
-            </Button>
+
+            {action === 'archive' && (
+              <Button
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+                onClick={onConfirm}
+                disabled={isPending || isAuditing}
+                data-testid="button-confirm-archive"
+              >
+                {isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Archiving…</> : <><Archive className="h-4 w-4 mr-2" />Archive Subject</>}
+              </Button>
+            )}
+
+            {action === 'restore' && (
+              <Button
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={onConfirm}
+                disabled={isPending || isAuditing}
+                data-testid="button-confirm-restore"
+              >
+                {isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Restoring…</> : <><ArchiveRestore className="h-4 w-4 mr-2" />Restore Subject</>}
+              </Button>
+            )}
+
+            {action === 'delete' && (
+              <Button
+                variant="destructive"
+                onClick={onConfirm}
+                disabled={!canDelete || isPending || hasLinked}
+                data-testid="button-confirm-delete"
+              >
+                {isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Deleting…</> : <><Trash2 className="h-4 w-4 mr-2" />Permanently Delete</>}
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>
@@ -357,22 +445,25 @@ export default function SubjectsManagement() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingSubject, setEditingSubject] = useState<any>(null);
-  const [subjectToDelete, setSubjectToDelete] = useState<any>(null);
+  const [actionSubject, setActionSubject] = useState<any>(null);
+  const [pendingAction, setPendingAction] = useState<'archive' | 'restore' | 'delete' | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'archived'>('all');
 
   const { register, handleSubmit, formState: { errors }, setValue, reset, control } = useForm<SubjectForm>({
     resolver: zodResolver(subjectFormSchema),
     defaultValues: { category: 'general' },
   });
 
+  // Management page uses /api/subjects/all to include archived subjects
   const { data: subjects = [], isLoading } = useQuery<any[]>({
-    queryKey: ['/api/subjects'],
-    queryFn: async () => (await apiRequest('GET', '/api/subjects')).json(),
+    queryKey: ['/api/subjects/all'],
+    queryFn: async () => (await apiRequest('GET', '/api/subjects/all')).json(),
   });
 
-  useSocketIORealtime({ table: 'subjects', queryKey: ['/api/subjects'] });
+  useSocketIORealtime({ table: 'subjects', queryKey: ['/api/subjects/all'] });
 
-  // ── Create ─────────────────────────────────────────────────────────────────
+  // ── Mutations ──────────────────────────────────────────────────────────────
 
   const createMutation = useMutation({
     mutationFn: async (data: SubjectForm) => {
@@ -381,10 +472,10 @@ export default function SubjectsManagement() {
       return res.json();
     },
     onMutate: async (newSubject) => {
-      await queryClient.cancelQueries({ queryKey: ['/api/subjects'] });
-      const prev = queryClient.getQueryData(['/api/subjects']);
-      queryClient.setQueryData(['/api/subjects'], (old: any) => [
-        { ...newSubject, id: 'temp-' + Date.now() },
+      await queryClient.cancelQueries({ queryKey: ['/api/subjects/all'] });
+      const prev = queryClient.getQueryData(['/api/subjects/all']);
+      queryClient.setQueryData(['/api/subjects/all'], (old: any) => [
+        { ...newSubject, id: 'temp-' + Date.now(), status: 'active', isActive: true },
         ...(old ?? []),
       ]);
       closeForm();
@@ -392,15 +483,14 @@ export default function SubjectsManagement() {
     },
     onSuccess: () => {
       toast({ title: 'Subject created' });
+      queryClient.invalidateQueries({ queryKey: ['/api/subjects/all'] });
       queryClient.invalidateQueries({ queryKey: ['/api/subjects'] });
     },
     onError: (e: any, _v, ctx: any) => {
-      if (ctx?.prev) queryClient.setQueryData(['/api/subjects'], ctx.prev);
+      if (ctx?.prev) queryClient.setQueryData(['/api/subjects/all'], ctx.prev);
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
     },
   });
-
-  // ── Update ─────────────────────────────────────────────────────────────────
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: any; data: Partial<SubjectForm> }) => {
@@ -409,9 +499,9 @@ export default function SubjectsManagement() {
       return res.json();
     },
     onMutate: async ({ id, data }) => {
-      await queryClient.cancelQueries({ queryKey: ['/api/subjects'] });
-      const prev = queryClient.getQueryData(['/api/subjects']);
-      queryClient.setQueryData(['/api/subjects'], (old: any) =>
+      await queryClient.cancelQueries({ queryKey: ['/api/subjects/all'] });
+      const prev = queryClient.getQueryData(['/api/subjects/all']);
+      queryClient.setQueryData(['/api/subjects/all'], (old: any) =>
         old?.map((s: any) => s.id === id ? { ...s, ...data } : s) ?? old
       );
       closeForm();
@@ -419,15 +509,54 @@ export default function SubjectsManagement() {
     },
     onSuccess: () => {
       toast({ title: 'Subject updated' });
+      queryClient.invalidateQueries({ queryKey: ['/api/subjects/all'] });
       queryClient.invalidateQueries({ queryKey: ['/api/subjects'] });
     },
     onError: (e: any, _v, ctx: any) => {
-      if (ctx?.prev) queryClient.setQueryData(['/api/subjects'], ctx.prev);
+      if (ctx?.prev) queryClient.setQueryData(['/api/subjects/all'], ctx.prev);
       toast({ title: 'Error', description: e.message, variant: 'destructive' });
     },
   });
 
-  // ── Delete ─────────────────────────────────────────────────────────────────
+  const archiveMutation = useMutation({
+    mutationFn: async (id: any) => {
+      const res = await apiRequest('PATCH', `/api/subjects/${id}/archive`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || 'Failed to archive subject');
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: 'Subject archived', description: 'It has been hidden from all dropdowns.' });
+      queryClient.invalidateQueries({ queryKey: ['/api/subjects/all'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/subjects'] });
+      closeActionDialog();
+    },
+    onError: (e: any) => {
+      toast({ title: 'Archive failed', description: e.message, variant: 'destructive' });
+    },
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: async (id: any) => {
+      const res = await apiRequest('PATCH', `/api/subjects/${id}/restore`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || 'Failed to restore subject');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: 'Subject restored', description: 'It is now active and available in all dropdowns.' });
+      queryClient.invalidateQueries({ queryKey: ['/api/subjects/all'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/subjects'] });
+      closeActionDialog();
+    },
+    onError: (e: any) => {
+      toast({ title: 'Restore failed', description: e.message, variant: 'destructive' });
+    },
+  });
 
   const deleteMutation = useMutation({
     mutationFn: async (id: any) => {
@@ -438,20 +567,21 @@ export default function SubjectsManagement() {
       }
     },
     onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: ['/api/subjects'] });
-      const prev = queryClient.getQueryData(['/api/subjects']);
-      queryClient.setQueryData(['/api/subjects'], (old: any) =>
+      await queryClient.cancelQueries({ queryKey: ['/api/subjects/all'] });
+      const prev = queryClient.getQueryData(['/api/subjects/all']);
+      queryClient.setQueryData(['/api/subjects/all'], (old: any) =>
         old?.filter((s: any) => s.id !== id) ?? old
       );
-      setSubjectToDelete(null);
+      closeActionDialog();
       return { prev };
     },
     onSuccess: () => {
-      toast({ title: 'Subject deleted' });
+      toast({ title: 'Subject permanently deleted' });
+      queryClient.invalidateQueries({ queryKey: ['/api/subjects/all'] });
       queryClient.invalidateQueries({ queryKey: ['/api/subjects'] });
     },
     onError: (e: any, _v, ctx: any) => {
-      if (ctx?.prev) queryClient.setQueryData(['/api/subjects'], ctx.prev);
+      if (ctx?.prev) queryClient.setQueryData(['/api/subjects/all'], ctx.prev);
       toast({ title: 'Delete failed', description: e.message, variant: 'destructive' });
     },
   });
@@ -478,20 +608,43 @@ export default function SubjectsManagement() {
     reset({ category: 'general' });
   };
 
+  const openAction = (subject: any, action: 'archive' | 'restore' | 'delete') => {
+    setActionSubject(subject);
+    setPendingAction(action);
+  };
+
+  const closeActionDialog = () => {
+    setActionSubject(null);
+    setPendingAction(null);
+  };
+
+  const handleActionConfirm = () => {
+    if (!actionSubject) return;
+    if (pendingAction === 'archive') archiveMutation.mutate(actionSubject.id);
+    else if (pendingAction === 'restore') restoreMutation.mutate(actionSubject.id);
+    else if (pendingAction === 'delete') deleteMutation.mutate(actionSubject.id);
+  };
+
   // ── Derived ────────────────────────────────────────────────────────────────
 
   const filtered = subjects.filter((s: any) => {
     const q = searchTerm.toLowerCase();
     const matchSearch = !q || s.name?.toLowerCase().includes(q) || s.code?.toLowerCase().includes(q) || s.description?.toLowerCase().includes(q);
     const matchCat = categoryFilter === 'all' || s.category === categoryFilter;
-    return matchSearch && matchCat;
+    const archived = isArchived(s);
+    const matchStatus = statusFilter === 'all' || (statusFilter === 'archived' ? archived : !archived);
+    return matchSearch && matchCat && matchStatus;
   });
 
   const categoryCounts = SUBJECT_CATEGORIES.map(c => ({
     ...c,
-    count: subjects.filter((s: any) => s.category === c.value).length,
+    count: subjects.filter((s: any) => s.category === c.value && !isArchived(s)).length,
   }));
 
+  const activeCount = subjects.filter((s: any) => !isArchived(s)).length;
+  const archivedCount = subjects.filter((s: any) => isArchived(s)).length;
+
+  const isActionPending = archiveMutation.isPending || restoreMutation.isPending || deleteMutation.isPending;
   const isFormPending = createMutation.isPending || updateMutation.isPending;
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -560,6 +713,16 @@ export default function SubjectsManagement() {
             ))}
           </SelectContent>
         </Select>
+        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+          <SelectTrigger className="w-full sm:w-44" data-testid="select-status-filter">
+            <SelectValue placeholder="All Statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All ({subjects.length})</SelectItem>
+            <SelectItem value="active">Active ({activeCount})</SelectItem>
+            <SelectItem value="archived">Archived ({archivedCount})</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Subject grid */}
@@ -574,7 +737,7 @@ export default function SubjectsManagement() {
           <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-30" />
           <p className="font-medium">No subjects found</p>
           <p className="text-sm mt-1">
-            {searchTerm || categoryFilter !== 'all'
+            {searchTerm || categoryFilter !== 'all' || statusFilter !== 'all'
               ? 'Try adjusting your filters'
               : 'Add your first subject to get started'}
           </p>
@@ -587,7 +750,7 @@ export default function SubjectsManagement() {
                 key={subject.id}
                 subject={subject}
                 onEdit={openEdit}
-                onDelete={setSubjectToDelete}
+                onAction={openAction}
               />
             ))}
           </div>
@@ -656,12 +819,13 @@ export default function SubjectsManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Safe delete dialog ── */}
-      <SafeDeleteDialog
-        subject={subjectToDelete}
-        isDeleting={deleteMutation.isPending}
-        onConfirm={() => subjectToDelete && deleteMutation.mutate(subjectToDelete.id)}
-        onCancel={() => setSubjectToDelete(null)}
+      {/* ── Archive / Restore / Delete dialog ── */}
+      <SubjectActionDialog
+        subject={actionSubject}
+        action={pendingAction}
+        isPending={isActionPending}
+        onConfirm={handleActionConfirm}
+        onCancel={closeActionDialog}
       />
     </div>
   );

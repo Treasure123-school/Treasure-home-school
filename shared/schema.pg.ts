@@ -184,10 +184,12 @@ export const subjects = pgTable("subjects", {
   description: text("description"),
   category: varchar("category", { length: 20 }).notNull().default('general'),
   isActive: boolean("is_active").notNull().default(true),
+  status: varchar("status", { length: 20 }).notNull().default('active'),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => ({
   subjectsCategoryIdx: index("subjects_category_idx").on(table.category),
   subjectsIsActiveIdx: index("subjects_is_active_idx").on(table.isActive),
+  subjectsStatusIdx: index("subjects_status_idx").on(table.status),
 }));
 
 // Students table
