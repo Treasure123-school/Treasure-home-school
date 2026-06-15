@@ -7,18 +7,12 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { StatCard, StatCardGrid } from '@/components/ui/stat-card';
 import { useToast } from '@/hooks/use-toast';
-import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import {
   School,
-  RefreshCw,
   Save,
   Loader2,
-  Wifi,
-  WifiOff,
   BookOpen,
   BookMarked,
-  Info,
-  X,
 } from 'lucide-react';
 
 import type { Subject, ClassInfo, SubjectAssignment, ClassGroup } from './types';
@@ -28,6 +22,7 @@ import { LevelSwitcher } from './components/LevelSwitcher';
 import { LevelTabContent } from './components/LevelTabContent';
 import { SSSLevelTabContent } from './components/SSSLevelTabContent';
 import { SaveBar } from './components/SaveBar';
+import { Info, X } from 'lucide-react';
 
 const LEVEL_COLORS: Record<string, string> = {
   primary: 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300',
@@ -66,21 +61,6 @@ export default function SubjectSetup() {
   } = useQuery<SubjectAssignment[]>({
     queryKey: ['/api/unified-subject-assignments'],
     queryFn: async () => (await apiRequest('GET', '/api/unified-subject-assignments')).json(),
-  });
-
-  const handleRealtimeEvent = useCallback(
-    (event: any) => {
-      if (event.eventType === 'subject-assignments-updated' || event.type === 'subject-assignments-updated') {
-        refetchAssignments();
-      }
-    },
-    [refetchAssignments]
-  );
-
-  const { isConnected } = useSocketIORealtime({
-    queryKey: ['/api/unified-subject-assignments'],
-    enabled: true,
-    onEvent: handleRealtimeEvent,
   });
 
   const ssClassIds = useMemo(
@@ -194,49 +174,26 @@ export default function SubjectSetup() {
             Assign subjects to each class individually — every class can have a different set.
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          {isConnected ? (
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
-              <Wifi className="w-3 h-3" />
-              Live sync
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-1 rounded-full border border-amber-200 dark:border-amber-800">
-              <WifiOff className="w-3 h-3" />
-              Offline
-            </span>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => refetchAssignments()}
-            disabled={isLoading}
-            className="gap-1.5"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-          {state.hasPendingChanges && (
-            <>
-              <Button variant="outline" size="sm" onClick={handleDiscard} disabled={isSaving}>
-                Discard
-              </Button>
-              <Button size="sm" onClick={handleSave} disabled={isSaving} className="gap-1.5 shadow-sm">
-                {isSaving ? (
-                  <><Loader2 className="w-3.5 h-3.5 animate-spin" />Saving…</>
-                ) : (
-                  <>
-                    <Save className="w-3.5 h-3.5" />
-                    Save
-                    <Badge variant="secondary" className="text-xs ml-0.5">
-                      {state.pendingCount}
-                    </Badge>
-                  </>
-                )}
-              </Button>
-            </>
-          )}
-        </div>
+        {state.hasPendingChanges && (
+          <div className="flex items-center gap-2 shrink-0">
+            <Button variant="outline" size="sm" onClick={handleDiscard} disabled={isSaving}>
+              Discard
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={isSaving} className="gap-1.5 shadow-sm">
+              {isSaving ? (
+                <><Loader2 className="w-3.5 h-3.5 animate-spin" />Saving…</>
+              ) : (
+                <>
+                  <Save className="w-3.5 h-3.5" />
+                  Save
+                  <Badge variant="secondary" className="text-xs ml-0.5">
+                    {state.pendingCount}
+                  </Badge>
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* ── Stat Cards ─────────────────────────────────────────────────── */}

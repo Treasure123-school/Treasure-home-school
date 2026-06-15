@@ -5,10 +5,9 @@ import { SectionCard } from '@/components/ui/section-card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { GraduationCap, Palette, Briefcase, BookMarked, School } from 'lucide-react';
+import { GraduationCap, Palette, Briefcase, School } from 'lucide-react';
 import type { ClassInfo, Subject, Department, SubjectFilter } from '../types';
 import { ClassAccordionItem } from './ClassAccordionItem';
-import { QuickActionsPanel } from './QuickActionsPanel';
 import { SubjectFilterBar } from './SubjectFilterBar';
 
 const DEPARTMENTS: Department[] = ['science', 'art', 'commercial'];
@@ -75,18 +74,6 @@ function DeptTab({ dept, classes, allSubjects, isAssigned, pendingChanges, pendi
         onChange={setFilter}
         totalSubjects={allSubjects.length}
         visibleSubjects={filteredSubjects.length}
-      />
-
-      <QuickActionsPanel
-        title={`Quick Actions — ${config.label}`}
-        description={`Toggle a subject to assign or unassign it across all SSS ${config.label} classes. Use year-group toggles for finer control.`}
-        headerIcon={<Icon className="w-4 h-4" />}
-        subjects={filteredSubjects}
-        classes={classes}
-        department={dept}
-        isAssigned={isAssigned}
-        onToggleAll={onToggleAll}
-        isSaving={isSaving}
       />
 
       <Accordion type="multiple" className="space-y-2">

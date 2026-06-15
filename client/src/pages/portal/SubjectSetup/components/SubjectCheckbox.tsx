@@ -38,9 +38,9 @@ export function SubjectCheckbox({
 
   return (
     <div
-      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all duration-150
+      className={`flex items-start gap-2 px-2.5 py-2 rounded-lg border transition-all duration-150
         ${isAssigned ? 'border-primary/20 bg-primary/5 dark:bg-primary/10' : 'border-border bg-background hover:bg-muted/40'}
-        ${isPending ? 'ring-2 ring-amber-400/50 border-amber-300 dark:border-amber-600 bg-amber-50/60 dark:bg-amber-950/30' : ''}
+        ${isPending ? 'ring-1 ring-amber-400/60 border-amber-300 dark:border-amber-600 bg-amber-50/60 dark:bg-amber-950/30' : ''}
         ${isSaving ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}
       `}
       onClick={handleClick}
@@ -49,6 +49,7 @@ export function SubjectCheckbox({
         id={key}
         checked={isAssigned}
         disabled={isSaving}
+        className="mt-0.5 shrink-0"
         onCheckedChange={(checked) => {
           if (typeof checked === 'boolean') onToggle(classId, subject.id, department, checked);
         }}
@@ -56,18 +57,13 @@ export function SubjectCheckbox({
       />
       <label
         htmlFor={key}
-        className={`flex items-center gap-2 text-sm flex-1 select-none ${isSaving ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+        className={`flex flex-col gap-0.5 text-xs flex-1 min-w-0 select-none ${isSaving ? 'cursor-not-allowed' : 'cursor-pointer'}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <span className={`font-medium ${isAssigned ? 'text-foreground' : 'text-muted-foreground'}`}>
+        <span className={`font-medium leading-snug break-words ${isAssigned ? 'text-foreground' : 'text-muted-foreground'}`}>
           {subject.name}
         </span>
-        <Badge className={`text-xs px-1.5 py-0 ${catColor}`}>{subject.code}</Badge>
-        {isPending && (
-          <Badge variant="outline" className="text-xs px-1.5 py-0 text-amber-600 border-amber-300 dark:border-amber-600">
-            Pending
-          </Badge>
-        )}
+        <Badge className={`text-xs px-1 py-0 w-fit ${catColor}`}>{subject.code}</Badge>
       </label>
     </div>
   );

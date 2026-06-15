@@ -44,7 +44,7 @@ export function SubjectCategorySection({
           {assignedCount}/{subjects.length} assigned
         </Badge>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-1.5">
+      <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-1.5">
         {subjects.map((subject) => {
           const key = getAssignmentKey(classId, subject.id, department);
           const isPending = pendingChanges.has(key) || pendingRemovals.has(key);

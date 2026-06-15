@@ -2,10 +2,9 @@ import { useMemo, useState } from 'react';
 import { Accordion } from '@/components/ui/accordion';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SectionCard } from '@/components/ui/section-card';
-import { BookOpen, BookMarked, School } from 'lucide-react';
+import { BookOpen, School } from 'lucide-react';
 import type { ClassInfo, Subject, SubjectFilter } from '../types';
 import { ClassAccordionItem } from './ClassAccordionItem';
-import { QuickActionsPanel } from './QuickActionsPanel';
 import { SubjectFilterBar } from './SubjectFilterBar';
 
 interface LevelTabContentProps {
@@ -76,18 +75,6 @@ export function LevelTabContent({
           onChange={setFilter}
           totalSubjects={allSubjects.length}
           visibleSubjects={filteredSubjects.length}
-        />
-
-        <QuickActionsPanel
-          title="Quick Actions"
-          description="Toggle a subject to assign or unassign it across multiple classes at once. Use year-group toggles for finer control."
-          headerIcon={<BookMarked className="w-4 h-4" />}
-          subjects={filteredSubjects}
-          classes={classes}
-          department={null}
-          isAssigned={isAssigned}
-          onToggleAll={onToggleAll}
-          isSaving={isSaving}
         />
 
         <Accordion type="multiple" className="space-y-2">
