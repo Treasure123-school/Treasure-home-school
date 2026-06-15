@@ -2074,72 +2074,77 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteSubject(id: number): Promise<boolean> {
-    // Full FK-safe cascade deletion.
-    // Order derived from live DB audit of all NO ACTION foreign keys.
+    // Raw SQL subquery approach — bypasses ORM transformation issues.
+    // Order: leaf tables first, working up to subjects.
+    const pool = getPgPool();
+    if (!pool) throw new Error('No database pool available');
+    const run = (q: string) => pool.query(q, [id]);
 
-    // — Teacher records —
-    await db.delete(schema.teacherAssignmentHistory).where(eq(schema.teacherAssignmentHistory.subjectId, id));
-    await db.delete(schema.teacherClassAssignments).where(eq(schema.teacherClassAssignments.subjectId, id));
-    await db.delete(schema.studentSubjectAssignments).where(eq(schema.studentSubjectAssignments.subjectId, id));
-    await db.delete(schema.classSubjectMappings).where(eq(schema.classSubjectMappings.subjectId, id));
+    // — Exam session children (NO ACTION FKs on session_id) —
+    // grading_tasks → session_id → exam_sessions → exam_id → exams → subject_id
+    await run(`DELETE FROM grading_tasks WHERE session_id IN (
+      SELECT es.id FROM exam_sessions es
+      JOIN exams e ON e.id = es.exam_id
+      WHERE e.subject_id = $1
+    )`);
+    // student_answers → session_id → exam_sessions
+    await run(`DELETE FROM student_answers WHERE session_id IN (
+      SELECT es.id FROM exam_sessions es
+      JOIN exams e ON e.id = es.exam_id
+      WHERE e.subject_id = $1
+    )`);
+    // exam_sessions (performance_events CASCADE auto-deleted)
+    await run(`DELETE FROM exam_sessions WHERE exam_id IN (
+      SELECT id FROM exams WHERE subject_id = $1
+    )`);
 
-    // — Assessment & grading —
-    await db.delete(schema.reportCardItems).where(eq(schema.reportCardItems.subjectId, id));
-    await db.delete(schema.continuousAssessment).where(eq(schema.continuousAssessment.subjectId, id));
-    await db.delete(schema.gradingBoundaries).where(eq(schema.gradingBoundaries.subjectId, id));
+    // — Other exam children (NO ACTION FKs on exam_id) —
+    await run(`DELETE FROM exam_results WHERE exam_id IN (SELECT id FROM exams WHERE subject_id = $1)`);
+    await run(`DELETE FROM exam_submissions_archive WHERE exam_id IN (SELECT id FROM exams WHERE subject_id = $1)`);
+    // question_options → question_id → exam_questions (NO ACTION)
+    // student_answers.selected_option_id → question_options (NO ACTION) — student_answers already deleted above
+    await run(`DELETE FROM question_options WHERE question_id IN (
+      SELECT eq.id FROM exam_questions eq
+      JOIN exams e ON e.id = eq.exam_id
+      WHERE e.subject_id = $1
+    )`);
+    // exam_questions (exam_question_bank_links CASCADE auto-deleted)
+    await run(`DELETE FROM exam_questions WHERE exam_id IN (SELECT id FROM exams WHERE subject_id = $1)`);
 
-    // — Lesson notes: NOT NULL FK, must go before syllabusTopics —
-    await db.delete(schema.lessonNotes).where(eq(schema.lessonNotes.subjectId, id));
-    await db.delete(schema.syllabusTopics).where(eq(schema.syllabusTopics.subjectId, id));
-
-    // — Nullable FKs: null out to preserve audit rows —
-    await db.update(schema.schoolLessonNotes).set({ subjectId: null }).where(eq(schema.schoolLessonNotes.subjectId, id));
-    await db.update(schema.unauthorizedAccessLogs).set({ subjectId: null }).where(eq(schema.unauthorizedAccessLogs.subjectId, id));
-
-    // — Study resources & timetable —
-    await db.delete(schema.studyResources).where(eq(schema.studyResources.subjectId, id));
-    await db.delete(schema.timetable).where(eq(schema.timetable.subjectId, id));
-
-    // — Exams: full transitive cleanup required —
-    // FK chain: gradingTasks → (examSessions, examQuestions, studentAnswers)
-    //           studentAnswers → examSessions
-    //           examQuestions → exams  (all NO ACTION)
-    //           examSubmissionsArchive → exams (NO ACTION)
-    const examsToDelete = await db.select({ id: schema.exams.id })
-      .from(schema.exams)
-      .where(eq(schema.exams.subjectId, id));
-
-    for (const exam of examsToDelete) {
-      const sessions = await db.select({ id: schema.examSessions.id })
-        .from(schema.examSessions)
-        .where(eq(schema.examSessions.examId, exam.id));
-
-      if (sessions.length > 0) {
-        const sessionIds = sessions.map(s => s.id);
-        // gradingTasks must go first (refs sessions + questions + answers)
-        await db.delete(schema.gradingTasks).where(inArray(schema.gradingTasks.sessionId, sessionIds));
-        // studentAnswers next (refs sessions)
-        await db.delete(schema.studentAnswers).where(inArray(schema.studentAnswers.sessionId, sessionIds));
-      }
-      // examSessions (performance_events CASCADE auto-deleted)
-      await db.delete(schema.examSessions).where(eq(schema.examSessions.examId, exam.id));
-      // examResults (NO ACTION)
-      await db.delete(schema.examResults).where(eq(schema.examResults.examId, exam.id));
-      // examSubmissionsArchive (NO ACTION)
-      await db.delete(schema.examSubmissionsArchive).where(eq(schema.examSubmissionsArchive.examId, exam.id));
-      // examQuestions (examQuestionBankLinks CASCADE auto-deleted)
-      await db.delete(schema.examQuestions).where(eq(schema.examQuestions.examId, exam.id));
-    }
-    await db.delete(schema.exams).where(eq(schema.exams.subjectId, id));
+    // — Exams —
+    await run(`DELETE FROM exams WHERE subject_id = $1`);
 
     // — Question banks (question_bank_items CASCADE auto-deleted) —
-    await db.delete(schema.questionBanks).where(eq(schema.questionBanks.subjectId, id));
+    await run(`DELETE FROM question_banks WHERE subject_id = $1`);
 
     // — Assignments (assignment_submissions CASCADE auto-deleted) —
-    await db.delete(schema.assignments).where(eq(schema.assignments.subjectId, id));
+    await run(`DELETE FROM assignments WHERE subject_id = $1`);
+
+    // — Teacher & class records —
+    await run(`DELETE FROM teacher_assignment_history WHERE subject_id = $1`);
+    await run(`DELETE FROM teacher_class_assignments WHERE subject_id = $1`);
+    await run(`DELETE FROM student_subject_assignments WHERE subject_id = $1`);
+    await run(`DELETE FROM class_subject_mappings WHERE subject_id = $1`);
+
+    // — Assessment & grading —
+    await run(`DELETE FROM report_card_items WHERE subject_id = $1`);
+    await run(`DELETE FROM continuous_assessment WHERE subject_id = $1`);
+    await run(`DELETE FROM grading_boundaries WHERE subject_id = $1`);
+
+    // — Lesson notes: NOT NULL FK, must precede syllabus_topics —
+    await run(`DELETE FROM lesson_notes WHERE subject_id = $1`);
+    await run(`DELETE FROM syllabus_topics WHERE subject_id = $1`);
+
+    // — Nullable FKs: null out to keep audit trail —
+    await run(`UPDATE school_lesson_notes SET subject_id = NULL WHERE subject_id = $1`);
+    await run(`UPDATE unauthorized_access_logs SET subject_id = NULL WHERE subject_id = $1`);
+
+    // — Other subject children —
+    await run(`DELETE FROM study_resources WHERE subject_id = $1`);
+    await run(`DELETE FROM timetable WHERE subject_id = $1`);
 
     // — Finally: the subject itself —
-    await db.delete(schema.subjects).where(eq(schema.subjects.id, id));
+    await run(`DELETE FROM subjects WHERE id = $1`);
     return true;
   }
   // Academic sessions
