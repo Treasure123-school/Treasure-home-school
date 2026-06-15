@@ -1,4 +1,5 @@
 - [Replit env npm/install quirks](replit-env-node-install-quirks.md) — security blocks shell-quote/fast-xml-parser; use curl+tar or --omit=dev; fix esbuild mismatch; .bin repair
+- [Neon pooler + Drizzle ORM incompatibility](neon-pooler-drizzle.md) — Neon's -pooler. endpoint uses PgBouncer; Drizzle prepared statements are silently dropped; fix: strip -pooler. in db.ts Pool URL
 - [Tiptap v3 breaking changes](tiptap-v3-rules.md) — critical rules for Tiptap v3 editor (BubbleMenu removed, disabled dep crash, ESM imports)
 - [Gemini model deprecation](gemini-model-migration.md) — gemini-1.5-pro removed from v1beta API; auto-migrate to gemini-2.0-flash
 - [AI test endpoint fix](ai-test-endpoint.md) — OpenAI test must use chat/completions not /v1/models; project-scoped keys can't list models
