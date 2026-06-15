@@ -46,7 +46,7 @@ const AdminRecoveryTools = lazy(() => import("@/pages/portal/AdminRecoveryTools"
 
 // Super Admin Subject Manager pages (used in Super Admin routes)
 const SubjectsManagement = lazy(() => import("@/pages/portal/SubjectsManagement"));
-const UnifiedSubjectAssignment = lazy(() => import("@/pages/portal/UnifiedSubjectAssignment"));
+const UnifiedSubjectAssignment = lazy(() => import("@/pages/portal/SubjectSetup"));
 const AssignSubjectTeachers = lazy(() => import("@/pages/portal/AssignSubjectTeachers"));
 
 // Profile Onboarding (used for all authenticated users)

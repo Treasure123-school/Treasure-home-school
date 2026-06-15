@@ -64,7 +64,7 @@ const SettingsManagement = lazy(() => import('@/pages/portal/SettingsManagement'
 const AdminExamOverview = lazy(() => import('@/pages/portal/AdminExamOverview'));
 const AdminExamAnalysis = lazy(() => import('@/pages/portal/AdminExamAnalysis'));
 const ExamSessions = lazy(() => import('@/pages/portal/ExamSessions'));
-const UnifiedSubjectAssignment = lazy(() => import('@/pages/portal/UnifiedSubjectAssignment'));
+const UnifiedSubjectAssignment = lazy(() => import('@/pages/portal/SubjectSetup'));
 const AssignSubjectTeachers = lazy(() => import('@/pages/portal/AssignSubjectTeachers'));
 const AdminResultPublishing = lazy(() => import('@/pages/portal/AdminResultPublishing'));
 const AdminRecoveryTools = lazy(() => import('@/pages/portal/AdminRecoveryTools'));
