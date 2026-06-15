@@ -1,9 +1,10 @@
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Search, X } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Search } from 'lucide-react';
 import type { SubjectFilter } from '../types';
 
 const CATEGORIES = [
+  { value: 'all', label: 'All Categories' },
   { value: 'general', label: 'General' },
   { value: 'science', label: 'Science' },
   { value: 'art', label: 'Art' },
@@ -18,75 +19,40 @@ interface SubjectFilterBarProps {
 }
 
 export function SubjectFilterBar({ filter, onChange, totalSubjects, visibleSubjects }: SubjectFilterBarProps) {
-  const toggleCategory = (cat: string) => {
-    const next = filter.categories.includes(cat)
-      ? filter.categories.filter((c) => c !== cat)
-      : [...filter.categories, cat];
-    onChange({ ...filter, categories: next });
+  const selectedCategory = filter.categories[0] ?? 'all';
+
+  const handleCategoryChange = (val: string) => {
+    onChange({ ...filter, categories: val === 'all' ? [] : [val] });
   };
 
-  const clearSearch = () => onChange({ ...filter, search: '' });
-  const clearAll = () => onChange({ search: '', categories: [] });
-  const hasActiveFilter = filter.search.length > 0 || filter.categories.length > 0;
-
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-3 rounded-xl border border-border bg-muted/30">
-      <div className="relative flex-1 min-w-0 w-full sm:w-auto">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+    <div className="flex flex-col sm:flex-row gap-3">
+      <div className="relative flex-1">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
-          placeholder="Search subjects..."
+          placeholder="Search subjects…"
           value={filter.search}
           onChange={(e) => onChange({ ...filter, search: e.target.value })}
-          className="pl-8 pr-8 h-8 text-sm bg-background"
+          className="pl-9"
         />
-        {filter.search && (
-          <button
-            onClick={clearSearch}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-muted-foreground hover:text-foreground"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        )}
       </div>
-
-      <div className="flex items-center gap-1.5 flex-wrap">
-        {CATEGORIES.map((cat) => {
-          const active = filter.categories.includes(cat.value);
-          return (
-            <button
-              key={cat.value}
-              onClick={() => toggleCategory(cat.value)}
-              className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-all
-                ${active
-                  ? 'bg-primary text-white border-primary'
-                  : 'bg-background border-border text-muted-foreground hover:bg-muted'
-                }
-              `}
-            >
-              {cat.label}
-            </button>
-          );
-        })}
-
-        {hasActiveFilter && (
-          <button
-            onClick={clearAll}
-            className="px-2.5 py-1 rounded-full text-xs font-medium border border-destructive/40 text-destructive hover:bg-destructive/10 transition-all"
-          >
-            Clear
-          </button>
-        )}
-      </div>
-
-      <div className="text-xs text-muted-foreground whitespace-nowrap">
-        {visibleSubjects === totalSubjects ? (
-          <span>{totalSubjects} subjects</span>
-        ) : (
-          <span>
-            <span className="font-semibold text-foreground">{visibleSubjects}</span> of {totalSubjects} shown
-          </span>
-        )}
-      </div>
+      <Select value={selectedCategory} onValueChange={handleCategoryChange}>
+        <SelectTrigger className="w-full sm:w-44">
+          <SelectValue placeholder="All Categories" />
+        </SelectTrigger>
+        <SelectContent>
+          {CATEGORIES.map((c) => (
+            <SelectItem key={c.value} value={c.value}>
+              {c.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <p className="text-xs text-muted-foreground self-center whitespace-nowrap shrink-0">
+        {visibleSubjects === totalSubjects
+          ? `${totalSubjects} subjects`
+          : `${visibleSubjects} of ${totalSubjects} shown`}
+      </p>
     </div>
   );
 }

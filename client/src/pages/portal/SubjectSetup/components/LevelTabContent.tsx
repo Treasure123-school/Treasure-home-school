@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Accordion } from '@/components/ui/accordion';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { BookOpen, BookMarked } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { SectionCard } from '@/components/ui/section-card';
+import { BookOpen, BookMarked, School } from 'lucide-react';
 import type { ClassInfo, Subject, SubjectFilter } from '../types';
 import { ClassAccordionItem } from './ClassAccordionItem';
 import { QuickActionsPanel } from './QuickActionsPanel';
@@ -51,74 +52,64 @@ export function LevelTabContent({
 
   if (classes.length === 0) {
     return (
-      <Card className="border shadow-sm">
-        <CardContent className="pt-10 pb-10 text-center text-muted-foreground text-sm">
-          No {levelLabel} classes found. Create classes first in the Class Management section.
-        </CardContent>
-      </Card>
+      <div className="mt-4">
+        <Alert>
+          <School className="h-4 w-4" />
+          <AlertDescription>
+            No {levelLabel} classes found. Create classes first in the Class Management section.
+          </AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-4 mt-4">
-      <Card className="border shadow-sm">
-        <CardHeader className="pb-3 border-b bg-muted/30 rounded-t-xl">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
-              <BookOpen className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            </div>
-            <div>
-              <CardTitle className="text-base">{levelLabel} Subject Assignments</CardTitle>
-              <CardDescription className="text-xs mt-0.5">
-                Assign subjects individually per class — each class can have a different set.
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-5 space-y-5">
-          {/* Filter bar */}
-          <SubjectFilterBar
-            filter={filter}
-            onChange={setFilter}
-            totalSubjects={allSubjects.length}
-            visibleSubjects={filteredSubjects.length}
-          />
+    <div className="mt-4">
+      <SectionCard
+        icon={BookOpen}
+        title={`${levelLabel} Subject Assignments`}
+        subtitle={`${classes.length} classes`}
+        contentClassName="px-4 pb-5 space-y-4 md:px-5"
+      >
+        <SubjectFilterBar
+          filter={filter}
+          onChange={setFilter}
+          totalSubjects={allSubjects.length}
+          visibleSubjects={filteredSubjects.length}
+        />
 
-          {/* Quick Actions */}
-          <QuickActionsPanel
-            title={`Quick Actions — ${levelLabel}`}
-            description="Toggle a subject to assign or unassign it across multiple classes at once. Use year-group toggles for finer control."
-            headerIcon={<BookMarked className="w-4 h-4 text-slate-600 dark:text-slate-400" />}
-            subjects={filteredSubjects}
-            classes={classes}
-            department={null}
-            isAssigned={isAssigned}
-            onToggleAll={onToggleAll}
-            isSaving={isSaving}
-          />
+        <QuickActionsPanel
+          title="Quick Actions"
+          description="Toggle a subject to assign or unassign it across multiple classes at once. Use year-group toggles for finer control."
+          headerIcon={<BookMarked className="w-4 h-4" />}
+          subjects={filteredSubjects}
+          classes={classes}
+          department={null}
+          isAssigned={isAssigned}
+          onToggleAll={onToggleAll}
+          isSaving={isSaving}
+        />
 
-          {/* Per-class Accordions — collapsed by default */}
-          <Accordion type="multiple" className="space-y-2">
-            {classes.map((cls) => (
-              <ClassAccordionItem
-                key={cls.id}
-                cls={cls}
-                department={null}
-                generalSubjects={generalSubjects}
-                specialSubjects={specialSubjects}
-                specialLabel="Other Subjects"
-                specialIcon={<BookOpen className="w-4 h-4 text-primary" />}
-                levelColor={levelColor}
-                isAssigned={isAssigned}
-                pendingChanges={pendingChanges}
-                pendingRemovals={pendingRemovals}
-                isSaving={isSaving}
-                onToggle={onToggle}
-              />
-            ))}
-          </Accordion>
-        </CardContent>
-      </Card>
+        <Accordion type="multiple" className="space-y-2">
+          {classes.map((cls) => (
+            <ClassAccordionItem
+              key={cls.id}
+              cls={cls}
+              department={null}
+              generalSubjects={generalSubjects}
+              specialSubjects={specialSubjects}
+              specialLabel="Other Subjects"
+              specialIcon={<BookOpen className="w-4 h-4 text-primary" />}
+              levelColor={levelColor}
+              isAssigned={isAssigned}
+              pendingChanges={pendingChanges}
+              pendingRemovals={pendingRemovals}
+              isSaving={isSaving}
+              onToggle={onToggle}
+            />
+          ))}
+        </Accordion>
+      </SectionCard>
     </div>
   );
 }

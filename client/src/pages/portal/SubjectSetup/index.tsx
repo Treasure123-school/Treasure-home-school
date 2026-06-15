@@ -1,11 +1,11 @@
 import { useMemo, useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { StatCard, StatCardGrid } from '@/components/ui/stat-card';
 import { useToast } from '@/hooks/use-toast';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import {
@@ -15,26 +15,19 @@ import {
   Loader2,
   Wifi,
   WifiOff,
+  BookOpen,
+  BookMarked,
   Info,
   X,
-  GraduationCap,
-  BookOpen,
-  Users,
 } from 'lucide-react';
 
 import type { Subject, ClassInfo, SubjectAssignment, ClassGroup } from './types';
 import { groupClassesByLevel, isSSLevel } from './utils/classGrouping';
 import { useSubjectAssignmentState } from './hooks/useSubjectAssignmentState';
+import { LevelSwitcher } from './components/LevelSwitcher';
 import { LevelTabContent } from './components/LevelTabContent';
 import { SSSLevelTabContent } from './components/SSSLevelTabContent';
 import { SaveBar } from './components/SaveBar';
-
-const LEVEL_ICONS: Record<string, typeof BookOpen> = {
-  primary: BookOpen,
-  jss: Users,
-  ss: GraduationCap,
-  sss: GraduationCap,
-};
 
 const LEVEL_COLORS: Record<string, string> = {
   primary: 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300',
@@ -46,6 +39,7 @@ const LEVEL_COLORS: Record<string, string> = {
 export default function SubjectSetup() {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
+  const [activeLevel, setActiveLevel] = useState<string>('');
   const [infoDismissed, setInfoDismissed] = useState(() => {
     try { return localStorage.getItem('subject-setup-info-dismissed') === 'true'; } catch { return false; }
   });
@@ -89,7 +83,6 @@ export default function SubjectSetup() {
     onEvent: handleRealtimeEvent,
   });
 
-  // Derive SS class IDs for department-aware logic
   const ssClassIds = useMemo(
     () => new Set(classes.filter((c) => isSSLevel(c.level)).map((c) => c.id)),
     [classes]
@@ -97,11 +90,12 @@ export default function SubjectSetup() {
 
   const state = useSubjectAssignmentState({ currentAssignments, ssClassIds });
 
-  // Group classes dynamically by level
   const classGroups: ClassGroup[] = useMemo(() => groupClassesByLevel(classes), [classes]);
-
-  // Active subjects only
   const activeSubjects = useMemo(() => subjects.filter((s) => s.isActive), [subjects]);
+
+  const resolvedLevel = activeLevel || classGroups[0]?.level || '';
+
+  const totalAssignments = useMemo(() => currentAssignments.length, [currentAssignments]);
 
   const handleToggle = useCallback(
     (classId: number, subjectId: number, department: string | null, checked: boolean) => {
@@ -126,12 +120,14 @@ export default function SubjectSetup() {
       const result = response.ok ? await response.json() : null;
 
       const parts: string[] = [];
-      if (result?.reportCardItemsAdded > 0) parts.push(`${result.reportCardItemsAdded} subject row${result.reportCardItemsAdded !== 1 ? 's' : ''} added to report cards`);
-      if (result?.reportCardItemsRemoved > 0) parts.push(`${result.reportCardItemsRemoved} empty row${result.reportCardItemsRemoved !== 1 ? 's' : ''} removed from report cards`);
+      if (result?.reportCardItemsAdded > 0)
+        parts.push(`${result.reportCardItemsAdded} row${result.reportCardItemsAdded !== 1 ? 's' : ''} added to report cards`);
+      if (result?.reportCardItemsRemoved > 0)
+        parts.push(`${result.reportCardItemsRemoved} empty row${result.reportCardItemsRemoved !== 1 ? 's' : ''} removed`);
 
       toast({
         title: 'Changes saved',
-        description: `${additions.length} assigned, ${removals.length} unassigned.${parts.length > 0 ? ` ${parts.join('; ')}.` : ''}`,
+        description: `${additions.length} assigned, ${removals.length} unassigned.${parts.length ? ` ${parts.join('; ')}.` : ''}`,
       });
 
       state.reset();
@@ -157,62 +153,65 @@ export default function SubjectSetup() {
 
   const isLoading = subjectsLoading || classesLoading || assignmentsLoading;
 
-  // Default active tab = first group's level
-  const [activeTab, setActiveTab] = useState<string>('');
-  const resolvedTab = activeTab || classGroups[0]?.level || '';
-
-  const getTabIcon = (level: string) => {
-    const Icon = LEVEL_ICONS[level.toLowerCase()] ?? BookOpen;
-    return <Icon className="w-4 h-4" />;
-  };
-
-  const getAssignedCountForGroup = (group: ClassGroup): number => {
-    let count = 0;
-    group.classes.forEach((cls) => {
-      activeSubjects.forEach((s) => {
-        const dept = isSSLevel(group.level) ? null : null;
-        if (state.isAssigned(cls.id, s.id, dept)) count++;
-      });
-    });
-    return count;
-  };
+  const renderLevelContent = (group: ClassGroup) =>
+    isSSLevel(group.level) ? (
+      <SSSLevelTabContent
+        classes={group.classes}
+        allSubjects={activeSubjects}
+        isAssigned={state.isAssigned}
+        pendingChanges={state.pendingChanges}
+        pendingRemovals={state.pendingRemovals}
+        isSaving={isSaving}
+        onToggle={handleToggle}
+        onToggleAll={handleToggleAll}
+      />
+    ) : (
+      <LevelTabContent
+        classes={group.classes}
+        levelLabel={group.label}
+        levelColor={LEVEL_COLORS[group.level.toLowerCase()] ?? LEVEL_COLORS.jss}
+        allSubjects={activeSubjects}
+        isAssigned={state.isAssigned}
+        pendingChanges={state.pendingChanges}
+        pendingRemovals={state.pendingRemovals}
+        isSaving={isSaving}
+        onToggle={handleToggle}
+        onToggleAll={handleToggleAll}
+      />
+    );
 
   return (
-    <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-        <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center shadow-sm">
-            <School className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Subject Setup</h1>
-            <p className="text-muted-foreground mt-0.5 text-sm">
-              Assign subjects to each class individually — every class can have a different subject set.
-            </p>
-            <div className="flex items-center gap-1.5 mt-2">
-              {isConnected ? (
-                <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800">
-                  <Wifi className="w-3 h-3" />
-                  Live sync active
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-800">
-                  <WifiOff className="w-3 h-3" />
-                  Offline
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
+    <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
 
-        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <School className="h-6 w-6 text-primary shrink-0" />
+            Subject Setup
+          </h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Assign subjects to each class individually — every class can have a different set.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {isConnected ? (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
+              <Wifi className="w-3 h-3" />
+              Live sync
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/50 px-2 py-1 rounded-full border border-amber-200 dark:border-amber-800">
+              <WifiOff className="w-3 h-3" />
+              Offline
+            </span>
+          )}
           <Button
             variant="outline"
             size="sm"
             onClick={() => refetchAssignments()}
             disabled={isLoading}
-            className="gap-2"
+            className="gap-1.5"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
@@ -222,16 +221,13 @@ export default function SubjectSetup() {
               <Button variant="outline" size="sm" onClick={handleDiscard} disabled={isSaving}>
                 Discard
               </Button>
-              <Button size="sm" onClick={handleSave} disabled={isSaving} className="gap-2 shadow-sm">
+              <Button size="sm" onClick={handleSave} disabled={isSaving} className="gap-1.5 shadow-sm">
                 {isSaving ? (
-                  <>
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    Saving...
-                  </>
+                  <><Loader2 className="w-3.5 h-3.5 animate-spin" />Saving…</>
                 ) : (
                   <>
                     <Save className="w-3.5 h-3.5" />
-                    Save Changes
+                    Save
                     <Badge variant="secondary" className="text-xs ml-0.5">
                       {state.pendingCount}
                     </Badge>
@@ -243,34 +239,67 @@ export default function SubjectSetup() {
         </div>
       </div>
 
-      {/* Info Banner */}
+      {/* ── Stat Cards ─────────────────────────────────────────────────── */}
+      {isLoading ? (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-[72px] rounded-lg" />
+          ))}
+        </div>
+      ) : (
+        <StatCardGrid cols={4}>
+          <StatCard
+            label="Total Classes"
+            value={classes.length}
+            icon={School}
+            color="text-primary"
+          />
+          <StatCard
+            label="Active Subjects"
+            value={activeSubjects.length}
+            icon={BookOpen}
+            color="text-emerald-600"
+          />
+          <StatCard
+            label="Assignments"
+            value={totalAssignments}
+            icon={BookMarked}
+            color="text-indigo-600"
+          />
+          <StatCard
+            label="Pending Changes"
+            value={state.pendingCount}
+            icon={Save}
+            color={state.pendingCount > 0 ? 'text-amber-600' : 'text-muted-foreground'}
+          />
+        </StatCardGrid>
+      )}
+
+      {/* ── Info Banner ────────────────────────────────────────────────── */}
       {!infoDismissed && (
-        <div className="flex items-start gap-3 p-4 rounded-xl border border-primary/30 bg-primary/5 dark:bg-primary/5">
-          <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mt-0.5">
-            <Info className="h-4 w-4 text-primary" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-primary">How this page works</p>
-            <p className="text-sm text-primary/80 mt-0.5">
-              Use this page to control exactly which subjects appear for each class. You can assign Basic Science to JSS 1 without assigning it to JSS 2.
-              Changes affect report cards, exams, student portals, and teacher assignments — all at once.
-            </p>
-          </div>
+        <Alert className="relative pr-10">
+          <Info className="h-4 w-4" />
+          <AlertTitle>How this page works</AlertTitle>
+          <AlertDescription>
+            Control exactly which subjects appear for each class — you can assign Basic Science to JSS 1
+            without assigning it to JSS 2. Changes affect report cards, exams, student portals, and
+            teacher assignments all at once.
+          </AlertDescription>
           <button
             onClick={dismissInfo}
             aria-label="Dismiss"
-            className="flex-shrink-0 mt-0.5 p-1 rounded-lg text-primary/70 hover:text-primary hover:bg-primary/10 transition-colors"
+            className="absolute top-3 right-3 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
-        </div>
+        </Alert>
       )}
 
-      {/* Main Content */}
+      {/* ── Main Content ───────────────────────────────────────────────── */}
       {isLoading ? (
-        <div className="space-y-4">
-          <Skeleton className="h-12 w-full rounded-xl" />
-          <Skeleton className="h-72 w-full rounded-xl" />
+        <div className="space-y-3">
+          <Skeleton className="h-11 w-full rounded-xl" />
+          <Skeleton className="h-64 w-full rounded-xl" />
         </div>
       ) : classGroups.length === 0 ? (
         <Alert>
@@ -281,59 +310,23 @@ export default function SubjectSetup() {
           </AlertDescription>
         </Alert>
       ) : (
-        <Tabs value={resolvedTab} onValueChange={setActiveTab}>
-          <TabsList className={`grid w-full h-12 p-1 rounded-xl`} style={{ gridTemplateColumns: `repeat(${classGroups.length}, 1fr)` }}>
-            {classGroups.map((group) => (
-              <TabsTrigger
-                key={group.level}
-                value={group.level}
-                className="flex items-center gap-2 rounded-lg text-sm font-medium"
-              >
-                {getTabIcon(group.level)}
-                <span className="hidden sm:inline">{group.label}</span>
-                <span className="sm:hidden">{group.label.split(' ')[0]}</span>
-                <Badge variant="secondary" className="text-xs ml-0.5">
-                  {group.classes.length}
-                </Badge>
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
+        <div className="space-y-0">
+          <LevelSwitcher
+            groups={classGroups}
+            value={resolvedLevel}
+            onChange={setActiveLevel}
+          />
           {classGroups.map((group) =>
-            isSSLevel(group.level) ? (
-              <TabsContent key={group.level} value={group.level}>
-                <SSSLevelTabContent
-                  classes={group.classes}
-                  allSubjects={activeSubjects}
-                  isAssigned={state.isAssigned}
-                  pendingChanges={state.pendingChanges}
-                  pendingRemovals={state.pendingRemovals}
-                  isSaving={isSaving}
-                  onToggle={handleToggle}
-                  onToggleAll={handleToggleAll}
-                />
-              </TabsContent>
-            ) : (
-              <TabsContent key={group.level} value={group.level}>
-                <LevelTabContent
-                  classes={group.classes}
-                  levelLabel={group.label}
-                  levelColor={LEVEL_COLORS[group.level.toLowerCase()] ?? LEVEL_COLORS.jss}
-                  allSubjects={activeSubjects}
-                  isAssigned={state.isAssigned}
-                  pendingChanges={state.pendingChanges}
-                  pendingRemovals={state.pendingRemovals}
-                  isSaving={isSaving}
-                  onToggle={handleToggle}
-                  onToggleAll={handleToggleAll}
-                />
-              </TabsContent>
-            )
+            resolvedLevel === group.level ? (
+              <div key={group.level}>
+                {renderLevelContent(group)}
+              </div>
+            ) : null
           )}
-        </Tabs>
+        </div>
       )}
 
-      {/* Floating Save Bar */}
+      {/* ── Floating Save Bar ──────────────────────────────────────────── */}
       {state.hasPendingChanges && (
         <SaveBar
           pendingCount={state.pendingCount}
