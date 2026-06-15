@@ -2021,8 +2021,8 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
   async deleteSubject(id: number): Promise<boolean> {
-    // Delete all dependent records in correct order to satisfy FK constraints,
-    // then delete the subject itself.
+    // Delete all dependent records in FK-safe order before deleting the subject itself.
+
     await db.delete(schema.teacherAssignmentHistory)
       .where(eq(schema.teacherAssignmentHistory.subjectId, id));
 
@@ -2044,8 +2044,24 @@ export class DatabaseStorage implements IStorage {
     await db.delete(schema.gradingBoundaries)
       .where(eq(schema.gradingBoundaries.subjectId, id));
 
+    // lesson_notes has a NOT NULL subject_id FK with no onDelete — must be deleted
+    // before syllabusTopics (which would cascade via topicId but only for matching topics).
+    await db.delete(schema.lessonNotes)
+      .where(eq(schema.lessonNotes.subjectId, id));
+
     await db.delete(schema.syllabusTopics)
       .where(eq(schema.syllabusTopics.subjectId, id));
+
+    // school_lesson_notes has a nullable subject_id FK with no onDelete — null it out
+    // to preserve the note content while unlinking from the deleted subject.
+    await db.update(schema.schoolLessonNotes)
+      .set({ subjectId: null })
+      .where(eq(schema.schoolLessonNotes.subjectId, id));
+
+    // unauthorized_access_logs has a nullable subject_id FK — null it out (audit rows kept).
+    await db.update(schema.unauthorizedAccessLogs)
+      .set({ subjectId: null })
+      .where(eq(schema.unauthorizedAccessLogs.subjectId, id));
 
     await db.delete(schema.studyResources)
       .where(eq(schema.studyResources.subjectId, id));
@@ -2053,7 +2069,7 @@ export class DatabaseStorage implements IStorage {
     await db.delete(schema.timetable)
       .where(eq(schema.timetable.subjectId, id));
 
-    // Delete exams for this subject (exam_results cascade via FK if set, otherwise clean up)
+    // Exams: clean up child rows first (results, sessions, questions) then the exam itself.
     const examsToDelete = await db.select({ id: schema.exams.id })
       .from(schema.exams)
       .where(eq(schema.exams.subjectId, id));

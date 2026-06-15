@@ -5985,8 +5985,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       realtimeService.emitSubjectEvent('deleted', { ...existingSubject, id: subjectId }, req.user!.id);
 
       res.json({ message: 'Subject deleted successfully' });
-    } catch (error) {
-      res.status(500).json({ message: 'Failed to delete subject' });
+    } catch (error: any) {
+      console.error('[subjects.delete] Error deleting subject', req.params.id, ':', error?.message || error);
+      res.status(500).json({ message: 'Failed to delete subject', detail: error?.message });
     }
   });
 
