@@ -3534,8 +3534,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create exam question - TEACHERS ONLY
-  app.post('/api/exam-questions', authenticateUser, authorizeRoles(ROLES.TEACHER), async (req, res) => {
+  // Create exam question - Teachers, Admins, Super Admins
+  app.post('/api/exam-questions', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
     try {
       const { options, ...questionData } = req.body;
       let question;
@@ -3558,8 +3558,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update exam question - TEACHERS ONLY
-  app.patch('/api/exam-questions/:id', authenticateUser, authorizeRoles(ROLES.TEACHER), async (req, res) => {
+  // Update exam question - Teachers, Admins, Super Admins
+  app.patch('/api/exam-questions/:id', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
     try {
       const questionId = parseInt(req.params.id);
       const { options, ...questionData } = req.body;
@@ -3611,8 +3611,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete exam question - TEACHERS ONLY
-  app.delete('/api/exam-questions/:id', authenticateUser, authorizeRoles(ROLES.TEACHER), async (req, res) => {
+  // Delete exam question - Teachers, Admins, Super Admins
+  app.delete('/api/exam-questions/:id', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
     try {
       const questionId = parseInt(req.params.id);
 
@@ -3690,8 +3690,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Bulk upload exam questions from CSV - TEACHERS ONLY
-  app.post('/api/exam-questions/bulk', authenticateUser, authorizeRoles(ROLES.TEACHER), async (req, res) => {
+  // Bulk upload exam questions - Teachers, Admins, Super Admins
+  app.post('/api/exam-questions/bulk', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
     try {
       const { examId, questions } = req.body;
 
@@ -3735,7 +3735,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // CSV Upload for exam questions - TEACHERS ONLY
   // Expected CSV format: questionText, questionType, points, optionA, optionB, optionC, optionD, correctAnswer
-  app.post('/api/exams/:examId/questions/csv', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), uploadCSV.single('file'), async (req, res) => {
+  app.post('/api/exams/:examId/questions/csv', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), uploadCSV.single('file'), async (req, res) => {
     try {
       const examId = parseInt(req.params.examId);
 
