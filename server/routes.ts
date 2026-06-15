@@ -5957,8 +5957,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete a subject - Admin only
-  app.delete('/api/subjects/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
+  // Delete a subject - Admin + Super Admin
+  app.delete('/api/subjects/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
     try {
       const subjectId = parseInt(req.params.id);
 
