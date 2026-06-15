@@ -3534,8 +3534,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create exam question - TEACHERS ONLY
-  app.post('/api/exam-questions', authenticateUser, authorizeRoles(ROLES.TEACHER), async (req, res) => {
+  // Create exam question - Teachers and Admins
+  app.post('/api/exam-questions', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
     try {
       const { options, ...questionData } = req.body;
       let question;
@@ -3558,8 +3558,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update exam question - TEACHERS ONLY
-  app.patch('/api/exam-questions/:id', authenticateUser, authorizeRoles(ROLES.TEACHER), async (req, res) => {
+  // Update exam question - Teachers and Admins
+  app.patch('/api/exam-questions/:id', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
     try {
       const questionId = parseInt(req.params.id);
       const { options, ...questionData } = req.body;
@@ -3611,8 +3611,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete exam question - TEACHERS ONLY
-  app.delete('/api/exam-questions/:id', authenticateUser, authorizeRoles(ROLES.TEACHER), async (req, res) => {
+  // Delete exam question - Teachers and Admins
+  app.delete('/api/exam-questions/:id', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
     try {
       const questionId = parseInt(req.params.id);
 
@@ -3690,8 +3690,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Bulk upload exam questions from CSV - TEACHERS ONLY
-  app.post('/api/exam-questions/bulk', authenticateUser, authorizeRoles(ROLES.TEACHER), async (req, res) => {
+  // Bulk upload exam questions - Teachers and Admins
+  app.post('/api/exam-questions/bulk', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
     try {
       const { examId, questions } = req.body;
 
@@ -3733,7 +3733,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // CSV Upload for exam questions - TEACHERS ONLY
+  // CSV Upload for exam questions - Teachers and Admins
   // Expected CSV format: questionText, questionType, points, optionA, optionB, optionC, optionD, correctAnswer
   app.post('/api/exams/:examId/questions/csv', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), uploadCSV.single('file'), async (req, res) => {
     try {
@@ -5826,33 +5826,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Subjects API endpoint - cached for performance
+  // GET /api/subjects/all — returns ALL subjects including archived (Admin/SuperAdmin only, for management page)
+  app.get('/api/subjects/all', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res) => {
+    try {
+      const subjects = await performanceCache.getOrSet(
+        PerformanceCache.keys.subjects(),
+        () => storage.getSubjects(),
+        PerformanceCache.TTL.MEDIUM
+      );
+      res.json(subjects);
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to fetch subjects' });
+    }
+  });
+
+  // GET /api/subjects — returns only ACTIVE subjects (for all dropdowns and selectors)
   app.get('/api/subjects', async (req, res) => {
     try {
       const { category, department } = req.query;
 
-      // Use cache for base subjects (rarely changes, high read frequency)
+      // Use cache for active subjects (excludes archived)
       let subjects = await performanceCache.getOrSet(
-        PerformanceCache.keys.subjects(),
-        () => storage.getSubjects(),
-        PerformanceCache.TTL.MEDIUM // 5 minute cache
+        PerformanceCache.keys.activeSubjects(),
+        () => storage.getActiveSubjects(),
+        PerformanceCache.TTL.MEDIUM
       );
 
       // Filter by category if provided (general, science, art, commercial)
-      // Case-insensitive comparison with trimming to handle mixed-case and whitespace
       if (category && typeof category === 'string') {
         const normalizedCategory = category.trim().toLowerCase();
-        subjects = subjects.filter(s => (s.category || '').trim().toLowerCase() === normalizedCategory);
+        subjects = subjects.filter((s: any) => (s.category || '').trim().toLowerCase() === normalizedCategory);
       }
 
       // Filter by department for senior secondary students
-      // Department maps to subject categories: science -> science, art -> art, commercial -> commercial
-      // All departments also get 'general' subjects
-      // Case-insensitive comparison with trimming for consistent filtering
       if (department && typeof department === 'string') {
         const normalizedDept = department.trim().toLowerCase();
         const validDepartments = ['science', 'art', 'commercial'];
         if (validDepartments.includes(normalizedDept)) {
-          subjects = subjects.filter(s => {
+          subjects = subjects.filter((s: any) => {
             const subjectCategory = (s.category || '').trim().toLowerCase();
             return subjectCategory === 'general' || subjectCategory === normalizedDept;
           });
@@ -5957,35 +5968,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete a subject - Admin only
-  app.delete('/api/subjects/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
+  // Audit a subject — returns linked record counts across all tables
+  app.get('/api/subjects/:id/audit', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
     try {
       const subjectId = parseInt(req.params.id);
+      if (isNaN(subjectId)) return res.status(400).json({ message: 'Invalid subject ID' });
+      const subject = await storage.getSubject(subjectId);
+      if (!subject) return res.status(404).json({ message: 'Subject not found' });
+      const audit = await storage.getSubjectAudit(subjectId);
+      res.json(audit);
+    } catch (error: any) {
+      console.error('[subjects.audit]', error?.message);
+      res.status(500).json({ message: 'Failed to audit subject' });
+    }
+  });
 
-      if (isNaN(subjectId)) {
-        return res.status(400).json({ message: 'Invalid subject ID' });
-      }
-
-      const existingSubject = await storage.getSubject(subjectId);
-      if (!existingSubject) {
-        return res.status(404).json({ message: 'Subject not found' });
-      }
-
-      const success = await storage.deleteSubject(subjectId);
-
-      if (!success) {
-        return res.status(500).json({ message: 'Failed to delete subject' });
-      }
-
-      // Invalidate subjects cache
+  // Archive a subject — hides it from dropdowns but preserves all historical data
+  app.patch('/api/subjects/:id/archive', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res) => {
+    try {
+      const subjectId = parseInt(req.params.id);
+      if (isNaN(subjectId)) return res.status(400).json({ message: 'Invalid subject ID' });
+      const subject = await storage.getSubject(subjectId);
+      if (!subject) return res.status(404).json({ message: 'Subject not found' });
+      if (subject.status === 'archived') return res.status(409).json({ message: 'Subject is already archived' });
+      const updated = await storage.archiveSubject(subjectId, req.user!.id);
       performanceCache.invalidate(PerformanceCache.keys.subjects());
       performanceCache.invalidate(PerformanceCache.keys.activeSubjects());
+      realtimeService.emitSubjectEvent('updated', updated, req.user!.id);
+      res.json({ message: 'Subject archived successfully', subject: updated });
+    } catch (error: any) {
+      console.error('[subjects.archive]', error?.message);
+      res.status(500).json({ message: 'Failed to archive subject' });
+    }
+  });
 
-      // Emit realtime event for subject deletion
+  // Restore an archived subject — makes it active and visible in dropdowns again
+  app.patch('/api/subjects/:id/restore', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res) => {
+    try {
+      const subjectId = parseInt(req.params.id);
+      if (isNaN(subjectId)) return res.status(400).json({ message: 'Invalid subject ID' });
+      const subject = await storage.getSubject(subjectId);
+      if (!subject) return res.status(404).json({ message: 'Subject not found' });
+      if (subject.status !== 'archived') return res.status(409).json({ message: 'Subject is not archived' });
+      const updated = await storage.restoreSubject(subjectId, req.user!.id);
+      performanceCache.invalidate(PerformanceCache.keys.subjects());
+      performanceCache.invalidate(PerformanceCache.keys.activeSubjects());
+      realtimeService.emitSubjectEvent('updated', updated, req.user!.id);
+      res.json({ message: 'Subject restored successfully', subject: updated });
+    } catch (error: any) {
+      console.error('[subjects.restore]', error?.message);
+      res.status(500).json({ message: 'Failed to restore subject' });
+    }
+  });
+
+  // Permanently delete a subject — only allowed when zero linked records exist
+  app.delete('/api/subjects/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res) => {
+    try {
+      const subjectId = parseInt(req.params.id);
+      if (isNaN(subjectId)) return res.status(400).json({ message: 'Invalid subject ID' });
+
+      const existingSubject = await storage.getSubject(subjectId);
+      if (!existingSubject) return res.status(404).json({ message: 'Subject not found' });
+
+      const success = await storage.deleteSubject(subjectId, req.user!.id);
+      if (!success) return res.status(500).json({ message: 'Failed to delete subject' });
+
+      performanceCache.invalidate(PerformanceCache.keys.subjects());
+      performanceCache.invalidate(PerformanceCache.keys.activeSubjects());
       realtimeService.emitSubjectEvent('deleted', { ...existingSubject, id: subjectId }, req.user!.id);
 
-      res.json({ message: 'Subject deleted successfully' });
-    } catch (error) {
+      res.json({ message: 'Subject permanently deleted', id: subjectId });
+    } catch (error: any) {
+      if (error?.message === 'SUBJECT_HAS_LINKED_RECORDS') {
+        return res.status(409).json({
+          message: 'Deletion not allowed. This subject still has linked records. Remove, archive, or reassign the linked data before deleting.',
+          code: 'SUBJECT_HAS_LINKED_RECORDS',
+        });
+      }
+      console.error('[subjects.delete]', req.params.id, error?.message || error);
       res.status(500).json({ message: 'Failed to delete subject' });
     }
   });

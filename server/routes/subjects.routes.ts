@@ -73,7 +73,7 @@ router.put('/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: an
   }
 });
 
-router.delete('/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+router.delete('/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res: Response) => {
   try {
     const subjectId = parseInt(req.params.id);
     if (isNaN(subjectId)) {

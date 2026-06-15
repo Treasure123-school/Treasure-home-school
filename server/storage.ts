@@ -144,10 +144,20 @@ export interface IStorage {
 
   // Subject management
   getSubjects(): Promise<Subject[]>;
+  getActiveSubjects(): Promise<Subject[]>;
   getSubject(id: number): Promise<Subject | undefined>;
   createSubject(subject: InsertSubject): Promise<Subject>;
   updateSubject(id: number, subject: Partial<InsertSubject>): Promise<Subject | undefined>;
-  deleteSubject(id: number): Promise<boolean>;
+  archiveSubject(id: number, userId: string): Promise<Subject | undefined>;
+  restoreSubject(id: number, userId: string): Promise<Subject | undefined>;
+  getSubjectAudit(id: number): Promise<{
+    classLinks: number; studentAssignments: number; exams: number; assignments: number;
+    lessonNotes: number; syllabusTopics: number; questionBanks: number;
+    reportCardItems: number; continuousAssessments: number;
+    timetableEntries: number; studyResources: number; teacherAssignments: number;
+    isClean: boolean;
+  }>;
+  deleteSubject(id: number, userId?: string): Promise<boolean>;
 
   // Academic sessions
   getAcademicSessions(): Promise<AcademicSession[]>;
@@ -2008,6 +2018,13 @@ export class DatabaseStorage implements IStorage {
   async getSubjects(): Promise<Subject[]> {
     return await db.select().from(schema.subjects).orderBy(asc(schema.subjects.name));
   }
+
+  async getActiveSubjects(): Promise<Subject[]> {
+    return await db.select().from(schema.subjects)
+      .where(eq(schema.subjects.isActive, true))
+      .orderBy(asc(schema.subjects.name));
+  }
+
   async getSubject(id: number): Promise<Subject | undefined> {
     const result = await db.select().from(schema.subjects).where(eq(schema.subjects.id, id)).limit(1);
     return result[0];
@@ -2020,58 +2037,140 @@ export class DatabaseStorage implements IStorage {
     const result = await db.update(schema.subjects).set(subject).where(eq(schema.subjects.id, id)).returning();
     return result[0];
   }
-  async deleteSubject(id: number): Promise<boolean> {
-    // Delete all dependent records in correct order to satisfy FK constraints,
-    // then delete the subject itself.
-    await db.delete(schema.teacherAssignmentHistory)
-      .where(eq(schema.teacherAssignmentHistory.subjectId, id));
 
-    await db.delete(schema.teacherClassAssignments)
-      .where(eq(schema.teacherClassAssignments.subjectId, id));
-
-    await db.delete(schema.studentSubjectAssignments)
-      .where(eq(schema.studentSubjectAssignments.subjectId, id));
-
-    await db.delete(schema.classSubjectMappings)
-      .where(eq(schema.classSubjectMappings.subjectId, id));
-
-    await db.delete(schema.reportCardItems)
-      .where(eq(schema.reportCardItems.subjectId, id));
-
-    await db.delete(schema.continuousAssessment)
-      .where(eq(schema.continuousAssessment.subjectId, id));
-
-    await db.delete(schema.gradingBoundaries)
-      .where(eq(schema.gradingBoundaries.subjectId, id));
-
-    await db.delete(schema.syllabusTopics)
-      .where(eq(schema.syllabusTopics.subjectId, id));
-
-    await db.delete(schema.studyResources)
-      .where(eq(schema.studyResources.subjectId, id));
-
-    await db.delete(schema.timetable)
-      .where(eq(schema.timetable.subjectId, id));
-
-    // Delete exams for this subject (exam_results cascade via FK if set, otherwise clean up)
-    const examsToDelete = await db.select({ id: schema.exams.id })
-      .from(schema.exams)
-      .where(eq(schema.exams.subjectId, id));
-
-    for (const exam of examsToDelete) {
-      await db.delete(schema.examResults).where(eq(schema.examResults.examId, exam.id));
-      await db.delete(schema.examSessions).where(eq(schema.examSessions.examId, exam.id));
+  async archiveSubject(id: number, userId: string): Promise<Subject | undefined> {
+    const subject = await this.getSubject(id);
+    if (!subject) return undefined;
+    const result = await db.update(schema.subjects)
+      .set({ status: 'archived', isActive: false })
+      .where(eq(schema.subjects.id, id))
+      .returning();
+    if (result[0]) {
+      try {
+        await this.createAuditLog({
+          userId,
+          action: 'subject.archived',
+          entityType: 'subject',
+          entityId: String(id),
+          oldValue: JSON.stringify({ name: subject.name, status: subject.status ?? 'active' }),
+          newValue: JSON.stringify({ name: result[0].name, status: 'archived' }),
+        });
+      } catch (e) { /* audit log failure must not block the operation */ }
     }
-    await db.delete(schema.exams).where(eq(schema.exams.subjectId, id));
+    return result[0];
+  }
 
-    await db.delete(schema.questionBanks)
-      .where(eq(schema.questionBanks.subjectId, id));
+  async restoreSubject(id: number, userId: string): Promise<Subject | undefined> {
+    const subject = await this.getSubject(id);
+    if (!subject) return undefined;
+    const result = await db.update(schema.subjects)
+      .set({ status: 'active', isActive: true })
+      .where(eq(schema.subjects.id, id))
+      .returning();
+    if (result[0]) {
+      try {
+        await this.createAuditLog({
+          userId,
+          action: 'subject.restored',
+          entityType: 'subject',
+          entityId: String(id),
+          oldValue: JSON.stringify({ name: subject.name, status: 'archived' }),
+          newValue: JSON.stringify({ name: result[0].name, status: 'active' }),
+        });
+      } catch (e) { /* audit log failure must not block the operation */ }
+    }
+    return result[0];
+  }
 
-    await db.delete(schema.assignments)
-      .where(eq(schema.assignments.subjectId, id));
+  async getSubjectAudit(id: number): Promise<{
+    classLinks: number;
+    studentAssignments: number;
+    exams: number;
+    assignments: number;
+    lessonNotes: number;
+    syllabusTopics: number;
+    questionBanks: number;
+    reportCardItems: number;
+    continuousAssessments: number;
+    timetableEntries: number;
+    studyResources: number;
+    teacherAssignments: number;
+    isClean: boolean;
+  }> {
+    const [
+      classLinks, studentAssignments, exams, assignments,
+      lessonNotes, syllabusTopics, questionBanks, reportCardItems,
+      continuousAssessments, timetableEntries, studyResources, teacherAssignments,
+    ] = await Promise.all([
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.classSubjectMappings).where(eq(schema.classSubjectMappings.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.studentSubjectAssignments).where(eq(schema.studentSubjectAssignments.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.exams).where(eq(schema.exams.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.assignments).where(eq(schema.assignments.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.lessonNotes).where(eq(schema.lessonNotes.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.syllabusTopics).where(eq(schema.syllabusTopics.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.questionBanks).where(eq(schema.questionBanks.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.reportCardItems).where(eq(schema.reportCardItems.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.continuousAssessment).where(eq(schema.continuousAssessment.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.timetable).where(eq(schema.timetable.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.studyResources).where(eq(schema.studyResources.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.teacherClassAssignments).where(eq(schema.teacherClassAssignments.subjectId, id)),
+    ]);
 
-    const result = await db.delete(schema.subjects).where(eq(schema.subjects.id, id));
-    return (result as any).length > 0 || true;
+    const counts = {
+      classLinks: classLinks[0]?.count ?? 0,
+      studentAssignments: studentAssignments[0]?.count ?? 0,
+      exams: exams[0]?.count ?? 0,
+      assignments: assignments[0]?.count ?? 0,
+      lessonNotes: lessonNotes[0]?.count ?? 0,
+      syllabusTopics: syllabusTopics[0]?.count ?? 0,
+      questionBanks: questionBanks[0]?.count ?? 0,
+      reportCardItems: reportCardItems[0]?.count ?? 0,
+      continuousAssessments: continuousAssessments[0]?.count ?? 0,
+      timetableEntries: timetableEntries[0]?.count ?? 0,
+      studyResources: studyResources[0]?.count ?? 0,
+      teacherAssignments: teacherAssignments[0]?.count ?? 0,
+    };
+
+    const isClean = Object.values(counts).every(v => v === 0);
+    return { ...counts, isClean };
+  }
+
+  async deleteSubject(id: number, userId?: string): Promise<boolean> {
+    // Safety check: only allow deletion when there are zero linked records.
+    // Admins must archive, reassign, or remove linked data first.
+    const audit = await this.getSubjectAudit(id);
+    if (!audit.isClean) {
+      throw new Error('SUBJECT_HAS_LINKED_RECORDS');
+    }
+
+    const subject = await this.getSubject(id);
+
+    const pool = getPgPool();
+    if (!pool) throw new Error('No database pool available');
+    const run = (q: string) => pool.query(q, [id]);
+
+    // Null out nullable FKs to preserve audit trail
+    await run(`UPDATE school_lesson_notes SET subject_id = NULL WHERE subject_id = $1`);
+    await run(`UPDATE unauthorized_access_logs SET subject_id = NULL WHERE subject_id = $1`);
+
+    // Delete grading_boundaries (subject-specific boundaries that may exist even if isClean)
+    await run(`DELETE FROM grading_boundaries WHERE subject_id = $1`);
+
+    // Delete the subject
+    await run(`DELETE FROM subjects WHERE id = $1`);
+
+    if (userId && subject) {
+      try {
+        await this.createAuditLog({
+          userId,
+          action: 'subject.deleted',
+          entityType: 'subject',
+          entityId: String(id),
+          oldValue: JSON.stringify({ name: subject.name, status: subject.status ?? 'active', category: subject.category }),
+        });
+      } catch (e) { /* audit log failure must not block the operation */ }
+    }
+    return true;
   }
   // Academic sessions
   async getAcademicSessions(): Promise<AcademicSession[]> {

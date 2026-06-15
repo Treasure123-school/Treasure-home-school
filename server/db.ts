@@ -33,9 +33,13 @@ function initializeDatabase() {
 
   console.log('Initializing PostgreSQL database...');
   try {
-    pool = new Pool({ connectionString: databaseUrl });
+    // Neon's pooled endpoint (-pooler.) uses PgBouncer in transaction mode,
+    // which does not support prepared statements used by Drizzle ORM.
+    // Strip '-pooler' to use the direct connection endpoint for Drizzle.
+    const directUrl = databaseUrl.replace('-pooler.', '.');
+    pool = new Pool({ connectionString: directUrl });
     const dbInstance = drizzle(pool, { schema: pgSchema });
-    console.log('PostgreSQL database initialized');
+    console.log('PostgreSQL database initialized (direct connection for Drizzle ORM compatibility)');
     return dbInstance;
   } catch (error) {
     console.error('Failed to initialize PostgreSQL database:', error);
