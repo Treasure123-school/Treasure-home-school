@@ -5957,6 +5957,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Audit a subject before deletion - what's linked to it
+  app.get('/api/subjects/:id/audit', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+    try {
+      const subjectId = parseInt(req.params.id);
+      if (isNaN(subjectId)) return res.status(400).json({ message: 'Invalid subject ID' });
+      const subject = await storage.getSubject(subjectId);
+      if (!subject) return res.status(404).json({ message: 'Subject not found' });
+      const audit = await storage.getSubjectAudit(subjectId);
+      res.json(audit);
+    } catch (error: any) {
+      console.error('[subjects.audit]', error?.message);
+      res.status(500).json({ message: 'Failed to audit subject' });
+    }
+  });
+
   // Delete a subject - Admin + Super Admin
   app.delete('/api/subjects/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
     try {

@@ -147,6 +147,12 @@ export interface IStorage {
   getSubject(id: number): Promise<Subject | undefined>;
   createSubject(subject: InsertSubject): Promise<Subject>;
   updateSubject(id: number, subject: Partial<InsertSubject>): Promise<Subject | undefined>;
+  getSubjectAudit(id: number): Promise<{
+    classLinks: number; studentAssignments: number; exams: number; assignments: number;
+    lessonNotes: number; syllabusTopics: number; reportCardItems: number;
+    continuousAssessments: number; timetableEntries: number; studyResources: number;
+    isClean: boolean;
+  }>;
   deleteSubject(id: number): Promise<boolean>;
 
   // Academic sessions
@@ -2020,74 +2026,121 @@ export class DatabaseStorage implements IStorage {
     const result = await db.update(schema.subjects).set(subject).where(eq(schema.subjects.id, id)).returning();
     return result[0];
   }
+  async getSubjectAudit(id: number): Promise<{
+    classLinks: number;
+    studentAssignments: number;
+    exams: number;
+    assignments: number;
+    lessonNotes: number;
+    syllabusTopics: number;
+    reportCardItems: number;
+    continuousAssessments: number;
+    timetableEntries: number;
+    studyResources: number;
+    isClean: boolean;
+  }> {
+    const [
+      classLinks, studentAssignments, exams, assignments,
+      lessonNotes, syllabusTopics, reportCardItems,
+      continuousAssessments, timetableEntries, studyResources,
+    ] = await Promise.all([
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.classSubjectMappings).where(eq(schema.classSubjectMappings.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.studentSubjectAssignments).where(eq(schema.studentSubjectAssignments.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.exams).where(eq(schema.exams.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.assignments).where(eq(schema.assignments.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.lessonNotes).where(eq(schema.lessonNotes.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.syllabusTopics).where(eq(schema.syllabusTopics.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.reportCardItems).where(eq(schema.reportCardItems.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.continuousAssessment).where(eq(schema.continuousAssessment.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.timetable).where(eq(schema.timetable.subjectId, id)),
+      db.select({ count: sql<number>`count(*)::int` }).from(schema.studyResources).where(eq(schema.studyResources.subjectId, id)),
+    ]);
+
+    const counts = {
+      classLinks: classLinks[0]?.count ?? 0,
+      studentAssignments: studentAssignments[0]?.count ?? 0,
+      exams: exams[0]?.count ?? 0,
+      assignments: assignments[0]?.count ?? 0,
+      lessonNotes: lessonNotes[0]?.count ?? 0,
+      syllabusTopics: syllabusTopics[0]?.count ?? 0,
+      reportCardItems: reportCardItems[0]?.count ?? 0,
+      continuousAssessments: continuousAssessments[0]?.count ?? 0,
+      timetableEntries: timetableEntries[0]?.count ?? 0,
+      studyResources: studyResources[0]?.count ?? 0,
+    };
+
+    const isClean = Object.values(counts).every(v => v === 0);
+    return { ...counts, isClean };
+  }
+
   async deleteSubject(id: number): Promise<boolean> {
-    // Delete all dependent records in FK-safe order before deleting the subject itself.
+    // Full FK-safe cascade deletion.
+    // Order derived from live DB audit of all NO ACTION foreign keys.
 
-    await db.delete(schema.teacherAssignmentHistory)
-      .where(eq(schema.teacherAssignmentHistory.subjectId, id));
+    // — Teacher records —
+    await db.delete(schema.teacherAssignmentHistory).where(eq(schema.teacherAssignmentHistory.subjectId, id));
+    await db.delete(schema.teacherClassAssignments).where(eq(schema.teacherClassAssignments.subjectId, id));
+    await db.delete(schema.studentSubjectAssignments).where(eq(schema.studentSubjectAssignments.subjectId, id));
+    await db.delete(schema.classSubjectMappings).where(eq(schema.classSubjectMappings.subjectId, id));
 
-    await db.delete(schema.teacherClassAssignments)
-      .where(eq(schema.teacherClassAssignments.subjectId, id));
+    // — Assessment & grading —
+    await db.delete(schema.reportCardItems).where(eq(schema.reportCardItems.subjectId, id));
+    await db.delete(schema.continuousAssessment).where(eq(schema.continuousAssessment.subjectId, id));
+    await db.delete(schema.gradingBoundaries).where(eq(schema.gradingBoundaries.subjectId, id));
 
-    await db.delete(schema.studentSubjectAssignments)
-      .where(eq(schema.studentSubjectAssignments.subjectId, id));
+    // — Lesson notes: NOT NULL FK, must go before syllabusTopics —
+    await db.delete(schema.lessonNotes).where(eq(schema.lessonNotes.subjectId, id));
+    await db.delete(schema.syllabusTopics).where(eq(schema.syllabusTopics.subjectId, id));
 
-    await db.delete(schema.classSubjectMappings)
-      .where(eq(schema.classSubjectMappings.subjectId, id));
+    // — Nullable FKs: null out to preserve audit rows —
+    await db.update(schema.schoolLessonNotes).set({ subjectId: null }).where(eq(schema.schoolLessonNotes.subjectId, id));
+    await db.update(schema.unauthorizedAccessLogs).set({ subjectId: null }).where(eq(schema.unauthorizedAccessLogs.subjectId, id));
 
-    await db.delete(schema.reportCardItems)
-      .where(eq(schema.reportCardItems.subjectId, id));
+    // — Study resources & timetable —
+    await db.delete(schema.studyResources).where(eq(schema.studyResources.subjectId, id));
+    await db.delete(schema.timetable).where(eq(schema.timetable.subjectId, id));
 
-    await db.delete(schema.continuousAssessment)
-      .where(eq(schema.continuousAssessment.subjectId, id));
-
-    await db.delete(schema.gradingBoundaries)
-      .where(eq(schema.gradingBoundaries.subjectId, id));
-
-    // lesson_notes has a NOT NULL subject_id FK with no onDelete — must be deleted
-    // before syllabusTopics (which would cascade via topicId but only for matching topics).
-    await db.delete(schema.lessonNotes)
-      .where(eq(schema.lessonNotes.subjectId, id));
-
-    await db.delete(schema.syllabusTopics)
-      .where(eq(schema.syllabusTopics.subjectId, id));
-
-    // school_lesson_notes has a nullable subject_id FK with no onDelete — null it out
-    // to preserve the note content while unlinking from the deleted subject.
-    await db.update(schema.schoolLessonNotes)
-      .set({ subjectId: null })
-      .where(eq(schema.schoolLessonNotes.subjectId, id));
-
-    // unauthorized_access_logs has a nullable subject_id FK — null it out (audit rows kept).
-    await db.update(schema.unauthorizedAccessLogs)
-      .set({ subjectId: null })
-      .where(eq(schema.unauthorizedAccessLogs.subjectId, id));
-
-    await db.delete(schema.studyResources)
-      .where(eq(schema.studyResources.subjectId, id));
-
-    await db.delete(schema.timetable)
-      .where(eq(schema.timetable.subjectId, id));
-
-    // Exams: clean up child rows first (results, sessions, questions) then the exam itself.
+    // — Exams: full transitive cleanup required —
+    // FK chain: gradingTasks → (examSessions, examQuestions, studentAnswers)
+    //           studentAnswers → examSessions
+    //           examQuestions → exams  (all NO ACTION)
+    //           examSubmissionsArchive → exams (NO ACTION)
     const examsToDelete = await db.select({ id: schema.exams.id })
       .from(schema.exams)
       .where(eq(schema.exams.subjectId, id));
 
     for (const exam of examsToDelete) {
-      await db.delete(schema.examResults).where(eq(schema.examResults.examId, exam.id));
+      const sessions = await db.select({ id: schema.examSessions.id })
+        .from(schema.examSessions)
+        .where(eq(schema.examSessions.examId, exam.id));
+
+      if (sessions.length > 0) {
+        const sessionIds = sessions.map(s => s.id);
+        // gradingTasks must go first (refs sessions + questions + answers)
+        await db.delete(schema.gradingTasks).where(inArray(schema.gradingTasks.sessionId, sessionIds));
+        // studentAnswers next (refs sessions)
+        await db.delete(schema.studentAnswers).where(inArray(schema.studentAnswers.sessionId, sessionIds));
+      }
+      // examSessions (performance_events CASCADE auto-deleted)
       await db.delete(schema.examSessions).where(eq(schema.examSessions.examId, exam.id));
+      // examResults (NO ACTION)
+      await db.delete(schema.examResults).where(eq(schema.examResults.examId, exam.id));
+      // examSubmissionsArchive (NO ACTION)
+      await db.delete(schema.examSubmissionsArchive).where(eq(schema.examSubmissionsArchive.examId, exam.id));
+      // examQuestions (examQuestionBankLinks CASCADE auto-deleted)
+      await db.delete(schema.examQuestions).where(eq(schema.examQuestions.examId, exam.id));
     }
     await db.delete(schema.exams).where(eq(schema.exams.subjectId, id));
 
-    await db.delete(schema.questionBanks)
-      .where(eq(schema.questionBanks.subjectId, id));
+    // — Question banks (question_bank_items CASCADE auto-deleted) —
+    await db.delete(schema.questionBanks).where(eq(schema.questionBanks.subjectId, id));
 
-    await db.delete(schema.assignments)
-      .where(eq(schema.assignments.subjectId, id));
+    // — Assignments (assignment_submissions CASCADE auto-deleted) —
+    await db.delete(schema.assignments).where(eq(schema.assignments.subjectId, id));
 
-    const result = await db.delete(schema.subjects).where(eq(schema.subjects.id, id));
-    return (result as any).length > 0 || true;
+    // — Finally: the subject itself —
+    await db.delete(schema.subjects).where(eq(schema.subjects.id, id));
+    return true;
   }
   // Academic sessions
   async getAcademicSessions(): Promise<AcademicSession[]> {

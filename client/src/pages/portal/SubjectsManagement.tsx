@@ -19,10 +19,28 @@ import { z } from 'zod';
 import {
   Plus, Edit, Search, BookOpen, Trash2, GraduationCap,
   Palette, Briefcase, BookMarked, MoreVertical, AlertTriangle,
+  CheckCircle2, Loader2, BookText, FileText, ClipboardList,
+  Calendar, Users, BarChart2, Library,
 } from 'lucide-react';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 
-// ─── Constants ───────────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface SubjectAudit {
+  classLinks: number;
+  studentAssignments: number;
+  exams: number;
+  assignments: number;
+  lessonNotes: number;
+  syllabusTopics: number;
+  reportCardItems: number;
+  continuousAssessments: number;
+  timetableEntries: number;
+  studyResources: number;
+  isClean: boolean;
+}
+
+// ─── Constants ────────────────────────────────────────────────────────────────
 
 const SUBJECT_CATEGORIES = [
   {
@@ -63,7 +81,18 @@ const SUBJECT_CATEGORIES = [
   },
 ] as const;
 
-type CategoryValue = typeof SUBJECT_CATEGORIES[number]['value'];
+const AUDIT_FIELDS: { key: keyof Omit<SubjectAudit, 'isClean'>; label: string; icon: any }[] = [
+  { key: 'classLinks', label: 'Linked classes', icon: BookOpen },
+  { key: 'studentAssignments', label: 'Student assignments', icon: Users },
+  { key: 'exams', label: 'Exams', icon: ClipboardList },
+  { key: 'assignments', label: 'Assignments', icon: FileText },
+  { key: 'lessonNotes', label: 'Lesson notes', icon: BookText },
+  { key: 'syllabusTopics', label: 'Syllabus topics', icon: Library },
+  { key: 'reportCardItems', label: 'Report card entries', icon: BarChart2 },
+  { key: 'continuousAssessments', label: 'CA records', icon: BarChart2 },
+  { key: 'timetableEntries', label: 'Timetable entries', icon: Calendar },
+  { key: 'studyResources', label: 'Study resources', icon: BookOpen },
+];
 
 const subjectFormSchema = z.object({
   name: z.string().min(1, 'Subject name is required'),
@@ -80,7 +109,11 @@ function getCategoryInfo(cat: string) {
   return SUBJECT_CATEGORIES.find(c => c.value === cat) ?? SUBJECT_CATEGORIES[0];
 }
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+function pluralise(n: number, word: string) {
+  return `${n} ${word}${n !== 1 ? 's' : ''}`;
+}
+
+// ─── SubjectCard ──────────────────────────────────────────────────────────────
 
 interface SubjectCardProps {
   subject: any;
@@ -90,7 +123,7 @@ interface SubjectCardProps {
 
 function SubjectCard({ subject, onEdit, onDelete }: SubjectCardProps) {
   const cat = getCategoryInfo(subject.category || 'general');
-  const CatIcon = cat.icon;
+  const Icon = cat.icon;
 
   return (
     <Card
@@ -101,7 +134,7 @@ function SubjectCard({ subject, onEdit, onDelete }: SubjectCardProps) {
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 min-w-0">
             <div className={`shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${cat.iconBg}`}>
-              <CatIcon className={`w-4 h-4 ${cat.iconColor}`} />
+              <Icon className={`w-4 h-4 ${cat.iconColor}`} />
             </div>
             <div className="min-w-0">
               <p className="font-semibold text-sm leading-tight truncate" data-testid={`text-subject-name-${subject.id}`}>
@@ -152,14 +185,19 @@ function SubjectCard({ subject, onEdit, onDelete }: SubjectCardProps) {
   );
 }
 
-interface CategoryStatCardProps {
+// ─── CategoryStatCard ─────────────────────────────────────────────────────────
+
+function CategoryStatCard({
+  category,
+  count,
+  isActive,
+  onClick,
+}: {
   category: typeof SUBJECT_CATEGORIES[number];
   count: number;
   isActive: boolean;
   onClick: () => void;
-}
-
-function CategoryStatCard({ category, count, isActive, onClick }: CategoryStatCardProps) {
+}) {
   const Icon = category.icon;
   return (
     <Card
@@ -179,39 +217,131 @@ function CategoryStatCard({ category, count, isActive, onClick }: CategoryStatCa
   );
 }
 
-interface DeleteConfirmDialogProps {
+// ─── SafeDeleteDialog ─────────────────────────────────────────────────────────
+
+interface SafeDeleteDialogProps {
   subject: any;
-  isPending: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  isDeleting: boolean;
 }
 
-function DeleteConfirmDialog({ subject, isPending, onConfirm, onCancel }: DeleteConfirmDialogProps) {
+function SafeDeleteDialog({ subject, onConfirm, onCancel, isDeleting }: SafeDeleteDialogProps) {
+  const [confirmText, setConfirmText] = useState('');
+
+  const { data: audit, isLoading: isAuditing } = useQuery<SubjectAudit>({
+    queryKey: ['/api/subjects', subject?.id, 'audit'],
+    queryFn: async () => (await apiRequest('GET', `/api/subjects/${subject.id}/audit`)).json(),
+    enabled: !!subject,
+    staleTime: 0,
+  });
+
+  const linkedItems = audit
+    ? AUDIT_FIELDS.filter(f => (audit[f.key] ?? 0) > 0)
+    : [];
+
+  const confirmPhrase = subject?.name ?? '';
+  const canConfirm = confirmText === confirmPhrase && !isAuditing;
+
+  function handleOpenChange(open: boolean) {
+    if (!open) { setConfirmText(''); onCancel(); }
+  }
+
   return (
-    <Dialog open={!!subject} onOpenChange={onCancel}>
-      <DialogContent className="max-w-sm">
+    <Dialog open={!!subject} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
-            <AlertTriangle className="h-5 w-5" /> Delete Subject
+            <AlertTriangle className="h-5 w-5 shrink-0" />
+            Delete Subject
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 mt-2">
+
+        <div className="space-y-4 mt-1">
+          {/* Subject name */}
           <p className="text-sm text-muted-foreground">
-            Are you sure you want to delete{' '}
-            <strong className="text-foreground">{subject?.name}</strong>?{' '}
-            This action cannot be undone.
+            You are about to permanently delete{' '}
+            <strong className="text-foreground">{subject?.name}</strong>.
           </p>
-          <div className="flex gap-3 justify-end">
-            <Button variant="outline" onClick={onCancel} data-testid="button-cancel-delete">
+
+          {/* Audit panel */}
+          <div className="rounded-lg border bg-muted/40 p-4 space-y-3">
+            {isAuditing ? (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Checking linked data…
+              </div>
+            ) : audit?.isClean ? (
+              <div className="flex items-start gap-2 text-sm text-green-700 dark:text-green-400">
+                <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>
+                  <strong>Nothing is linked to this subject.</strong>
+                  {' '}It is safe to delete.
+                </span>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-400">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>
+                    <strong>Linked data will be permanently removed</strong> along with this subject:
+                  </span>
+                </div>
+                <ul className="space-y-1.5">
+                  {linkedItems.map(({ key, label, icon: Icon }) => (
+                    <li key={key} className="flex items-center gap-2 text-sm">
+                      <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                      <span className="text-muted-foreground">{label}:</span>
+                      <span className="font-semibold text-foreground">
+                        {pluralise(audit![key] as number, label.split(' ').pop()!)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
+
+          {/* Type-to-confirm */}
+          {!isAuditing && (
+            <div className="space-y-1.5">
+              <Label htmlFor="confirm-input" className="text-sm">
+                Type <strong className="select-all font-mono">{confirmPhrase}</strong> to confirm
+              </Label>
+              <Input
+                id="confirm-input"
+                value={confirmText}
+                onChange={e => setConfirmText(e.target.value)}
+                placeholder={confirmPhrase}
+                className="font-mono text-sm"
+                autoComplete="off"
+                data-testid="input-delete-confirm"
+                disabled={isDeleting}
+              />
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex gap-3 justify-end pt-1">
+            <Button
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+              disabled={isDeleting}
+              data-testid="button-cancel-delete"
+            >
               Cancel
             </Button>
             <Button
               variant="destructive"
               onClick={onConfirm}
-              disabled={isPending}
+              disabled={!canConfirm || isDeleting}
               data-testid="button-confirm-delete"
             >
-              {isPending ? 'Deleting…' : 'Delete'}
+              {isDeleting ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Deleting…</>
+              ) : (
+                <><Trash2 className="h-4 w-4 mr-2" />Permanently Delete</>
+              )}
             </Button>
           </div>
         </div>
@@ -224,7 +354,7 @@ function DeleteConfirmDialog({ subject, isPending, onConfirm, onCancel }: Delete
 
 export default function SubjectsManagement() {
   const { toast } = useToast();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingSubject, setEditingSubject] = useState<any>(null);
   const [subjectToDelete, setSubjectToDelete] = useState<any>(null);
@@ -235,16 +365,16 @@ export default function SubjectsManagement() {
     defaultValues: { category: 'general' },
   });
 
-  const { data: subjects = [], isLoading } = useQuery({
+  const { data: subjects = [], isLoading } = useQuery<any[]>({
     queryKey: ['/api/subjects'],
     queryFn: async () => (await apiRequest('GET', '/api/subjects')).json(),
   });
 
   useSocketIORealtime({ table: 'subjects', queryKey: ['/api/subjects'] });
 
-  // ── Mutations ──────────────────────────────────────────────────────────────
+  // ── Create ─────────────────────────────────────────────────────────────────
 
-  const createSubjectMutation = useMutation({
+  const createMutation = useMutation({
     mutationFn: async (data: SubjectForm) => {
       const res = await apiRequest('POST', '/api/subjects', data);
       if (!res.ok) throw new Error('Failed to create subject');
@@ -253,15 +383,15 @@ export default function SubjectsManagement() {
     onMutate: async (newSubject) => {
       await queryClient.cancelQueries({ queryKey: ['/api/subjects'] });
       const prev = queryClient.getQueryData(['/api/subjects']);
-      queryClient.setQueryData(['/api/subjects'], (old: any) => {
-        const temp = { ...newSubject, id: 'temp-' + Date.now(), createdAt: new Date() };
-        return old ? [temp, ...old] : [temp];
-      });
-      handleCloseDialog();
+      queryClient.setQueryData(['/api/subjects'], (old: any) => [
+        { ...newSubject, id: 'temp-' + Date.now() },
+        ...(old ?? []),
+      ]);
+      closeForm();
       return { prev };
     },
     onSuccess: () => {
-      toast({ title: 'Subject created successfully' });
+      toast({ title: 'Subject created' });
       queryClient.invalidateQueries({ queryKey: ['/api/subjects'] });
     },
     onError: (e: any, _v, ctx: any) => {
@@ -270,8 +400,10 @@ export default function SubjectsManagement() {
     },
   });
 
-  const updateSubjectMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<SubjectForm> }) => {
+  // ── Update ─────────────────────────────────────────────────────────────────
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: any; data: Partial<SubjectForm> }) => {
       const res = await apiRequest('PUT', `/api/subjects/${id}`, data);
       if (!res.ok) throw new Error('Failed to update subject');
       return res.json();
@@ -282,11 +414,11 @@ export default function SubjectsManagement() {
       queryClient.setQueryData(['/api/subjects'], (old: any) =>
         old?.map((s: any) => s.id === id ? { ...s, ...data } : s) ?? old
       );
-      handleCloseDialog();
+      closeForm();
       return { prev };
     },
     onSuccess: () => {
-      toast({ title: 'Subject updated successfully' });
+      toast({ title: 'Subject updated' });
       queryClient.invalidateQueries({ queryKey: ['/api/subjects'] });
     },
     onError: (e: any, _v, ctx: any) => {
@@ -295,19 +427,19 @@ export default function SubjectsManagement() {
     },
   });
 
-  const deleteSubjectMutation = useMutation({
-    mutationFn: async (id: string) => {
+  // ── Delete ─────────────────────────────────────────────────────────────────
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: any) => {
       const res = await apiRequest('DELETE', `/api/subjects/${id}`);
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.message || 'Failed to delete subject');
       }
-      return res.status === 204 ? null : res.json();
     },
-    onMutate: async (id: string) => {
+    onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: ['/api/subjects'] });
       const prev = queryClient.getQueryData(['/api/subjects']);
-      // Instantly remove from UI — dialog and list update together
       queryClient.setQueryData(['/api/subjects'], (old: any) =>
         old?.filter((s: any) => s.id !== id) ?? old
       );
@@ -316,11 +448,9 @@ export default function SubjectsManagement() {
     },
     onSuccess: () => {
       toast({ title: 'Subject deleted' });
-      // Silent background sync — no visual flicker since item already removed
       queryClient.invalidateQueries({ queryKey: ['/api/subjects'] });
     },
     onError: (e: any, _v, ctx: any) => {
-      // Restore list only on real failure (network/server error)
       if (ctx?.prev) queryClient.setQueryData(['/api/subjects'], ctx.prev);
       toast({ title: 'Delete failed', description: e.message, variant: 'destructive' });
     },
@@ -329,32 +459,28 @@ export default function SubjectsManagement() {
   // ── Handlers ───────────────────────────────────────────────────────────────
 
   const onSubmit = (data: SubjectForm) => {
-    if (editingSubject) updateSubjectMutation.mutate({ id: editingSubject.id, data });
-    else createSubjectMutation.mutate(data);
+    if (editingSubject) updateMutation.mutate({ id: editingSubject.id, data });
+    else createMutation.mutate(data);
   };
 
-  const handleEdit = (subject: any) => {
+  const openEdit = (subject: any) => {
     setEditingSubject(subject);
     setValue('name', subject.name);
     setValue('code', subject.code);
     setValue('description', subject.description || '');
     setValue('category', subject.category || 'general');
-    setIsDialogOpen(true);
+    setIsFormOpen(true);
   };
 
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false);
+  const closeForm = () => {
+    setIsFormOpen(false);
     setEditingSubject(null);
     reset({ category: 'general' });
   };
 
-  const handleDeleteConfirm = () => {
-    if (subjectToDelete) deleteSubjectMutation.mutate(subjectToDelete.id);
-  };
+  // ── Derived ────────────────────────────────────────────────────────────────
 
-  // ── Derived data ───────────────────────────────────────────────────────────
-
-  const filteredSubjects = (subjects as any[]).filter((s: any) => {
+  const filtered = subjects.filter((s: any) => {
     const q = searchTerm.toLowerCase();
     const matchSearch = !q || s.name?.toLowerCase().includes(q) || s.code?.toLowerCase().includes(q) || s.description?.toLowerCase().includes(q);
     const matchCat = categoryFilter === 'all' || s.category === categoryFilter;
@@ -363,10 +489,10 @@ export default function SubjectsManagement() {
 
   const categoryCounts = SUBJECT_CATEGORIES.map(c => ({
     ...c,
-    count: (subjects as any[]).filter((s: any) => s.category === c.value).length,
+    count: subjects.filter((s: any) => s.category === c.value).length,
   }));
 
-  const isFormPending = createSubjectMutation.isPending || updateSubjectMutation.isPending;
+  const isFormPending = createMutation.isPending || updateMutation.isPending;
 
   // ── Render ─────────────────────────────────────────────────────────────────
 
@@ -385,7 +511,7 @@ export default function SubjectsManagement() {
           </p>
         </div>
         <Button
-          onClick={() => { reset({ category: 'general' }); setEditingSubject(null); setIsDialogOpen(true); }}
+          onClick={() => { reset({ category: 'general' }); setEditingSubject(null); setIsFormOpen(true); }}
           data-testid="button-add-subject"
         >
           <Plus className="w-4 h-4 mr-2" />
@@ -436,14 +562,14 @@ export default function SubjectsManagement() {
         </Select>
       </div>
 
-      {/* Subject list */}
+      {/* Subject grid */}
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-28 bg-muted animate-pulse rounded-xl" />
           ))}
         </div>
-      ) : filteredSubjects.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-30" />
           <p className="font-medium">No subjects found</p>
@@ -456,23 +582,23 @@ export default function SubjectsManagement() {
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredSubjects.map((subject: any) => (
+            {filtered.map((subject: any) => (
               <SubjectCard
                 key={subject.id}
                 subject={subject}
-                onEdit={handleEdit}
+                onEdit={openEdit}
                 onDelete={setSubjectToDelete}
               />
             ))}
           </div>
           <p className="text-xs text-muted-foreground text-right">
-            {filteredSubjects.length} subject{filteredSubjects.length !== 1 ? 's' : ''} shown
+            {filtered.length} subject{filtered.length !== 1 ? 's' : ''} shown
           </p>
         </>
       )}
 
-      {/* Create / Edit dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
+      {/* ── Create / Edit dialog ── */}
+      <Dialog open={isFormOpen} onOpenChange={closeForm}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingSubject ? 'Edit Subject' : 'Add New Subject'}</DialogTitle>
@@ -521,7 +647,7 @@ export default function SubjectsManagement() {
               </p>
             </div>
             <div className="flex gap-3 justify-end pt-2">
-              <Button type="button" variant="outline" onClick={handleCloseDialog}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={closeForm}>Cancel</Button>
               <Button type="submit" disabled={isFormPending} data-testid="button-save-subject">
                 {isFormPending ? 'Saving…' : editingSubject ? 'Update Subject' : 'Add Subject'}
               </Button>
@@ -530,11 +656,11 @@ export default function SubjectsManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirmation dialog */}
-      <DeleteConfirmDialog
+      {/* ── Safe delete dialog ── */}
+      <SafeDeleteDialog
         subject={subjectToDelete}
-        isPending={deleteSubjectMutation.isPending}
-        onConfirm={handleDeleteConfirm}
+        isDeleting={deleteMutation.isPending}
+        onConfirm={() => subjectToDelete && deleteMutation.mutate(subjectToDelete.id)}
         onCancel={() => setSubjectToDelete(null)}
       />
     </div>
