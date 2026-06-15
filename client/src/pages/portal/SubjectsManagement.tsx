@@ -20,8 +20,7 @@ import {
   Plus, Edit, Search, BookOpen, Trash2, GraduationCap,
   Palette, Briefcase, BookMarked, MoreVertical, AlertTriangle,
   CheckCircle2, Loader2, BookText, FileText, ClipboardList,
-  Calendar, Users, BarChart2, Library, Archive, ArchiveRestore,
-  ExternalLink, Ban,
+  Calendar, Users, BarChart2, Library, Archive, ArchiveRestore, Ban,
 } from 'lucide-react';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 
@@ -84,19 +83,11 @@ const SUBJECT_CATEGORIES = [
   },
 ] as const;
 
-interface AuditField {
-  key: keyof Omit<SubjectAudit, 'isClean'>;
-  label: string;
-  icon: any;
-  navLabel?: string;
-  navPath?: string;
-}
-
-const AUDIT_FIELDS: AuditField[] = [
-  { key: 'exams', label: 'Exams', icon: ClipboardList, navLabel: 'Manage Exams', navPath: '/portal/superadmin/results/exams' },
-  { key: 'lessonNotes', label: 'Lesson notes', icon: BookText, navLabel: 'Manage Lessons', navPath: '/portal/superadmin/content/lessons' },
-  { key: 'questionBanks', label: 'Question banks', icon: Library, navLabel: 'Manage Questions', navPath: '/portal/superadmin/results/exams' },
-  { key: 'assignments', label: 'Assignments', icon: FileText, navLabel: 'Manage Assignments', navPath: '/portal/superadmin/content/assignments' },
+const AUDIT_FIELDS: { key: keyof Omit<SubjectAudit, 'isClean'>; label: string; icon: any }[] = [
+  { key: 'exams', label: 'Exams', icon: ClipboardList },
+  { key: 'lessonNotes', label: 'Lesson notes', icon: BookText },
+  { key: 'questionBanks', label: 'Question banks', icon: Library },
+  { key: 'assignments', label: 'Assignments', icon: FileText },
   { key: 'syllabusTopics', label: 'Syllabus topics', icon: Library },
   { key: 'reportCardItems', label: 'Report card entries', icon: BarChart2 },
   { key: 'continuousAssessments', label: 'CA records', icon: BarChart2 },
@@ -335,22 +326,11 @@ function SubjectActionDialog({ subject, action, onConfirm, onCancel, isPending }
               </div>
             ) : (
               <ul className="space-y-1.5">
-                {linkedItems.map(({ key, label, icon: Icon, navLabel, navPath }) => (
-                  <li key={key} className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 text-sm">
-                      <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                      <span className="text-muted-foreground">{label}:</span>
-                      <span className="font-semibold text-foreground">{(audit![key] as number).toLocaleString()}</span>
-                    </div>
-                    {navPath && (
-                      <a
-                        href={navPath}
-                        className="flex items-center gap-1 text-[11px] text-primary hover:underline shrink-0"
-                        data-testid={`link-manage-${key}`}
-                      >
-                        Manage <ExternalLink className="h-3 w-3" />
-                      </a>
-                    )}
+                {linkedItems.map(({ key, label, icon: Icon }) => (
+                  <li key={key} className="flex items-center gap-2 text-sm">
+                    <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-muted-foreground">{label}:</span>
+                    <span className="font-semibold text-foreground">{(audit![key] as number).toLocaleString()}</span>
                   </li>
                 ))}
               </ul>
@@ -362,9 +342,9 @@ function SubjectActionDialog({ subject, action, onConfirm, onCancel, isPending }
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 flex items-start gap-2 text-sm text-destructive">
               <Ban className="h-4 w-4 mt-0.5 shrink-0" />
               <div>
-                <strong>Deletion not allowed.</strong> This subject still has linked records.
+                <strong>Cannot delete subject.</strong>
                 <br />
-                <span className="text-muted-foreground">Remove, archive, or reassign the linked data before deleting. Consider archiving the subject instead.</span>
+                <span className="text-muted-foreground">This subject contains linked records. Please archive the subject instead, or manually remove the linked records before deletion.</span>
               </div>
             </div>
           )}
