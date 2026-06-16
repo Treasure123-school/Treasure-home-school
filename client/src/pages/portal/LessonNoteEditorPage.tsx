@@ -54,6 +54,7 @@ import {
 } from 'lucide-react';
 import FormatNoteDialog from '@/components/lesson-notes/FormatNoteDialog';
 import PasteEnhancePanel from '@/components/lesson-notes/PasteEnhancePanel';
+import { formatLessonNote } from '@/lib/lessonNoteFormatter';
 
 // ── Pure helpers ───────────────────────────────────────────────────────────────
 
@@ -211,9 +212,10 @@ export default function LessonNoteEditorPage() {
   const [imgGenDescription, setImgGenDescription] = useState('');
 
   // Paste & Enhance state
-  const [pastePanel,      setPastePanel]      = useState(false);
-  const [pasteText,       setPasteText]       = useState('');
-  const [enhanceLoading,  setEnhanceLoading]  = useState(false);
+  const [pastePanel,         setPastePanel]         = useState(false);
+  const [pasteText,          setPasteText]          = useState('');
+  const [enhanceLoading,     setEnhanceLoading]     = useState(false);
+  const [smartConvertLoading, setSmartConvertLoading] = useState(false);
 
   // Refs
   const liveHtmlRef     = useRef('');
@@ -869,6 +871,37 @@ export default function LessonNoteEditorPage() {
     }
   }, [pasteText, title, query, toast, buildNoteHtml]);
 
+  // ── Smart Convert (instant local markdown/structured → HTML) ─────────────
+  const smartConvert = useCallback(() => {
+    if (!pasteText.trim()) return;
+    setSmartConvertLoading(true);
+    try {
+      const { html, stats } = formatLessonNote(pasteText);
+      if (!html.trim()) {
+        toast({ title: 'Nothing to convert', description: 'The pasted text produced no formatted output.', variant: 'destructive' });
+        return;
+      }
+      const totalItems = stats.headings + stats.tables + stats.equations + stats.orderedLists + stats.unorderedLists + stats.chemFormulas + stats.callouts;
+      const titleHtml = title
+        ? `<h1 style="font-size:1.6rem;font-weight:700;color:#0f766e;border-bottom:3px solid #ccfbf1;padding-bottom:0.3em">${title}</h1>`
+        : '';
+      liveHtmlRef.current = titleHtml + html;
+      setContent(titleHtml + html);
+      setMode('editing');
+      setPastePanel(false);
+      setPasteText('');
+      toast({
+        title: '⚡ Smart Convert complete',
+        description: `Formatted ${totalItems} element${totalItems !== 1 ? 's' : ''} instantly — headings, tables, equations and more.`,
+        duration: 4000,
+      });
+    } catch (err: any) {
+      toast({ title: 'Conversion failed', description: err?.message || 'Unknown error', variant: 'destructive' });
+    } finally {
+      setSmartConvertLoading(false);
+    }
+  }, [pasteText, title, toast]);
+
   // ── Cleanup on unmount ─────────────────────────────────────────────────────
   useEffect(() => () => { clearAllProgressTimers(); }, []);
 
@@ -1050,8 +1083,10 @@ export default function LessonNoteEditorPage() {
           text={pasteText}
           onChange={setPasteText}
           onEnhance={enhanceWithAI}
+          onSmartConvert={smartConvert}
           onClose={() => { setPastePanel(false); setPasteText(''); }}
           loading={enhanceLoading || aiLoading}
+          smartConverting={smartConvertLoading}
         />
       )}
 

@@ -1,18 +1,25 @@
 /**
- * PasteEnhancePanel — collapsible panel where the user pastes their own
- * lesson note text. On submit the parent calls the AI enhance-paste endpoint.
+ * PasteEnhancePanel — dual-mode paste panel.
+ *
+ * ⚡ Smart Convert  — instant local markdown/structured → HTML (no AI, no wait)
+ * ✨ AI Enhance     — AI rewrites rough/unstructured notes into a full lesson plan
+ *
+ * Auto-detects which mode to recommend based on paste content.
  */
 
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { ClipboardEdit, Loader2, X, Wand2, AlertTriangle } from 'lucide-react';
+import { ClipboardEdit, Loader2, X, Wand2, AlertTriangle, Zap, Info } from 'lucide-react';
+import { detectPasteType } from '@/lib/lessonNoteFormatter';
 
 interface PasteEnhancePanelProps {
   text: string;
   onChange: (v: string) => void;
   onEnhance: () => void;
+  onSmartConvert: () => void;
   onClose: () => void;
   loading: boolean;
+  smartConverting: boolean;
 }
 
 const MIN_CHARS = 80;
@@ -22,14 +29,21 @@ export default function PasteEnhancePanel({
   text,
   onChange,
   onEnhance,
+  onSmartConvert,
   onClose,
   loading,
+  smartConverting,
 }: PasteEnhancePanelProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chars = text.length;
   const tooShort = chars > 0 && chars < MIN_CHARS;
   const tooLong  = chars > MAX_CHARS;
-  const canSubmit = chars >= MIN_CHARS && !tooLong && !loading;
+  const canSubmit = chars >= MIN_CHARS && !tooLong && !loading && !smartConverting;
+
+  const pasteType = chars >= MIN_CHARS ? detectPasteType(text) : null;
+  const isAnyBusy = loading || smartConverting;
+
+  const recommendSmartConvert = pasteType === 'markdown' || pasteType === 'mixed';
 
   return (
     <div className="shrink-0 border-b border-teal-100 dark:border-teal-900/40 bg-teal-50 dark:bg-teal-950/20 px-4 py-3 space-y-2.5">
@@ -39,27 +53,66 @@ export default function PasteEnhancePanel({
         <div className="flex items-center gap-2">
           <ClipboardEdit className="h-3.5 w-3.5 text-teal-600 dark:text-teal-400 shrink-0" />
           <span className="text-xs font-semibold text-teal-700 dark:text-teal-300">
-            Paste &amp; Enhance with AI
+            Paste &amp; Format
           </span>
           <span className="hidden sm:inline text-[11px] text-teal-500 dark:text-teal-500">
-            — paste your own note and AI will rewrite it professionally
+            — paste your note and choose how to format it
           </span>
         </div>
         <button
           className="text-teal-400 hover:text-teal-600 dark:hover:text-teal-300 p-0.5 transition-colors"
           onClick={onClose}
-          disabled={loading}
+          disabled={isAnyBusy}
         >
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
 
-      {/* Instructions */}
-      <p className="text-[11px] text-teal-600 dark:text-teal-400 leading-relaxed">
-        Paste your handwritten or typed lesson note below — as rough as you like. The AI will
-        preserve <strong>all</strong> your facts and examples, fix the language, add structure,
-        and write out the full note in the editor.
-      </p>
+      {/* Mode explanation cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+        <div className={`rounded-lg border px-2.5 py-2 space-y-0.5 transition-colors ${recommendSmartConvert ? 'border-teal-300 dark:border-teal-700 bg-white dark:bg-teal-950/30' : 'border-teal-100 dark:border-teal-900 bg-white/50 dark:bg-transparent'}`}>
+          <div className="flex items-center gap-1.5 font-semibold text-teal-700 dark:text-teal-300">
+            <Zap className="h-3 w-3 text-yellow-500 shrink-0" />
+            ⚡ Smart Convert
+            {recommendSmartConvert && pasteType && (
+              <span className="ml-auto text-[10px] font-normal bg-teal-100 dark:bg-teal-900 text-teal-600 dark:text-teal-400 px-1.5 py-0.5 rounded-full">
+                Recommended
+              </span>
+            )}
+          </div>
+          <p className="text-teal-500 dark:text-teal-500 leading-relaxed">
+            Instant. Converts markdown headings, tables, equations, and lists directly. Perfect for well-structured notes from sites like ClassNotes.ng.
+          </p>
+        </div>
+
+        <div className={`rounded-lg border px-2.5 py-2 space-y-0.5 transition-colors ${!recommendSmartConvert && pasteType ? 'border-teal-300 dark:border-teal-700 bg-white dark:bg-teal-950/30' : 'border-teal-100 dark:border-teal-900 bg-white/50 dark:bg-transparent'}`}>
+          <div className="flex items-center gap-1.5 font-semibold text-teal-700 dark:text-teal-300">
+            <Wand2 className="h-3 w-3 text-purple-500 shrink-0" />
+            ✨ AI Enhance
+            {!recommendSmartConvert && pasteType && (
+              <span className="ml-auto text-[10px] font-normal bg-teal-100 dark:bg-teal-900 text-teal-600 dark:text-teal-400 px-1.5 py-0.5 rounded-full">
+                Recommended
+              </span>
+            )}
+          </div>
+          <p className="text-teal-500 dark:text-teal-500 leading-relaxed">
+            30–60 seconds. AI rewrites rough or unstructured notes into a full professional lesson plan with objectives, content, evaluation, etc.
+          </p>
+        </div>
+      </div>
+
+      {/* Auto-detection hint */}
+      {pasteType && (
+        <div className="flex items-center gap-1.5 text-[11px] text-teal-600 dark:text-teal-400 bg-teal-100/60 dark:bg-teal-900/30 px-2.5 py-1.5 rounded-md">
+          <Info className="h-3 w-3 shrink-0 text-teal-500" />
+          {pasteType === 'markdown'
+            ? <>Detected <strong>structured / markdown note</strong> — Smart Convert will preserve all headings, tables, and equations perfectly.</>
+            : pasteType === 'mixed'
+            ? <>Detected <strong>mixed formatting</strong> — Smart Convert recommended, or use AI Enhance to fully rewrite.</>
+            : <>Detected <strong>plain / rough text</strong> — AI Enhance will restructure this into a complete lesson plan.</>
+          }
+        </div>
+      )}
 
       {/* Textarea */}
       <div className="relative">
@@ -76,12 +129,12 @@ export default function PasteEnhancePanel({
               ? 'border-amber-300 dark:border-amber-700 focus:ring-amber-400/50'
               : 'border-teal-200 dark:border-teal-800 focus:ring-teal-400/50',
           ].join(' ')}
-          rows={7}
+          rows={8}
           maxLength={MAX_CHARS + 500}
-          placeholder={`Paste your lesson note here…\n\nExample:\n  Acid-Base Reactions\n  An acid is a substance that donates protons. A base accepts protons.\n  H₂SO₄ + 2NaOH → Na₂SO₄ + 2H₂O\n  Types of acids: strong acids (HCl, H₂SO₄), weak acids (CH₃COOH)…`}
+          placeholder={`Paste your lesson note here…\n\nWorks with:\n  • Markdown from ClassNotes.ng, Wikipedia, etc.  (## headings, **bold**, | tables |, > equations)\n  • Plain rough notes  (handwritten, bullet dumps, incomplete sentences)\n  • Chemistry notes  (H₂SO₄ + 2NaOH → Na₂SO₄ + 2H₂O)`}
           value={text}
           onChange={e => onChange(e.target.value)}
-          disabled={loading}
+          disabled={isAnyBusy}
           spellCheck
         />
 
@@ -111,19 +164,44 @@ export default function PasteEnhancePanel({
 
       {/* Action row */}
       <div className="flex items-center gap-2 flex-wrap">
+
+        {/* Smart Convert — primary when markdown detected */}
         <Button
           size="sm"
-          className="h-8 text-xs gap-1.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold"
+          className={[
+            'h-8 text-xs gap-1.5 font-semibold',
+            recommendSmartConvert || !pasteType
+              ? 'bg-teal-600 hover:bg-teal-700 text-white'
+              : 'bg-white dark:bg-gray-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950',
+          ].join(' ')}
+          disabled={!canSubmit}
+          onClick={onSmartConvert}
+        >
+          {smartConverting
+            ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Converting…</>
+            : <><Zap className="h-3.5 w-3.5 text-yellow-400" /> Smart Convert</>
+          }
+        </Button>
+
+        {/* AI Enhance — primary when plain text detected */}
+        <Button
+          size="sm"
+          className={[
+            'h-8 text-xs gap-1.5 font-semibold',
+            !recommendSmartConvert && pasteType
+              ? 'bg-teal-600 hover:bg-teal-700 text-white'
+              : 'bg-white dark:bg-gray-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950',
+          ].join(' ')}
           disabled={!canSubmit}
           onClick={onEnhance}
         >
           {loading
             ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Enhancing…</>
-            : <><Wand2 className="h-3.5 w-3.5" /> Enhance with AI</>
+            : <><Wand2 className="h-3.5 w-3.5 text-purple-400" /> AI Enhance</>
           }
         </Button>
 
-        {!loading && text && (
+        {!isAnyBusy && text && (
           <button
             className="text-xs text-teal-500 dark:text-teal-400 hover:underline"
             onClick={() => onChange('')}
@@ -136,6 +214,12 @@ export default function PasteEnhancePanel({
           <p className="text-[11px] text-teal-500 dark:text-teal-400 flex items-center gap-1">
             <Loader2 className="h-3 w-3 animate-spin" />
             AI is rewriting your note — this may take 30–60 seconds…
+          </p>
+        )}
+        {smartConverting && (
+          <p className="text-[11px] text-teal-500 dark:text-teal-400 flex items-center gap-1">
+            <Zap className="h-3 w-3" />
+            Converting…
           </p>
         )}
       </div>

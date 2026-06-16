@@ -1,19 +1,22 @@
 /**
  * Smart Lesson Note Formatter
- * Converts plain-text or lightly-structured HTML pasted into the editor
- * into rich Tiptap-compatible HTML with proper headings, lists, tables,
+ * Converts plain-text, markdown, or lightly-structured HTML pasted into the
+ * editor into rich Tiptap-compatible HTML with proper headings, lists, tables,
  * chemistry subscripts, equation blocks, callout blocks, and MCQ blocks.
  *
  * Rules:
- *  1. Known heading keywords → <h2>
- *  2. Numbered items          → <ol><li>
- *  3. Bullet items            → <ul><li>
- *  4. Pipe / aligned tables   → <table>
- *  5. Chemistry formulas      → subscripted text
- *  6. Equation lines          → styled equation block
- *  7. Callout keywords        → highlighted blockquote
- *  8. MCQ questions           → structured question block
- *  9. Preserves all original content — never removes text.
+ *  1. Markdown headings (#, ##, ###, ####) → <h1>–<h4>
+ *  2. Known heading keywords             → <h2>
+ *  3. Numbered items                     → <ol><li>
+ *  4. Bullet items                       → <ul><li>
+ *  5. Pipe / aligned tables              → <table>
+ *  6. Chemistry formulas                 → subscripted text
+ *  7. Equation lines                     → styled equation block
+ *  8. Markdown blockquotes (> …)         → styled callout
+ *  9. Callout keywords                   → highlighted blockquote
+ * 10. MCQ questions                      → structured question block
+ * 11. Inline markdown (**bold**, *italic*, `code`) → HTML equivalents
+ * 12. Preserves all original content — never removes text.
  */
 
 export interface FormatStats {
@@ -27,7 +30,22 @@ export interface FormatStats {
   chemFormulas: number;
 }
 
-// ── Heading detection ──────────────────────────────────────────────────────
+// ── Markdown heading detection ─────────────────────────────────────────────
+
+function isMarkdownHeading(line: string): boolean {
+  return /^#{1,4}\s+.+/.test(line.trim());
+}
+
+function getMarkdownHeadingLevel(line: string): number {
+  const m = line.trim().match(/^(#{1,4})\s+/);
+  return m ? m[1].length : 1;
+}
+
+function getMarkdownHeadingText(line: string): string {
+  return line.trim().replace(/^#{1,4}\s+/, '').replace(/\s*#+\s*$/, '').trim();
+}
+
+// ── Keyword heading detection ──────────────────────────────────────────────
 
 const HEADING_PATTERNS: RegExp[] = [
   /^(LEARNING\s+OBJECTIVES?)\s*:?\s*$/i,
@@ -49,21 +67,19 @@ const HEADING_PATTERNS: RegExp[] = [
   /^(WEEK\s+\d+)\s*:?\s*$/i,
   /^(TOPIC)\s*:?\s*$/i,
   /^(SUBJECT\s+MATTER)\s*:?\s*$/i,
-  /^(\d+\.\s+[A-Z][A-Z\s]{3,})\s*$/,        // "1. LESSON OBJECTIVES" style
+  /^(\d+\.\s+[A-Z][A-Z\s]{3,})\s*$/,
 ];
 
-function isHeading(line: string): boolean {
+function isKeywordHeading(line: string): boolean {
   const t = line.trim();
   if (t.length < 3 || t.length > 80) return false;
   if (HEADING_PATTERNS.some(p => p.test(t))) return true;
-  // All-caps line that's short enough to be a heading
   if (/^[A-Z][A-Z\s'\/\-–:]{4,60}$/.test(t) && !/[a-z]/.test(t)) return true;
   return false;
 }
 
 // ── Chemistry formula detection & subscripting ─────────────────────────────
 
-// Known multi-char element symbols (to avoid false-positives)
 const ELEMENTS = new Set([
   'He','Li','Be','Ne','Na','Mg','Al','Si','Cl','Ar','Ca','Sc','Ti','Cr','Mn','Fe',
   'Co','Ni','Cu','Zn','Ga','Ge','As','Se','Br','Kr','Rb','Sr','Zr','Nb','Mo','Tc',
@@ -71,40 +87,23 @@ const ELEMENTS = new Set([
   'Pm','Sm','Eu','Gd','Tb','Dy','Ho','Er','Tm','Yb','Lu','Hf','Ta','Re','Os','Ir',
   'Pt','Au','Hg','Tl','Pb','Bi','Po','At','Rn','Fr','Ra','Ac','Th','Pa','Np','Pu',
   'Am','Cm','Bk','Cf','Es','Fm','Md','No','Lr',
-  // Single-char elements (for context)
   'H','B','C','N','O','F','P','S','K','V','W','U','I','Y',
 ]);
 
-/**
- * Detect if a token looks like a chemical formula.
- * Must start with uppercase, contain at least one digit after a letter.
- */
 function isChemFormula(token: string): boolean {
   if (!/^[A-Z]/.test(token)) return false;
   if (!/[A-Za-z]\d/.test(token)) return false;
   if (/^[0-9]/.test(token)) return false;
-  // Must contain only element-valid chars
   if (!/^[A-Za-z0-9()[\]+\-]+$/.test(token)) return false;
-  // Must have at least 2 chars and a digit
   return token.length >= 2 && /\d/.test(token);
 }
 
-/**
- * Apply subscripts to digits within a confirmed chemical formula.
- * H2SO4 → H<sub>2</sub>SO<sub>4</sub>
- */
 function subscriptFormula(formula: string): string {
-  // Handle parenthesized groups like Ca(OH)2 → Ca(OH)<sub>2</sub>
   return formula.replace(/([A-Za-z)\]])(\d+)/g, '$1<sub>$2</sub>');
 }
 
-/**
- * Apply chemistry subscripts throughout a line of text.
- * Returns [modified text, number of substitutions made].
- */
 function applyChemistry(text: string): [string, number] {
   let count = 0;
-  // Match word-boundary tokens that could be chemical formulas
   const result = text.replace(/\b([A-Z][a-zA-Z0-9()[\]]*\d[a-zA-Z0-9()[\]]*)\b/g, (match) => {
     if (isChemFormula(match)) {
       count++;
@@ -123,15 +122,12 @@ const CHEM_LINE_RE = /\b(?:HCl|NaOH|H2|CO2|H2O|NH3|SO4|NO3|KOH|CaCO3|H2SO4|HNO3|
 function isEquationLine(line: string): boolean {
   const t = line.trim();
   if (!t) return false;
-  // Contains reaction arrow
   if (EQUATION_RE.test(t)) return true;
-  // Looks like a balanced equation: contains + sign with chemical tokens on both sides
   if (/[A-Z][a-z]?\d*\s*\+\s*[A-Z]/.test(t) && CHEM_LINE_RE.test(t)) return true;
   return false;
 }
 
 function formatEquation(line: string): string {
-  // Replace -> with proper arrow, apply subscripts
   let eq = line.trim()
     .replace(/->/g, '→')
     .replace(/=>/g, '⇒')
@@ -231,15 +227,36 @@ function stripTags(html: string): string {
     .replace(/&#39;/g, "'");
 }
 
+/**
+ * Apply inline markdown: **bold**, *italic*, `code`
+ * Called AFTER escHtml so we work on already-escaped text.
+ * We use a placeholder trick to avoid double-escaping.
+ */
+function applyInlineMarkdown(text: string): string {
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*\n]+?)\*/g, '<em>$1</em>')
+    .replace(/`([^`\n]+?)`/g, '<code style="background:#f1f5f9;padding:0.1em 0.3em;border-radius:3px;font-size:0.9em">$1</code>');
+}
+
+// ── Superscript/subscript for charge notation ──────────────────────────────
+// e.g. SO4²⁻, H₃O⁺ — already unicode, pass through.
+// Also handle caret notation: SO4^2- → SO4<sup>2-</sup>
+function applySupscript(text: string): string {
+  return text.replace(/\^([+\-]?[\d+\-]+)/g, '<sup>$1</sup>');
+}
+
 // ── Block types ────────────────────────────────────────────────────────────
 
 type Block =
+  | { type: 'md_heading'; level: 1 | 2 | 3 | 4; text: string }
   | { type: 'heading'; text: string }
   | { type: 'paragraph'; text: string }
   | { type: 'ordered_list'; items: string[] }
   | { type: 'unordered_list'; items: string[] }
   | { type: 'pipe_table'; rows: string[][] }
   | { type: 'equation'; text: string }
+  | { type: 'md_blockquote'; lines: string[] }
   | { type: 'callout'; calloutType: string; label: string; content: string }
   | { type: 'mcq'; question: string; options: string[] }
   | { type: 'blank' };
@@ -256,7 +273,6 @@ function parseLines(lines: string[]): Block[] {
 
     // Skip fully blank lines
     if (!line) {
-      // Emit a visual break only if previous block isn't already blank
       if (blocks.length > 0 && blocks[blocks.length - 1].type !== 'blank') {
         blocks.push({ type: 'blank' });
       }
@@ -264,14 +280,36 @@ function parseLines(lines: string[]): Block[] {
       continue;
     }
 
-    // Heading
-    if (isHeading(line)) {
+    // ── Markdown heading: # ## ### ####
+    if (isMarkdownHeading(line)) {
+      const level = getMarkdownHeadingLevel(line) as 1 | 2 | 3 | 4;
+      const text = getMarkdownHeadingText(line);
+      blocks.push({ type: 'md_heading', level, text });
+      i++;
+      continue;
+    }
+
+    // ── Markdown blockquote: > text  (used for equations/notes in academic notes)
+    if (/^>\s/.test(line)) {
+      const bqLines: string[] = [];
+      while (i < lines.length && /^>\s*/.test(lines[i].trim())) {
+        bqLines.push(lines[i].trim().replace(/^>\s*/, '').trim());
+        i++;
+      }
+      if (bqLines.length > 0) {
+        blocks.push({ type: 'md_blockquote', lines: bqLines });
+      }
+      continue;
+    }
+
+    // ── Keyword heading (ALL-CAPS / known patterns)
+    if (isKeywordHeading(line)) {
       blocks.push({ type: 'heading', text: line });
       i++;
       continue;
     }
 
-    // Callout (single-line: "Note: some text")
+    // ── Callout (single-line: "Note: some text")
     const callout = detectCallout(line);
     if (callout) {
       const style = CALLOUT_STYLES[callout.type];
@@ -285,7 +323,7 @@ function parseLines(lines: string[]): Block[] {
       continue;
     }
 
-    // Pipe table — collect all consecutive pipe rows
+    // ── Pipe table — collect all consecutive pipe rows
     if (isPipeLine(line)) {
       const tableLines: string[] = [];
       while (i < lines.length && (isPipeLine(lines[i].trim()) || isSeparatorRow(lines[i].trim()) || (tableLines.length > 0 && lines[i].trim() === ''))) {
@@ -302,7 +340,7 @@ function parseLines(lines: string[]): Block[] {
       continue;
     }
 
-    // Tab-separated table
+    // ── Tab-separated table
     if (isTabSeparated(line)) {
       const tableLines: string[] = [];
       while (i < lines.length && (isTabSeparated(lines[i]) || (tableLines.length > 0 && lines[i].trim() === ''))) {
@@ -315,23 +353,21 @@ function parseLines(lines: string[]): Block[] {
         blocks.push({ type: 'pipe_table', rows });
         continue;
       }
-      // If not enough rows, fall through to process them as paragraphs
       for (const tl of tableLines) {
         blocks.push({ type: 'paragraph', text: tl.trim() });
       }
       continue;
     }
 
-    // Ordered list — collect consecutive numbered items
+    // ── Ordered list — collect consecutive numbered items
     if (isNumbered(line)) {
       const items: string[] = [];
-      while (i < lines.length && (isNumbered(lines[i].trim()) || (items.length > 0 && lines[i].trim() !== '' && !isHeading(lines[i].trim()) && !isNumbered(lines[i].trim()) && !isBullet(lines[i].trim())))) {
+      while (i < lines.length && (isNumbered(lines[i].trim()) || (items.length > 0 && lines[i].trim() !== '' && !isKeywordHeading(lines[i].trim()) && !isMarkdownHeading(lines[i].trim()) && !isNumbered(lines[i].trim()) && !isBullet(lines[i].trim())))) {
         const t = lines[i].trim();
         if (!t) break;
         if (isNumbered(t)) {
           items.push(t.replace(/^\s*\d+[.)]\s*/, ''));
-        } else if (items.length > 0 && !isHeading(t)) {
-          // Continuation of previous item
+        } else if (items.length > 0 && !isKeywordHeading(t) && !isMarkdownHeading(t)) {
           items[items.length - 1] += ' ' + t;
         } else {
           break;
@@ -339,14 +375,12 @@ function parseLines(lines: string[]): Block[] {
         i++;
       }
       if (items.length > 0) {
-        // Check if this is an MCQ block: question already in previous block + these are A) B) C) D) options
-        // We'll handle MCQ in a lookahead below, this handles plain numbered lists
         blocks.push({ type: 'ordered_list', items });
       }
       continue;
     }
 
-    // Unordered list — collect consecutive bullet items
+    // ── Unordered list — collect consecutive bullet items
     if (isBullet(line)) {
       const items: string[] = [];
       while (i < lines.length && isBullet(lines[i].trim())) {
@@ -359,9 +393,8 @@ function parseLines(lines: string[]): Block[] {
       continue;
     }
 
-    // MCQ detection: a paragraph question followed by A) B) C) D) options
+    // ── MCQ detection
     {
-      // Look ahead for letter options
       const question = line;
       const lookahead = lines.slice(i + 1, i + 6);
       if (looksLikeMCQ(lookahead)) {
@@ -377,22 +410,23 @@ function parseLines(lines: string[]): Block[] {
       }
     }
 
-    // Equation
+    // ── Equation
     if (isEquationLine(line)) {
       blocks.push({ type: 'equation', text: line });
       i++;
       continue;
     }
 
-    // Paragraph — collect continuation lines
+    // ── Paragraph — collect continuation lines
     {
       let text = line;
       i++;
-      // Merge following continuation lines (non-blank, non-structural)
       while (
         i < lines.length &&
         lines[i].trim() !== '' &&
-        !isHeading(lines[i].trim()) &&
+        !isKeywordHeading(lines[i].trim()) &&
+        !isMarkdownHeading(lines[i].trim()) &&
+        !/^>\s/.test(lines[i].trim()) &&
         !isBullet(lines[i].trim()) &&
         !isNumbered(lines[i].trim()) &&
         !isPipeLine(lines[i].trim()) &&
@@ -413,11 +447,20 @@ function parseLines(lines: string[]): Block[] {
 // ── Block → HTML renderers ─────────────────────────────────────────────────
 
 function renderText(text: string, stats: FormatStats): string {
-  const [result, count] = applyChemistry(escHtml(text));
+  const escaped = escHtml(text);
+  const [withChem, count] = applyChemistry(escaped);
   stats.chemFormulas += count;
-  // Convert arrows
-  return result.replace(/->/g, '→').replace(/<=>/g, '⇌');
+  const withArrows = withChem.replace(/->/g, '→').replace(/<=>/g, '⇌');
+  const withSup = applySupscript(withArrows);
+  return applyInlineMarkdown(withSup);
 }
+
+const HEADING_TAG_STYLES: Record<number, string> = {
+  1: 'font-size:1.6rem;font-weight:700;color:#0f766e;border-bottom:3px solid #ccfbf1;padding-bottom:0.3em;margin-top:1.2em',
+  2: 'font-size:1.25rem;font-weight:700;color:#0f766e;border-bottom:2px solid #e2e8f0;padding-bottom:0.2em;margin-top:1em',
+  3: 'font-size:1.05rem;font-weight:700;color:#1e293b;margin-top:0.8em',
+  4: 'font-size:0.95rem;font-weight:700;color:#334155;margin-top:0.6em',
+};
 
 function renderBlock(block: Block, stats: FormatStats): string {
   switch (block.type) {
@@ -425,13 +468,19 @@ function renderBlock(block: Block, stats: FormatStats): string {
     case 'blank':
       return '';
 
+    case 'md_heading': {
+      stats.headings++;
+      const tag = `h${block.level}`;
+      const style = HEADING_TAG_STYLES[block.level] || '';
+      return `<${tag} style="${style}">${renderText(block.text, stats)}</${tag}>`;
+    }
+
     case 'heading': {
       stats.headings++;
       return `<h2>${renderText(block.text, stats)}</h2>`;
     }
 
     case 'paragraph': {
-      // Check if it's actually an equation inline
       if (isEquationLine(block.text)) {
         stats.equations++;
         return renderEquationBlock(block.text, stats);
@@ -459,6 +508,16 @@ function renderBlock(block: Block, stats: FormatStats): string {
     case 'equation': {
       stats.equations++;
       return renderEquationBlock(block.text, stats);
+    }
+
+    case 'md_blockquote': {
+      stats.equations++;
+      const combinedText = block.lines.join(' ');
+      if (isEquationLine(combinedText)) {
+        return renderEquationBlock(combinedText, stats);
+      }
+      const bodyLines = block.lines.map(l => `<p style="margin:0.15em 0">${renderText(l, stats)}</p>`).join('');
+      return `<blockquote style="border-left:4px solid #6366f1;background:#f5f3ff;padding:0.6em 1em;margin:0.75em 0;border-radius:0 6px 6px 0;color:#3730a3">${bodyLines}</blockquote>`;
     }
 
     case 'callout': {
@@ -505,8 +564,39 @@ export interface FormatterResult {
 }
 
 /**
+ * Detect if the pasted text has markdown structure signals.
+ * Returns 'markdown' if it looks like a markdown note (from ClassNotes.ng etc.),
+ * 'plain' if it's rough/unstructured, 'mixed' if unclear.
+ */
+export function detectPasteType(input: string): 'markdown' | 'plain' | 'mixed' {
+  if (!input || !input.trim()) return 'plain';
+  const lines = input.split(/\r?\n/).slice(0, 80);
+  let mdSignals = 0;
+  let plainSignals = 0;
+
+  for (const line of lines) {
+    const t = line.trim();
+    if (/^#{1,4}\s+.+/.test(t)) mdSignals += 2;
+    if (/\*\*[^*]+\*\*/.test(t)) mdSignals += 1;
+    if (/^\|.+\|/.test(t) && /\|/.test(t)) mdSignals += 1;
+    if (/^\s*[-|+:]{3,}/.test(t.replace(/\|/g, ''))) mdSignals += 1;
+    if (/^>\s+/.test(t)) mdSignals += 1;
+    if (/`[^`]+`/.test(t)) mdSignals += 1;
+    if (/[→⇌⟶]/.test(t)) mdSignals += 1;
+    if (/[H₂O₂SO₄]/.test(t)) mdSignals += 1;
+
+    if (/^[A-Z][A-Z\s]{4,}$/.test(t)) plainSignals += 1;
+    if (/handwritten|rough|draft/i.test(t)) plainSignals += 2;
+  }
+
+  if (mdSignals >= 4) return 'markdown';
+  if (mdSignals >= 2) return 'mixed';
+  return 'plain';
+}
+
+/**
  * Analyse + format raw text/HTML content.
- * Accepts the current Tiptap HTML (or raw pasted text) and returns
+ * Accepts the current Tiptap HTML (or raw pasted text / markdown) and returns
  * formatted HTML + statistics about what was detected and converted.
  */
 export function formatLessonNote(input: string): FormatterResult {
@@ -528,18 +618,11 @@ export function formatLessonNote(input: string): FormatterResult {
   // Strip HTML to plain text for re-parsing
   const plain = stripTags(input);
 
-  // Split into lines, normalise line endings
   const lines = plain
     .split(/\r?\n/)
-    .map(l => l.replace(/\t/g, '  '));   // keep tabs for tab-tables but normalise
+    .map(l => l.replace(/\t/g, '  '));
 
-  // Re-split for tabs
-  const expandedLines: string[] = [];
-  for (const line of lines) {
-    expandedLines.push(line);
-  }
-
-  const blocks = parseLines(expandedLines);
+  const blocks = parseLines(lines);
 
   const htmlParts: string[] = [];
   for (const block of blocks) {
