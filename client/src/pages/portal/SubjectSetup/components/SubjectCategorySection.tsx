@@ -34,8 +34,8 @@ export function SubjectCategorySection({
   const assignedCount = subjects.filter((s) => isAssigned(classId, s.id, department)).length;
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2 pb-1 border-b border-border/50">
+    <div className="space-y-1">
+      <div className="flex items-center gap-2 pb-1.5 border-b border-border/50">
         <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
           {icon}
           <span>{title}</span>
@@ -44,7 +44,7 @@ export function SubjectCategorySection({
           {assignedCount}/{subjects.length} assigned
         </Badge>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-3 gap-1.5">
+      <div>
         {subjects.map((subject) => {
           const key = getAssignmentKey(classId, subject.id, department);
           const isPending = pendingChanges.has(key) || pendingRemovals.has(key);

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Accordion } from '@/components/ui/accordion';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SectionCard } from '@/components/ui/section-card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectTrigger, SelectValue, PortalSelectContent, PortalSelectItem } from '@/components/ui/portal-select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { GraduationCap, Palette, Briefcase, School, Zap } from 'lucide-react';
@@ -171,35 +171,24 @@ export function SSSLevelTabContent({
         {/* Mobile department selector */}
         <div className="sm:hidden">
           <Select value={activeDept} onValueChange={setActiveDept}>
-            <SelectTrigger className="w-full h-11 rounded-xl font-medium">
+            <SelectTrigger className="w-full">
               <SelectValue placeholder="Select department…" />
             </SelectTrigger>
-            <SelectContent className="rounded-xl overflow-hidden p-1">
+            <PortalSelectContent>
               {DEPARTMENTS.map((dept) => {
                 const config = DEPT_CONFIG[dept];
                 const Icon = config.icon;
-                const isActive = activeDept === dept;
                 return (
-                  <SelectItem
+                  <PortalSelectItem
                     key={dept}
                     value={dept}
-                    className="rounded-lg py-2.5 px-3 cursor-pointer focus:bg-primary focus:text-white data-[state=checked]:bg-primary data-[state=checked]:text-white"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Icon className="w-4 h-4 shrink-0" />
-                      <span className="font-medium">{config.label}</span>
-                      <span className={`ml-auto text-xs rounded-full px-2 py-0.5 font-medium ${
-                        isActive
-                          ? 'bg-white/20 text-white'
-                          : 'bg-muted text-muted-foreground'
-                      }`}>
-                        {assignedCountForDept(dept)} assigned
-                      </span>
-                    </div>
-                  </SelectItem>
+                    icon={<Icon className="w-4 h-4" />}
+                    label={config.label}
+                    meta={`${assignedCountForDept(dept)} assigned`}
+                  />
                 );
               })}
-            </SelectContent>
+            </PortalSelectContent>
           </Select>
         </div>
 

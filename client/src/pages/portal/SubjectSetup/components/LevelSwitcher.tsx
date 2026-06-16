@@ -1,4 +1,4 @@
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectTrigger, SelectValue, PortalSelectContent, PortalSelectItem } from '@/components/ui/portal-select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { BookOpen, Users, GraduationCap } from 'lucide-react';
@@ -24,34 +24,23 @@ export function LevelSwitcher({ groups, value, onChange }: LevelSwitcherProps) {
       {/* Mobile: Select dropdown */}
       <div className="sm:hidden mb-1">
         <Select value={value} onValueChange={onChange}>
-          <SelectTrigger className="w-full h-11 rounded-xl font-medium">
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Select level…" />
           </SelectTrigger>
-          <SelectContent className="rounded-xl overflow-hidden p-1">
+          <PortalSelectContent>
             {groups.map((group) => {
               const Icon = LEVEL_ICONS[group.level.toLowerCase()] ?? BookOpen;
-              const isActive = value === group.level;
               return (
-                <SelectItem
+                <PortalSelectItem
                   key={group.level}
                   value={group.level}
-                  className="rounded-lg py-2.5 px-3 cursor-pointer focus:bg-primary focus:text-white data-[state=checked]:bg-primary data-[state=checked]:text-white"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Icon className="w-4 h-4 shrink-0" />
-                    <span className="font-medium">{group.label}</span>
-                    <span className={`ml-auto text-xs rounded-full px-2 py-0.5 font-medium ${
-                      isActive
-                        ? 'bg-white/20 text-white'
-                        : 'bg-muted text-muted-foreground'
-                    }`}>
-                      {group.classes.length} classes
-                    </span>
-                  </div>
-                </SelectItem>
+                  icon={<Icon className="w-4 h-4" />}
+                  label={group.label}
+                  meta={`${group.classes.length} classes`}
+                />
               );
             })}
-          </SelectContent>
+          </PortalSelectContent>
         </Select>
       </div>
 
