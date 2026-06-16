@@ -23,7 +23,8 @@ interface PasteEnhancePanelProps {
 }
 
 const MIN_CHARS = 80;
-const MAX_CHARS = 12000;
+const MAX_CHARS_SMART = 50000;
+const MAX_CHARS_AI    = 12000;
 
 export default function PasteEnhancePanel({
   text,
@@ -36,14 +37,17 @@ export default function PasteEnhancePanel({
 }: PasteEnhancePanelProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chars = text.length;
-  const tooShort = chars > 0 && chars < MIN_CHARS;
-  const tooLong  = chars > MAX_CHARS;
-  const canSubmit = chars >= MIN_CHARS && !tooLong && !loading && !smartConverting;
+  const tooShort        = chars > 0 && chars < MIN_CHARS;
+  const tooLongForAI    = chars > MAX_CHARS_AI;
+  const tooLongForAll   = chars > MAX_CHARS_SMART;
+  const canSmartConvert = chars >= MIN_CHARS && !tooLongForAll && !loading && !smartConverting;
+  const canAiEnhance    = chars >= MIN_CHARS && !tooLongForAI  && !loading && !smartConverting;
 
   const pasteType = chars >= MIN_CHARS ? detectPasteType(text) : null;
   const isAnyBusy = loading || smartConverting;
 
   const recommendSmartConvert = pasteType === 'markdown' || pasteType === 'mixed';
+  const MAX_CHARS = MAX_CHARS_SMART;
 
   return (
     <div className="shrink-0 border-b border-teal-100 dark:border-teal-900/40 bg-teal-50 dark:bg-teal-950/20 px-4 py-3 space-y-2.5">
@@ -123,14 +127,14 @@ export default function PasteEnhancePanel({
             'bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100',
             'placeholder-gray-400 dark:placeholder-gray-600',
             'focus:outline-none focus:ring-2 transition-colors',
-            tooLong
+            tooLongForAll
               ? 'border-red-300 dark:border-red-700 focus:ring-red-400/50'
               : tooShort
               ? 'border-amber-300 dark:border-amber-700 focus:ring-amber-400/50'
               : 'border-teal-200 dark:border-teal-800 focus:ring-teal-400/50',
           ].join(' ')}
           rows={8}
-          maxLength={MAX_CHARS + 500}
+          maxLength={MAX_CHARS_SMART + 500}
           placeholder={`Paste your lesson note here…\n\nWorks with:\n  • Markdown from ClassNotes.ng, Wikipedia, etc.  (## headings, **bold**, | tables |, > equations)\n  • Plain rough notes  (handwritten, bullet dumps, incomplete sentences)\n  • Chemistry notes  (H₂SO₄ + 2NaOH → Na₂SO₄ + 2H₂O)`}
           value={text}
           onChange={e => onChange(e.target.value)}
@@ -138,13 +142,14 @@ export default function PasteEnhancePanel({
           spellCheck
         />
 
-        {/* Character counter */}
+        {/* Character counter — shows relevant limit depending on content size */}
         <div className={[
           'absolute bottom-2 right-2.5 text-[10px] font-mono select-none pointer-events-none',
-          tooLong  ? 'text-red-500' :
+          tooLongForAll  ? 'text-red-500' :
+          tooLongForAI   ? 'text-amber-500' :
           tooShort && chars > 0 ? 'text-amber-500' : 'text-gray-300 dark:text-gray-600',
         ].join(' ')}>
-          {chars.toLocaleString()} / {MAX_CHARS.toLocaleString()}
+          {chars.toLocaleString()} / {(chars > MAX_CHARS_AI ? MAX_CHARS_SMART : MAX_CHARS_AI).toLocaleString()}
         </div>
       </div>
 
@@ -155,10 +160,16 @@ export default function PasteEnhancePanel({
           Please paste at least {MIN_CHARS} characters of your lesson note.
         </p>
       )}
-      {tooLong && (
+      {tooLongForAI && !tooLongForAll && (
+        <p className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400">
+          <AlertTriangle className="h-3 w-3 shrink-0" />
+          Note exceeds the AI limit ({chars.toLocaleString()} / {MAX_CHARS_AI.toLocaleString()} chars) — use <strong className="mx-0.5">⚡ Smart Convert</strong> instead (supports up to {(MAX_CHARS_SMART / 1000).toFixed(0)}k chars).
+        </p>
+      )}
+      {tooLongForAll && (
         <p className="flex items-center gap-1 text-[11px] text-red-600 dark:text-red-400">
           <AlertTriangle className="h-3 w-3 shrink-0" />
-          Note is too long ({chars.toLocaleString()} chars). Please trim to {MAX_CHARS.toLocaleString()} characters max.
+          Note is too long ({chars.toLocaleString()} chars). Please trim to {MAX_CHARS_SMART.toLocaleString()} characters max.
         </p>
       )}
 
@@ -174,7 +185,7 @@ export default function PasteEnhancePanel({
               ? 'bg-teal-600 hover:bg-teal-700 text-white'
               : 'bg-white dark:bg-gray-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950',
           ].join(' ')}
-          disabled={!canSubmit}
+          disabled={!canSmartConvert}
           onClick={onSmartConvert}
         >
           {smartConverting
@@ -192,7 +203,7 @@ export default function PasteEnhancePanel({
               ? 'bg-teal-600 hover:bg-teal-700 text-white'
               : 'bg-white dark:bg-gray-900 border border-teal-300 dark:border-teal-700 text-teal-700 dark:text-teal-300 hover:bg-teal-50 dark:hover:bg-teal-950',
           ].join(' ')}
-          disabled={!canSubmit}
+          disabled={!canAiEnhance}
           onClick={onEnhance}
         >
           {loading
