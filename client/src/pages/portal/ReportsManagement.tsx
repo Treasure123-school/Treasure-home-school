@@ -12,6 +12,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { ROLE_IDS } from '@/lib/roles';
 import { 
+  PageHeader, 
+  MiniStatCard, 
+  MiniStatGrid, 
+  LoadingState, 
+  EmptyState 
+} from "@/components/shared";
+import { 
   BarChart, 
   Bar, 
   XAxis, 
@@ -258,29 +265,31 @@ export default function ReportsManagement() {
 
   return (
     <div className="space-y-6" data-testid="reports-management">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Reports & Analytics</h1>
-        <div className="flex flex-wrap gap-2">
-          <Button 
-            variant="outline" 
-            onClick={() => handleExport('pdf')}
-            data-testid="button-export-pdf"
-            className="flex-1 sm:flex-none"
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export PDF
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => handleExport('csv')}
-            data-testid="button-export-csv"
-            className="flex-1 sm:flex-none"
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Export CSV
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Reports & Analytics"
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => handleExport('pdf')}
+              data-testid="button-export-pdf"
+              className="flex-1 sm:flex-none"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export PDF
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => handleExport('csv')}
+              data-testid="button-export-csv"
+              className="flex-1 sm:flex-none"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
+          </div>
+        }
+      />
 
       {/* Report Type Selector and Filters */}
       <Card>
@@ -373,7 +382,7 @@ export default function ReportsManagement() {
         <>
           {/* Overview Statistics */}
           {loadingOverview ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <MiniStatGrid cols={4}>
               {[...Array(4)].map((_, index) => (
                 <Card key={index}>
                   <CardContent className="p-6">
@@ -387,32 +396,20 @@ export default function ReportsManagement() {
                   </CardContent>
                 </Card>
               ))}
-            </div>
+            </MiniStatGrid>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {overviewData.map((stat, index) => {
-                const Icon = stat.icon;
-                return (
-                  <Card key={index} data-testid={`card-stat-${index}`}>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">
-                            {stat.title}
-                          </p>
-                          <p className="text-2xl font-bold" data-testid={`text-stat-value-${index}`}>
-                            {stat.value}
-                          </p>
-                        </div>
-                        <div className={`p-3 rounded-full ${stat.bgColor}`}>
-                          <Icon className={`h-6 w-6 ${stat.color}`} />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+            <MiniStatGrid cols={4}>
+              {overviewData.map((stat, index) => (
+                <MiniStatCard
+                  key={index}
+                  label={stat.title}
+                  value={stat.value}
+                  icon={stat.icon}
+                  color={stat.color}
+                  data-testid={`card-stat-${index}`}
+                />
+              ))}
+            </MiniStatGrid>
           )}
 
           {/* Charts Row */}
@@ -483,12 +480,11 @@ export default function ReportsManagement() {
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                    <div className="text-center">
-                      <Activity className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>No trend data available</p>
-                    </div>
-                  </div>
+                  <EmptyState 
+                    icon={Activity} 
+                    title="No trend data available" 
+                    className="h-[300px] py-0"
+                  />
                 )}
               </CardContent>
             </Card>
@@ -530,12 +526,11 @@ export default function ReportsManagement() {
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                    <div className="text-center">
-                      <Target className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>No grade data available</p>
-                    </div>
-                  </div>
+                  <EmptyState 
+                    icon={Target} 
+                    title="No grade data available" 
+                    className="h-[300px] py-0"
+                  />
                 )}
               </CardContent>
             </Card>
@@ -572,12 +567,11 @@ export default function ReportsManagement() {
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                    <div className="text-center">
-                      <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>No subject performance data available</p>
-                    </div>
-                  </div>
+                  <EmptyState 
+                    icon={BookOpen} 
+                    title="No subject performance data available" 
+                    className="h-[300px] py-0"
+                  />
                 )}
               </CardContent>
             </Card>
@@ -589,7 +583,7 @@ export default function ReportsManagement() {
         <>
           {/* Performance Overview Statistics */}
           {loadingPerformance ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <MiniStatGrid cols={4}>
               {[...Array(4)].map((_, index) => (
                 <Card key={index}>
                   <CardContent className="p-6">
@@ -603,32 +597,20 @@ export default function ReportsManagement() {
                   </CardContent>
                 </Card>
               ))}
-            </div>
+            </MiniStatGrid>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {performanceOverviewData.map((stat, index) => {
-                const Icon = stat.icon;
-                return (
-                  <Card key={index} data-testid={`card-performance-stat-${index}`}>
-                    <CardContent className="p-6">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-muted-foreground">
-                            {stat.title}
-                          </p>
-                          <p className="text-2xl font-bold" data-testid={`text-performance-stat-value-${index}`}>
-                            {stat.value}
-                          </p>
-                        </div>
-                        <div className={`p-3 rounded-full ${stat.bgColor}`}>
-                          <Icon className={`h-6 w-6 ${stat.color}`} />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
+            <MiniStatGrid cols={4}>
+              {performanceOverviewData.map((stat, index) => (
+                <MiniStatCard
+                  key={index}
+                  label={stat.title}
+                  value={stat.value}
+                  icon={stat.icon}
+                  color={stat.color}
+                  data-testid={`card-stat-perf-${index}`}
+                />
+              ))}
+            </MiniStatGrid>
           )}
 
           {/* Performance Analytics Charts */}
@@ -670,12 +652,11 @@ export default function ReportsManagement() {
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                    <div className="text-center">
-                      <Target className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                      <p>No performance data available</p>
-                    </div>
-                  </div>
+                  <EmptyState 
+                    icon={Target} 
+                    title="No performance data available" 
+                    className="h-[300px] py-0"
+                  />
                 )}
               </CardContent>
             </Card>
@@ -753,46 +734,54 @@ export default function ReportsManagement() {
                       </TableBody>
                     </Table>
                   ) : (
-                    <p className="text-muted-foreground text-center py-8">No top performers data available</p>
-                  )}
-                </CardContent>
-              </Card>
+                    <EmptyState 
+                    icon={TrendingUp} 
+                    title="No top performers data available" 
+                    className="py-8"
+                  />
+                )}
+              </CardContent>
+            </Card>
 
-              {/* Struggling Students */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <Users className="w-5 h-5 mr-2" />
-                    Students Needing Support
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {performanceData.strugglingStudents?.length > 0 ? (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Student ID</TableHead>
-                          <TableHead>Average Score</TableHead>
-                          <TableHead>Exams Taken</TableHead>
+            {/* Struggling Students */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Users className="w-5 h-5 mr-2" />
+                  Students Needing Support
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {performanceData.strugglingStudents?.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Student ID</TableHead>
+                        <TableHead>Average Score</TableHead>
+                        <TableHead>Exams Taken</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {performanceData.strugglingStudents.map((student: any, index: number) => (
+                        <TableRow key={student.studentId} data-testid={`row-struggling-student-${index}`}>
+                          <TableCell data-testid={`text-struggling-student-id-${index}`}>
+                            {student.studentId}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="destructive">{student.average}%</Badge>
+                          </TableCell>
+                          <TableCell>{student.examCount}</TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {performanceData.strugglingStudents.map((student: any, index: number) => (
-                          <TableRow key={student.studentId} data-testid={`row-struggling-student-${index}`}>
-                            <TableCell data-testid={`text-struggling-student-id-${index}`}>
-                              {student.studentId}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="destructive">{student.average}%</Badge>
-                            </TableCell>
-                            <TableCell>{student.examCount}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  ) : (
-                    <p className="text-muted-foreground text-center py-8">No struggling students data available</p>
-                  )}
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <EmptyState 
+                    icon={Users} 
+                    title="No struggling students data available" 
+                    className="py-8"
+                  />
+                )}
                 </CardContent>
               </Card>
             </div>
@@ -900,12 +889,11 @@ export default function ReportsManagement() {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                  <div className="text-center">
-                    <UserCheck className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No attendance data available for the selected period</p>
-                  </div>
-                </div>
+                <EmptyState 
+                  icon={UserCheck} 
+                  title="No attendance data available for the selected period" 
+                  className="h-[300px] py-0"
+                />
               )}
             </CardContent>
           </Card>

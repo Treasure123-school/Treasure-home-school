@@ -17,12 +17,13 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  Plus, Edit, Search, BookOpen, Trash2, GraduationCap,
+  Plus, Edit, BookOpen, Trash2, GraduationCap,
   Palette, Briefcase, BookMarked, MoreVertical, AlertTriangle,
   CheckCircle2, Loader2, BookText, FileText, ClipboardList,
   Calendar, Users, BarChart2, Library, Archive, ArchiveRestore, Ban,
 } from 'lucide-react';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
+import { PageHeader, SearchInput, EmptyState } from "@/components/shared";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -633,24 +634,20 @@ export default function SubjectsManagement() {
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6" data-testid="subjects-management">
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <BookOpen className="h-6 w-6 text-primary" />
-            Subjects Management
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Manage school subjects across all departments
-          </p>
-        </div>
-        <Button
-          onClick={() => { reset({ category: 'general' }); setEditingSubject(null); setIsFormOpen(true); }}
-          data-testid="button-add-subject"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Subject
-        </Button>
-      </div>
+      <PageHeader
+        icon={BookOpen}
+        title="Subjects Management"
+        description="Manage school subjects across all departments"
+        actions={
+          <Button
+            onClick={() => { reset({ category: 'general' }); setEditingSubject(null); setIsFormOpen(true); }}
+            data-testid="button-add-subject"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Subject
+          </Button>
+        }
+      />
 
       {/* Category stat cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -667,16 +664,13 @@ export default function SubjectsManagement() {
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name, code, or description…"
-            className="pl-9"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            data-testid="input-search"
-          />
-        </div>
+        <SearchInput
+          className="flex-1"
+          placeholder="Search by name, code, or description…"
+          value={searchTerm}
+          onChange={setSearchTerm}
+          data-testid="input-search"
+        />
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
           <SelectTrigger className="w-full sm:w-44" data-testid="select-category-filter">
             <SelectValue placeholder="All Categories" />
@@ -713,15 +707,15 @@ export default function SubjectsManagement() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No subjects found</p>
-          <p className="text-sm mt-1">
-            {searchTerm || categoryFilter !== 'all' || statusFilter !== 'all'
+        <EmptyState
+          icon={BookOpen}
+          title="No subjects found"
+          description={
+            searchTerm || categoryFilter !== 'all' || statusFilter !== 'all'
               ? 'Try adjusting your filters'
-              : 'Add your first subject to get started'}
-          </p>
-        </div>
+              : 'Add your first subject to get started'
+          }
+        />
       ) : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Edit, Trash2, Calendar, MapPin, Clock, Filter, Search, X, ImageIcon, Tag, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit, Trash2, Calendar, MapPin, Clock, Filter, X, ImageIcon, Tag, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
+import { PageHeader, SearchInput, EmptyState } from "@/components/shared";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -211,33 +212,26 @@ export default function EventsManagement() {
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Events Management</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Manage school events, holidays, exams and activities</p>
-        </div>
-        <Button onClick={openCreate} className="gap-2 self-start sm:self-auto" data-testid="button-add-event">
-          <Plus className="w-4 h-4" /> Add Event
-        </Button>
-      </div>
+      <PageHeader
+        title="Events Management"
+        description="Manage school events, holidays, exams and activities"
+        icon={Calendar}
+        actions={
+          <Button onClick={openCreate} className="gap-2" data-testid="button-add-event">
+            <Plus className="w-4 h-4" /> Add Event
+          </Button>
+        }
+      />
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search events..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-9"
-            data-testid="input-search-events"
-          />
-          {search && (
-            <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-              <X className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+        <SearchInput
+          value={search}
+          onChange={setSearch}
+          placeholder="Search events..."
+          className="flex-1"
+          data-testid="input-search-events"
+        />
         <Select value={typeFilter} onValueChange={setTypeFilter}>
           <SelectTrigger className="w-full sm:w-44" data-testid="select-filter-type">
             <Filter className="w-4 h-4 mr-2 text-muted-foreground" />
@@ -286,11 +280,16 @@ export default function EventsManagement() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No events found</p>
-          <p className="text-sm mt-1">Try adjusting your filters or add a new event</p>
-        </div>
+        <EmptyState
+          icon={Calendar}
+          title="No events found"
+          description="Try adjusting your filters or add a new event"
+          action={{
+            label: "Add Event",
+            onClick: openCreate,
+            icon: Plus
+          }}
+        />
       ) : viewMode === 'card' ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map(event => {

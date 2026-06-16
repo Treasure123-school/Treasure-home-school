@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { computeProfileCompletion } from '@/lib/profileCompletion';
 import { apiRequest } from '@/lib/queryClient';
+import { PageHeader, SearchInput, EmptyState } from "@/components/shared";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -396,38 +397,31 @@ export default function ParentManagement() {
     <div className="max-w-6xl mx-auto space-y-5">
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-xl">
-            <Users className="h-5 w-5 text-violet-600 dark:text-violet-400" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Parent Management</h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">{parents.length} parent{parents.length !== 1 ? 's' : ''} registered</p>
-          </div>
-        </div>
-        <Button
-          onClick={() => setIsAddOpen(true)}
-          className="bg-primary hover:bg-primary/90 text-white rounded-xl gap-2"
-          data-testid="button-add-parent"
-        >
-          <Plus className="h-4 w-4" />
-          Add Parent
-        </Button>
-      </div>
+      <PageHeader
+        icon={Users}
+        title="Parent Management"
+        description={`${parents.length} parent${parents.length !== 1 ? 's' : ''} registered`}
+        actions={
+          <Button
+            onClick={() => setIsAddOpen(true)}
+            className="bg-primary hover:bg-primary/90 text-white rounded-xl gap-2"
+            data-testid="button-add-parent"
+          >
+            <Plus className="h-4 w-4" />
+            Add Parent
+          </Button>
+        }
+      />
 
       {/* Search + Filters */}
       <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 p-3 flex flex-col sm:flex-row gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-48">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Search by name, phone, email or username..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="pl-9 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 rounded-xl text-sm"
-            data-testid="input-search-parents"
-          />
-        </div>
+        <SearchInput
+          placeholder="Search by name, phone, email or username..."
+          value={search}
+          onChange={setSearch}
+          className="flex-1 min-w-48"
+          data-testid="input-search-parents"
+        />
         <Select value={classFilter} onValueChange={setClassFilter}>
           <SelectTrigger className="w-auto sm:w-44 rounded-xl text-sm border-gray-200 dark:border-gray-700">
             <Filter className="h-3.5 w-3.5 mr-1.5 text-gray-400" />
@@ -458,23 +452,17 @@ export default function ParentManagement() {
           {[1,2,3,4,5,6].map(i => <Skeleton key={i} className="h-44 rounded-2xl" />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 p-16 text-center">
-          <div className="bg-violet-50 dark:bg-violet-900/20 rounded-full p-5 w-20 h-20 mx-auto mb-4 flex items-center justify-center">
-            <Users className="h-9 w-9 text-violet-400" />
-          </div>
-          <h3 className="text-base font-semibold text-gray-700 dark:text-gray-300 mb-1">
-            {search || classFilter !== 'all' ? 'No parents match your search' : 'No parents registered yet'}
-          </h3>
-          <p className="text-sm text-gray-400 mb-4">
-            {search || classFilter !== 'all' ? 'Try adjusting your filters.' : 'Add your first parent to get started.'}
-          </p>
-          {!search && classFilter === 'all' && (
-            <Button onClick={() => setIsAddOpen(true)} className="bg-primary hover:bg-primary/90 text-white rounded-xl gap-2">
-              <Plus className="h-4 w-4" />
-              Add First Parent
-            </Button>
-          )}
-        </div>
+        <EmptyState
+          icon={Users}
+          title={search || classFilter !== 'all' ? 'No parents match your search' : 'No parents registered yet'}
+          description={search || classFilter !== 'all' ? 'Try adjusting your filters.' : 'Add your first parent to get started.'}
+          action={!search && classFilter === 'all' ? {
+            label: "Add First Parent",
+            onClick: () => setIsAddOpen(true),
+            icon: Plus
+          } : undefined}
+          className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700"
+        />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map(parent => {

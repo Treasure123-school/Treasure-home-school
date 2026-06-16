@@ -24,9 +24,10 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { insertExamSchema, insertExamQuestionSchema, insertQuestionOptionSchema, type Exam, type ExamQuestion, type QuestionOption, type Class, type Subject } from '@shared/schema';
 import { z } from 'zod';
-import { Plus, Edit, Search, BookOpen, Trash2, Clock, Users, FileText, Eye, Play, Upload, Save, Shield, MoreVertical, ChevronDown, ChevronUp, Settings, ChevronLeft, ChevronRight, Check, Calendar } from 'lucide-react';
+import { Plus, Edit, BookOpen, Trash2, Clock, Users, FileText, Eye, Play, Upload, Save, Shield, MoreVertical, ChevronDown, ChevronUp, Settings, ChevronLeft, ChevronRight, Check, Calendar } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
+import { PageHeader, SearchInput, EmptyState, MiniStatCard, MiniStatGrid } from "@/components/shared";
 
 // Form schemas - Use the shared insertExamSchema which has proper preprocessing
 const examFormSchema = insertExamSchema.omit({ 
@@ -1588,138 +1589,138 @@ export default function ExamManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Exam Management</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">Create and manage exams for your classes</p>
-        </div>
-        <Dialog open={isExamDialogOpen} onOpenChange={handleExamDialogClose}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-create-exam" className="w-full sm:w-auto">
-              <Plus className="w-4 h-4 mr-2" />
-              Create New Exam
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>{editingExam ? 'Edit Exam' : 'Create New Exam'}</DialogTitle>
-            </DialogHeader>
+      <PageHeader
+        title="Exam Management"
+        description="Create and manage exams for your classes"
+        icon={BookOpen}
+        actions={
+          <Dialog open={isExamDialogOpen} onOpenChange={handleExamDialogClose}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-create-exam" className="w-full sm:w-auto">
+                <Plus className="w-4 h-4 mr-2" />
+                Create New Exam
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>{editingExam ? 'Edit Exam' : 'Create New Exam'}</DialogTitle>
+              </DialogHeader>
 
-            {/* Step Indicator */}
-            <div className="flex items-center gap-0 mb-1">
-              {EXAM_STEPS.map((step, i) => (
-                <div key={step.id} className={`flex items-center ${i < EXAM_STEPS.length - 1 ? 'flex-1' : ''}`}>
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold border-2 transition-colors flex-shrink-0 ${
-                    currentStep > step.id ? 'bg-primary border-primary text-primary-foreground' :
-                    currentStep === step.id ? 'border-primary text-primary' :
-                    'border-muted-foreground/30 text-muted-foreground'
-                  }`}>
-                    {currentStep > step.id ? <Check className="h-3 w-3" /> : step.id}
-                  </div>
-                  {i < EXAM_STEPS.length - 1 && (
-                    <div className={`flex-1 h-0.5 mx-1 ${currentStep > step.id ? 'bg-primary' : 'bg-muted-foreground/20'}`} />
-                  )}
-                </div>
-              ))}
-            </div>
-            <p className="text-xs font-medium text-primary mb-3">{EXAM_STEPS[currentStep - 1].title}</p>
-
-            <div className="space-y-4">
-
-              {/* ── Step 1: Exam Details ── */}
-              {currentStep === 1 && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="name">Exam Name *</Label>
-                      <Input id="name" {...registerExam('name')} data-testid="input-exam-name" placeholder="e.g., Mid-term Mathematics Test" />
-                      {examErrors.name && <p className="text-sm text-red-500 mt-1">{examErrors.name.message}</p>}
+              {/* Step Indicator */}
+              <div className="flex items-center gap-0 mb-1">
+                {EXAM_STEPS.map((step, i) => (
+                  <div key={step.id} className={`flex items-center ${i < EXAM_STEPS.length - 1 ? 'flex-1' : ''}`}>
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold border-2 transition-colors flex-shrink-0 ${
+                      currentStep > step.id ? 'bg-primary border-primary text-primary-foreground' :
+                      currentStep === step.id ? 'border-primary text-primary' :
+                      'border-muted-foreground/30 text-muted-foreground'
+                    }`}>
+                      {currentStep > step.id ? <Check className="h-3 w-3" /> : step.id}
                     </div>
+                    {i < EXAM_STEPS.length - 1 && (
+                      <div className={`flex-1 h-0.5 mx-1 ${currentStep > step.id ? 'bg-primary' : 'bg-muted-foreground/20'}`} />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs font-medium text-primary mb-3">{EXAM_STEPS[currentStep - 1].title}</p>
+
+              <div className="space-y-4">
+
+                {/* ── Step 1: Exam Details ── */}
+                {currentStep === 1 && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="name">Exam Name *</Label>
+                        <Input id="name" {...registerExam('name')} data-testid="input-exam-name" placeholder="e.g., Mid-term Mathematics Test" />
+                        {examErrors.name && <p className="text-sm text-red-500 mt-1">{examErrors.name.message}</p>}
+                      </div>
+                      <div>
+                        <Label htmlFor="date">Exam Date *</Label>
+                        <Input id="date" type="date" {...registerExam('date')} data-testid="input-exam-date" />
+                        {examErrors.date && <p className="text-sm text-red-500 mt-1">{examErrors.date.message}</p>}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Class *</Label>
+                        <Controller name="classId" control={examControl} render={({ field }) => (
+                          <Select onValueChange={(v) => { const n = Number(v); if (!isNaN(n)) field.onChange(n); }}
+                            value={field.value != null ? field.value.toString() : ''}>
+                            <SelectTrigger data-testid="select-exam-class"><SelectValue placeholder="Select class" /></SelectTrigger>
+                            <SelectContent>
+                              {classes.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        )} />
+                        {examErrors.classId && <p className="text-sm text-red-500 mt-1">{examErrors.classId.message}</p>}
+                      </div>
+                      <div>
+                        <Label>Subject *</Label>
+                        <Controller name="subjectId" control={examControl} render={({ field }) => (
+                          <Select onValueChange={(v) => { const n = Number(v); if (!isNaN(n)) field.onChange(n); }}
+                            value={field.value != null ? field.value.toString() : ''} disabled={subjectsLoading || !selectedClassId}>
+                            <SelectTrigger data-testid="select-exam-subject">
+                              <SelectValue placeholder={subjectsLoading ? "Loading..." : !selectedClassId ? "Select class first" : subjects.length === 0 ? "No subjects" : "Select subject"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {subjects.map((s: any) => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        )} />
+                        {examErrors.subjectId && <p className="text-sm text-red-500 mt-1">{examErrors.subjectId.message}</p>}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Assessment Type *</Label>
+                        <Controller name="examType" control={examControl} render={({ field }) => (
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <SelectTrigger data-testid="select-exam-type"><SelectValue placeholder="Select type" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="test">Test (40% weight)</SelectItem>
+                              <SelectItem value="exam">Exam (60% weight)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )} />
+                        {examErrors.examType && <p className="text-sm text-red-500 mt-1">{examErrors.examType.message}</p>}
+                        <p className="text-xs text-muted-foreground mt-1">Test (40%) + Exam (60%) = Total (100%)</p>
+                      </div>
+                      <div>
+                        <Label>Teacher In-Charge</Label>
+                        <Controller name="teacherInChargeId" control={examControl} render={({ field }) => (
+                          <Select onValueChange={field.onChange} value={field.value?.toString()}>
+                            <SelectTrigger data-testid="select-teacher-in-charge"><SelectValue placeholder="Select teacher (optional)" /></SelectTrigger>
+                            <SelectContent>
+                              {teachers && teachers.length > 0
+                                ? teachers.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.firstName} {t.lastName}</SelectItem>)
+                                : <SelectItem value="no-teachers" disabled>No teachers available</SelectItem>}
+                            </SelectContent>
+                          </Select>
+                        )} />
+                      </div>
+                    </div>
+
                     <div>
-                      <Label htmlFor="date">Exam Date *</Label>
-                      <Input id="date" type="date" {...registerExam('date')} data-testid="input-exam-date" />
-                      {examErrors.date && <p className="text-sm text-red-500 mt-1">{examErrors.date.message}</p>}
+                      <Label htmlFor="instructions">Instructions</Label>
+                      <Textarea id="instructions" {...registerExam('instructions')} data-testid="textarea-exam-instructions"
+                        placeholder="Enter exam instructions for students..." rows={3} />
+                      <p className="text-xs text-muted-foreground mt-1">Shown to students before they start</p>
                     </div>
                   </div>
+                )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* ── Step 2: Academic & Timing ── */}
+                {currentStep === 2 && (
+                  <div className="space-y-4">
                     <div>
-                      <Label>Class *</Label>
-                      <Controller name="classId" control={examControl} render={({ field }) => (
-                        <Select onValueChange={(v) => { const n = Number(v); if (!isNaN(n)) field.onChange(n); }}
+                      <Label>Academic Term *</Label>
+                      <Controller name="termId" control={examControl} render={({ field }) => (
+                        <Select onValueChange={(v) => { const n = parseInt(v); if (!isNaN(n)) field.onChange(n); }}
                           value={field.value != null ? field.value.toString() : ''}>
-                          <SelectTrigger data-testid="select-exam-class"><SelectValue placeholder="Select class" /></SelectTrigger>
-                          <SelectContent>
-                            {classes.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      )} />
-                      {examErrors.classId && <p className="text-sm text-red-500 mt-1">{examErrors.classId.message}</p>}
-                    </div>
-                    <div>
-                      <Label>Subject *</Label>
-                      <Controller name="subjectId" control={examControl} render={({ field }) => (
-                        <Select onValueChange={(v) => { const n = Number(v); if (!isNaN(n)) field.onChange(n); }}
-                          value={field.value != null ? field.value.toString() : ''} disabled={subjectsLoading || !selectedClassId}>
-                          <SelectTrigger data-testid="select-exam-subject">
-                            <SelectValue placeholder={subjectsLoading ? "Loading..." : !selectedClassId ? "Select class first" : subjects.length === 0 ? "No subjects" : "Select subject"} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {subjects.map((s: any) => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      )} />
-                      {examErrors.subjectId && <p className="text-sm text-red-500 mt-1">{examErrors.subjectId.message}</p>}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label>Assessment Type *</Label>
-                      <Controller name="examType" control={examControl} render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger data-testid="select-exam-type"><SelectValue placeholder="Select type" /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="test">Test (40% weight)</SelectItem>
-                            <SelectItem value="exam">Exam (60% weight)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )} />
-                      {examErrors.examType && <p className="text-sm text-red-500 mt-1">{examErrors.examType.message}</p>}
-                      <p className="text-xs text-muted-foreground mt-1">Test (40%) + Exam (60%) = Total (100%)</p>
-                    </div>
-                    <div>
-                      <Label>Teacher In-Charge</Label>
-                      <Controller name="teacherInChargeId" control={examControl} render={({ field }) => (
-                        <Select onValueChange={field.onChange} value={field.value?.toString()}>
-                          <SelectTrigger data-testid="select-teacher-in-charge"><SelectValue placeholder="Select teacher (optional)" /></SelectTrigger>
-                          <SelectContent>
-                            {teachers && teachers.length > 0
-                              ? teachers.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.firstName} {t.lastName}</SelectItem>)
-                              : <SelectItem value="no-teachers" disabled>No teachers available</SelectItem>}
-                          </SelectContent>
-                        </Select>
-                      )} />
-                    </div>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="instructions">Instructions</Label>
-                    <Textarea id="instructions" {...registerExam('instructions')} data-testid="textarea-exam-instructions"
-                      placeholder="Enter exam instructions for students..." rows={3} />
-                    <p className="text-xs text-muted-foreground mt-1">Shown to students before they start</p>
-                  </div>
-                </div>
-              )}
-
-              {/* ── Step 2: Academic & Timing ── */}
-              {currentStep === 2 && (
-                <div className="space-y-4">
-                  <div>
-                    <Label>Academic Term *</Label>
-                    <Controller name="termId" control={examControl} render={({ field }) => (
-                      <Select onValueChange={(v) => { const n = parseInt(v); if (!isNaN(n)) field.onChange(n); }}
-                        value={field.value != null ? field.value.toString() : ''}>
                         <SelectTrigger data-testid="select-term"><SelectValue placeholder="Select term" /></SelectTrigger>
                         <SelectContent>
                           {terms && terms.length > 0
@@ -1910,19 +1911,51 @@ export default function ExamManagement() {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
+      }
+    />
 
-      {/* Search */}
-      <div className="flex items-center space-x-2">
-        <Search className="w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Search exams..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-sm"
-          data-testid="input-search-exams"
-        />
-      </div>
+    <MiniStatGrid cols={4}>
+      <MiniStatCard
+        label="Total Exams"
+        value={exams.length}
+        icon={FileText}
+        color="text-blue-600"
+      />
+      <MiniStatCard
+        label="Published"
+        value={exams.filter((e: any) => e.isPublished).length}
+        icon={Check}
+        color="text-green-600"
+      />
+      <MiniStatCard
+        label="Drafts"
+        value={exams.filter((e: any) => !e.isPublished).length}
+        icon={Clock}
+        color="text-amber-600"
+      />
+      <MiniStatCard
+        label="Scheduled/Live"
+        value={exams.filter((exam: any) => {
+          if (exam.timerMode !== 'global' || !exam.startTime || !exam.endTime) return false;
+          const now = new Date();
+          const startTime = new Date(exam.startTime);
+          const endTime = new Date(exam.endTime);
+          return (now >= startTime && now <= endTime) || now < startTime;
+        }).length}
+        icon={Play}
+        color="text-purple-600"
+      />
+    </MiniStatGrid>
+
+    <div className="flex items-center space-x-2">
+      <SearchInput
+        placeholder="Search exams..."
+        value={searchTerm}
+        onChange={setSearchTerm}
+        className="max-w-sm"
+        data-testid="input-search-exams"
+      />
+    </div>
 
       {/* Exams Table/Cards */}
       <Card>
@@ -2090,9 +2123,24 @@ export default function ExamManagement() {
                   </div>
                 ))}
                 {filteredExams.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No exams found. Create your first exam to get started.
-                  </div>
+                  <EmptyState
+                    title={searchTerm ? "No exams match your search" : "No exams created yet"}
+                    description={searchTerm 
+                      ? `We couldn't find any exams matching "${searchTerm}". Try a different search term.`
+                      : "Create your first exam to get started with assessment management."
+                    }
+                    icon={BookOpen}
+                    action={!searchTerm ? (
+                      <Button onClick={() => setIsExamDialogOpen(true)} data-testid="button-create-exam-empty">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Create Your First Exam
+                      </Button>
+                    ) : (
+                      <Button variant="outline" onClick={() => setSearchTerm("")} data-testid="button-clear-search">
+                        Clear Search
+                      </Button>
+                    )}
+                  />
                 )}
               </div>
 
@@ -2261,17 +2309,12 @@ export default function ExamManagement() {
 
       {/* Empty state guidance when no exam is selected */}
       {!selectedExam && (
-        <Card className="mt-6">
-          <CardContent className="pt-6">
-            <div className="text-center py-8 text-muted-foreground">
-              <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <h3 className="text-lg font-semibold mb-2">Select an Exam to Manage Questions</h3>
-              <p className="text-sm">
-                To add questions or upload CSV files, please select an exam from the list above by clicking the "Manage Questions" button.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={BookOpen}
+          title="Select an Exam to Manage Questions"
+          description="To add questions or upload CSV files, please select an exam from the list above by clicking the Manage Questions button."
+          className="mt-6 bg-card rounded-lg border border-border"
+        />
       )}
 
       {/* Question Management Modal */}
