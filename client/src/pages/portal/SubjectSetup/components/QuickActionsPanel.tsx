@@ -4,7 +4,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Checkbox } from '@/components/ui/checkbox';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import type { ClassInfo, Subject } from '../types';
-import { getClassYearGroups } from '../utils/classGrouping';
 
 interface SubjectPillProps {
   subject: Subject;
@@ -13,10 +12,9 @@ interface SubjectPillProps {
   isAssigned: (classId: number, subjectId: number, department: string | null) => boolean;
   onToggleAll: (classes: ClassInfo[], subjectId: number, department: string | null, checked: boolean) => void;
   isSaving: boolean;
-  label?: string;
 }
 
-function SubjectPill({ subject, classes, department, isAssigned, onToggleAll, isSaving, label }: SubjectPillProps) {
+function SubjectPill({ subject, classes, department, isAssigned, onToggleAll, isSaving }: SubjectPillProps) {
   const allAssigned = classes.length > 0 && classes.every((c) => isAssigned(c.id, subject.id, department));
   const someAssigned = classes.some((c) => isAssigned(c.id, subject.id, department));
   const isIndeterminate = !allAssigned && someAssigned;
@@ -28,7 +26,7 @@ function SubjectPill({ subject, classes, department, isAssigned, onToggleAll, is
           ? 'bg-primary/10 border-primary/30 text-primary font-medium'
           : isIndeterminate
             ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300'
-            : 'bg-background border-border text-muted-foreground hover:bg-muted/50'
+            : 'bg-background border-border text-foreground hover:bg-muted/50'
         }
         ${isSaving ? 'pointer-events-none opacity-60' : ''}
       `}
@@ -42,7 +40,7 @@ function SubjectPill({ subject, classes, department, isAssigned, onToggleAll, is
         onClick={(e) => e.stopPropagation()}
         disabled={isSaving}
       />
-      {label ?? subject.name}
+      <span className="leading-tight">{subject.name}</span>
     </label>
   );
 }
@@ -73,8 +71,6 @@ export function QuickActionsPanel({
   isSaving,
 }: QuickActionsPanelProps) {
   const [open, setOpen] = useState(false);
-  const yearGroups = getClassYearGroups(classes);
-  const hasMultipleYearGroups = yearGroups.size > 1;
 
   const assignedAll = subjects.length > 0 && classes.length > 0 &&
     subjects.every((s) => classes.every((c) => isAssigned(c.id, s.id, department)));
@@ -106,57 +102,24 @@ export function QuickActionsPanel({
       </CollapsibleTrigger>
 
       <CollapsibleContent>
-        <div className="mt-2 rounded-xl border border-border bg-background p-4 space-y-4">
+        <div className="mt-2 rounded-xl border border-border bg-background p-4 space-y-3">
           <p className="text-xs text-muted-foreground">{description}</p>
-
-          {/* Assign to ALL classes in this level */}
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-              Assign to all classes
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {subjects.map((subject) => (
-                <SubjectPill
-                  key={subject.id}
-                  subject={subject}
-                  classes={classes}
-                  department={department}
-                  isAssigned={isAssigned}
-                  onToggleAll={onToggleAll}
-                  isSaving={isSaving}
-                />
-              ))}
-            </div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            Assign to all classes
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {subjects.map((subject) => (
+              <SubjectPill
+                key={subject.id}
+                subject={subject}
+                classes={classes}
+                department={department}
+                isAssigned={isAssigned}
+                onToggleAll={onToggleAll}
+                isSaving={isSaving}
+              />
+            ))}
           </div>
-
-          {/* Assign by year group */}
-          {hasMultipleYearGroups && (
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-                Assign by year group
-              </p>
-              <div className="space-y-3">
-                {Array.from(yearGroups.entries()).map(([yearGroup, yearClasses]) => (
-                  <div key={yearGroup}>
-                    <p className="text-xs text-muted-foreground font-medium mb-1.5">{yearGroup}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {subjects.map((subject) => (
-                        <SubjectPill
-                          key={subject.id}
-                          subject={subject}
-                          classes={yearClasses}
-                          department={department}
-                          isAssigned={isAssigned}
-                          onToggleAll={onToggleAll}
-                          isSaving={isSaving}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </CollapsibleContent>
     </Collapsible>

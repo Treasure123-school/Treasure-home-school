@@ -3,12 +3,13 @@ import { Accordion } from '@/components/ui/accordion';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SectionCard } from '@/components/ui/section-card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { GraduationCap, Palette, Briefcase, School } from 'lucide-react';
+import { GraduationCap, Palette, Briefcase, School, Zap } from 'lucide-react';
 import type { ClassInfo, Subject, Department, SubjectFilter } from '../types';
 import { ClassAccordionItem } from './ClassAccordionItem';
 import { SubjectFilterBar } from './SubjectFilterBar';
+import { QuickActionsPanel } from './QuickActionsPanel';
 
 const DEPARTMENTS: Department[] = ['science', 'art', 'commercial'];
 
@@ -69,6 +70,19 @@ function DeptTab({ dept, classes, allSubjects, isAssigned, pendingChanges, pendi
 
   return (
     <div className="space-y-4">
+      {/* Quick assign for this department — all SS classes */}
+      <QuickActionsPanel
+        title={`Quick assign — all SSS ${config.label} classes`}
+        description={`Tick a subject to assign it to every SSS class at once. Fine-tune individual classes in the accordions below.`}
+        headerIcon={<Zap className="w-4 h-4" />}
+        subjects={allSubjects}
+        classes={classes}
+        department={dept}
+        isAssigned={isAssigned}
+        onToggleAll={onToggleAll}
+        isSaving={isSaving}
+      />
+
       <SubjectFilterBar
         filter={filter}
         onChange={setFilter}
@@ -157,20 +171,29 @@ export function SSSLevelTabContent({
         {/* Mobile department selector */}
         <div className="sm:hidden">
           <Select value={activeDept} onValueChange={setActiveDept}>
-            <SelectTrigger className="w-full">
+            <SelectTrigger className="w-full h-11 rounded-xl font-medium">
               <SelectValue placeholder="Select department…" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="rounded-xl overflow-hidden p-1">
               {DEPARTMENTS.map((dept) => {
                 const config = DEPT_CONFIG[dept];
                 const Icon = config.icon;
+                const isActive = activeDept === dept;
                 return (
-                  <SelectItem key={dept} value={dept}>
-                    <div className="flex items-center gap-2">
-                      <Icon className="w-4 h-4 text-muted-foreground" />
-                      <span>{config.label}</span>
-                      <span className="text-xs text-muted-foreground ml-1">
-                        ({assignedCountForDept(dept)} assigned)
+                  <SelectItem
+                    key={dept}
+                    value={dept}
+                    className="rounded-lg py-2.5 px-3 cursor-pointer focus:bg-primary focus:text-white data-[state=checked]:bg-primary data-[state=checked]:text-white"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Icon className="w-4 h-4 shrink-0" />
+                      <span className="font-medium">{config.label}</span>
+                      <span className={`ml-auto text-xs rounded-full px-2 py-0.5 font-medium ${
+                        isActive
+                          ? 'bg-white/20 text-white'
+                          : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {assignedCountForDept(dept)} assigned
                       </span>
                     </div>
                   </SelectItem>
@@ -188,9 +211,9 @@ export function SSSLevelTabContent({
               const Icon = config.icon;
               return (
                 <TabsTrigger key={dept} value={dept} className="flex items-center gap-1.5 rounded-lg text-sm font-medium">
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-4 h-4 shrink-0" />
                   <span>{config.label}</span>
-                  <Badge variant="secondary" className="text-xs ml-0.5 px-1.5">
+                  <Badge variant="secondary" className="text-xs ml-0.5 px-1.5 shrink-0">
                     {assignedCountForDept(dept)}
                   </Badge>
                 </TabsTrigger>
