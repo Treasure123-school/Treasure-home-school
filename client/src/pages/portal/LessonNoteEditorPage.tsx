@@ -50,8 +50,9 @@ import {
 import {
   Save, Send, Eye, AlertCircle, Info,
   Sparkles, ChevronLeft, Loader2, GraduationCap, BookMarked, Calendar,
-  Copy, Check, ImagePlus, X, RefreshCw, DownloadCloud,
+  Copy, Check, ImagePlus, X, RefreshCw, DownloadCloud, Wand2,
 } from 'lucide-react';
+import FormatNoteDialog from '@/components/lesson-notes/FormatNoteDialog';
 
 // ── Pure helpers ───────────────────────────────────────────────────────────────
 
@@ -196,9 +197,10 @@ export default function LessonNoteEditorPage() {
   const [aiImgDone,          setAiImgDone]          = useState(0);
 
   // Misc editor state
-  const [copied,    setCopied]    = useState(false);
-  const [regenFig,  setRegenFig]  = useState<RegenFig | null>(null);
-  const [regenBusy, setRegenBusy] = useState(false);
+  const [copied,          setCopied]          = useState(false);
+  const [regenFig,        setRegenFig]        = useState<RegenFig | null>(null);
+  const [regenBusy,       setRegenBusy]       = useState(false);
+  const [formatDialogOpen, setFormatDialogOpen] = useState(false);
 
   // Inline AI image generation state
   const [imgGenLoading,   setImgGenLoading]   = useState(false);
@@ -807,6 +809,17 @@ export default function LessonNoteEditorPage() {
 
             {canEdit && (
               <Button size="sm" variant="outline"
+                className="h-8 text-xs gap-1.5 rounded border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-400 font-semibold"
+                onClick={() => setFormatDialogOpen(true)}
+                disabled={aiLoading || isGeneratingImages || busy || !content}
+                title="Auto-detect headings, lists, tables, equations and chemistry in your note">
+                <Wand2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Format Note</span>
+              </Button>
+            )}
+
+            {canEdit && (
+              <Button size="sm" variant="outline"
                 className="h-8 text-xs gap-1.5 rounded border-orange-200 text-orange-700 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-400 font-semibold"
                 onClick={() => { setImgGenPanel(p => !p); setImgGenUrl(null); }}
                 disabled={aiLoading || isGeneratingImages || busy || imgGenLoading}
@@ -1048,6 +1061,21 @@ export default function LessonNoteEditorPage() {
           )}
         </div>
       )}
+
+      {/* ── Smart Format Note dialog ── */}
+      <FormatNoteDialog
+        open={formatDialogOpen}
+        onClose={() => setFormatDialogOpen(false)}
+        currentHtml={liveHtmlRef.current || content}
+        onApply={(formattedHtml) => {
+          setContent(formattedHtml);
+          liveHtmlRef.current = formattedHtml;
+          setSaveStatus('unsaved');
+          if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+          autoSaveTimer.current = setTimeout(() => triggerAutoSave(formattedHtml), 2000);
+          toast({ title: '✅ Formatting applied', description: 'Your note has been formatted. You can continue editing.' });
+        }}
+      />
 
     </div>
   );
