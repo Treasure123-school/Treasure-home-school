@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { StatCard, StatCardGrid } from '@/components/ui/stat-card';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
 import {
   School,
@@ -13,6 +14,7 @@ import {
   Loader2,
   BookOpen,
   BookMarked,
+  Info,
 } from 'lucide-react';
 
 import type { Subject, ClassInfo, SubjectAssignment, ClassGroup } from './types';
@@ -22,7 +24,6 @@ import { LevelSwitcher } from './components/LevelSwitcher';
 import { LevelTabContent } from './components/LevelTabContent';
 import { SSSLevelTabContent } from './components/SSSLevelTabContent';
 import { SaveBar } from './components/SaveBar';
-import { Info, X } from 'lucide-react';
 
 const LEVEL_COLORS: Record<string, string> = {
   primary: 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300',
@@ -35,14 +36,6 @@ export default function SubjectSetup() {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [activeLevel, setActiveLevel] = useState<string>('');
-  const [infoDismissed, setInfoDismissed] = useState(() => {
-    try { return localStorage.getItem('subject-setup-info-dismissed') === 'true'; } catch { return false; }
-  });
-
-  const dismissInfo = () => {
-    setInfoDismissed(true);
-    try { localStorage.setItem('subject-setup-info-dismissed', 'true'); } catch {}
-  };
 
   const { data: subjects = [], isLoading: subjectsLoading } = useQuery<Subject[]>({
     queryKey: ['/api/subjects'],
@@ -169,6 +162,24 @@ export default function SubjectSetup() {
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
             <School className="h-6 w-6 text-primary shrink-0" />
             Subject Setup
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  aria-label="How this page works"
+                  className="ml-1 inline-flex items-center justify-center w-6 h-6 rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                >
+                  <Info className="w-4 h-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="bottom" align="start" className="max-w-xs text-sm">
+                <p className="font-semibold mb-1">How this page works</p>
+                <p className="text-muted-foreground leading-relaxed">
+                  Control exactly which subjects appear for each class — you can assign Basic Science to
+                  JSS 1 without assigning it to JSS 2. Changes affect report cards, exams, student
+                  portals, and teacher assignments all at once.
+                </p>
+              </PopoverContent>
+            </Popover>
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
             Assign subjects to each class individually — every class can have a different set.
@@ -230,26 +241,6 @@ export default function SubjectSetup() {
             color={state.pendingCount > 0 ? 'text-amber-600' : 'text-muted-foreground'}
           />
         </StatCardGrid>
-      )}
-
-      {/* ── Info Banner ────────────────────────────────────────────────── */}
-      {!infoDismissed && (
-        <Alert className="relative pr-10">
-          <Info className="h-4 w-4" />
-          <AlertTitle>How this page works</AlertTitle>
-          <AlertDescription>
-            Control exactly which subjects appear for each class — you can assign Basic Science to JSS 1
-            without assigning it to JSS 2. Changes affect report cards, exams, student portals, and
-            teacher assignments all at once.
-          </AlertDescription>
-          <button
-            onClick={dismissInfo}
-            aria-label="Dismiss"
-            className="absolute top-3 right-3 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </Alert>
       )}
 
       {/* ── Main Content ───────────────────────────────────────────────── */}

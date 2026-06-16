@@ -6,6 +6,17 @@ import type { ClassInfo, Subject } from '../types';
 import { SubjectCategorySection } from './SubjectCategorySection';
 import { getAssignmentKey } from '../utils/assignmentKeys';
 
+function getClassAbbr(name: string): string {
+  const n = name.trim();
+  if (/^primary/i.test(n)) return 'Pry';
+  if (/^jss/i.test(n)) return 'JSS';
+  if (/^sss/i.test(n)) return 'SSS';
+  if (/^ss\s/i.test(n) || /^ss$/i.test(n)) return 'SS';
+  if (/^junior/i.test(n)) return 'JSS';
+  if (/^senior/i.test(n)) return 'SS';
+  return n.split(/\s+/).map((w) => w[0]).join('').toUpperCase().slice(0, 3);
+}
+
 interface ClassAccordionItemProps {
   cls: ClassInfo;
   department?: string | null;
@@ -47,18 +58,25 @@ export function ClassAccordionItem({
     <AccordionItem value={cls.id.toString()} className="border rounded-xl overflow-hidden shadow-sm">
       <AccordionTrigger className="hover:no-underline px-3 py-3 md:px-4 bg-muted/30 hover:bg-muted/50 transition-colors [&[data-state=open]]:bg-muted/50">
         <div className="flex items-center gap-2.5 min-w-0 flex-1">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold shrink-0 ${levelColor}`}>
-            {cls.name.replace(/\s/g, '').slice(0, 4)}
+          <div className={`w-9 h-9 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0 leading-none ${levelColor}`}>
+            {getClassAbbr(cls.name)}
           </div>
           <span className="font-semibold text-sm truncate">{cls.name}</span>
           <div className="flex items-center gap-1.5 ml-auto mr-2 shrink-0">
-            <Badge variant="secondary" className="text-xs font-normal">
+            <Badge
+              variant="secondary"
+              className={`text-xs font-normal tabular-nums px-2 py-0.5 ${
+                assignedCount === 0
+                  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300'
+                  : assignedCount === allVisible.length
+                    ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'
+                    : ''
+              }`}
+            >
               {assignedCount}/{allVisible.length}
             </Badge>
             {hasPending && (
-              <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 dark:border-amber-600">
-                •
-              </Badge>
+              <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" aria-label="Unsaved changes" />
             )}
           </div>
         </div>

@@ -2,10 +2,11 @@ import { useMemo, useState } from 'react';
 import { Accordion } from '@/components/ui/accordion';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { SectionCard } from '@/components/ui/section-card';
-import { BookOpen, School } from 'lucide-react';
+import { BookOpen, School, Zap } from 'lucide-react';
 import type { ClassInfo, Subject, SubjectFilter } from '../types';
 import { ClassAccordionItem } from './ClassAccordionItem';
 import { SubjectFilterBar } from './SubjectFilterBar';
+import { QuickActionsPanel } from './QuickActionsPanel';
 
 interface LevelTabContentProps {
   classes: ClassInfo[];
@@ -70,6 +71,20 @@ export function LevelTabContent({
         subtitle={`${classes.length} classes`}
         contentClassName="px-4 pb-5 space-y-4 md:px-5"
       >
+        {/* Quick assign panel for the whole level */}
+        <QuickActionsPanel
+          title={`Quick assign — all ${levelLabel} classes`}
+          description={`Tick a subject to assign it to every class in ${levelLabel} at once. You can still fine-tune individual classes below.`}
+          headerClassName=""
+          headerIcon={<Zap className="w-4 h-4" />}
+          subjects={allSubjects}
+          classes={classes}
+          department={null}
+          isAssigned={isAssigned}
+          onToggleAll={onToggleAll}
+          isSaving={isSaving}
+        />
+
         <SubjectFilterBar
           filter={filter}
           onChange={setFilter}

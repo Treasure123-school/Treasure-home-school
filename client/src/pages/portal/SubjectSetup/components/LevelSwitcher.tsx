@@ -22,21 +22,30 @@ export function LevelSwitcher({ groups, value, onChange }: LevelSwitcherProps) {
   return (
     <>
       {/* Mobile: Select dropdown */}
-      <div className="sm:hidden">
+      <div className="sm:hidden mb-1">
         <Select value={value} onValueChange={onChange}>
-          <SelectTrigger className="w-full">
+          <SelectTrigger className="w-full h-11 rounded-xl font-medium">
             <SelectValue placeholder="Select level…" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="rounded-xl overflow-hidden p-1">
             {groups.map((group) => {
               const Icon = LEVEL_ICONS[group.level.toLowerCase()] ?? BookOpen;
+              const isActive = value === group.level;
               return (
-                <SelectItem key={group.level} value={group.level}>
-                  <div className="flex items-center gap-2">
-                    <Icon className="w-4 h-4 text-muted-foreground" />
-                    <span>{group.label}</span>
-                    <span className="text-xs text-muted-foreground ml-1">
-                      ({group.classes.length} classes)
+                <SelectItem
+                  key={group.level}
+                  value={group.level}
+                  className="rounded-lg py-2.5 px-3 cursor-pointer focus:bg-primary focus:text-white data-[state=checked]:bg-primary data-[state=checked]:text-white"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span className="font-medium">{group.label}</span>
+                    <span className={`ml-auto text-xs rounded-full px-2 py-0.5 font-medium ${
+                      isActive
+                        ? 'bg-white/20 text-white'
+                        : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {group.classes.length} classes
                     </span>
                   </div>
                 </SelectItem>
@@ -60,9 +69,9 @@ export function LevelSwitcher({ groups, value, onChange }: LevelSwitcherProps) {
                 value={group.level}
                 className="flex items-center justify-center gap-1.5 rounded-lg text-sm font-medium"
               >
-                <Icon className="w-4 h-4" />
-                <span>{group.label}</span>
-                <Badge variant="secondary" className="text-xs ml-0.5 px-1.5">
+                <Icon className="w-4 h-4 shrink-0" />
+                <span className="truncate">{group.label}</span>
+                <Badge variant="secondary" className="text-xs ml-0.5 px-1.5 shrink-0">
                   {group.classes.length}
                 </Badge>
               </TabsTrigger>
