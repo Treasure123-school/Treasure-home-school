@@ -14,9 +14,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  Plus, Edit, Search, Users, GraduationCap, BookOpen, Trash2,
+  Plus, Edit, Users, GraduationCap, BookOpen, Trash2,
   School, Filter, AlertTriangle,
 } from 'lucide-react';
+import { PageHeader, FilterBar, EmptyState, MiniStatCard, MiniStatGrid, ConfirmDialog } from "@/components/shared";
 
 const classFormSchema = z.object({
   name: z.string().min(1, 'Class name is required'),
@@ -189,53 +190,36 @@ export default function ClassesManagement() {
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6" data-testid="classes-management">
 
       {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <School className="h-6 w-6 text-primary" />
-            Classes Management
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Manage school classes, assign teachers and set capacities
-          </p>
-        </div>
-        <Button onClick={() => { reset(); setEditingClass(null); setIsDialogOpen(true); }} data-testid="button-add-class">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Class
-        </Button>
-      </div>
+      <PageHeader
+        icon={School}
+        title="Classes Management"
+        description="Manage school classes, assign teachers and set capacities"
+        actions={
+          <Button onClick={() => { reset(); setEditingClass(null); setIsDialogOpen(true); }} data-testid="button-add-class">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Class
+          </Button>
+        }
+      />
 
       {/* ── Stats row ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <MiniStatGrid cols={3}>
         {[
           { label: 'Total Classes', value: classes.length, icon: School, color: 'text-primary' },
           { label: 'Active', value: classes.filter((c: any) => c.isActive !== false).length, icon: BookOpen, color: 'text-green-600' },
           { label: 'Shown', value: filteredClasses.length, icon: Filter, color: 'text-primary' },
         ].map(s => (
-          <Card key={s.label} className="p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">{s.label}</p>
-                <p className="text-2xl font-bold">{s.value}</p>
-              </div>
-              <s.icon className={`h-7 w-7 ${s.color} opacity-70`} />
-            </div>
-          </Card>
+          <MiniStatCard key={s.label} label={s.label} value={s.value} icon={s.icon} color={s.color} />
         ))}
-      </div>
+      </MiniStatGrid>
 
       {/* ── Filters ── */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by name or level…"
-            className="pl-9"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            data-testid="input-search"
-          />
-        </div>
+      <FilterBar
+        search={searchTerm}
+        onSearchChange={setSearchTerm}
+        searchPlaceholder="Search by name or level…"
+        data-testid="input-search"
+      >
         <Select value={selectedLevel} onValueChange={setSelectedLevel}>
           <SelectTrigger className="w-full sm:w-44" data-testid="select-level-filter">
             <SelectValue placeholder="All Levels" />
@@ -247,7 +231,7 @@ export default function ClassesManagement() {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </FilterBar>
 
       {/* ── Loading skeleton ── */}
       {loadingClasses ? (
@@ -257,13 +241,11 @@ export default function ClassesManagement() {
           ))}
         </div>
       ) : filteredClasses.length === 0 ? (
-        <div className="text-center py-16 text-muted-foreground">
-          <School className="h-12 w-12 mx-auto mb-3 opacity-30" />
-          <p className="font-medium">No classes found</p>
-          <p className="text-sm mt-1">
-            {searchTerm || selectedLevel !== 'all' ? 'Try adjusting your filters' : 'Add your first class to get started'}
-          </p>
-        </div>
+        <EmptyState
+          icon={School}
+          title="No classes found"
+          description={searchTerm || selectedLevel !== 'all' ? 'Try adjusting your filters' : 'Add your first class to get started'}
+        />
       ) : (
         <>
           {/* ── Mobile / tablet: card grid ── */}

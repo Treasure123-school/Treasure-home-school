@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { useAuth } from '@/lib/auth';
+import { PageHeader, SearchInput } from "@/components/shared";
 
 const announcementFormSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255, 'Title must be less than 255 characters'),
@@ -412,8 +413,12 @@ export default function AnnouncementsManagement() {
 
   return (
     <div className="space-y-6" data-testid="announcements-management">
+      <PageHeader
+        icon={Megaphone}
+        title="Announcements Management"
+        description="Create and manage school-wide announcements"
+      />
       <div className="flex flex-col gap-3">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Announcements Management</h1>
         <div className="flex items-center gap-2">
           <div className="flex items-center bg-muted rounded-lg p-1">
             <Button 

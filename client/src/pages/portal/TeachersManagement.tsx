@@ -17,6 +17,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { GraduationCap, Palette, Briefcase, UserPlus, Search, Mail, Phone, Edit, Trash2, CheckCircle, Copy, BookOpen, X, Plus, MoreHorizontal, Ban, ShieldCheck, Users, CheckCircle2, ImageIcon, AlertCircle } from 'lucide-react';
+import { PageHeader, SearchInput, FilterBar, ConfirmDialog } from "@/components/shared";
 import { computeProfileCompletion } from '@/lib/profileCompletion';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
@@ -766,18 +767,20 @@ export default function TeachersManagement() {
   return (
     <div className="space-y-6" data-testid="teachers-management">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Teachers Management</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage teacher accounts, assignments and access</p>
-        </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-add-teacher">
-              <UserPlus className="w-4 h-4 mr-2" />
-              Add Teacher
-            </Button>
-          </DialogTrigger>
+      <PageHeader
+        icon={GraduationCap}
+        title="Teachers Management"
+        description="Manage teacher accounts, assignments and access"
+        actions={
+          <Button onClick={() => { reset(); setEditingTeacher(null); setIsDialogOpen(true); }} data-testid="button-add-teacher">
+            <UserPlus className="w-4 h-4 mr-2" />
+            Add Teacher
+          </Button>
+        }
+      />
+
+      {/* Teacher Create/Edit Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
