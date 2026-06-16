@@ -54,7 +54,7 @@ import {
 } from 'lucide-react';
 import FormatNoteDialog from '@/components/lesson-notes/FormatNoteDialog';
 import PasteEnhancePanel from '@/components/lesson-notes/PasteEnhancePanel';
-import { formatLessonNote } from '@/lib/lessonNoteFormatter';
+import { formatLessonNote, fixUnicodeChemistryInHtml } from '@/lib/lessonNoteFormatter';
 
 // ── Pure helpers ───────────────────────────────────────────────────────────────
 
@@ -93,10 +93,12 @@ function stripFailedFigures(html: string): string {
 
 function migrateContent(rawContent: string | null, rawObjectives: string | null): string {
   if (!rawContent) return rawObjectives ? `<p>${rawObjectives}</p>` : '';
+  let html = '';
   try {
     const j = JSON.parse(rawContent);
-    if (j._v === 3) return stripFailedFigures(j.html || '');
-    if (j._v === 2) {
+    if (j._v === 3) {
+      html = stripFailedFigures(j.html || '');
+    } else if (j._v === 2) {
       const LABELS: Record<string, string> = {
         objectives: 'Learning Objectives', previousKnowledge: 'Previous Knowledge',
         materials: 'Instructional Materials', introduction: 'Introduction / Set Induction',
@@ -106,16 +108,16 @@ function migrateContent(rawContent: string | null, rawObjectives: string | null)
       };
       const ORDER = ['objectives','previousKnowledge','materials','introduction','content',
         'teacherActivities','studentActivities','evaluation','assignment','references'];
-      let html = '';
       ORDER.forEach((key, idx) => {
         const val = j[key];
         if (!val || !val.trim()) return;
         html += `<h2>${idx + 1}. ${LABELS[key] || key.toUpperCase()}</h2>${val}`;
       });
-      return html || '';
     }
-  } catch {}
-  return stripFailedFigures(rawContent || '');
+  } catch {
+    html = stripFailedFigures(rawContent || '');
+  }
+  return fixUnicodeChemistryInHtml(html);
 }
 
 function serializeContent(html: string): string {

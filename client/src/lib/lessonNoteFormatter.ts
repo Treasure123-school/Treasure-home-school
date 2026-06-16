@@ -239,9 +239,59 @@ function applyInlineMarkdown(text: string): string {
     .replace(/`([^`\n]+?)`/g, '<code style="background:#f1f5f9;padding:0.1em 0.3em;border-radius:3px;font-size:0.9em">$1</code>');
 }
 
+// ── Unicode superscript / subscript → HTML tags ────────────────────────────
+// Georgia (and many serif fonts) lack glyphs for Unicode sub/superscript chars
+// (U+2070–U+209F, U+00B2, U+00B3, etc.), which show as □ in the TipTap editor.
+// We convert them to proper <sub>/<sup> HTML before escaping so they render
+// correctly in all fonts.
+
+const UNICODE_SUBSCRIPT: Record<string, string> = {
+  '₀':'0','₁':'1','₂':'2','₃':'3','₄':'4',
+  '₅':'5','₆':'6','₇':'7','₈':'8','₉':'9',
+};
+const UNICODE_SUPERSCRIPT: Record<string, string> = {
+  '⁰':'0','¹':'1','²':'2','³':'3','⁴':'4',
+  '⁵':'5','⁶':'6','⁷':'7','⁸':'8','⁹':'9',
+  '⁺':'+','⁻':'-','ⁿ':'n',
+};
+
+const _SUB_PH  = '\x01S\x02';
+const _SUP_PH  = '\x01P\x02';
+const _PH_END  = '\x03';
+
+function preEncodeUnicodeSuperSub(text: string): string {
+  return text
+    .replace(/[₀₁₂₃₄₅₆₇₈₉]+/g, m =>
+      _SUB_PH + m.split('').map(c => UNICODE_SUBSCRIPT[c] ?? c).join('') + _PH_END
+    )
+    .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻ⁿ]+/g, m =>
+      _SUP_PH + m.split('').map(c => UNICODE_SUPERSCRIPT[c] ?? c).join('') + _PH_END
+    );
+}
+
+function postDecodeSuperSub(text: string): string {
+  return text
+    .replace(/\x01S\x02([^\x03]+)\x03/g, '<sub>$1</sub>')
+    .replace(/\x01P\x02([^\x03]+)\x03/g, '<sup>$1</sup>');
+}
+
+/**
+ * Fix Unicode sub/superscript chars in already-stored HTML (existing notes).
+ * Safe to call on any HTML string — these Unicode chars never appear inside
+ * HTML tag names or attribute names/values.
+ */
+export function fixUnicodeChemistryInHtml(html: string): string {
+  return html
+    .replace(/[₀₁₂₃₄₅₆₇₈₉]+/g, m =>
+      '<sub>' + m.split('').map(c => UNICODE_SUBSCRIPT[c] ?? c).join('') + '</sub>'
+    )
+    .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻ⁿ]+/g, m =>
+      '<sup>' + m.split('').map(c => UNICODE_SUPERSCRIPT[c] ?? c).join('') + '</sup>'
+    );
+}
+
 // ── Superscript/subscript for charge notation ──────────────────────────────
-// e.g. SO4²⁻, H₃O⁺ — already unicode, pass through.
-// Also handle caret notation: SO4^2- → SO4<sup>2-</sup>
+// Caret notation: SO4^2- → SO4<sup>2-</sup>
 function applySupscript(text: string): string {
   return text.replace(/\^([+\-]?[\d+\-]+)/g, '<sup>$1</sup>');
 }
@@ -447,8 +497,10 @@ function parseLines(lines: string[]): Block[] {
 // ── Block → HTML renderers ─────────────────────────────────────────────────
 
 function renderText(text: string, stats: FormatStats): string {
-  const escaped = escHtml(text);
-  const [withChem, count] = applyChemistry(escaped);
+  const preEncoded = preEncodeUnicodeSuperSub(text);
+  const escaped = escHtml(preEncoded);
+  const decoded = postDecodeSuperSub(escaped);
+  const [withChem, count] = applyChemistry(decoded);
   stats.chemFormulas += count;
   const withArrows = withChem.replace(/->/g, '→').replace(/<=>/g, '⇌');
   const withSup = applySupscript(withArrows);
