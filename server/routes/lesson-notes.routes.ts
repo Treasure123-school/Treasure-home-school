@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { randomUUID } from 'crypto';
 import { storage } from '../storage';
 import { authenticateUser, authorizeRoles, ROLES } from './middleware';
-import { generateLessonNoteContent, streamGenerateLessonNote, getAIConfig } from '../services/ai-service';
+import { generateLessonNoteContent, streamGenerateLessonNote, streamEnhanceLessonNote, getAIConfig } from '../services/ai-service';
 import {
   buildImagePrompt,
   generateImage,
@@ -286,6 +286,67 @@ router.post('/generate/stream-live', authenticateUser, authorizeRoles(...ALL_STA
   } catch (err: any) {
     console.error('[AI Streaming] Failed:', err.message);
     send({ error: err.message || 'AI generation failed.' });
+  } finally {
+    if (!res.writableEnded) res.end();
+  }
+});
+
+// ─── POST /generate/enhance-paste  (SSE — rewrite teacher's pasted note) ────
+router.post('/generate/enhance-paste', authenticateUser, authorizeRoles(...ALL_STAFF), async (req: Request, res: Response) => {
+  const { rawNote, topic, className, subjectName, termName, duration = '40 minutes' } = req.body;
+
+  if (!rawNote || !rawNote.trim()) {
+    return res.status(400).json({ message: 'rawNote is required' });
+  }
+
+  try {
+    const config = await getAIConfig();
+    if (!config.features.lessonNotes) {
+      return res.status(403).json({ message: 'AI lesson note generation is currently disabled by the administrator.' });
+    }
+    if (!config.apiKey) {
+      return res.status(400).json({
+        message: `No API key configured for provider "${config.provider}". Go to AI Configuration → Providers and add your key.`,
+        aiError: 'no_api_key',
+      });
+    }
+  } catch (err: any) {
+    return res.status(500).json({ message: err.message });
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Transfer-Encoding', 'chunked');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  let closed = false;
+  req.on('close', () => { closed = true; });
+
+  const send = (payload: object) => {
+    if (!closed && !res.writableEnded) {
+      res.write(`data: ${JSON.stringify(payload)}\n\n`);
+      (res as any).flush?.();
+    }
+  };
+
+  try {
+    const result = await streamEnhanceLessonNote(
+      {
+        rawNote,
+        topic:       topic       || 'Lesson',
+        className:   className   || 'Secondary School',
+        subjectName: subjectName || 'General',
+        termName:    termName    || 'First Term',
+        duration,
+      },
+      (text) => send({ t: text }),
+    );
+    send({ done: true, sections: result.sections, provider: result.provider, model: result.model, tokensUsed: result.tokensUsed });
+  } catch (err: any) {
+    console.error('[AI Enhance-Paste] Failed:', err.message);
+    send({ error: err.message || 'AI enhancement failed.' });
   } finally {
     if (!res.writableEnded) res.end();
   }

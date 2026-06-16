@@ -50,9 +50,10 @@ import {
 import {
   Save, Send, Eye, AlertCircle, Info,
   Sparkles, ChevronLeft, Loader2, GraduationCap, BookMarked, Calendar,
-  Copy, Check, ImagePlus, X, RefreshCw, DownloadCloud, Wand2,
+  Copy, Check, ImagePlus, X, RefreshCw, DownloadCloud, Wand2, ClipboardEdit,
 } from 'lucide-react';
 import FormatNoteDialog from '@/components/lesson-notes/FormatNoteDialog';
+import PasteEnhancePanel from '@/components/lesson-notes/PasteEnhancePanel';
 
 // ── Pure helpers ───────────────────────────────────────────────────────────────
 
@@ -208,6 +209,11 @@ export default function LessonNoteEditorPage() {
   const [imgGenUrl,       setImgGenUrl]       = useState<string | null>(null);
   const [imgGenMeta,      setImgGenMeta]      = useState('');
   const [imgGenDescription, setImgGenDescription] = useState('');
+
+  // Paste & Enhance state
+  const [pastePanel,      setPastePanel]      = useState(false);
+  const [pasteText,       setPasteText]       = useState('');
+  const [enhanceLoading,  setEnhanceLoading]  = useState(false);
 
   // Refs
   const liveHtmlRef     = useRef('');
@@ -750,6 +756,119 @@ export default function LessonNoteEditorPage() {
     }
   }, [title, query, toast, buildNoteHtml]);
 
+  // ── Paste & Enhance with AI ────────────────────────────────────────────────
+  const enhanceWithAI = useCallback(async () => {
+    if (!pasteText.trim()) return;
+    setEnhanceLoading(true);
+    setAiLoading(true);
+    setAiElapsed(0);
+    setAiCompletedSections(0);
+    setAiDone(false);
+    setIsGeneratingImages(false);
+    accumRef.current = '';
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    clearAllProgressTimers();
+
+    setMode('editing');
+    setContent(`<h1 style="color:#0f766e;border-bottom:3px solid #ccfbf1;padding-bottom:0.3em">${title || 'Lesson Note'}</h1><p style="color:#6b7280;font-style:italic">✨ AI is enhancing your note — content appears instantly as it generates…</p>`);
+
+    const startTime = Date.now();
+    const ticker    = setInterval(() => setAiElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
+
+    try {
+      const token = localStorage.getItem('token');
+      const resp  = await fetch(getApiUrl('/api/lesson-notes/generate/enhance-paste'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: 'include',
+        body: JSON.stringify({
+          rawNote:     pasteText,
+          topic:       title,
+          className:   query.className,
+          subjectName: query.subjectName,
+          termName:    query.termName,
+        }),
+      });
+
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        throw new Error(data?.message || `Server error ${resp.status}`);
+      }
+
+      const reader  = resp.body!.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+
+      outer: while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() ?? '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data:')) continue;
+          const payload = trimmed.slice(5).trim();
+          try {
+            const evt = JSON.parse(payload);
+            if (evt.error) throw new Error(evt.error);
+
+            if (evt.done) {
+              if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+              clearAllProgressTimers();
+              setAiCompletedSections(6);
+              setAiDone(true);
+
+              const baseHtml = buildNoteHtml(evt.sections);
+              const placeholderCount = (baseHtml.match(/data-fig-id=/g) || []).length;
+
+              if (placeholderCount > 0) {
+                const withSkeleton = baseHtml;
+                liveHtmlRef.current = withSkeleton;
+                setIsGeneratingImages(true);
+                setAiImgTotal(placeholderCount);
+                setAiImgDone(0);
+                setGeneratingHtml(withSkeleton);
+                setAiLoading(false);
+              } else {
+                liveHtmlRef.current = baseHtml;
+                setContent(baseHtml);
+                setAiLoading(false);
+              }
+
+              // Close the panel and clear paste text after successful enhancement
+              setPastePanel(false);
+              setPasteText('');
+              break outer;
+            }
+
+            if (evt.t) {
+              accumRef.current += evt.t;
+              try {
+                const { completed, currentKey, currentPartial } = extractStreamingState(accumRef.current);
+                const keys = Object.keys(completed);
+                setAiCompletedSections(keys.length);
+                setContent(buildNoteHtml(completed as Record<string, string>, currentKey, currentPartial));
+              } catch {
+                // partial JSON — keep waiting
+              }
+            }
+          } catch (e: any) {
+            if (e?.message) throw e;
+          }
+        }
+      }
+    } catch (err: any) {
+      toast({ title: '⚠️ AI Enhancement Failed', description: shortAiError(err?.message || 'Unknown error'), variant: 'destructive', duration: 8000 });
+    } finally {
+      clearInterval(ticker);
+      if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+      setAiLoading(false);
+      setEnhanceLoading(false);
+    }
+  }, [pasteText, title, query, toast, buildNoteHtml]);
+
   // ── Cleanup on unmount ─────────────────────────────────────────────────────
   useEffect(() => () => { clearAllProgressTimers(); }, []);
 
@@ -815,6 +934,17 @@ export default function LessonNoteEditorPage() {
                 title="Auto-detect headings, lists, tables, equations and chemistry in your note">
                 <Wand2 className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Format Note</span>
+              </Button>
+            )}
+
+            {canEdit && (
+              <Button size="sm" variant="outline"
+                className="h-8 text-xs gap-1.5 rounded border-teal-200 text-teal-700 hover:bg-teal-50 dark:border-teal-800 dark:text-teal-400 font-semibold"
+                onClick={() => { setPastePanel(p => !p); }}
+                disabled={aiLoading || isGeneratingImages || busy}
+                title="Paste your own lesson note text and let AI rewrite it professionally">
+                <ClipboardEdit className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{pastePanel ? 'Hide Paste' : 'Paste & Enhance'}</span>
               </Button>
             )}
 
@@ -913,6 +1043,17 @@ export default function LessonNoteEditorPage() {
           </div>
         )}
       </div>
+
+      {/* ── Paste & Enhance panel ── */}
+      {pastePanel && canEdit && (
+        <PasteEnhancePanel
+          text={pasteText}
+          onChange={setPasteText}
+          onEnhance={enhanceWithAI}
+          onClose={() => { setPastePanel(false); setPasteText(''); }}
+          loading={enhanceLoading || aiLoading}
+        />
+      )}
 
       {/* ── AI Image panel ── */}
       {imgGenPanel && (
