@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -216,7 +216,7 @@ function TopicFormFields({
   );
 }
 
-/** Generic confirm-delete dialog */
+/** Generic confirm-delete dialog — guards against double-fire via a ref */
 function ConfirmDialog({
   open,
   onClose,
@@ -234,6 +234,19 @@ function ConfirmDialog({
   isPending: boolean;
   confirmLabel?: string;
 }) {
+  const firedRef = useRef(false);
+
+  // Reset the guard whenever the dialog opens/closes
+  useEffect(() => {
+    if (open) firedRef.current = false;
+  }, [open]);
+
+  const handleConfirm = useCallback(() => {
+    if (firedRef.current || isPending) return;
+    firedRef.current = true;
+    onConfirm();
+  }, [isPending, onConfirm]);
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-sm">
@@ -241,7 +254,7 @@ function ConfirmDialog({
         <p className="text-sm text-muted-foreground">{body}</p>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button variant="destructive" onClick={onConfirm} disabled={isPending}>
+          <Button variant="destructive" onClick={handleConfirm} disabled={isPending}>
             {isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Deleting…</> : confirmLabel}
           </Button>
         </DialogFooter>
