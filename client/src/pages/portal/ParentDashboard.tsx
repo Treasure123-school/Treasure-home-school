@@ -185,14 +185,14 @@ export default function ParentDashboard() {
   return (
     <div className="space-y-6 sm:space-y-8" data-testid="page-parent-dashboard">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 text-white shadow-xl" data-testid="parent-role-header">
-        <div className="flex items-center gap-4">
-          <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 shadow-lg">
-            <Heart className="h-10 w-10 text-white" />
+      <div className="bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-4 sm:p-6 text-white shadow-xl" data-testid="parent-role-header">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="bg-white/20 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-lg flex-shrink-0">
+            <Heart className="h-7 w-7 sm:h-10 sm:w-10 text-white" />
           </div>
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Welcome back, {user.firstName}!</h2>
-            <p className="text-white/70 text-sm mt-0.5">Stay connected with your child's education</p>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-lg sm:text-2xl font-bold tracking-tight leading-tight">Welcome back, {user.firstName}!</h2>
+            <p className="text-white/70 text-xs sm:text-sm mt-0.5">Stay connected with your child's education</p>
           </div>
         </div>
       </div>

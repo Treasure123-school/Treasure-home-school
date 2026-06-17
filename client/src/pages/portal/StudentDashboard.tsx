@@ -340,20 +340,18 @@ export default function StudentDashboard() {
       )}
 
       {/* Smart Dashboard Welcome Box */}
-      <div className="mb-8 bg-gradient-to-r from-primary to-primary/90 rounded-lg p-6 text-white shadow-lg" data-testid="student-dashboard-header">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 shadow-lg">
-              <Trophy className="h-10 w-10 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-bold mb-1">
-                Welcome back, {user.lastName}!
-              </h1>
-              <p className="text-white/70 text-sm">
-                Here's what's happening with your academics today
-              </p>
-            </div>
+      <div className="mb-8 bg-gradient-to-r from-primary to-primary/90 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white shadow-lg" data-testid="student-dashboard-header">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="bg-white/20 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-lg flex-shrink-0">
+            <Trophy className="h-7 w-7 sm:h-10 sm:w-10 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg sm:text-2xl md:text-3xl font-bold leading-tight mb-0.5 sm:mb-1">
+              Welcome back, {user.lastName}!
+            </h1>
+            <p className="text-white/70 text-xs sm:text-sm line-clamp-2">
+              Here's what's happening with your academics today
+            </p>
           </div>
         </div>
       </div>
