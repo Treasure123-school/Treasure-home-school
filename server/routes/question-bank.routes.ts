@@ -136,48 +136,128 @@ router.delete('/api/syllabus-topics/:id', authenticateUser, authorizeRoles(...AD
 
 /**
  * POST /api/syllabus-topics/repair-ordering
- * Admin-only. Repairs ordering for existing syllabus topics by recalculating
- * sequential orderNumbers (1-based, per class/subject/term group) using the
- * existing weekNumber → orderNumber sort as the source of truth.
+ * Admin-only. Repairs week_number and order_number for ALL syllabus topics so
+ * that every term starts at 1 and numbers are sequential with no gaps.
+ *
+ * Strategy:
+ *  1. Load curriculum templates and index their topics by (normalised class name
+ *     + subject name + term).  weekNumber from the template is the sort key that
+ *     reflects the correct curriculum sequence — orderNumber in the template is a
+ *     historical global cross-term index and is intentionally IGNORED here.
+ *  2. For each class × subject × term group in syllabus_topics, look up each
+ *     topic's position by name-matching against the template.
+ *  3. Sort matched topics by their template position; unmatched topics go last
+ *     (sorted by insertion id).
+ *  4. Assign week_number = order_number = sequential 1-based position.
+ *
  * Safe to run multiple times — idempotent.
  */
 router.post('/api/syllabus-topics/repair-ordering', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (_req: any, res: Response) => {
     try {
-        const { db } = await import('../db');
-        const { syllabusTopics } = await import('../../shared/schema.pg');
-        const { asc, eq } = await import('drizzle-orm');
+        const { Pool } = await import('pg');
+        const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-        // Fetch all topics ordered by (weekNumber, orderNumber) so the repair
-        // uses the most meaningful available ordering.
-        const all = await db.select().from(syllabusTopics)
-            .orderBy(asc(syllabusTopics.weekNumber), asc(syllabusTopics.orderNumber), asc(syllabusTopics.id));
+        // Normalise class name so 'SSS 1' matches template 'SS 1', etc.
+        const normClass = (n: string) => n.trim().replace(/^SSS\s+/i, 'SS ').toLowerCase();
+        const normSubj  = (n: string) => n.trim().toLowerCase();
+        const normTerm  = (n: string) => n.toLowerCase().includes('first')  ? 'first'
+                                       : n.toLowerCase().includes('second') ? 'second'
+                                       : n.toLowerCase().includes('third')  ? 'third'
+                                       : null;
 
-        // Group by class × subject × term
-        const groups = new Map<string, typeof all>();
-        for (const t of all) {
-            const key = `${t.classId}:${t.subjectId}:${t.termId}`;
-            if (!groups.has(key)) groups.set(key, []);
-            groups.get(key)!.push(t);
+        // ── Step 1: Build template position lookup ──────────────────────────
+        const tplRows = await pool.query<{ id: number; class_name: string; subject_name: string }>(
+            'SELECT id, class_name, subject_name FROM curriculum_templates'
+        );
+
+        // key: 'ss 1::chemistry' → { first: [{name, pos}], second:…, third:… }
+        const tplMap: Record<string, Record<string, Array<{ name: string; pos: number }>>> = {};
+
+        for (const tpl of tplRows.rows) {
+            const key = normClass(tpl.class_name) + '::' + normSubj(tpl.subject_name);
+            if (tplMap[key]) continue; // keep first match for duplicate templates
+
+            const topics = await pool.query<{ term: string; week_number: number; name: string }>(
+                'SELECT term, week_number, name FROM curriculum_template_topics WHERE template_id=$1 ORDER BY term, week_number, id',
+                [tpl.id]
+            );
+
+            const byTerm: Record<string, Array<{ name: string; pos: number }>> = { first: [], second: [], third: [] };
+            const termCounters: Record<string, number> = { first: 0, second: 0, third: 0 };
+            for (const t of topics.rows) {
+                if (byTerm[t.term]) {
+                    termCounters[t.term]++;
+                    byTerm[t.term].push({ name: t.name.toLowerCase().trim(), pos: termCounters[t.term] });
+                }
+            }
+            tplMap[key] = byTerm;
         }
 
+        // ── Step 2: Fetch all syllabus group metadata ────────────────────────
+        const groups = await pool.query<{
+            class_id: number; subject_id: number; term_id: number;
+            class_name: string; subject_name: string; term_name: string;
+        }>(`
+            SELECT st.class_id, st.subject_id, st.term_id,
+                   c.name as class_name, s.name as subject_name, at.name as term_name
+            FROM syllabus_topics st
+            JOIN classes c ON st.class_id = c.id
+            JOIN subjects s ON st.subject_id = s.id
+            JOIN academic_terms at ON st.term_id = at.id
+            GROUP BY st.class_id, st.subject_id, st.term_id, c.name, s.name, at.name
+        `);
+
         let repaired = 0;
-        for (const group of groups.values()) {
-            for (let i = 0; i < group.length; i++) {
-                const topic = group[i];
-                const newOrder = i + 1;
-                if (topic.orderNumber !== newOrder) {
-                    await db.update(syllabusTopics)
-                        .set({ orderNumber: newOrder, updatedAt: new Date() })
-                        .where(eq(syllabusTopics.id, topic.id));
+        let noMatch  = 0;
+
+        for (const grp of groups.rows) {
+            const termKey = normTerm(grp.term_name);
+            const lookupKey = normClass(grp.class_name) + '::' + normSubj(grp.subject_name);
+            const tplTopics = termKey && tplMap[lookupKey] ? tplMap[lookupKey][termKey] ?? [] : [];
+
+            // name → 1-based template position
+            const nameToPos: Record<string, number> = {};
+            for (const t of tplTopics) nameToPos[t.name] = t.pos;
+
+            if (tplTopics.length === 0) noMatch++;
+
+            // Fetch this group's topics
+            const topics = await pool.query<{ id: number; name: string; week_number: number; order_number: number }>(
+                'SELECT id, name, week_number, order_number FROM syllabus_topics WHERE class_id=$1 AND subject_id=$2 AND term_id=$3 ORDER BY id',
+                [grp.class_id, grp.subject_id, grp.term_id]
+            );
+
+            // Sort: template-matched by position first, unknowns by id at the end
+            const sorted = [...topics.rows].sort((a, b) => {
+                const pA = nameToPos[a.name.toLowerCase().trim()];
+                const pB = nameToPos[b.name.toLowerCase().trim()];
+                if (pA !== undefined && pB !== undefined) return pA - pB;
+                if (pA !== undefined) return -1;
+                if (pB !== undefined) return 1;
+                return a.id - b.id;
+            });
+
+            // Assign sequential week_number = order_number = 1-based position
+            for (let i = 0; i < sorted.length; i++) {
+                const topic = sorted[i];
+                const pos   = i + 1;
+                if (topic.week_number !== pos || topic.order_number !== pos) {
+                    await pool.query(
+                        'UPDATE syllabus_topics SET week_number=$1, order_number=$2, updated_at=NOW() WHERE id=$3',
+                        [pos, pos, topic.id]
+                    );
                     repaired++;
                 }
             }
         }
 
+        await pool.end();
+
         sendSuccess(res, {
-            message: `Ordering repaired. ${repaired} topic(s) updated across ${groups.size} group(s).`,
+            message: `Ordering repaired. ${repaired} topic(s) updated across ${groups.rows.length} group(s). ${noMatch} group(s) had no template match (sorted by insertion order).`,
             repaired,
-            groups: groups.size,
+            groups: groups.rows.length,
+            noTemplateMatch: noMatch,
         });
     } catch (error) { handleRouteError(res, error, 'syllabusTopics.repairOrdering'); }
 });

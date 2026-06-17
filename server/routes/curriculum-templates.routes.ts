@@ -304,7 +304,10 @@ router.post("/api/curriculum-templates/:id/import", authenticateUser, authorizeR
     const [subj] = await db.select().from(subjects).where(eq(subjects.id, body.subjectId));
     if (!subj) return sendBadRequest(res, "Subject not found");
 
-    // Get all topics for the selected terms
+    // Get all topics for the selected terms.
+    // Sort by weekNumber ONLY — orderNumber in the template is a global cross-term
+    // index and is NOT reliable for per-term ordering.  Use topic.id as the final
+    // tiebreaker so insertion order is deterministic for duplicate weekNumbers.
     const allTopics = await db.select().from(curriculumTemplateTopics)
       .where(
         and(
@@ -312,7 +315,7 @@ router.post("/api/curriculum-templates/:id/import", authenticateUser, authorizeR
           inArray(curriculumTemplateTopics.term, body.terms as any[])
         )
       )
-      .orderBy(asc(curriculumTemplateTopics.term), asc(curriculumTemplateTopics.weekNumber), asc(curriculumTemplateTopics.orderNumber));
+      .orderBy(asc(curriculumTemplateTopics.term), asc(curriculumTemplateTopics.weekNumber), asc(curriculumTemplateTopics.id));
 
     if (allTopics.length === 0) {
       return sendBadRequest(res, "No topics found for the selected terms");
@@ -367,14 +370,18 @@ router.post("/api/curriculum-templates/:id/import", authenticateUser, authorizeR
         }
 
         try {
+          // weekNumber = sequential position within this term (1-based), NOT the
+          // template's raw weekNumber (which is a global cross-term index on some
+          // templates and must not be used as a display value directly).
+          const sequentialPos = baseOrder + positionInTerm;
           await db.insert(syllabusTopics).values({
             classId: body.classId,
             subjectId: body.subjectId,
             termId,
             name: topic.name,
             description: topic.description ?? null,
-            weekNumber: topic.weekNumber,               // preserve original week label
-            orderNumber: baseOrder + positionInTerm,    // sequential, per-term, 1-based
+            weekNumber: sequentialPos,   // 1, 2, 3 … per term — always starts at 1
+            orderNumber: sequentialPos,  // same value; single source of truth
             isPublished: body.publishOnImport,
             createdBy: user.id,
           });
