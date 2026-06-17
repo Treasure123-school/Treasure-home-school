@@ -12,13 +12,6 @@ interface WelcomeCardProps {
   "data-testid"?: string;
 }
 
-/**
- * Fully-responsive welcome banner used across every portal dashboard.
- *
- * Typography scales fluidly via CSS clamp() — no hard breakpoint jumps.
- * Layout adapts from compact-mobile → tablet → spacious-desktop without
- * horizontal overflow or clipping at any viewport width.
- */
 export function WelcomeCard({
   name,
   subtitle,
@@ -28,10 +21,12 @@ export function WelcomeCard({
   className,
   "data-testid": testId,
 }: WelcomeCardProps) {
+  const today = new Date();
+
   return (
     <div
       className={cn(
-        "w-full overflow-hidden rounded-2xl text-white shadow-xl",
+        "w-full overflow-hidden rounded-xl text-white shadow-xl",
         "bg-gradient-to-r",
         gradient,
         "p-6",
@@ -39,63 +34,66 @@ export function WelcomeCard({
       )}
       data-testid={testId}
     >
-      <div className="flex items-center justify-between gap-2 sm:gap-3">
-        {/* ── Left: icon + text ─────────────────────────────────────── */}
-        <div className="flex items-center gap-2.5 sm:gap-4 flex-1 min-w-0">
-          {/* Icon bubble — scales with viewport */}
-          <div
-            className={cn(
-              "flex-shrink-0 flex items-center justify-center",
-              "bg-white/20 backdrop-blur-sm shadow-lg",
-              "rounded-xl sm:rounded-2xl",
-              "p-4",
-            )}
-          >
-            <Icon className={cn("text-white", "h-8 w-8")} />
+      <div className="flex items-center justify-between gap-3">
+
+        {/* ── Left: icon + text ───────────────────────────────── */}
+        <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+
+          {/* Icon bubble */}
+          <div className="flex-shrink-0 flex items-center justify-center bg-white/20 backdrop-blur-sm shadow-lg rounded-xl sm:rounded-2xl p-4">
+            <Icon className="text-white h-7 w-7" />
           </div>
 
-          {/* Text block — min-w-0 allows truncation instead of overflow */}
+          {/* Text */}
           <div className="flex-1 min-w-0 overflow-hidden">
             <h2
               className="font-bold tracking-tight leading-tight"
-              style={{
-                /* Fluid: 20px on phones → 28px on desktop */
-                fontSize: "clamp(1.25rem, 5vw, 1.75rem)",
-              }}
+              style={{ fontSize: "clamp(1.40rem, 5vw, 1.55rem)" }}
             >
-              Welcome back, {name}!
+              {/* On mobile: "Welcome back," is on its own line, name wraps below */}
+              <span className="block sm:inline">Welcome back,</span>
+              <span className="block sm:inline"> {name}!</span>
             </h2>
             <p
-              className="text-white/75 mt-0.5 leading-snug line-clamp-2"
-              style={{
-                /* Fluid: 11px on tiny screens → 14px at 600px+ */
-                fontSize: "clamp(0.6875rem, 2.5vw, 0.875rem)",
-              }}
+              className="text-white/75 mt-1 leading-snug line-clamp-2"
+              style={{ fontSize: "clamp(0.775rem, 2.5vw, 0.875rem)" }}
             >
               {subtitle}
             </p>
           </div>
         </div>
 
-        {/* ── Right: date badge (hidden on mobile) ──────────────────── */}
-        {showDate && (
-          <div
-            className={cn(
-              "hidden sm:flex items-center gap-1.5 md:gap-2 flex-shrink-0",
-              "bg-white/10 backdrop-blur-sm rounded-lg",
-              "px-3 py-1.5 md:px-4 md:py-2",
-            )}
-          >
-            <Clock className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
-            <span className="text-xs md:text-sm whitespace-nowrap">
-              {new Date().toLocaleDateString("en-US", {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-              })}
+        {/* ── Right: calendar tile on mobile, date badge on desktop ── */}
+        <div className="flex-shrink-0">
+
+          {/* Mobile: compact calendar tile */}
+          <div className="flex sm:hidden flex-col items-center justify-center bg-white/15 backdrop-blur-sm rounded-xl px-3 py-2 min-w-[54px] text-center">
+            <span className="text-[10px] font-semibold text-white/70 uppercase tracking-widest leading-none">
+              {today.toLocaleDateString("en-US", { month: "short" })}
+            </span>
+            <span className="text-2xl font-bold leading-tight mt-0.5">
+              {today.getDate()}
+            </span>
+            <span className="text-[10px] text-white/60 leading-none mt-0.5">
+              {today.toLocaleDateString("en-US", { weekday: "short" })}
             </span>
           </div>
-        )}
+
+          {/* Tablet+: horizontal date badge with clock */}
+          {showDate && (
+            <div className="hidden sm:flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2">
+              <Clock className="h-4 w-4 flex-shrink-0" />
+              <span className="text-sm whitespace-nowrap">
+                {today.toLocaleDateString("en-US", {
+                  weekday: "short",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
+            </div>
+          )}
+        </div>
+
       </div>
     </div>
   );
