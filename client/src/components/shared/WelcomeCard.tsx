@@ -34,8 +34,8 @@ export function WelcomeCard({
         "w-full overflow-hidden rounded-2xl text-white shadow-xl",
         "bg-gradient-to-r",
         gradient,
-        /* Fluid padding: 16px on phones → 20px on tablets → 24px on desktop */
-        "p-4 sm:p-5 md:p-6",
+        /* Fluid padding: 20px on phones → 24px on desktop */
+        "p-5 md:p-6",
         className
       )}
       data-testid={testId}
@@ -51,15 +51,15 @@ export function WelcomeCard({
               "flex-shrink-0 flex items-center justify-center",
               "bg-white/20 backdrop-blur-sm shadow-lg",
               "rounded-xl sm:rounded-2xl",
-              /* Fluid padding: 12px → 14px → 16px */
-              "p-3 sm:p-3.5 md:p-4"
+              /* Fluid padding: 14px → 16px */
+              "p-3.5 md:p-4"
             )}
           >
             <Icon
               className={cn(
                 "text-white",
-                /* Fluid icon: 28px on mobile → 32px tablet → 40px desktop */
-                "h-7 w-7 sm:h-8 sm:w-8 md:h-10 md:w-10"
+                /* Fluid icon: 32px on mobile → 40px desktop */
+                "h-8 w-8 md:h-10 md:w-10"
               )}
             />
           </div>
