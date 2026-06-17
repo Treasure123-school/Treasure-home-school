@@ -614,9 +614,10 @@ export async function seedCurriculumGapFill3(): Promise<{
 }> {
   console.log("📚 Running Nigerian Curriculum Gap-Fill Part 3 (SS Languages & IRS)...");
 
+  type TRow = typeof curriculumTemplates.$inferSelect;
   const existing = await db.select().from(curriculumTemplates);
   const existingSet = new Set(
-    existing.map((t) => `${t.className}||${t.subjectName}`)
+    existing.map((t: TRow) => `${t.className}||${t.subjectName}`)
   );
 
   const report: string[] = [];
@@ -625,12 +626,12 @@ export async function seedCurriculumGapFill3(): Promise<{
 
   // Audit: show all SS subjects currently in the system
   const ssExisting = existing
-    .filter((t) => t.level === "ss")
-    .map((t) => `${t.className} — ${t.subjectName}`)
+    .filter((t: TRow) => t.level === "ss")
+    .map((t: TRow) => `${t.className} — ${t.subjectName}`)
     .sort();
 
   report.push(`=== EXISTING SS TEMPLATES (${ssExisting.length}) ===`);
-  ssExisting.forEach((s) => report.push(`  ✅ ${s}`));
+  ssExisting.forEach((s: string) => report.push(`  ✅ ${s}`));
 
   let added = 0;
   let topicsAdded = 0;

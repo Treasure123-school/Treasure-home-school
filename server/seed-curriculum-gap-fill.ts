@@ -4770,19 +4770,20 @@ export async function seedCurriculumGapFill(): Promise<{
   console.log("📚 Running Nigerian Curriculum Gap-Fill...");
 
   // Load existing templates to build dedup map
+  type TRow = typeof curriculumTemplates.$inferSelect;
   const existing = await db.select().from(curriculumTemplates);
   const existingSet = new Set(
-    existing.map((t) => `${t.className}||${t.subjectName}`)
+    existing.map((t: TRow) => `${t.className}||${t.subjectName}`)
   );
 
-  const existingList = existing.map((t) => `${t.className} — ${t.subjectName}`);
+  const existingList = existing.map((t: TRow) => `${t.className} — ${t.subjectName}`);
   const report: string[] = [];
   let added = 0;
   let topicsAdded = 0;
   let skipped = 0;
 
   report.push(`=== EXISTING TEMPLATES (${existing.length}) ===`);
-  existingList.sort().forEach((e) => report.push(`  ✅ ${e}`));
+  existingList.sort().forEach((e: string) => report.push(`  ✅ ${e}`));
 
   report.push(`\n=== GAP ANALYSIS ===`);
 

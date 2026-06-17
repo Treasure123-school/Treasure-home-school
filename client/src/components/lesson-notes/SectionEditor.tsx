@@ -94,7 +94,7 @@ export default function SectionEditor({
       prevContent.current = content;
       if (!editor.isFocused) {
         try {
-          editor.commands.setContent(content || '', false);
+          editor.commands.setContent(content || '');
         } catch {
           // Editor may be in a transitional state; ignore and let next render handle it
         }

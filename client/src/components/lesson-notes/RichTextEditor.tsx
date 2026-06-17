@@ -125,7 +125,7 @@ export default function RichTextEditor({
 
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
-      editor.commands.setContent(content || '', false);
+      editor.commands.setContent(content || '');
     }
   }, []);
 

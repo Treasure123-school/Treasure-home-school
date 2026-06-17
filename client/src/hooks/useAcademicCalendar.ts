@@ -49,12 +49,12 @@ export function useAcademicCalendar() {
 
   useSocketIORealtime({
     table: 'academic_terms',
-    queryKey: CALENDAR_KEY,
+    queryKey: [...CALENDAR_KEY],
   });
 
   useSocketIORealtime({
     table: 'academic_sessions',
-    queryKey: CALENDAR_KEY,
+    queryKey: [...CALENDAR_KEY],
   });
 
   const allSessions = data?.allSessions ?? [];

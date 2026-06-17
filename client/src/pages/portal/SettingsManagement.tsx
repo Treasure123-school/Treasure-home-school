@@ -769,6 +769,14 @@ function GradingScaleSection() {
   const [deleteBoundaryId, setDeleteBoundaryId] = useState<{ scaleId: number; boundaryId: number } | null>(null);
   const [previewScore, setPreviewScore] = useState('');
 
+  useEffect(() => {
+    if (settings) setPositioningMethod(settings.positioningMethod || 'average');
+  }, [settings]);
+
+  const { data: scales = [], isLoading: scalesLoading } = useQuery<GradeScale[]>({
+    queryKey: ['/api/grade-scales'],
+  });
+
   // Compute overlap warning for the boundary dialog
   const overlapWarning = (() => {
     if (!boundaryDialogOpen || !boundaryScaleId) return null;
@@ -782,14 +790,6 @@ function GradingScaleSection() {
     if (!overlapping) return null;
     return `Overlaps grade "${overlapping.grade}" (${overlapping.minScore}–${overlapping.maxScore}%)`;
   })();
-
-  useEffect(() => {
-    if (settings) setPositioningMethod(settings.positioningMethod || 'average');
-  }, [settings]);
-
-  const { data: scales = [], isLoading: scalesLoading } = useQuery<GradeScale[]>({
-    queryKey: ['/api/grade-scales'],
-  });
 
   const activeScale = scales.find(s => s.isActive);
 
@@ -893,9 +893,9 @@ function GradingScaleSection() {
     },
   });
 
-  const addBoundaryMutation = useMutation({
-    mutationFn: ({ scaleId, data }: { scaleId: number; data: any }) => apiRequest('POST', `/api/grade-scales/${scaleId}/boundaries`, data).then(r => r.json()),
-    onMutate: async ({ scaleId, data }: { scaleId: number; data: any }) => {
+  const addBoundaryMutation = useMutation<any, Error, { scaleId: number; data: any }>({
+    mutationFn: ({ scaleId, data }) => apiRequest('POST', `/api/grade-scales/${scaleId}/boundaries`, data).then(r => r.json()),
+    onMutate: async ({ scaleId, data }) => {
       await queryClient.cancelQueries({ queryKey: scalesCacheKey });
       const prev = snap();
       const tempId = -Date.now();

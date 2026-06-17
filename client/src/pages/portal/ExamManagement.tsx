@@ -2130,16 +2130,10 @@ export default function ExamManagement() {
                       : "Create your first exam to get started with assessment management."
                     }
                     icon={BookOpen}
-                    action={!searchTerm ? (
-                      <Button onClick={() => setIsExamDialogOpen(true)} data-testid="button-create-exam-empty">
-                        <Plus className="w-4 h-4 mr-2" />
-                        Create Your First Exam
-                      </Button>
-                    ) : (
-                      <Button variant="outline" onClick={() => setSearchTerm("")} data-testid="button-clear-search">
-                        Clear Search
-                      </Button>
-                    )}
+                    action={searchTerm
+                      ? { label: "Clear Search", onClick: () => setSearchTerm("") }
+                      : { label: "Create Your First Exam", onClick: () => setIsExamDialogOpen(true), icon: Plus }
+                    }
                   />
                 )}
               </div>

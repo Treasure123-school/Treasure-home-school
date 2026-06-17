@@ -646,7 +646,7 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
       prevContent.current = content;
       // Always update when not focused OR when not editable (AI streaming)
       if (!editor.isFocused || !editor.isEditable) {
-        try { editor.commands.setContent(content || '', false); } catch { /* transitional */ }
+        try { editor.commands.setContent(content || ''); } catch { /* transitional */ }
         setWordStats(countWords(content));
       }
     }

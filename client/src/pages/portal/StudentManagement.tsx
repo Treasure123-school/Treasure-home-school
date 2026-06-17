@@ -1441,7 +1441,6 @@ export default function StudentManagement() {
             <div className="flex-1">
               <Label htmlFor="search" className="text-sm">Search</Label>
               <SearchInput
-                id="search"
                 placeholder="Search by name or admission number..."
                 value={searchTerm}
                 onChange={(value) => setSearchTerm(value)}

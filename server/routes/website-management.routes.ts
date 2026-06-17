@@ -102,7 +102,7 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       if (!req.file) return res.status(400).json({ message: "Image file required" });
-      const result = await uploadFileToStorage(req.file.buffer, req.file.originalname, "gallery");
+      const result = await uploadFileToStorage(req.file, { uploadType: "gallery" });
       if (!result.success || !result.url) return res.status(500).json({ message: result.error || "Upload failed" });
       const image = await storage.uploadGalleryImage({
         imageUrl: result.url,
@@ -212,7 +212,7 @@ router.post(
       const data = newsSchema.parse(body);
       let coverImageUrl: string | undefined;
       if (req.file) {
-        const result = await uploadFileToStorage(req.file.buffer, req.file.originalname, "news");
+        const result = await uploadFileToStorage(req.file, { uploadType: "general" });
         if (result.success && result.url) coverImageUrl = result.url;
       } else if (req.body.coverImageUrl) {
         coverImageUrl = req.body.coverImageUrl;
@@ -248,7 +248,7 @@ router.put(
       const data = newsSchema.partial().parse(body);
       let coverImageUrl: string | undefined;
       if (req.file) {
-        const result = await uploadFileToStorage(req.file.buffer, req.file.originalname, "news");
+        const result = await uploadFileToStorage(req.file, { uploadType: "general" });
         if (result.success && result.url) coverImageUrl = result.url;
       }
       const updates: any = { ...data };
@@ -363,7 +363,7 @@ router.post(
       const data = aboutSectionSchema.parse(req.body);
       let imageUrl: string | undefined;
       if (req.file) {
-        const result = await uploadFileToStorage(req.file.buffer, req.file.originalname, "about");
+        const result = await uploadFileToStorage(req.file, { uploadType: "general" });
         if (result.success && result.url) imageUrl = result.url;
       } else if (req.body.imageUrl) {
         imageUrl = req.body.imageUrl;
@@ -386,7 +386,7 @@ router.put(
       const data = aboutSectionSchema.partial().parse(req.body);
       let imageUrl: string | undefined;
       if (req.file) {
-        const result = await uploadFileToStorage(req.file.buffer, req.file.originalname, "about");
+        const result = await uploadFileToStorage(req.file, { uploadType: "general" });
         if (result.success && result.url) imageUrl = result.url;
       }
       const updates: any = { ...data, updatedAt: new Date() };

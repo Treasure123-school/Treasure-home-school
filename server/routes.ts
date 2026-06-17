@@ -1,6 +1,6 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage, db } from "./storage";
+import { storage, db, IStorage } from "./storage";
 import * as schema from "@shared/schema.pg";
 import { authenticateUser, authorizeRoles, normalizeUuid, SECRET_KEY, JWT_EXPIRES_IN, ROLES, AuthenticatedUser } from "./routes/middleware";
 import { insertUserSchema, insertStudentSchema, insertAttendanceSchema, insertAnnouncementSchema, insertMessageSchema, insertExamSchema, insertExamResultSchema, insertExamQuestionSchema, insertQuestionOptionSchema, createQuestionOptionSchema, insertHomePageContentSchema, insertContactMessageSchema, insertExamSessionSchema, updateExamSessionSchema, insertStudentAnswerSchema, createStudentSchema, InsertUser, InsertStudentAnswer } from "@shared/schema";
@@ -943,7 +943,7 @@ async function resolveDesignatedPrincipal(
         .where(eq(schema.adminProfiles.userId, designatedId))
         .limit(1);
       return {
-        principalName: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
+        principalName: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || '',
         principalSignatureUrl: profile?.signatureUrl || null,
       };
     }
@@ -958,7 +958,7 @@ async function resolveDesignatedPrincipal(
         .where(eq(schema.adminProfiles.userId, signedById))
         .limit(1);
       return {
-        principalName: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
+        principalName: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || '',
         principalSignatureUrl: profile?.signatureUrl || null,
       };
     }
@@ -972,7 +972,7 @@ async function resolveDesignatedPrincipal(
   if (adminWithSig) {
     const u = await storageParam.getUser(adminWithSig.userId);
     return {
-      principalName: u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username : '',
+      principalName: u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || '' : '',
       principalSignatureUrl: adminWithSig.signatureUrl || null,
     };
   }
@@ -984,7 +984,7 @@ async function resolveDesignatedPrincipal(
   if (anyAdmin) {
     const u = await storageParam.getUser(anyAdmin.userId);
     return {
-      principalName: u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username : '',
+      principalName: u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || '' : '',
       principalSignatureUrl: null,
     };
   }
@@ -2295,7 +2295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (exam.createdBy) {
           const teacher = await storage.getUser(exam.createdBy);
-          if (teacher) teacherName = `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || teacher.username;
+          if (teacher) teacherName = `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || teacher.username || '';
         }
 
         const classStudents = await storage.getStudentsByClass(exam.classId);
@@ -10697,7 +10697,7 @@ School Management System Administration
         .innerJoin(schema.users, eq(schema.adminProfiles.userId, schema.users.id))
         .orderBy(schema.users.firstName);
 
-      const admins = adminRows.map((row) => ({
+      const admins = adminRows.map((row: any) => ({
         id: row.id,
         username: row.username,
         name: `${row.firstName || ''} ${row.lastName || ''}`.trim() || row.username,
@@ -10757,7 +10757,7 @@ School Management System Administration
         .innerJoin(schema.users, eq(schema.adminProfiles.userId, schema.users.id))
         .orderBy(schema.users.firstName);
 
-      const admins = adminRows.map((row) => ({
+      const admins = adminRows.map((row: any) => ({
         id: row.id,
         username: row.username,
         name: `${row.firstName || ''} ${row.lastName || ''}`.trim() || row.username,
@@ -10766,7 +10766,7 @@ School Management System Administration
       }));
 
       const currentPrincipal = designatedPrincipalId
-        ? (admins.find(a => a.id === designatedPrincipalId) ?? null)
+        ? (admins.find((a: any) => a.id === designatedPrincipalId) ?? null)
         : null;
 
       res.json({ designatedPrincipalId, admins, currentPrincipal });

@@ -97,9 +97,10 @@ router.get(
   async (_req: Request, res: Response) => {
     try {
       const all = await db.select().from(lessonNoteTemplates);
-      const published = all.filter((t) => t.isPublished).length;
-      const classes = [...new Set(all.map((t) => t.className))];
-      const subjects = [...new Set(all.map((t) => t.subjectName))];
+      type TplRow = typeof lessonNoteTemplates.$inferSelect;
+      const published = all.filter((t: TplRow) => t.isPublished).length;
+      const classes = [...new Set(all.map((t: TplRow) => t.className))];
+      const subjects = [...new Set(all.map((t: TplRow) => t.subjectName))];
       const schoolNotes = await db.select().from(schoolLessonNotes);
       sendSuccess(res, {
         total: all.length,
@@ -650,9 +651,10 @@ router.get(
         isSuperAdmin ? undefined as any : eq(lessonNoteTemplates.isPublished, true)
       );
 
-      const classNames = [...new Set(all.map((r) => r.className))].sort();
-      const subjectNames = [...new Set(all.map((r) => r.subjectName))].sort();
-      const levels = [...new Set(all.map((r) => r.level))].sort();
+      type FilterRow = { className: string; subjectName: string; level: string; term: string };
+      const classNames = [...new Set(all.map((r: FilterRow) => r.className))].sort();
+      const subjectNames = [...new Set(all.map((r: FilterRow) => r.subjectName))].sort();
+      const levels = [...new Set(all.map((r: FilterRow) => r.level))].sort();
 
       sendSuccess(res, { classNames, subjectNames, levels });
     } catch (err) {

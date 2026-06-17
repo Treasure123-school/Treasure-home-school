@@ -31,11 +31,11 @@ export function detectCurrentFromDates<T extends { startDate: string; endDate: s
 export async function getActiveTerm(): Promise<AcademicTerm | null> {
   const today = new Date().toISOString().split("T")[0];
   try {
-    const all = await db.select().from(schema.academicTerms);
+    const all = (await db.select().from(schema.academicTerms)) as AcademicTerm[];
     const byDate = detectCurrentFromDates(all, today);
     if (byDate) return byDate;
     // Fall back to isCurrent flag
-    return all.find(t => t.isCurrent) ?? null;
+    return all.find((t: AcademicTerm) => t.isCurrent) ?? null;
   } catch (error) {
     console.error("[AcademicCalendarService] getActiveTerm error:", error);
     return null;
@@ -45,11 +45,11 @@ export async function getActiveTerm(): Promise<AcademicTerm | null> {
 export async function getActiveSession(): Promise<AcademicSession | null> {
   const today = new Date().toISOString().split("T")[0];
   try {
-    const all = await db.select().from(schema.academicSessions);
+    const all = (await db.select().from(schema.academicSessions)) as AcademicSession[];
     const byDate = detectCurrentFromDates(all, today);
     if (byDate) return byDate;
     // Fall back to isCurrent flag
-    return all.find(s => s.isCurrent) ?? null;
+    return all.find((s: AcademicSession) => s.isCurrent) ?? null;
   } catch (error) {
     console.error("[AcademicCalendarService] getActiveSession error:", error);
     return null;
@@ -59,8 +59,8 @@ export async function getActiveSession(): Promise<AcademicSession | null> {
 export async function getUpcomingTerm(): Promise<AcademicTerm | null> {
   const today = new Date().toISOString().split("T")[0];
   try {
-    const all = await db.select().from(schema.academicTerms);
-    const future = all.filter(t => t.startDate > today).sort((a, b) => a.startDate.localeCompare(b.startDate));
+    const all = (await db.select().from(schema.academicTerms)) as AcademicTerm[];
+    const future = all.filter((t: AcademicTerm) => t.startDate > today).sort((a: AcademicTerm, b: AcademicTerm) => a.startDate.localeCompare(b.startDate));
     return future[0] ?? null;
   } catch (error) {
     console.error("[AcademicCalendarService] getUpcomingTerm error:", error);
@@ -135,7 +135,7 @@ export async function checkTermOverlap(
       .from(schema.academicTerms)
       .where(and(...conditions));
 
-    const conflicts = rows.filter(r => excludeId == null || r.id !== excludeId);
+    const conflicts = rows.filter((r: { id: number; name: string; startDate: string; endDate: string }) => excludeId == null || r.id !== excludeId);
     return { hasOverlap: conflicts.length > 0, conflictingTerms: conflicts };
   } catch (error) {
     console.error("[AcademicCalendarService] checkTermOverlap error:", error);
@@ -164,7 +164,7 @@ export async function checkSessionOverlap(
         )
       );
 
-    const conflicts = rows.filter(r => excludeId == null || r.id !== excludeId);
+    const conflicts = rows.filter((r: { id: number; name: string; startDate: string; endDate: string }) => excludeId == null || r.id !== excludeId);
     return { hasOverlap: conflicts.length > 0, conflictingTerms: conflicts };
   } catch (error) {
     console.error("[AcademicCalendarService] checkSessionOverlap error:", error);
