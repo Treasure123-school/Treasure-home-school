@@ -6,6 +6,7 @@ export { LoadingSpinner, LoadingState } from "./LoadingSpinner";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { StatusBadge } from "./StatusBadge";
 export { DashboardHeader } from "./DashboardHeader";
+export { WelcomeCard } from "./WelcomeCard";
 export { MiniStatCard, MiniStatGrid } from "./MiniStatCard";
 export { GradientStatCard } from "./GradientStatCard";
 export { QuickAction } from "./QuickAction";

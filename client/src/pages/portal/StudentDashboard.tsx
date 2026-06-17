@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
 import { useQuery } from '@tanstack/react-query';
 import { TrendingUp, Calendar, Trophy, MessageSquare, BookOpen, ClipboardList, Star, FileText, Play, AlertCircle, ChevronRight, Award, Target, Clock, X, ClipboardCheck } from 'lucide-react';
+import { WelcomeCard } from '@/components/shared';
 import { Link, useLocation } from 'wouter';
 import { useEffect, useState } from 'react';
 import { apiRequest } from '@/lib/queryClient';
@@ -340,21 +341,13 @@ export default function StudentDashboard() {
       )}
 
       {/* Smart Dashboard Welcome Box */}
-      <div className="mb-8 bg-gradient-to-r from-primary to-primary/90 rounded-xl sm:rounded-2xl p-4 sm:p-6 text-white shadow-lg" data-testid="student-dashboard-header">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <div className="bg-white/20 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-lg flex-shrink-0">
-            <Trophy className="h-7 w-7 sm:h-10 sm:w-10 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-2xl md:text-3xl font-bold leading-tight mb-0.5 sm:mb-1">
-              Welcome back, {user.lastName}!
-            </h1>
-            <p className="text-white/70 text-xs sm:text-sm line-clamp-2">
-              Here's what's happening with your academics today
-            </p>
-          </div>
-        </div>
-      </div>
+      <WelcomeCard
+        icon={Trophy}
+        name={user.lastName}
+        subtitle="Here's what's happening with your academics today"
+        className="mb-8"
+        data-testid="student-dashboard-header"
+      />
 
       {/* Stats Cards — Class Position · Pending Assignments · Academic Average · Attendance */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">

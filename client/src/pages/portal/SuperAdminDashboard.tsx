@@ -2,8 +2,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SuperAdminDashboardSkeleton } from "@/components/ui/page-skeletons";
-import { Users, Shield, Activity, Database, TrendingUp, UserPlus, Settings, Award, ChevronRight, Clock } from "lucide-react";
+import { Users, Shield, Activity, Database, TrendingUp, UserPlus, Settings, Award, ChevronRight } from "lucide-react";
 import SuperAdminLayout from "@/components/SuperAdminLayout";
+import { WelcomeCard } from "@/components/shared";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
@@ -123,34 +124,14 @@ export default function SuperAdminDashboard() {
     <SuperAdminLayout>
       <div className="space-y-6">
         {/* Welcome Header Card */}
-        <div
-          className="mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-4 sm:p-6 text-white shadow-xl"
+        <WelcomeCard
+          icon={Shield}
+          name={user?.lastName || 'Admin'}
+          subtitle={`Super Admin · ${schoolName}`}
+          showDate
+          className="mb-6"
           data-testid="superadmin-dashboard-header"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-              <div className="bg-white/20 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-lg flex-shrink-0">
-                <Shield className="h-7 w-7 sm:h-10 sm:w-10 text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h2 className="text-lg sm:text-2xl font-bold tracking-tight leading-tight" data-testid="text-superadmin-greeting">
-                  Welcome back, {user?.lastName || 'Admin'}!
-                </h2>
-                <p className="text-white/70 text-xs sm:text-sm mt-0.5 sm:mt-1 truncate" data-testid="text-superadmin-subtitle">
-                  Super Admin · {schoolName}
-                </p>
-              </div>
-            </div>
-            <div className="hidden md:flex items-center gap-3 flex-shrink-0 ml-3">
-              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2">
-                <Clock className="h-4 w-4" />
-                <span className="text-sm">
-                  {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+        />
 
         {/* Modern Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
