@@ -154,9 +154,12 @@ export default function ProfileOnboarding() {
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/profile/me"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/student/profile/status'] });
       toast({
         title: "Profile Updated",
-        description: `Your profile is ${data.completionPercentage}% complete!`,
+        description: data.completionPercentage != null
+          ? `Your profile is ${data.completionPercentage}% complete!`
+          : "Profile updated successfully!",
       });
       
       if (data.profileCompleted) {

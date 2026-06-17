@@ -125,6 +125,7 @@ export default function StudentProfile() {
       }
       queryClient.invalidateQueries({ queryKey: ['student', user.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      queryClient.invalidateQueries({ queryKey: ['/api/student/profile/status'] });
     } catch (error: any) {
       toast({ title: "Removal Failed", description: error?.message || "Could not remove profile image. Please try again.", variant: "destructive" });
     } finally {
@@ -199,6 +200,9 @@ export default function StudentProfile() {
 
       queryClient.invalidateQueries({ queryKey: ['student', user.id] });
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      // Invalidate the profile-status cache so RequireCompleteProfile and banners
+      // pick up the new completion percentage immediately without a page reload.
+      queryClient.invalidateQueries({ queryKey: ['/api/student/profile/status'] });
     } catch (error: any) {
       toast({
         title: "Update Failed",
