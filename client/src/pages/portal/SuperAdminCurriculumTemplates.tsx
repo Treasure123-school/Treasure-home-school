@@ -504,14 +504,20 @@ export default function SuperAdminCurriculumTemplates() {
         return { ...old, topics, grouped: reGroupTopics(topics) };
       });
       setEditTopic(null);
-      return { snapshot };
+      return { snapshot, detailId };
     },
-    onError: (_, __, ctx) => {
-      if (ctx?.snapshot && detailId) queryClient.setQueryData(["/api/curriculum-templates", detailId], ctx.snapshot);
-      toast({ title: "Failed to update topic", variant: "destructive" });
+    onError: (_, vars, ctx) => {
+      if (ctx?.snapshot && ctx.detailId) queryClient.setQueryData(["/api/curriculum-templates", ctx.detailId], ctx.snapshot);
+      toast({ title: "Failed to update topic", description: "Your change was rolled back. Please try again.", variant: "destructive" });
     },
-    onSettled: () => {
-      if (detailId) queryClient.invalidateQueries({ queryKey: ["/api/curriculum-templates", detailId] });
+    onSettled: (_, __, ___, ctx) => {
+      const id = ctx?.detailId ?? detailId;
+      if (id) {
+        queryClient.invalidateQueries({
+          queryKey: ["/api/curriculum-templates", id],
+          refetchType: "none",
+        });
+      }
     },
   });
 
