@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { PageHeader, EmptyState, LoadingState } from "@/components/shared";
 
 interface AuditLog {
   id: number;
@@ -123,43 +124,39 @@ export default function AuditLogs() {
     <>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2" data-testid="text-page-title">
-              <History className="h-6 w-6 sm:h-8 sm:w-8" />
-              Audit Logs
-            </h1>
-            <p className="text-sm sm:text-base text-muted-foreground mt-1" data-testid="text-page-description">
-              Track all admin actions and system changes for accountability
-            </p>
-          </div>
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap sm:flex-nowrap">
-            <Select value={actionFilter} onValueChange={setActionFilter}>
-              <SelectTrigger className="w-full sm:w-[200px]" data-testid="select-action-filter">
-                <SelectValue placeholder="Filter by action" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Actions</SelectItem>
-                <SelectItem value="user_approved">Approved</SelectItem>
-                <SelectItem value="user_status_changed">Status Changed</SelectItem>
-                <SelectItem value="user_deleted">Deleted</SelectItem>
-                <SelectItem value="password_reset">Password Reset</SelectItem>
-                <SelectItem value="role_changed">Role Changed</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={limit.toString()} onValueChange={(val) => setLimit(parseInt(val))}>
-              <SelectTrigger className="w-full sm:w-[150px]" data-testid="select-limit">
-                <SelectValue placeholder="Show..." />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="25">Show 25</SelectItem>
-                <SelectItem value="50">Show 50</SelectItem>
-                <SelectItem value="100">Show 100</SelectItem>
-                <SelectItem value="250">Show 250</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        <PageHeader
+          icon={History}
+          title="Audit Logs"
+          description="Track all admin actions and system changes for accountability"
+          actions={
+            <div className="flex items-center gap-2 flex-wrap">
+              <Select value={actionFilter} onValueChange={setActionFilter}>
+                <SelectTrigger className="w-[180px]" data-testid="select-action-filter">
+                  <SelectValue placeholder="Filter by action" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Actions</SelectItem>
+                  <SelectItem value="user_approved">Approved</SelectItem>
+                  <SelectItem value="user_status_changed">Status Changed</SelectItem>
+                  <SelectItem value="user_deleted">Deleted</SelectItem>
+                  <SelectItem value="password_reset">Password Reset</SelectItem>
+                  <SelectItem value="role_changed">Role Changed</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={limit.toString()} onValueChange={(val) => setLimit(parseInt(val))}>
+                <SelectTrigger className="w-[130px]" data-testid="select-limit">
+                  <SelectValue placeholder="Show..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">Show 25</SelectItem>
+                  <SelectItem value="50">Show 50</SelectItem>
+                  <SelectItem value="100">Show 100</SelectItem>
+                  <SelectItem value="250">Show 250</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          }
+        />
 
         {/* Audit Logs List */}
         <Card data-testid="card-audit-logs">

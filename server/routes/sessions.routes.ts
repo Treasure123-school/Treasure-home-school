@@ -82,7 +82,7 @@ router.post("/", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any,
       return sendBadRequest(res, `Date range overlaps with existing session(s): ${names}`);
     }
 
-    const session = await storage.createAcademicSession({ name, year, startDate, endDate, description });
+    const session = await storage.createAcademicSession({ name, year, startDate, endDate, description, status: 'active', isCurrent: false });
     realtimeService.emitToRole("admin", "session.created", session);
     sendSuccess(res, session, 201);
   } catch (error: any) {

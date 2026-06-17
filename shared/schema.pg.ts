@@ -576,6 +576,7 @@ export const syllabusTopics = pgTable("syllabus_topics", {
   termId: integer("term_id").notNull().references(() => academicTerms.id),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
+  weekNumber: integer("week_number").notNull().default(0),
   orderNumber: integer("order_number").notNull().default(0),
   isActive: boolean("is_active").notNull().default(true),
   isPublished: boolean("is_published").notNull().default(false),

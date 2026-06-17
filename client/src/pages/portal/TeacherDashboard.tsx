@@ -4,11 +4,11 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/auth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BookOpen, Users, ClipboardList, UserCheck, Bell, MessageSquare, TrendingUp, Clock, ClipboardCheck, GraduationCap, AlertCircle } from 'lucide-react';
+import { DashboardHeader, GradientStatCard, QuickAction } from "@/components/shared";
 import ProfileIncompleteBanner from '@/components/ProfileIncompleteBanner';
 import { Link, useLocation } from 'wouter';
 import { useEffect } from 'react';
 import { apiRequest } from '@/lib/queryClient';
-import { AnimatedCounter } from '@/components/ui/animated-counter';
 import { TeacherDashboardSkeleton } from '@/components/ui/page-skeletons';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { useLoginSuccess } from '@/hooks/use-login-success';
@@ -263,120 +263,60 @@ export default function TeacherDashboard() {
       )}
 
       {/* Teacher Role Header - Clean Welcome */}
-      <div className="mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 text-white shadow-xl" data-testid="teacher-role-header">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 flex-1">
-            <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 shadow-lg">
-              <GraduationCap className="h-10 w-10 text-white" />
-            </div>
-            <div className="flex-1">
-              <h2 className="text-2xl font-bold tracking-tight" data-testid="text-personalized-greeting">
-                Welcome back, {user.lastName}!
-              </h2>
-              <p className="text-white/70 text-sm mt-1" data-testid="text-teacher-assignment">
-                Ready to inspire minds today?
-              </p>
-            </div>
-          </div>
-          <div className="hidden md:flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2">
-              <Clock className="h-4 w-4" />
-              <span className="text-sm">{new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      <DashboardHeader
+        name={user.lastName}
+        subtitle="Ready to inspire minds today?"
+        icon={GraduationCap}
+        data-testid="teacher-role-header"
+      />
 
 
-      {/* Stats Cards - Student-style Design */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 animate-slide-up">
-        <Card className="relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105" data-testid="stat-total-students">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-primary/85/10 to-transparent rounded-full -mr-16 -mt-16"></div>
-          <CardContent className="p-6 relative z-10">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Total Students</p>
-                <div className="flex items-baseline gap-2">
-                  <AnimatedCounter
-                    value={isLoading ? 0 : totalStudents}
-                    className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/90 bg-clip-text text-transparent"
-                  />
-                  <Users className="h-4 w-4 text-primary" />
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">Across all classes</p>
-              </div>
-              <div className="p-3 rounded-xl bg-gradient-to-br from-primary/85 to-primary text-white shadow-lg">
-                <Users className="h-6 w-6" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105" data-testid="stat-classes">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-full -mr-16 -mt-16"></div>
-          <CardContent className="p-6 relative z-10">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Classes</p>
-                <div className="flex items-baseline gap-2">
-                  <AnimatedCounter
-                    value={isLoading ? 0 : totalClasses}
-                    className="text-4xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent"
-                  />
-                  <BookOpen className="h-4 w-4 text-emerald-600" />
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">Teaching assignments</p>
-              </div>
-              <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-lg">
-                <BookOpen className="h-6 w-6" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105" data-testid="stat-total-exams">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 to-transparent rounded-full -mr-16 -mt-16"></div>
-          <CardContent className="p-6 relative z-10">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Total Exams</p>
-                <div className="flex items-baseline gap-2">
-                  <AnimatedCounter
-                    value={isLoading ? 0 : (exams as any[]).filter((e: any) => e.createdBy === user.id).length}
-                    className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-transparent"
-                  />
-                  <ClipboardList className="h-4 w-4 text-purple-600" />
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">Exams created</p>
-              </div>
-              <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 text-white shadow-lg">
-                <ClipboardList className="h-6 w-6" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105" data-testid="stat-pending-grades">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-500/10 to-transparent rounded-full -mr-16 -mt-16"></div>
-          <CardContent className="p-6 relative z-10">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Pending Grades</p>
-                <div className="flex items-baseline gap-2">
-                  <AnimatedCounter
-                    value={isLoading ? 0 : pendingGradesCount}
-                    className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent"
-                  />
-                  <MessageSquare className="h-4 w-4 text-orange-600" />
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">Awaiting review</p>
-              </div>
-              <div className="p-3 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 text-white shadow-lg">
-                <MessageSquare className="h-6 w-6" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <GradientStatCard
+          label="Total Students"
+          value={isLoading ? 0 : totalStudents}
+          sublabel="Across all classes"
+          icon={Users}
+          iconGradient="from-primary/85 to-primary"
+          glowColor="from-primary/10 to-transparent"
+          textGradient="from-primary to-primary/90"
+          loading={isLoading}
+          data-testid="stat-total-students"
+        />
+        <GradientStatCard
+          label="Classes"
+          value={isLoading ? 0 : totalClasses}
+          sublabel="Teaching assignments"
+          icon={BookOpen}
+          iconGradient="from-emerald-500 to-teal-600"
+          glowColor="from-emerald-500/10 to-transparent"
+          textGradient="from-emerald-600 to-teal-600"
+          loading={isLoading}
+          data-testid="stat-classes"
+        />
+        <GradientStatCard
+          label="Total Exams"
+          value={isLoading ? 0 : (exams as any[]).filter((e: any) => e.createdBy === user.id).length}
+          sublabel="Exams created"
+          icon={ClipboardList}
+          iconGradient="from-purple-500 to-violet-600"
+          glowColor="from-purple-500/10 to-transparent"
+          textGradient="from-purple-600 to-violet-600"
+          loading={isLoading}
+          data-testid="stat-total-exams"
+        />
+        <GradientStatCard
+          label="Pending Grades"
+          value={isLoading ? 0 : pendingGradesCount}
+          sublabel="Awaiting review"
+          icon={MessageSquare}
+          iconGradient="from-orange-500 to-red-600"
+          glowColor="from-orange-500/10 to-transparent"
+          textGradient="from-orange-600 to-red-600"
+          loading={isLoading}
+          data-testid="stat-pending-grades"
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-3 sm:gap-4 md:gap-6">
@@ -390,36 +330,9 @@ export default function TeacherDashboard() {
           </CardHeader>
           <CardContent className="p-4 sm:p-5 md:p-6 pt-0">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <Link to="/portal/teacher/exams">
-                <Button variant="outline" className="w-full justify-start h-auto py-3 px-4 hover:shadow-md transition-all duration-200 border-l-4 border-l-transparent hover:border-l-primary bg-gradient-to-r hover:from-primary/5 hover:to-transparent group">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                      <ClipboardList className="w-4 h-4 text-primary" />
-                    </div>
-                    <span className="font-medium text-sm text-foreground group-hover:text-primary transition-colors">Create Exam</span>
-                  </div>
-                </Button>
-              </Link>
-              <Link to="/portal/teacher/attendance">
-                <Button variant="outline" className="w-full justify-start h-auto py-3 px-4 hover:shadow-md transition-all duration-200 border-l-4 border-l-transparent hover:border-l-primary bg-gradient-to-r hover:from-primary/5 hover:to-transparent group">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                      <UserCheck className="w-4 h-4 text-primary" />
-                    </div>
-                    <span className="font-medium text-sm text-foreground group-hover:text-primary transition-colors">Take Attendance</span>
-                  </div>
-                </Button>
-              </Link>
-              <Link to="/portal/announcements">
-                <Button variant="outline" className="w-full justify-start h-auto py-3 px-4 hover:shadow-md transition-all duration-200 border-l-4 border-l-transparent hover:border-l-primary bg-gradient-to-r hover:from-primary/5 hover:to-transparent group">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors">
-                      <Bell className="w-4 h-4 text-primary" />
-                    </div>
-                    <span className="font-medium text-sm text-foreground group-hover:text-primary transition-colors">Create Announcement</span>
-                  </div>
-                </Button>
-              </Link>
+              <QuickAction title="Create Exam" icon={ClipboardList} href="/portal/teacher/exams" />
+              <QuickAction title="Take Attendance" icon={UserCheck} href="/portal/teacher/attendance" />
+              <QuickAction title="Create Announcement" icon={Bell} href="/portal/announcements" />
             </div>
           </CardContent>
         </Card>

@@ -32,7 +32,7 @@ interface NewsPost {
 const NEWS_CATEGORIES = ['general', 'academic', 'events', 'sports', 'achievements', 'announcements'];
 
 const EMPTY_FORM = {
-  title: '', content: '', excerpt: '', category: 'general', tags: '', status: 'draft' as const,
+  title: '', content: '', excerpt: '', category: 'general', tags: '', status: 'draft' as 'draft' | 'published',
 };
 
 function parseTags(tags: string): string[] {

@@ -180,6 +180,7 @@ export const subjects = sqliteTable("subjects", {
   description: text("description"),
   category: text("category").notNull().default('general'),
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  status: text("status").notNull().default('active'),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 
@@ -389,6 +390,7 @@ export const exams = sqliteTable("exams", {
   requireFullscreen: integer("require_fullscreen", { mode: "boolean" }).notNull().default(false),
   maxTabSwitches: integer("max_tab_switches").notNull().default(3),
   shuffleOptions: integer("shuffle_options", { mode: "boolean" }).notNull().default(false),
+  showInstructionsScreen: integer("show_instructions_screen", { mode: "boolean" }).notNull().default(true),
 });
 
 // Exam questions table
@@ -584,8 +586,10 @@ export const syllabusTopics = sqliteTable("syllabus_topics", {
   termId: integer("term_id").notNull().references(() => academicTerms.id),
   name: text("name").notNull(),
   description: text("description"),
+  weekNumber: integer("week_number").notNull().default(0),
   orderNumber: integer("order_number").notNull().default(0),
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  isPublished: integer("is_published", { mode: "boolean" }).notNull().default(false),
   createdBy: text("created_by").references(() => users.id, { onDelete: 'set null' }),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
@@ -1587,3 +1591,15 @@ export type InsertClassSubjectMapping = z.infer<typeof insertClassSubjectMapping
 
 export type ExamPayment = typeof examPayments.$inferSelect;
 export type InsertExamPayment = z.infer<typeof insertExamPaymentSchema>;
+
+// ── Re-export types that only exist in the PostgreSQL schema ──────────────────
+// These keep server/storage.ts type-checking correctly when @shared/schema
+// resolves to this SQLite file during TypeScript compilation.
+export type {
+  LessonNote, InsertLessonNote,
+  NewsPost, InsertNewsPost,
+  Faq, InsertFaq,
+  AboutSection, InsertAboutSection,
+  AdmissionsEnquiry, InsertAdmissionsEnquiry,
+  HomepageSection, InsertHomepageSection,
+} from "./schema.pg";

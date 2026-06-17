@@ -12,12 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { PageHeader, SearchInput, StatusBadge as SharedStatusBadge } from "@/components/shared";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
 import {
   Users, UserCheck, UserX, Clock, TrendingUp, AlertTriangle,
-  Download, Search, Filter, ChevronRight, BarChart2, List,
+  Download, Filter, ChevronRight, BarChart2, List,
   RefreshCw, Edit2, CheckCircle, XCircle, AlertCircle, Bell,
   BookOpen, ShieldCheck, ChevronDown, ChevronUp,
 } from 'lucide-react';
@@ -135,17 +136,6 @@ function SummaryCards({ overview, loading }: { overview?: Overview; loading: boo
         </Card>
       ))}
     </div>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const cfg = STATUS_CONFIG[status as AttendanceStatus];
-  if (!cfg) return <span className="text-xs text-muted-foreground italic">Not marked</span>;
-  const Icon = cfg.icon;
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${cfg.badgeClass}`}>
-      <Icon className="h-3 w-3" />{cfg.label}
-    </span>
   );
 }
 
@@ -331,34 +321,32 @@ export default function AttendanceManagement() {
     <div className="p-4 md:p-6 space-y-5 max-w-6xl mx-auto">
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <ShieldCheck className="h-6 w-6 text-primary" />
-            Attendance Management
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">School-wide attendance overview and controls</p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Input
-            type="date"
-            value={date}
-            onChange={e => setDate(e.target.value)}
-            className="w-auto text-sm h-9"
-            data-testid="input-date-picker"
-          />
-          <Button variant="outline" size="sm" onClick={() => refetchOverview()} className="h-9" title="Refresh" data-testid="button-refresh">
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleExportSummary} className="h-9 gap-1.5" data-testid="button-export">
-            <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">Export</span>
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Attendance Management"
+        description="School-wide attendance overview and controls"
+        icon={ShieldCheck}
+        actions={
+          <div className="flex items-center gap-2 flex-wrap">
+            <Input
+              type="date"
+              value={date}
+              onChange={e => setDate(e.target.value)}
+              className="w-auto text-sm h-9"
+              data-testid="input-date-picker"
+            />
+            <Button variant="outline" size="sm" onClick={() => refetchOverview()} className="h-9" title="Refresh" data-testid="button-refresh">
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExportSummary} className="h-9 gap-1.5" data-testid="button-export">
+              <Download className="h-4 w-4" />
+              <span className="hidden sm:inline">Export</span>
+            </Button>
+          </div>
+        }
+      />
 
       {/* ── Stat cards ───────────────────────────────────────────────────── */}
-      <SummaryCards overview={overview} loading={overviewLoading} />
+      <SummaryCards overview={overview ?? undefined} loading={overviewLoading} />
 
       {/* ── Tabs ─────────────────────────────────────────────────────────── */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Tab)}>
@@ -383,16 +371,13 @@ export default function AttendanceManagement() {
           <Card>
             <CardContent className="p-4">
               <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search classes..."
-                    value={summarySearch}
-                    onChange={e => setSummarySearch(e.target.value)}
-                    className="pl-9"
-                    data-testid="input-search-classes"
-                  />
-                </div>
+                <SearchInput
+                  placeholder="Search classes..."
+                  value={summarySearch}
+                  onChange={setSummarySearch}
+                  className="flex-1"
+                  data-testid="input-search-classes"
+                />
                 <Select value={classFilter} onValueChange={setClassFilter}>
                   <SelectTrigger className="w-auto sm:w-44 h-9 text-sm" data-testid="select-class-filter">
                     <Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
@@ -585,16 +570,13 @@ export default function AttendanceManagement() {
                     {classes.find((c: any) => String(c.id) === detailClassId)?.name ?? 'Class'} — {date}
                   </CardTitle>
                   <div className="flex flex-col sm:flex-row gap-2">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search students..."
-                        value={detailStudentSearch}
-                        onChange={e => setDetailStudentSearch(e.target.value)}
-                        className="pl-9 h-9 text-sm w-full sm:w-48"
-                        data-testid="input-search-students"
-                      />
-                    </div>
+                    <SearchInput
+                      placeholder="Search students..."
+                      value={detailStudentSearch}
+                      onChange={setDetailStudentSearch}
+                      className="w-full sm:w-48"
+                      data-testid="input-search-students"
+                    />
                     <Select value={detailStatusFilter} onValueChange={setDetailStatusFilter}>
                       <SelectTrigger className="w-full sm:w-36 h-9 text-sm" data-testid="select-status-filter">
                         <SelectValue placeholder="All statuses" />
@@ -641,7 +623,7 @@ export default function AttendanceManagement() {
                             <p className="text-xs text-muted-foreground">{student.admissionNumber}</p>
                           </div>
                           <div className="hidden sm:block w-28 text-center">
-                            <StatusBadge status={rec?.status ?? ''} />
+                            <SharedStatusBadge status={rec?.status ?? ''} />
                           </div>
                           <div className="hidden md:block w-32">
                             <p className="text-xs text-muted-foreground truncate">{rec?.notes ?? '—'}</p>

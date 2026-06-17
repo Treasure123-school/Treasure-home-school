@@ -8,14 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createStudentSchema, quickCreateStudentSchema, type CreateStudentRequest, type QuickCreateStudentRequest } from '@shared/schema';
-import { UserPlus, Edit, Search, Download, Trash2, Shield, ShieldOff, Upload, FileText, Key, AlertTriangle, AlertCircle, GraduationCap, Palette, Briefcase, Info, MoreHorizontal, Users, BookOpen, Phone, CheckCircle2, ImageIcon } from 'lucide-react';
+import { PageHeader, SearchInput, EmptyState, ConfirmDialog, MiniStatCard, MiniStatGrid } from "@/components/shared";
+import { UserPlus, Edit, Download, Trash2, Shield, ShieldOff, Upload, FileText, Key, AlertTriangle, AlertCircle, GraduationCap, Palette, Briefcase, Info, MoreHorizontal, Users, BookOpen, Phone, CheckCircle2, ImageIcon } from 'lucide-react';
 import { computeProfileCompletion } from '@/lib/profileCompletion';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/lib/auth';
@@ -605,12 +605,12 @@ export default function StudentManagement() {
   return (
     <>
       <div className="space-y-4 sm:space-y-6 p-4 sm:p-6">
-        {/* Page Header - Fully Responsive */}
-        <div className="flex flex-col gap-3">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold">Student Management</h1>
-            <p className="text-sm sm:text-base text-muted-foreground">Manage student enrollment and information</p>
-          </div>
+        {/* Page Header */}
+        <PageHeader
+          icon={GraduationCap}
+          title="Student Management"
+          description="Manage student enrollment and information"
+        />
         <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 flex-wrap">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
@@ -1430,7 +1430,6 @@ export default function StudentManagement() {
           </DialogContent>
         </Dialog>
         </div>
-      </div>
 
       {/* Filter and Search - Fully Responsive */}
       <Card>
@@ -1441,17 +1440,13 @@ export default function StudentManagement() {
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <div className="flex-1">
               <Label htmlFor="search" className="text-sm">Search</Label>
-              <div className="relative mt-1.5">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="search"
-                  placeholder="Search by name or admission number..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                  data-testid="input-search-students"
-                />
-              </div>
+              <SearchInput
+                placeholder="Search by name or admission number..."
+                value={searchTerm}
+                onChange={(value) => setSearchTerm(value)}
+                className="mt-1.5"
+                data-testid="input-search-students"
+              />
             </div>
             <div className="w-full sm:w-48">
               <Label htmlFor="classFilter" className="text-sm">Filter by Class</Label>
@@ -1520,15 +1515,11 @@ export default function StudentManagement() {
             ))}
           </div>
         ) : filteredStudents.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                <Users className="w-8 h-8 text-muted-foreground" />
-              </div>
-              <p className="text-lg font-medium text-muted-foreground">No students found</p>
-              <p className="text-sm text-muted-foreground mt-1">Try adjusting your search or filter</p>
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={Users}
+            title="No students found"
+            description="Try adjusting your search or filter"
+          />
         ) : (
           <>
             {/* Select all bar */}
@@ -1762,47 +1753,24 @@ export default function StudentManagement() {
         )}
       </div>
 
-      {/* Block / Unblock Confirmation Dialog */}
-      <AlertDialog open={!!studentToBlock} onOpenChange={(open) => { if (!open) setStudentToBlock(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {studentToBlock?.user?.isActive ? 'Block Student Account' : 'Unblock Student Account'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {studentToBlock?.user?.isActive ? (
-                <>
-                  Are you sure you want to <strong>block</strong>{' '}
-                  <strong>{studentToBlock?.user?.firstName} {studentToBlock?.user?.lastName}</strong>?
-                  <br /><br />
-                  They will be immediately logged out and unable to sign in until their account is unblocked.
-                </>
-              ) : (
-                <>
-                  Are you sure you want to <strong>unblock</strong>{' '}
-                  <strong>{studentToBlock?.user?.firstName} {studentToBlock?.user?.lastName}</strong>?
-                  <br /><br />
-                  Their account will be restored and they will be able to sign in again.
-                </>
-              )}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (studentToBlock) {
-                  handleBlockToggle(studentToBlock);
-                  setStudentToBlock(null);
-                }
-              }}
-              className={studentToBlock?.user?.isActive ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'}
-            >
-              {studentToBlock?.user?.isActive ? 'Yes, Block Account' : 'Yes, Unblock Account'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ConfirmDialog
+        open={!!studentToBlock}
+        onOpenChange={(open) => { if (!open) setStudentToBlock(null); }}
+        title={studentToBlock?.user?.isActive ? 'Block Student Account' : 'Unblock Student Account'}
+        description={studentToBlock?.user?.isActive ? 
+          `Are you sure you want to block ${studentToBlock?.user?.firstName} ${studentToBlock?.user?.lastName}? They will be immediately logged out and unable to sign in until their account is unblocked.` : 
+          `Are you sure you want to unblock ${studentToBlock?.user?.firstName} ${studentToBlock?.user?.lastName}? Their account will be restored and they will be able to sign in again.`
+        }
+        confirmLabel={studentToBlock?.user?.isActive ? 'Yes, Block Account' : 'Yes, Unblock Account'}
+        onConfirm={() => {
+          if (studentToBlock) {
+            handleBlockToggle(studentToBlock);
+            setStudentToBlock(null);
+          }
+        }}
+        variant={studentToBlock?.user?.isActive ? "destructive" : "default"}
+        loading={blockStudentMutation.isPending}
+      />
     </>
   );
 }

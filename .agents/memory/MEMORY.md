@@ -4,3 +4,4 @@
 - [Gemini model deprecation](gemini-model-migration.md) — gemini-1.5-pro removed from v1beta API; auto-migrate to gemini-2.0-flash
 - [AI test endpoint fix](ai-test-endpoint.md) — OpenAI test must use chat/completions not /v1/models; project-scoped keys can't list models
 - [Brand color CSS variable format](brand-color-css-format.md) — primary/accent/ring/sidebar-primary use raw H S% L% channels; tailwind config uses hsl(var(--primary) / <alpha-value>) for opacity support
+- [Student profile completion system](student-profile-completion.md) — canonical 7-field set, where logic must stay in sync, stale-value anti-pattern, cache invalidation, production repair endpoint

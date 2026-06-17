@@ -1,60 +1,39 @@
 import { useMemo, useState } from 'react';
 import { Accordion } from '@/components/ui/accordion';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { SectionCard } from '@/components/ui/section-card';
+import { Select, SelectTrigger, SelectValue, PortalSelectContent, PortalSelectItem } from '@/components/ui/portal-select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { GraduationCap, Palette, Briefcase, BookMarked } from 'lucide-react';
+import { GraduationCap, Palette, Briefcase, School, Zap } from 'lucide-react';
 import type { ClassInfo, Subject, Department, SubjectFilter } from '../types';
 import { ClassAccordionItem } from './ClassAccordionItem';
-import { QuickActionsPanel } from './QuickActionsPanel';
 import { SubjectFilterBar } from './SubjectFilterBar';
+import { QuickActionsPanel } from './QuickActionsPanel';
 
 const DEPARTMENTS: Department[] = ['science', 'art', 'commercial'];
 
 const DEPT_CONFIG: Record<Department, {
   label: string;
   icon: typeof GraduationCap;
-  color: string;
   levelColor: string;
-  headerBg: string;
-  borderColor: string;
 }> = {
   science: {
     label: 'Science',
     icon: GraduationCap,
-    color: 'bg-primary/85',
     levelColor: 'bg-primary/10 dark:bg-primary/5 text-primary dark:text-primary/60',
-    headerBg: 'bg-primary/5 dark:bg-primary/5 border-primary/30 dark:border-primary/30',
-    borderColor: 'border-primary/30 dark:border-primary/30',
   },
   art: {
     label: 'Art',
     icon: Palette,
-    color: 'bg-purple-500',
     levelColor: 'bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300',
-    headerBg: 'bg-purple-50 dark:bg-purple-950/40 border-purple-200 dark:border-purple-800',
-    borderColor: 'border-purple-200 dark:border-purple-800',
   },
   commercial: {
     label: 'Commercial',
     icon: Briefcase,
-    color: 'bg-amber-500',
     levelColor: 'bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300',
-    headerBg: 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800',
-    borderColor: 'border-amber-200 dark:border-amber-800',
   },
 };
-
-interface SSSLevelTabContentProps {
-  classes: ClassInfo[];
-  allSubjects: Subject[];
-  isAssigned: (classId: number, subjectId: number, department: string | null) => boolean;
-  pendingChanges: Map<string, unknown>;
-  pendingRemovals: Set<string>;
-  isSaving: boolean;
-  onToggle: (classId: number, subjectId: number, department: string | null, checked: boolean) => void;
-  onToggleAll: (classes: ClassInfo[], subjectId: number, department: string | null, checked: boolean) => void;
-}
 
 interface DeptTabProps {
   dept: Department;
@@ -90,25 +69,25 @@ function DeptTab({ dept, classes, allSubjects, isAssigned, pendingChanges, pendi
   const deptSubjects = useMemo(() => filteredSubjects.filter((s) => s.category === dept), [filteredSubjects, dept]);
 
   return (
-    <div className="space-y-4 mt-0">
-      <SubjectFilterBar
-        filter={filter}
-        onChange={setFilter}
-        totalSubjects={allSubjects.length}
-        visibleSubjects={filteredSubjects.length}
-      />
-
+    <div className="space-y-4">
+      {/* Quick assign for this department — all SS classes */}
       <QuickActionsPanel
-        title={`Quick Actions — All SSS Classes (${config.label})`}
-        description={`Toggle a subject to assign or unassign it across all SSS ${config.label} classes at once. Use year-group toggles for finer control.`}
-        headerClassName={config.headerBg}
-        headerIcon={<Icon className="w-4 h-4" />}
-        subjects={filteredSubjects}
+        title={`Quick assign — all SSS ${config.label} classes`}
+        description={`Tick a subject to assign it to every SSS class at once. Fine-tune individual classes in the accordions below.`}
+        headerIcon={<Zap className="w-4 h-4" />}
+        subjects={allSubjects}
         classes={classes}
         department={dept}
         isAssigned={isAssigned}
         onToggleAll={onToggleAll}
         isSaving={isSaving}
+      />
+
+      <SubjectFilterBar
+        filter={filter}
+        onChange={setFilter}
+        totalSubjects={allSubjects.length}
+        visibleSubjects={filteredSubjects.length}
       />
 
       <Accordion type="multiple" className="space-y-2">
@@ -120,7 +99,12 @@ function DeptTab({ dept, classes, allSubjects, isAssigned, pendingChanges, pendi
             generalSubjects={generalSubjects}
             specialSubjects={deptSubjects}
             specialLabel={`${config.label} Subjects`}
-            specialIcon={<Icon className={`w-4 h-4 ${dept === 'science' ? 'text-primary' : dept === 'art' ? 'text-purple-500' : 'text-amber-500'}`} />}
+            specialIcon={
+              <Icon className={`w-4 h-4 ${
+                dept === 'science' ? 'text-primary' :
+                dept === 'art' ? 'text-purple-500' : 'text-amber-500'
+              }`} />
+            }
             levelColor={config.levelColor}
             isAssigned={isAssigned}
             pendingChanges={pendingChanges}
@@ -134,6 +118,17 @@ function DeptTab({ dept, classes, allSubjects, isAssigned, pendingChanges, pendi
   );
 }
 
+interface SSSLevelTabContentProps {
+  classes: ClassInfo[];
+  allSubjects: Subject[];
+  isAssigned: (classId: number, subjectId: number, department: string | null) => boolean;
+  pendingChanges: Map<string, unknown>;
+  pendingRemovals: Set<string>;
+  isSaving: boolean;
+  onToggle: (classId: number, subjectId: number, department: string | null, checked: boolean) => void;
+  onToggleAll: (classes: ClassInfo[], subjectId: number, department: string | null, checked: boolean) => void;
+}
+
 export function SSSLevelTabContent({
   classes,
   allSubjects,
@@ -144,84 +139,96 @@ export function SSSLevelTabContent({
   onToggle,
   onToggleAll,
 }: SSSLevelTabContentProps) {
+  const [activeDept, setActiveDept] = useState<string>('science');
+
   const assignedCountForDept = (dept: Department) => {
     let count = 0;
-    classes.forEach((cls) => {
-      allSubjects.forEach((s) => {
-        if (isAssigned(cls.id, s.id, dept)) count++;
-      });
-    });
+    classes.forEach((cls) => allSubjects.forEach((s) => { if (isAssigned(cls.id, s.id, dept)) count++; }));
     return count;
   };
 
   if (classes.length === 0) {
     return (
       <div className="mt-4">
-        <Card className="border shadow-sm">
-          <CardContent className="pt-10 pb-10 text-center text-muted-foreground text-sm">
+        <Alert>
+          <School className="h-4 w-4" />
+          <AlertDescription>
             No Senior Secondary classes found. Create classes first in the Class Management section.
-          </CardContent>
-        </Card>
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 mt-4">
-      <Card className="border shadow-sm">
-        <CardHeader className="pb-3 border-b bg-muted/30 rounded-t-xl">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center">
-              <GraduationCap className="w-5 h-5 text-violet-600 dark:text-violet-400" />
-            </div>
-            <div>
-              <CardTitle className="text-base">SSS Subject Assignments by Department</CardTitle>
-              <CardDescription className="text-xs mt-0.5">
-                SSS students see subjects based on their department — Science, Art, or Commercial.
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-5">
-          <Tabs defaultValue="science">
-            <TabsList className="flex w-full h-11 p-1 rounded-xl mb-5">
+    <div className="mt-4">
+      <SectionCard
+        icon={GraduationCap}
+        title="SSS Subject Assignments"
+        subtitle={`${classes.length} classes · by department`}
+        contentClassName="px-4 pb-5 space-y-4 md:px-5"
+      >
+        {/* Mobile department selector */}
+        <div className="sm:hidden">
+          <Select value={activeDept} onValueChange={setActiveDept}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select department…" />
+            </SelectTrigger>
+            <PortalSelectContent>
               {DEPARTMENTS.map((dept) => {
                 const config = DEPT_CONFIG[dept];
                 const Icon = config.icon;
                 return (
-                  <TabsTrigger
+                  <PortalSelectItem
                     key={dept}
                     value={dept}
-                    className="flex-1 flex items-center justify-center gap-2 rounded-lg text-sm font-medium"
-                  >
-                    <Icon className="w-4 h-4" />
-                    <span className="hidden sm:inline">{config.label}</span>
-                    <Badge variant="secondary" className="text-xs ml-0.5">
-                      {assignedCountForDept(dept)}
-                    </Badge>
-                  </TabsTrigger>
+                    icon={<Icon className="w-4 h-4" />}
+                    label={config.label}
+                    meta={`${assignedCountForDept(dept)} assigned`}
+                  />
                 );
               })}
-            </TabsList>
+            </PortalSelectContent>
+          </Select>
+        </div>
 
-            {DEPARTMENTS.map((dept) => (
-              <TabsContent key={dept} value={dept}>
-                <DeptTab
-                  dept={dept}
-                  classes={classes}
-                  allSubjects={allSubjects}
-                  isAssigned={isAssigned}
-                  pendingChanges={pendingChanges}
-                  pendingRemovals={pendingRemovals}
-                  isSaving={isSaving}
-                  onToggle={onToggle}
-                  onToggleAll={onToggleAll}
-                />
-              </TabsContent>
-            ))}
-          </Tabs>
-        </CardContent>
-      </Card>
+        {/* Desktop department tabs */}
+        <Tabs value={activeDept} onValueChange={setActiveDept} className="hidden sm:block">
+          <TabsList className="grid w-full grid-cols-3 h-11 p-1 rounded-xl">
+            {DEPARTMENTS.map((dept) => {
+              const config = DEPT_CONFIG[dept];
+              const Icon = config.icon;
+              return (
+                <TabsTrigger key={dept} value={dept} className="flex items-center gap-1.5 rounded-lg text-sm font-medium">
+                  <Icon className="w-4 h-4 shrink-0" />
+                  <span>{config.label}</span>
+                  <Badge variant="secondary" className="text-xs ml-0.5 px-1.5 shrink-0">
+                    {assignedCountForDept(dept)}
+                  </Badge>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </Tabs>
+
+        {/* Department content — driven by activeDept for both mobile & desktop */}
+        {DEPARTMENTS.map((dept) =>
+          activeDept === dept ? (
+            <DeptTab
+              key={dept}
+              dept={dept}
+              classes={classes}
+              allSubjects={allSubjects}
+              isAssigned={isAssigned}
+              pendingChanges={pendingChanges}
+              pendingRemovals={pendingRemovals}
+              isSaving={isSaving}
+              onToggle={onToggle}
+              onToggleAll={onToggleAll}
+            />
+          ) : null
+        )}
+      </SectionCard>
     </div>
   );
 }

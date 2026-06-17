@@ -3430,17 +3430,20 @@ export class DatabaseStorage implements IStorage {
     if (filters.isActive !== undefined) conditions.push(eq(schema.syllabusTopics.isActive, filters.isActive));
     if (filters.isPublished !== undefined) conditions.push(eq(schema.syllabusTopics.isPublished, filters.isPublished));
 
+    // Order by weekNumber first (preserves curriculum structure), then orderNumber as tie-break
+    const ordering = [asc(schema.syllabusTopics.weekNumber), asc(schema.syllabusTopics.orderNumber)];
+
     if (conditions.length === 0) {
-      return await db.select().from(schema.syllabusTopics).orderBy(asc(schema.syllabusTopics.orderNumber));
+      return await db.select().from(schema.syllabusTopics).orderBy(...ordering);
     }
     return await db.select().from(schema.syllabusTopics)
       .where(and(...conditions))
-      .orderBy(asc(schema.syllabusTopics.orderNumber));
+      .orderBy(...ordering);
   }
   async getSyllabusTopicsStats(): Promise<{ total: number; published: number; draft: number; subjects: number }> {
     const all = await db.select().from(schema.syllabusTopics);
-    const published = all.filter(t => t.isPublished).length;
-    const subjectIds = new Set(all.map(t => t.subjectId));
+    const published = all.filter((t: SyllabusTopic) => t.isPublished).length;
+    const subjectIds = new Set(all.map((t: SyllabusTopic) => t.subjectId));
     return { total: all.length, published, draft: all.length - published, subjects: subjectIds.size };
   }
   async getSyllabusTopicById(id: number): Promise<SyllabusTopic | undefined> {
@@ -3503,7 +3506,7 @@ export class DatabaseStorage implements IStorage {
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(schema.lessonNotes.createdAt));
 
-    return rows.map(row => ({
+    return rows.map((row: any) => ({
       ...row.note,
       creatorName: row.creatorFirstName && row.creatorLastName
         ? `${row.creatorFirstName} ${row.creatorLastName}`.trim()
@@ -3644,7 +3647,7 @@ export class DatabaseStorage implements IStorage {
     if (assignments.length === 0) return [];
 
     // 2. Build OR conditions: (classId=A AND subjectId=B) OR (classId=C AND subjectId=D) ...
-    const pairConds = assignments.map((a) =>
+    const pairConds = assignments.map((a: any) =>
       and(
         eq(schema.lessonNotes.classId, a.classId),
         eq(schema.lessonNotes.subjectId, a.subjectId),
@@ -3685,7 +3688,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(...conditions))
       .orderBy(desc(schema.lessonNotes.createdAt));
 
-    return rows.map((row) => ({
+    return rows.map((row: any) => ({
       ...row.note,
       creatorName: row.creatorFirstName && row.creatorLastName
         ? `${row.creatorFirstName} ${row.creatorLastName}`.trim()
@@ -5993,7 +5996,7 @@ export class DatabaseStorage implements IStorage {
       }
 
       // Recalculate report card totals
-      await this.recalculateReportCard(reportCardId, gradingScale);
+      await this.recalculateReportCard(reportCardId, (reportCard as any).gradingScale || 'standard');
 
       return { populated, errors };
     } catch (error: any) {
@@ -6088,7 +6091,7 @@ export class DatabaseStorage implements IStorage {
         .returning();
 
       // Recalculate report card totals
-      await this.recalculateReportCard(reportCard.id, gradingScale);
+      await this.recalculateReportCard(reportCard.id, (reportCard as any).gradingScale || 'standard');
 
       // Recalculate class positions since scores changed
       if (reportCard.classId && reportCard.termId) {

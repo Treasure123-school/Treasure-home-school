@@ -1,6 +1,6 @@
 import express, { type Express, type Request, type Response, type NextFunction } from "express";
 import { createServer, type Server } from "http";
-import { storage, db } from "./storage";
+import { storage, db, IStorage } from "./storage";
 import * as schema from "@shared/schema.pg";
 import { authenticateUser, authorizeRoles, normalizeUuid, SECRET_KEY, JWT_EXPIRES_IN, ROLES, AuthenticatedUser } from "./routes/middleware";
 import { insertUserSchema, insertStudentSchema, insertAttendanceSchema, insertAnnouncementSchema, insertMessageSchema, insertExamSchema, insertExamResultSchema, insertExamQuestionSchema, insertQuestionOptionSchema, createQuestionOptionSchema, insertHomePageContentSchema, insertContactMessageSchema, insertExamSessionSchema, updateExamSessionSchema, insertStudentAnswerSchema, createStudentSchema, InsertUser, InsertStudentAnswer } from "@shared/schema";
@@ -943,7 +943,7 @@ async function resolveDesignatedPrincipal(
         .where(eq(schema.adminProfiles.userId, designatedId))
         .limit(1);
       return {
-        principalName: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
+        principalName: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || '',
         principalSignatureUrl: profile?.signatureUrl || null,
       };
     }
@@ -958,7 +958,7 @@ async function resolveDesignatedPrincipal(
         .where(eq(schema.adminProfiles.userId, signedById))
         .limit(1);
       return {
-        principalName: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username,
+        principalName: `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || '',
         principalSignatureUrl: profile?.signatureUrl || null,
       };
     }
@@ -972,7 +972,7 @@ async function resolveDesignatedPrincipal(
   if (adminWithSig) {
     const u = await storageParam.getUser(adminWithSig.userId);
     return {
-      principalName: u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username : '',
+      principalName: u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || '' : '',
       principalSignatureUrl: adminWithSig.signatureUrl || null,
     };
   }
@@ -984,7 +984,7 @@ async function resolveDesignatedPrincipal(
   if (anyAdmin) {
     const u = await storageParam.getUser(anyAdmin.userId);
     return {
-      principalName: u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username : '',
+      principalName: u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.username || '' : '',
       principalSignatureUrl: null,
     };
   }
@@ -2295,7 +2295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         if (exam.createdBy) {
           const teacher = await storage.getUser(exam.createdBy);
-          if (teacher) teacherName = `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || teacher.username;
+          if (teacher) teacherName = `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || teacher.username || '';
         }
 
         const classStudents = await storage.getStudentsByClass(exam.classId);
@@ -10116,6 +10116,28 @@ School Management System Administration
         return res.status(404).json({ message: 'Student not found' });
       }
 
+      // ── Recalculate and persist profile completion after every update ──────
+      // Canonical 7-field set (must match /api/student/profile/status and the frontend hook).
+      const merged = updatedStudent;
+      const completionFields = [
+        merged.user?.phone,
+        merged.user?.address,
+        merged.user?.dateOfBirth,
+        merged.user?.gender,
+        merged.student?.emergencyContact,
+        merged.student?.medicalInfo,
+        merged.user?.profileImageUrl,
+      ];
+      const filledCount = completionFields.filter(f => f !== null && f !== undefined && f !== '').length;
+      const newPct = Math.round((filledCount / completionFields.length) * 100);
+      const newIsComplete = newPct === 100;
+      await storage.updateStudent(studentId, {
+        userPatch: {
+          profileCompletionPercentage: newPct,
+          profileCompleted: newIsComplete,
+        }
+      });
+
       // Emit realtime event for student update
       realtimeService.emitTableChange('students', 'UPDATE', updatedStudent, existingStudent, req.user!.id);
       realtimeService.emitToRole('admin', 'student.updated', updatedStudent);
@@ -10123,7 +10145,7 @@ School Management System Administration
         realtimeService.emitToClass(updatedStudent.student.classId.toString(), 'student.updated', updatedStudent);
       }
 
-      res.json(updatedStudent);
+      res.json({ ...updatedStudent, profileCompletionPercentage: newPct, profileCompleted: newIsComplete });
     } catch (error) {
       res.status(500).json({ message: 'Failed to update student profile' });
     }
@@ -10220,7 +10242,9 @@ School Management System Administration
       let user = await storage.getUser(userId);
       const student = await storage.getStudent(userId);
 
-      // Calculate profile completion percentage
+      // ── Canonical 7-field completion calculation ─────────────────────────────
+      // Must stay in sync with client/src/hooks/useProfileCompletion.ts
+      // recoveryEmail is a security/account field — NOT a profile-completion requirement.
       let completionPercentage = 0;
       if (student) {
         const fields = [
@@ -10230,36 +10254,37 @@ School Management System Administration
           user?.gender,
           student?.emergencyContact,
           student?.medicalInfo,
-          user?.recoveryEmail,
           user?.profileImageUrl,
         ];
         const filledFields = fields.filter(field => field !== null && field !== undefined && field !== '').length;
         completionPercentage = Math.round((filledFields / fields.length) * 100);
       }
-      // 🔧 AUTO-FIX: If profile is 100% complete but profileCompleted is NULL/false, fix it
-      if (completionPercentage === 100 && !user?.profileCompleted) {
+
+      // Always persist the freshly calculated value so the stored value never drifts.
+      const isComplete = completionPercentage === 100;
+      if (
+        user &&
+        (user.profileCompletionPercentage !== completionPercentage ||
+          !!user.profileCompleted !== isComplete)
+      ) {
         const updated = await storage.updateStudent(userId, {
           userPatch: {
-            profileCompleted: true,
-            profileCompletionPercentage: 100,
-            profileSkipped: false,
+            profileCompleted: isComplete,
+            profileCompletionPercentage: completionPercentage,
+            profileSkipped: isComplete ? false : user.profileSkipped,
           }
         });
-        if (updated) {
-          user = updated.user;
-        }
+        if (updated) user = updated.user;
       }
 
-      const status = {
+      res.json({
         hasProfile: !!student,
-        completed: user?.profileCompleted || false,
+        completed: isComplete,
         skipped: user?.profileSkipped || false,
-        percentage: user?.profileCompletionPercentage || completionPercentage,
-        firstLogin: !user?.profileCompleted // First login if profile not completed
-      };
-
-      // 🔧 DEBUG: Log profile status for troubleshooting (dev only)
-      res.json(status);
+        // Always return the freshly calculated value — never the stale stored value.
+        percentage: completionPercentage,
+        firstLogin: !isComplete,
+      });
     } catch (error) {
       res.status(500).json({ message: 'Failed to check profile status' });
     }
@@ -10275,8 +10300,7 @@ School Management System Administration
       // Extract user-level fields
       const { phone, address, dateOfBirth, gender, recoveryEmail, bloodGroup, emergencyContact, emergencyPhone, agreement, ...studentFields } = profileData;
 
-      // 🔧 FIX: Use updateStudent with both userPatch and studentPatch in a single transaction
-      // This ensures both user and student records are updated atomically
+      // Save the profile fields first (without hardcoding completion values)
       const updatedStudent = await storage.updateStudent(userId, {
         userPatch: {
           phone,
@@ -10284,9 +10308,7 @@ School Management System Administration
           dateOfBirth,
           gender,
           recoveryEmail,
-          profileCompleted: true,
           profileSkipped: false,
-          profileCompletionPercentage: 100,
         },
         studentPatch: {
           emergencyContact: emergencyContact || null,
@@ -10300,10 +10322,27 @@ School Management System Administration
         return res.status(404).json({ message: 'Student not found' });
       }
 
+      // Recalculate completion using the canonical 7-field set after saving
+      const u = updatedStudent.user;
+      const s = updatedStudent.student;
+      const setupFields = [u?.phone, u?.address, u?.dateOfBirth, u?.gender, s?.emergencyContact, s?.medicalInfo, u?.profileImageUrl];
+      const setupFilled = setupFields.filter(f => f !== null && f !== undefined && f !== '').length;
+      const setupPct = Math.round((setupFilled / setupFields.length) * 100);
+      const setupComplete = setupPct === 100;
+
+      await storage.updateStudent(userId, {
+        userPatch: {
+          profileCompleted: setupComplete,
+          profileCompletionPercentage: setupPct,
+        }
+      });
+
       res.json({
         message: 'Profile setup completed successfully',
         student: updatedStudent.student,
-        user: updatedStudent.user
+        user: updatedStudent.user,
+        completionPercentage: setupPct,
+        profileCompleted: setupComplete,
       });
     } catch (error) {
       res.status(500).json({ message: 'Failed to setup profile', error: error instanceof Error ? error.message : 'Unknown error' });
@@ -10697,7 +10736,7 @@ School Management System Administration
         .innerJoin(schema.users, eq(schema.adminProfiles.userId, schema.users.id))
         .orderBy(schema.users.firstName);
 
-      const admins = adminRows.map((row) => ({
+      const admins = adminRows.map((row: any) => ({
         id: row.id,
         username: row.username,
         name: `${row.firstName || ''} ${row.lastName || ''}`.trim() || row.username,
@@ -10757,7 +10796,7 @@ School Management System Administration
         .innerJoin(schema.users, eq(schema.adminProfiles.userId, schema.users.id))
         .orderBy(schema.users.firstName);
 
-      const admins = adminRows.map((row) => ({
+      const admins = adminRows.map((row: any) => ({
         id: row.id,
         username: row.username,
         name: `${row.firstName || ''} ${row.lastName || ''}`.trim() || row.username,
@@ -10766,7 +10805,7 @@ School Management System Administration
       }));
 
       const currentPrincipal = designatedPrincipalId
-        ? (admins.find(a => a.id === designatedPrincipalId) ?? null)
+        ? (admins.find((a: any) => a.id === designatedPrincipalId) ?? null)
         : null;
 
       res.json({ designatedPrincipalId, admins, currentPrincipal });
@@ -14196,6 +14235,55 @@ School Management System Administration
   });
 
   // ADMIN: Repair report cards - add missing subjects and sync exam scores
+  // Repair profile completion percentages for all students.
+  // Recalculates the canonical 7-field completion for every student and persists the
+  // corrected profileCompletionPercentage and profileCompleted values.
+  app.post('/api/admin/repair-profile-completion', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+    try {
+      const { db: drizzleDb } = await import('./db');
+      const { users, students } = await import('../shared/schema.pg');
+      const { eq } = await import('drizzle-orm');
+
+      const allStudentRows = await drizzleDb
+        .select({
+          userId: students.id,
+          phone: users.phone,
+          address: users.address,
+          dateOfBirth: users.dateOfBirth,
+          gender: users.gender,
+          profileImageUrl: users.profileImageUrl,
+          profileCompleted: users.profileCompleted,
+          profileCompletionPercentage: users.profileCompletionPercentage,
+          emergencyContact: students.emergencyContact,
+          medicalInfo: students.medicalInfo,
+        })
+        .from(students)
+        .leftJoin(users, eq(students.id, users.id));
+
+      let repaired = 0;
+      for (const row of allStudentRows) {
+        const fields = [row.phone, row.address, row.dateOfBirth, row.gender, row.emergencyContact, row.medicalInfo, row.profileImageUrl];
+        const filled = fields.filter(f => f !== null && f !== undefined && f !== '').length;
+        const pct = Math.round((filled / 7) * 100);
+        const complete = pct === 100;
+        if (row.profileCompletionPercentage !== pct || !!row.profileCompleted !== complete) {
+          await drizzleDb.update(users)
+            .set({ profileCompletionPercentage: pct, profileCompleted: complete })
+            .where(eq(users.id, row.userId));
+          repaired++;
+        }
+      }
+
+      res.json({
+        message: `Profile completion repair done. ${repaired} of ${allStudentRows.length} student(s) updated.`,
+        total: allStudentRows.length,
+        repaired,
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Repair failed', error: error instanceof Error ? error.message : 'Unknown' });
+    }
+  });
+
   // FIX: This addresses the bug where report cards created before a subject mapping was added
   // don't include that subject. This function adds missing subjects and syncs any existing exam results.
   app.post('/api/admin/repair-report-cards', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {

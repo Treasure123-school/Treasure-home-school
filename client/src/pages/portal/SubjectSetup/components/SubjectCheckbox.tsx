@@ -1,14 +1,6 @@
 import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
 import type { Subject } from '../types';
 import { getAssignmentKey } from '../utils/assignmentKeys';
-
-const CATEGORY_COLORS: Record<string, string> = {
-  general: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
-  science: 'bg-primary/10 text-primary',
-  art: 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300',
-  commercial: 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300',
-};
 
 interface SubjectCheckboxProps {
   subject: Subject;
@@ -30,7 +22,6 @@ export function SubjectCheckbox({
   onToggle,
 }: SubjectCheckboxProps) {
   const key = getAssignmentKey(classId, subject.id, department);
-  const catColor = CATEGORY_COLORS[subject.category] ?? CATEGORY_COLORS.general;
 
   const handleClick = () => {
     if (!isSaving) onToggle(classId, subject.id, department, !isAssigned);
@@ -38,10 +29,9 @@ export function SubjectCheckbox({
 
   return (
     <div
-      className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border transition-all duration-150
-        ${isAssigned ? 'border-primary/20 bg-primary/5 dark:bg-primary/10' : 'border-border bg-background hover:bg-muted/40'}
-        ${isPending ? 'ring-2 ring-amber-400/50 border-amber-300 dark:border-amber-600 bg-amber-50/60 dark:bg-amber-950/30' : ''}
-        ${isSaving ? 'opacity-60 pointer-events-none' : 'cursor-pointer'}
+      className={`flex items-center gap-3 py-2.5 px-1 border-b border-border/30 last:border-b-0 transition-colors
+        ${isAssigned ? 'bg-transparent' : ''}
+        ${isSaving ? 'opacity-60 pointer-events-none' : 'cursor-pointer hover:bg-muted/40 rounded-md'}
       `}
       onClick={handleClick}
     >
@@ -49,6 +39,7 @@ export function SubjectCheckbox({
         id={key}
         checked={isAssigned}
         disabled={isSaving}
+        className="shrink-0"
         onCheckedChange={(checked) => {
           if (typeof checked === 'boolean') onToggle(classId, subject.id, department, checked);
         }}
@@ -56,19 +47,17 @@ export function SubjectCheckbox({
       />
       <label
         htmlFor={key}
-        className={`flex items-center gap-2 text-sm flex-1 select-none ${isSaving ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+        className={`flex-1 text-sm leading-snug select-none
+          ${isAssigned ? 'text-foreground font-medium' : 'text-muted-foreground'}
+          ${isSaving ? 'cursor-not-allowed' : 'cursor-pointer'}
+        `}
         onClick={(e) => e.stopPropagation()}
       >
-        <span className={`font-medium ${isAssigned ? 'text-foreground' : 'text-muted-foreground'}`}>
-          {subject.name}
-        </span>
-        <Badge className={`text-xs px-1.5 py-0 ${catColor}`}>{subject.code}</Badge>
-        {isPending && (
-          <Badge variant="outline" className="text-xs px-1.5 py-0 text-amber-600 border-amber-300 dark:border-amber-600">
-            Pending
-          </Badge>
-        )}
+        {subject.name}
       </label>
+      {isPending && (
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" aria-label="Unsaved change" />
+      )}
     </div>
   );
 }

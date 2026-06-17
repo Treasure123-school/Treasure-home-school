@@ -18,7 +18,7 @@ import {
   Plus, ArrowRight, BookMarked, Filter, Eye, AlertCircle, Hash,
 } from 'lucide-react';
 
-type Topic = { id: number; name: string; description: string | null; orderNumber: number | null; isPublished: boolean };
+type Topic = { id: number; name: string; description: string | null; orderNumber: number | null; isPublished: boolean; weekNumber?: number | null };
 
 function useClasses() {
   return useQuery<any[]>({
@@ -108,7 +108,10 @@ export default function AdminLessonNoteCreate() {
   const selectedClass   = (classes       as any[]).find((c: any) => String(c.id) === classId);
   const selectedSubject = (availableSubjects as any[]).find((s: any) => String(s.id) === subjectId);
   const selectedTerm    = (terms         as any[]).find((t: any) => String(t.id) === termId);
-  const sortedTopics    = useMemo(() => [...topics].sort((a, b) => (a.orderNumber ?? 0) - (b.orderNumber ?? 0)), [topics]);
+  const sortedTopics    = useMemo(() => [...topics].sort((a, b) => {
+    const wDiff = (a.weekNumber ?? 0) - (b.weekNumber ?? 0);
+    return wDiff !== 0 ? wDiff : (a.orderNumber ?? 0) - (b.orderNumber ?? 0);
+  }), [topics]);
   const noteByTopicId   = useMemo(() => new Map(notes.map(n => [n.topicId, n])), [notes]);
 
   const filtersComplete = !!(classId && subjectId && termId);
@@ -319,7 +322,7 @@ export default function AdminLessonNoteCreate() {
                           onKeyDown={(e) => e.key === 'Enter' && handleTopicClick(topic)}
                         >
                           <span className="w-7 h-7 rounded-full bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center shrink-0">
-                            {topic.orderNumber || idx + 1}
+                            {(topic.weekNumber ?? 0) > 0 ? topic.weekNumber : (topic.orderNumber || idx + 1)}
                           </span>
                           <div className="flex-1 min-w-0">
                             <div className="flex flex-wrap items-center gap-2">

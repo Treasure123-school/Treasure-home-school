@@ -1388,9 +1388,10 @@ export async function seedCurriculumGapFill2(): Promise<{
 }> {
   console.log("📚 Running Nigerian Curriculum Gap-Fill Part 2...");
 
+  type TRow = typeof curriculumTemplates.$inferSelect;
   const existing = await db.select().from(curriculumTemplates);
   const existingSet = new Set(
-    existing.map((t) => `${t.className}||${t.subjectName}`)
+    existing.map((t: TRow) => `${t.className}||${t.subjectName}`)
   );
 
   const report: string[] = [];

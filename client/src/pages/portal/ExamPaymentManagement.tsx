@@ -11,8 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { CreditCard, CheckCircle2, XCircle, Search, Trash2, Plus, Users, Settings } from 'lucide-react';
+import { CreditCard, CheckCircle2, XCircle, Trash2, Plus, Users, Settings, BookOpen } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { PageHeader, SearchInput, MiniStatCard, MiniStatGrid } from "@/components/shared";
 
 interface Term {
   id: number;
@@ -248,25 +249,23 @@ export default function ExamPaymentManagement() {
   return (
     <div className="p-4 space-y-6 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            <CreditCard className="h-6 w-6 text-primary" />
-            Exam Fee Payments
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">Manage and track student exam fee payments</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={openSettings} className="gap-2">
-            <Settings className="h-4 w-4" />
-            Fee Settings
-          </Button>
-          <Button size="sm" onClick={() => openAddDialog()} className="gap-2 bg-primary hover:bg-primary/90 text-white">
-            <Plus className="h-4 w-4" />
-            Record Payment
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Exam Fee Payments"
+        description="Manage and track student exam fee payments"
+        icon={CreditCard}
+        actions={
+          <>
+            <Button variant="outline" size="sm" onClick={openSettings} className="gap-2">
+              <Settings className="h-4 w-4" />
+              Fee Settings
+            </Button>
+            <Button size="sm" onClick={() => openAddDialog()} className="gap-2 bg-primary hover:bg-primary/90 text-white">
+              <Plus className="h-4 w-4" />
+              Record Payment
+            </Button>
+          </>
+        }
+      />
 
       {/* Fee status banner */}
       {!requirePayment && (
@@ -277,7 +276,7 @@ export default function ExamPaymentManagement() {
       )}
 
       {/* Term selector & stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <Card className="sm:col-span-1">
           <CardContent className="p-4">
             <Label className="text-xs text-slate-500 font-medium mb-2 block">Select Term</Label>
@@ -299,41 +298,38 @@ export default function ExamPaymentManagement() {
             <p className="text-xs text-slate-400 mt-2">Fee: ₦{feeAmount.toLocaleString()} per student</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-full">
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">Paid</p>
-              <p className="text-2xl font-bold text-green-600">{paidCount}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="bg-red-100 dark:bg-red-900/30 p-3 rounded-full">
-              <XCircle className="h-5 w-5 text-red-600" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">Unpaid</p>
-              <p className="text-2xl font-bold text-red-600">{unpaidCount}</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="sm:col-span-3">
+          <MiniStatGrid cols={3}>
+            <MiniStatCard
+              label="Paid"
+              value={paidCount}
+              icon={CheckCircle2}
+              color="text-green-600"
+            />
+            <MiniStatCard
+              label="Unpaid"
+              value={unpaidCount}
+              icon={XCircle}
+              color="text-red-600"
+            />
+            <MiniStatCard
+              label="Current Fee"
+              value={`₦${feeAmount.toLocaleString()}`}
+              icon={BookOpen}
+              color="text-blue-600"
+            />
+          </MiniStatGrid>
+        </div>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            placeholder="Search by name, admission number, or class..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9"
-          />
-        </div>
+        <SearchInput
+          placeholder="Search by name, admission number, or class..."
+          value={search}
+          onChange={setSearch}
+          className="flex-1"
+        />
         <Select value={filterPaid} onValueChange={(v: any) => setFilterPaid(v)}>
           <SelectTrigger className="w-full sm:w-40 h-9">
             <SelectValue />

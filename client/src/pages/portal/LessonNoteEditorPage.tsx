@@ -50,8 +50,11 @@ import {
 import {
   Save, Send, Eye, AlertCircle, Info,
   Sparkles, ChevronLeft, Loader2, GraduationCap, BookMarked, Calendar,
-  Copy, Check, ImagePlus, X, RefreshCw, DownloadCloud,
+  Copy, Check, ImagePlus, X, RefreshCw, DownloadCloud, Wand2, ClipboardEdit,
 } from 'lucide-react';
+import FormatNoteDialog from '@/components/lesson-notes/FormatNoteDialog';
+import PasteEnhancePanel from '@/components/lesson-notes/PasteEnhancePanel';
+import { formatLessonNote, fixUnicodeChemistryInHtml } from '@/lib/lessonNoteFormatter';
 
 // ── Pure helpers ───────────────────────────────────────────────────────────────
 
@@ -90,10 +93,12 @@ function stripFailedFigures(html: string): string {
 
 function migrateContent(rawContent: string | null, rawObjectives: string | null): string {
   if (!rawContent) return rawObjectives ? `<p>${rawObjectives}</p>` : '';
+  let html = '';
   try {
     const j = JSON.parse(rawContent);
-    if (j._v === 3) return stripFailedFigures(j.html || '');
-    if (j._v === 2) {
+    if (j._v === 3) {
+      html = stripFailedFigures(j.html || '');
+    } else if (j._v === 2) {
       const LABELS: Record<string, string> = {
         objectives: 'Learning Objectives', previousKnowledge: 'Previous Knowledge',
         materials: 'Instructional Materials', introduction: 'Introduction / Set Induction',
@@ -103,16 +108,16 @@ function migrateContent(rawContent: string | null, rawObjectives: string | null)
       };
       const ORDER = ['objectives','previousKnowledge','materials','introduction','content',
         'teacherActivities','studentActivities','evaluation','assignment','references'];
-      let html = '';
       ORDER.forEach((key, idx) => {
         const val = j[key];
         if (!val || !val.trim()) return;
         html += `<h2>${idx + 1}. ${LABELS[key] || key.toUpperCase()}</h2>${val}`;
       });
-      return html || '';
     }
-  } catch {}
-  return stripFailedFigures(rawContent || '');
+  } catch {
+    html = stripFailedFigures(rawContent || '');
+  }
+  return fixUnicodeChemistryInHtml(html);
 }
 
 function serializeContent(html: string): string {
@@ -196,9 +201,10 @@ export default function LessonNoteEditorPage() {
   const [aiImgDone,          setAiImgDone]          = useState(0);
 
   // Misc editor state
-  const [copied,    setCopied]    = useState(false);
-  const [regenFig,  setRegenFig]  = useState<RegenFig | null>(null);
-  const [regenBusy, setRegenBusy] = useState(false);
+  const [copied,          setCopied]          = useState(false);
+  const [regenFig,        setRegenFig]        = useState<RegenFig | null>(null);
+  const [regenBusy,       setRegenBusy]       = useState(false);
+  const [formatDialogOpen, setFormatDialogOpen] = useState(false);
 
   // Inline AI image generation state
   const [imgGenLoading,   setImgGenLoading]   = useState(false);
@@ -206,6 +212,12 @@ export default function LessonNoteEditorPage() {
   const [imgGenUrl,       setImgGenUrl]       = useState<string | null>(null);
   const [imgGenMeta,      setImgGenMeta]      = useState('');
   const [imgGenDescription, setImgGenDescription] = useState('');
+
+  // Paste & Enhance state
+  const [pastePanel,         setPastePanel]         = useState(false);
+  const [pasteText,          setPasteText]          = useState('');
+  const [enhanceLoading,     setEnhanceLoading]     = useState(false);
+  const [smartConvertLoading, setSmartConvertLoading] = useState(false);
 
   // Refs
   const liveHtmlRef     = useRef('');
@@ -748,6 +760,150 @@ export default function LessonNoteEditorPage() {
     }
   }, [title, query, toast, buildNoteHtml]);
 
+  // ── Paste & Enhance with AI ────────────────────────────────────────────────
+  const enhanceWithAI = useCallback(async () => {
+    if (!pasteText.trim()) return;
+    setEnhanceLoading(true);
+    setAiLoading(true);
+    setAiElapsed(0);
+    setAiCompletedSections(0);
+    setAiDone(false);
+    setIsGeneratingImages(false);
+    accumRef.current = '';
+    if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+    clearAllProgressTimers();
+
+    setMode('editing');
+    setContent(`<h1 style="color:#0f766e;border-bottom:3px solid #ccfbf1;padding-bottom:0.3em">${title || 'Lesson Note'}</h1><p style="color:#6b7280;font-style:italic">✨ AI is enhancing your note — content appears instantly as it generates…</p>`);
+
+    const startTime = Date.now();
+    const ticker    = setInterval(() => setAiElapsed(Math.floor((Date.now() - startTime) / 1000)), 1000);
+
+    try {
+      const token = localStorage.getItem('token');
+      const resp  = await fetch(getApiUrl('/api/lesson-notes/generate/enhance-paste'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        credentials: 'include',
+        body: JSON.stringify({
+          rawNote:     pasteText,
+          topic:       title,
+          className:   query.className,
+          subjectName: query.subjectName,
+          termName:    query.termName,
+        }),
+      });
+
+      if (!resp.ok) {
+        const data = await resp.json().catch(() => ({}));
+        throw new Error(data?.message || `Server error ${resp.status}`);
+      }
+
+      const reader  = resp.body!.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
+
+      outer: while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() ?? '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith('data:')) continue;
+          const payload = trimmed.slice(5).trim();
+          try {
+            const evt = JSON.parse(payload);
+            if (evt.error) throw new Error(evt.error);
+
+            if (evt.done) {
+              if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+              clearAllProgressTimers();
+              setAiCompletedSections(6);
+              setAiDone(true);
+
+              const baseHtml = buildNoteHtml(evt.sections);
+              const placeholderCount = (baseHtml.match(/data-fig-id=/g) || []).length;
+
+              if (placeholderCount > 0) {
+                const withSkeleton = baseHtml;
+                liveHtmlRef.current = withSkeleton;
+                setIsGeneratingImages(true);
+                setAiImgTotal(placeholderCount);
+                setAiImgDone(0);
+                setGeneratingHtml(withSkeleton);
+                setAiLoading(false);
+              } else {
+                liveHtmlRef.current = baseHtml;
+                setContent(baseHtml);
+                setAiLoading(false);
+              }
+
+              // Close the panel and clear paste text after successful enhancement
+              setPastePanel(false);
+              setPasteText('');
+              break outer;
+            }
+
+            if (evt.t) {
+              accumRef.current += evt.t;
+              try {
+                const { completed, currentKey, currentPartial } = extractStreamingState(accumRef.current);
+                const keys = Object.keys(completed);
+                setAiCompletedSections(keys.length);
+                setContent(buildNoteHtml(completed as Record<string, string>, currentKey, currentPartial));
+              } catch {
+                // partial JSON — keep waiting
+              }
+            }
+          } catch (e: any) {
+            if (e?.message) throw e;
+          }
+        }
+      }
+    } catch (err: any) {
+      toast({ title: '⚠️ AI Enhancement Failed', description: shortAiError(err?.message || 'Unknown error'), variant: 'destructive', duration: 8000 });
+    } finally {
+      clearInterval(ticker);
+      if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+      setAiLoading(false);
+      setEnhanceLoading(false);
+    }
+  }, [pasteText, title, query, toast, buildNoteHtml]);
+
+  // ── Smart Convert (instant local markdown/structured → HTML) ─────────────
+  const smartConvert = useCallback(() => {
+    if (!pasteText.trim()) return;
+    setSmartConvertLoading(true);
+    try {
+      const { html, stats } = formatLessonNote(pasteText);
+      if (!html.trim()) {
+        toast({ title: 'Nothing to convert', description: 'The pasted text produced no formatted output.', variant: 'destructive' });
+        return;
+      }
+      const totalItems = stats.headings + stats.tables + stats.equations + stats.orderedLists + stats.unorderedLists + stats.chemFormulas + stats.callouts;
+      const titleHtml = title
+        ? `<h1 style="font-size:1.6rem;font-weight:700;color:#0f766e;border-bottom:3px solid #ccfbf1;padding-bottom:0.3em">${title}</h1>`
+        : '';
+      liveHtmlRef.current = titleHtml + html;
+      setContent(titleHtml + html);
+      setMode('editing');
+      setPastePanel(false);
+      setPasteText('');
+      toast({
+        title: '⚡ Smart Convert complete',
+        description: `Formatted ${totalItems} element${totalItems !== 1 ? 's' : ''} instantly — headings, tables, equations and more.`,
+        duration: 4000,
+      });
+    } catch (err: any) {
+      toast({ title: 'Conversion failed', description: err?.message || 'Unknown error', variant: 'destructive' });
+    } finally {
+      setSmartConvertLoading(false);
+    }
+  }, [pasteText, title, toast]);
+
   // ── Cleanup on unmount ─────────────────────────────────────────────────────
   useEffect(() => () => { clearAllProgressTimers(); }, []);
 
@@ -802,6 +958,28 @@ export default function LessonNoteEditorPage() {
                 onClick={generateWithAI} disabled={aiLoading || isGeneratingImages || busy}>
                 {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                 <span className="hidden sm:inline">{aiLoading ? 'Generating…' : 'AI Generate'}</span>
+              </Button>
+            )}
+
+            {canEdit && (
+              <Button size="sm" variant="outline"
+                className="h-8 text-xs gap-1.5 rounded border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-400 font-semibold"
+                onClick={() => setFormatDialogOpen(true)}
+                disabled={aiLoading || isGeneratingImages || busy || !content}
+                title="Auto-detect headings, lists, tables, equations and chemistry in your note">
+                <Wand2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Format Note</span>
+              </Button>
+            )}
+
+            {canEdit && (
+              <Button size="sm" variant="outline"
+                className="h-8 text-xs gap-1.5 rounded border-teal-200 text-teal-700 hover:bg-teal-50 dark:border-teal-800 dark:text-teal-400 font-semibold"
+                onClick={() => { setPastePanel(p => !p); }}
+                disabled={aiLoading || isGeneratingImages || busy}
+                title="Paste your own lesson note text and let AI rewrite it professionally">
+                <ClipboardEdit className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{pastePanel ? 'Hide Paste' : 'Paste & Enhance'}</span>
               </Button>
             )}
 
@@ -900,6 +1078,19 @@ export default function LessonNoteEditorPage() {
           </div>
         )}
       </div>
+
+      {/* ── Paste & Enhance panel ── */}
+      {pastePanel && canEdit && (
+        <PasteEnhancePanel
+          text={pasteText}
+          onChange={setPasteText}
+          onEnhance={enhanceWithAI}
+          onSmartConvert={smartConvert}
+          onClose={() => { setPastePanel(false); setPasteText(''); }}
+          loading={enhanceLoading || aiLoading}
+          smartConverting={smartConvertLoading}
+        />
+      )}
 
       {/* ── AI Image panel ── */}
       {imgGenPanel && (
@@ -1048,6 +1239,21 @@ export default function LessonNoteEditorPage() {
           )}
         </div>
       )}
+
+      {/* ── Smart Format Note dialog ── */}
+      <FormatNoteDialog
+        open={formatDialogOpen}
+        onClose={() => setFormatDialogOpen(false)}
+        currentHtml={liveHtmlRef.current || content}
+        onApply={(formattedHtml) => {
+          setContent(formattedHtml);
+          liveHtmlRef.current = formattedHtml;
+          setSaveStatus('unsaved');
+          if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+          autoSaveTimer.current = setTimeout(() => triggerAutoSave(formattedHtml), 2000);
+          toast({ title: '✅ Formatting applied', description: 'Your note has been formatted. You can continue editing.' });
+        }}
+      />
 
     </div>
   );

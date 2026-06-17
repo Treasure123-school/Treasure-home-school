@@ -16,6 +16,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { useToast } from '@/hooks/use-toast';
+import { PageHeader, StatusBadge } from "@/components/shared";
 import {
   Briefcase, Plus, CheckCircle, XCircle, FileText, Mail, Phone,
   Calendar, User, AlertCircle, MoreVertical, Clock, BookOpen,
@@ -34,22 +35,6 @@ const vacancySchema = z.object({
   deadline: z.string().min(1, 'Deadline is required'),
 });
 type VacancyFormData = z.infer<typeof vacancySchema>;
-
-function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    open: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
-    closed: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
-    filled: 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/60',
-    pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
-    approved: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
-    rejected: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
-  };
-  return (
-    <Badge className={`text-[10px] capitalize ${map[status] ?? 'bg-muted text-muted-foreground'}`}>
-      {status}
-    </Badge>
-  );
-}
 
 export default function VacancyManagement() {
   const { user } = useAuth();
@@ -143,19 +128,17 @@ export default function VacancyManagement() {
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
 
       {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Briefcase className="h-6 w-6 text-primary" />
-            Job Vacancies & Applications
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">Manage teacher recruitment and review applications</p>
-        </div>
-        <Button onClick={() => setIsCreateDialogOpen(true)} data-testid="button-create-vacancy">
-          <Plus className="h-4 w-4 mr-2" />
-          Post Vacancy
-        </Button>
-      </div>
+      <PageHeader
+        title="Job Vacancies & Applications"
+        description="Manage teacher recruitment and review applications"
+        icon={Briefcase}
+        actions={
+          <Button onClick={() => setIsCreateDialogOpen(true)} data-testid="button-create-vacancy">
+            <Plus className="h-4 w-4 mr-2" />
+            Post Vacancy
+          </Button>
+        }
+      />
 
       {/* ── Stats ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -223,7 +206,7 @@ export default function VacancyManagement() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <StatusBadge status={vacancy.status} />
+                        <StatusBadge status={vacancy.status} className="text-[10px]" />
                         {vacancy.status === 'open' && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -289,7 +272,7 @@ export default function VacancyManagement() {
                             <p className="font-semibold text-sm truncate">{app.fullName}</p>
                             <p className="text-xs text-muted-foreground truncate">{vacancy?.title ?? 'Unknown vacancy'}</p>
                           </div>
-                          <StatusBadge status={app.status} />
+                          <StatusBadge status={app.status} className="text-[10px]" />
                         </div>
                         <div className="space-y-1 text-xs text-muted-foreground">
                           {app.googleEmail && <div className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /><span className="truncate">{app.googleEmail}</span></div>}
@@ -341,7 +324,7 @@ export default function VacancyManagement() {
                             <p className="font-semibold text-sm">{app.fullName}</p>
                             <p className="text-xs text-muted-foreground">{vacancy?.title ?? 'Unknown vacancy'}</p>
                           </div>
-                          <StatusBadge status={app.status} />
+                          <StatusBadge status={app.status} className="text-[10px]" />
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {app.googleEmail && <p>{app.googleEmail}</p>}

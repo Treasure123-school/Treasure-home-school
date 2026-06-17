@@ -17,18 +17,23 @@ export interface ProfileCompletionResult {
   isLoading: boolean;
 }
 
-export const TOTAL_PROFILE_FIELDS = 8;
+// Canonical 7-field set — matches what StudentProfile.tsx shows as required.
+// recoveryEmail is a security/account feature, NOT a profile-completion requirement.
+// This must stay in sync with:
+//   - StudentProfile.tsx   trackedFields
+//   - server/routes.ts     /api/student/profile/status  calculation
+//   - server/routes.ts     PATCH /api/students/:id      post-update recalculation
+export const TOTAL_PROFILE_FIELDS = 7;
 
 export function buildTrackedFields(student: any): ProfileField[] {
   return [
-    { key: 'phone',            label: 'Phone Number',        value: student?.phone },
-    { key: 'address',          label: 'Home Address',        value: student?.address },
-    { key: 'dateOfBirth',      label: 'Date of Birth',       value: student?.dateOfBirth },
-    { key: 'gender',           label: 'Gender',              value: student?.gender },
-    { key: 'emergencyContact', label: 'Emergency Contact',   value: student?.emergencyContact },
-    { key: 'medicalInfo',      label: 'Medical Information', value: student?.medicalInfo },
-    { key: 'recoveryEmail',    label: 'Recovery Email',      value: student?.recoveryEmail },
-    { key: 'profileImageUrl',  label: 'Profile Photo',       value: student?.profileImageUrl },
+    { key: 'phone',            label: 'Phone Number',           value: student?.phone },
+    { key: 'address',          label: 'Home Address',           value: student?.address },
+    { key: 'dateOfBirth',      label: 'Date of Birth',          value: student?.dateOfBirth },
+    { key: 'gender',           label: 'Gender',                 value: student?.gender },
+    { key: 'emergencyContact', label: 'Emergency Contact',      value: student?.emergencyContact },
+    { key: 'medicalInfo',      label: 'Medical Information',    value: student?.medicalInfo },
+    { key: 'profileImageUrl',  label: 'Profile Photo',          value: student?.profileImageUrl },
   ];
 }
 

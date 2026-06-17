@@ -38,6 +38,7 @@ router.post("/run-transitions", authenticateUser, authorizeRoles(ROLES.ADMIN), a
 router.get("/settings", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
   try {
     const pool = getPgPool();
+    if (!pool) { sendSuccess(res, { academicAutoDetect: true }); return; }
     const { rows } = await pool.query(
       "SELECT academic_auto_detect FROM system_settings ORDER BY id LIMIT 1"
     );
@@ -58,6 +59,7 @@ router.put("/settings", authenticateUser, authorizeRoles(ROLES.ADMIN), async (re
       return;
     }
     const pool = getPgPool();
+    if (!pool) { handleRouteError(res, new Error('Database pool unavailable'), "calendar.updateSettings"); return; }
     await pool.query(
       "UPDATE system_settings SET academic_auto_detect = $1 WHERE id = (SELECT id FROM system_settings ORDER BY id LIMIT 1)",
       [academicAutoDetect]

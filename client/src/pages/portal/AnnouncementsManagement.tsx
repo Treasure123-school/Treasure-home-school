@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { useAuth } from '@/lib/auth';
+import { PageHeader, SearchInput, ConfirmDialog, EmptyState } from "@/components/shared";
 
 const announcementFormSchema = z.object({
   title: z.string().min(1, 'Title is required').max(255, 'Title must be less than 255 characters'),
@@ -412,8 +413,12 @@ export default function AnnouncementsManagement() {
 
   return (
     <div className="space-y-6" data-testid="announcements-management">
+      <PageHeader
+        icon={Megaphone}
+        title="Announcements Management"
+        description="Create and manage school-wide announcements"
+      />
       <div className="flex flex-col gap-3">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Announcements Management</h1>
         <div className="flex items-center gap-2">
           <div className="flex items-center bg-muted rounded-lg p-1">
             <Button 
@@ -1083,16 +1088,12 @@ export default function AnnouncementsManagement() {
         <CardContent className="py-4">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search announcements by title or content..."
-                  className="pl-10"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  data-testid="input-search"
-                />
-              </div>
+              <SearchInput
+                placeholder="Search announcements by title or content..."
+                value={searchTerm}
+                onChange={setSearchTerm}
+                data-testid="input-search"
+              />
             </div>
             
             <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 sm:gap-4">
@@ -1286,10 +1287,11 @@ export default function AnnouncementsManagement() {
                   ) : (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center py-12">
-                        <div className="flex flex-col items-center justify-center text-muted-foreground">
-                          <Search className="w-8 h-8 mb-2 opacity-20" />
-                          <p>No announcements found matching your filters</p>
-                        </div>
+                        <EmptyState
+                          icon={Search}
+                          title="No announcements found"
+                          description="No announcements found matching your filters"
+                        />
                       </TableCell>
                     </TableRow>
                   )}
@@ -1378,10 +1380,12 @@ export default function AnnouncementsManagement() {
                   );
                 })
               ) : (
-                <div className="col-span-full py-16 text-center border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-muted-foreground/40 bg-white/50 dark:bg-gray-900/50">
-                  <Megaphone className="w-12 h-12 mb-3 opacity-20" />
-                  <p className="text-lg font-medium opacity-60">No announcements to display</p>
-                  <p className="text-sm">Switch to Table view or try different filters</p>
+                <div className="col-span-full">
+                  <EmptyState
+                    icon={Megaphone}
+                    title="No announcements to display"
+                    description="Switch to Table view or try different filters"
+                  />
                 </div>
               )}
             </div>
@@ -1389,38 +1393,15 @@ export default function AnnouncementsManagement() {
         </CardContent>
       </Card>
 
-      {announcementToDelete && (
-        <Dialog open={!!announcementToDelete} onOpenChange={() => setAnnouncementToDelete(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Confirm Deletion</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <p>
-                Are you sure you want to delete <strong>{announcementToDelete.title}</strong>? 
-                This action cannot be undone.
-              </p>
-              <div className="flex justify-end space-x-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setAnnouncementToDelete(null)}
-                  data-testid="button-cancel-delete"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  variant="destructive" 
-                  onClick={() => deleteAnnouncementMutation.mutate(announcementToDelete.id)}
-                  disabled={deleteAnnouncementMutation.isPending}
-                  data-testid="button-confirm-delete"
-                >
-                  {deleteAnnouncementMutation.isPending ? 'Deleting...' : 'Delete'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+      <ConfirmDialog
+        open={!!announcementToDelete}
+        onOpenChange={(open) => !open && setAnnouncementToDelete(null)}
+        title="Confirm Deletion"
+        description={`Are you sure you want to delete "${announcementToDelete?.title}"? This action cannot be undone.`}
+        onConfirm={() => deleteAnnouncementMutation.mutate(announcementToDelete.id)}
+        loading={deleteAnnouncementMutation.isPending}
+        confirmLabel={deleteAnnouncementMutation.isPending ? 'Deleting...' : 'Delete'}
+      />
     </div>
   );
 }

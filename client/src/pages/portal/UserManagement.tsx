@@ -69,6 +69,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PageHeader, SearchInput, MiniStatCard, MiniStatGrid, ConfirmDialog } from "@/components/shared";
 
 interface User {
   id: string;
@@ -280,53 +281,39 @@ export default function UserManagement() {
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
 
       {/* ── Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <ShieldCheck className="h-6 w-6 text-primary" />
-            User Management
-          </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Manage system users, approve registrations, and control account access.
-          </p>
-        </div>
-      </div>
+      <PageHeader
+        icon={ShieldCheck}
+        title="User Management"
+        description="Manage system users, approve registrations, and control account access."
+      />
 
       {/* ── Stats row ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <MiniStatGrid>
         {[
-          { label: 'Total', value: counts.all, color: 'text-foreground', icon: Users },
-          { label: 'Active', value: counts.active, color: 'text-green-600', icon: CheckCircle },
-          { label: 'Pending', value: counts.pending, color: 'text-amber-600', icon: Clock },
-          { label: 'Suspended', value: counts.suspended, color: 'text-destructive', icon: Ban },
+          { label: 'Total', value: counts.all, color: 'text-foreground', icon: Users, filter: 'all' },
+          { label: 'Active', value: counts.active, color: 'text-green-600', icon: CheckCircle, filter: 'active' },
+          { label: 'Pending', value: counts.pending, color: 'text-amber-600', icon: Clock, filter: 'pending' },
+          { label: 'Suspended', value: counts.suspended, color: 'text-destructive', icon: Ban, filter: 'suspended' },
         ].map(s => (
-          <Card
+          <MiniStatCard
             key={s.label}
-            className={`p-4 cursor-pointer transition-all border-2 ${statusFilter === s.label.toLowerCase() || (s.label === 'Total' && statusFilter === 'all') ? 'border-primary' : 'border-transparent hover:border-primary/30'}`}
-            onClick={() => setStatusFilter(s.label === 'Total' ? 'all' : s.label.toLowerCase())}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">{s.label}</p>
-                <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-              </div>
-              <s.icon className={`h-6 w-6 ${s.color} opacity-60`} />
-            </div>
-          </Card>
+            label={s.label}
+            value={s.value}
+            icon={s.icon}
+            color={s.color}
+            active={statusFilter === s.filter}
+            onClick={() => setStatusFilter(s.filter)}
+          />
         ))}
-      </div>
+      </MiniStatGrid>
 
       {/* ── Search bar ── */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search by name, email, or username…"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9"
-          data-testid="input-user-search"
-        />
-      </div>
+      <SearchInput
+        value={searchQuery}
+        onChange={setSearchQuery}
+        placeholder="Search by name, email, or username…"
+        data-testid="input-user-search"
+      />
 
       {/* ── Mobile card list (hidden on md+) ── */}
       <div className="md:hidden space-y-3">
