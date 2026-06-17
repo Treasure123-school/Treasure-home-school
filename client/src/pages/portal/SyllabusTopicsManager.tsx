@@ -410,7 +410,10 @@ export default function SyllabusTopicsManager() {
                   {/* ── Mobile card grid (hidden on sm+) ── */}
                   <div className="sm:hidden px-4 pb-4 grid grid-cols-1 gap-2.5">
                     {[...(topics as any[])]
-                      .sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0))
+                      .sort((a, b) => {
+                        const wDiff = (a.weekNumber || 0) - (b.weekNumber || 0);
+                        return wDiff !== 0 ? wDiff : (a.orderNumber || 0) - (b.orderNumber || 0);
+                      })
                       .map((topic: any, idx: number) => (
                         <div
                           key={topic.id}
@@ -418,7 +421,7 @@ export default function SyllabusTopicsManager() {
                           data-testid={`topic-card-${topic.id}`}
                         >
                           <span className="w-7 h-7 rounded-full bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5">
-                            {topic.orderNumber || idx + 1}
+                            {topic.weekNumber > 0 ? topic.weekNumber : (topic.orderNumber || idx + 1)}
                           </span>
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm leading-snug">{topic.name}</p>
@@ -465,7 +468,7 @@ export default function SyllabusTopicsManager() {
                     <Table>
                       <TableHeader>
                         <TableRow className="hover:bg-transparent">
-                          <TableHead className="w-12 pl-5">#</TableHead>
+                          <TableHead className="w-12 pl-5">Wk</TableHead>
                           <TableHead>Topic Name</TableHead>
                           <TableHead className="hidden md:table-cell">Description</TableHead>
                           <TableHead className="w-36">Visibility</TableHead>
@@ -474,10 +477,13 @@ export default function SyllabusTopicsManager() {
                       </TableHeader>
                       <TableBody>
                         {[...(topics as any[])]
-                          .sort((a, b) => (a.orderNumber || 0) - (b.orderNumber || 0))
+                          .sort((a, b) => {
+                            const wDiff = (a.weekNumber || 0) - (b.weekNumber || 0);
+                            return wDiff !== 0 ? wDiff : (a.orderNumber || 0) - (b.orderNumber || 0);
+                          })
                           .map((topic: any, idx: number) => (
                             <TableRow key={topic.id} data-testid={`topic-row-${topic.id}`}>
-                              <TableCell className="pl-5 text-muted-foreground text-sm font-mono">{topic.orderNumber || idx + 1}</TableCell>
+                              <TableCell className="pl-5 text-muted-foreground text-sm font-mono">{topic.weekNumber > 0 ? topic.weekNumber : (topic.orderNumber || idx + 1)}</TableCell>
                               <TableCell>
                                 <p className="font-medium text-sm">{topic.name}</p>
                                 {topic.description && (

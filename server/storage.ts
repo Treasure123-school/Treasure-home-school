@@ -3430,12 +3430,15 @@ export class DatabaseStorage implements IStorage {
     if (filters.isActive !== undefined) conditions.push(eq(schema.syllabusTopics.isActive, filters.isActive));
     if (filters.isPublished !== undefined) conditions.push(eq(schema.syllabusTopics.isPublished, filters.isPublished));
 
+    // Order by weekNumber first (preserves curriculum structure), then orderNumber as tie-break
+    const ordering = [asc(schema.syllabusTopics.weekNumber), asc(schema.syllabusTopics.orderNumber)];
+
     if (conditions.length === 0) {
-      return await db.select().from(schema.syllabusTopics).orderBy(asc(schema.syllabusTopics.orderNumber));
+      return await db.select().from(schema.syllabusTopics).orderBy(...ordering);
     }
     return await db.select().from(schema.syllabusTopics)
       .where(and(...conditions))
-      .orderBy(asc(schema.syllabusTopics.orderNumber));
+      .orderBy(...ordering);
   }
   async getSyllabusTopicsStats(): Promise<{ total: number; published: number; draft: number; subjects: number }> {
     const all = await db.select().from(schema.syllabusTopics);

@@ -586,6 +586,7 @@ export const syllabusTopics = sqliteTable("syllabus_topics", {
   termId: integer("term_id").notNull().references(() => academicTerms.id),
   name: text("name").notNull(),
   description: text("description"),
+  weekNumber: integer("week_number").notNull().default(0),
   orderNumber: integer("order_number").notNull().default(0),
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   isPublished: integer("is_published", { mode: "boolean" }).notNull().default(false),

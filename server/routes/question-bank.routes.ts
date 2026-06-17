@@ -134,6 +134,54 @@ router.delete('/api/syllabus-topics/:id', authenticateUser, authorizeRoles(...AD
     } catch (error) { handleRouteError(res, error, 'syllabusTopics.delete'); }
 });
 
+/**
+ * POST /api/syllabus-topics/repair-ordering
+ * Admin-only. Repairs ordering for existing syllabus topics by recalculating
+ * sequential orderNumbers (1-based, per class/subject/term group) using the
+ * existing weekNumber → orderNumber sort as the source of truth.
+ * Safe to run multiple times — idempotent.
+ */
+router.post('/api/syllabus-topics/repair-ordering', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (_req: any, res: Response) => {
+    try {
+        const { db } = await import('../db');
+        const { syllabusTopics } = await import('../../shared/schema.pg');
+        const { asc, eq } = await import('drizzle-orm');
+
+        // Fetch all topics ordered by (weekNumber, orderNumber) so the repair
+        // uses the most meaningful available ordering.
+        const all = await db.select().from(syllabusTopics)
+            .orderBy(asc(syllabusTopics.weekNumber), asc(syllabusTopics.orderNumber), asc(syllabusTopics.id));
+
+        // Group by class × subject × term
+        const groups = new Map<string, typeof all>();
+        for (const t of all) {
+            const key = `${t.classId}:${t.subjectId}:${t.termId}`;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key)!.push(t);
+        }
+
+        let repaired = 0;
+        for (const group of groups.values()) {
+            for (let i = 0; i < group.length; i++) {
+                const topic = group[i];
+                const newOrder = i + 1;
+                if (topic.orderNumber !== newOrder) {
+                    await db.update(syllabusTopics)
+                        .set({ orderNumber: newOrder, updatedAt: new Date() })
+                        .where(eq(syllabusTopics.id, topic.id));
+                    repaired++;
+                }
+            }
+        }
+
+        sendSuccess(res, {
+            message: `Ordering repaired. ${repaired} topic(s) updated across ${groups.size} group(s).`,
+            repaired,
+            groups: groups.size,
+        });
+    } catch (error) { handleRouteError(res, error, 'syllabusTopics.repairOrdering'); }
+});
+
 // ═══════════════════════════════════════════════════════
 //  QUESTION BANKS (Container CRUD)
 // ═══════════════════════════════════════════════════════

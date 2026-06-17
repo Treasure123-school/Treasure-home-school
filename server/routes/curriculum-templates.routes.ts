@@ -318,53 +318,75 @@ router.post("/api/curriculum-templates/:id/import", authenticateUser, authorizeR
       return sendBadRequest(res, "No topics found for the selected terms");
     }
 
+    // ── Group topics by term, preserving source order (weekNumber → orderNumber) ──
+    // allTopics is already sorted by (term, weekNumber, orderNumber) from the query above.
+    const byTerm: Record<string, typeof allTopics> = {};
+    for (const topic of allTopics) {
+      if (!byTerm[topic.term]) byTerm[topic.term] = [];
+      byTerm[topic.term].push(topic);
+    }
+
     let created = 0;
     let skipped = 0;
     const skippedNames: string[] = [];
     const errors: string[] = [];
 
-    for (const topic of allTopics) {
-      const termId = body.termIds[topic.term];
+    for (const term of body.terms) {
+      const termTopics = byTerm[term] ?? [];
+      const termId = body.termIds[term];
       if (!termId) {
-        skipped++;
-        skippedNames.push(`${topic.name} (no term ID for "${topic.term}")`);
+        for (const t of termTopics) {
+          skipped++;
+          skippedNames.push(`${t.name} (no term ID for "${term}")`);
+        }
         continue;
       }
 
-      try {
-        // Check for duplicate
-        const existing = await db.select().from(syllabusTopics).where(
-          and(
-            eq(syllabusTopics.classId, body.classId),
-            eq(syllabusTopics.subjectId, body.subjectId),
-            eq(syllabusTopics.termId, termId),
-            eq(syllabusTopics.name, topic.name)
-          )
-        );
+      // Determine the next available orderNumber for this class/subject/term
+      // so that re-importing additional terms doesn't collide with existing ones.
+      const existingForTerm = await db.select().from(syllabusTopics).where(
+        and(
+          eq(syllabusTopics.classId, body.classId),
+          eq(syllabusTopics.subjectId, body.subjectId),
+          eq(syllabusTopics.termId, termId)
+        )
+      );
+      const existingNames = new Set(existingForTerm.map((t: any) => t.name));
+      // Fresh import starts at 1; appending starts after the current max.
+      const baseOrder = existingForTerm.length === 0
+        ? 1
+        : Math.max(...existingForTerm.map((t: any) => t.orderNumber ?? 0)) + 1;
 
-        if (existing.length > 0) {
+      let positionInTerm = 0; // tracks how many we actually insert (for sequential numbering)
+
+      for (const topic of termTopics) {
+        if (existingNames.has(topic.name)) {
           skipped++;
           skippedNames.push(topic.name);
           continue;
         }
 
-        await db.insert(syllabusTopics).values({
-          classId: body.classId,
-          subjectId: body.subjectId,
-          termId,
-          name: topic.name,
-          description: topic.description ?? null,
-          orderNumber: topic.orderNumber,
-          isPublished: body.publishOnImport,
-          createdBy: user.id,
-        });
-        created++;
-      } catch (err: any) {
-        if (err?.code === "23505") {
-          skipped++;
-          skippedNames.push(topic.name);
-        } else {
-          errors.push(`"${topic.name}": ${err?.message ?? "unknown error"}`);
+        try {
+          await db.insert(syllabusTopics).values({
+            classId: body.classId,
+            subjectId: body.subjectId,
+            termId,
+            name: topic.name,
+            description: topic.description ?? null,
+            weekNumber: topic.weekNumber,               // preserve original week label
+            orderNumber: baseOrder + positionInTerm,    // sequential, per-term, 1-based
+            isPublished: body.publishOnImport,
+            createdBy: user.id,
+          });
+          positionInTerm++;
+          created++;
+        } catch (err: any) {
+          if (err?.code === "23505") {
+            skipped++;
+            skippedNames.push(topic.name);
+          } else {
+            errors.push(`"${topic.name}": ${err?.message ?? "unknown error"}`);
+          }
         }
       }
     }
