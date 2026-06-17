@@ -35,30 +35,23 @@ export function WelcomeCard({
         "bg-gradient-to-r",
         gradient,
         "p-6",
-        className
+        className,
       )}
       data-testid={testId}
     >
       <div className="flex items-center justify-between gap-2 sm:gap-3">
-
         {/* ── Left: icon + text ─────────────────────────────────────── */}
         <div className="flex items-center gap-2.5 sm:gap-4 flex-1 min-w-0">
-
           {/* Icon bubble — scales with viewport */}
           <div
             className={cn(
               "flex-shrink-0 flex items-center justify-center",
               "bg-white/20 backdrop-blur-sm shadow-lg",
               "rounded-xl sm:rounded-2xl",
-              "p-4"
+              "p-4",
             )}
           >
-            <Icon
-              className={cn(
-                "text-white",
-                "h-10 w-10"
-              )}
-            />
+            <Icon className={cn("text-white", "h-8 w-8")} />
           </div>
 
           {/* Text block — min-w-0 allows truncation instead of overflow */}
@@ -66,8 +59,8 @@ export function WelcomeCard({
             <h2
               className="font-bold tracking-tight leading-tight"
               style={{
-                /* Fluid: 16px on ~320px screen → 24px at ~600px and wider */
-                fontSize: "clamp(1rem, 4.5vw, 1.5rem)",
+                /* Fluid: 20px on phones → 28px on desktop */
+                fontSize: "clamp(1.25rem, 5vw, 1.75rem)",
               }}
             >
               Welcome back, {name}!
@@ -90,7 +83,7 @@ export function WelcomeCard({
             className={cn(
               "hidden sm:flex items-center gap-1.5 md:gap-2 flex-shrink-0",
               "bg-white/10 backdrop-blur-sm rounded-lg",
-              "px-3 py-1.5 md:px-4 md:py-2"
+              "px-3 py-1.5 md:px-4 md:py-2",
             )}
           >
             <Clock className="h-3.5 w-3.5 md:h-4 md:w-4 flex-shrink-0" />
