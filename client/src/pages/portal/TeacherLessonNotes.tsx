@@ -18,7 +18,7 @@ import {
   ChevronRight, Eye, FileText, Info, Plus, ArrowRight, Filter, Lock,
 } from 'lucide-react';
 
-type Topic = { id: number; name: string; description: string | null; orderNumber: number | null };
+type Topic = { id: number; name: string; description: string | null; orderNumber: number | null; weekNumber?: number | null };
 type Assignment = { classId: number; className: string; subjectId: number; subjectName: string };
 
 function useTeacherAssignments() {
@@ -353,7 +353,7 @@ export default function TeacherLessonNotes() {
                           onKeyDown={(e) => e.key === 'Enter' && handleTopicClick(topic)}
                         >
                           <span className="w-7 h-7 rounded-full bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center shrink-0">
-                            {topic.weekNumber > 0 ? topic.weekNumber : (topic.orderNumber || idx + 1)}
+                            {(topic.weekNumber ?? 0) > 0 ? topic.weekNumber : (topic.orderNumber || idx + 1)}
                           </span>
 
                           <div className="flex-1 min-w-0">
