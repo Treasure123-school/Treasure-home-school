@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SuperAdminDashboardSkeleton } from "@/components/ui/page-skeletons";
 import { Users, Shield, Activity, Database, TrendingUp, UserPlus, Settings, Award, ChevronRight } from "lucide-react";
 import SuperAdminLayout from "@/components/SuperAdminLayout";
-import { WelcomeCard } from "@/components/shared";
+import { WelcomeCard, StatCardShell, StatCardIcon } from "@/components/shared";
 import { AnimatedCounter } from "@/components/ui/animated-counter";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
@@ -134,39 +134,34 @@ export default function SuperAdminDashboard() {
         />
 
         {/* Modern Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {statCards.map((stat, index) => (
-            <Card 
-              key={stat.title} 
-              className="relative overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 animate-in fade-in slide-in-from-bottom-4"
-              style={{ animationDuration: `${500 + index * 200}ms` }}
+            <StatCardShell
+              key={stat.title}
+              glowColor={`${stat.bgGradient} to-transparent`}
+              animationDuration={500 + index * 200}
               data-testid={`card-${stat.title.toLowerCase().replace(/\s+/g, '-')}`}
             >
-              <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br ${stat.bgGradient} to-transparent rounded-full -mr-16 -mt-16`}></div>
-              <CardContent className="p-6 relative z-10">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground mb-1">{stat.title}</p>
-                    <div className="flex items-baseline gap-2">
-                      {isLoading ? (
-                        <Skeleton className="h-10 w-20" />
-                      ) : (
-                        <AnimatedCounter 
-                          value={stat.value}
-                          className={`text-4xl font-bold bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent`}
-                        />
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      {stat.description}
-                    </p>
+              <div className="flex items-start justify-between mb-2 sm:mb-4">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">{stat.title}</p>
+                  <div className="flex items-baseline gap-1.5 sm:gap-2">
+                    {isLoading ? (
+                      <Skeleton className="h-8 sm:h-10 w-16 sm:w-20" />
+                    ) : (
+                      <AnimatedCounter
+                        value={stat.value}
+                        className={`text-2xl sm:text-4xl font-bold bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent`}
+                      />
+                    )}
                   </div>
-                  <div className={`p-3 rounded-xl bg-gradient-to-br ${stat.gradient} text-white shadow-lg`}>
-                    <stat.icon className="h-6 w-6" />
-                  </div>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 sm:mt-2">
+                    {stat.description}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+                <StatCardIcon icon={stat.icon} gradient={stat.gradient} />
+              </div>
+            </StatCardShell>
           ))}
         </div>
 
