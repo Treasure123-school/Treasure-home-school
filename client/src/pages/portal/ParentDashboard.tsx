@@ -6,10 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/auth';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
+import type { LucideIcon } from 'lucide-react';
 import {
   Users, Calendar, BookOpen, MessageSquare, Heart, FileText,
   GraduationCap, Bell, TrendingUp, CheckCircle, XCircle, Clock
 } from 'lucide-react';
+import { WelcomeCard } from '@/components/shared';
 import { Link } from 'wouter';
 import { AnimatedCounter } from '@/components/ui/animated-counter';
 import { ParentDashboardSkeleton } from '@/components/ui/page-skeletons';
@@ -41,6 +43,33 @@ interface GradeResult {
 interface AttendanceData {
   records: any[];
   summary: { total: number; present: number; absent: number; late: number; excused: number; rate: number };
+}
+
+// Full-bleed coloured gradient stat card — parent portal only
+function ParentStatCard({
+  gradient, textColor, label, value, suffix, sublabel, icon: Icon, loading, testId,
+}: {
+  gradient: string; textColor: string; label: string; value: number;
+  suffix?: string; sublabel: string; icon: LucideIcon; loading?: boolean; testId: string;
+}) {
+  return (
+    <Card className="overflow-hidden border-none shadow-lg" data-testid={testId}>
+      <div className={`bg-gradient-to-br ${gradient} p-5 text-white`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className={`${textColor} text-xs font-medium`}>{label}</p>
+            {loading ? (
+              <div className="h-8 w-16 bg-white/20 rounded mt-1 animate-pulse" />
+            ) : (
+              <AnimatedCounter value={value} suffix={suffix} className="text-3xl font-bold mt-1" />
+            )}
+            <p className={`${textColor} text-xs mt-1`}>{sublabel}</p>
+          </div>
+          <div className="p-2.5 bg-white/20 rounded-xl"><Icon className="h-7 w-7 text-white" /></div>
+        </div>
+      </div>
+    </Card>
+  );
 }
 
 interface Announcement {
@@ -185,17 +214,12 @@ export default function ParentDashboard() {
   return (
     <div className="space-y-6 sm:space-y-8" data-testid="page-parent-dashboard">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 text-white shadow-xl" data-testid="parent-role-header">
-        <div className="flex items-center gap-4">
-          <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 shadow-lg">
-            <Heart className="h-10 w-10 text-white" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Welcome back, {user.firstName}!</h2>
-            <p className="text-white/70 text-sm mt-0.5">Stay connected with your child's education</p>
-          </div>
-        </div>
-      </div>
+      <WelcomeCard
+        icon={Heart}
+        name={user.firstName}
+        subtitle="Stay connected with your child's education"
+        data-testid="parent-role-header"
+      />
 
       {/* Child Selector */}
       {children.length > 0 && (
@@ -250,65 +274,32 @@ export default function ParentDashboard() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="overflow-hidden border-none shadow-lg" data-testid="stat-children">
-          <div className="bg-gradient-to-br from-primary to-primary/80 p-5 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-white/70 text-xs font-medium">Children</p>
-                <AnimatedCounter value={children.length} className="text-3xl font-bold mt-1" />
-                <p className="text-white/70 text-xs mt-1">Enrolled</p>
-              </div>
-              <div className="p-2.5 bg-white/20 rounded-xl"><Users className="h-7 w-7 text-white" /></div>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="overflow-hidden border-none shadow-lg" data-testid="stat-attendance">
-          <div className="bg-gradient-to-br from-emerald-500 via-green-600 to-teal-600 p-5 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-emerald-100 text-xs font-medium">Attendance</p>
-                {loadingAttendance ? (
-                  <div className="h-8 w-16 bg-white/20 rounded mt-1 animate-pulse" />
-                ) : (
-                  <AnimatedCounter value={attendanceRate} suffix="%" className="text-3xl font-bold mt-1" />
-                )}
-                <p className="text-emerald-100 text-xs mt-1">{selectedChild?.firstName ?? 'Selected child'}</p>
-              </div>
-              <div className="p-2.5 bg-white/20 rounded-xl"><Calendar className="h-7 w-7 text-white" /></div>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="overflow-hidden border-none shadow-lg" data-testid="stat-avg-score">
-          <div className="bg-gradient-to-br from-purple-500 via-violet-600 to-purple-600 p-5 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-purple-100 text-xs font-medium">Avg. Score</p>
-                {loadingGrades ? (
-                  <div className="h-8 w-16 bg-white/20 rounded mt-1 animate-pulse" />
-                ) : (
-                  <AnimatedCounter value={avgGPA} suffix="%" className="text-3xl font-bold mt-1" />
-                )}
-                <p className="text-purple-100 text-xs mt-1">{gradesData.length} results</p>
-              </div>
-              <div className="p-2.5 bg-white/20 rounded-xl"><TrendingUp className="h-7 w-7 text-white" /></div>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="overflow-hidden border-none shadow-lg" data-testid="stat-announcements">
-          <div className="bg-gradient-to-br from-amber-500 via-orange-600 to-red-500 p-5 text-white">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-amber-100 text-xs font-medium">Announcements</p>
-                <AnimatedCounter value={announcements.length} className="text-3xl font-bold mt-1" />
-                <p className="text-amber-100 text-xs mt-1">School updates</p>
-              </div>
-              <div className="p-2.5 bg-white/20 rounded-xl"><Bell className="h-7 w-7 text-white" /></div>
-            </div>
-          </div>
-        </Card>
+        <ParentStatCard
+          gradient="from-primary to-primary/80"
+          textColor="text-white/70"
+          label="Children" value={children.length} sublabel="Enrolled"
+          icon={Users} testId="stat-children"
+        />
+        <ParentStatCard
+          gradient="from-emerald-500 via-green-600 to-teal-600"
+          textColor="text-emerald-100"
+          label="Attendance" value={attendanceRate} suffix="%"
+          sublabel={selectedChild?.firstName ?? 'Selected child'}
+          icon={Calendar} loading={loadingAttendance} testId="stat-attendance"
+        />
+        <ParentStatCard
+          gradient="from-purple-500 via-violet-600 to-purple-600"
+          textColor="text-purple-100"
+          label="Avg. Score" value={avgGPA} suffix="%"
+          sublabel={`${gradesData.length} results`}
+          icon={TrendingUp} loading={loadingGrades} testId="stat-avg-score"
+        />
+        <ParentStatCard
+          gradient="from-amber-500 via-orange-600 to-red-500"
+          textColor="text-amber-100"
+          label="Announcements" value={announcements.length} sublabel="School updates"
+          icon={Bell} testId="stat-announcements"
+        />
       </div>
 
       {/* Quick Actions */}
