@@ -134,7 +134,7 @@ export default function SuperAdminDashboard() {
         />
 
         {/* Modern Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {statCards.map((stat, index) => (
             <StatCardShell
               key={stat.title}

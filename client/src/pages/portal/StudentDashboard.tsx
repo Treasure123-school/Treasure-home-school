@@ -350,7 +350,7 @@ export default function StudentDashboard() {
       />
 
       {/* Stats Cards — Class Position · Pending Assignments · Academic Average · Attendance */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
 
         {/* 1 — Class Position */}
         <StatCardShell glowColor="from-yellow-500/10 to-transparent" animationDuration={500} data-testid="card-rank">
