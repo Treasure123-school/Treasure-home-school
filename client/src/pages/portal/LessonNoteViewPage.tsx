@@ -126,7 +126,7 @@ export default function LessonNoteViewPage() {
   }
 
   return (
-    <div className="max-w-4xl space-y-8 print:max-w-none">
+    <div className="max-w-4xl print:max-w-none">
 
       {/* ── Sticky actions bar ── */}
       <div className="sticky top-0 z-10 -mx-2 sm:-mx-4 md:-mx-6 px-2 sm:px-4 md:px-6 py-2 bg-background/95 backdrop-blur border-b print:hidden">
@@ -204,6 +204,9 @@ export default function LessonNoteViewPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Padded reading area (below sticky bar) ── */}
+      <div className="px-4 sm:px-6 pt-6 space-y-8 print:px-0">
 
       {/* Reject inline form */}
       {showReject && (
@@ -296,6 +299,7 @@ export default function LessonNoteViewPage() {
       />
 
       <div className="pb-12 print:hidden" />
+      </div>{/* end padded reading area */}
     </div>
   );
 }

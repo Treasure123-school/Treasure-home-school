@@ -69,7 +69,7 @@ export default function StudentLessonNoteViewPage() {
   }
 
   return (
-    <div className="max-w-3xl space-y-4 print:max-w-none">
+    <div className="max-w-3xl space-y-4 px-4 sm:px-6 print:max-w-none print:px-0">
 
       <NotePageHeader
         note={note}
