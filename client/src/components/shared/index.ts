@@ -10,7 +10,7 @@ export { WelcomeCard } from "./WelcomeCard";
 export { MiniStatCard, MiniStatGrid } from "./MiniStatCard";
 export { GradientStatCard } from "./GradientStatCard";
 export { StatCardShell, StatCardIcon } from "./StatCardShell";
-export { QuickAction } from "./QuickAction";
+export { QuickAction, QuickActionGrid } from "./QuickAction";
 export { FormField } from "./FormField";
 export { DataTable } from "./DataTable";
 export type { DataTableColumn } from "./DataTable";

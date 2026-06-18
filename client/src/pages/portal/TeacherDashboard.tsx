@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/lib/auth';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BookOpen, Users, ClipboardList, UserCheck, Bell, MessageSquare, TrendingUp, Clock, ClipboardCheck, GraduationCap, AlertCircle } from 'lucide-react';
-import { DashboardHeader, GradientStatCard, QuickAction } from "@/components/shared";
+import { DashboardHeader, GradientStatCard, QuickActionGrid } from "@/components/shared";
 import ProfileIncompleteBanner from '@/components/ProfileIncompleteBanner';
 import { Link, useLocation } from 'wouter';
 import { useEffect } from 'react';
@@ -319,24 +319,15 @@ export default function TeacherDashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:gap-4 md:gap-6">
-        {/* Quick Actions - Fully Responsive */}
-        <Card>
-          <CardHeader className="p-4 sm:p-5 md:p-6">
-            <CardTitle className="flex items-center text-sm sm:text-base">
-              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-              Quick Actions
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-5 md:p-6 pt-0">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <QuickAction title="Create Exam" icon={ClipboardList} href="/portal/teacher/exams" />
-              <QuickAction title="Take Attendance" icon={UserCheck} href="/portal/teacher/attendance" />
-              <QuickAction title="Create Announcement" icon={Bell} href="/portal/announcements" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <QuickActionGrid
+        title="Quick Actions"
+        titleIcon={BookOpen}
+        items={[
+          { title: "Create Exam", icon: ClipboardList, href: "/portal/teacher/exams" },
+          { title: "Take Attendance", icon: UserCheck, href: "/portal/teacher/attendance" },
+          { title: "Create Announcement", icon: Bell, href: "/portal/announcements" },
+        ]}
+      />
 
 
       {/* Recent Exam Results - New Section */}

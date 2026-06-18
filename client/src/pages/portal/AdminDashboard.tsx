@@ -11,7 +11,7 @@ import {
   Circle, Wifi, WifiOff, ArrowRight,
 } from 'lucide-react';
 import { Link } from 'wouter';
-import { DashboardHeader, GradientStatCard, QuickAction } from "@/components/shared";
+import { DashboardHeader, GradientStatCard, QuickActionGrid } from "@/components/shared";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { useLoginSuccess } from '@/hooks/use-login-success';
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -181,28 +181,12 @@ export default function AdminDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 gap-3 sm:gap-4 md:gap-6 mb-6">
-        <Card>
-          <CardHeader className="p-4 sm:p-5 md:p-6">
-            <CardTitle className="flex items-center text-sm sm:text-base">
-              <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-              Quick Administration
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 sm:p-5 md:p-6 pt-0">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {quickActions.map((action) => (
-                <QuickAction
-                  key={action.title}
-                  title={action.title}
-                  icon={action.icon}
-                  href={action.href}
-                />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <QuickActionGrid
+        title="Quick Administration"
+        titleIcon={BookOpen}
+        items={quickActions}
+        className="mb-6"
+      />
 
       {/* User Distribution + Live Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
