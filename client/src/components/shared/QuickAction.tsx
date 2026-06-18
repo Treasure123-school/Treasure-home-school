@@ -14,13 +14,18 @@ interface QuickActionProps {
   className?: string;
 }
 
-function QuickActionInner({ title, icon: Icon, className, onClick }: QuickActionProps) {
+function QuickActionInner({
+  title,
+  icon: Icon,
+  className,
+  onClick,
+}: QuickActionProps) {
   return (
     <Button
       variant="outline"
       className={cn(
         "w-full justify-start h-auto py-3 px-4",
-        "border-l-4 border-l-primary",
+        "hover:border-primary/30",
         "hover:bg-primary/5 group transition-all",
         className,
       )}
@@ -83,7 +88,9 @@ export function QuickActionGrid({
     <Card className={className}>
       <CardHeader className="p-4 sm:p-5 md:p-6">
         <CardTitle className="flex items-center text-sm sm:text-base font-semibold">
-          {TitleIcon && <TitleIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-primary" />}
+          {TitleIcon && (
+            <TitleIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-2 text-primary" />
+          )}
           {title}
         </CardTitle>
       </CardHeader>
