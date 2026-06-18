@@ -1,61 +1,149 @@
-import { SkeletonShimmer, StatsCardSkeleton } from "./skeletons";
+import { SkeletonShimmer } from "./skeletons";
+
+/**
+ * Re-exported from skeletons.tsx — keeps PortalShells.tsx import working.
+ * Used as a Suspense fallback for lazy-loaded portal shell layouts.
+ */
+export { MinimalRouteFallback as MinimalLoadingFallback } from "./skeletons";
 
 /**
  * Page-specific skeleton components for contextual loading states.
- * Each page should use its own skeleton that matches the actual content structure.
- * These are used INSIDE page components during data loading, not as Suspense fallbacks.
+ *
+ * Shared primitives at the top prevent repetition across all five
+ * portal dashboard skeletons that follow.
  */
 
-// Student Dashboard Skeleton - matches the actual StudentDashboard layout pixel-for-pixel
+// ─── Shared Primitives ────────────────────────────────────────────────────────
+
+/**
+ * Mirrors WelcomeCard exactly:
+ * rounded-xl gradient banner · icon bubble · name + subtitle · optional date badge
+ */
+function DashboardWelcomeSkeleton({
+  showDate = false,
+  className = "mb-6",
+}: {
+  showDate?: boolean;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-xl p-6 shadow-xl ${className}`}
+    >
+      <div className="flex items-center gap-4">
+        {/* Icon bubble — mirrors: bg-white/20 backdrop-blur-sm shadow-lg rounded-xl sm:rounded-2xl p-4 */}
+        <div className="bg-white/20 rounded-xl sm:rounded-2xl p-4 flex-shrink-0">
+          <SkeletonShimmer className="h-7 w-7 bg-white/30" />
+        </div>
+        {/* Text */}
+        <div className="space-y-2 flex-1 min-w-0">
+          <SkeletonShimmer className="h-7 w-48 sm:w-64 bg-white/30" />
+          <SkeletonShimmer className="h-4 w-52 sm:w-72 bg-white/20" />
+        </div>
+        {/* Date badge — hidden on mobile, visible sm+ when showDate is set */}
+        {showDate && (
+          <div className="hidden sm:block bg-white/10 rounded-lg px-4 py-2 flex-shrink-0">
+            <SkeletonShimmer className="h-5 w-32 bg-white/20" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Mirrors GradientStatCard / StatCardShell + StatCardIcon exactly:
+ * white card · decorative glow blob · label / value / sublabel · coloured icon box
+ */
+function DashboardStatCardSkeleton({ glowColor = "bg-primary/10" }: { glowColor?: string }) {
+  return (
+    <div className="relative rounded-xl overflow-hidden border-none shadow-xl bg-card">
+      {/* Decorative glow blob — mirrors: absolute top-0 right-0 rounded-full w-24 h-24 -mr-12 -mt-12 sm:w-32 sm:h-32 sm:-mr-16 sm:-mt-16 */}
+      <div className={`absolute top-0 right-0 rounded-full ${glowColor} w-24 h-24 -mr-12 -mt-12 sm:w-32 sm:h-32 sm:-mr-16 sm:-mt-16`} />
+      <div className="p-4 sm:p-6 relative z-10">
+        <div className="flex items-start justify-between mb-2 sm:mb-4">
+          <div className="space-y-2 flex-1 min-w-0">
+            <SkeletonShimmer className="h-4 w-24 sm:w-28" />
+            <SkeletonShimmer className="h-8 sm:h-10 w-14 sm:w-16" />
+            <SkeletonShimmer className="h-3 w-20 sm:w-24" />
+          </div>
+          {/* Icon box — mirrors: p-2 sm:p-3 rounded-xl bg-gradient text-white shadow-lg */}
+          <SkeletonShimmer className="h-9 w-9 sm:h-12 sm:w-12 rounded-xl flex-shrink-0" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Four-column stat grid shared by Admin, Teacher, Student, and SuperAdmin dashboards.
+ * Each portal passes its own glow colour per card.
+ */
+function DashboardStatGridSkeleton({
+  glowColors,
+  className = "grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8",
+}: {
+  glowColors: string[];
+  className?: string;
+}) {
+  return (
+    <div className={`grid ${className}`}>
+      {glowColors.map((color, i) => (
+        <DashboardStatCardSkeleton key={i} glowColor={color} />
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Quick-action card row (title header + button grid).
+ * Used by Admin and Teacher dashboards.
+ */
+function QuickActionCardSkeleton({
+  columns = "grid-cols-1 sm:grid-cols-2",
+  rows = 6,
+  className = "",
+}: {
+  columns?: string;
+  rows?: number;
+  className?: string;
+}) {
+  return (
+    <div className={`rounded-lg bg-card border border-border ${className}`}>
+      <div className="p-4 sm:p-5 md:p-6 border-b">
+        <SkeletonShimmer className="h-5 w-44" />
+      </div>
+      <div className={`p-4 sm:p-5 md:p-6 grid ${columns} gap-2`}>
+        {Array.from({ length: rows }).map((_, i) => (
+          <SkeletonShimmer key={i} className="h-14 w-full rounded-lg" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Portal-Specific Skeletons ─────────────────────────────────────────────────
+
+// Student Dashboard Skeleton - matches the actual StudentDashboard layout
 export function StudentDashboardSkeleton() {
   return (
     <div className="animate-in fade-in duration-200" data-testid="skeleton-student-dashboard">
-      {/* Welcome Banner — mirrors: mb-8 bg-gradient-to-r from-primary to-primary/90 rounded-lg p-6 */}
-      <div className="mb-8 bg-gradient-to-r from-primary to-primary/90 rounded-lg p-6">
-        <div className="flex items-center gap-4">
-          {/* Icon box — mirrors: bg-white/20 backdrop-blur-sm rounded-2xl p-4 */}
-          <div className="bg-white/20 rounded-2xl p-4 flex-shrink-0">
-            <SkeletonShimmer className="h-10 w-10 bg-white/30" />
-          </div>
-          <div className="space-y-2 flex-1 min-w-0">
-            <SkeletonShimmer className="h-8 w-48 sm:w-64 bg-white/30" />
-            <SkeletonShimmer className="h-4 w-56 sm:w-72 bg-white/20" />
-          </div>
-        </div>
-      </div>
+      {/* Welcome banner — no date badge on student portal */}
+      <DashboardWelcomeSkeleton showDate={false} className="mb-8" />
 
-      {/* Stats Cards Grid — mirrors: grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {/* Each card mirrors: border-none shadow-xl CardContent p-6 */}
-        {/* Left: label + large value + caption | Right: colored icon box */}
-        {[
-          "rounded-xl bg-primary/10",
-          "rounded-xl bg-green-500/10",
-          "rounded-xl bg-yellow-500/10",
-          "rounded-xl bg-primary/10",
-        ].map((iconBg, i) => (
-          <div key={i} className="rounded-lg bg-card shadow-xl overflow-hidden">
-            <div className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="space-y-2 flex-1">
-                  {/* Label */}
-                  <SkeletonShimmer className="h-4 w-24" />
-                  {/* Large value */}
-                  <SkeletonShimmer className="h-10 w-16" />
-                </div>
-                {/* Icon box — mirrors: p-3 rounded-xl gradient */}
-                <SkeletonShimmer className={`h-12 w-12 flex-shrink-0 ${iconBg}`} />
-              </div>
-              {/* Caption / sub-line */}
-              <SkeletonShimmer className="h-3 w-28" />
-            </div>
-          </div>
-        ))}
-      </div>
+      {/* Stats grid — grid-cols-2 on mobile matching actual layout */}
+      <DashboardStatGridSkeleton
+        glowColors={[
+          "bg-yellow-500/10",
+          "bg-violet-500/10",
+          "bg-primary/10",
+          "bg-emerald-500/10",
+        ]}
+      />
 
-      {/* Main Content Grid — mirrors: grid grid-cols-1 lg:grid-cols-2 gap-6 */}
+      {/* Main content — Recent Grades + Upcoming Exams */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Grades Card — mirrors: Card shadow-lg border-none */}
+        {/* Recent Grades card */}
         <div className="rounded-lg bg-card shadow-lg">
           <div className="p-6 pb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -71,7 +159,7 @@ export function StudentDashboardSkeleton() {
           </div>
         </div>
 
-        {/* Upcoming Exams Card — mirrors: Card shadow-lg border-none */}
+        {/* Upcoming Exams card */}
         <div className="rounded-lg bg-card shadow-lg">
           <div className="p-6 pb-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -88,7 +176,7 @@ export function StudentDashboardSkeleton() {
         </div>
       </div>
 
-      {/* Announcements Card — mirrors: Card lg:col-span-2 shadow-lg border-none (full width row) */}
+      {/* Announcements — full-width row */}
       <div className="mt-6 rounded-lg bg-card shadow-lg">
         <div className="p-6 pb-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -107,71 +195,32 @@ export function StudentDashboardSkeleton() {
   );
 }
 
-// Admin Dashboard Skeleton - mirrors the actual AdminDashboard layout pixel-for-pixel
+// Admin Dashboard Skeleton - matches the actual AdminDashboard layout
 export function AdminDashboardSkeleton() {
   return (
     <div className="animate-in fade-in duration-200" data-testid="skeleton-admin-dashboard">
-      {/* Welcome Banner — mirrors: mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 shadow-xl */}
-      <div className="mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 shadow-xl">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 flex-1">
-            {/* Icon box — mirrors: bg-white/20 backdrop-blur-sm rounded-2xl p-4 shadow-lg */}
-            <div className="bg-white/20 rounded-2xl p-4 flex-shrink-0">
-              <SkeletonShimmer className="h-10 w-10 bg-white/30" />
-            </div>
-            <div className="space-y-2 flex-1 min-w-0">
-              <SkeletonShimmer className="h-8 w-48 sm:w-60 bg-white/30" />
-              <SkeletonShimmer className="h-4 w-52 sm:w-72 bg-white/20" />
-            </div>
-          </div>
-          {/* Date pill — hidden on mobile, visible md+ */}
-          <div className="hidden md:block bg-white/10 rounded-lg px-4 py-2">
-            <SkeletonShimmer className="h-5 w-32 bg-white/20" />
-          </div>
-        </div>
-      </div>
+      {/* Welcome banner — Admin shows date badge */}
+      <DashboardWelcomeSkeleton showDate />
 
-      {/* Stats Cards Grid — mirrors: grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8
-          Icon colors: blue, emerald/teal, purple/violet, orange/red */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {[
-          "rounded-xl bg-primary/10",
-          "rounded-xl bg-emerald-500/10",
-          "rounded-xl bg-purple-500/10",
-          "rounded-xl bg-orange-500/10",
-        ].map((iconBg, i) => (
-          <div key={i} className="rounded-lg bg-card shadow-xl overflow-hidden">
-            <div className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="space-y-2 flex-1">
-                  <SkeletonShimmer className="h-4 w-28" />
-                  <SkeletonShimmer className="h-10 w-16" />
-                </div>
-                <SkeletonShimmer className={`h-12 w-12 flex-shrink-0 ${iconBg}`} />
-              </div>
-              <SkeletonShimmer className="h-3 w-32" />
-            </div>
-          </div>
-        ))}
-      </div>
+      {/* Stats grid */}
+      <DashboardStatGridSkeleton
+        glowColors={[
+          "bg-primary/10",
+          "bg-emerald-500/10",
+          "bg-purple-500/10",
+          "bg-orange-500/10",
+        ]}
+      />
 
-      {/* Quick Actions Card — mirrors: single-column card with grid-cols-1 sm:grid-cols-2 button grid */}
-      <div className="mb-6 rounded-lg bg-card border border-border">
-        <div className="p-4 sm:p-5 md:p-6 border-b">
-          <SkeletonShimmer className="h-5 w-44" />
-        </div>
-        <div className="p-4 sm:p-5 md:p-6 grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <SkeletonShimmer key={i} className="h-14 w-full rounded-lg" />
-          ))}
-        </div>
-      </div>
+      {/* Quick Administration card */}
+      <QuickActionCardSkeleton columns="grid-cols-1 sm:grid-cols-2" rows={6} className="mb-6" />
 
-      {/* Bottom Section — mirrors: grid grid-cols-1 lg:grid-cols-3 gap-6 */}
+      {/* User Distribution Chart + Live Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* User Distribution Chart — lg:col-span-2 */}
-        <div className="lg:col-span-2 rounded-lg bg-card shadow-sm border border-border">
-          <div className="p-4 sm:p-6 border-b flex items-center justify-between">
+        {/* Chart card — lg:col-span-2 */}
+        <div className="lg:col-span-2 rounded-lg bg-card shadow-sm border border-border overflow-hidden">
+          {/* Gradient header strip — mirrors indigo-to-violet header */}
+          <div className="h-14 bg-gradient-to-r from-indigo-600/20 to-violet-600/20 px-6 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <SkeletonShimmer className="h-5 w-5 rounded" />
               <SkeletonShimmer className="h-5 w-36" />
@@ -185,29 +234,19 @@ export function AdminDashboardSkeleton() {
 
         {/* Right sidebar — Live Overview + Quick Stats */}
         <div className="space-y-6">
-          {/* Live Overview card */}
           <div className="rounded-lg bg-card shadow-sm border border-border p-6 space-y-4">
             <SkeletonShimmer className="h-5 w-28" />
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
+            {[1, 2].map((i) => (
+              <div key={i} className="flex items-center justify-between">
                 <div className="space-y-1">
                   <SkeletonShimmer className="h-8 w-12" />
                   <SkeletonShimmer className="h-3 w-28" />
                 </div>
                 <SkeletonShimmer className="h-8 w-8 rounded" />
               </div>
-              <SkeletonShimmer className="h-px w-full" />
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <SkeletonShimmer className="h-8 w-12" />
-                  <SkeletonShimmer className="h-3 w-24" />
-                </div>
-                <SkeletonShimmer className="h-8 w-8 rounded" />
-              </div>
-            </div>
+            ))}
           </div>
 
-          {/* Quick Stats card */}
           <div className="rounded-lg bg-card shadow-sm border border-border p-6 space-y-4">
             <div className="flex items-center justify-between">
               <SkeletonShimmer className="h-5 w-24" />
@@ -228,63 +267,28 @@ export function AdminDashboardSkeleton() {
   );
 }
 
-// Teacher Dashboard Skeleton - mirrors the actual TeacherDashboard layout pixel-for-pixel
+// Teacher Dashboard Skeleton - matches the actual TeacherDashboard layout
 export function TeacherDashboardSkeleton() {
   return (
     <div className="animate-in fade-in duration-200" data-testid="skeleton-teacher-dashboard">
-      {/* Welcome Banner — mirrors: mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 shadow-xl */}
-      <div className="mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 shadow-xl">
-        <div className="flex items-center gap-4">
-          {/* Icon box — mirrors: bg-white/20 backdrop-blur-sm rounded-2xl p-4 shadow-lg */}
-          <div className="bg-white/20 rounded-2xl p-4 flex-shrink-0">
-            <SkeletonShimmer className="h-10 w-10 bg-white/30" />
-          </div>
-          <div className="space-y-2 flex-1 min-w-0">
-            <SkeletonShimmer className="h-8 w-48 sm:w-60 bg-white/30" />
-            <SkeletonShimmer className="h-4 w-52 sm:w-72 bg-white/20" />
-          </div>
-        </div>
-      </div>
+      {/* Welcome banner — Teacher shows date badge */}
+      <DashboardWelcomeSkeleton showDate />
 
-      {/* Stats Cards Grid — mirrors: grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 */}
-      {/* Stat card icon colors: blue, emerald/teal, purple/violet, orange/red */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {[
-          "rounded-xl bg-primary/10",
-          "rounded-xl bg-emerald-500/10",
-          "rounded-xl bg-purple-500/10",
-          "rounded-xl bg-orange-500/10",
-        ].map((iconBg, i) => (
-          <div key={i} className="rounded-lg bg-card shadow-xl overflow-hidden">
-            <div className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="space-y-2 flex-1">
-                  <SkeletonShimmer className="h-4 w-28" />
-                  <SkeletonShimmer className="h-10 w-16" />
-                </div>
-                <SkeletonShimmer className={`h-12 w-12 flex-shrink-0 ${iconBg}`} />
-              </div>
-              <SkeletonShimmer className="h-3 w-32" />
-            </div>
-          </div>
-        ))}
-      </div>
+      {/* Stats grid */}
+      <DashboardStatGridSkeleton
+        glowColors={[
+          "bg-primary/10",
+          "bg-emerald-500/10",
+          "bg-purple-500/10",
+          "bg-orange-500/10",
+        ]}
+      />
 
-      {/* Main Content — mirrors: grid grid-cols-1 gap-3 sm:gap-4 md:gap-6 (single column) */}
+      {/* Quick Actions + Recent Exam Results */}
       <div className="grid grid-cols-1 gap-4 md:gap-6">
-        {/* Quick Actions Card — mirrors: Card with grid-cols-1 sm:grid-cols-2 button grid */}
-        <div className="rounded-lg bg-card border border-border">
-          <div className="p-4 sm:p-5 md:p-6 border-b">
-            <SkeletonShimmer className="h-5 w-36" />
-          </div>
-          <div className="p-4 sm:p-5 md:p-6 grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {[1, 2, 3, 4].map((i) => (
-              <SkeletonShimmer key={i} className="h-14 w-full rounded-lg" />
-            ))}
-          </div>
-        </div>
+        <QuickActionCardSkeleton columns="grid-cols-1 sm:grid-cols-2" rows={4} />
 
-        {/* Recent Exam Results Card — mirrors: Card mt-6 shadow-sm border border-border */}
+        {/* Recent Exam Results card */}
         <div className="rounded-lg bg-card shadow-sm border border-border">
           <div className="p-4 sm:p-6 border-b flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -304,46 +308,44 @@ export function TeacherDashboardSkeleton() {
   );
 }
 
-// Parent Dashboard Skeleton - mirrors the actual ParentDashboard layout pixel-for-pixel
+// Parent Dashboard Skeleton - matches the actual ParentDashboard layout
 export function ParentDashboardSkeleton() {
-  // Colored gradient backgrounds mirroring the parent's fully-colored stat cards
-  const statCardGradients = [
+  // Full-bleed coloured cards used in parent portal only
+  const parentCardGradients = [
     "from-primary to-primary/90",
     "from-emerald-600 to-teal-700",
     "from-purple-600 to-violet-700",
     "from-amber-500 to-orange-600",
   ];
+
   return (
-    <div className="animate-in fade-in duration-200" data-testid="skeleton-parent-dashboard">
-      {/* Welcome Banner — mirrors: mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 shadow-xl */}
-      <div className="mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 shadow-xl">
-        <div className="flex items-center gap-4">
-          {/* Icon box — mirrors: bg-white/20 backdrop-blur-sm rounded-2xl p-4 shadow-lg */}
-          <div className="bg-white/20 rounded-2xl p-4 flex-shrink-0">
-            <SkeletonShimmer className="h-10 w-10 bg-white/30" />
-          </div>
-          <div className="space-y-2 flex-1 min-w-0">
-            <SkeletonShimmer className="h-8 w-44 sm:w-60 bg-white/30" />
-            <SkeletonShimmer className="h-4 w-52 sm:w-72 bg-white/20" />
-          </div>
+    <div className="animate-in fade-in duration-200 space-y-6 sm:space-y-8" data-testid="skeleton-parent-dashboard">
+      {/* Welcome banner — parent does not show date badge */}
+      <DashboardWelcomeSkeleton showDate={false} className="" />
+
+      {/* Child Selector card */}
+      <div className="rounded-xl border-2 border-primary/30 bg-gradient-to-r from-primary/5 to-primary/10 p-4 sm:p-6 flex items-center gap-4">
+        <SkeletonShimmer className="h-12 w-12 rounded-xl flex-shrink-0" />
+        <div className="space-y-2 flex-1 min-w-0">
+          <SkeletonShimmer className="h-5 w-48" />
+          <SkeletonShimmer className="h-4 w-64" />
         </div>
       </div>
 
-      {/* Stats Cards Grid — mirrors: grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6
-          NOTE: Parent uses grid-cols-2 on mobile (not 1) — cards are fully colored with white text */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6">
-        {statCardGradients.map((gradient, i) => (
+      {/* Stats — fully coloured gradient cards, grid-cols-2 on mobile */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+        {parentCardGradients.map((gradient, i) => (
           <div key={i} className={`rounded-lg bg-gradient-to-br ${gradient} shadow-xl overflow-hidden`}>
-            <div className="relative p-6 text-white">
+            <div className="p-5 text-white">
               <div className="flex items-start justify-between mb-2">
                 <div className="space-y-2 flex-1">
                   <SkeletonShimmer className="h-3 w-20 bg-white/30" />
-                  <SkeletonShimmer className="h-9 w-14 bg-white/40" />
+                  <SkeletonShimmer className="h-8 w-14 bg-white/40" />
                   <SkeletonShimmer className="h-3 w-24 bg-white/25" />
                 </div>
-                {/* Icon box — mirrors: p-3 bg-white/20 backdrop-blur-sm rounded-2xl */}
-                <div className="bg-white/20 rounded-2xl p-3 flex-shrink-0">
-                  <SkeletonShimmer className="h-6 w-6 bg-white/40" />
+                {/* Icon bubble */}
+                <div className="bg-white/20 rounded-xl p-2.5 flex-shrink-0">
+                  <SkeletonShimmer className="h-7 w-7 bg-white/40" />
                 </div>
               </div>
             </div>
@@ -351,15 +353,15 @@ export function ParentDashboardSkeleton() {
         ))}
       </div>
 
-      {/* Quick Actions — mirrors: grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
+      {/* Quick Actions — 4-column grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {[1, 2, 3, 4].map((i) => (
-          <SkeletonShimmer key={i} className="h-28 w-full rounded-lg" />
+          <SkeletonShimmer key={i} className="h-28 w-full rounded-xl" />
         ))}
       </div>
 
-      {/* Children Overview Card — mirrors: Card shadow-sm border border-border mb-4 sm:mb-6 */}
-      <div className="rounded-lg bg-card shadow-sm border border-border mb-4 sm:mb-6">
+      {/* Children Overview card */}
+      <div className="rounded-lg bg-card shadow-sm border border-border">
         <div className="p-4 sm:p-6 border-b flex items-center justify-between">
           <SkeletonShimmer className="h-5 w-40" />
           <SkeletonShimmer className="h-8 w-16" />
@@ -371,88 +373,46 @@ export function ParentDashboardSkeleton() {
         </div>
       </div>
 
-      {/* Two Column Layout — mirrors: grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6 */}
+      {/* Recent Grades + Announcements */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6">
-        {/* Recent Grades Card */}
-        <div className="rounded-lg bg-card shadow-sm border border-border">
-          <div className="p-4 sm:p-6 border-b flex items-center justify-between">
-            <SkeletonShimmer className="h-5 w-32" />
-            <SkeletonShimmer className="h-8 w-16" />
+        {["Recent Grades", "Announcements"].map((_, i) => (
+          <div key={i} className="rounded-lg bg-card shadow-sm border border-border">
+            <div className="p-4 sm:p-6 border-b flex items-center justify-between">
+              <SkeletonShimmer className="h-5 w-32" />
+              <SkeletonShimmer className="h-8 w-16" />
+            </div>
+            <div className="p-4 sm:p-6 space-y-3">
+              {[1, 2, 3].map((j) => (
+                <SkeletonShimmer key={j} className="h-14 w-full rounded-lg" />
+              ))}
+            </div>
           </div>
-          <div className="p-4 sm:p-6 space-y-3">
-            {[1, 2, 3].map((i) => (
-              <SkeletonShimmer key={i} className="h-14 w-full rounded-lg" />
-            ))}
-          </div>
-        </div>
-
-        {/* Announcements Card */}
-        <div className="rounded-lg bg-card shadow-sm border border-border">
-          <div className="p-4 sm:p-6 border-b flex items-center justify-between">
-            <SkeletonShimmer className="h-5 w-36" />
-            <SkeletonShimmer className="h-8 w-16" />
-          </div>
-          <div className="p-4 sm:p-6 space-y-3">
-            {[1, 2, 3].map((i) => (
-              <SkeletonShimmer key={i} className="h-16 w-full rounded-lg" />
-            ))}
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );
 }
 
-// Super Admin Dashboard Skeleton - mirrors the actual SuperAdminDashboard layout pixel-for-pixel
+// Super Admin Dashboard Skeleton - matches the actual SuperAdminDashboard layout
 export function SuperAdminDashboardSkeleton() {
   return (
-    <div className="animate-in fade-in duration-200" data-testid="skeleton-superadmin-dashboard">
-      {/* Welcome Banner — mirrors: mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 shadow-xl */}
-      <div className="mb-6 bg-gradient-to-r from-primary via-primary/90 to-primary/80 rounded-2xl p-6 shadow-xl">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4 flex-1">
-            {/* Icon box — mirrors: bg-white/20 backdrop-blur-sm rounded-2xl p-4 shadow-lg */}
-            <div className="bg-white/20 rounded-2xl p-4 flex-shrink-0">
-              <SkeletonShimmer className="h-10 w-10 bg-white/30" />
-            </div>
-            <div className="space-y-2 flex-1 min-w-0">
-              <SkeletonShimmer className="h-8 w-52 sm:w-64 bg-white/30" />
-              <SkeletonShimmer className="h-4 w-60 sm:w-80 bg-white/20" />
-            </div>
-          </div>
-          {/* Date pill — hidden on mobile, visible md+ */}
-          <div className="hidden md:block bg-white/10 rounded-lg px-4 py-2">
-            <SkeletonShimmer className="h-5 w-32 bg-white/20" />
-          </div>
-        </div>
-      </div>
+    <div className="animate-in fade-in duration-200 space-y-6" data-testid="skeleton-superadmin-dashboard">
+      {/* Welcome banner — SuperAdmin shows date badge */}
+      <DashboardWelcomeSkeleton showDate className="mb-6" />
 
-      {/* Stats Cards Grid — mirrors: grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6
-          Stat card icon colors per actual: blue, green, purple, orange */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {[
-          "rounded-xl bg-primary/10",
-          "rounded-xl bg-green-500/10",
-          "rounded-xl bg-purple-500/10",
-          "rounded-xl bg-orange-500/10",
-        ].map((iconBg, i) => (
-          <div key={i} className="rounded-lg bg-card shadow-xl overflow-hidden">
-            <div className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="space-y-2 flex-1">
-                  <SkeletonShimmer className="h-4 w-24" />
-                  <SkeletonShimmer className="h-10 w-20" />
-                </div>
-                <SkeletonShimmer className={`h-12 w-12 flex-shrink-0 ${iconBg}`} />
-              </div>
-              <SkeletonShimmer className="h-3 w-28" />
-            </div>
-          </div>
-        ))}
-      </div>
+      {/* Stats grid — grid-cols-2 on mobile matching actual layout */}
+      <DashboardStatGridSkeleton
+        glowColors={[
+          "bg-primary/10",
+          "bg-green-500/10",
+          "bg-purple-500/10",
+          "bg-orange-500/10",
+        ]}
+        className="grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6"
+      />
 
-      {/* Quick Actions Grid — mirrors: grid grid-cols-1 md:grid-cols-2 gap-6 (action cards) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      {/* Quick Actions — 2×2 grid with icon + title + description */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {[1, 2, 3, 4].map((i) => (
           <div key={i} className="rounded-lg bg-card shadow-lg overflow-hidden">
             <div className="p-6 flex items-center gap-4">
@@ -461,175 +421,83 @@ export function SuperAdminDashboardSkeleton() {
                 <SkeletonShimmer className="h-5 w-32" />
                 <SkeletonShimmer className="h-4 w-48" />
               </div>
+              <SkeletonShimmer className="h-5 w-5 rounded flex-shrink-0" />
             </div>
           </div>
         ))}
       </div>
 
-      {/* System Status Cards — mirrors: grid grid-cols-1 md:grid-cols-2 gap-6 */}
+      {/* System Health + Security Overview */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* System Health Card — mirrors: Card shadow-lg border-none */}
-        <div className="rounded-lg bg-card shadow-lg overflow-hidden">
-          <div className="p-6 pb-2 flex items-center gap-2">
-            <SkeletonShimmer className="h-8 w-8 rounded-lg" />
-            <SkeletonShimmer className="h-5 w-32" />
+        {[
+          { width: "w-32", rows: ["w-28", "w-24", "w-36"] },
+          { width: "w-40", rows: ["w-32", "w-28", "w-40"] },
+        ].map((card, ci) => (
+          <div key={ci} className="rounded-lg bg-card shadow-lg overflow-hidden">
+            <div className="p-6 pb-2 flex items-center gap-2">
+              <SkeletonShimmer className="h-8 w-8 rounded-lg" />
+              <SkeletonShimmer className={`h-5 ${card.width}`} />
+            </div>
+            <div className="p-6 pt-4 space-y-4">
+              {card.rows.map((w, ri) => (
+                <div key={ri} className="flex items-center justify-between">
+                  <SkeletonShimmer className={`h-4 ${w}`} />
+                  <SkeletonShimmer className="h-4 w-20 rounded-full" />
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="p-6 pt-4 space-y-3">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex items-center justify-between">
-                <SkeletonShimmer className="h-4 w-28" />
-                <SkeletonShimmer className="h-4 w-20 rounded-full" />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Security Overview Card — mirrors: Card shadow-lg border-none */}
-        <div className="rounded-lg bg-card shadow-lg overflow-hidden">
-          <div className="p-6 pb-2 flex items-center gap-2">
-            <SkeletonShimmer className="h-8 w-8 rounded-lg" />
-            <SkeletonShimmer className="h-5 w-40" />
-          </div>
-          <div className="p-6 pt-4 space-y-3">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex items-center justify-between">
-                <SkeletonShimmer className="h-4 w-32" />
-                <SkeletonShimmer className="h-5 w-24 rounded" />
-              </div>
-            ))}
-          </div>
-        </div>
+        ))}
       </div>
     </div>
   );
 }
 
-// Table Page Skeleton - for pages with data tables
+// ─── Table Page Skeleton ───────────────────────────────────────────────────────
+
 export function TablePageSkeleton({ title }: { title?: string }) {
   return (
     <div className="p-4 sm:p-6 space-y-6 animate-in fade-in duration-200" data-testid="skeleton-table-page">
       {/* Page Header */}
       <div className="flex items-center justify-between gap-4">
         <div className="space-y-1">
-          <SkeletonShimmer className="h-8 w-48" />
+          <SkeletonShimmer className={`h-8 ${title ? 'w-auto' : 'w-48'}`} style={title ? { width: `${title.length * 12}px` } : undefined} />
           <SkeletonShimmer className="h-4 w-64" />
         </div>
         <div className="flex gap-2">
-          <SkeletonShimmer className="h-10 w-24" />
-          <SkeletonShimmer className="h-10 w-32" />
+          <SkeletonShimmer className="h-9 w-24" />
+          <SkeletonShimmer className="h-9 w-32" />
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <SkeletonShimmer className="h-10 w-64" />
+      {/* Search/Filter bar */}
+      <div className="flex gap-3">
+        <SkeletonShimmer className="h-10 flex-1 max-w-sm" />
         <SkeletonShimmer className="h-10 w-32" />
-        <SkeletonShimmer className="h-10 w-32" />
+        <SkeletonShimmer className="h-10 w-28" />
       </div>
 
       {/* Table */}
       <div className="rounded-lg border bg-card overflow-hidden">
         <div className="flex items-center gap-4 px-4 py-3 bg-muted/50 border-b">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <SkeletonShimmer key={i} className="h-4 flex-1" />
+          {[32, null, null, null, 20].map((w, i) => (
+            <SkeletonShimmer
+              key={i}
+              className={`h-4 ${w ? `w-${w}` : 'flex-1'}`}
+            />
           ))}
         </div>
-        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+        {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="flex items-center gap-4 px-4 py-3 border-b last:border-b-0">
-            {[1, 2, 3, 4, 5].map((j) => (
-              <SkeletonShimmer key={j} className="h-4 flex-1" />
+            {[32, null, null, null, 20].map((w, j) => (
+              <SkeletonShimmer
+                key={j}
+                className={`h-4 ${w ? `w-${w}` : 'flex-1'}`}
+              />
             ))}
           </div>
         ))}
       </div>
-
-      {/* Pagination */}
-      <div className="flex items-center justify-between">
-        <SkeletonShimmer className="h-4 w-32" />
-        <div className="flex gap-2">
-          <SkeletonShimmer className="h-8 w-8" />
-          <SkeletonShimmer className="h-8 w-8" />
-          <SkeletonShimmer className="h-8 w-8" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Form Page Skeleton - for pages with forms
-export function FormPageSkeleton() {
-  return (
-    <div className="p-4 sm:p-6 space-y-6 animate-in fade-in duration-200" data-testid="skeleton-form-page">
-      {/* Page Header */}
-      <div className="space-y-1">
-        <SkeletonShimmer className="h-8 w-48" />
-        <SkeletonShimmer className="h-4 w-96" />
-      </div>
-
-      {/* Form Card */}
-      <div className="rounded-lg border bg-card max-w-2xl">
-        <div className="p-6 space-y-6">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="space-y-2">
-              <SkeletonShimmer className="h-4 w-24" />
-              <SkeletonShimmer className="h-10 w-full" />
-            </div>
-          ))}
-          <div className="flex gap-3 pt-4">
-            <SkeletonShimmer className="h-10 w-24" />
-            <SkeletonShimmer className="h-10 w-20" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Profile Page Skeleton
-export function ProfilePageSkeleton() {
-  return (
-    <div className="p-4 sm:p-6 space-y-6 animate-in fade-in duration-200" data-testid="skeleton-profile-page">
-      {/* Profile Header */}
-      <div className="flex items-center gap-6">
-        <SkeletonShimmer className="h-24 w-24 rounded-full" />
-        <div className="space-y-2">
-          <SkeletonShimmer className="h-8 w-48" />
-          <SkeletonShimmer className="h-4 w-32" />
-          <SkeletonShimmer className="h-6 w-24 rounded-full" />
-        </div>
-      </div>
-
-      {/* Profile Form */}
-      <div className="rounded-lg border bg-card">
-        <div className="p-6 border-b">
-          <SkeletonShimmer className="h-6 w-40" />
-        </div>
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="space-y-2">
-              <SkeletonShimmer className="h-4 w-24" />
-              <SkeletonShimmer className="h-10 w-full" />
-            </div>
-          ))}
-        </div>
-        <div className="p-6 border-t flex justify-end gap-3">
-          <SkeletonShimmer className="h-10 w-20" />
-          <SkeletonShimmer className="h-10 w-28" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Minimal Loading Fallback - for code-splitting lazy load
-export function MinimalLoadingFallback() {
-  return (
-    <div 
-      className="flex items-center justify-center min-h-[200px]" 
-      data-testid="minimal-loading"
-      aria-label="Loading page..."
-    >
-      <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
     </div>
   );
 }
