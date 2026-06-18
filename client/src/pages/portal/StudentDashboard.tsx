@@ -350,7 +350,7 @@ export default function StudentDashboard() {
       />
 
       {/* Stats Cards — Class Position · Pending Assignments · Academic Average · Attendance */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
 
         {/* 1 — Class Position */}
         <StatCardShell glowColor="from-yellow-500/10 to-transparent" animationDuration={500} data-testid="card-rank">
@@ -358,7 +358,7 @@ export default function StudentDashboard() {
             <div className="min-w-0">
               <p className="text-xs sm:text-sm text-muted-foreground mb-1">Class Position</p>
               <div className="flex items-baseline gap-1 sm:gap-2">
-                <span className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent" data-testid="text-class-position">
+                <span className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent" data-testid="text-class-position">
                   {classPositionLabel}
                 </span>
                 <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600" />
@@ -381,7 +381,7 @@ export default function StudentDashboard() {
                 <p className="text-xs sm:text-sm text-muted-foreground mb-1">Pending Assignments</p>
                 <AnimatedCounter
                   value={pendingAssignmentsCount}
-                  className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent"
+                  className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent"
                 />
                 <p className="text-[10px] sm:text-xs mt-1 sm:mt-2">
                   {pendingAssignmentsCount === 0 ? (
@@ -419,7 +419,7 @@ export default function StudentDashboard() {
                 <AnimatedCounter
                   value={displayScore}
                   suffix="%"
-                  className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-primary/90 bg-clip-text text-transparent"
+                  className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-primary/90 bg-clip-text text-transparent"
                 />
                 <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-600" />
               </div>
@@ -448,7 +448,7 @@ export default function StudentDashboard() {
                 <AnimatedCounter
                   value={attendancePercentage}
                   suffix="%"
-                  className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent"
+                  className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent"
                 />
                 {attendanceImprovement && (
                   <Award className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />

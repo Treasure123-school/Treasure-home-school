@@ -41,7 +41,7 @@ export function StatCardShell({
           glowColor,
         )}
       />
-      <CardContent className="p-4 sm:p-6 relative z-10">
+      <CardContent className="p-5 sm:p-6 relative z-10">
         {children}
       </CardContent>
     </Card>

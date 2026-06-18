@@ -69,7 +69,7 @@ export function GradientStatCard({
               <AnimatedCounter
                 value={value}
                 className={cn(
-                  "text-2xl sm:text-4xl font-bold bg-gradient-to-r bg-clip-text text-transparent",
+                  "text-3xl sm:text-4xl font-bold bg-gradient-to-r bg-clip-text text-transparent",
                   textGradient,
                 )}
               />
