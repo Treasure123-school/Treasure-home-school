@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Save, Loader2, Info } from 'lucide-react';
+import { Save, Loader2, X, Circle } from 'lucide-react';
 
 interface SaveBarProps {
   pendingCount: number;
@@ -10,28 +10,40 @@ interface SaveBarProps {
 
 export function SaveBar({ pendingCount, isSaving, onSave, onDiscard }: SaveBarProps) {
   return (
-    <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4">
-      <div className="flex items-center justify-between gap-4 px-5 py-3.5 rounded-2xl bg-white dark:bg-slate-900 border border-amber-200 dark:border-amber-700 shadow-xl shadow-black/10 dark:shadow-black/40">
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center shrink-0">
-            <Info className="w-4 h-4 text-amber-600 dark:text-amber-400" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-foreground leading-tight">Unsaved changes</p>
-            <p className="text-xs text-muted-foreground">
-              {pendingCount} modification{pendingCount !== 1 ? 's' : ''} pending
-            </p>
-          </div>
+    <div className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-sm px-4 sm:px-0">
+      <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-card border border-border shadow-lg shadow-black/8 dark:shadow-black/30">
+        {/* Dot indicator */}
+        <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
+
+        {/* Label */}
+        <div className="flex-1 min-w-0">
+          <span className="text-sm font-medium text-foreground">
+            {pendingCount} unsaved change{pendingCount !== 1 ? 's' : ''}
+          </span>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Button variant="outline" size="sm" onClick={onDiscard} disabled={isSaving} className="h-8 px-3 text-xs">
-            Discard
+
+        {/* Actions */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onDiscard}
+            disabled={isSaving}
+            className="h-7 px-2.5 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-3.5 h-3.5 sm:mr-1" />
+            <span className="hidden sm:inline">Discard</span>
           </Button>
-          <Button size="sm" onClick={onSave} disabled={isSaving} className="h-8 px-4 text-xs gap-1.5 shadow-sm">
+          <Button
+            size="sm"
+            onClick={onSave}
+            disabled={isSaving}
+            className="h-7 px-3 text-xs gap-1.5"
+          >
             {isSaving ? (
               <>
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Saving…
+                <span className="hidden sm:inline">Saving…</span>
               </>
             ) : (
               <>

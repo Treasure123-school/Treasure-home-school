@@ -44,25 +44,20 @@ export function LevelSwitcher({ groups, value, onChange }: LevelSwitcherProps) {
         </Select>
       </div>
 
-      {/* Desktop: TabsList */}
+      {/* Desktop: shared TabsList */}
       <Tabs value={value} onValueChange={onChange} className="hidden sm:block">
         <TabsList
-          className="w-full h-11 p-1 rounded-xl"
           style={{ display: 'grid', gridTemplateColumns: `repeat(${groups.length}, 1fr)` }}
         >
           {groups.map((group) => {
             const Icon = LEVEL_ICONS[group.level.toLowerCase()] ?? BookOpen;
             return (
-              <TabsTrigger
-                key={group.level}
-                value={group.level}
-                className="flex items-center justify-center gap-1.5 rounded-lg text-sm font-medium"
-              >
+              <TabsTrigger key={group.level} value={group.level}>
                 <Icon className="w-4 h-4 shrink-0" />
                 <span className="truncate">{group.label}</span>
-                <Badge variant="secondary" className="text-xs ml-0.5 px-1.5 shrink-0">
+                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-muted-foreground/15 text-[10px] font-bold leading-none shrink-0">
                   {group.classes.length}
-                </Badge>
+                </span>
               </TabsTrigger>
             );
           })}
