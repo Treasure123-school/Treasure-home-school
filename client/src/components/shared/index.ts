@@ -19,3 +19,4 @@ export { AppBadge } from "./Badge";
 export { UserDistributionCard } from "./UserDistributionCard";
 export type { DistributionEntry } from "./UserDistributionCard";
 export { AppPagination } from "./Pagination";
+export { ExamCard } from "./ExamCard";

@@ -348,13 +348,38 @@ export default function AttendanceManagement() {
       {/* ── Stat cards ───────────────────────────────────────────────────── */}
       <SummaryCards overview={overview ?? undefined} loading={overviewLoading} />
 
-      {/* ── Tabs ─────────────────────────────────────────────────────────── */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Tab)}>
+      {/* ── Tabs (desktop) / Filter select (mobile) ──────────────────────── */}
+      {/* Mobile: Select dropdown so labels are always visible */}
+      <div className="sm:hidden">
+        <Select value={activeTab} onValueChange={(v) => setActiveTab(v as Tab)}>
+          <SelectTrigger className="w-full" data-testid="select-tab-mobile">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {tabs.map(tab => (
+              <SelectItem key={tab.id} value={tab.id} data-testid={`tab-option-${tab.id}`}>
+                <span className="flex items-center gap-2">
+                  <tab.icon className="h-3.5 w-3.5" />
+                  {tab.label}
+                  {tab.badge ? (
+                    <span className="ml-1 inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                      {tab.badge}
+                    </span>
+                  ) : null}
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Desktop: full tabs with labels */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Tab)} className="hidden sm:block">
         <TabsList className="w-full">
           {tabs.map(tab => (
-            <TabsTrigger key={tab.id} value={tab.id} data-testid={`tab-${tab.id}`} className="flex-1 flex items-center justify-center gap-1">
+            <TabsTrigger key={tab.id} value={tab.id} data-testid={`tab-${tab.id}`} className="flex-1 flex items-center justify-center gap-1.5">
               <tab.icon className="h-3.5 w-3.5 flex-shrink-0" />
-              <span className="hidden sm:inline">{tab.label}</span>
+              {tab.label}
               {tab.badge ? (
                 <span className="h-4 w-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
                   {tab.badge}

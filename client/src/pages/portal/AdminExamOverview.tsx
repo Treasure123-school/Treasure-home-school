@@ -1,16 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import {
-  Search, Eye, BookOpen, Clock, CheckCircle, FileText,
-  AlertCircle, Calendar, GraduationCap, User,
+  Search, BookOpen, CheckCircle, FileText,
+  AlertCircle, Play,
 } from 'lucide-react';
-import { format } from 'date-fns';
+import { MiniStatCard, MiniStatGrid, ExamCard } from '@/components/shared';
 import type { Exam, Class, Subject } from '@shared/schema';
 
 export default function AdminExamOverview() {
@@ -38,7 +36,7 @@ export default function AdminExamOverview() {
   const getClassName = (id: number) => (classes as any[]).find(c => c.id === id)?.name ?? 'Unknown';
   const getSubjectName = (id: number) => (subjects as any[]).find(s => s.id === id)?.name ?? 'Unknown';
   const getTeacherName = (id: string | null) => {
-    if (!id) return 'Not assigned';
+    if (!id) return 'Unknown';
     const t = (users as any[]).find(u => u.id === id);
     return t ? `${t.firstName} ${t.lastName}` : 'Unknown';
   };
@@ -46,6 +44,11 @@ export default function AdminExamOverview() {
   const totalExams = exams.length;
   const publishedExams = exams.filter(e => e.isPublished).length;
   const draftExams = exams.filter(e => !e.isPublished).length;
+  const scheduledExams = exams.filter((exam: any) => {
+    if (exam.timerMode !== 'global' || !exam.startTime || !exam.endTime) return false;
+    const now = new Date();
+    return now >= new Date(exam.startTime) && now <= new Date(exam.endTime) || now < new Date(exam.startTime);
+  }).length;
 
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto space-y-6">
@@ -60,23 +63,36 @@ export default function AdminExamOverview() {
       </div>
 
       {/* ── Stats ── */}
-      <div className="grid grid-cols-3 gap-3">
-        {[
-          { label: 'Total Exams', value: totalExams, icon: BookOpen, color: 'text-primary', testId: 'card-total-exams', valId: 'text-total-exams' },
-          { label: 'Published', value: publishedExams, icon: CheckCircle, color: 'text-green-600', testId: 'card-published-exams', valId: 'text-published-exams' },
-          { label: 'Drafts', value: draftExams, icon: FileText, color: 'text-orange-500', testId: 'card-draft-exams', valId: 'text-draft-exams' },
-        ].map(s => (
-          <Card key={s.label} className="p-4" data-testid={s.testId}>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">{s.label}</p>
-                <p className={`text-2xl font-bold ${s.color}`} data-testid={s.valId}>{s.value}</p>
-              </div>
-              <s.icon className={`h-7 w-7 ${s.color} opacity-70`} />
-            </div>
-          </Card>
-        ))}
-      </div>
+      <MiniStatGrid cols={4}>
+        <MiniStatCard
+          label="Total Exams"
+          value={totalExams}
+          icon={BookOpen}
+          color="text-primary"
+          data-testid="card-total-exams"
+        />
+        <MiniStatCard
+          label="Published"
+          value={publishedExams}
+          icon={CheckCircle}
+          color="text-green-600"
+          data-testid="card-published-exams"
+        />
+        <MiniStatCard
+          label="Drafts"
+          value={draftExams}
+          icon={FileText}
+          color="text-orange-500"
+          data-testid="card-draft-exams"
+        />
+        <MiniStatCard
+          label="Scheduled"
+          value={scheduledExams}
+          icon={Play}
+          color="text-purple-600"
+          data-testid="card-scheduled-exams"
+        />
+      </MiniStatGrid>
 
       {/* ── Filters ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -131,68 +147,15 @@ export default function AdminExamOverview() {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {filteredExams.map(exam => (
-              <Card
+              <ExamCard
                 key={exam.id}
-                className="group hover:border-primary/40 hover:shadow-sm transition-all"
+                exam={exam}
+                className={getClassName(exam.classId)}
+                subjectName={getSubjectName(exam.subjectId)}
+                teacherName={getTeacherName(exam.createdBy ?? null)}
+                onView={() => navigate(`/portal/admin/exams/analysis/${exam.id}`)}
                 data-testid={`row-exam-${exam.id}`}
-              >
-                <CardContent className="p-4 space-y-3">
-                  {/* Name + status */}
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="font-semibold text-sm leading-snug" data-testid={`text-exam-name-${exam.id}`}>
-                      {exam.name}
-                    </p>
-                    {exam.isPublished ? (
-                      <Badge className="shrink-0 bg-green-600 text-white text-[10px]" data-testid={`badge-status-${exam.id}`}>
-                        <CheckCircle className="h-3 w-3 mr-1" /> Published
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="shrink-0 text-[10px]" data-testid={`badge-status-${exam.id}`}>
-                        <FileText className="h-3 w-3 mr-1" /> Draft
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* Meta grid */}
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                      <GraduationCap className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate">{getClassName(exam.classId)}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <BookOpen className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate">{getSubjectName(exam.subjectId)}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <User className="h-3.5 w-3.5 shrink-0" />
-                      <span className="truncate">{getTeacherName(exam.createdBy ?? null)}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5 shrink-0" />
-                      <span>{exam.timeLimit ? `${exam.timeLimit} min` : 'N/A'}</span>
-                    </div>
-                    {exam.date && (
-                      <div className="flex items-center gap-1.5 col-span-2">
-                        <Calendar className="h-3.5 w-3.5 shrink-0" />
-                        <span>{format(new Date(exam.date), 'MMM dd, yyyy')}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* View button */}
-                  <div className="pt-1 border-t border-border/50">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full h-8 text-xs justify-center"
-                      onClick={() => navigate(`/portal/admin/exams/analysis/${exam.id}`)}
-                      data-testid={`button-view-${exam.id}`}
-                    >
-                      <Eye className="h-3.5 w-3.5 mr-1.5" /> View Details
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+              />
             ))}
           </div>
           <p className="text-xs text-muted-foreground text-right">
