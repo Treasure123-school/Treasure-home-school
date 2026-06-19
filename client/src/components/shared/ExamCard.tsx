@@ -13,8 +13,12 @@ interface ExamCardProps {
   className: string;
   subjectName: string;
   teacherName?: string;
+  /** Label + handler for the primary footer button. Defaults to "View Details". */
+  primaryLabel?: string;
+  primaryIcon?: React.ElementType;
   onView?: () => void;
-  actions?: React.ReactNode;
+  /** Optional icon button rendered to the right of the primary button (e.g. a ⋮ menu). */
+  secondaryAction?: React.ReactNode;
   'data-testid'?: string;
 }
 
@@ -23,17 +27,21 @@ export function ExamCard({
   className,
   subjectName,
   teacherName,
+  primaryLabel = 'View Details',
+  primaryIcon: PrimaryIcon = Eye,
   onView,
-  actions,
+  secondaryAction,
   'data-testid': testId,
 }: ExamCardProps) {
+  const showFooter = onView || secondaryAction;
+
   return (
     <Card
       className="group hover:border-primary/40 hover:shadow-sm transition-all"
       data-testid={testId}
     >
       <CardContent className="p-4 space-y-3">
-        {/* Name + status */}
+        {/* Name + status badge */}
         <div className="flex items-start justify-between gap-2">
           <p className="font-semibold text-sm leading-snug">
             {exam.name}
@@ -77,19 +85,19 @@ export function ExamCard({
           )}
         </div>
 
-        {/* Footer */}
-        {(onView || actions) && (
-          <div className="pt-1 border-t border-border/50">
-            {actions ?? (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full h-8 text-xs justify-center"
-                onClick={onView}
-              >
-                <Eye className="h-3.5 w-3.5 mr-1.5" /> View Details
-              </Button>
-            )}
+        {/* Footer — matches ExamManagement card pattern: outline flex-1 + optional icon btn */}
+        {showFooter && (
+          <div className="pt-1 border-t border-border/50 flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={onView}
+            >
+              <PrimaryIcon className="h-4 w-4 mr-1.5" />
+              {primaryLabel}
+            </Button>
+            {secondaryAction}
           </div>
         )}
       </CardContent>
