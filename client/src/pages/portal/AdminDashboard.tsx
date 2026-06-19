@@ -109,8 +109,8 @@ export default function AdminDashboard() {
     { title: 'User Management', icon: Users, href: '/portal/admin/users' },
     { title: 'Manage Students', icon: GraduationCap, href: '/portal/admin/students' },
     { title: 'Manage Exams', icon: FileText, href: '/portal/admin/exams' },
-    { title: 'Create Class', icon: School, href: '/portal/admin/classes/add' },
-    { title: 'Send Announcement', icon: MessageSquare, href: '/portal/admin/announcements/add' },
+    { title: 'Create Class', icon: School, href: '/portal/admin/classes' },
+    { title: 'Send Announcement', icon: MessageSquare, href: '/portal/admin/announcements' },
     { title: 'Generate Report', icon: BarChart3, href: '/portal/admin/reports' },
   ];
 
