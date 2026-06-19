@@ -11,8 +11,7 @@ import {
   Circle, Wifi, WifiOff, ArrowRight,
 } from 'lucide-react';
 import { Link } from 'wouter';
-import { DashboardHeader, GradientStatCard, QuickActionGrid } from "@/components/shared";
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { DashboardHeader, GradientStatCard, QuickActionGrid, UserDistributionCard } from "@/components/shared";
 import { useLoginSuccess } from '@/hooks/use-login-success';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { getSharedSocket } from '@/hooks/useSocketIORealtime';
@@ -190,94 +189,12 @@ export default function AdminDashboard() {
 
       {/* User Distribution + Live Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* User Distribution Chart — Redesigned */}
-        <Card className="lg:col-span-2 shadow-md border border-border overflow-hidden" data-testid="card-user-distribution">
-          {/* Card header with gradient accent */}
-          <div className="bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-2 text-white">
-              <BarChart3 className="h-5 w-5" />
-              <h3 className="font-semibold text-base">User Distribution</h3>
-              <span className="text-indigo-200 text-sm">— by role</span>
-            </div>
-            <span
-              className="bg-white/20 backdrop-blur-sm text-white text-sm font-bold px-3 py-1 rounded-full border border-white/30"
-              data-testid="badge-total-users"
-            >
-              {allUsers.length} total
-            </span>
-          </div>
-
-          <CardContent className="p-5">
-            <div className="flex flex-col sm:flex-row items-center gap-6">
-              {/* Donut chart with center label */}
-              <div className="relative shrink-0 w-[180px] h-[180px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={roleDistribution.length > 0 ? roleDistribution : [{ name: 'No data', value: 1, color: '#e5e7eb' }]}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={58}
-                      outerRadius={80}
-                      paddingAngle={roleDistribution.length > 1 ? 4 : 0}
-                      dataKey="value"
-                      strokeWidth={2}
-                      stroke="hsl(var(--background))"
-                    >
-                      {(roleDistribution.length > 0 ? roleDistribution : [{ name: 'No data', value: 1, color: '#e5e7eb' }]).map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{ borderRadius: '8px', fontSize: '12px', border: '1px solid hsl(var(--border))' }}
-                      formatter={(value: any, name: any) => [
-                        `${value} (${allUsers.length > 0 ? Math.round((value / allUsers.length) * 100) : 0}%)`,
-                        name,
-                      ]}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                {/* Center label overlay */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                  <span className="text-3xl font-bold text-foreground leading-none">{allUsers.length}</span>
-                  <span className="text-[11px] text-muted-foreground mt-1 font-medium">Users</span>
-                </div>
-              </div>
-
-              {/* Per-role breakdown rows */}
-              <div className="flex-1 w-full space-y-3">
-                {roleDistribution.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">No users registered yet.</p>
-                ) : (
-                  roleDistribution.map((role) => {
-                    const pct = allUsers.length > 0 ? Math.round((role.value / allUsers.length) * 100) : 0;
-                    return (
-                      <div key={role.name} className="space-y-1">
-                        <div className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-2">
-                            <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: role.color }} />
-                            <span className="font-medium text-foreground">{role.name}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-muted-foreground text-xs">{pct}%</span>
-                            <span className="font-bold text-foreground w-7 text-right">{role.value}</span>
-                          </div>
-                        </div>
-                        {/* Progress bar */}
-                        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all duration-700"
-                            style={{ width: `${pct}%`, backgroundColor: role.color }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <UserDistributionCard
+          entries={roleDistribution}
+          total={allUsers.length}
+          className="lg:col-span-2"
+          data-testid="card-user-distribution"
+        />
 
         {/* Live Activity Panel + Quick Stats */}
         <div className="space-y-6">
