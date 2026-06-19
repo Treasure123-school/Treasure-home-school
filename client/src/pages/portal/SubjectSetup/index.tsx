@@ -186,7 +186,7 @@ export default function SubjectSetup() {
           </p>
         </div>
         {state.hasPendingChanges && (
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="hidden sm:flex items-center gap-1.5 shrink-0">
             <Button variant="outline" size="sm" onClick={handleDiscard} disabled={isSaving} className="h-8 px-2.5 text-xs sm:px-3">
               <span className="hidden sm:inline">Discard</span>
               <span className="sm:hidden">✕</span>
