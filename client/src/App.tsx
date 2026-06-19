@@ -79,13 +79,13 @@ function hexToHslComponents(hex: string): { h: number; s: number; l: number } | 
 }
 
 function BrandColorSync() {
-  // staleTime=0 ensures the query is always considered stale and will refetch
-  // whenever queryClient.invalidateQueries / refetchQueries is called from the
-  // branding page, giving instant color updates without any caching delay.
+  // staleTime=5min — brand color changes are pushed via explicit invalidateQueries
+  // from the branding page, so we don't need staleTime:0 here (which caused a
+  // fresh network request on every page load for every consumer of this query).
   const { data: settings } = useQuery<SystemSettings>({
     queryKey: ['/api/public/settings'],
-    staleTime: 0,
-    refetchOnWindowFocus: true,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {

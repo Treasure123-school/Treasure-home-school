@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'wouter';
 import { Menu, X, Phone, Mail, MapPin, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ContactUtils } from '@shared/contact-utils';
@@ -26,6 +27,8 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
   
   const { data: settings } = useQuery<SettingsData>({
     queryKey: ["/api/public/settings"],
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
   });
 
   useEffect(() => {
@@ -88,21 +91,39 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
         <div className="container max-w-7xl mx-auto px-4 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Link href="/" className="flex items-center gap-4" onClick={() => setIsMobileMenuOpen(false)}>
-              {settings?.schoolLogo ? (
-                <img 
-                  src={settings.schoolLogo} 
-                  alt="Logo" 
-                  className="h-20 w-auto object-contain" 
-                />
-              ) : null}
-              <div className="flex flex-col">
-                <span className="font-display text-gray-900 font-bold text-xl md:text-2xl tracking-tight leading-tight">
-                  {schoolName}
-                </span>
-                {settings?.schoolMotto && (
-                  <span className="text-primary text-[10px] md:text-xs font-semibold tracking-wider uppercase">
-                    {settings.schoolMotto}
-                  </span>
+              {/* Logo — fixed-size container prevents layout shift */}
+              <div className="h-20 w-20 shrink-0 flex items-center justify-center">
+                {settings?.schoolLogo ? (
+                  <img
+                    src={settings.schoolLogo}
+                    alt="Logo"
+                    className="h-20 w-auto object-contain"
+                    // @ts-ignore — fetchpriority is a valid HTML attribute; React<18.3 passes it through as-is
+                    fetchpriority="high"
+                    decoding="async"
+                  />
+                ) : settings === undefined ? (
+                  <Skeleton className="h-16 w-16 rounded-full" />
+                ) : null}
+              </div>
+              {/* School name + motto */}
+              <div className="flex flex-col gap-1">
+                {settings === undefined ? (
+                  <>
+                    <Skeleton className="h-5 w-40" />
+                    <Skeleton className="h-3 w-28" />
+                  </>
+                ) : (
+                  <>
+                    <span className="font-display text-gray-900 font-bold text-xl md:text-2xl tracking-tight leading-tight">
+                      {schoolName}
+                    </span>
+                    {settings?.schoolMotto && (
+                      <span className="text-primary text-[10px] md:text-xs font-semibold tracking-wider uppercase">
+                        {settings.schoolMotto}
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
             </Link>
