@@ -90,7 +90,7 @@ function DeptTab({ dept, classes, allSubjects, isAssigned, pendingChanges, pendi
         visibleSubjects={filteredSubjects.length}
       />
 
-      <Accordion type="multiple" className="space-y-2">
+      <Accordion type="single" collapsible className="space-y-2">
         {classes.map((cls) => (
           <ClassAccordionItem
             key={cls.id}

@@ -186,20 +186,21 @@ export default function SubjectSetup() {
           </p>
         </div>
         {state.hasPendingChanges && (
-          <div className="flex items-center gap-2 shrink-0">
-            <Button variant="outline" size="sm" onClick={handleDiscard} disabled={isSaving}>
-              Discard
+          <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+            <Button variant="outline" size="sm" onClick={handleDiscard} disabled={isSaving} className="h-8 px-2.5 text-xs sm:px-3">
+              <span className="hidden sm:inline">Discard</span>
+              <span className="sm:hidden">✕</span>
             </Button>
-            <Button size="sm" onClick={handleSave} disabled={isSaving} className="gap-1.5 shadow-sm">
+            <Button size="sm" onClick={handleSave} disabled={isSaving} className="h-8 px-2.5 sm:px-3 text-xs gap-1.5">
               {isSaving ? (
-                <><Loader2 className="w-3.5 h-3.5 animate-spin" />Saving…</>
+                <><Loader2 className="w-3.5 h-3.5 animate-spin" /><span className="hidden sm:inline">Saving…</span></>
               ) : (
                 <>
                   <Save className="w-3.5 h-3.5" />
                   Save
-                  <Badge variant="secondary" className="text-xs ml-0.5">
+                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-primary-foreground/20 text-[10px] font-bold leading-none">
                     {state.pendingCount}
-                  </Badge>
+                  </span>
                 </>
               )}
             </Button>

@@ -10499,12 +10499,16 @@ School Management System Administration
     try {
       const cacheKey = 'public:settings';
       const cached = enhancedCache.get(cacheKey);
-      if (cached) return res.json(cached);
+      if (cached) {
+        res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
+        return res.json(cached);
+      }
 
       const settings = await storage.getSystemSettings();
       if (settings) {
         enhancedCache.set(cacheKey, settings, 3600); // 1 hour cache
       }
+      res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=60');
       res.json(settings || {});
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch public settings' });

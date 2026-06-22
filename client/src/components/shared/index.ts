@@ -16,4 +16,7 @@ export { DataTable } from "./DataTable";
 export type { DataTableColumn } from "./DataTable";
 export { Alert } from "./Alert";
 export { AppBadge } from "./Badge";
+export { UserDistributionCard } from "./UserDistributionCard";
+export type { DistributionEntry } from "./UserDistributionCard";
 export { AppPagination } from "./Pagination";
+export { ExamCard } from "./ExamCard";

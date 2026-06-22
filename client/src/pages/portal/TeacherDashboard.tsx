@@ -325,7 +325,7 @@ export default function TeacherDashboard() {
         items={[
           { title: "Create Exam", icon: ClipboardList, href: "/portal/teacher/exams" },
           { title: "Take Attendance", icon: UserCheck, href: "/portal/teacher/attendance" },
-          { title: "Create Announcement", icon: Bell, href: "/portal/announcements" },
+          { title: "Create Announcement", icon: Bell, href: "/portal/teacher/announcements" },
         ]}
       />
 
