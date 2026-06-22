@@ -22,25 +22,7 @@ import {
 import {
   Plus, Trash2, Edit, BookOpen, Layers, Globe, EyeOff, Filter, ChevronRight, MoreHorizontal, Loader2,
 } from 'lucide-react';
-
-function StatCard({ icon: Icon, label, value, iconClass, loading }: {
-  icon: any; label: string; value: any; iconClass: string; loading?: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-3 p-3 rounded-xl border bg-card">
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${iconClass}`}>
-        <Icon className="w-4 h-4" />
-      </div>
-      <div className="min-w-0">
-        {loading
-          ? <Skeleton className="h-5 w-10 mb-1" />
-          : <p className="text-lg font-bold leading-tight">{value ?? '—'}</p>
-        }
-        <p className="text-xs text-muted-foreground truncate">{label}</p>
-      </div>
-    </div>
-  );
-}
+import { PageHeader, MiniStatCard, MiniStatGrid } from '@/components/shared';
 
 export default function SyllabusTopicsManager() {
   const { toast } = useToast();
@@ -289,34 +271,28 @@ export default function SyllabusTopicsManager() {
   const isSaving = createMutation.isPending || updateMutation.isPending || bulkMutation.isPending;
 
   return (
-    <div className="min-h-screen bg-background">
-
-      {/* ── Content ─────────────────────────────────────── */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
+    <>
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-5">
 
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-              <Layers className="h-6 w-6 text-primary" />
-              Scheme of Work
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">Define and publish curriculum topics per class, subject, and term</p>
-          </div>
-          {filtersSet && (
+        <PageHeader
+          title="Scheme of Work"
+          description="Define and publish curriculum topics per class, subject, and term"
+          icon={Layers}
+          actions={filtersSet ? (
             <Button onClick={() => { resetForm(); setIsDialogOpen(true); }} className="w-full sm:w-auto shrink-0" data-testid="btn-add-topic">
               <Plus className="w-4 h-4 mr-1.5" /> Add Topics
             </Button>
-          )}
-        </div>
+          ) : undefined}
+        />
 
         {/* Stat Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard icon={Layers} label="Total Topics" value={stats?.total} iconClass="bg-primary/5 dark:bg-primary/5 text-primary" loading={!stats} />
-          <StatCard icon={Globe} label="Published" value={stats?.published} iconClass="bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600" loading={!stats} />
-          <StatCard icon={EyeOff} label="Drafts" value={stats?.draft} iconClass="bg-amber-50 dark:bg-amber-950/40 text-amber-600" loading={!stats} />
-          <StatCard icon={BookOpen} label="Subjects" value={stats?.subjects} iconClass="bg-violet-50 dark:bg-violet-950/40 text-violet-600" loading={!stats} />
-        </div>
+        <MiniStatGrid cols={4}>
+          <MiniStatCard icon={Layers} label="Total Topics" value={stats?.total ?? '—'} color="text-primary" data-testid="stat-total-topics" />
+          <MiniStatCard icon={Globe} label="Published" value={stats?.published ?? '—'} color="text-emerald-600" data-testid="stat-published" />
+          <MiniStatCard icon={EyeOff} label="Drafts" value={stats?.draft ?? '—'} color="text-amber-600" data-testid="stat-drafts" />
+          <MiniStatCard icon={BookOpen} label="Subjects" value={stats?.subjects ?? '—'} color="text-violet-600" data-testid="stat-subjects" />
+        </MiniStatGrid>
 
         {/* Filter Card */}
         <SectionCard icon={Filter} title="Filter Context" subtitle="— select all three to load topics">
@@ -619,6 +595,6 @@ export default function SyllabusTopicsManager() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }
