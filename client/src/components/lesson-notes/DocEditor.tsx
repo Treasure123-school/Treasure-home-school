@@ -184,10 +184,24 @@ function TSelect({
   options: { label: string; value: string }[]; width?: string; title: string;
 }) {
   const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const current = options.find(o => o.value === value);
 
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler, true);
+    document.addEventListener('touchstart', handler, true);
+    return () => {
+      document.removeEventListener('mousedown', handler, true);
+      document.removeEventListener('touchstart', handler, true);
+    };
+  }, [open]);
+
   return (
-    <div className={`relative ${width} shrink-0`}>
+    <div ref={containerRef} className={`relative ${width} shrink-0`}>
       <Tooltip>
         <TooltipTrigger asChild>
           <button
@@ -202,27 +216,23 @@ function TSelect({
       </Tooltip>
       <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
       {open && (
-        <>
-          {/* Invisible backdrop — closes dropdown on any outside click/tap */}
-          <div className="fixed inset-0 z-[150]" onPointerDown={() => setOpen(false)} />
-          <div className="absolute top-full left-0 mt-1 z-[200] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden min-w-full max-h-52 overflow-y-auto">
-            {options.map(o => (
-              <button
-                key={o.value}
-                type="button"
-                onPointerDown={e => { e.stopPropagation(); onChange(o.value); setOpen(false); }}
-                className={[
-                  'w-full text-left px-3 py-2 text-xs whitespace-nowrap transition-colors',
-                  o.value === value
-                    ? 'bg-primary/5 dark:bg-primary/5 text-primary dark:text-primary/60 font-medium'
-                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800',
-                ].join(' ')}
-              >
-                {o.label}
-              </button>
-            ))}
-          </div>
-        </>
+        <div className="absolute top-full left-0 mt-1 z-[200] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden min-w-full max-h-52 overflow-y-auto">
+          {options.map(o => (
+            <button
+              key={o.value}
+              type="button"
+              onMouseDown={e => { e.preventDefault(); onChange(o.value); setOpen(false); }}
+              className={[
+                'w-full text-left px-3 py-2 text-xs whitespace-nowrap transition-colors',
+                o.value === value
+                  ? 'bg-primary/5 dark:bg-primary/5 text-primary dark:text-primary/60 font-medium'
+                  : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800',
+              ].join(' ')}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -274,6 +284,20 @@ function ColorPicker({ value, colors, onChange, icon: Icon, title }: {
 }) {
   const [open, setOpen] = useState(false);
   const [hexInput, setHexInput] = useState('');
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler, true);
+    document.addEventListener('touchstart', handler, true);
+    return () => {
+      document.removeEventListener('mousedown', handler, true);
+      document.removeEventListener('touchstart', handler, true);
+    };
+  }, [open]);
 
   const applyHex = () => {
     const v = hexInput.startsWith('#') ? hexInput : '#' + hexInput;
@@ -282,7 +306,7 @@ function ColorPicker({ value, colors, onChange, icon: Icon, title }: {
 
   const cols = 10;
   return (
-    <div className="relative shrink-0">
+    <div ref={containerRef} className="relative shrink-0">
       <Tooltip>
         <TooltipTrigger asChild>
           <button
@@ -298,54 +322,50 @@ function ColorPicker({ value, colors, onChange, icon: Icon, title }: {
       </Tooltip>
 
       {open && (
-        <>
-          {/* Invisible backdrop — closes on outside click/tap */}
-          <div className="fixed inset-0 z-[150]" onPointerDown={() => setOpen(false)} />
-          {/* Dropdown anchored to the right edge so it never overflows screen on mobile */}
-          <div className="absolute top-full right-0 mt-1 z-[200] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-3 w-[252px] max-w-[calc(100vw-24px)]">
-            {/* Color grid */}
-            <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
-              {colors.map((c, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  onPointerDown={e => { e.stopPropagation(); onChange(c); setOpen(false); }}
-                  className={[
-                    'rounded transition-transform hover:scale-125 focus:outline-none border',
-                    value === c ? 'ring-2 ring-offset-1 ring-primary scale-110' : 'border-gray-200 dark:border-gray-600',
-                    c === '#ffffff' ? 'border-gray-300' : '',
-                  ].join(' ')}
-                  style={{ background: c, width: 20, height: 20 }}
-                  title={c}
-                />
-              ))}
-            </div>
-
-            {/* Spectrum gradient bar */}
-            <div className="mt-3">
-              <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-wide font-medium">Spectrum</p>
-              <div
-                className="w-full h-5 rounded cursor-crosshair border border-gray-200 dark:border-gray-600"
-                style={{ background: 'linear-gradient(to right, #ff0000, #ff8000, #ffff00, #00ff00, #00ffff, #0000ff, #8000ff, #ff00ff, #ff0080, #ff0000)' }}
-                onPointerDown={e => {
-                  e.stopPropagation();
-                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                  const x = (e.clientX - rect.left) / rect.width;
-                  const hue = Math.round(x * 360);
-                  const hex = `hsl(${hue},100%,50%)`;
-                  const tmp = document.createElement('canvas'); tmp.width = 1; tmp.height = 1;
-                  const ctx = tmp.getContext('2d')!;
-                  ctx.fillStyle = hex; ctx.fillRect(0,0,1,1);
-                  const [r,g,b] = ctx.getImageData(0,0,1,1).data;
-                  onChange(`#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`);
-                  setOpen(false);
-                }}
+        <div className="absolute top-full right-0 mt-1 z-[200] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-3 w-[252px] max-w-[calc(100vw-16px)]">
+          {/* Color grid */}
+          <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+            {colors.map((c, i) => (
+              <button
+                key={i}
+                type="button"
+                onMouseDown={e => { e.preventDefault(); onChange(c); setOpen(false); }}
+                className={[
+                  'rounded transition-transform hover:scale-125 focus:outline-none border',
+                  value === c ? 'ring-2 ring-offset-1 ring-primary scale-110' : 'border-gray-200 dark:border-gray-600',
+                  c === '#ffffff' ? 'border-gray-300' : '',
+                ].join(' ')}
+                style={{ background: c, width: 20, height: 20 }}
+                title={c}
               />
-            </div>
+            ))}
+          </div>
 
-            {/* Hex input — stopPropagation so typing doesn't close the picker */}
-            <div className="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-700 flex items-center gap-2"
-              onPointerDown={e => e.stopPropagation()}>
+          {/* Spectrum gradient bar */}
+          <div className="mt-3">
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-wide font-medium">Spectrum</p>
+            <div
+              className="w-full h-5 rounded cursor-crosshair border border-gray-200 dark:border-gray-600"
+              style={{ background: 'linear-gradient(to right, #ff0000, #ff8000, #ffff00, #00ff00, #00ffff, #0000ff, #8000ff, #ff00ff, #ff0080, #ff0000)' }}
+              onMouseDown={e => {
+                e.preventDefault();
+                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                const x = (e.clientX - rect.left) / rect.width;
+                const hue = Math.round(x * 360);
+                const hex = `hsl(${hue},100%,50%)`;
+                const tmp = document.createElement('canvas'); tmp.width = 1; tmp.height = 1;
+                const ctx = tmp.getContext('2d')!;
+                ctx.fillStyle = hex; ctx.fillRect(0,0,1,1);
+                const [r,g,b] = ctx.getImageData(0,0,1,1).data;
+                onChange(`#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`);
+                setOpen(false);
+              }}
+            />
+          </div>
+
+          {/* Hex input row — contained fully inside the panel */}
+          <div className="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-1.5">
               <div className="w-6 h-6 rounded border border-gray-300 dark:border-gray-600 shrink-0" style={{ background: hexInput ? (hexInput.startsWith('#') ? hexInput : '#' + hexInput) : (value || '#000') }} />
               <input
                 type="text"
@@ -353,19 +373,20 @@ function ColorPicker({ value, colors, onChange, icon: Icon, title }: {
                 placeholder="#000000"
                 value={hexInput}
                 onChange={e => setHexInput(e.target.value)}
+                onMouseDown={e => e.stopPropagation()}
                 onKeyDown={e => { if (e.key === 'Enter') applyHex(); }}
                 className="flex-1 min-w-0 text-xs border border-gray-200 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-mono focus:outline-none focus:ring-1 focus:ring-primary/70"
               />
               <button
                 type="button"
-                onPointerDown={e => { e.stopPropagation(); applyHex(); }}
-                className="shrink-0 text-xs bg-primary hover:bg-primary/90 text-white px-2 py-1 rounded transition-colors whitespace-nowrap"
+                onMouseDown={e => { e.preventDefault(); applyHex(); }}
+                className="shrink-0 text-xs bg-primary hover:bg-primary/90 text-white px-2.5 py-1 rounded transition-colors font-medium"
               >
                 OK
               </button>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -380,7 +401,8 @@ function FloatingSelectionMenu({ editor }: { editor: any }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const linkInputRef = useRef<HTMLInputElement>(null);
   const frozenRef = useRef(false);          // true while link input is open
-  const savedSelRef = useRef<any>(null);    // saved editor Selection when link opens
+  const savedFrom = useRef<number>(0);      // saved selection start position
+  const savedTo = useRef<number>(0);        // saved selection end position
 
   useEffect(() => {
     if (!editor) return;
@@ -424,8 +446,10 @@ function FloatingSelectionMenu({ editor }: { editor: any }) {
   if (!pos || !editor || editor.isDestroyed) return null;
 
   const openLink = () => {
-    // Save selection before input steals focus
-    savedSelRef.current = editor.state.selection;
+    // Save selection positions before input steals focus
+    const { from, to } = editor.state.selection;
+    savedFrom.current = from;
+    savedTo.current = to;
     frozenRef.current = true;
     setLinkUrl(editor.getAttributes('link').href || '');
     setShowLink(true);
@@ -434,21 +458,25 @@ function FloatingSelectionMenu({ editor }: { editor: any }) {
   };
 
   const applyLink = () => {
-    // Restore the saved selection so extendMarkRange works
-    if (savedSelRef.current) {
-      try { editor.view.dispatch(editor.state.tr.setSelection(savedSelRef.current)); } catch { /* ok */ }
-    }
     const href = linkUrl.trim();
+    const docSize = editor.state.doc.content.size;
+    const from = Math.min(savedFrom.current, docSize - 1);
+    const to   = Math.min(savedTo.current,   docSize - 1);
     if (href) {
       const full = href.startsWith('http') ? href : `https://${href}`;
-      editor.chain().focus().extendMarkRange('link').setLink({ href: full, target: '_blank' }).run();
+      editor.chain().focus()
+        .setTextSelection({ from, to })
+        .extendMarkRange('link')
+        .setLink({ href: full, target: '_blank' })
+        .run();
     }
     closeLink();
   };
 
   const closeLink = () => {
     frozenRef.current = false;
-    savedSelRef.current = null;
+    savedFrom.current = 0;
+    savedTo.current = 0;
     setShowLink(false);
     setLinkUrl('');
     setPos(null);
@@ -775,9 +803,12 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
   return (
     <div className="flex flex-col h-full">
 
-      {/* ── Formatting Toolbar ── */}
+      {/* ── Scrollable area: sticky toolbar + canvas ── */}
+      <div className="flex-1 overflow-y-auto bg-gray-100 dark:bg-gray-950 min-h-0">
+
+      {/* ── Formatting Toolbar (sticky at top of scroll area) ── */}
       {!disabled && (
-        <div className="shrink-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm">
 
           {/* Row 1: History · Block style · Font · Size · Colors */}
           <div className="flex items-center flex-wrap gap-0.5 px-3 py-1.5 border-b border-gray-100 dark:border-gray-800">
@@ -942,20 +973,20 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
       <input ref={imageInputRef} type="file" accept="image/*" className="hidden"
         onChange={ev => { const f = ev.target.files?.[0]; if (f) insertImage(f); ev.target.value = ''; }} />
 
-      {/* ── Editor canvas ── */}
-      <div className="flex-1 overflow-y-auto bg-gray-100 dark:bg-gray-950 min-h-0">
-        <div className="min-h-full py-8 px-4 flex justify-center">
-          <div
-            className="doc-paper relative w-full max-w-4xl bg-white dark:bg-gray-900 shadow-md border border-gray-200 dark:border-gray-700 min-h-[1056px] px-16 py-14"
-            style={{ fontFamily: 'Georgia, serif', '--doc-heading-color': brandColor } as React.CSSProperties}
-          >
-            {/* Floating selection toolbar */}
-            {e && !disabled && <FloatingSelectionMenu editor={e} />}
+      {/* ── Editor canvas (inside the outer scroll container) ── */}
+      <div className="min-h-full py-8 px-4 flex justify-center">
+        <div
+          className="doc-paper relative w-full max-w-4xl bg-white dark:bg-gray-900 shadow-md border border-gray-200 dark:border-gray-700 min-h-[1056px] px-16 py-14"
+          style={{ fontFamily: 'Georgia, serif', '--doc-heading-color': brandColor } as React.CSSProperties}
+        >
+          {/* Floating selection toolbar */}
+          {e && !disabled && <FloatingSelectionMenu editor={e} />}
 
-            <EditorContent editor={editor} />
-          </div>
+          <EditorContent editor={editor} />
         </div>
       </div>
+
+      </div>{/* end outer scroll container */}
 
       {/* ── Status bar: word count + reading time ── */}
       <div className="shrink-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-5 py-1.5 flex items-center gap-4">

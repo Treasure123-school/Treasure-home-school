@@ -180,12 +180,18 @@ export default function LessonNoteEditorPage() {
   const listUrl    = `${basePortal}/lesson-notes`;
   const query      = parseQuery(window.location.search);
 
+  // ── Draft key for localStorage ─────────────────────────────────────────────
+  const draftKey = isEdit && id
+    ? `lesson-note-draft-${id}`
+    : `lesson-note-draft-new-${query.topicId || query.topicName || 'untitled'}`;
+
   // ── Core state ─────────────────────────────────────────────────────────────
   const [title,       setTitle]       = useState(query.topicName || '');
   const [content,     setContent]     = useState('');
   const [initialized, setInitialized] = useState(false);
   const [mode,        setMode]        = useState<'choose' | 'editing'>(isEdit ? 'editing' : 'choose');
   const [saveStatus,  setSaveStatus]  = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
+  const [draftBanner, setDraftBanner] = useState<{ title: string; content: string; savedAt: number } | null>(null);
 
   // AI text generation state
   const [aiLoading,            setAiLoading]            = useState(false);
@@ -243,18 +249,40 @@ export default function LessonNoteEditorPage() {
   });
   const { data: settings } = useQuery<any>({ queryKey: ['/api/public/settings'] });
 
-  // ── Init from existing note ────────────────────────────────────────────────
+  // ── Init from existing note + check for localStorage draft ────────────────
   useEffect(() => {
     if (initialized) return;
     if (isEdit && note) {
       const html = migrateContent(note.content, note.objectives);
+      const serverUpdated = note.updatedAt ? new Date(note.updatedAt).getTime() : 0;
+      // Check for a newer local draft
+      try {
+        const raw = localStorage.getItem(draftKey);
+        if (raw) {
+          const draft = JSON.parse(raw);
+          if (draft?.savedAt > serverUpdated && (draft.content || draft.title !== note.title)) {
+            setDraftBanner(draft);
+          }
+        }
+      } catch { /* ignore */ }
       setTitle(note.title || '');
       setContent(html);
       liveHtmlRef.current = html;
       setInitialized(true);
       setSaveStatus('saved');
     }
-    if (!isEdit) { setTitle(query.topicName || ''); setInitialized(true); }
+    if (!isEdit) {
+      // Check for a saved draft for this new note
+      try {
+        const raw = localStorage.getItem(draftKey);
+        if (raw) {
+          const draft = JSON.parse(raw);
+          if (draft?.content || draft?.title) setDraftBanner(draft);
+        }
+      } catch { /* ignore */ }
+      setTitle(query.topicName || '');
+      setInitialized(true);
+    }
   }, [note, isEdit, initialized]);
 
   // ── Derived permissions ────────────────────────────────────────────────────
@@ -315,6 +343,17 @@ export default function LessonNoteEditorPage() {
     });
   }, [content]);
 
+  // ── LocalStorage draft helpers ─────────────────────────────────────────────
+  const saveDraft = useCallback((html: string, noteTitle: string) => {
+    try {
+      localStorage.setItem(draftKey, JSON.stringify({ title: noteTitle, content: html, savedAt: Date.now() }));
+    } catch { /* storage full or disabled — ignore */ }
+  }, [draftKey]);
+
+  const clearDraft = useCallback(() => {
+    try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
+  }, [draftKey]);
+
   // ── Content change handler + auto-save ────────────────────────────────────
   const handleContentChange = useCallback((html: string) => {
     setContent(html);
@@ -323,7 +362,9 @@ export default function LessonNoteEditorPage() {
     if (imgGenActiveRef.current) userEditedRef.current = true;
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => triggerAutoSave(html), 2000);
-  }, []);
+    // Always mirror to localStorage for crash recovery
+    saveDraft(html, title);
+  }, [title, saveDraft]);
 
   // ── Click on diagram → Regenerate panel ───────────────────────────────────
   const handleEditorClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -491,7 +532,7 @@ export default function LessonNoteEditorPage() {
   const saveMutation = useMutation({
     mutationFn: () => doSave(content),
     onMutate:   () => setSaveStatus('saving'),
-    onSuccess:  () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); setSaveStatus('saved'); toast({ title: 'Saved', description: 'Draft saved successfully.' }); },
+    onSuccess:  () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); setSaveStatus('saved'); clearDraft(); toast({ title: 'Saved', description: 'Draft saved successfully.' }); },
     onError:    (e: any) => { setSaveStatus('error'); toast({ title: 'Save failed', description: e.message, variant: 'destructive' }); },
   });
 
@@ -1065,6 +1106,32 @@ export default function LessonNoteEditorPage() {
           </div>
         )}
       </div>
+
+      {/* ── Local draft restore banner ── */}
+      {draftBanner && canEdit && (
+        <div className="shrink-0 flex items-center gap-3 px-4 py-2.5 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800">
+          <span className="text-xs text-amber-800 dark:text-amber-300 flex-1">
+            📝 You have an unsaved local draft from {new Date(draftBanner.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Restore it?
+          </span>
+          <button
+            className="shrink-0 text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded transition-colors"
+            onClick={() => {
+              if (draftBanner.title) setTitle(draftBanner.title);
+              if (draftBanner.content) { setContent(draftBanner.content); liveHtmlRef.current = draftBanner.content; setSaveStatus('unsaved'); }
+              setDraftBanner(null);
+              toast({ title: 'Draft restored', description: 'Your unsaved work has been recovered.' });
+            }}
+          >
+            Restore
+          </button>
+          <button
+            className="shrink-0 text-xs text-amber-600 dark:text-amber-400 hover:text-amber-800 px-2 py-1 rounded hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+            onClick={() => { clearDraft(); setDraftBanner(null); }}
+          >
+            Discard
+          </button>
+        </div>
+      )}
 
       {/* ── Paste & Enhance panel ── */}
       {pastePanel && canEdit && (
