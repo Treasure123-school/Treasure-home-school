@@ -52,8 +52,9 @@ import {
   Sparkles, ChevronLeft, Loader2, GraduationCap, BookMarked, Calendar,
   Copy, Check, ImagePlus, X, RefreshCw, DownloadCloud, ClipboardEdit,
 } from 'lucide-react';
-import PasteEnhancePanel from '@/components/lesson-notes/PasteEnhancePanel';
+import PasteEnhanceDialog from '@/components/lesson-notes/PasteEnhanceDialog';
 import { formatLessonNote, fixUnicodeChemistryInHtml } from '@/lib/lessonNoteFormatter';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 
 // ── Pure helpers ───────────────────────────────────────────────────────────────
 
@@ -222,6 +223,9 @@ export default function LessonNoteEditorPage() {
   const [pasteText,          setPasteText]          = useState('');
   const [enhanceLoading,     setEnhanceLoading]     = useState(false);
   const [smartConvertLoading, setSmartConvertLoading] = useState(false);
+
+  // AI Generate confirmation
+  const [aiConfirmOpen, setAiConfirmOpen] = useState(false);
 
   // Refs
   const liveHtmlRef     = useRef('');
@@ -994,7 +998,11 @@ export default function LessonNoteEditorPage() {
             {canEdit && (
               <Button size="sm" variant="outline"
                 className="h-8 text-xs gap-1.5 rounded border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-400 font-semibold"
-                onClick={generateWithAI} disabled={aiLoading || isGeneratingImages || busy}>
+                onClick={() => {
+                  const hasContent = !!(liveHtmlRef.current || content)?.replace(/<[^>]*>/g, '').trim();
+                  if (hasContent) { setAiConfirmOpen(true); } else { generateWithAI(); }
+                }}
+                disabled={aiLoading || isGeneratingImages || busy}>
                 {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                 <span className="hidden sm:inline">{aiLoading ? 'Generating…' : 'AI Generate'}</span>
               </Button>
@@ -1003,11 +1011,11 @@ export default function LessonNoteEditorPage() {
             {canEdit && (
               <Button size="sm" variant="outline"
                 className="h-8 text-xs gap-1.5 rounded border-teal-200 text-teal-700 hover:bg-teal-50 dark:border-teal-800 dark:text-teal-400 font-semibold"
-                onClick={() => { setPastePanel(p => !p); }}
+                onClick={() => setPastePanel(true)}
                 disabled={aiLoading || isGeneratingImages || busy}
                 title="Paste your own lesson note text and let AI rewrite it professionally">
                 <ClipboardEdit className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{pastePanel ? 'Hide Paste' : 'Paste & Enhance'}</span>
+                <span className="hidden sm:inline">Paste &amp; Enhance</span>
               </Button>
             )}
 
@@ -1133,18 +1141,17 @@ export default function LessonNoteEditorPage() {
         </div>
       )}
 
-      {/* ── Paste & Enhance panel ── */}
-      {pastePanel && canEdit && (
-        <PasteEnhancePanel
-          text={pasteText}
-          onChange={setPasteText}
-          onEnhance={enhanceWithAI}
-          onSmartConvert={smartConvert}
-          onClose={() => { setPastePanel(false); setPasteText(''); }}
-          loading={enhanceLoading || aiLoading}
-          smartConverting={smartConvertLoading}
-        />
-      )}
+      {/* ── Paste & Enhance modal dialog ── */}
+      <PasteEnhanceDialog
+        open={pastePanel && canEdit}
+        onOpenChange={open => { setPastePanel(open); if (!open) setPasteText(''); }}
+        text={pasteText}
+        onChange={setPasteText}
+        onEnhance={enhanceWithAI}
+        onSmartConvert={smartConvert}
+        loading={enhanceLoading || aiLoading}
+        smartConverting={smartConvertLoading}
+      />
 
       {/* ── AI Image panel ── */}
       {imgGenPanel && (
@@ -1294,6 +1301,17 @@ export default function LessonNoteEditorPage() {
         </div>
       )}
 
+      {/* ── AI Generate overwrite confirmation ── */}
+      <ConfirmDialog
+        open={aiConfirmOpen}
+        onOpenChange={setAiConfirmOpen}
+        title="Replace existing note?"
+        description="Generating a new note with AI will clear the current content. This cannot be undone. Are you sure you want to continue?"
+        confirmLabel="Yes, generate"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={() => { setAiConfirmOpen(false); generateWithAI(); }}
+      />
 
     </div>
   );

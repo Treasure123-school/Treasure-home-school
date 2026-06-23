@@ -829,13 +829,33 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
               ]}
             />
             <TSep />
-            <TSelect title="Font family" value={e?.getAttributes('textStyle')?.fontFamily || ''} width="w-28" onChange={v =>
-              v ? e?.chain().focus().setFontFamily(v).run() : e?.chain().focus().unsetFontFamily().run()
-            } options={FONT_FAMILIES} />
+            <TSelect title="Font family" value={e?.getAttributes('textStyle')?.fontFamily || ''} width="w-28" onChange={v => {
+              if (!e) return;
+              const { selection } = e.state;
+              if (selection.empty) {
+                const { $from } = selection;
+                const from = $from.start(), to = $from.end();
+                if (v) e.chain().focus().setTextSelection({ from, to }).setFontFamily(v).run();
+                else   e.chain().focus().setTextSelection({ from, to }).unsetFontFamily().run();
+              } else {
+                if (v) e.chain().focus().setFontFamily(v).run();
+                else   e.chain().focus().unsetFontFamily().run();
+              }
+            }} options={FONT_FAMILIES} />
             <TSep />
-            <TSelect title="Font size" value={e?.getAttributes('textStyle')?.fontSize || ''} width="w-14" onChange={v =>
-              v ? e?.chain().focus().setFontSize(v).run() : e?.chain().focus().unsetFontSize().run()
-            } options={[{ label: 'Size', value: '' }, ...FONT_SIZES]} />
+            <TSelect title="Font size" value={e?.getAttributes('textStyle')?.fontSize || ''} width="w-14" onChange={v => {
+              if (!e) return;
+              const { selection } = e.state;
+              if (selection.empty) {
+                const { $from } = selection;
+                const from = $from.start(), to = $from.end();
+                if (v) e.chain().focus().setTextSelection({ from, to }).setFontSize(v).run();
+                else   e.chain().focus().setTextSelection({ from, to }).unsetFontSize().run();
+              } else {
+                if (v) e.chain().focus().setFontSize(v).run();
+                else   e.chain().focus().unsetFontSize().run();
+              }
+            }} options={[{ label: 'Size', value: '' }, ...FONT_SIZES]} />
             <TSep />
             <ColorPicker title="Text color" icon={Type} value={txtColor} colors={TEXT_COLORS}
               onChange={c => { setTxtColor(c); e?.chain().focus().setColor(c).run(); }} />

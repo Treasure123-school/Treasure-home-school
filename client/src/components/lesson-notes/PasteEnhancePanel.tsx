@@ -20,6 +20,7 @@ interface PasteEnhancePanelProps {
   onClose: () => void;
   loading: boolean;
   smartConverting: boolean;
+  showCloseButton?: boolean;
 }
 
 const MIN_CHARS = 80;
@@ -34,6 +35,7 @@ export default function PasteEnhancePanel({
   onClose,
   loading,
   smartConverting,
+  showCloseButton = true,
 }: PasteEnhancePanelProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const chars = text.length;
@@ -63,13 +65,15 @@ export default function PasteEnhancePanel({
             — paste your note and choose how to format it
           </span>
         </div>
-        <button
-          className="text-teal-400 hover:text-teal-600 dark:hover:text-teal-300 p-0.5 transition-colors"
-          onClick={onClose}
-          disabled={isAnyBusy}
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
+        {showCloseButton && (
+          <button
+            className="text-teal-400 hover:text-teal-600 dark:hover:text-teal-300 p-0.5 transition-colors"
+            onClick={onClose}
+            disabled={isAnyBusy}
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
 
       {/* Mode explanation cards */}
