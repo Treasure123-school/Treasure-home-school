@@ -1069,7 +1069,6 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
         .doc-root .doc-img {
           max-width: 100%; height: auto; display: block;
           margin: 0.75em auto; border-radius: 0.375rem;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.12);
         }
         .doc-root .doc-img.ProseMirror-selectednode {
           outline: 2px solid #3b82f6; outline-offset: 2px;

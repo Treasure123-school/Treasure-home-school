@@ -231,6 +231,9 @@ export default function LessonNoteEditorPage() {
   const liveHtmlRef     = useRef('');
   const userEditedRef   = useRef(false);
   const imgGenActiveRef = useRef(false);
+  // Guard: only save to localStorage AFTER initialization settles (prevents Tiptap's
+  // init onUpdate from overwriting a real draft with server content).
+  const draftEnabledRef = useRef(false);
   const editorWrapRef   = useRef<HTMLDivElement>(null);
   const generatingDiv   = useRef<HTMLDivElement>(null);   // plain HTML overlay div
   const autoSaveTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -259,13 +262,19 @@ export default function LessonNoteEditorPage() {
     if (isEdit && note) {
       const html = migrateContent(note.content, note.objectives);
       const serverUpdated = note.updatedAt ? new Date(note.updatedAt).getTime() : 0;
-      // Check for a newer local draft
+      // Only show banner if draft is genuinely newer AND has meaningfully different content
       try {
         const raw = localStorage.getItem(draftKey);
         if (raw) {
           const draft = JSON.parse(raw);
-          if (draft?.savedAt > serverUpdated && (draft.content || draft.title !== note.title)) {
+          const draftIsNewer = draft?.savedAt > serverUpdated;
+          const draftHasDifferentContent = draft?.content && draft.content !== html;
+          const draftHasDifferentTitle = draft?.title && draft.title !== (note.title || '');
+          if (draftIsNewer && (draftHasDifferentContent || draftHasDifferentTitle)) {
             setDraftBanner(draft);
+          } else {
+            // Stale or identical draft — silently remove it
+            try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
           }
         }
       } catch { /* ignore */ }
@@ -274,6 +283,8 @@ export default function LessonNoteEditorPage() {
       liveHtmlRef.current = html;
       setInitialized(true);
       setSaveStatus('saved');
+      // Enable draft saving only after Tiptap's init onUpdate has fired and settled
+      setTimeout(() => { draftEnabledRef.current = true; }, 800);
     }
     if (!isEdit) {
       // Check for a saved draft for this new note
@@ -286,6 +297,8 @@ export default function LessonNoteEditorPage() {
       } catch { /* ignore */ }
       setTitle(query.topicName || '');
       setInitialized(true);
+      // For new notes start saving immediately (no server content to conflict with)
+      setTimeout(() => { draftEnabledRef.current = true; }, 400);
     }
   }, [note, isEdit, initialized]);
 
@@ -366,8 +379,9 @@ export default function LessonNoteEditorPage() {
     if (imgGenActiveRef.current) userEditedRef.current = true;
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => triggerAutoSave(html), 2000);
-    // Always mirror to localStorage for crash recovery
-    saveDraft(html, title);
+    // Only mirror to localStorage after init has settled — prevents Tiptap's
+    // init onUpdate from overwriting a real draft with the server content.
+    if (draftEnabledRef.current) saveDraft(html, title);
   }, [title, saveDraft]);
 
   // ── Click on diagram → Regenerate panel ───────────────────────────────────
@@ -545,7 +559,7 @@ export default function LessonNoteEditorPage() {
       const nid = await doSave(content);
       return (await apiRequest('POST', `/api/lesson-notes/${nid}/submit`)).json();
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); toast({ title: 'Submitted for review' }); navigate(listUrl); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); clearDraft(); toast({ title: 'Submitted for review' }); navigate(listUrl); },
     onError:   (e: any) => toast({ title: 'Submit failed', description: e.message, variant: 'destructive' }),
   });
 
@@ -554,7 +568,7 @@ export default function LessonNoteEditorPage() {
       const nid = await doSave(content);
       return (await apiRequest('POST', `/api/lesson-notes/${nid}/approve-publish`)).json();
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); toast({ title: 'Published!', description: 'Lesson note is now visible to students.' }); navigate(listUrl); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); clearDraft(); toast({ title: 'Published!', description: 'Lesson note is now visible to students.' }); navigate(listUrl); },
     onError:   (e: any) => toast({ title: 'Publish failed', description: e.message, variant: 'destructive' }),
   });
 
