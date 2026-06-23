@@ -31,12 +31,25 @@ export default function RichTextViewer({ html, className = '', brandColor = '#3b
       .replace(/cursor:\s*pointer/gi, 'cursor:default');
   }, [html]);
 
-  // After render, attach onerror handlers to every <img> so broken image
-  // URLs show a styled fallback instead of a broken-image browser icon.
-  // Works for both figure-wrapped images (AI diagrams) and inline images.
+  // After render:
+  //  1. Wrap every <table> in a scrollable container so wide tables scroll
+  //     horizontally on mobile instead of overflowing/clipping.
+  //  2. Attach onerror handlers to every <img> for broken-image fallbacks.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
+
+    // ── Table scroll wrappers ──────────────────────────────────────────────
+    const tables = Array.from(container.querySelectorAll<HTMLTableElement>('table'));
+    tables.forEach((table) => {
+      if (table.parentElement?.classList.contains('table-scroll-wrapper')) return;
+      const wrapper = document.createElement('div');
+      wrapper.className = 'table-scroll-wrapper';
+      table.parentNode?.insertBefore(wrapper, table);
+      wrapper.appendChild(table);
+    });
+
+    // ── Broken-image fallbacks ─────────────────────────────────────────────
     const imgs = Array.from(container.querySelectorAll<HTMLImageElement>('img'));
     imgs.forEach((img) => {
       if (img.dataset.errorHandled) return;
@@ -83,7 +96,33 @@ export default function RichTextViewer({ html, className = '', brandColor = '#3b
       />
       <style>{`
         @media print { body { background: white; } .lesson-note-viewer { color: black; } }
-        .lesson-note-viewer { overflow-x: auto; }
+        .lesson-note-viewer { overflow-x: visible; }
+
+        /* ── Scrollable table wrapper with scroll-shadow hint ─────────────────
+           The trick: "local" background-attachment scrolls WITH content, so the
+           white cover slides over the shadow when the table is at its edge.
+           "scroll" stays fixed, revealing the shadow when there IS overflow.
+           Result: shadows appear only when there is hidden content — no JS needed.
+        ─────────────────────────────────────────────────────────────────────── */
+        .lesson-note-viewer .table-scroll-wrapper {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          margin: 1rem 0;
+          border-radius: 0.375rem;
+          background:
+            linear-gradient(to right, #ffffff 16px, transparent) 0 0 / 40px 100% no-repeat local,
+            linear-gradient(to left,  #ffffff 16px, transparent) 100% 0 / 40px 100% no-repeat local,
+            radial-gradient(farthest-side at 0 50%, rgba(0,0,0,0.14), transparent) 0 0 / 12px 100% no-repeat scroll,
+            radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,0.14), transparent) 100% 0 / 12px 100% no-repeat scroll;
+        }
+        .dark .lesson-note-viewer .table-scroll-wrapper {
+          background:
+            linear-gradient(to right, #111827 16px, transparent) 0 0 / 40px 100% no-repeat local,
+            linear-gradient(to left,  #111827 16px, transparent) 100% 0 / 40px 100% no-repeat local,
+            radial-gradient(farthest-side at 0 50%, rgba(255,255,255,0.12), transparent) 0 0 / 12px 100% no-repeat scroll,
+            radial-gradient(farthest-side at 100% 50%, rgba(255,255,255,0.12), transparent) 100% 0 / 12px 100% no-repeat scroll;
+        }
+
         .lesson-note-viewer h1 { font-size: 1.75rem; font-weight: 700; line-height: 1.2; margin: 1rem 0 0.5rem; color: var(--viewer-heading-color, #3b82f6) !important; }
         .lesson-note-viewer h2 { font-size: 1.375rem; font-weight: 600; line-height: 1.3; margin: 0.875rem 0 0.4rem; color: var(--viewer-heading-color, #3b82f6) !important; }
         .lesson-note-viewer h3 { font-size: 1.125rem; font-weight: 600; line-height: 1.4; margin: 0.75rem 0 0.35rem; color: var(--viewer-heading-color, #3b82f6) !important; }
@@ -93,8 +132,9 @@ export default function RichTextViewer({ html, className = '', brandColor = '#3b
         .lesson-note-viewer ul { list-style: disc; padding-left: 1.5rem; margin: 0.5rem 0; }
         .lesson-note-viewer ol { list-style: decimal; padding-left: 1.5rem; margin: 0.5rem 0; }
         .lesson-note-viewer li { margin: 0.2rem 0; line-height: 1.6; }
-        .lesson-note-viewer table { border-collapse: collapse !important; width: 100%; margin: 1rem 0; min-width: 280px; }
-        .lesson-note-viewer td, .lesson-note-viewer th { border: 1px solid #d1d5db !important; padding: 0.45rem 0.7rem !important; vertical-align: top; }
+        .lesson-note-viewer table { border-collapse: collapse !important; width: auto; min-width: 100%; margin: 0; }
+        .lesson-note-viewer td, .lesson-note-viewer th { border: 1px solid #d1d5db !important; padding: 0.45rem 0.7rem !important; vertical-align: top; white-space: nowrap; }
+        .lesson-note-viewer td { white-space: normal; min-width: 80px; }
         .dark .lesson-note-viewer td, .dark .lesson-note-viewer th { border-color: #374151 !important; }
         .lesson-note-viewer th { background: #f3f4f6 !important; font-weight: 600; }
         .dark .lesson-note-viewer th { background: #1f2937 !important; }
