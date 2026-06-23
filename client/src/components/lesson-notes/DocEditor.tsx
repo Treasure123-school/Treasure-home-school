@@ -184,17 +184,10 @@ function TSelect({
   options: { label: string; value: string }[]; width?: string; title: string;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
   const current = options.find(o => o.value === value);
 
-  useEffect(() => {
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
-
   return (
-    <div ref={ref} className={`relative ${width} shrink-0`}>
+    <div className={`relative ${width} shrink-0`}>
       <Tooltip>
         <TooltipTrigger asChild>
           <button
@@ -209,23 +202,27 @@ function TSelect({
       </Tooltip>
       <ChevronDown className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-[200] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden min-w-full max-h-52 overflow-y-auto">
-          {options.map(o => (
-            <button
-              key={o.value}
-              type="button"
-              onPointerDown={e => { e.preventDefault(); onChange(o.value); setOpen(false); }}
-              className={[
-                'w-full text-left px-3 py-2 text-xs whitespace-nowrap transition-colors',
-                o.value === value
-                  ? 'bg-primary/5 dark:bg-primary/5 text-primary dark:text-primary/60 font-medium'
-                  : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800',
-              ].join(' ')}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
+        <>
+          {/* Invisible backdrop — closes dropdown on any outside click/tap */}
+          <div className="fixed inset-0 z-[150]" onPointerDown={() => setOpen(false)} />
+          <div className="absolute top-full left-0 mt-1 z-[200] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl overflow-hidden min-w-full max-h-52 overflow-y-auto">
+            {options.map(o => (
+              <button
+                key={o.value}
+                type="button"
+                onPointerDown={e => { e.stopPropagation(); onChange(o.value); setOpen(false); }}
+                className={[
+                  'w-full text-left px-3 py-2 text-xs whitespace-nowrap transition-colors',
+                  o.value === value
+                    ? 'bg-primary/5 dark:bg-primary/5 text-primary dark:text-primary/60 font-medium'
+                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800',
+                ].join(' ')}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
@@ -277,14 +274,6 @@ function ColorPicker({ value, colors, onChange, icon: Icon, title }: {
 }) {
   const [open, setOpen] = useState(false);
   const [hexInput, setHexInput] = useState('');
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const h = (e: Event) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', h);
-    document.addEventListener('touchstart', h);
-    return () => { document.removeEventListener('mousedown', h); document.removeEventListener('touchstart', h); };
-  }, []);
 
   const applyHex = () => {
     const v = hexInput.startsWith('#') ? hexInput : '#' + hexInput;
@@ -293,7 +282,7 @@ function ColorPicker({ value, colors, onChange, icon: Icon, title }: {
 
   const cols = 10;
   return (
-    <div ref={ref} className="relative shrink-0">
+    <div className="relative shrink-0">
       <Tooltip>
         <TooltipTrigger asChild>
           <button
@@ -309,68 +298,74 @@ function ColorPicker({ value, colors, onChange, icon: Icon, title }: {
       </Tooltip>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-[200] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-3 w-[252px]">
-          {/* Color grid */}
-          <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
-            {colors.map((c, i) => (
-              <button
-                key={i}
-                type="button"
-                onPointerDown={e => { e.preventDefault(); onChange(c); setOpen(false); }}
-                className={[
-                  'rounded transition-transform hover:scale-125 focus:outline-none border',
-                  value === c ? 'ring-2 ring-offset-1 ring-primary scale-110' : 'border-gray-200 dark:border-gray-600',
-                  c === '#ffffff' ? 'border-gray-300' : '',
-                ].join(' ')}
-                style={{ background: c, width: 20, height: 20 }}
-                title={c}
+        <>
+          {/* Invisible backdrop — closes on outside click/tap */}
+          <div className="fixed inset-0 z-[150]" onPointerDown={() => setOpen(false)} />
+          {/* Dropdown anchored to the right edge so it never overflows screen on mobile */}
+          <div className="absolute top-full right-0 mt-1 z-[200] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-3 w-[252px] max-w-[calc(100vw-24px)]">
+            {/* Color grid */}
+            <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
+              {colors.map((c, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onPointerDown={e => { e.stopPropagation(); onChange(c); setOpen(false); }}
+                  className={[
+                    'rounded transition-transform hover:scale-125 focus:outline-none border',
+                    value === c ? 'ring-2 ring-offset-1 ring-primary scale-110' : 'border-gray-200 dark:border-gray-600',
+                    c === '#ffffff' ? 'border-gray-300' : '',
+                  ].join(' ')}
+                  style={{ background: c, width: 20, height: 20 }}
+                  title={c}
+                />
+              ))}
+            </div>
+
+            {/* Spectrum gradient bar */}
+            <div className="mt-3">
+              <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-wide font-medium">Spectrum</p>
+              <div
+                className="w-full h-5 rounded cursor-crosshair border border-gray-200 dark:border-gray-600"
+                style={{ background: 'linear-gradient(to right, #ff0000, #ff8000, #ffff00, #00ff00, #00ffff, #0000ff, #8000ff, #ff00ff, #ff0080, #ff0000)' }}
+                onPointerDown={e => {
+                  e.stopPropagation();
+                  const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  const x = (e.clientX - rect.left) / rect.width;
+                  const hue = Math.round(x * 360);
+                  const hex = `hsl(${hue},100%,50%)`;
+                  const tmp = document.createElement('canvas'); tmp.width = 1; tmp.height = 1;
+                  const ctx = tmp.getContext('2d')!;
+                  ctx.fillStyle = hex; ctx.fillRect(0,0,1,1);
+                  const [r,g,b] = ctx.getImageData(0,0,1,1).data;
+                  onChange(`#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`);
+                  setOpen(false);
+                }}
               />
-            ))}
-          </div>
+            </div>
 
-          {/* Spectrum gradient bar — tap to pick */}
-          <div className="mt-3">
-            <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-wide font-medium">Spectrum</p>
-            <div
-              className="w-full h-5 rounded cursor-crosshair border border-gray-200 dark:border-gray-600"
-              style={{ background: 'linear-gradient(to right, #ff0000, #ff8000, #ffff00, #00ff00, #00ffff, #0000ff, #8000ff, #ff00ff, #ff0080, #ff0000)' }}
-              onPointerDown={e => {
-                e.preventDefault();
-                const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                const x = (e.clientX - rect.left) / rect.width;
-                const hue = Math.round(x * 360);
-                const hex = `hsl(${hue},100%,50%)`;
-                const tmp = document.createElement('canvas'); tmp.width = 1; tmp.height = 1;
-                const ctx = tmp.getContext('2d')!;
-                ctx.fillStyle = hex; ctx.fillRect(0,0,1,1);
-                const [r,g,b] = ctx.getImageData(0,0,1,1).data;
-                onChange(`#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`);
-                setOpen(false);
-              }}
-            />
+            {/* Hex input — stopPropagation so typing doesn't close the picker */}
+            <div className="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-700 flex items-center gap-2"
+              onPointerDown={e => e.stopPropagation()}>
+              <div className="w-6 h-6 rounded border border-gray-300 dark:border-gray-600 shrink-0" style={{ background: hexInput ? (hexInput.startsWith('#') ? hexInput : '#' + hexInput) : (value || '#000') }} />
+              <input
+                type="text"
+                maxLength={7}
+                placeholder="#000000"
+                value={hexInput}
+                onChange={e => setHexInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') applyHex(); }}
+                className="flex-1 min-w-0 text-xs border border-gray-200 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-mono focus:outline-none focus:ring-1 focus:ring-primary/70"
+              />
+              <button
+                type="button"
+                onPointerDown={e => { e.stopPropagation(); applyHex(); }}
+                className="shrink-0 text-xs bg-primary hover:bg-primary/90 text-white px-2 py-1 rounded transition-colors whitespace-nowrap"
+              >
+                OK
+              </button>
+            </div>
           </div>
-
-          {/* Hex input */}
-          <div className="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-700 flex items-center gap-2">
-            <div className="w-6 h-6 rounded border border-gray-300 dark:border-gray-600 shrink-0" style={{ background: hexInput ? (hexInput.startsWith('#') ? hexInput : '#' + hexInput) : (value || '#000') }} />
-            <input
-              type="text"
-              maxLength={7}
-              placeholder="#000000"
-              value={hexInput}
-              onChange={e => setHexInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') applyHex(); }}
-              className="flex-1 text-xs border border-gray-200 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-mono focus:outline-none focus:ring-1 focus:ring-primary/70"
-            />
-            <button
-              type="button"
-              onPointerDown={e => { e.preventDefault(); applyHex(); }}
-              className="text-xs bg-primary hover:bg-primary/90 text-white px-2 py-1 rounded transition-colors"
-            >
-              OK
-            </button>
-          </div>
-        </div>
+        </>
       )}
     </div>
   );
@@ -383,12 +378,17 @@ function FloatingSelectionMenu({ editor }: { editor: any }) {
   const [showLink, setShowLink] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLElement | null>(null);
+  const linkInputRef = useRef<HTMLInputElement>(null);
+  const frozenRef = useRef(false);          // true while link input is open
+  const savedSelRef = useRef<any>(null);    // saved editor Selection when link opens
 
   useEffect(() => {
     if (!editor) return;
 
     const updatePosition = () => {
+      // Don't move or hide while the inline link input is showing
+      if (frozenRef.current) return;
+
       const { state } = editor;
       const { selection } = state;
       if (selection.empty || editor.isDestroyed) { setPos(null); return; }
@@ -400,23 +400,18 @@ function FloatingSelectionMenu({ editor }: { editor: any }) {
       const rect = range.getBoundingClientRect();
       if (!rect.width) { setPos(null); return; }
 
-      // Find the editor's paper container for relative positioning
       const editorEl = editor.view.dom as HTMLElement;
       const paperEl = editorEl.closest('.doc-paper') as HTMLElement | null;
       if (!paperEl) return;
-      containerRef.current = paperEl;
 
       const paperRect = paperEl.getBoundingClientRect();
       setPos({
-        top: rect.top - paperRect.top - 44, // 44 = menu height + 8px gap
-        left: Math.max(0, rect.left - paperRect.left + rect.width / 2 - 150), // center on selection
+        top: rect.top - paperRect.top - 44,
+        left: Math.max(0, rect.left - paperRect.left + rect.width / 2 - 150),
       });
     };
 
-    const onSelectionChange = () => {
-      // Small delay so the selection is stable
-      requestAnimationFrame(updatePosition);
-    };
+    const onSelectionChange = () => { requestAnimationFrame(updatePosition); };
 
     editor.on('selectionUpdate', onSelectionChange);
     document.addEventListener('selectionchange', onSelectionChange);
@@ -428,10 +423,35 @@ function FloatingSelectionMenu({ editor }: { editor: any }) {
 
   if (!pos || !editor || editor.isDestroyed) return null;
 
+  const openLink = () => {
+    // Save selection before input steals focus
+    savedSelRef.current = editor.state.selection;
+    frozenRef.current = true;
+    setLinkUrl(editor.getAttributes('link').href || '');
+    setShowLink(true);
+    // Focus input after render
+    setTimeout(() => linkInputRef.current?.focus(), 20);
+  };
+
   const applyLink = () => {
-    if (linkUrl) editor.chain().focus().extendMarkRange('link').setLink({ href: linkUrl, target: '_blank' }).run();
+    // Restore the saved selection so extendMarkRange works
+    if (savedSelRef.current) {
+      try { editor.view.dispatch(editor.state.tr.setSelection(savedSelRef.current)); } catch { /* ok */ }
+    }
+    const href = linkUrl.trim();
+    if (href) {
+      const full = href.startsWith('http') ? href : `https://${href}`;
+      editor.chain().focus().extendMarkRange('link').setLink({ href: full, target: '_blank' }).run();
+    }
+    closeLink();
+  };
+
+  const closeLink = () => {
+    frozenRef.current = false;
+    savedSelRef.current = null;
     setShowLink(false);
     setLinkUrl('');
+    setPos(null);
   };
 
   return (
@@ -444,15 +464,21 @@ function FloatingSelectionMenu({ editor }: { editor: any }) {
       {showLink ? (
         <div className="flex items-center gap-1 px-1">
           <input
-            autoFocus value={linkUrl} onChange={e => setLinkUrl(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') applyLink(); if (e.key === 'Escape') setShowLink(false); }}
+            ref={linkInputRef}
+            value={linkUrl}
+            onChange={e => setLinkUrl(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') applyLink(); if (e.key === 'Escape') closeLink(); }}
             placeholder="https://…"
             className="text-xs border border-gray-200 rounded px-2 py-1 w-44 focus:outline-none focus:ring-1 focus:ring-primary bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           />
           <button onMouseDown={e => { e.preventDefault(); applyLink(); }}
             className="text-xs bg-primary text-white rounded px-2 py-1 hover:bg-primary/90">OK</button>
-          <button onMouseDown={e => { e.preventDefault(); setShowLink(false); }}
-            className="text-xs text-gray-500 hover:text-gray-700 px-1 leading-none">✕</button>
+          {editor.isActive('link') && (
+            <button onMouseDown={e => { e.preventDefault(); editor.chain().focus().unsetLink().run(); closeLink(); }}
+              className="text-xs text-red-500 hover:text-red-700 px-1">Remove</button>
+          )}
+          <button onMouseDown={e => { e.preventDefault(); closeLink(); }}
+            className="text-xs text-gray-400 hover:text-gray-600 px-1 leading-none">✕</button>
         </div>
       ) : (
         <>
@@ -463,8 +489,8 @@ function FloatingSelectionMenu({ editor }: { editor: any }) {
           <TSep small />
           <TBtn small title="Highlight" onClick={() => editor.chain().focus().toggleHighlight().run()} active={editor.isActive('highlight')}><Highlighter className="h-3 w-3" /></TBtn>
           <TSep small />
-          <TBtn small title="Link" onClick={() => { setLinkUrl(editor.getAttributes('link').href || ''); setShowLink(true); }} active={editor.isActive('link')}><LinkIcon className="h-3 w-3" /></TBtn>
-          {editor.isActive('link') && <TBtn small title="Remove Link" onClick={() => editor.chain().focus().unsetLink().run()}><Link2Off className="h-3 w-3" /></TBtn>}
+          <TBtn small title="Add / Edit Link" onClick={openLink} active={editor.isActive('link')}><LinkIcon className="h-3 w-3" /></TBtn>
+          {editor.isActive('link') && <TBtn small title="Remove Link" onClick={() => { editor.chain().focus().unsetLink().run(); setPos(null); }}><Link2Off className="h-3 w-3" /></TBtn>}
         </>
       )}
     </div>
@@ -602,19 +628,11 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
   const [txtColor, setTxtColor] = useState('#000000');
   const [wordStats, setWordStats] = useState(() => countWords(content));
   const [showMore, setShowMore] = useState(false);
-  const moreRef = useRef<HTMLDivElement>(null);
   const [showLinkBar, setShowLinkBar] = useState(false);
   const [linkBarUrl, setLinkBarUrl] = useState('');
   const linkInputRef = useRef<HTMLInputElement>(null);
 
   // Close "More" dropdown on outside click
-  useEffect(() => {
-    const h = (ev: MouseEvent) => {
-      if (moreRef.current && !moreRef.current.contains(ev.target as Node)) setShowMore(false);
-    };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
 
   const editor = useEditor({
     extensions: [
@@ -848,7 +866,7 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
             <TSep />
 
             {/* ── More ▾ dropdown for less-frequent tools ── */}
-            <div ref={moreRef} className="relative shrink-0">
+            <div className="relative shrink-0">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
@@ -869,21 +887,24 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
               </Tooltip>
 
               {showMore && (
-                <div className="absolute top-full left-0 mt-1 z-[200] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5 min-w-[170px]">
-                  <button type="button" onMouseDown={ev => { ev.preventDefault(); e?.chain().focus().toggleBlockquote().run(); setShowMore(false); }}
-                    className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs text-left transition-colors ${e?.isActive('blockquote') ? 'bg-primary/10 text-primary' : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200'}`}>
-                    <Quote className="h-3.5 w-3.5 shrink-0" />Blockquote
-                  </button>
-                  <button type="button" onMouseDown={ev => { ev.preventDefault(); e?.chain().focus().toggleTaskList().run(); setShowMore(false); }}
-                    className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs text-left transition-colors ${e?.isActive('taskList') ? 'bg-primary/10 text-primary' : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200'}`}>
-                    <ListChecks className="h-3.5 w-3.5 shrink-0" />Checklist
-                  </button>
-                  <div className="h-px bg-gray-100 dark:bg-gray-800 my-0.5" />
-                  <button type="button" onMouseDown={ev => { ev.preventDefault(); e?.chain().focus().clearNodes().unsetAllMarks().run(); setShowMore(false); }}
-                    className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs text-left hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors">
-                    <RemoveFormatting className="h-3.5 w-3.5 shrink-0" />Clear Formatting
-                  </button>
-                </div>
+                <>
+                  <div className="fixed inset-0 z-[150]" onPointerDown={() => setShowMore(false)} />
+                  <div className="absolute top-full left-0 mt-1 z-[200] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5 min-w-[170px]">
+                    <button type="button" onPointerDown={ev => { ev.stopPropagation(); e?.chain().focus().toggleBlockquote().run(); setShowMore(false); }}
+                      className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs text-left transition-colors ${e?.isActive('blockquote') ? 'bg-primary/10 text-primary' : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200'}`}>
+                      <Quote className="h-3.5 w-3.5 shrink-0" />Blockquote
+                    </button>
+                    <button type="button" onPointerDown={ev => { ev.stopPropagation(); e?.chain().focus().toggleTaskList().run(); setShowMore(false); }}
+                      className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs text-left transition-colors ${e?.isActive('taskList') ? 'bg-primary/10 text-primary' : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200'}`}>
+                      <ListChecks className="h-3.5 w-3.5 shrink-0" />Checklist
+                    </button>
+                    <div className="h-px bg-gray-100 dark:bg-gray-800 my-0.5" />
+                    <button type="button" onPointerDown={ev => { ev.stopPropagation(); e?.chain().focus().clearNodes().unsetAllMarks().run(); setShowMore(false); }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs text-left hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors">
+                      <RemoveFormatting className="h-3.5 w-3.5 shrink-0" />Clear Formatting
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           </div>
