@@ -20,15 +20,20 @@ import Color from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
 import FontFamily from '@tiptap/extension-font-family';
 import Highlight from '@tiptap/extension-highlight';
-import { Extension } from '@tiptap/core';
+import { Extension, Mark } from '@tiptap/core';
 import { Plugin } from '@tiptap/pm/state';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Bold, Italic, Underline, Strikethrough, List, ListOrdered,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Link as LinkIcon, Link2Off, Image as ImageIcon, Minus, Undo, Redo,
   Table as TableIcon, Rows, Columns, Trash2, Highlighter,
-  ChevronDown, Type,
+  ChevronDown, Type, Quote, ListChecks, RemoveFormatting,
+  Subscript as SubscriptIcon, Superscript as SuperscriptIcon,
+  IndentIncrease, IndentDecrease, MoreHorizontal, Check as CheckIcon,
+  TextCursorInput,
 } from 'lucide-react';
 
 // ── Custom FontSize extension ──────────────────────────────────────────────
@@ -39,6 +44,8 @@ declare module '@tiptap/core' {
       setFontSize: (size: string) => ReturnType;
       unsetFontSize: () => ReturnType;
     };
+    subscript: { toggleSubscript: () => ReturnType };
+    superscript: { toggleSuperscript: () => ReturnType };
   }
 }
 
@@ -64,6 +71,34 @@ const FontSize = Extension.create({
       unsetFontSize: () => ({ chain }: any) =>
         chain().setMark('textStyle', { fontSize: null }).removeEmptyTextStyle().run(),
     };
+  },
+});
+
+// ── Subscript & Superscript custom marks ──────────────────────────────────
+
+const Subscript = Mark.create({
+  name: 'subscript',
+  excludes: 'superscript',
+  parseHTML() { return [{ tag: 'sub' }]; },
+  renderHTML() { return ['sub', 0]; },
+  addCommands() {
+    return { toggleSubscript: () => ({ commands }: any) => commands.toggleMark(this.name) };
+  },
+  addKeyboardShortcuts() {
+    return { 'Mod-,': () => (this.editor.commands as any).toggleSubscript() };
+  },
+});
+
+const Superscript = Mark.create({
+  name: 'superscript',
+  excludes: 'subscript',
+  parseHTML() { return [{ tag: 'sup' }]; },
+  renderHTML() { return ['sup', 0]; },
+  addCommands() {
+    return { toggleSuperscript: () => ({ commands }: any) => commands.toggleMark(this.name) };
+  },
+  addKeyboardShortcuts() {
+    return { 'Mod-.': () => (this.editor.commands as any).toggleSuperscript() };
   },
 });
 
@@ -564,7 +599,22 @@ export interface DocEditorProps {
 export default function DocEditor({ content, onChange, disabled = false, placeholder, onEditorReady, brandColor = '#3b82f6' }: DocEditorProps) {
   const imageInputRef = useRef<HTMLInputElement>(null!);
   const [hlColor, setHlColor] = useState('#fef08a');
+  const [txtColor, setTxtColor] = useState('#000000');
   const [wordStats, setWordStats] = useState(() => countWords(content));
+  const [showMore, setShowMore] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+  const [showLinkBar, setShowLinkBar] = useState(false);
+  const [linkBarUrl, setLinkBarUrl] = useState('');
+  const linkInputRef = useRef<HTMLInputElement>(null);
+
+  // Close "More" dropdown on outside click
+  useEffect(() => {
+    const h = (ev: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(ev.target as Node)) setShowMore(false);
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
 
   const editor = useEditor({
     extensions: [
@@ -614,6 +664,10 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
       TableRow,
       TableHeader.configure({ HTMLAttributes: { class: 'doc-th' } }),
       TableCell.configure({ HTMLAttributes: { class: 'doc-td' } }),
+      Subscript,
+      Superscript,
+      TaskList.configure({ HTMLAttributes: { class: 'doc-task-list' } }),
+      TaskItem.configure({ nested: true, HTMLAttributes: { class: 'doc-task-item' } }),
       DropPaste,
     ],
     content: content || '',
@@ -664,14 +718,25 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
     reader.readAsDataURL(file);
   }, [e]);
 
-  const insertLink = useCallback(() => {
+  const openLinkBar = useCallback(() => {
     if (!e) return;
     const prev = e.getAttributes('link').href || '';
-    const url = window.prompt('Enter URL:', prev);
-    if (url === null) return;
-    if (url === '') { e.chain().focus().extendMarkRange('link').unsetLink().run(); return; }
-    e.chain().focus().extendMarkRange('link').setLink({ href: url, target: '_blank' }).run();
+    setLinkBarUrl(prev);
+    setShowLinkBar(true);
+    setTimeout(() => linkInputRef.current?.focus(), 30);
   }, [e]);
+
+  const applyLink = useCallback(() => {
+    if (!e) return;
+    const url = linkBarUrl.trim();
+    if (!url) { e.chain().focus().extendMarkRange('link').unsetLink().run(); }
+    else {
+      const href = url.startsWith('http') ? url : `https://${url}`;
+      e.chain().focus().extendMarkRange('link').setLink({ href, target: '_blank' }).run();
+    }
+    setShowLinkBar(false);
+    setLinkBarUrl('');
+  }, [e, linkBarUrl]);
 
   const getCurrentHeading = () => {
     if (!e) return 'p';
@@ -695,6 +760,7 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
       {/* ── Formatting Toolbar ── */}
       {!disabled && (
         <div className="shrink-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+
           {/* Row 1: History · Block style · Font · Size · Colors */}
           <div className="flex items-center flex-wrap gap-0.5 px-3 py-1.5 border-b border-gray-100 dark:border-gray-800">
             <TBtn title="Undo (Ctrl+Z)" onClick={() => e?.chain().focus().undo().run()} disabled={!e?.can().undo()}>
@@ -714,38 +780,58 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
               ]}
             />
             <TSep />
-            <TSelect title="Font family" value={e?.getAttributes('textStyle')?.fontFamily || ''} width="w-36" onChange={v =>
+            <TSelect title="Font family" value={e?.getAttributes('textStyle')?.fontFamily || ''} width="w-28" onChange={v =>
               v ? e?.chain().focus().setFontFamily(v).run() : e?.chain().focus().unsetFontFamily().run()
             } options={FONT_FAMILIES} />
             <TSep />
-            <TSelect title="Font size" value={e?.getAttributes('textStyle')?.fontSize || ''} width="w-16" onChange={v =>
+            <TSelect title="Font size" value={e?.getAttributes('textStyle')?.fontSize || ''} width="w-14" onChange={v =>
               v ? e?.chain().focus().setFontSize(v).run() : e?.chain().focus().unsetFontSize().run()
             } options={[{ label: 'Size', value: '' }, ...FONT_SIZES]} />
             <TSep />
+            <ColorPicker title="Text color" icon={Type} value={txtColor} colors={TEXT_COLORS}
+              onChange={c => { setTxtColor(c); e?.chain().focus().setColor(c).run(); }} />
             <ColorPicker title="Highlight color" icon={Highlighter} value={hlColor} colors={HIGHLIGHT_COLORS}
               onChange={c => { setHlColor(c); e?.chain().focus().toggleHighlight({ color: c }).run(); }} />
           </div>
 
-          {/* Row 2: Formatting · Alignment · Lists · Insert */}
+          {/* Row 2: Core formatting · Alignment · Lists · Insert · [More ▾] */}
           <div className="flex items-center flex-wrap gap-0.5 px-3 py-1">
+            {/* Core text marks */}
             <TBtn title="Bold (Ctrl+B)" onClick={() => e?.chain().focus().toggleBold().run()} active={!!e?.isActive('bold')}><Bold className="h-3.5 w-3.5" /></TBtn>
             <TBtn title="Italic (Ctrl+I)" onClick={() => e?.chain().focus().toggleItalic().run()} active={!!e?.isActive('italic')}><Italic className="h-3.5 w-3.5" /></TBtn>
             <TBtn title="Underline (Ctrl+U)" onClick={() => e?.chain().focus().toggleUnderline().run()} active={!!e?.isActive('underline')}><Underline className="h-3.5 w-3.5" /></TBtn>
             <TBtn title="Strikethrough" onClick={() => e?.chain().focus().toggleStrike().run()} active={!!e?.isActive('strike')}><Strikethrough className="h-3.5 w-3.5" /></TBtn>
+            <TBtn title="Subscript — e.g. H₂O (Ctrl+,)" onClick={() => (e?.commands as any)?.toggleSubscript()} active={!!e?.isActive('subscript')}>
+              <SubscriptIcon className="h-3.5 w-3.5" />
+            </TBtn>
+            <TBtn title="Superscript — e.g. x² (Ctrl+.)" onClick={() => (e?.commands as any)?.toggleSuperscript()} active={!!e?.isActive('superscript')}>
+              <SuperscriptIcon className="h-3.5 w-3.5" />
+            </TBtn>
             <TSep />
+            {/* Alignment */}
             <TBtn title="Align Left" onClick={() => e?.chain().focus().setTextAlign('left').run()} active={!!e?.isActive({ textAlign: 'left' })}><AlignLeft className="h-3.5 w-3.5" /></TBtn>
             <TBtn title="Align Center" onClick={() => e?.chain().focus().setTextAlign('center').run()} active={!!e?.isActive({ textAlign: 'center' })}><AlignCenter className="h-3.5 w-3.5" /></TBtn>
             <TBtn title="Align Right" onClick={() => e?.chain().focus().setTextAlign('right').run()} active={!!e?.isActive({ textAlign: 'right' })}><AlignRight className="h-3.5 w-3.5" /></TBtn>
             <TBtn title="Justify" onClick={() => e?.chain().focus().setTextAlign('justify').run()} active={!!e?.isActive({ textAlign: 'justify' })}><AlignJustify className="h-3.5 w-3.5" /></TBtn>
             <TSep />
+            {/* Lists */}
             <TBtn title="Bullet List" onClick={() => e?.chain().focus().toggleBulletList().run()} active={!!e?.isActive('bulletList')}><List className="h-3.5 w-3.5" /></TBtn>
             <TBtn title="Numbered List" onClick={() => e?.chain().focus().toggleOrderedList().run()} active={!!e?.isActive('orderedList')}><ListOrdered className="h-3.5 w-3.5" /></TBtn>
+            {/* Indent/Outdent — only when cursor is in a list */}
+            {(e?.isActive('bulletList') || e?.isActive('orderedList')) && (
+              <>
+                <TBtn title="Increase Indent (Tab)" onClick={() => e?.chain().focus().sinkListItem('listItem').run()}><IndentIncrease className="h-3.5 w-3.5" /></TBtn>
+                <TBtn title="Decrease Indent (Shift+Tab)" onClick={() => e?.chain().focus().liftListItem('listItem').run()}><IndentDecrease className="h-3.5 w-3.5" /></TBtn>
+              </>
+            )}
             <TSep />
-            <TBtn title="Insert / Edit Link" onClick={insertLink} active={!!e?.isActive('link')}><LinkIcon className="h-3.5 w-3.5" /></TBtn>
+            {/* Link — inline input bar */}
+            <TBtn title="Insert / Edit Link" onClick={openLinkBar} active={!!e?.isActive('link')}><LinkIcon className="h-3.5 w-3.5" /></TBtn>
             {e?.isActive('link') && <TBtn title="Remove Link" onClick={() => e.chain().focus().unsetLink().run()}><Link2Off className="h-3.5 w-3.5" /></TBtn>}
+            {/* Image & HR */}
             <TBtn title="Insert Image" onClick={() => imageInputRef.current?.click()}><ImageIcon className="h-3.5 w-3.5" /></TBtn>
             <TBtn title="Horizontal Rule" onClick={() => e?.chain().focus().setHorizontalRule().run()}><Minus className="h-3.5 w-3.5" /></TBtn>
-            <TSep />
+            {/* Table */}
             <TBtn title="Insert Table (3×3)" onClick={() => e?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>
               <TableIcon className="h-3.5 w-3.5" />
             </TBtn>
@@ -754,13 +840,80 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
                 <TSep />
                 <TBtn title="Add Row Below" onClick={() => e.chain().focus().addRowAfter().run()}><Rows className="h-3.5 w-3.5" /></TBtn>
                 <TBtn title="Add Column After" onClick={() => e.chain().focus().addColumnAfter().run()}><Columns className="h-3.5 w-3.5" /></TBtn>
-                <TSep />
                 <TBtn title="Delete Row" onClick={() => e.chain().focus().deleteRow().run()} danger><Rows className="h-3.5 w-3.5" /></TBtn>
                 <TBtn title="Delete Column" onClick={() => e.chain().focus().deleteColumn().run()} danger><Columns className="h-3.5 w-3.5" /></TBtn>
                 <TBtn title="Delete Table" onClick={() => e.chain().focus().deleteTable().run()} danger><Trash2 className="h-3.5 w-3.5" /></TBtn>
               </>
             )}
+            <TSep />
+
+            {/* ── More ▾ dropdown for less-frequent tools ── */}
+            <div ref={moreRef} className="relative shrink-0">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onMouseDown={ev => { ev.preventDefault(); setShowMore(o => !o); }}
+                    className={[
+                      'inline-flex items-center gap-0.5 h-7 px-1.5 rounded text-xs transition-colors select-none shrink-0',
+                      showMore
+                        ? 'bg-primary/10 text-primary'
+                        : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300',
+                    ].join(' ')}
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                    <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs z-[100]">More tools</TooltipContent>
+              </Tooltip>
+
+              {showMore && (
+                <div className="absolute top-full left-0 mt-1 z-[200] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5 min-w-[170px]">
+                  <button type="button" onMouseDown={ev => { ev.preventDefault(); e?.chain().focus().toggleBlockquote().run(); setShowMore(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs text-left transition-colors ${e?.isActive('blockquote') ? 'bg-primary/10 text-primary' : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200'}`}>
+                    <Quote className="h-3.5 w-3.5 shrink-0" />Blockquote
+                  </button>
+                  <button type="button" onMouseDown={ev => { ev.preventDefault(); e?.chain().focus().toggleTaskList().run(); setShowMore(false); }}
+                    className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs text-left transition-colors ${e?.isActive('taskList') ? 'bg-primary/10 text-primary' : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200'}`}>
+                    <ListChecks className="h-3.5 w-3.5 shrink-0" />Checklist
+                  </button>
+                  <div className="h-px bg-gray-100 dark:bg-gray-800 my-0.5" />
+                  <button type="button" onMouseDown={ev => { ev.preventDefault(); e?.chain().focus().clearNodes().unsetAllMarks().run(); setShowMore(false); }}
+                    className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs text-left hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors">
+                    <RemoveFormatting className="h-3.5 w-3.5 shrink-0" />Clear Formatting
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Inline Link Bar — appears below toolbar when link button clicked */}
+          {showLinkBar && (
+            <div className="flex items-center gap-2 px-3 py-2 border-t border-gray-100 dark:border-gray-800 bg-blue-50 dark:bg-blue-950/20">
+              <TextCursorInput className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+              <input
+                ref={linkInputRef}
+                value={linkBarUrl}
+                onChange={ev => setLinkBarUrl(ev.target.value)}
+                onKeyDown={ev => { if (ev.key === 'Enter') applyLink(); if (ev.key === 'Escape') { setShowLinkBar(false); setLinkBarUrl(''); } }}
+                placeholder="https://example.com"
+                className="flex-1 min-w-0 text-xs border border-blue-200 dark:border-blue-700 rounded px-2 py-1 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+              />
+              <button type="button" onMouseDown={ev => { ev.preventDefault(); applyLink(); }}
+                className="shrink-0 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-1 font-medium flex items-center gap-1">
+                <CheckIcon className="h-3 w-3" />Apply
+              </button>
+              {e?.isActive('link') && (
+                <button type="button" onMouseDown={ev => { ev.preventDefault(); e.chain().focus().unsetLink().run(); setShowLinkBar(false); }}
+                  className="shrink-0 text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-1">
+                  <Link2Off className="h-3 w-3" />Remove
+                </button>
+              )}
+              <button type="button" onMouseDown={ev => { ev.preventDefault(); setShowLinkBar(false); setLinkBarUrl(''); }}
+                className="shrink-0 text-gray-400 hover:text-gray-600 px-1">✕</button>
+            </div>
+          )}
         </div>
       )}
 
@@ -870,6 +1023,17 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
         }
         .tableWrapper { overflow-x: auto; }
         .resize-cursor { cursor: col-resize; }
+
+        /* Subscript & Superscript */
+        .doc-root sub { font-size: 0.72em; vertical-align: sub; line-height: 0; }
+        .doc-root sup { font-size: 0.72em; vertical-align: super; line-height: 0; }
+
+        /* Task / Checklist */
+        .doc-root .doc-task-list { list-style: none; padding-left: 0.25em; margin: 0.4em 0; }
+        .doc-root .doc-task-item { display: flex; align-items: flex-start; gap: 0.5em; margin: 0.25em 0; }
+        .doc-root .doc-task-item > label { display: flex; align-items: flex-start; gap: 0.45em; cursor: pointer; }
+        .doc-root .doc-task-item input[type="checkbox"] { margin-top: 0.2em; accent-color: #3b82f6; width: 1em; height: 1em; cursor: pointer; shrink: 0; }
+        .doc-root .doc-task-item p { margin: 0; }
 
         /* Dark mode */
         .dark .doc-root .doc-th { background: #1e293b; border-color: #334155; }
