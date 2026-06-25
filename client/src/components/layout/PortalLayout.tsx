@@ -121,7 +121,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
       const academicRoutes = ['/classes', '/subjects', '/subject-manager', '/academic-terms', '/syllabus-topics', '/academics/curriculum', '/lesson-notes', '/lesson-note-library', '/academics/timetable'];
       const studentRoutes = ['/students', '/parents', '/attendance'];
       const staffRoutes = ['/teachers', '/users', '/job-vacancies', '/recovery-tools'];
-      const examRoutes = ['/exams', '/grading-queue', '/exam-analytics', '/question-bank', '/results', '/exam-payments'];
+      const examRoutes = ['/exams', '/grading-queue', '/exam-analytics', '/question-bank', '/results', '/exam-payments', '/recent-exam-results'];
       if (academicRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-academics'); return; }
       if (studentRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-students'); return; }
       if (staffRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-staff'); return; }
@@ -205,6 +205,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: '/portal/teacher/exams', icon: PenTool, label: 'Exam System' },
               { href: '/portal/teacher/grading-queue', icon: CheckSquare, label: 'Assessment Review' },
               { href: '/portal/teacher/exam-analytics', icon: Award, label: 'Exam Analytics' },
+              { href: '/portal/teacher/recent-exam-results', icon: History, label: 'Exam History' },
               { href: '/portal/teacher/question-bank', icon: Database, label: 'Question Bank' },
             ],
           },
@@ -266,6 +267,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: '/portal/admin/exams/overview', icon: BarChart3, label: 'Exam Analytics' },
               { href: '/portal/admin/question-bank', icon: Database, label: 'Question Bank' },
               { href: '/portal/admin/results/publishing', icon: Eye, label: 'Results Publishing' },
+              { href: '/portal/admin/recent-exam-results', icon: History, label: 'Exam History' },
               { href: '/portal/admin/exam-payments', icon: CreditCard, label: 'Exam Payment' },
             ],
           },

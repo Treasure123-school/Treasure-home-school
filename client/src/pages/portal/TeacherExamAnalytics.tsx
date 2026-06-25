@@ -259,28 +259,39 @@ export default function TeacherExamAnalytics() {
           </div>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full" data-testid="tabs-analytics">
+            {/* Mobile: dropdown tab selector */}
+            <div className="sm:hidden mb-1">
+              <Select value={activeTab} onValueChange={setActiveTab}>
+                <SelectTrigger className="w-full" data-testid="tabs-analytics-mobile">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="overview">Overview</SelectItem>
+                  <SelectItem value="students">Students ({analytics.studentPerformance.length})</SelectItem>
+                  <SelectItem value="questions">Questions ({analytics.questionAnalysis.length})</SelectItem>
+                  <SelectItem value="trends">Trends</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Desktop: tab bar */}
+            <TabsList className="hidden sm:flex w-full" data-testid="tabs-analytics">
               <TabsTrigger value="overview" className="flex-1" data-testid="tab-overview">
-                <BarChart2 className="h-3.5 w-3.5 shrink-0 sm:hidden" />
-                <span className="hidden sm:inline">Overview</span>
+                Overview
               </TabsTrigger>
               <TabsTrigger value="students" className="flex-1" data-testid="tab-students">
-                <Users className="h-3.5 w-3.5 shrink-0 sm:hidden" />
-                <span className="hidden sm:inline">Students</span>
-                <Badge variant="secondary" className="ml-1.5 text-xs hidden sm:inline-flex">
+                Students
+                <Badge variant="secondary" className="ml-1.5 text-xs">
                   {analytics.studentPerformance.length}
                 </Badge>
               </TabsTrigger>
               <TabsTrigger value="questions" className="flex-1" data-testid="tab-questions">
-                <Target className="h-3.5 w-3.5 shrink-0 sm:hidden" />
-                <span className="hidden sm:inline">Questions</span>
-                <Badge variant="secondary" className="ml-1.5 text-xs hidden sm:inline-flex">
+                Questions
+                <Badge variant="secondary" className="ml-1.5 text-xs">
                   {analytics.questionAnalysis.length}
                 </Badge>
               </TabsTrigger>
               <TabsTrigger value="trends" className="flex-1" data-testid="tab-trends">
-                <TrendingUp className="h-3.5 w-3.5 shrink-0 sm:hidden" />
-                <span className="hidden sm:inline">Trends</span>
+                Trends
               </TabsTrigger>
             </TabsList>
 

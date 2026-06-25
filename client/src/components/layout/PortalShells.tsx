@@ -249,6 +249,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/lesson-notes/preview/:id" component={LessonNotePreviewPage} />
             <Route path="/portal/admin/lesson-notes/view/:id" component={LessonNoteViewPage} />
             <Route path="/portal/admin/lesson-notes" component={AdminLessonNoteReview} />
+            <Route path="/portal/admin/recent-exam-results" component={TeacherRecentExamResults} />
             <Route path="/portal/admin/exam-payments" component={ExamPaymentManagement} />
             <Route path="/portal/admin/attendance" component={AttendanceManagement} />
             <Route path="/portal/admin/parents" component={ParentManagement} />
