@@ -1669,3 +1669,69 @@ export const homepageSections = pgTable("homepage_sections", {
 
 export type HomepageSection = typeof homepageSections.$inferSelect;
 export type InsertHomepageSection = typeof homepageSections.$inferInsert;
+
+// ─── Unified Billing & Payments ───────────────────────────────────────────────
+
+// Billing Items — the fee catalogue (e.g. "Examination Fee", "Registration Fee")
+export const billingItems = pgTable("billing_items", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  amount: integer("amount").notNull().default(0), // stored in kobo
+  category: varchar("category", { length: 50 }).notNull().default("general"), // general | exam | registration | other
+  isActive: boolean("is_active").notNull().default(true),
+  isRecurring: boolean("is_recurring").notNull().default(false), // per-term vs one-time
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => ({
+  billingItemsNameIdx: index("billing_items_name_idx").on(t.name),
+  billingItemsCategoryIdx: index("billing_items_category_idx").on(t.category),
+}));
+
+export const insertBillingItemSchema = createInsertSchema(billingItems).omit({ id: true, createdAt: true, updatedAt: true });
+export type BillingItem = typeof billingItems.$inferSelect;
+export type InsertBillingItem = z.infer<typeof insertBillingItemSchema>;
+
+// Billing Payments — unified payment records for all fee types
+export const billingPayments = pgTable("billing_payments", {
+  id: serial("id").primaryKey(),
+  billingItemId: integer("billing_item_id").notNull().references(() => billingItems.id, { onDelete: "restrict" }),
+  studentId: varchar("student_id", { length: 36 }).notNull().references(() => students.id, { onDelete: "cascade" }),
+  termId: integer("term_id").references(() => academicTerms.id),
+  amountPaid: integer("amount_paid").notNull().default(0), // in kobo
+  paymentMethod: varchar("payment_method", { length: 50 }).notNull().default("cash"), // cash | paystack | monnify | bank_transfer
+  paymentReference: varchar("payment_reference", { length: 255 }),
+  status: varchar("status", { length: 20 }).notNull().default("paid"), // paid | pending | failed | refunded
+  provider: varchar("provider", { length: 50 }).default("manual"), // manual | paystack | monnify
+  recordedBy: varchar("recorded_by", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+  notes: text("notes"),
+  gatewayResponse: text("gateway_response"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  billingPaymentsStudentIdx: index("billing_payments_student_idx").on(t.studentId),
+  billingPaymentsItemIdx: index("billing_payments_item_idx").on(t.billingItemId),
+  billingPaymentsTermIdx: index("billing_payments_term_idx").on(t.termId),
+  billingPaymentsStatusIdx: index("billing_payments_status_idx").on(t.status),
+  billingPaymentsUniqueIdx: uniqueIndex("billing_payments_unique_idx").on(t.studentId, t.billingItemId, t.termId),
+}));
+
+export const insertBillingPaymentSchema = createInsertSchema(billingPayments).omit({ id: true, createdAt: true });
+export type BillingPayment = typeof billingPayments.$inferSelect;
+export type InsertBillingPayment = z.infer<typeof insertBillingPaymentSchema>;
+
+// Billing Feature Links — link a billing item to a feature gate (e.g. exam access)
+export const billingFeatureLinks = pgTable("billing_feature_links", {
+  id: serial("id").primaryKey(),
+  billingItemId: integer("billing_item_id").notNull().references(() => billingItems.id, { onDelete: "cascade" }),
+  featureKey: varchar("feature_key", { length: 100 }).notNull(), // e.g. "exam_access"
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  billingFeatureLinksItemIdx: index("billing_feature_links_item_idx").on(t.billingItemId),
+  billingFeatureLinksKeyIdx: uniqueIndex("billing_feature_links_key_idx").on(t.featureKey),
+}));
+
+export const insertBillingFeatureLinkSchema = createInsertSchema(billingFeatureLinks).omit({ id: true, createdAt: true });
+export type BillingFeatureLink = typeof billingFeatureLinks.$inferSelect;
+export type InsertBillingFeatureLink = z.infer<typeof insertBillingFeatureLinkSchema>;

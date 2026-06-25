@@ -1437,6 +1437,66 @@ export const monnifyVirtualAccounts = sqliteTable("monnify_virtual_accounts", {
 });
 export const insertMonnifyVirtualAccountSchema = createInsertSchema(monnifyVirtualAccounts).omit({ id: true, createdAt: true });
 
+// ─── Unified Billing & Payments ───────────────────────────────────────────────
+
+export const billingItems = sqliteTable("billing_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  description: text("description"),
+  amount: integer("amount").notNull().default(0),
+  category: text("category").notNull().default("general"),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  isRecurring: integer("is_recurring", { mode: "boolean" }).notNull().default(false),
+  createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+}, (t) => ({
+  billingItemsNameIdx: index("billing_items_name_idx").on(t.name),
+  billingItemsCategoryIdx: index("billing_items_category_idx").on(t.category),
+}));
+export const insertBillingItemSchema = createInsertSchema(billingItems).omit({ id: true, createdAt: true, updatedAt: true });
+export type BillingItem = typeof billingItems.$inferSelect;
+export type InsertBillingItem = z.infer<typeof insertBillingItemSchema>;
+
+export const billingPayments = sqliteTable("billing_payments", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  billingItemId: integer("billing_item_id").notNull().references(() => billingItems.id, { onDelete: "restrict" }),
+  studentId: text("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
+  termId: integer("term_id").references(() => academicTerms.id),
+  amountPaid: integer("amount_paid").notNull().default(0),
+  paymentMethod: text("payment_method").notNull().default("cash"),
+  paymentReference: text("payment_reference"),
+  status: text("status").notNull().default("paid"),
+  provider: text("provider").default("manual"),
+  recordedBy: text("recorded_by").references(() => users.id, { onDelete: "set null" }),
+  notes: text("notes"),
+  gatewayResponse: text("gateway_response"),
+  paidAt: integer("paid_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+}, (t) => ({
+  billingPaymentsStudentIdx: index("billing_payments_student_idx").on(t.studentId),
+  billingPaymentsItemIdx: index("billing_payments_item_idx").on(t.billingItemId),
+  billingPaymentsTermIdx: index("billing_payments_term_idx").on(t.termId),
+  billingPaymentsStatusIdx: index("billing_payments_status_idx").on(t.status),
+  billingPaymentsUniqueIdx: uniqueIndex("billing_payments_unique_idx").on(t.studentId, t.billingItemId, t.termId),
+}));
+export const insertBillingPaymentSchema = createInsertSchema(billingPayments).omit({ id: true, createdAt: true });
+export type BillingPayment = typeof billingPayments.$inferSelect;
+export type InsertBillingPayment = z.infer<typeof insertBillingPaymentSchema>;
+
+export const billingFeatureLinks = sqliteTable("billing_feature_links", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  billingItemId: integer("billing_item_id").notNull().references(() => billingItems.id, { onDelete: "cascade" }),
+  featureKey: text("feature_key").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+}, (t) => ({
+  billingFeatureLinksItemIdx: index("billing_feature_links_item_idx").on(t.billingItemId),
+  billingFeatureLinksKeyIdx: uniqueIndex("billing_feature_links_key_idx").on(t.featureKey),
+}));
+export const insertBillingFeatureLinkSchema = createInsertSchema(billingFeatureLinks).omit({ id: true, createdAt: true });
+export type BillingFeatureLink = typeof billingFeatureLinks.$inferSelect;
+export type InsertBillingFeatureLink = z.infer<typeof insertBillingFeatureLinkSchema>;
+
 // Types
 export type Role = typeof roles.$inferSelect;
 export type User = typeof users.$inferSelect;
