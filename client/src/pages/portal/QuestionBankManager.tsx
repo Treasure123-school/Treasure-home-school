@@ -1112,7 +1112,7 @@ export default function QuestionBankManager() {
   const qc         = useQueryClient();
 
   const roleId      = user?.roleId ?? 0;
-  const isAdminRole = roleId === 1 || roleId === 2;
+  const isAdminRole = roleId === 2;
 
   // ── Context states
   const [browseCtx, setBrowseCtx] = useState<ContextFilters>({});

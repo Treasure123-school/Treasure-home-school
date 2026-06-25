@@ -89,7 +89,7 @@ export default function TeacherRecentExamResults() {
     }
   });
 
-  const isAdmin = user.roleId === ROLE_IDS.ADMIN || user.roleId === ROLE_IDS.SUPER_ADMIN;
+  const isAdmin = user.roleId === ROLE_IDS.ADMIN;
   const viewResultsBase = isAdmin ? '/portal/admin/exams/analysis' : '/portal/teacher/results/exam';
 
   const teacherExams = (exams as Exam[])

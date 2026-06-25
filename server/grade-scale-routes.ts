@@ -7,7 +7,7 @@ import { authenticateUser, authorizeRoles, ROLES } from './routes/middleware';
 import { z } from 'zod';
 
 const router = Router();
-const requireAdmin = [authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN)];
+const requireAdmin = [authenticateUser, authorizeRoles(ROLES.ADMIN)];
 
 const scaleSchema = z.object({
   name: z.string().min(1).max(100),

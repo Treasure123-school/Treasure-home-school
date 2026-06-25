@@ -22,8 +22,8 @@ import {
 
 const router = Router();
 
-const ADMIN_ROLES  = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
-const STAFF_ROLES  = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER];
+const ADMIN_ROLES  = [ROLES.ADMIN];
+const STAFF_ROLES  = [ROLES.ADMIN, ROLES.TEACHER];
 
 const isAdmin   = (roleId: number) => (ADMIN_ROLES as readonly number[]).includes(roleId);
 const isTeacher = (roleId: number) => roleId === ROLES.TEACHER;

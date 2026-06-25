@@ -30,9 +30,9 @@ import { z } from "zod";
 
 const router = Router();
 
-const SUPER_ADMIN_ONLY = [ROLES.SUPER_ADMIN];
-const ADMIN_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
-const STAFF_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER];
+const ADMIN_ONLY = [ROLES.ADMIN];
+const ADMIN_ROLES = [ROLES.ADMIN];
+const STAFF_ROLES = [ROLES.ADMIN, ROLES.TEACHER];
 
 // ─── Validation Schemas ───────────────────────────────────────────────────────
 
@@ -93,7 +93,7 @@ const createSchoolNoteSchema = z.object({
 router.get(
   "/api/lesson-note-library/stats",
   authenticateUser,
-  authorizeRoles(...SUPER_ADMIN_ONLY),
+  authorizeRoles(...ADMIN_ONLY),
   async (_req: Request, res: Response) => {
     try {
       const all = await db.select().from(lessonNoteTemplates);
@@ -125,7 +125,7 @@ router.get(
   async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
-      const isSuperAdmin = user?.roleId === ROLES.SUPER_ADMIN;
+      const isAdmin = user?.roleId === ROLES.ADMIN;
 
       const {
         search,
@@ -143,7 +143,7 @@ router.get(
 
       const conditions: any[] = [];
 
-      if (!isSuperAdmin) {
+      if (!isAdmin) {
         conditions.push(eq(lessonNoteTemplates.isPublished, true));
       }
       if (level) conditions.push(eq(lessonNoteTemplates.level, level));
@@ -213,7 +213,7 @@ router.get(
       if (!id) return sendBadRequest(res, "Invalid template id");
 
       const user = (req as any).user;
-      const isSuperAdmin = user?.roleId === ROLES.SUPER_ADMIN;
+      const isAdmin = user?.roleId === ROLES.ADMIN;
 
       const [template] = await db
         .select()
@@ -221,7 +221,7 @@ router.get(
         .where(eq(lessonNoteTemplates.id, id));
 
       if (!template) return sendNotFound(res, "Template not found");
-      if (!isSuperAdmin && !template.isPublished)
+      if (!isAdmin && !template.isPublished)
         return sendForbidden(res, "Template is not published");
 
       sendSuccess(res, template);
@@ -236,7 +236,7 @@ router.get(
 router.post(
   "/api/lesson-note-library/templates",
   authenticateUser,
-  authorizeRoles(...SUPER_ADMIN_ONLY),
+  authorizeRoles(...ADMIN_ONLY),
   async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
@@ -280,7 +280,7 @@ router.post(
 router.put(
   "/api/lesson-note-library/templates/:id",
   authenticateUser,
-  authorizeRoles(...SUPER_ADMIN_ONLY),
+  authorizeRoles(...ADMIN_ONLY),
   async (req: Request, res: Response) => {
     try {
       const id = parseIntParam(req.params.id);
@@ -306,7 +306,7 @@ router.put(
 router.patch(
   "/api/lesson-note-library/templates/:id/publish",
   authenticateUser,
-  authorizeRoles(...SUPER_ADMIN_ONLY),
+  authorizeRoles(...ADMIN_ONLY),
   async (req: Request, res: Response) => {
     try {
       const id = parseIntParam(req.params.id);
@@ -332,7 +332,7 @@ router.patch(
 router.post(
   "/api/lesson-note-library/templates/publish-all",
   authenticateUser,
-  authorizeRoles(...SUPER_ADMIN_ONLY),
+  authorizeRoles(...ADMIN_ONLY),
   async (_req: Request, res: Response) => {
     try {
       const result = await db
@@ -351,7 +351,7 @@ router.post(
 router.delete(
   "/api/lesson-note-library/templates/:id",
   authenticateUser,
-  authorizeRoles(...SUPER_ADMIN_ONLY),
+  authorizeRoles(...ADMIN_ONLY),
   async (req: Request, res: Response) => {
     try {
       const id = parseIntParam(req.params.id);
@@ -382,7 +382,7 @@ router.post(
       if (!templateId) return sendBadRequest(res, "Invalid template id");
 
       const user = (req as any).user;
-      const isSuperAdmin = user?.roleId === ROLES.SUPER_ADMIN;
+      const isAdmin = user?.roleId === ROLES.ADMIN;
 
       const [template] = await db
         .select()
@@ -390,7 +390,7 @@ router.post(
         .where(eq(lessonNoteTemplates.id, templateId));
 
       if (!template) return sendNotFound(res, "Template not found");
-      if (!isSuperAdmin && !template.isPublished)
+      if (!isAdmin && !template.isPublished)
         return sendForbidden(res, "This template is not published yet");
 
       const body = importSchema.parse(req.body);
@@ -640,7 +640,7 @@ router.get(
   async (req: Request, res: Response) => {
     try {
       const user = (req as any).user;
-      const isSuperAdmin = user?.roleId === ROLES.SUPER_ADMIN;
+      const isAdmin = user?.roleId === ROLES.ADMIN;
 
       const all = await db.select({
         className: lessonNoteTemplates.className,
@@ -648,7 +648,7 @@ router.get(
         level: lessonNoteTemplates.level,
         term: lessonNoteTemplates.term,
       }).from(lessonNoteTemplates).where(
-        isSuperAdmin ? undefined as any : eq(lessonNoteTemplates.isPublished, true)
+        isAdmin ? undefined as any : eq(lessonNoteTemplates.isPublished, true)
       );
 
       type FilterRow = { className: string; subjectName: string; level: string; term: string };

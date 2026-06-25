@@ -175,7 +175,7 @@ export default function LessonNoteEditorPage() {
   const qc = useQueryClient();
 
   const isEdit    = !!id;
-  const isAdmin   = user?.roleId === ROLE_IDS.ADMIN || user?.roleId === ROLE_IDS.SUPER_ADMIN;
+  const isAdmin   = user?.roleId === ROLE_IDS.ADMIN;
   const isTeacher = user?.roleId === ROLE_IDS.TEACHER;
   const basePortal = isAdmin ? '/portal/admin' : '/portal/teacher';
   const listUrl    = `${basePortal}/lesson-notes`;

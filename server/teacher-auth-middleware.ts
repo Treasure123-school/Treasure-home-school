@@ -141,7 +141,7 @@ export const authorizeTeacherForClassSubject = (action: string) => {
         return res.status(401).json({ message: "User identification not found" });
       }
 
-      if (roleId === ROLE_IDS.SUPER_ADMIN || roleId === ROLE_IDS.ADMIN) {
+      if (roleId === ROLE_IDS.ADMIN) {
         return next();
       }
 
@@ -211,7 +211,7 @@ export const validateTeacherCanCreateExam = async (req: any, res: any, next: any
       return res.status(401).json({ message: "User identification not found" });
     }
 
-    if (roleId === ROLE_IDS.SUPER_ADMIN || roleId === ROLE_IDS.ADMIN) {
+    if (roleId === ROLE_IDS.ADMIN) {
       return next();
     }
 
@@ -265,7 +265,7 @@ export const validateTeacherCanEnterScores = async (req: any, res: any, next: an
       return res.status(401).json({ message: "User identification not found" });
     }
 
-    if (roleId === ROLE_IDS.SUPER_ADMIN || roleId === ROLE_IDS.ADMIN) {
+    if (roleId === ROLE_IDS.ADMIN) {
       return next();
     }
 
@@ -320,7 +320,7 @@ export const validateTeacherCanViewResults = async (req: any, res: any, next: an
       return res.status(401).json({ message: "User identification not found" });
     }
 
-    if (roleId === ROLE_IDS.SUPER_ADMIN || roleId === ROLE_IDS.ADMIN) {
+    if (roleId === ROLE_IDS.ADMIN) {
       return next();
     }
 
@@ -377,7 +377,7 @@ export const validateExamTimeWindow = async (req: any, res: any, next: any) => {
     }
 
     // Admins and teachers can access exams anytime (for management)
-    if (roleId === ROLE_IDS.SUPER_ADMIN || roleId === ROLE_IDS.ADMIN || roleId === ROLE_IDS.TEACHER) {
+    if (roleId === ROLE_IDS.ADMIN || roleId === ROLE_IDS.TEACHER) {
       return next();
     }
 

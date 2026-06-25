@@ -912,7 +912,7 @@ export default function AcademicTermsManagement() {
 
   // ⚠ isAdmin MUST be declared before any hook that uses it
   // Login API returns roleId (number), never the string "role" — use ROLE_IDS
-  const isAdmin = user?.roleId === ROLE_IDS.ADMIN || user?.roleId === ROLE_IDS.SUPER_ADMIN;
+  const isAdmin = user?.roleId === ROLE_IDS.ADMIN;
 
   const calendar = useAcademicCalendar();
 

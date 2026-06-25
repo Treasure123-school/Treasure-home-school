@@ -19,9 +19,9 @@ import { z } from "zod";
 
 const router = Router();
 
-const SUPER_ADMIN_ONLY = [ROLES.SUPER_ADMIN];
-const ADMIN_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
-const STAFF_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER];
+const ADMIN_ONLY = [ROLES.ADMIN];
+const ADMIN_ROLES = [ROLES.ADMIN];
+const STAFF_ROLES = [ROLES.ADMIN, ROLES.TEACHER];
 
 // ─── Validation schemas ───────────────────────────────────────────────────────
 
@@ -61,7 +61,7 @@ const importSchema = z.object({
 router.get("/api/curriculum-templates", authenticateUser, authorizeRoles(...STAFF_ROLES), async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    const isSuperAdmin = user?.roleId === ROLES.SUPER_ADMIN;
+    const isAdmin = user?.roleId === ROLES.ADMIN;
 
     const level = req.query.level as string | undefined;
     const search = req.query.search as string | undefined;
@@ -72,7 +72,7 @@ router.get("/api/curriculum-templates", authenticateUser, authorizeRoles(...STAF
 
     const conditions: any[] = [];
 
-    if (!isSuperAdmin) {
+    if (!isAdmin) {
       conditions.push(eq(curriculumTemplates.isPublished, true));
     }
     if (level) conditions.push(eq(curriculumTemplates.level, level));
@@ -108,7 +108,7 @@ router.get("/api/curriculum-templates", authenticateUser, authorizeRoles(...STAF
 });
 
 // GET /api/curriculum-templates/stats
-router.get("/api/curriculum-templates/stats", authenticateUser, authorizeRoles(...SUPER_ADMIN_ONLY), async (_req: Request, res: Response) => {
+router.get("/api/curriculum-templates/stats", authenticateUser, authorizeRoles(...ADMIN_ONLY), async (_req: Request, res: Response) => {
   try {
     const all = await db.select().from(curriculumTemplates);
     const topics = await db.select().from(curriculumTemplateTopics);
@@ -131,11 +131,11 @@ router.get("/api/curriculum-templates/:id", authenticateUser, authorizeRoles(...
     if (!id) return sendBadRequest(res, "Invalid template id");
 
     const user = (req as any).user;
-    const isSuperAdmin = user?.roleId === ROLES.SUPER_ADMIN;
+    const isAdmin = user?.roleId === ROLES.ADMIN;
 
     const [template] = await db.select().from(curriculumTemplates).where(eq(curriculumTemplates.id, id));
     if (!template) return sendNotFound(res, "Template not found");
-    if (!isSuperAdmin && !template.isPublished) return sendForbidden(res, "Template is not published");
+    if (!isAdmin && !template.isPublished) return sendForbidden(res, "Template is not published");
 
     const topics = await db.select().from(curriculumTemplateTopics)
       .where(eq(curriculumTemplateTopics.templateId, id))
@@ -152,7 +152,7 @@ router.get("/api/curriculum-templates/:id", authenticateUser, authorizeRoles(...
 });
 
 // POST /api/curriculum-templates — create template (super admin only)
-router.post("/api/curriculum-templates", authenticateUser, authorizeRoles(...SUPER_ADMIN_ONLY), async (req: Request, res: Response) => {
+router.post("/api/curriculum-templates", authenticateUser, authorizeRoles(...ADMIN_ONLY), async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     const body = createTemplateSchema.parse(req.body);
@@ -165,7 +165,7 @@ router.post("/api/curriculum-templates", authenticateUser, authorizeRoles(...SUP
 });
 
 // PUT /api/curriculum-templates/:id — update template (super admin only)
-router.put("/api/curriculum-templates/:id", authenticateUser, authorizeRoles(...SUPER_ADMIN_ONLY), async (req: Request, res: Response) => {
+router.put("/api/curriculum-templates/:id", authenticateUser, authorizeRoles(...ADMIN_ONLY), async (req: Request, res: Response) => {
   try {
     const id = parseIntParam(req.params.id);
     if (!id) return sendBadRequest(res, "Invalid template id");
@@ -180,7 +180,7 @@ router.put("/api/curriculum-templates/:id", authenticateUser, authorizeRoles(...
 });
 
 // PATCH /api/curriculum-templates/:id/publish — toggle publish status
-router.patch("/api/curriculum-templates/:id/publish", authenticateUser, authorizeRoles(...SUPER_ADMIN_ONLY), async (req: Request, res: Response) => {
+router.patch("/api/curriculum-templates/:id/publish", authenticateUser, authorizeRoles(...ADMIN_ONLY), async (req: Request, res: Response) => {
   try {
     const id = parseIntParam(req.params.id);
     if (!id) return sendBadRequest(res, "Invalid template id");
@@ -195,7 +195,7 @@ router.patch("/api/curriculum-templates/:id/publish", authenticateUser, authoriz
 });
 
 // DELETE /api/curriculum-templates/:id — delete template and all its topics (cascade)
-router.delete("/api/curriculum-templates/:id", authenticateUser, authorizeRoles(...SUPER_ADMIN_ONLY), async (req: Request, res: Response) => {
+router.delete("/api/curriculum-templates/:id", authenticateUser, authorizeRoles(...ADMIN_ONLY), async (req: Request, res: Response) => {
   try {
     const id = parseIntParam(req.params.id);
     if (!id) return sendBadRequest(res, "Invalid template id");
@@ -208,7 +208,7 @@ router.delete("/api/curriculum-templates/:id", authenticateUser, authorizeRoles(
 // ─── Template Topics ──────────────────────────────────────────────────────────
 
 // POST /api/curriculum-templates/:id/topics — add single topic
-router.post("/api/curriculum-templates/:id/topics", authenticateUser, authorizeRoles(...SUPER_ADMIN_ONLY), async (req: Request, res: Response) => {
+router.post("/api/curriculum-templates/:id/topics", authenticateUser, authorizeRoles(...ADMIN_ONLY), async (req: Request, res: Response) => {
   try {
     const templateId = parseIntParam(req.params.id);
     if (!templateId) return sendBadRequest(res, "Invalid template id");
@@ -233,7 +233,7 @@ router.post("/api/curriculum-templates/:id/topics", authenticateUser, authorizeR
 });
 
 // POST /api/curriculum-templates/:id/topics/bulk — bulk add topics
-router.post("/api/curriculum-templates/:id/topics/bulk", authenticateUser, authorizeRoles(...SUPER_ADMIN_ONLY), async (req: Request, res: Response) => {
+router.post("/api/curriculum-templates/:id/topics/bulk", authenticateUser, authorizeRoles(...ADMIN_ONLY), async (req: Request, res: Response) => {
   try {
     const templateId = parseIntParam(req.params.id);
     if (!templateId) return sendBadRequest(res, "Invalid template id");
@@ -249,7 +249,7 @@ router.post("/api/curriculum-templates/:id/topics/bulk", authenticateUser, autho
 });
 
 // PUT /api/curriculum-templates/topics/:topicId — update topic
-router.put("/api/curriculum-templates/topics/:topicId", authenticateUser, authorizeRoles(...SUPER_ADMIN_ONLY), async (req: Request, res: Response) => {
+router.put("/api/curriculum-templates/topics/:topicId", authenticateUser, authorizeRoles(...ADMIN_ONLY), async (req: Request, res: Response) => {
   try {
     const topicId = parseIntParam(req.params.topicId);
     if (!topicId) return sendBadRequest(res, "Invalid topic id");
@@ -264,7 +264,7 @@ router.put("/api/curriculum-templates/topics/:topicId", authenticateUser, author
 });
 
 // DELETE /api/curriculum-templates/topics/:topicId — delete topic
-router.delete("/api/curriculum-templates/topics/:topicId", authenticateUser, authorizeRoles(...SUPER_ADMIN_ONLY), async (req: Request, res: Response) => {
+router.delete("/api/curriculum-templates/topics/:topicId", authenticateUser, authorizeRoles(...ADMIN_ONLY), async (req: Request, res: Response) => {
   try {
     const topicId = parseIntParam(req.params.topicId);
     if (!topicId) return sendBadRequest(res, "Invalid topic id");
@@ -291,7 +291,7 @@ router.post("/api/curriculum-templates/:id/import", authenticateUser, authorizeR
 
     const [template] = await db.select().from(curriculumTemplates).where(eq(curriculumTemplates.id, templateId));
     if (!template) return sendNotFound(res, "Template not found");
-    if (!template.isPublished && user?.roleId !== ROLES.SUPER_ADMIN) {
+    if (!template.isPublished && user?.roleId !== ROLES.ADMIN) {
       return sendForbidden(res, "This template is not published yet");
     }
 
