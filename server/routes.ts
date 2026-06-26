@@ -2862,9 +2862,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete exam - TEACHERS ONLY (only creator can delete) or ADMIN/SUPER_ADMIN
+  // Delete exam - Teachers (own exams only), Admins and Super Admins (any exam)
   // Implements comprehensive smart deletion with cascade, audit logging, and cleanup
-  app.delete('/api/exams/:id', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
+  app.delete('/api/exams/:id', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER), async (req, res) => {
     const startTime = Date.now();
     try {
       const examId = parseInt(req.params.id);
@@ -2875,8 +2875,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: 'Exam not found' });
       }
 
-      // Admins and Super Admins can delete any exam, teachers can only delete their own
-      const isAdmin = deletedBy.roleId === ROLES.ADMIN;
+      // Super Admins and Admins can delete any exam; teachers can only delete their own
+      const isAdmin = deletedBy.roleId === ROLES.ADMIN || deletedBy.roleId === ROLES.SUPER_ADMIN;
       if (!isAdmin && existingExam.createdBy !== deletedBy.id) {
         return res.status(403).json({ message: 'You can only delete exams you created' });
       }

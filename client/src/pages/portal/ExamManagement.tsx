@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useSearch } from 'wouter';
 import ExamQuestionAdder from './ExamQuestionAdder';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -219,10 +219,14 @@ export default function ExamManagement() {
     },
   });
 
-  // Filter out exams being deleted — deletingExamIds is React state so it triggers
-  // an immediate synchronous re-render the moment the user confirms, before the API
-  // call even starts. pendingDeletionsRef stays as a secondary guard for socket events.
-  const exams = rawExams.filter((exam: Exam) => !deletingExamIds.has(exam.id));
+  // Memoized: only recomputes when rawExams or deletingExamIds changes.
+  // deletingExamIds is React state — updating it synchronously in the click handler
+  // causes React to remove the item in the very same render tick (instant, like TikTok).
+  // pendingDeletionsRef stays as a secondary guard for socket race conditions.
+  const exams = useMemo(
+    () => rawExams.filter((exam: Exam) => !deletingExamIds.has(exam.id)),
+    [rawExams, deletingExamIds]
+  );
 
   // Enable real-time updates for exams with specific event handlers
   useSocketIORealtime({
@@ -432,10 +436,14 @@ export default function ExamManagement() {
   // Filter out questions that are pending deletion to prevent race conditions in preview
   const previewQuestions = rawPreviewQuestions.filter((question: ExamQuestion) => !pendingQuestionDeletionsRef.current.has(question.id));
 
+  // Stable, memoized exam ID list — prevents the question-counts query key from
+  // changing on every render (which would trigger spurious refetches)
+  const examIds = useMemo(() => exams.map((exam: Exam) => exam.id), [exams]);
+
   // Fetch question counts for all exams
   const { data: questionCounts = {} } = useQuery<Record<number, number>>({
-    queryKey: ['/api/exams/question-counts', exams.map((exam: Exam) => exam.id)],
-    enabled: exams.length > 0,
+    queryKey: ['/api/exams/question-counts', examIds],
+    enabled: examIds.length > 0,
     queryFn: async () => {
       const examIds = exams.map((exam: Exam) => exam.id);
       if (examIds.length === 0) return {};
@@ -585,7 +593,11 @@ export default function ExamManagement() {
   const deleteExamMutation = useMutation({
     mutationFn: async (examId: number) => {
       const response = await apiRequest('DELETE', `/api/exams/${examId}`);
-      if (!response.ok) throw new Error('Failed to delete exam');
+      if (!response.ok) {
+        // Read the actual server error so the toast shows a meaningful message
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.message || `Failed to delete exam (${response.status})`);
+      }
       // Handle both 204 (legacy) and 200 with deletion stats
       if (response.status === 204) return null;
       const contentLength = response.headers.get('content-length');
@@ -1596,8 +1608,11 @@ export default function ExamManagement() {
     return result;
   };
 
-  const filteredExams = exams.filter((exam: Exam) =>
-    exam.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredExams = useMemo(
+    () => exams.filter((exam: Exam) =>
+      exam.name.toLowerCase().includes(searchTerm.toLowerCase())
+    ),
+    [exams, searchTerm]
   );
 
   const getClassNameById = (classId: number) => {
