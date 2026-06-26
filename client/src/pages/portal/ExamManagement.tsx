@@ -136,6 +136,7 @@ export default function ExamManagement() {
   const [previewExam, setPreviewExam] = useState<Exam | null>(null);
   const [isSecurityExpanded, setIsSecurityExpanded] = useState(false);
   const [deletingExam, setDeletingExam] = useState<Exam | null>(null);
+  const [deletingExamIds, setDeletingExamIds] = useState<Set<number>>(new Set());
   const [currentStep, setCurrentStep] = useState(1);
 
   const searchParams = useSearch();
@@ -594,6 +595,7 @@ export default function ExamManagement() {
     onMutate: async (examId) => {
       // Mark this deletion as pending to prevent Realtime from overriding
       pendingDeletionsRef.current.add(examId);
+      setDeletingExamIds(prev => { const next = new Set(prev); next.add(examId); return next; });
 
       const queryKey = ['/api/exams'];
       const context = await optimisticDelete<Exam[]>({ queryKey, idToDelete: examId });
@@ -607,8 +609,9 @@ export default function ExamManagement() {
       return context;
     },
     onSuccess: (data, examId) => {
-      // Clear pending flag immediately
+      // Clear pending flags
       pendingDeletionsRef.current.delete(examId);
+      setDeletingExamIds(prev => { const next = new Set(prev); next.delete(examId); return next; });
 
       // Build detailed success message with deletion stats
       let description = "Exam deleted successfully";
@@ -637,13 +640,14 @@ export default function ExamManagement() {
     onError: (error: any, examId, context) => {
       // Remove from pending deletions on error
       pendingDeletionsRef.current.delete(examId);
+      setDeletingExamIds(prev => { const next = new Set(prev); next.delete(examId); return next; });
 
       if (context?.previousData) {
         rollbackOnError(['/api/exams'], context.previousData);
       }
       toast({
-        title: "Error",
-        description: error.message || "Failed to delete exam",
+        title: "Deletion Failed",
+        description: error.message || "Failed to delete exam. The assessment has been restored.",
         variant: "destructive",
       });
     },
@@ -2301,10 +2305,11 @@ export default function ExamManagement() {
                                 <DropdownMenuItem
                                   onSelect={(e) => e.preventDefault()}
                                   className="text-destructive focus:text-destructive"
+                                  disabled={deletingExamIds.has(exam.id)}
                                   data-testid={`dropdown-delete-exam-${exam.id}`}
                                 >
                                   <Trash2 className="w-4 h-4 mr-2" />
-                                  Delete Exam
+                                  {deletingExamIds.has(exam.id) ? 'Deleting...' : 'Delete Exam'}
                                 </DropdownMenuItem>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
@@ -2318,9 +2323,10 @@ export default function ExamManagement() {
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                                   <AlertDialogAction
                                     onClick={() => deleteExamMutation.mutate(exam.id)}
+                                    disabled={deletingExamIds.has(exam.id)}
                                     className="bg-destructive hover:bg-destructive/90"
                                   >
-                                    Delete Exam
+                                    {deletingExamIds.has(exam.id) ? 'Deleting...' : 'Delete Exam'}
                                   </AlertDialogAction>
                                 </AlertDialogFooter>
                               </AlertDialogContent>
@@ -2499,13 +2505,14 @@ export default function ExamManagement() {
                               <DropdownMenuItem 
                                 className="text-destructive focus:text-destructive cursor-pointer"
                                 data-testid={`menu-delete-exam-${exam.id}`}
+                                disabled={deletingExamIds.has(exam.id)}
                                 onClick={(e) => {
                                   e.preventDefault();
-                                  setDeletingExam(exam);
+                                  if (!deletingExamIds.has(exam.id)) setDeletingExam(exam);
                                 }}
                               >
                                 <Trash2 className="w-4 h-4 mr-2" />
-                                Delete Exam
+                                {deletingExamIds.has(exam.id) ? 'Deleting...' : 'Delete Exam'}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -2963,16 +2970,17 @@ export default function ExamManagement() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deletingExam ? deletingExamIds.has(deletingExam.id) : false}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deletingExam ? deletingExamIds.has(deletingExam.id) : false}
               onClick={() => {
                 const examId = deletingExam?.id;
                 setDeletingExam(null);
-                if (examId) deleteExamMutation.mutate(examId);
+                if (examId && !deletingExamIds.has(examId)) deleteExamMutation.mutate(examId);
               }}
             >
-              Delete Exam
+              {deletingExam && deletingExamIds.has(deletingExam.id) ? 'Deleting...' : 'Delete Exam'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
