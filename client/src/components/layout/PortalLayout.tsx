@@ -121,7 +121,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
       const academicRoutes = ['/classes', '/subjects', '/subject-manager', '/academic-terms', '/syllabus-topics', '/academics/curriculum', '/lesson-notes', '/lesson-note-library', '/academics/timetable'];
       const studentRoutes = ['/students', '/parents', '/attendance'];
       const staffRoutes = ['/teachers', '/users', '/job-vacancies', '/recovery-tools'];
-      const examRoutes = ['/exams', '/grading-queue', '/exam-analytics', '/question-bank', '/results', '/exam-payments', '/recent-exam-results'];
+      const examRoutes = ['/exams', '/grading-queue', '/exam-analytics', '/question-bank', '/results', '/recent-exam-results'];
       const financeRoutes = ['/billing-items', '/billing-payments', '/billing-outstanding', '/billing-reports'];
       if (academicRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-academics'); return; }
       if (studentRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-students'); return; }
@@ -185,7 +185,6 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: `/portal/${userRole}/forum`, icon: MessagesSquare, label: 'Discussion Forum' },
             ],
           },
-          { name: 'Exam Fee Payment', href: `/portal/${userRole}/exam-payment`, icon: CreditCard },
           { name: 'Library', href: `/portal/${userRole}/library`, icon: Library },
           { name: 'Extracurricular', href: `/portal/${userRole}/extracurricular`, icon: Trophy },
           { name: 'Help & Support', href: `/portal/${userRole}/help`, icon: HelpCircle },
@@ -270,7 +269,6 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: '/portal/admin/question-bank', icon: Database, label: 'Question Bank' },
               { href: '/portal/admin/results/publishing', icon: Eye, label: 'Results Publishing' },
               { href: '/portal/admin/recent-exam-results', icon: History, label: 'Exam History' },
-              { href: '/portal/admin/exam-payments', icon: CreditCard, label: 'Exam Payment' },
             ],
           },
           {

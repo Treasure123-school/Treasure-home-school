@@ -1,7 +1,9 @@
 import { Router, Request, Response } from "express";
-import { authenticateUser, requireAdmin } from "./middleware";
+import { authenticateUser, authorizeRoles, ROLES } from "./middleware";
 import { storage } from "../storage";
 import { z } from "zod";
+
+const requireAdmin = authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN);
 
 export const billingRouter = Router();
 
@@ -72,7 +74,7 @@ billingRouter.put("/items/:id", authenticateUser, requireAdmin, async (req: Requ
     const data = billingItemSchema.partial().parse(req.body);
     const item = await storage.updateBillingItem(Number(req.params.id), {
       ...data,
-      dueDate: data.dueDate ? new Date(data.dueDate) : data.dueDate,
+      dueDate: data.dueDate != null ? new Date(data.dueDate) : null,
     });
     if (!item) return res.status(404).json({ error: "Billing item not found" });
     res.json(item);
@@ -138,7 +140,7 @@ billingRouter.get("/payments", authenticateUser, requireAdmin, async (req: Reque
 
     const items = await storage.getBillingItems();
     const enriched = await Promise.all(payments.map(async (p) => {
-      const student = await storage.getStudent(p.studentId);
+      const student = await storage.getStudent(p.studentId) as any;
       const user = student?.userId ? await storage.getUser(student.userId) : null;
       const item = items.find((i) => i.id === p.billingItemId);
       const cls = student?.classId ? await storage.getClass(student.classId) : null;

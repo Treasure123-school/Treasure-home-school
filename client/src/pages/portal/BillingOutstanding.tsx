@@ -144,7 +144,7 @@ export default function BillingOutstanding() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">— Select a billing item —</SelectItem>
-                {items.filter(i => i.isActive).map((i: any) => (
+                {items.filter((i: any) => i.isActive).map((i: any) => (
                   <SelectItem key={i.id} value={String(i.id)}>{i.name}</SelectItem>
                 ))}
               </SelectContent>
