@@ -593,6 +593,9 @@ export default function ExamManagement() {
   const deleteExamMutation = useMutation({
     mutationFn: async (examId: number) => {
       const response = await apiRequest('DELETE', `/api/exams/${examId}`);
+      // 404 means the exam is already gone from the database (stale cache).
+      // Goal achieved — treat it as success so we never roll back or show an error toast.
+      if (response.status === 404) return null;
       if (!response.ok) {
         // Read the actual server error so the toast shows a meaningful message
         const body = await response.json().catch(() => ({}));

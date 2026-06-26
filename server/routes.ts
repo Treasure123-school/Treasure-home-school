@@ -2960,7 +2960,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Toggle exam publish status - TEACHERS ONLY (creator or teacher in charge) or ADMIN/SUPER_ADMIN
+  // Toggle exam publish status - Teachers (creator or teacher in charge) and Admins only
   app.patch('/api/exams/:id/publish', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
     try {
       const examId = parseInt(req.params.id);
