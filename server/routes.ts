@@ -1731,11 +1731,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Try to get subject and class info
             try {
               if (exam.subjectId) {
-                const subject = await storage.getSubject(exam.subjectId);
+                const subject = await storage.getSubject(exam.subjectId!);
                 if (subject) baseResult.subjectName = subject.name;
               }
               if (exam.classId) {
-                const examClass = await storage.getClass(exam.classId);
+                const examClass = await storage.getClass(exam.classId!);
                 if (examClass) baseResult.className = examClass.name;
               }
             } catch (lookupError) {
@@ -1841,7 +1841,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({
           message: 'No result found for this exam',
           examId: examId,
-          subjectName: exam.subjectId ? (await storage.getSubject(exam.subjectId))?.name : 'Unknown'
+          subjectName: exam.subjectId ? (await storage.getSubject(exam.subjectId!))?.name : 'Unknown'
         });
       }
 
@@ -1862,12 +1862,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let className = 'Unknown Class';
 
       if (exam.subjectId) {
-        const subject = await storage.getSubject(exam.subjectId);
+        const subject = await storage.getSubject(exam.subjectId!);
         subjectName = subject?.name || 'Unknown Subject';
       }
 
       if (exam.classId) {
-        const classInfo = await storage.getClass(exam.classId);
+        const classInfo = await storage.getClass(exam.classId!);
         className = classInfo?.name || 'Unknown Class';
       }
 
@@ -2247,8 +2247,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           passingScore: schema.exams.passingScore,
         }).from(schema.exams)
           .where(and(
-            eq(schema.exams.classId, exam.classId),
-            eq(schema.exams.subjectId, exam.subjectId),
+            eq(schema.exams.classId, exam.classId!),
+            eq(schema.exams.subjectId, exam.subjectId!),
           ))
           .orderBy(schema.exams.date);
 
@@ -2287,9 +2287,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         const [classInfo, subjectInfo, termInfo] = await Promise.all([
-          storage.getClass(exam.classId),
-          storage.getSubject(exam.subjectId),
-          storage.getAcademicTerm(exam.termId),
+          storage.getClass(exam.classId!),
+          storage.getSubject(exam.subjectId!),
+          storage.getAcademicTerm(exam.termId!),
         ]);
         if (classInfo) className = classInfo.name;
         if (subjectInfo) subjectName = subjectInfo.name;
@@ -2300,7 +2300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (teacher) teacherName = `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || teacher.username || '';
         }
 
-        const classStudents = await storage.getStudentsByClass(exam.classId);
+        const classStudents = await storage.getStudentsByClass(exam.classId!);
         totalClassStudents = classStudents.length;
 
         const questions = await storage.getExamQuestions(exam.id);
@@ -2831,9 +2831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (sanitizedData.subjectId !== undefined && sanitizedData.subjectId !== existingExam.subjectId) {
         console.log(`[EXAM-UPDATE] Subject changed from ${existingExam.subjectId} to ${sanitizedData.subjectId} for exam ${examId}. Syncing report cards...`);
         try {
-          reportCardSyncResult = await storage.syncReportCardItemsOnExamSubjectChange(
-            examId,
-            existingExam.subjectId,
+          reportCardSyncResult = await storage.syncReportCardItemsOnExamSubjectChange(examId, existingExam.subjectId!,
             sanitizedData.subjectId
           );
           console.log(`[EXAM-UPDATE] Report card sync complete: ${reportCardSyncResult.updated} items updated`);
@@ -2884,8 +2882,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get additional context for audit log
-      const examClass = await storage.getClass(existingExam.classId);
-      const examSubject = await storage.getSubject(existingExam.subjectId);
+      const examClass = await storage.getClass(existingExam.classId!);
+      const examSubject = await storage.getSubject(existingExam.subjectId!);
 
       // Perform comprehensive smart deletion
       const deletionResult = await storage.deleteExam(examId);
@@ -3973,7 +3971,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // PAYMENT CHECK: Block access if exam fee is required and unpaid
       const sysSettings = await storage.getSystemSettings();
       if (sysSettings?.requireExamPayment) {
-        const payment = await storage.getExamPayment(studentId, exam.termId);
+        const payment = await storage.getExamPayment(studentId, exam.termId!);
         if (!payment) {
           return res.status(402).json({
             message: 'Exam fee payment required',
@@ -5592,12 +5590,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             examDate = exam.date;
             examType = exam.examType ?? 'exam';
             if (exam.subjectId) {
-              const subj = await storage.getSubject(exam.subjectId);
+              const subj = await storage.getSubject(exam.subjectId!);
               subjectName = subj?.name ?? 'Unknown';
             }
             if (exam.termId) {
               termId = exam.termId;
-              const term = await storage.getAcademicTerm(exam.termId);
+              const term = await storage.getAcademicTerm(exam.termId!);
               if (term) {
                 termName = term.name ?? null;
                 termYear = (term as any).year ?? null;
@@ -11575,17 +11573,17 @@ School Management System Administration
       }
 
       for (const exam of exams) {
-        if (!subjectScores[exam.subjectId]) continue;
+        if (!subjectScores[exam.subjectId!]) continue;
         const result = await storage.getExamResultByExamAndStudent(exam.id, studentId);
         if (result && result.marksObtained !== null) {
           const actualMaxScore = result.maxScore || exam.totalMarks;
-          subjectScores[exam.subjectId].hasData = true;
+          subjectScores[exam.subjectId!].hasData = true;
           if (exam.examType === 'test' || exam.examType === 'quiz') {
-            subjectScores[exam.subjectId].testScores.push(result.marksObtained);
-            subjectScores[exam.subjectId].testMax.push(actualMaxScore);
+            subjectScores[exam.subjectId!].testScores.push(result.marksObtained);
+            subjectScores[exam.subjectId!].testMax.push(actualMaxScore);
           } else {
-            subjectScores[exam.subjectId].examScores.push(result.marksObtained);
-            subjectScores[exam.subjectId].examMax.push(actualMaxScore);
+            subjectScores[exam.subjectId!].examScores.push(result.marksObtained);
+            subjectScores[exam.subjectId!].examMax.push(actualMaxScore);
           }
         }
       }
@@ -11789,16 +11787,16 @@ School Management System Administration
         }
 
         for (const exam of exams) {
-          if (!subjectScores[exam.subjectId]) continue;
+          if (!subjectScores[exam.subjectId!]) continue;
           const result = await storage.getExamResultByExamAndStudent(exam.id, student.id);
           if (result && result.marksObtained !== null) {
-            subjectScores[exam.subjectId].hasData = true;
+            subjectScores[exam.subjectId!].hasData = true;
             if (exam.examType === 'test' || exam.examType === 'quiz') {
-              subjectScores[exam.subjectId].testScores.push(result.marksObtained);
-              subjectScores[exam.subjectId].testMax.push(exam.totalMarks);
+              subjectScores[exam.subjectId!].testScores.push(result.marksObtained);
+              subjectScores[exam.subjectId!].testMax.push(exam.totalMarks);
             } else {
-              subjectScores[exam.subjectId].examScores.push(result.marksObtained);
-              subjectScores[exam.subjectId].examMax.push(exam.totalMarks);
+              subjectScores[exam.subjectId!].examScores.push(result.marksObtained);
+              subjectScores[exam.subjectId!].examMax.push(exam.totalMarks);
             }
           }
         }
@@ -11918,18 +11916,18 @@ School Management System Administration
       const subjectScores: Record<number, { testScores: number[], testMax: number[], examScores: number[], examMax: number[] }> = {};
 
       for (const exam of exams) {
-        if (!subjectScores[exam.subjectId]) {
-          subjectScores[exam.subjectId] = { testScores: [], testMax: [], examScores: [], examMax: [] };
+        if (!subjectScores[exam.subjectId!]) {
+          subjectScores[exam.subjectId!] = { testScores: [], testMax: [], examScores: [], examMax: [] };
         }
 
         const result = await storage.getExamResultByExamAndStudent(exam.id, studentId);
         if (result && result.marksObtained !== null) {
           if (exam.examType === 'test' || exam.examType === 'quiz') {
-            subjectScores[exam.subjectId].testScores.push(result.marksObtained);
-            subjectScores[exam.subjectId].testMax.push(exam.totalMarks);
+            subjectScores[exam.subjectId!].testScores.push(result.marksObtained);
+            subjectScores[exam.subjectId!].testMax.push(exam.totalMarks);
           } else {
-            subjectScores[exam.subjectId].examScores.push(result.marksObtained);
-            subjectScores[exam.subjectId].examMax.push(exam.totalMarks);
+            subjectScores[exam.subjectId!].examScores.push(result.marksObtained);
+            subjectScores[exam.subjectId!].examMax.push(exam.totalMarks);
           }
         }
       }
@@ -12216,18 +12214,18 @@ School Management System Administration
           const subjectScores: Record<number, { testScores: number[], testMax: number[], examScores: number[], examMax: number[] }> = {};
 
           for (const exam of exams) {
-            if (!subjectScores[exam.subjectId]) {
-              subjectScores[exam.subjectId] = { testScores: [], testMax: [], examScores: [], examMax: [] };
+            if (!subjectScores[exam.subjectId!]) {
+              subjectScores[exam.subjectId!] = { testScores: [], testMax: [], examScores: [], examMax: [] };
             }
 
             const result = await storage.getExamResultByExamAndStudent(exam.id, student.id);
             if (result && result.marksObtained !== null) {
               if (exam.examType === 'test' || exam.examType === 'quiz') {
-                subjectScores[exam.subjectId].testScores.push(result.marksObtained);
-                subjectScores[exam.subjectId].testMax.push(exam.totalMarks);
+                subjectScores[exam.subjectId!].testScores.push(result.marksObtained);
+                subjectScores[exam.subjectId!].testMax.push(exam.totalMarks);
               } else {
-                subjectScores[exam.subjectId].examScores.push(result.marksObtained);
-                subjectScores[exam.subjectId].examMax.push(exam.totalMarks);
+                subjectScores[exam.subjectId!].examScores.push(result.marksObtained);
+                subjectScores[exam.subjectId!].examMax.push(exam.totalMarks);
               }
             }
           }
@@ -14692,7 +14690,7 @@ School Management System Administration
           }
 
           // Get the exam's current subject for logging
-          const oldSubjectId = exam.subjectId;
+          const oldSubjectId = exam.subjectId!;
 
           // Sync report card items for this exam
           const syncResult = await storage.syncReportCardItemsOnExamSubjectChange(
@@ -15264,7 +15262,7 @@ School Management System Administration
 
       for (const exam of classExams) {
         // Skip if exam is not for student's assigned subjects
-        if (!subjectIds.has(exam.subjectId)) continue;
+        if (!subjectIds.has(exam.subjectId!)) continue;
 
         // Check if exam is published and active
         const isPublished = exam.isPublished;
@@ -15277,14 +15275,14 @@ School Management System Administration
 
         // Count all available exams per subject (published and not ended)
         if (isPublished && (!endTime || endTime >= now)) {
-          examCountsBySubject[exam.subjectId] = (examCountsBySubject[exam.subjectId] || 0) + 1;
+          examCountsBySubject[exam.subjectId!] = (examCountsBySubject[exam.subjectId!] || 0) + 1;
         }
 
         if (isActiveNow) {
-          if (!activeExamsBySubject[exam.subjectId]) {
-            activeExamsBySubject[exam.subjectId] = [];
+          if (!activeExamsBySubject[exam.subjectId!]) {
+            activeExamsBySubject[exam.subjectId!] = [];
           }
-          activeExamsBySubject[exam.subjectId].push({
+          activeExamsBySubject[exam.subjectId!].push({
             id: exam.id,
             title: exam.name,
             examType: exam.examType,

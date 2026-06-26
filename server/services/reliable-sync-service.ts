@@ -87,6 +87,16 @@ export class ReliableSyncService {
       const examData = exam[0];
       const { subjectId, classId, termId } = examData;
 
+      // Standalone assessments never touch report cards — skip sync entirely
+      if (examData.assessmentCategory === 'standalone') {
+        console.log(`[RELIABLE-SYNC] Skipping report card sync for standalone assessment (examId: ${examId})`);
+        return {
+          success: true,
+          message: 'Standalone assessment — report card sync skipped',
+          auditLogId: undefined
+        };
+      }
+
       if (!subjectId || !classId || !termId) {
         return this.createFailedResult('Exam missing required fields', 'MISSING_EXAM_FIELDS');
       }

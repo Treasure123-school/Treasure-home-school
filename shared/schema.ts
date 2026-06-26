@@ -362,11 +362,12 @@ export const attendance = sqliteTable("attendance", {
 export const exams = sqliteTable("exams", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
-  classId: integer("class_id").notNull().references(() => classes.id),
-  subjectId: integer("subject_id").notNull().references(() => subjects.id),
+  assessmentCategory: text("assessment_category").notNull().default('academic'), // 'academic' | 'standalone'
+  classId: integer("class_id").references(() => classes.id),
+  subjectId: integer("subject_id").references(() => subjects.id),
   totalMarks: integer("total_marks").notNull(),
   date: text("date").notNull(), // YYYY-MM-DD format
-  termId: integer("term_id").notNull().references(() => academicTerms.id),
+  termId: integer("term_id").references(() => academicTerms.id),
   createdBy: text("created_by").references(() => users.id, { onDelete: 'set null' }),
   teacherInChargeId: text("teacher_in_charge_id").references(() => users.id, { onDelete: 'set null' }),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
@@ -391,6 +392,19 @@ export const exams = sqliteTable("exams", {
   maxTabSwitches: integer("max_tab_switches").notNull().default(3),
   shuffleOptions: integer("shuffle_options", { mode: "boolean" }).notNull().default(false),
   showInstructionsScreen: integer("show_instructions_screen", { mode: "boolean" }).notNull().default(true),
+  // Standalone assessment fields
+  purpose: text("purpose"), // e.g. 'common_entrance', 'mock_waec', 'scholarship'
+  venue: text("venue"),
+  targetType: text("target_type"), // 'whole_school' | 'class' | 'selected_students' | 'external'
+  registrationFee: integer("registration_fee"), // in kobo/cents; 0 = free
+  registrationOpen: integer("registration_open", { mode: "boolean" }).notNull().default(false),
+  registrationDeadline: text("registration_deadline"), // YYYY-MM-DD
+  candidateType: text("candidate_type"), // 'internal' | 'external' | 'both'
+  generateAdmitCards: integer("generate_admit_cards", { mode: "boolean" }).notNull().default(false),
+  generateCandidateNumbers: integer("generate_candidate_numbers", { mode: "boolean" }).notNull().default(false),
+  certificateEnabled: integer("certificate_enabled", { mode: "boolean" }).notNull().default(false),
+  leaderboardEnabled: integer("leaderboard_enabled", { mode: "boolean" }).notNull().default(false),
+  resultPublished: integer("result_published", { mode: "boolean" }).notNull().default(false),
 });
 
 // Exam questions table
@@ -1122,17 +1136,18 @@ export const insertSubjectSchema = createInsertSchema(subjects).omit({ id: true,
 export const insertAcademicTermSchema = createInsertSchema(academicTerms).omit({ id: true, createdAt: true });
 export const insertAttendanceSchema = createInsertSchema(attendance).omit({ id: true, createdAt: true });
 export const insertExamSchema = createInsertSchema(exams).omit({ id: true, createdAt: true }).extend({
+  assessmentCategory: z.enum(['academic', 'standalone']).default('academic'),
   classId: z.preprocess(
     (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
-    z.number().positive("Please select a valid class")
+    z.number().positive("Please select a valid class").optional()
   ),
   subjectId: z.preprocess(
     (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
-    z.number().positive("Please select a valid subject")
+    z.number().positive("Please select a valid subject").optional()
   ),
   termId: z.preprocess(
     (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
-    z.number().positive("Please select a valid term")
+    z.number().positive("Please select a valid term").optional()
   ),
   totalMarks: z.preprocess(
     (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
@@ -1182,6 +1197,36 @@ export const insertExamSchema = createInsertSchema(exams).omit({ id: true, creat
   autoGradingEnabled: z.boolean().default(true),
   instantFeedback: z.boolean().default(false),
   showCorrectAnswers: z.boolean().default(false),
+  purpose: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : val,
+    z.string().optional()
+  ),
+  venue: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : val,
+    z.string().optional()
+  ),
+  targetType: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : val,
+    z.enum(['whole_school', 'class', 'selected_students', 'external']).optional()
+  ),
+  registrationFee: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
+    z.number().int().min(0).optional()
+  ),
+  registrationOpen: z.boolean().default(false),
+  registrationDeadline: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : val,
+    z.string().optional()
+  ),
+  candidateType: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : val,
+    z.enum(['internal', 'external', 'both']).optional()
+  ),
+  generateAdmitCards: z.boolean().default(false),
+  generateCandidateNumbers: z.boolean().default(false),
+  certificateEnabled: z.boolean().default(false),
+  leaderboardEnabled: z.boolean().default(false),
+  resultPublished: z.boolean().default(false),
 });
 export const insertExamResultSchema = createInsertSchema(examResults).omit({ id: true, createdAt: true });
 export const insertExamSubmissionsArchiveSchema = createInsertSchema(examSubmissionsArchive).omit({ id: true, archivedAt: true });

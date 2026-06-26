@@ -33,8 +33,8 @@ export default function AdminExamOverview() {
     return matchSearch && matchClass && matchSubject && matchStatus;
   });
 
-  const getClassName = (id: number) => (classes as any[]).find(c => c.id === id)?.name ?? 'Unknown';
-  const getSubjectName = (id: number) => (subjects as any[]).find(s => s.id === id)?.name ?? 'Unknown';
+  const getClassName = (id: number | null | undefined) => (classes as any[]).find(c => c.id === id)?.name ?? 'Unknown';
+  const getSubjectName = (id: number | null | undefined) => (subjects as any[]).find(s => s.id === id)?.name ?? 'Unknown';
   const getTeacherName = (id: string | null) => {
     if (!id) return 'Unknown';
     const t = (users as any[]).find(u => u.id === id);
@@ -150,8 +150,8 @@ export default function AdminExamOverview() {
               <ExamCard
                 key={exam.id}
                 exam={exam}
-                className={getClassName(exam.classId)}
-                subjectName={getSubjectName(exam.subjectId)}
+                className={getClassName(exam.classId ?? undefined)}
+                subjectName={getSubjectName(exam.subjectId ?? undefined)}
                 teacherName={getTeacherName(exam.createdBy ?? null)}
                 onView={() => navigate(`/portal/admin/exams/analysis/${exam.id}`)}
                 data-testid={`row-exam-${exam.id}`}
