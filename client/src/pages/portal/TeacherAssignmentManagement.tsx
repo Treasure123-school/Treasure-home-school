@@ -79,7 +79,7 @@ export default function TeacherAssignmentManagement() {
     teacherId: '',
     classId: '',
     subjectId: '',
-    department: '',
+    department: 'none',
     termId: '',
     session: '',
     validUntil: '',
@@ -207,7 +207,7 @@ export default function TeacherAssignmentManagement() {
       teacherId: '',
       classId: '',
       subjectId: '',
-      department: '',
+      department: 'none',
       termId: '',
       session: '',
       validUntil: '',
@@ -263,8 +263,8 @@ export default function TeacherAssignmentManagement() {
       teacherId: formData.teacherId,
       classId: parseInt(formData.classId),
       subjectId: parseInt(formData.subjectId),
-      department: formData.department || undefined,
-      termId: formData.termId ? parseInt(formData.termId) : undefined,
+      department: (formData.department && formData.department !== 'none') ? formData.department : undefined,
+      termId: (formData.termId && formData.termId !== 'none') ? parseInt(formData.termId) : undefined,
       session: formData.session || undefined,
       validUntil: formData.validUntil || undefined,
     });
@@ -276,8 +276,8 @@ export default function TeacherAssignmentManagement() {
       id: selectedAssignment.id,
       data: {
         isActive: selectedAssignment.isActive,
-        department: formData.department || undefined,
-        termId: formData.termId ? parseInt(formData.termId) : null,
+        department: (formData.department && formData.department !== 'none') ? formData.department : undefined,
+        termId: (formData.termId && formData.termId !== 'none') ? parseInt(formData.termId) : null,
         session: formData.session || undefined,
         validUntil: formData.validUntil || null,
       },
@@ -290,7 +290,7 @@ export default function TeacherAssignmentManagement() {
       teacherId: assignment.teacherId,
       classId: String(assignment.classId),
       subjectId: String(assignment.subjectId),
-      department: assignment.department || '',
+      department: assignment.department || 'none',
       termId: assignment.termId ? String(assignment.termId) : '',
       session: assignment.session || '',
       validUntil: assignment.validUntil ? assignment.validUntil.split('T')[0] : '',
@@ -818,7 +818,7 @@ export default function TeacherAssignmentManagement() {
                     <SelectValue placeholder="Select department" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {DEPARTMENTS.map((d) => (
                       <SelectItem key={d.value} value={d.value}>
                         {d.label}
@@ -834,7 +834,7 @@ export default function TeacherAssignmentManagement() {
                     <SelectValue placeholder="Select term" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">None</SelectItem>
+                    <SelectItem value="none">None</SelectItem>
                     {terms.map((t: any) => (
                       <SelectItem key={t.id} value={String(t.id)}>
                         {t.name} ({t.year})

@@ -45,7 +45,7 @@ const PAYMENT_METHODS = ['cash', 'bank_transfer', 'paystack', 'monnify', 'online
 const emptyForm = {
   billingItemId: '',
   studentId: '',
-  termId: '',
+  termId: 'none',
   amountPaid: '',
   paymentMethod: 'cash',
   paymentReference: '',
@@ -112,7 +112,7 @@ export default function BillingPayments() {
     createMutation.mutate({
       billingItemId: Number(form.billingItemId),
       studentId: form.studentId,
-      termId: form.termId ? Number(form.termId) : null,
+      termId: (form.termId && form.termId !== 'none') ? Number(form.termId) : null,
       amountPaid: Math.round(parseFloat(form.amountPaid) * 100),
       paymentMethod: form.paymentMethod,
       paymentReference: form.paymentReference || null,
@@ -308,7 +308,7 @@ export default function BillingPayments() {
                 <Select value={form.termId} onValueChange={(v) => setForm({ ...form, termId: v })}>
                   <SelectTrigger><SelectValue placeholder="Select term…" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No specific term</SelectItem>
+                    <SelectItem value="none">No specific term</SelectItem>
                     {terms.map((t) => <SelectItem key={t.id} value={String(t.id)}>{t.name} {t.year}</SelectItem>)}
                   </SelectContent>
                 </Select>

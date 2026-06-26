@@ -52,8 +52,8 @@ export default function ReportsManagement() {
   const { toast } = useToast();
   const [selectedReport, setSelectedReport] = useState<string>('overview');
   const [dateRange, setDateRange] = useState<string>('30');
-  const [selectedClass, setSelectedClass] = useState<string>('');
-  const [selectedSubject, setSelectedSubject] = useState<string>('');
+  const [selectedClass, setSelectedClass] = useState<string>('none');
+  const [selectedSubject, setSelectedSubject] = useState<string>('none');
 
   // Fetch overview statistics
   const { data: overviewStats, isLoading: loadingOverview } = useQuery({
@@ -80,8 +80,8 @@ export default function ReportsManagement() {
     queryFn: async () => {
       let url = '/api/reports/performance';
       const params = new URLSearchParams();
-      if (selectedClass) params.append('classId', selectedClass);
-      if (selectedSubject) params.append('subjectId', selectedSubject);
+      if (selectedClass && selectedClass !== 'none') params.append('classId', selectedClass);
+      if (selectedSubject && selectedSubject !== 'none') params.append('subjectId', selectedSubject);
       if (params.toString()) url += '?' + params.toString();
       
       const response = await apiRequest('GET', url);
@@ -95,7 +95,7 @@ export default function ReportsManagement() {
     queryFn: async () => {
       let url = '/api/reports/attendance';
       const params = new URLSearchParams();
-      if (selectedClass) params.append('classId', selectedClass);
+      if (selectedClass && selectedClass !== 'none') params.append('classId', selectedClass);
       
       // Calculate date range for attendance
       const endDate = new Date();
@@ -333,7 +333,7 @@ export default function ReportsManagement() {
                     <SelectValue placeholder="All classes" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Classes</SelectItem>
+                    <SelectItem value="none">All Classes</SelectItem>
                     {classes.map((cls: any) => (
                       <SelectItem key={cls.id} value={cls.id.toString()}>
                         {cls.name}
@@ -351,7 +351,7 @@ export default function ReportsManagement() {
                     <SelectValue placeholder="All subjects" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Subjects</SelectItem>
+                    <SelectItem value="none">All Subjects</SelectItem>
                     {subjects.map((subject: any) => (
                       <SelectItem key={subject.id} value={subject.id.toString()}>
                         {subject.name}
@@ -364,8 +364,8 @@ export default function ReportsManagement() {
             <div>
               <Button 
                 onClick={() => {
-                  setSelectedClass('');
-                  setSelectedSubject('');
+                  setSelectedClass('none');
+                  setSelectedSubject('none');
                   setDateRange('30');
                 }}
                 variant="outline"

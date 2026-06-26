@@ -88,7 +88,7 @@ const emptyForm = {
   isActive: true,
   paymentType: 'one_time',
   classLevels: '',
-  termId: '',
+  termId: 'none',
   session: '',
   dueDate: '',
   lateFee: '',
@@ -184,7 +184,7 @@ export default function BillingItems() {
       isActive: item.isActive,
       paymentType: item.paymentType || 'one_time',
       classLevels: item.classLevels || '',
-      termId: item.termId ? String(item.termId) : '',
+      termId: item.termId ? String(item.termId) : 'none',
       session: item.session || '',
       dueDate: item.dueDate ? item.dueDate.substring(0, 10) : '',
       lateFee: item.lateFee ? String(item.lateFee / 100) : '',
@@ -202,7 +202,7 @@ export default function BillingItems() {
       isActive: form.isActive,
       paymentType: form.paymentType,
       classLevels: form.classLevels || null,
-      termId: form.termId ? Number(form.termId) : null,
+      termId: (form.termId && form.termId !== 'none') ? Number(form.termId) : null,
       session: form.session || null,
       dueDate: form.dueDate || null,
       lateFee: form.lateFee ? Math.round(parseFloat(form.lateFee) * 100) : 0,
@@ -378,7 +378,7 @@ export default function BillingItems() {
                 <Select value={form.termId} onValueChange={(v) => setForm({ ...form, termId: v })}>
                   <SelectTrigger><SelectValue placeholder="Any term" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Any Term</SelectItem>
+                    <SelectItem value="none">Any Term</SelectItem>
                     {terms.map((t) => <SelectItem key={t.id} value={String(t.id)}>{t.name} {t.year}</SelectItem>)}
                   </SelectContent>
                 </Select>
