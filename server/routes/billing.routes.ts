@@ -9,10 +9,11 @@ export const billingRouter = Router();
 
 billingRouter.get("/items", authenticateUser, requireAdmin, async (req: Request, res: Response) => {
   try {
-    const { category, isActive } = req.query;
+    const { category, isActive, termId } = req.query;
     const filters: any = {};
     if (category) filters.category = String(category);
     if (isActive !== undefined) filters.isActive = isActive === "true";
+    if (termId) filters.termId = Number(termId);
     const items = await storage.getBillingItems(filters);
     res.json(items);
   } catch (err: any) {
@@ -30,19 +31,35 @@ billingRouter.get("/items/:id", authenticateUser, requireAdmin, async (req: Requ
   }
 });
 
+const BILLING_CATEGORIES = [
+  "general", "exam", "registration", "resources", "cbt",
+  "result_checker", "library", "excursion", "uniform", "pta", "other",
+] as const;
+
 const billingItemSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional().nullable(),
   amount: z.number().int().min(0),
-  category: z.enum(["general", "exam", "registration", "other"]).default("general"),
+  category: z.enum(BILLING_CATEGORIES).default("general"),
   isActive: z.boolean().default(true),
   isRecurring: z.boolean().default(false),
+  paymentType: z.enum(["one_time", "recurring"]).default("one_time"),
+  classLevels: z.string().optional().nullable(),
+  termId: z.number().int().optional().nullable(),
+  session: z.string().optional().nullable(),
+  dueDate: z.string().optional().nullable(),
+  lateFee: z.number().int().min(0).optional().nullable(),
+  discount: z.number().int().min(0).optional().nullable(),
 });
 
 billingRouter.post("/items", authenticateUser, requireAdmin, async (req: Request, res: Response) => {
   try {
     const data = billingItemSchema.parse(req.body);
-    const item = await storage.createBillingItem({ ...data, createdBy: req.user!.id });
+    const item = await storage.createBillingItem({
+      ...data,
+      dueDate: data.dueDate ? new Date(data.dueDate) : null,
+      createdBy: req.user!.id,
+    });
     res.status(201).json(item);
   } catch (err: any) {
     if (err instanceof z.ZodError) return res.status(400).json({ error: err.errors });
@@ -53,7 +70,10 @@ billingRouter.post("/items", authenticateUser, requireAdmin, async (req: Request
 billingRouter.put("/items/:id", authenticateUser, requireAdmin, async (req: Request, res: Response) => {
   try {
     const data = billingItemSchema.partial().parse(req.body);
-    const item = await storage.updateBillingItem(Number(req.params.id), data);
+    const item = await storage.updateBillingItem(Number(req.params.id), {
+      ...data,
+      dueDate: data.dueDate ? new Date(data.dueDate) : data.dueDate,
+    });
     if (!item) return res.status(404).json({ error: "Billing item not found" });
     res.json(item);
   } catch (err: any) {
@@ -86,7 +106,6 @@ billingRouter.get("/feature-links", authenticateUser, requireAdmin, async (req: 
 billingRouter.post("/feature-links", authenticateUser, requireAdmin, async (req: Request, res: Response) => {
   try {
     const { billingItemId, featureKey } = z.object({ billingItemId: z.number().int(), featureKey: z.string().min(1) }).parse(req.body);
-    // Remove any existing link for this featureKey first (one feature = one billing item)
     await storage.deleteBillingFeatureLinkByKey(featureKey);
     const link = await storage.createBillingFeatureLink({ billingItemId, featureKey });
     res.status(201).json(link);
@@ -117,7 +136,6 @@ billingRouter.get("/payments", authenticateUser, requireAdmin, async (req: Reque
     if (status) filters.status = String(status);
     const payments = await storage.getBillingPayments(filters);
 
-    // Enrich with student + item names
     const items = await storage.getBillingItems();
     const enriched = await Promise.all(payments.map(async (p) => {
       const student = await storage.getStudent(p.studentId);
@@ -130,6 +148,7 @@ billingRouter.get("/payments", authenticateUser, requireAdmin, async (req: Reque
         admissionNumber: student?.admissionNumber || "",
         className: cls?.name || "",
         billingItemName: item?.name || "",
+        billingItemCategory: item?.category || "",
       };
     }));
     res.json(enriched);
@@ -235,6 +254,79 @@ billingRouter.get("/summary", authenticateUser, requireAdmin, async (req: Reques
   }
 });
 
+// ─── Financial Reports ────────────────────────────────────────────────────────
+
+billingRouter.get("/reports", authenticateUser, requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { termId, session } = req.query;
+
+    const payments = await storage.getBillingPayments(
+      termId ? { termId: Number(termId), status: "paid" } :
+      { status: "paid" }
+    );
+    const items = await storage.getBillingItems();
+
+    const totalRevenue = payments.reduce((s, p) => s + (p.amountPaid || 0), 0);
+    const totalPayments = payments.length;
+
+    // By billing item
+    const byItem: Record<number, { name: string; category: string; count: number; total: number }> = {};
+    for (const p of payments) {
+      if (!byItem[p.billingItemId]) {
+        const item = items.find((i) => i.id === p.billingItemId);
+        byItem[p.billingItemId] = { name: item?.name || "Unknown", category: item?.category || "", count: 0, total: 0 };
+      }
+      byItem[p.billingItemId].count++;
+      byItem[p.billingItemId].total += p.amountPaid || 0;
+    }
+
+    // By payment method
+    const byMethod: Record<string, { count: number; total: number }> = {};
+    for (const p of payments) {
+      const method = p.paymentMethod || "unknown";
+      if (!byMethod[method]) byMethod[method] = { count: 0, total: 0 };
+      byMethod[method].count++;
+      byMethod[method].total += p.amountPaid || 0;
+    }
+
+    // By category
+    const byCategory: Record<string, { count: number; total: number }> = {};
+    for (const p of payments) {
+      const item = items.find((i) => i.id === p.billingItemId);
+      const cat = item?.category || "other";
+      if (!byCategory[cat]) byCategory[cat] = { count: 0, total: 0 };
+      byCategory[cat].count++;
+      byCategory[cat].total += p.amountPaid || 0;
+    }
+
+    // Monthly trend (last 12 months)
+    const monthlyTrend: Record<string, { count: number; total: number }> = {};
+    for (const p of payments) {
+      const date = p.paidAt || p.createdAt;
+      if (!date) continue;
+      const d = new Date(date);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      if (!monthlyTrend[key]) monthlyTrend[key] = { count: 0, total: 0 };
+      monthlyTrend[key].count++;
+      monthlyTrend[key].total += p.amountPaid || 0;
+    }
+
+    res.json({
+      totalRevenue,
+      totalPayments,
+      byItem: Object.entries(byItem).map(([id, v]) => ({ billingItemId: Number(id), ...v })),
+      byMethod: Object.entries(byMethod).map(([method, v]) => ({ method, ...v })),
+      byCategory: Object.entries(byCategory).map(([category, v]) => ({ category, ...v })),
+      monthlyTrend: Object.entries(monthlyTrend)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .slice(-12)
+        .map(([month, v]) => ({ month, ...v })),
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── Student: check payment status for a billing item ────────────────────────
 
 billingRouter.get("/student/status/:billingItemId", authenticateUser, async (req: Request, res: Response) => {
@@ -250,6 +342,35 @@ billingRouter.get("/student/status/:billingItemId", authenticateUser, async (req
       hasPaid: payment?.status === "paid",
       payment: payment || null,
       item: item || null,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Public: feature access check for a student ───────────────────────────────
+
+billingRouter.get("/feature-access/:featureKey", authenticateUser, async (req: Request, res: Response) => {
+  try {
+    const user = req.user!;
+    const { featureKey } = req.params;
+    const termId = req.query.termId ? Number(req.query.termId) : undefined;
+
+    const link = await storage.getBillingFeatureLink(featureKey);
+    if (!link) return res.json({ hasAccess: true, required: false });
+
+    const item = await storage.getBillingItem(link.billingItemId);
+    if (!item || !item.isActive) return res.json({ hasAccess: true, required: false });
+
+    const student = await storage.getStudentByUserId(user.id);
+    if (!student) return res.json({ hasAccess: false, required: true, item });
+
+    const payment = await storage.getStudentBillingPayment(student.id, link.billingItemId, termId);
+    res.json({
+      hasAccess: payment?.status === "paid",
+      required: true,
+      item,
+      payment: payment || null,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

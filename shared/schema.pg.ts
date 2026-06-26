@@ -1678,15 +1678,24 @@ export const billingItems = pgTable("billing_items", {
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   amount: integer("amount").notNull().default(0), // stored in kobo
-  category: varchar("category", { length: 50 }).notNull().default("general"), // general | exam | registration | other
+  category: varchar("category", { length: 50 }).notNull().default("general"), // general | exam | registration | resources | cbt | result_checker | library | excursion | uniform | pta | other
   isActive: boolean("is_active").notNull().default(true),
   isRecurring: boolean("is_recurring").notNull().default(false), // per-term vs one-time
+  paymentType: varchar("payment_type", { length: 20 }).notNull().default("one_time"), // one_time | recurring
+  classLevels: text("class_levels"), // JSON array of class IDs or level names, null = all
+  termId: integer("term_id").references(() => academicTerms.id, { onDelete: "set null" }),
+  session: varchar("session", { length: 20 }), // e.g. "2024/2025"
+  dueDate: timestamp("due_date"),
+  lateFee: integer("late_fee").default(0), // additional fee in kobo if paid after due date
+  discount: integer("discount").default(0), // flat discount in kobo
   createdBy: varchar("created_by", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (t) => ({
   billingItemsNameIdx: index("billing_items_name_idx").on(t.name),
   billingItemsCategoryIdx: index("billing_items_category_idx").on(t.category),
+  billingItemsTermIdx: index("billing_items_term_idx").on(t.termId),
+  billingItemsActiveIdx: index("billing_items_active_idx").on(t.isActive),
 }));
 
 export const insertBillingItemSchema = createInsertSchema(billingItems).omit({ id: true, createdAt: true, updatedAt: true });

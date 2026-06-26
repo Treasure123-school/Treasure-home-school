@@ -122,10 +122,12 @@ export default function PortalLayout({ children, userRole, userName, userInitial
       const studentRoutes = ['/students', '/parents', '/attendance'];
       const staffRoutes = ['/teachers', '/users', '/job-vacancies', '/recovery-tools'];
       const examRoutes = ['/exams', '/grading-queue', '/exam-analytics', '/question-bank', '/results', '/exam-payments', '/recent-exam-results'];
+      const financeRoutes = ['/billing-items', '/billing-payments', '/billing-outstanding', '/billing-reports'];
       if (academicRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-academics'); return; }
       if (studentRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-students'); return; }
       if (staffRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-staff'); return; }
       if (examRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-exams'); return; }
+      if (financeRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-finance'); return; }
     }
   }, [location, userRole]);
 
@@ -272,13 +274,14 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             ],
           },
           {
-            type: 'group', label: 'Finance Operations', icon: DollarSign,
+            type: 'group', label: 'Billing & Payments', icon: DollarSign,
             isOpen: openMenuKey === 'admin-finance',
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-finance' : null),
             items: [
-              { href: `/portal/${userRole}/coming-soon?page=payments`, icon: DollarSign, label: 'Fee Collection' },
-              { href: `/portal/${userRole}/coming-soon?page=records`, icon: FileText, label: 'Payment Records' },
-              { href: `/portal/${userRole}/coming-soon?page=outstanding`, icon: Clock, label: 'Outstanding Fees' },
+              { href: `/portal/${userRole}/billing-items`, icon: Receipt, label: 'Billing Items' },
+              { href: `/portal/${userRole}/billing-payments`, icon: CreditCard, label: 'Payments' },
+              { href: `/portal/${userRole}/billing-outstanding`, icon: Clock, label: 'Outstanding' },
+              { href: `/portal/${userRole}/billing-reports`, icon: BarChart3, label: 'Financial Reports' },
             ],
           },
           {
