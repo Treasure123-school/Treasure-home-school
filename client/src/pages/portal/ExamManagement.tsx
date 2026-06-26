@@ -219,8 +219,10 @@ export default function ExamManagement() {
     },
   });
 
-  // Filter out exams that are pending deletion to prevent race conditions
-  const exams = rawExams.filter((exam: Exam) => !pendingDeletionsRef.current.has(exam.id));
+  // Filter out exams being deleted — deletingExamIds is React state so it triggers
+  // an immediate synchronous re-render the moment the user confirms, before the API
+  // call even starts. pendingDeletionsRef stays as a secondary guard for socket events.
+  const exams = rawExams.filter((exam: Exam) => !deletingExamIds.has(exam.id));
 
   // Enable real-time updates for exams with specific event handlers
   useSocketIORealtime({
@@ -593,10 +595,10 @@ export default function ExamManagement() {
       return null;
     },
     onMutate: async (examId) => {
-      // Mark this deletion as pending to prevent Realtime from overriding
+      // Mark this deletion as pending to prevent Realtime socket from re-adding it
       pendingDeletionsRef.current.add(examId);
-      setDeletingExamIds(prev => { const next = new Set(prev); next.add(examId); return next; });
 
+      // Cancel any in-flight queries so they don't overwrite the optimistic removal
       const queryKey = ['/api/exams'];
       const context = await optimisticDelete<Exam[]>({ queryKey, idToDelete: examId });
 
@@ -609,9 +611,16 @@ export default function ExamManagement() {
       return context;
     },
     onSuccess: (data, examId) => {
-      // Clear pending flags
+      // Clear pending ref flag
       pendingDeletionsRef.current.delete(examId);
+      // Clear UI state — item is already gone from the list
       setDeletingExamIds(prev => { const next = new Set(prev); next.delete(examId); return next; });
+
+      // Explicitly scrub the exam from the cache in case a background refetch
+      // (triggered by window-focus when the dialog closed) restored it
+      queryClient.setQueryData<Exam[]>(['/api/exams'], (old) =>
+        old?.filter((e) => e.id !== examId) ?? []
+      );
 
       // Build detailed success message with deletion stats
       let description = "Exam deleted successfully";
@@ -638,8 +647,9 @@ export default function ExamManagement() {
       queryClient.invalidateQueries({ queryKey: ['/api/exam-sessions'] });
     },
     onError: (error: any, examId, context) => {
-      // Remove from pending deletions on error
+      // Remove from pending ref on error
       pendingDeletionsRef.current.delete(examId);
+      // Restore the item in the UI by removing it from the hidden set
       setDeletingExamIds(prev => { const next = new Set(prev); next.delete(examId); return next; });
 
       if (context?.previousData) {
@@ -2322,7 +2332,12 @@ export default function ExamManagement() {
                                 <AlertDialogFooter>
                                   <AlertDialogCancel>Cancel</AlertDialogCancel>
                                   <AlertDialogAction
-                                    onClick={() => deleteExamMutation.mutate(exam.id)}
+                                    onClick={() => {
+                                      // Set state BEFORE mutate so React removes the item
+                                      // in the same synchronous render tick — instant removal
+                                      setDeletingExamIds(prev => new Set(prev).add(exam.id));
+                                      deleteExamMutation.mutate(exam.id);
+                                    }}
                                     disabled={deletingExamIds.has(exam.id)}
                                     className="bg-destructive hover:bg-destructive/90"
                                   >
@@ -2977,7 +2992,11 @@ export default function ExamManagement() {
               onClick={() => {
                 const examId = deletingExam?.id;
                 setDeletingExam(null);
-                if (examId && !deletingExamIds.has(examId)) deleteExamMutation.mutate(examId);
+                if (examId && !deletingExamIds.has(examId)) {
+                  // Set state BEFORE mutate so the item vanishes in the same render tick
+                  setDeletingExamIds(prev => new Set(prev).add(examId));
+                  deleteExamMutation.mutate(examId);
+                }
               }}
             >
               {deletingExam && deletingExamIds.has(deletingExam.id) ? 'Deleting...' : 'Delete Exam'}
