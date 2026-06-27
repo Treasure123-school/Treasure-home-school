@@ -105,7 +105,7 @@ export default function NewsManagement() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/news'] });
       queryClient.invalidateQueries({ queryKey: ['/api/public/news'] });
       setShowForm(false);
-      toast({ title: editingPost ? 'Post updated' : 'Post created' });
+      toast({ title: 'Success', description: editingPost ? 'Post updated.' : 'Post created.' });
     },
     onError: (e: any) => toast({ title: 'Save failed', description: e.message, variant: 'destructive' }),
   });
@@ -116,7 +116,7 @@ export default function NewsManagement() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/news'] });
       queryClient.invalidateQueries({ queryKey: ['/api/public/news'] });
       setDeleteTarget(null);
-      toast({ title: 'Post deleted' });
+      toast({ title: 'Success', description: 'Post deleted.' });
     },
     onError: () => toast({ title: 'Delete failed', variant: 'destructive' }),
   });

@@ -79,7 +79,7 @@ export default function AboutPageManagement() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/about-sections'] });
       queryClient.invalidateQueries({ queryKey: ['/api/public/about-sections'] });
       setShowForm(false);
-      toast({ title: editingSection ? 'Section updated' : 'Section created' });
+      toast({ title: 'Success', description: editingSection ? 'Section updated.' : 'Section created.' });
     },
     onError: (e: any) => toast({ title: 'Save failed', description: e.message, variant: 'destructive' }),
   });
@@ -100,7 +100,7 @@ export default function AboutPageManagement() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/about-sections'] });
       queryClient.invalidateQueries({ queryKey: ['/api/public/about-sections'] });
       setDeleteTarget(null);
-      toast({ title: 'Section deleted' });
+      toast({ title: 'Success', description: 'Section deleted.' });
     },
     onError: () => toast({ title: 'Delete failed', variant: 'destructive' }),
   });

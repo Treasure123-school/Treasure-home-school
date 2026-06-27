@@ -60,7 +60,7 @@ export default function BillingOutstanding() {
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['/api/billing/outstanding'] });
       queryClient.invalidateQueries({ queryKey: ['/api/billing/payments'] });
-      toast({ title: 'Bulk payment recorded' });
+      toast({ title: 'Success', description: 'Bulk payment recorded.' });
       setSelected([]);
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),

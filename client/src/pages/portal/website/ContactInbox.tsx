@@ -63,7 +63,7 @@ export default function ContactInbox() {
       setSelectedMessage(prev => prev ? { ...prev, response: replyText, respondedAt: new Date().toISOString() } : null);
       setShowReply(false);
       setReplyText('');
-      toast({ title: 'Reply sent successfully' });
+      toast({ title: 'Success', description: 'Reply sent.' });
     },
     onError: () => toast({ title: 'Failed to send reply', variant: 'destructive' }),
   });
@@ -74,7 +74,7 @@ export default function ContactInbox() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/contact-messages'] });
       if (selectedMessage?.id === deleteTarget) setSelectedMessage(null);
       setDeleteTarget(null);
-      toast({ title: 'Message deleted' });
+      toast({ title: 'Success', description: 'Message deleted.' });
     },
     onError: () => toast({ title: 'Delete failed', variant: 'destructive' }),
   });

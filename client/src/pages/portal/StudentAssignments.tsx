@@ -327,8 +327,8 @@ function AssignmentDetailDialog({
       setSelectedFile(null);
       setTab('details');
       toast({
-        title: data.isLate ? 'Submitted (Late)' : 'Submitted successfully!',
-        description: data.isLate ? 'Your submission was received after the deadline.' : 'Your assignment has been submitted.',
+        title: 'Success',
+        description: data.isLate ? 'Assignment submitted (received after the deadline).' : 'Assignment submitted successfully.',
       });
     },
     onError: (err: Error) => {

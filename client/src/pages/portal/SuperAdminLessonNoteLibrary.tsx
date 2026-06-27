@@ -197,7 +197,7 @@ export default function SuperAdminLessonNoteLibrary() {
       queryClient.invalidateQueries({ queryKey: ["/api/lesson-note-library/templates"] });
       queryClient.invalidateQueries({ queryKey: ["/api/lesson-note-library/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/lesson-note-library/filter-options"] });
-      toast({ title: "Template created successfully" });
+      toast({ title: "Success", description: "Template created successfully" });
       setShowCreate(false); setForm({ ...EMPTY_FORM });
     },
     onError: (err: any) => toast({ title: "Error", description: err?.message ?? "Failed to create template", variant: "destructive" }),
@@ -207,7 +207,7 @@ export default function SuperAdminLessonNoteLibrary() {
     mutationFn: ({ id, data }: { id: number; data: any }) => apiRequest("PUT", `/api/lesson-note-library/templates/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/lesson-note-library/templates"] });
-      toast({ title: "Template updated successfully" }); setEditingId(null);
+      toast({ title: "Success", description: "Template updated successfully" }); setEditingId(null);
     },
     onError: (err: any) => toast({ title: "Error", description: err?.message ?? "Failed to update", variant: "destructive" }),
   });
@@ -218,7 +218,7 @@ export default function SuperAdminLessonNoteLibrary() {
     onSuccess: (_, { isPublished }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/lesson-note-library/templates"] });
       queryClient.invalidateQueries({ queryKey: ["/api/lesson-note-library/stats"] });
-      toast({ title: isPublished ? "Template published" : "Template unpublished" });
+      toast({ title: "Success", description: isPublished ? "Template published" : "Template unpublished" });
     },
     onError: (err: any) => toast({ title: "Error", description: err?.message, variant: "destructive" }),
   });
@@ -229,7 +229,7 @@ export default function SuperAdminLessonNoteLibrary() {
       queryClient.invalidateQueries({ queryKey: ["/api/lesson-note-library/templates"] });
       queryClient.invalidateQueries({ queryKey: ["/api/lesson-note-library/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/lesson-note-library/filter-options"] });
-      toast({ title: "All templates published", description: `${data?.updated ?? ""} templates are now visible.` });
+      toast({ title: "Success", description: `All templates published — ${data?.updated ?? ""} templates are now visible.` });
     },
     onError: (err: any) => toast({ title: "Error", description: err?.message, variant: "destructive" }),
   });
@@ -239,7 +239,7 @@ export default function SuperAdminLessonNoteLibrary() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/lesson-note-library/templates"] });
       queryClient.invalidateQueries({ queryKey: ["/api/lesson-note-library/stats"] });
-      toast({ title: "Template deleted" }); setDeleteId(null);
+      toast({ title: "Success", description: "Template deleted" }); setDeleteId(null);
     },
     onError: (err: any) => toast({ title: "Error", description: err?.message, variant: "destructive" }),
   });

@@ -67,7 +67,7 @@ export default function LessonNoteViewPage() {
         approve: 'Approved', reject: 'Rejected', return: 'Returned for revision', publish: 'Published',
         unpublish: 'Unpublished', 'approve-publish': 'Approved & Published', submit: 'Submitted',
       };
-      toast({ title: labels[action] || 'Done' });
+      toast({ title: 'Success', description: labels[action] || 'Action completed.' });
       navigate(listUrl);
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });

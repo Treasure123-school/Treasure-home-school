@@ -92,7 +92,7 @@ export function ChangePasswordCard() {
       setForm(defaultForm);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 4000);
-      toast({ title: "Password Changed", description: "Your password has been updated successfully." });
+      toast({ title: "Success", description: "Your password has been updated." });
     },
     onError: (error: Error) => {
       toast({

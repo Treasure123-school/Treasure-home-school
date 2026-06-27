@@ -118,13 +118,13 @@ export default function TeacherLessonNotes() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest('DELETE', `/api/lesson-notes/${id}`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); toast({ title: 'Draft deleted' }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); toast({ title: 'Success', description: 'Draft deleted' }); },
     onError:   (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
   const submitMutation = useMutation({
     mutationFn: (id: number) => apiRequest('POST', `/api/lesson-notes/${id}/submit`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); toast({ title: 'Submitted for review' }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); toast({ title: 'Success', description: 'Submitted for review' }); },
     onError:   (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 

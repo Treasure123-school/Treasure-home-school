@@ -294,7 +294,7 @@ export default function TeacherAttendancePage() {
     onSuccess: async () => {
       skipNextReinitRef.current = true;
       setSaved(true);
-      toast({ title: 'Attendance saved', description: `Attendance for ${selectedDate} has been recorded.` });
+      toast({ title: 'Success', description: `Attendance for ${selectedDate} has been recorded.` });
       await queryClient.invalidateQueries({
         queryKey: [`/api/attendance/class/${selectedClassId}`, selectedDate],
         exact: true,

@@ -222,7 +222,7 @@ export default function AdminLessonNoteLibrary() {
     mutationFn: (data: any) => apiRequest("POST", `/api/lesson-note-library/templates/${importId}/import`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/lesson-note-library/school-notes"] });
-      toast({ title: "Template imported", description: "A school copy has been created. View it in the School Notes tab." });
+      toast({ title: "Success", description: "Template imported — a school copy has been created." });
       setImportId(null); setImportClassId(""); setImportSubjectId(""); setImportTermId("");
       setActiveTab("school-notes");
     },
@@ -233,7 +233,7 @@ export default function AdminLessonNoteLibrary() {
     mutationFn: (data: any) => apiRequest("POST", "/api/lesson-note-library/school-notes", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/lesson-note-library/school-notes"] });
-      toast({ title: "Lesson note created" }); setCreateNote(false);
+      toast({ title: "Success", description: "Lesson note created" }); setCreateNote(false);
     },
     onError: (err: any) => toast({ title: "Error", description: err?.message, variant: "destructive" }),
   });
@@ -242,7 +242,7 @@ export default function AdminLessonNoteLibrary() {
     mutationFn: ({ id, data }: { id: number; data: any }) => apiRequest("PUT", `/api/lesson-note-library/school-notes/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/lesson-note-library/school-notes"] });
-      toast({ title: "Lesson note updated" }); setEditingNote(null);
+      toast({ title: "Success", description: "Lesson note updated" }); setEditingNote(null);
     },
     onError: (err: any) => toast({ title: "Error", description: err?.message, variant: "destructive" }),
   });
@@ -251,7 +251,7 @@ export default function AdminLessonNoteLibrary() {
     mutationFn: (id: number) => apiRequest("DELETE", `/api/lesson-note-library/school-notes/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/lesson-note-library/school-notes"] });
-      toast({ title: "Lesson note deleted" }); setDeleteNoteId(null);
+      toast({ title: "Success", description: "Lesson note deleted" }); setDeleteNoteId(null);
     },
     onError: (err: any) => toast({ title: "Error", description: err?.message, variant: "destructive" }),
   });

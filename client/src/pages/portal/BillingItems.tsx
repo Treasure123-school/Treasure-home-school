@@ -123,7 +123,7 @@ export default function BillingItems() {
     mutationFn: (data: any) => apiRequest('POST', '/api/billing/items', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/billing/items'] });
-      toast({ title: 'Billing item created' });
+      toast({ title: 'Success', description: 'Billing item created.' });
       handleClose();
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
@@ -133,7 +133,7 @@ export default function BillingItems() {
     mutationFn: ({ id, data }: { id: number; data: any }) => apiRequest('PUT', `/api/billing/items/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/billing/items'] });
-      toast({ title: 'Billing item updated' });
+      toast({ title: 'Success', description: 'Billing item updated.' });
       handleClose();
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
@@ -143,7 +143,7 @@ export default function BillingItems() {
     mutationFn: (id: number) => apiRequest('DELETE', `/api/billing/items/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/billing/items'] });
-      toast({ title: 'Billing item deleted' });
+      toast({ title: 'Success', description: 'Billing item deleted.' });
       setDeleteItem(null);
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
@@ -153,7 +153,7 @@ export default function BillingItems() {
     mutationFn: ({ billingItemId, featureKey }: any) => apiRequest('POST', '/api/billing/feature-links', { billingItemId, featureKey }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/billing/feature-links'] });
-      toast({ title: 'Feature linked successfully' });
+      toast({ title: 'Success', description: 'Feature linked to billing item.' });
       setShowLinkDialog(null);
       setLinkFeatureKey('');
     },
@@ -164,7 +164,7 @@ export default function BillingItems() {
     mutationFn: (featureKey: string) => apiRequest('DELETE', `/api/billing/feature-links/${featureKey}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/billing/feature-links'] });
-      toast({ title: 'Feature unlinked' });
+      toast({ title: 'Success', description: 'Feature unlinked from billing item.' });
     },
   });
 

@@ -112,7 +112,7 @@ export default function EventsManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/events'] });
       queryClient.invalidateQueries({ queryKey: ['/api/events'] });
-      toast({ title: 'Event created successfully' });
+      toast({ title: 'Success', description: 'Event created successfully' });
       setDialogOpen(false);
       form.reset();
     },
@@ -128,7 +128,7 @@ export default function EventsManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/events'] });
       queryClient.invalidateQueries({ queryKey: ['/api/events'] });
-      toast({ title: 'Event updated successfully' });
+      toast({ title: 'Success', description: 'Event updated successfully' });
       setDialogOpen(false);
       setEditingEvent(null);
       form.reset();
@@ -143,7 +143,7 @@ export default function EventsManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/events'] });
       queryClient.invalidateQueries({ queryKey: ['/api/events'] });
-      toast({ title: 'Event deleted successfully' });
+      toast({ title: 'Success', description: 'Event deleted successfully' });
       setDeleteId(null);
     },
     onError: (err: any) => toast({ title: 'Failed to delete event', description: err.message, variant: 'destructive' }),

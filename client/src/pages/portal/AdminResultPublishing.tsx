@@ -110,7 +110,7 @@ export default function AdminResultPublishing() {
         scale: 2,
       });
 
-      toast({ title: "Downloaded", description: "Report card downloaded as image" });
+      toast({ title: "Success", description: "Report card downloaded as image" });
     } catch (error: any) {
       toast({ title: "Download Failed", description: error?.message || "Could not download the report card image. Please try again.", variant: "destructive" });
     } finally {
@@ -128,7 +128,7 @@ export default function AdminResultPublishing() {
         scale: 2,
       });
 
-      toast({ title: "Downloaded", description: "Report card PDF downloaded" });
+      toast({ title: "Success", description: "Report card PDF downloaded" });
     } catch (error: any) {
       toast({ title: "Download Failed", description: error?.message || "Could not download the PDF. Please try again.", variant: "destructive" });
     } finally {
@@ -712,7 +712,7 @@ export default function AdminResultPublishing() {
     },
     onSuccess: (_data, { id }) => {
       removeFromSet(rejectingIdsRef, id);
-      toast({ title: "Report Card Rejected", description: "The report card has been reverted to draft for teacher revision" });
+      toast({ title: "Success", description: "Report card rejected — reverted to draft for teacher revision" });
     },
     onError: (error: Error, { id }, context) => {
       // Silently ignore duplicate blocked errors (no toast, no cleanup needed)
@@ -995,13 +995,13 @@ export default function AdminResultPublishing() {
       a.download = `${baseFilename}.zip`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
-      toast({ title: 'ZIP Downloaded', description: `${successCount} report card image(s) in the ZIP file${errSuffix}.` });
+      toast({ title: 'Success', description: `${successCount} report card image(s) downloaded in ZIP${errSuffix}.` });
     } else if (type === 'pdf' && pdf && successCount > 0) {
       pdf.save(`${baseFilename}.pdf`);
-      toast({ title: 'PDF Downloaded', description: `${successCount} report card(s) saved as a single PDF${errSuffix}.` });
+      toast({ title: 'Success', description: `${successCount} report card(s) saved as PDF${errSuffix}.` });
     } else if (type === 'print' && htmlParts.length > 0) {
       openBulkPrintWindow(htmlParts, baseFilename);
-      toast({ title: 'Print Ready', description: `${htmlParts.length} report card(s) sent to print${errSuffix}.` });
+      toast({ title: 'Success', description: `${htmlParts.length} report card(s) sent to print${errSuffix}.` });
     } else {
       toast({ title: 'Nothing to export', description: 'No report cards could be processed.', variant: 'destructive' });
     }

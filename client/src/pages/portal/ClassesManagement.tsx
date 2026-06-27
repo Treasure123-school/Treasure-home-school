@@ -91,7 +91,7 @@ export default function ClassesManagement() {
       return { previousClasses };
     },
     onSuccess: () => {
-      toast({ title: 'Class created successfully' });
+      toast({ title: 'Success', description: 'Class created successfully' });
       queryClient.invalidateQueries({ queryKey: ['/api/classes'] });
       handleCloseDialog();
     },
@@ -119,7 +119,7 @@ export default function ClassesManagement() {
       return { previousClasses };
     },
     onSuccess: () => {
-      toast({ title: 'Class updated successfully' });
+      toast({ title: 'Success', description: 'Class updated successfully' });
       queryClient.invalidateQueries({ queryKey: ['/api/classes'] });
       handleCloseDialog();
     },
@@ -142,7 +142,7 @@ export default function ClassesManagement() {
       return { previousClasses };
     },
     onSuccess: () => {
-      toast({ title: 'Class deleted successfully' });
+      toast({ title: 'Success', description: 'Class deleted successfully' });
       queryClient.invalidateQueries({ queryKey: ['/api/classes'] });
       setClassToDelete(null);
     },

@@ -170,7 +170,7 @@ function useAdminSettings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/settings'] });
       queryClient.invalidateQueries({ queryKey: ['/api/public/settings'] });
-      toast({ title: 'Saved', description: 'Settings updated successfully.' });
+      toast({ title: 'Success', description: 'Settings updated successfully.' });
     },
     onError: (e: any) => toast({ title: 'Save failed', description: e.message, variant: 'destructive' }),
   });
@@ -822,7 +822,7 @@ function GradingScaleSection() {
     // Optimistic update is authoritative — just mark stale silently, no immediate refetch
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: scalesCacheKey, refetchType: 'none' });
-      toast({ title: 'Grade scale activated' });
+      toast({ title: 'Success', description: 'Grade scale activated' });
     },
   });
 
@@ -833,7 +833,7 @@ function GradingScaleSection() {
       // Append the new duplicate directly — no refetch needed
       patch(old => [...old, { ...s, boundaries: s.boundaries ?? [] }]);
       setExpandedScaleId(s.id);
-      toast({ title: 'Scale duplicated' });
+      toast({ title: 'Success', description: 'Grading scale duplicated.' });
     },
     onError: (e: any) => {
       queryClient.invalidateQueries({ queryKey: scalesCacheKey, refetchType: 'none' });
@@ -857,7 +857,7 @@ function GradingScaleSection() {
     // Optimistic removal is authoritative — just mark stale, no refetch
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: scalesCacheKey, refetchType: 'none' });
-      toast({ title: 'Scale deleted' });
+      toast({ title: 'Success', description: 'Grading scale deleted.' });
     },
   });
 
@@ -868,7 +868,7 @@ function GradingScaleSection() {
       // Add directly from server response — no refetch needed
       patch(old => [...old, { ...s, boundaries: s.boundaries ?? [] }]);
       setExpandedScaleId(s.id);
-      toast({ title: 'Scale created' });
+      toast({ title: 'Success', description: 'Grading scale created.' });
     },
     onError: (e: any) => toast({ title: 'Failed', description: e.message, variant: 'destructive' }),
   });
@@ -889,7 +889,7 @@ function GradingScaleSection() {
     // Optimistic update is authoritative — just mark stale, no refetch
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: scalesCacheKey, refetchType: 'none' });
-      toast({ title: 'Scale updated' });
+      toast({ title: 'Success', description: 'Grading scale updated.' });
     },
   });
 
@@ -914,7 +914,7 @@ function GradingScaleSection() {
       patch(old => old.map(s => s.id !== scaleId ? s : {
         ...s, boundaries: (s.boundaries ?? []).map(x => x.id < 0 ? b : x)
       }));
-      toast({ title: 'Boundary added' });
+      toast({ title: 'Success', description: 'Grade boundary added.' });
     },
   });
 
@@ -937,7 +937,7 @@ function GradingScaleSection() {
     // Optimistic update is authoritative — just mark stale, no refetch
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: scalesCacheKey, refetchType: 'none' });
-      toast({ title: 'Boundary updated' });
+      toast({ title: 'Success', description: 'Grade boundary updated.' });
     },
   });
 
@@ -960,7 +960,7 @@ function GradingScaleSection() {
     // Optimistic removal is authoritative — mark stale silently, no immediate refetch
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: scalesCacheKey, refetchType: 'none' });
-      toast({ title: 'Boundary deleted' });
+      toast({ title: 'Success', description: 'Grade boundary deleted.' });
     },
   });
 
@@ -1894,7 +1894,7 @@ function SchoolLeadershipSection() {
       queryClient.invalidateQueries({ queryKey: ['/api/leadership/principal'] });
       queryClient.invalidateQueries({ queryKey: ['/api/superadmin/principal'] });
       setClearConfirmOpen(false);
-      toast({ title: 'Principal updated', description: 'School leadership has been saved.' });
+      toast({ title: 'Success', description: 'School leadership updated.' });
     },
     onError: (e: any) => toast({ title: 'Failed to update', description: e.message, variant: 'destructive' }),
   });

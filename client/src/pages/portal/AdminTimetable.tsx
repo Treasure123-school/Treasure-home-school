@@ -132,7 +132,7 @@ export default function AdminTimetable() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/timetable'] });
-      toast({ title: 'Period added', description: 'Timetable entry created successfully.' });
+      toast({ title: 'Success', description: 'Timetable period added successfully.' });
       setShowDialog(false);
       setConflictMsg('');
       setForm({ ...EMPTY_FORM });
@@ -155,7 +155,7 @@ export default function AdminTimetable() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/timetable'] });
-      toast({ title: 'Period updated', description: 'Timetable entry updated successfully.' });
+      toast({ title: 'Success', description: 'Timetable period updated successfully.' });
       setShowDialog(false);
       setEditEntry(null);
       setConflictMsg('');
@@ -175,7 +175,7 @@ export default function AdminTimetable() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/timetable'] });
-      toast({ title: 'Period removed', description: 'Timetable entry deleted.' });
+      toast({ title: 'Success', description: 'Timetable period removed.' });
       setDeleteEntry(null);
     },
     onError: (error: any) => toast({ title: 'Failed to Delete', description: error.message || 'Could not delete timetable entry. Please try again.', variant: 'destructive' }),

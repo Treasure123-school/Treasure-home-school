@@ -46,7 +46,7 @@ export default function SuperAdminBackupRestore() {
       return apiRequest("PUT", "/api/superadmin/settings", data);
     },
     onSuccess: () => {
-      toast({ title: "Backup Settings Saved", description: "Automated backup configuration has been updated." });
+      toast({ title: "Success", description: "Automated backup configuration saved." });
       queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
       setIsEditing(false);
     },
@@ -61,7 +61,7 @@ export default function SuperAdminBackupRestore() {
       return apiRequest("POST", "/api/superadmin/backups/run", {});
     },
     onSuccess: () => {
-      toast({ title: "Backup Started", description: "Manual system backup process has been initiated." });
+      toast({ title: "Success", description: "Manual backup process initiated." });
       queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
     }
   });

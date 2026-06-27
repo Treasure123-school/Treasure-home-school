@@ -74,7 +74,7 @@ export default function AdmissionsManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/admissions-enquiries'] });
       setSelectedEnquiry(null);
-      toast({ title: 'Enquiry status updated' });
+      toast({ title: 'Success', description: 'Enquiry status updated.' });
     },
     onError: () => toast({ title: 'Update failed', variant: 'destructive' }),
   });
@@ -85,7 +85,7 @@ export default function AdmissionsManagement() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/admissions-enquiries'] });
       if (selectedEnquiry?.id === deleteTarget) setSelectedEnquiry(null);
       setDeleteTarget(null);
-      toast({ title: 'Enquiry deleted' });
+      toast({ title: 'Success', description: 'Enquiry deleted.' });
     },
     onError: () => toast({ title: 'Delete failed', variant: 'destructive' }),
   });

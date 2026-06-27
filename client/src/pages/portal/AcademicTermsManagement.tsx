@@ -967,7 +967,7 @@ export default function AcademicTermsManagement() {
   function useSessionMut(description: string, fn: (id: number) => Promise<any>) {
     return useMutation({
       mutationFn: fn,
-      onSuccess: () => { toast({ title: 'Done', description }); calendar.invalidate(); },
+      onSuccess: () => { toast({ title: 'Success', description }); calendar.invalidate(); },
       onError: (e: any) => toast({ title: 'Error', description: e.message || 'Operation failed.', variant: 'destructive' }),
     });
   }
@@ -1002,7 +1002,7 @@ export default function AcademicTermsManagement() {
       if (!r.ok) { const e = await r.json().catch(() => ({ message: 'Failed to delete' })); throw new Error(e.message); }
       return r.json();
     },
-    onSuccess: () => { toast({ title: 'Deleted', description: 'Session deleted.' }); calendar.invalidate(); },
+    onSuccess: () => { toast({ title: 'Success', description: 'Session deleted.' }); calendar.invalidate(); },
     onError: (e: any) => toast({ title: 'Cannot Delete', description: e.message, variant: 'destructive' }),
   });
 
@@ -1010,7 +1010,7 @@ export default function AcademicTermsManagement() {
   function useTermMut(description: string, fn: (id: number) => Promise<any>) {
     return useMutation({
       mutationFn: fn,
-      onSuccess: () => { toast({ title: 'Done', description }); calendar.invalidate(); },
+      onSuccess: () => { toast({ title: 'Success', description }); calendar.invalidate(); },
       onError: (e: any) => toast({ title: 'Error', description: e.message || 'Operation failed.', variant: 'destructive' }),
     });
   }
@@ -1033,7 +1033,7 @@ export default function AcademicTermsManagement() {
       if (!r.ok) { const e = await r.json().catch(() => ({ message: 'Failed' })); throw new Error(e.message); }
       return r.json();
     },
-    onSuccess: (d: any) => { toast({ title: 'Done', description: d?.data?.isLocked ?? d?.isLocked ? 'Term locked.' : 'Term unlocked.' }); calendar.invalidate(); },
+    onSuccess: (d: any) => { toast({ title: 'Success', description: d?.data?.isLocked ?? d?.isLocked ? 'Term locked.' : 'Term unlocked.' }); calendar.invalidate(); },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
 
@@ -1043,7 +1043,7 @@ export default function AcademicTermsManagement() {
       if (!r.ok) { const e = await r.json().catch(() => ({ message: 'Failed to delete' })); throw new Error(e.message); }
       return r.json();
     },
-    onSuccess: () => { toast({ title: 'Deleted', description: 'Term deleted.' }); calendar.invalidate(); },
+    onSuccess: () => { toast({ title: 'Success', description: 'Term deleted.' }); calendar.invalidate(); },
     onError: (e: any) => toast({ title: 'Cannot Delete', description: e.message, variant: 'destructive' }),
   });
 

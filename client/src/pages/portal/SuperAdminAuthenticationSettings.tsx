@@ -81,7 +81,7 @@ export default function SuperAdminAuthenticationSettings() {
       return apiRequest("POST", "/api/superadmin/force-logout-all", {});
     },
     onSuccess: () => {
-      toast({ title: "Action Complete", description: "All active user sessions have been terminated." });
+      toast({ title: "Success", description: "All active user sessions have been terminated." });
     }
   });
 

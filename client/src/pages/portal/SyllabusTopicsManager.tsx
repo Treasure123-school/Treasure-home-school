@@ -131,7 +131,7 @@ export default function SyllabusTopicsManager() {
       queryClient.setQueryData(ctx.key, (old: any[]) =>
         (old ?? []).map((t: any) => t._optimistic ? created : t)
       );
-      toast({ title: 'Topic created' });
+      toast({ title: 'Success', description: 'Topic created' });
       resetForm();
       // Background sync to ensure consistency
       queryClient.invalidateQueries({ queryKey: ['/api/syllabus-topics/stats'] });
@@ -164,7 +164,7 @@ export default function SyllabusTopicsManager() {
       // Refetch to get real items (bulk response doesn't return full objects)
       queryClient.invalidateQueries({ queryKey: ctx.key });
       queryClient.invalidateQueries({ queryKey: ['/api/syllabus-topics/stats'] });
-      toast({ title: `${_res.created} topics created` });
+      toast({ title: 'Success', description: `${_res.created} topics created` });
       resetForm();
     },
     onError: (e: any, _vars, ctx: any) => {
@@ -192,7 +192,7 @@ export default function SyllabusTopicsManager() {
       queryClient.setQueryData(ctx.key, (old: any[]) =>
         (old ?? []).map((t: any) => t.id === vars.id ? { ...t, ...updated } : t)
       );
-      toast({ title: 'Topic updated' });
+      toast({ title: 'Success', description: 'Topic updated' });
       resetForm();
     },
     onError: (e: any, _vars, ctx: any) => {
@@ -221,7 +221,7 @@ export default function SyllabusTopicsManager() {
       queryClient.setQueryData(ctx.key, (old: any[]) =>
         (old ?? []).map((t: any) => t.id === vars.id ? { ...t, ...updated } : t)
       );
-      toast({ title: vars.isPublished ? 'Published to students' : 'Hidden from students' });
+      toast({ title: 'Success', description: vars.isPublished ? 'Topic published to students' : 'Topic hidden from students' });
     },
     onError: (e: any, _, ctx: any) => {
       if (ctx?.previous) queryClient.setQueryData(ctx.key, ctx.previous);
@@ -244,7 +244,7 @@ export default function SyllabusTopicsManager() {
       return { previous, key };
     },
     onSuccess: (_res, _id, ctx: any) => {
-      toast({ title: 'Topic deleted' });
+      toast({ title: 'Success', description: 'Topic deleted' });
       setTopicToDelete(null);
       queryClient.invalidateQueries({ queryKey: ['/api/syllabus-topics/stats'] });
     },

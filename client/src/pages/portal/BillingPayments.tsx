@@ -85,7 +85,7 @@ export default function BillingPayments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/billing/payments'] });
       queryClient.invalidateQueries({ queryKey: ['/api/billing/summary'] });
-      toast({ title: 'Payment recorded' });
+      toast({ title: 'Success', description: 'Payment recorded.' });
       setShowForm(false);
       setForm({ ...emptyForm });
     },
@@ -97,7 +97,7 @@ export default function BillingPayments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/billing/payments'] });
       queryClient.invalidateQueries({ queryKey: ['/api/billing/summary'] });
-      toast({ title: 'Payment deleted' });
+      toast({ title: 'Success', description: 'Payment deleted.' });
       setDeletePayment(null);
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),

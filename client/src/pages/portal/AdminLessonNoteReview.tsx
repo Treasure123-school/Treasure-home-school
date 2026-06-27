@@ -224,7 +224,7 @@ export default function AdminLessonNoteReview() {
       approve: 'Approved', reject: 'Rejected',
       publish: 'Published', unpublish: 'Unpublished', 'approve-publish': 'Approved & Published',
     };
-    toast({ title: labels[action] ?? 'Done', description: 'Note status updated.' });
+    toast({ title: 'Success', description: `${labels[action] ?? 'Action'} — note status updated.` });
   };
 
   const handleView   = (note: EnrichedNote) => navigate(`/portal/admin/lesson-notes/view/${note.id}`);

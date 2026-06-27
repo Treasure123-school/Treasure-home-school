@@ -259,7 +259,7 @@ export default function ParentManagement() {
       setForm({ firstName: '', lastName: '', email: '', phone: '', gender: '' });
       setSelectedStudents([]);
       setCredentialsModal({ parent: data.user, credentials: data.credentials });
-      toast({ title: 'Parent created', description: `Account created for ${data.user.firstName} ${data.user.lastName}` });
+      toast({ title: 'Success', description: `Parent account created for ${data.user.firstName} ${data.user.lastName}` });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -273,7 +273,7 @@ export default function ParentManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/parents'] });
       setEditParent(null);
-      toast({ title: 'Updated', description: 'Parent information updated.' });
+      toast({ title: 'Success', description: 'Parent information updated.' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -288,7 +288,7 @@ export default function ParentManagement() {
       queryClient.invalidateQueries({ queryKey: ['/api/parents'] });
       setLinkMoreParent(null);
       setLinkMoreSelected([]);
-      toast({ title: 'Linked', description: 'Students linked successfully.' });
+      toast({ title: 'Success', description: 'Students linked successfully.' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -307,7 +307,7 @@ export default function ParentManagement() {
           linkedStudents: prev.linkedStudents.filter(s => s.id !== vars.studentId)
         } : null);
       }
-      toast({ title: 'Unlinked', description: 'Student removed from this parent.' });
+      toast({ title: 'Success', description: 'Student unlinked from this parent.' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -321,7 +321,7 @@ export default function ParentManagement() {
     },
     onSuccess: (_, vars) => {
       queryClient.invalidateQueries({ queryKey: ['/api/parents'] });
-      toast({ title: vars.active ? 'Activated' : 'Deactivated', description: `Parent account has been ${vars.active ? 'activated' : 'deactivated'}.` });
+      toast({ title: 'Success', description: `Parent account ${vars.active ? 'activated' : 'deactivated'}.` });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });
@@ -335,7 +335,7 @@ export default function ParentManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/parents'] });
       setDeleteConfirm(null);
-      toast({ title: 'Deleted', description: 'Parent account removed.' });
+      toast({ title: 'Success', description: 'Parent account removed.' });
     },
     onError: (e: any) => toast({ title: 'Error', description: e.message, variant: 'destructive' }),
   });

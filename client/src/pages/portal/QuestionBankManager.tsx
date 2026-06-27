@@ -442,7 +442,7 @@ function QuestionFormDialog({
           it._optimistic ? savedItem : it
         )};
       });
-      toast({ title: isEdit ? "Question updated" : "Question created" });
+      toast({ title: "Success", description: isEdit ? "Question updated." : "Question created." });
       onClose();
       // Background sync for stats and full consistency
       qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
@@ -882,7 +882,7 @@ function QuestionList({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/question-bank/items/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
-      toast({ title: "Question deleted" });
+      toast({ title: "Success", description: "Question deleted." });
       setDeleteTarget(null);
     },
     onError: (e: any) => toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
@@ -1286,7 +1286,7 @@ export default function QuestionBankManager() {
           )};
         });
       }
-      toast({ title: ACTION_LABEL[vars.action] ?? "Action complete" });
+      toast({ title: "Success", description: ACTION_LABEL[vars.action] ?? "Action completed." });
     },
 
     onSettled: () => {
@@ -1301,7 +1301,7 @@ export default function QuestionBankManager() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["/api/question-banks"] });
       qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
-      toast({ title: "Question bank created successfully" });
+      toast({ title: "Success", description: "Question bank created." });
       setCreateBankOpen(false);
       setNewBankName(""); setNewBankDesc(""); setBankSubjectId("");
       setBankClassId(""); setBankTermId("");
@@ -1315,7 +1315,7 @@ export default function QuestionBankManager() {
       qc.invalidateQueries({ queryKey: ["/api/question-banks"] });
       qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
       qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
-      toast({ title: "Bank deleted", description: "The question bank and all its questions have been removed." });
+      toast({ title: "Success", description: "Question bank and all its questions removed." });
       setDeleteBankTarget(null);
       setBrowseCtx(prev => ({ ...prev, bankId: undefined }));
     },

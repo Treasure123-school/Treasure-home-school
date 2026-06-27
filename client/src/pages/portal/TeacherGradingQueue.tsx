@@ -286,7 +286,7 @@ export default function TeacherGradingQueue() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: 'Grade saved', description: 'The grade has been recorded successfully.' });
+      toast({ title: 'Success', description: 'Grade recorded successfully.' });
       queryClient.invalidateQueries({ queryKey: ['/api/teacher/submissions'] });
     },
     onError: (err: any) => {
@@ -323,7 +323,7 @@ export default function TeacherGradingQueue() {
       }));
     },
     onSuccess: () => {
-      toast({ title: 'Bulk update complete', description: `${selectedBulk.size} submissions marked as reviewed.` });
+      toast({ title: 'Success', description: `${selectedBulk.size} submissions marked as reviewed.` });
       setSelectedBulk(new Set());
       queryClient.invalidateQueries({ queryKey: ['/api/teacher/submissions'] });
     },

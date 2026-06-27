@@ -75,7 +75,7 @@ export default function SuperAdminManagement() {
       return response.json();
     },
     onSuccess: () => {
-      toast({ title: "Admin Created", description: "Privileged account established successfully." });
+      toast({ title: "Success", description: "Admin account created successfully." });
       queryClient.invalidateQueries({ queryKey: ["/api/superadmin/admins"] });
       setIsAddDialogOpen(false);
       form.reset();

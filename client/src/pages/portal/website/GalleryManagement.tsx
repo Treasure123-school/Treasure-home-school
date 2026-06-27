@@ -99,7 +99,7 @@ export default function GalleryManagement() {
       setShowUploadDialog(false);
       setUploadFile(null);
       setUploadForm(DEFAULT_UPLOAD_FORM);
-      toast({ title: 'Image uploaded successfully' });
+      toast({ title: 'Success', description: 'Image uploaded to gallery.' });
     },
     onError: (e: any) => toast({ title: 'Upload failed', description: e.message, variant: 'destructive' }),
   });
@@ -111,7 +111,7 @@ export default function GalleryManagement() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/gallery'] });
       queryClient.invalidateQueries({ queryKey: ['/api/public/gallery'] });
       setEditingImage(null);
-      toast({ title: 'Image updated' });
+      toast({ title: 'Success', description: 'Image updated.' });
     },
     onError: () => toast({ title: 'Update failed', variant: 'destructive' }),
   });
@@ -122,7 +122,7 @@ export default function GalleryManagement() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/gallery'] });
       queryClient.invalidateQueries({ queryKey: ['/api/public/gallery'] });
       setDeleteTarget(null);
-      toast({ title: 'Image deleted' });
+      toast({ title: 'Success', description: 'Image deleted.' });
     },
     onError: () => toast({ title: 'Delete failed', variant: 'destructive' }),
   });
@@ -135,7 +135,7 @@ export default function GalleryManagement() {
       setShowCategoryDialog(false);
       setNewCategoryName('');
       setNewCategoryDesc('');
-      toast({ title: 'Category created' });
+      toast({ title: 'Success', description: 'Gallery category created.' });
     },
     onError: () => toast({ title: 'Failed to create category', variant: 'destructive' }),
   });
@@ -144,7 +144,7 @@ export default function GalleryManagement() {
     mutationFn: async (id: number) => apiRequest('DELETE', `/api/admin/gallery-categories/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/public/gallery/categories'] });
-      toast({ title: 'Category deleted' });
+      toast({ title: 'Success', description: 'Gallery category deleted.' });
     },
     onError: () => toast({ title: 'Failed to delete category', variant: 'destructive' }),
   });

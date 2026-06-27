@@ -431,7 +431,7 @@ export default function LessonNoteEditorPage() {
       const updated = replacePlaceholder(liveHtmlRef.current, figId, imageUrl, heading);
       liveHtmlRef.current = updated;
       setContent(updated);
-      toast({ title: '✅ Diagram regenerated', description: heading });
+      toast({ title: 'Success', description: `Diagram regenerated: ${heading}` });
     } catch {
       const failed = markPlaceholderFailed(liveHtmlRef.current, figId, heading);
       liveHtmlRef.current = failed;
@@ -530,7 +530,7 @@ export default function LessonNoteEditorPage() {
     setSaveStatus('unsaved');
     setImgGenPanel(false);
     setImgGenUrl(null);
-    toast({ title: '✅ Image inserted', description: 'AI-generated image added to your lesson note.' });
+    toast({ title: 'Success', description: 'AI-generated image added to your lesson note.' });
   }, [imgGenUrl, content, title, query]);
 
   const triggerAutoSave = useCallback(async (html: string) => {
@@ -550,7 +550,7 @@ export default function LessonNoteEditorPage() {
   const saveMutation = useMutation({
     mutationFn: () => doSave(content),
     onMutate:   () => setSaveStatus('saving'),
-    onSuccess:  () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); setSaveStatus('saved'); clearDraft(); toast({ title: 'Saved', description: 'Draft saved successfully.' }); },
+    onSuccess:  () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); setSaveStatus('saved'); clearDraft(); toast({ title: 'Success', description: 'Draft saved.' }); },
     onError:    (e: any) => { setSaveStatus('error'); toast({ title: 'Save failed', description: e.message, variant: 'destructive' }); },
   });
 
@@ -559,7 +559,7 @@ export default function LessonNoteEditorPage() {
       const nid = await doSave(content);
       return (await apiRequest('POST', `/api/lesson-notes/${nid}/submit`)).json();
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); clearDraft(); toast({ title: 'Submitted for review' }); navigate(listUrl); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); clearDraft(); toast({ title: 'Success', description: 'Lesson note submitted for review.' }); navigate(listUrl); },
     onError:   (e: any) => toast({ title: 'Submit failed', description: e.message, variant: 'destructive' }),
   });
 
@@ -568,7 +568,7 @@ export default function LessonNoteEditorPage() {
       const nid = await doSave(content);
       return (await apiRequest('POST', `/api/lesson-notes/${nid}/approve-publish`)).json();
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); clearDraft(); toast({ title: 'Published!', description: 'Lesson note is now visible to students.' }); navigate(listUrl); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); clearDraft(); toast({ title: 'Success', description: 'Lesson note published and visible to students.' }); navigate(listUrl); },
     onError:   (e: any) => toast({ title: 'Publish failed', description: e.message, variant: 'destructive' }),
   });
 
@@ -758,7 +758,7 @@ export default function LessonNoteEditorPage() {
                     // Show result toast
                     const total = imgJobs.length;
                     if (imgSuccessCount === total) {
-                      toast({ title: `✅ All ${total} diagram${total > 1 ? 's' : ''} generated`, description: 'Note is ready to save.' });
+                      toast({ title: 'Success', description: `All ${total} diagram${total > 1 ? 's' : ''} generated — note is ready to save.` });
                     } else if (imgSuccessCount > 0) {
                       toast({
                         title: `⚠️ ${imgSuccessCount} of ${total} diagrams generated`,
@@ -1141,7 +1141,7 @@ export default function LessonNoteEditorPage() {
               if (draftBanner.title) setTitle(draftBanner.title);
               if (draftBanner.content) { setContent(draftBanner.content); liveHtmlRef.current = draftBanner.content; setSaveStatus('unsaved'); }
               setDraftBanner(null);
-              toast({ title: 'Draft restored', description: 'Your unsaved work has been recovered.' });
+              toast({ title: 'Success', description: 'Draft restored — your unsaved work has been recovered.' });
             }}
           >
             Restore

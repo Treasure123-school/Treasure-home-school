@@ -463,7 +463,7 @@ export default function SubjectsManagement() {
       return { prev };
     },
     onSuccess: () => {
-      toast({ title: 'Subject created' });
+      toast({ title: 'Success', description: 'Subject created' });
       queryClient.invalidateQueries({ queryKey: ['/api/subjects/all'] });
       queryClient.invalidateQueries({ queryKey: ['/api/subjects'] });
     },
@@ -489,7 +489,7 @@ export default function SubjectsManagement() {
       return { prev };
     },
     onSuccess: () => {
-      toast({ title: 'Subject updated' });
+      toast({ title: 'Success', description: 'Subject updated' });
       queryClient.invalidateQueries({ queryKey: ['/api/subjects/all'] });
       queryClient.invalidateQueries({ queryKey: ['/api/subjects'] });
     },
@@ -509,7 +509,7 @@ export default function SubjectsManagement() {
       return res.json();
     },
     onSuccess: (data) => {
-      toast({ title: 'Subject archived', description: 'It has been hidden from all dropdowns.' });
+      toast({ title: 'Success', description: 'Subject archived — hidden from all dropdowns.' });
       queryClient.invalidateQueries({ queryKey: ['/api/subjects/all'] });
       queryClient.invalidateQueries({ queryKey: ['/api/subjects'] });
       closeActionDialog();
@@ -529,7 +529,7 @@ export default function SubjectsManagement() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: 'Subject restored', description: 'It is now active and available in all dropdowns.' });
+      toast({ title: 'Success', description: 'Subject restored — now active in all dropdowns.' });
       queryClient.invalidateQueries({ queryKey: ['/api/subjects/all'] });
       queryClient.invalidateQueries({ queryKey: ['/api/subjects'] });
       closeActionDialog();
@@ -557,7 +557,7 @@ export default function SubjectsManagement() {
       return { prev };
     },
     onSuccess: () => {
-      toast({ title: 'Subject permanently deleted' });
+      toast({ title: 'Success', description: 'Subject permanently deleted' });
       queryClient.invalidateQueries({ queryKey: ['/api/subjects/all'] });
       queryClient.invalidateQueries({ queryKey: ['/api/subjects'] });
     },
