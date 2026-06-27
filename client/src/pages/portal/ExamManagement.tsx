@@ -624,8 +624,8 @@ export default function ExamManagement() {
       }
 
       // Fire success toast IMMEDIATELY — same instant the item disappears from the list.
-      // The API call runs in the background; we only replace this toast on error.
-      const successToast = toast({ title: "Exam deleted" });
+      // Static description so there is zero server wait. API runs in the background.
+      const successToast = toast({ title: "Success", description: "Exam deleted successfully" });
 
       return { ...context, dismissSuccessToast: successToast.dismiss };
     },
@@ -687,7 +687,7 @@ export default function ExamManagement() {
       pendingQuestionDeletionsRef.current.add(questionId);
 
       // Fire success toast IMMEDIATELY — same instant the question disappears
-      const successToast = toast({ title: "Question deleted" });
+      const successToast = toast({ title: "Success", description: "Question deleted successfully" });
 
       return { ...context, examId: currentExamId, dismissSuccessToast: successToast.dismiss };
     },
