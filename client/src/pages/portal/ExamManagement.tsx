@@ -623,40 +623,24 @@ export default function ExamManagement() {
         setEditingQuestion(null);
       }
 
-      return context;
+      // Fire success toast IMMEDIATELY — same instant the item disappears from the list.
+      // The API call runs in the background; we only replace this toast on error.
+      const successToast = toast({ title: "Exam deleted" });
+
+      return { ...context, dismissSuccessToast: successToast.dismiss };
     },
-    onSuccess: (data, examId) => {
+    onSuccess: (_, examId) => {
       // Clear pending ref flag
       pendingDeletionsRef.current.delete(examId);
       // Clear UI state — item is already gone from the list
       setDeletingExamIds(prev => { const next = new Set(prev); next.delete(examId); return next; });
 
-      // Explicitly scrub the exam from the cache in case a background refetch
-      // (triggered by window-focus when the dialog closed) restored it
+      // Scrub the exam from the cache in case a background refetch restored it
       queryClient.setQueryData<Exam[]>(['/api/exams'], (old) =>
         old?.filter((e) => e.id !== examId) ?? []
       );
 
-      // Build detailed success message with deletion stats
-      let description = "Exam deleted successfully";
-      if (data?.deletedCounts) {
-        const { questions, studentAnswers, results, sessions } = data.deletedCounts;
-        const parts = [];
-        if (questions > 0) parts.push(`${questions} questions`);
-        if (studentAnswers > 0) parts.push(`${studentAnswers} student answers`);
-        if (results > 0) parts.push(`${results} results`);
-        if (sessions > 0) parts.push(`${sessions} sessions`);
-        if (parts.length > 0) {
-          description = `Exam and ${parts.join(', ')} permanently deleted`;
-        }
-      }
-
-      toast({
-        title: "Success",
-        description,
-      });
-
-      // Invalidate related caches since exam and its data were deleted
+      // Silent background invalidations — these never block the UI
       queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/exam-results'] });
       queryClient.invalidateQueries({ queryKey: ['/api/exam-sessions'] });
@@ -670,6 +654,9 @@ export default function ExamManagement() {
       if (context?.previousData) {
         rollbackOnError(['/api/exams'], context.previousData);
       }
+
+      // Dismiss the premature success toast before showing the error
+      context?.dismissSuccessToast?.();
       toast({
         title: "Deletion Failed",
         description: error.message || "Failed to delete exam. The assessment has been restored.",
@@ -699,19 +686,16 @@ export default function ExamManagement() {
       // Mark question as pending deletion to prevent race conditions with Realtime
       pendingQuestionDeletionsRef.current.add(questionId);
 
-      // Return context with captured examId for use in onSuccess/onError
-      return { ...context, examId: currentExamId };
+      // Fire success toast IMMEDIATELY — same instant the question disappears
+      const successToast = toast({ title: "Question deleted" });
+
+      return { ...context, examId: currentExamId, dismissSuccessToast: successToast.dismiss };
     },
-    onSuccess: (_, questionId, context) => {
-      // Clear pending flag immediately
+    onSuccess: (_, questionId) => {
+      // Clear pending flag
       pendingQuestionDeletionsRef.current.delete(questionId);
 
-      toast({
-        title: "Success",
-        description: "Question deleted successfully",
-      });
-
-      // Invalidate question counts and options caches
+      // Silent background invalidations
       queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/question-options', questionId] });
     },
@@ -725,9 +709,12 @@ export default function ExamManagement() {
       if (context?.previousData && examId) {
         rollbackOnError(['/api/exam-questions', examId], context.previousData);
       }
+
+      // Dismiss the premature success toast before showing the error
+      context?.dismissSuccessToast?.();
       toast({
-        title: "Error",
-        description: error.message || "Failed to delete question",
+        title: "Deletion Failed",
+        description: error.message || "Failed to delete question. It has been restored.",
         variant: "destructive",
       });
     },
