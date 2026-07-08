@@ -195,7 +195,7 @@ export default function ClassesManagement() {
         title="Classes Management"
         description="Manage school classes, assign teachers and set capacities"
         actions={
-          <Button onClick={() => { reset(); setEditingClass(null); setIsDialogOpen(true); }} data-testid="button-add-class">
+          <Button className="w-full sm:w-auto" onClick={() => { reset(); setEditingClass(null); setIsDialogOpen(true); }} data-testid="button-add-class">
             <Plus className="w-4 h-4 mr-2" />
             Add Class
           </Button>
