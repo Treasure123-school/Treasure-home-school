@@ -4,7 +4,8 @@ import ExamQuestionAdder from './ExamQuestionAdder';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import { optimisticToggle, optimisticDelete, optimisticCreate, optimisticUpdateItem, rollbackOnError } from '@/lib/optimisticUpdates';
+import { AssessmentList } from './assessments/AssessmentList';
+import { DeleteAssessmentDialog } from './assessments/DeleteAssessmentDialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -219,14 +220,10 @@ export default function ExamManagement() {
     },
   });
 
-  // Memoized: only recomputes when rawExams or deletingExamIds changes.
-  // deletingExamIds is React state — updating it synchronously in the click handler
-  // causes React to remove the item in the very same render tick (instant, like TikTok).
-  // pendingDeletionsRef stays as a secondary guard for socket race conditions.
-  const exams = useMemo(
-    () => rawExams.filter((exam: Exam) => !deletingExamIds.has(exam.id)),
-    [rawExams, deletingExamIds]
-  );
+  // Assessments stay visible until the backend actually confirms deletion —
+  // see deleteExamMutation below. deletingExamIds only tracks in-flight
+  // deletions for "Deleting..." button/menu labels, it no longer hides items.
+  const exams = rawExams;
 
   // Enable real-time updates for exams with specific event handlers
   useSocketIORealtime({
@@ -588,34 +585,54 @@ export default function ExamManagement() {
     },
   });
 
-  // Delete exam mutation with optimistic update - instant deletion
-  // Uses smart deletion system that cascade deletes all related data
+  // Delete exam mutation — confirm-first (not optimistic).
+  // The frontend never touches the exams list until the backend has actually
+  // returned a success status for the DELETE request. This guarantees the
+  // item can never flicker back in: it simply never leaves until the server
+  // confirms it's really gone. Uses the smart deletion system on the backend,
+  // which cascade-deletes all related data.
   const deleteExamMutation = useMutation({
     mutationFn: async (examId: number) => {
-      const response = await apiRequest('DELETE', `/api/exams/${examId}`);
-      // 404 means the exam is already gone from the database (stale cache).
-      // Goal achieved — treat it as success so we never roll back or show an error toast.
-      if (response.status === 404) return null;
-      if (!response.ok) {
-        // Read the actual server error so the toast shows a meaningful message
-        const body = await response.json().catch(() => ({}));
-        throw new Error(body?.message || `Failed to delete exam (${response.status})`);
+      try {
+        const response = await apiRequest('DELETE', `/api/exams/${examId}`);
+        // 404 means the exam is already gone from the database (stale cache).
+        // Goal achieved — treat it as success.
+        if (response.status === 404) return null;
+        if (!response.ok) {
+          // Read the actual server error so the toast shows a meaningful message
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body?.message || `Failed to delete exam (${response.status})`);
+        }
+        // Handle both 204 (legacy) and 200 with deletion stats
+        if (response.status === 204) return null;
+        const contentLength = response.headers.get('content-length');
+        if (contentLength && parseInt(contentLength) > 0) {
+          return response.json();
+        }
+        return null;
+      } catch (error) {
+        // Re-throw so react-query's onError handles the UI feedback consistently,
+        // whether the failure was a thrown network error or a non-OK response above.
+        throw error instanceof Error ? error : new Error('Failed to delete exam');
       }
-      // Handle both 204 (legacy) and 200 with deletion stats
-      if (response.status === 204) return null;
-      const contentLength = response.headers.get('content-length');
-      if (contentLength && parseInt(contentLength) > 0) {
-        return response.json();
-      }
-      return null;
     },
     onMutate: async (examId) => {
-      // Mark this deletion as pending to prevent Realtime socket from re-adding it
+      // Mark this deletion as pending to prevent the Realtime socket from
+      // re-adding it while the request is in flight. Intentionally does NOT
+      // remove the item from the cache — it must stay visible until the
+      // backend confirms success, so there is nothing to roll back on error.
       pendingDeletionsRef.current.add(examId);
+      setDeletingExamIds(prev => new Set(prev).add(examId));
+    },
+    onSuccess: (_, examId) => {
+      // Clear pending/in-flight flags
+      pendingDeletionsRef.current.delete(examId);
+      setDeletingExamIds(prev => { const next = new Set(prev); next.delete(examId); return next; });
 
-      // Cancel any in-flight queries so they don't overwrite the optimistic removal
-      const queryKey = ['/api/exams'];
-      const context = await optimisticDelete<Exam[]>({ queryKey, idToDelete: examId });
+      // Only now — after the backend confirmed the deletion — remove it from the UI.
+      queryClient.setQueryData<Exam[]>(['/api/exams'], (old) =>
+        old?.filter((e) => e.id !== examId) ?? []
+      );
 
       if (selectedExam?.id === examId) {
         setSelectedExam(null);
@@ -623,98 +640,77 @@ export default function ExamManagement() {
         setEditingQuestion(null);
       }
 
-      // Fire success toast IMMEDIATELY — same instant the item disappears from the list.
-      // Static description so there is zero server wait. API runs in the background.
-      const successToast = toast({ title: "Success", description: "Exam deleted successfully" });
-
-      return { ...context, dismissSuccessToast: successToast.dismiss };
-    },
-    onSuccess: (_, examId) => {
-      // Clear pending ref flag
-      pendingDeletionsRef.current.delete(examId);
-      // Clear UI state — item is already gone from the list
-      setDeletingExamIds(prev => { const next = new Set(prev); next.delete(examId); return next; });
-
-      // Scrub the exam from the cache in case a background refetch restored it
-      queryClient.setQueryData<Exam[]>(['/api/exams'], (old) =>
-        old?.filter((e) => e.id !== examId) ?? []
-      );
+      toast({ title: "Success", description: "Exam deleted successfully" });
 
       // Silent background invalidations — these never block the UI
       queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/exam-results'] });
       queryClient.invalidateQueries({ queryKey: ['/api/exam-sessions'] });
     },
-    onError: (error: any, examId, context) => {
-      // Remove from pending ref on error
+    onError: (error: any, examId) => {
+      // Remove from pending flags — the item was never hidden, so nothing to restore
       pendingDeletionsRef.current.delete(examId);
-      // Restore the item in the UI by removing it from the hidden set
       setDeletingExamIds(prev => { const next = new Set(prev); next.delete(examId); return next; });
 
-      if (context?.previousData) {
-        rollbackOnError(['/api/exams'], context.previousData);
-      }
-
-      // Dismiss the premature success toast before showing the error
-      context?.dismissSuccessToast?.();
       toast({
         title: "Deletion Failed",
-        description: error.message || "Failed to delete exam. The assessment has been restored.",
+        description: error.message || "Failed to delete exam. Please try again.",
         variant: "destructive",
       });
     },
   });
 
-  // Delete question mutation with optimistic update - instant deletion
+  // Delete question mutation — confirm-first (not optimistic). The question
+  // only leaves the list after the backend confirms the deletion succeeded.
   const deleteQuestionMutation = useMutation({
     mutationFn: async (questionId: number) => {
-      const response = await apiRequest('DELETE', `/api/exam-questions/${questionId}`);
-      if (!response.ok) throw new Error('Failed to delete question');
-      if (response.status === 204) return;
-      const contentLength = response.headers.get('content-length');
-      if (contentLength && parseInt(contentLength) > 0) {
-        return response.json();
+      try {
+        const response = await apiRequest('DELETE', `/api/exam-questions/${questionId}`);
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body?.message || 'Failed to delete question');
+        }
+        if (response.status === 204) return null;
+        const contentLength = response.headers.get('content-length');
+        if (contentLength && parseInt(contentLength) > 0) {
+          return response.json();
+        }
+        return null;
+      } catch (error) {
+        throw error instanceof Error ? error : new Error('Failed to delete question');
       }
-      return;
     },
     onMutate: async (questionId) => {
-      // Capture the current exam ID before any state changes
-      const currentExamId = selectedExam?.id;
-      const queryKey = ['/api/exam-questions', currentExamId];
-      const context = await optimisticDelete<ExamQuestion[]>({ queryKey, idToDelete: questionId });
-
-      // Mark question as pending deletion to prevent race conditions with Realtime
+      // Mark question as pending deletion to prevent race conditions with Realtime.
+      // The item itself is left in place until onSuccess confirms the delete.
       pendingQuestionDeletionsRef.current.add(questionId);
-
-      // Fire success toast IMMEDIATELY — same instant the question disappears
-      const successToast = toast({ title: "Success", description: "Question deleted successfully" });
-
-      return { ...context, examId: currentExamId, dismissSuccessToast: successToast.dismiss };
     },
     onSuccess: (_, questionId) => {
-      // Clear pending flag
+      // Only now remove the question from the cache — after backend confirmation.
+      const examId = selectedExam?.id;
+      if (examId) {
+        queryClient.setQueryData<ExamQuestion[]>(['/api/exam-questions', examId], (old) =>
+          old?.filter((q) => q.id !== questionId) ?? []
+        );
+      }
+      if (editingQuestion?.id === questionId) {
+        setEditingQuestion(null);
+      }
+
       pendingQuestionDeletionsRef.current.delete(questionId);
+
+      toast({ title: "Success", description: "Question deleted successfully" });
 
       // Silent background invalidations
       queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/question-options', questionId] });
     },
-    onError: (error: any, questionId, context) => {
-      // Remove from pending deletions on error
+    onError: (error: any, questionId) => {
       pendingQuestionDeletionsRef.current.delete(questionId);
 
-      // Use examId from context to ensure we target the correct cache
-      const examId = context?.examId;
-
-      if (context?.previousData && examId) {
-        rollbackOnError(['/api/exam-questions', examId], context.previousData);
-      }
-
-      // Dismiss the premature success toast before showing the error
-      context?.dismissSuccessToast?.();
       toast({
         title: "Deletion Failed",
-        description: error.message || "Failed to delete question. It has been restored.",
+        description: error.message || "Failed to delete question. Please try again.",
         variant: "destructive",
       });
     },
@@ -2177,382 +2173,24 @@ export default function ExamManagement() {
     </div>
 
       {/* Assessments Table/Cards */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Assessments</CardTitle>
-        </CardHeader>
-        <CardContent className="p-3 sm:p-6">
-          {loadingExams ? (
-            <div className="text-center py-8">Loading exams...</div>
-          ) : (
-            <>
-              {/* Mobile Card View */}
-              <div className="sm:hidden space-y-3">
-                {filteredExams.map((exam: any) => (
-                  <div
-                    key={exam.id}
-                    className="border border-border rounded-lg p-3 bg-muted/30"
-                    data-testid={`card-exam-${exam.id}`}
-                  >
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-                            {exam.assessmentCategory === 'standalone'
-                              ? <Badge className="text-[10px] px-1.5 py-0 bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300"><Layers className="w-2.5 h-2.5 mr-0.5" />Standalone</Badge>
-                              : <Badge className="text-[10px] px-1.5 py-0 bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300"><BookOpen className="w-2.5 h-2.5 mr-0.5" />Academic</Badge>
-                            }
-                          </div>
-                          <h3 className="font-medium text-sm truncate">{exam.name}</h3>
-                          <p className="text-xs text-muted-foreground mt-0.5">
-                            {exam.assessmentCategory === 'standalone'
-                              ? (exam.purpose || exam.venue || 'Standalone Assessment')
-                              : `${getClassNameById(exam.classId)} • ${getSubjectNameById(exam.subjectId)}`
-                            }
-                          </p>
-                        </div>
-                        <Badge variant={exam.isPublished ? 'default' : 'secondary'} className="ml-2 flex-shrink-0">
-                          {exam.isPublished ? 'Published' : 'Draft'}
-                        </Badge>
-                      </div>
+      <AssessmentList
+        exams={filteredExams}
+        isLoading={loadingExams}
+        searchTerm={searchTerm}
+        questionCounts={questionCounts}
+        togglingExamId={togglingExamId}
+        deletingExamIds={deletingExamIds}
+        onManageQuestions={(exam) => setSelectedExam(exam)}
+        onTogglePublish={(exam) => togglePublishMutation.mutate({ examId: exam.id, isPublished: !exam.isPublished })}
+        onPreview={(exam) => setPreviewExam(exam)}
+        onEditSettings={(exam) => handleEditExam(exam)}
+        onRequestDelete={(exam) => setDeletingExam(exam)}
+        onClearSearch={() => setSearchTerm('')}
+        onCreateFirst={() => setIsExamDialogOpen(true)}
+        getClassNameById={getClassNameById}
+        getSubjectNameById={getSubjectNameById}
+      />
 
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <div className="flex items-center space-x-3">
-                          <span>{new Date(exam.date).toLocaleDateString()}</span>
-                          {exam.timeLimit && (
-                            <div className="flex items-center">
-                              <Clock className="w-3 h-3 mr-1" />
-                              {exam.timeLimit}m
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center">
-                          <FileText className="w-3 h-3 mr-1" />
-                          {questionCounts[exam.id] || 0}
-                        </div>
-                      </div>
-
-                      {(() => {
-                        const now = new Date();
-                        const startTime = exam.startTime ? new Date(exam.startTime) : null;
-                        const endTime = exam.endTime ? new Date(exam.endTime) : null;
-
-                        if (exam.timerMode === 'global' && startTime && endTime) {
-                          if (now < startTime) {
-                            return (
-                              <Badge variant="outline" className="bg-yellow-50 w-fit">
-                                <Clock className="w-3 h-3 mr-1" />
-                                Scheduled
-                              </Badge>
-                            );
-                          } else if (now >= startTime && now <= endTime) {
-                            return (
-                              <Badge variant="default" className="bg-green-600 w-fit">
-                                <Play className="w-3 h-3 mr-1" />
-                                Live Now
-                              </Badge>
-                            );
-                          } else {
-                            return (
-                              <Badge variant="secondary" className="w-fit">
-                                Ended
-                              </Badge>
-                            );
-                          }
-                        }
-                        return null;
-                      })()}
-
-                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedExam(exam)}
-                          data-testid={`button-manage-questions-${exam.id}`}
-                          className="flex-1"
-                        >
-                          <Edit className="w-4 h-4 mr-1" />
-                          Questions
-                        </Button>
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              data-testid={`button-exam-actions-${exam.id}`}
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem
-                              onClick={() => togglePublishMutation.mutate({
-                                examId: exam.id,
-                                isPublished: !exam.isPublished
-                              })}
-                              disabled={togglingExamId === exam.id}
-                              data-testid={`dropdown-toggle-publish-${exam.id}`}
-                            >
-                              <Play className="w-4 h-4 mr-2" />
-                              {togglingExamId === exam.id
-                                ? (exam.isPublished ? 'Unpublishing...' : 'Publishing...')
-                                : (exam.isPublished ? 'Unpublish' : 'Publish')
-                              }
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => setPreviewExam(exam)}
-                              data-testid={`dropdown-preview-exam-${exam.id}`}
-                            >
-                              <Eye className="w-4 h-4 mr-2" />
-                              Preview
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleEditExam(exam)}
-                              data-testid={`dropdown-edit-exam-${exam.id}`}
-                            >
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit Exam
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <DropdownMenuItem
-                                  onSelect={(e) => e.preventDefault()}
-                                  className="text-destructive focus:text-destructive"
-                                  disabled={deletingExamIds.has(exam.id)}
-                                  data-testid={`dropdown-delete-exam-${exam.id}`}
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  {deletingExamIds.has(exam.id) ? 'Deleting...' : 'Delete Exam'}
-                                </DropdownMenuItem>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Exam</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete the exam "{exam.name}"? This action cannot be undone and will permanently remove all exam questions and student results.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => {
-                                      // Set state BEFORE mutate so React removes the item
-                                      // in the same synchronous render tick — instant removal
-                                      setDeletingExamIds(prev => new Set(prev).add(exam.id));
-                                      deleteExamMutation.mutate(exam.id);
-                                    }}
-                                    disabled={deletingExamIds.has(exam.id)}
-                                    className="bg-destructive hover:bg-destructive/90"
-                                  >
-                                    {deletingExamIds.has(exam.id) ? 'Deleting...' : 'Delete Exam'}
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {filteredExams.length === 0 && (
-                  <EmptyState
-                    title={searchTerm ? "No assessments match your search" : "No assessments created yet"}
-                    description={searchTerm 
-                      ? `We couldn't find any assessments matching "${searchTerm}". Try a different search term.`
-                      : "Create your first assessment to get started. Choose Academic to link to report cards, or Standalone for mock exams, competitions, and more."
-                    }
-                    icon={Clipboard}
-                    action={searchTerm
-                      ? { label: "Clear Search", onClick: () => setSearchTerm("") }
-                      : { label: "Create Your First Assessment", onClick: () => setIsExamDialogOpen(true), icon: Plus }
-                    }
-                  />
-                )}
-              </div>
-
-              {/* Desktop Table View */}
-              <div className="hidden sm:block overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Class / Target</TableHead>
-                      <TableHead>Subject</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Schedule</TableHead>
-                      <TableHead>Questions</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredExams.map((exam: any) => (
-                      <TableRow key={exam.id} data-testid={`row-exam-${exam.id}`}>
-                        <TableCell className="font-medium">{exam.name}</TableCell>
-                        <TableCell>
-                          {exam.assessmentCategory === 'standalone'
-                            ? <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300"><Layers className="w-3 h-3 mr-1" />Standalone</Badge>
-                            : <Badge className="text-xs bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300"><BookOpen className="w-3 h-3 mr-1" />Academic</Badge>
-                          }
-                        </TableCell>
-                        <TableCell>
-                          {exam.assessmentCategory === 'standalone'
-                            ? (exam.targetType || exam.venue || '—')
-                            : getClassNameById(exam.classId)
-                          }
-                        </TableCell>
-                        <TableCell>
-                          {exam.assessmentCategory === 'standalone'
-                            ? (exam.purpose || '—')
-                            : getSubjectNameById(exam.subjectId)
-                          }
-                        </TableCell>
-                        <TableCell>{new Date(exam.date).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          {exam.timeLimit ? (
-                            <div className="flex items-center">
-                              <Clock className="w-4 h-4 mr-1" />
-                              {exam.timeLimit}m
-                            </div>
-                          ) : 'No limit'}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={exam.isPublished ? 'default' : 'secondary'}>
-                            {exam.isPublished ? 'Published' : 'Draft'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {(() => {
-                            const now = new Date();
-                            const startTime = exam.startTime ? new Date(exam.startTime) : null;
-                            const endTime = exam.endTime ? new Date(exam.endTime) : null;
-
-                            if (exam.timerMode === 'global' && startTime && endTime) {
-                              if (now < startTime) {
-                                return (
-                                  <Badge variant="outline" className="bg-yellow-50">
-                                    <Clock className="w-3 h-3 mr-1" />
-                                    Scheduled
-                                  </Badge>
-                                );
-                              } else if (now >= startTime && now <= endTime) {
-                                return (
-                                  <Badge variant="default" className="bg-green-600">
-                                    <Play className="w-3 h-3 mr-1" />
-                                    Live Now
-                                  </Badge>
-                                );
-                              } else {
-                                return (
-                                  <Badge variant="secondary">
-                                    Ended
-                                  </Badge>
-                                );
-                              }
-                            }
-                            return (
-                              <span className="text-sm text-muted-foreground">
-                                Individual Timer
-                              </span>
-                            );
-                          })()}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <FileText className="w-4 h-4 mr-1" />
-                            {questionCounts[exam.id] || 0} question{(questionCounts[exam.id] || 0) !== 1 ? 's' : ''}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" data-testid={`button-exam-actions-${exam.id}`}>
-                                <MoreVertical className="h-4 w-4" />
-                                <span className="sr-only">Open actions</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem 
-                                onClick={() => setSelectedExam(exam)}
-                                className="cursor-pointer"
-                                data-testid={`menu-manage-questions-${exam.id}`}
-                              >
-                                <Edit className="w-4 h-4 mr-2 text-primary" />
-                                Manage Questions
-                              </DropdownMenuItem>
-                              
-                              <DropdownMenuItem 
-                                onClick={() => togglePublishMutation.mutate({
-                                  examId: exam.id,
-                                  isPublished: !exam.isPublished
-                                })}
-                                disabled={togglingExamId === exam.id}
-                                className="cursor-pointer"
-                                data-testid={`menu-toggle-publish-${exam.id}`}
-                              >
-                                <Play className={`w-4 h-4 mr-2 ${exam.isPublished ? "text-amber-500" : "text-green-500"}`} />
-                                {togglingExamId === exam.id
-                                  ? (exam.isPublished ? 'Unpublishing...' : 'Publishing...')
-                                  : (exam.isPublished ? 'Unpublish' : 'Publish')
-                                }
-                              </DropdownMenuItem>
-
-                              <DropdownMenuItem 
-                                onClick={() => setPreviewExam(exam)}
-                                className="cursor-pointer"
-                                data-testid={`menu-preview-exam-${exam.id}`}
-                              >
-                                <Eye className="w-4 h-4 mr-2 text-purple-500" />
-                                Preview Exam
-                              </DropdownMenuItem>
-
-                              <DropdownMenuItem 
-                                onClick={() => handleEditExam(exam)}
-                                className="cursor-pointer"
-                                data-testid={`menu-edit-exam-${exam.id}`}
-                              >
-                                <Settings className="w-4 h-4 mr-2 text-gray-500" />
-                                Exam Settings
-                              </DropdownMenuItem>
-
-                              <DropdownMenuSeparator />
-                              
-                              <DropdownMenuItem 
-                                className="text-destructive focus:text-destructive cursor-pointer"
-                                data-testid={`menu-delete-exam-${exam.id}`}
-                                disabled={deletingExamIds.has(exam.id)}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  if (!deletingExamIds.has(exam.id)) setDeletingExam(exam);
-                                }}
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                {deletingExamIds.has(exam.id) ? 'Deleting...' : 'Delete Exam'}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {filteredExams.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">
-                          No assessments found. Create your first assessment to get started.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Empty state guidance when no exam is selected */}
       {!selectedExam && (
@@ -2975,40 +2613,21 @@ export default function ExamManagement() {
         />
       )}
 
-      {/* Delete Exam Confirmation Modal */}
-      <AlertDialog 
-        open={!!deletingExam} 
-        onOpenChange={(open) => {
-          if (!open) setDeletingExam(null);
+      {/* Delete Exam Confirmation Modal — shared by both the mobile card and
+          desktop table actions menu (see AssessmentActionsMenu). The mutation
+          only fires on confirm, and the item only leaves the list once the
+          backend responds with success (see deleteExamMutation above). */}
+      <DeleteAssessmentDialog
+        exam={deletingExam}
+        isDeleting={deletingExam ? deletingExamIds.has(deletingExam.id) : false}
+        onCancel={() => setDeletingExam(null)}
+        onConfirm={(exam) => {
+          setDeletingExam(null);
+          if (!deletingExamIds.has(exam.id)) {
+            deleteExamMutation.mutate(exam.id);
+          }
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Exam</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete the exam "{deletingExam?.name}"? This action cannot be undone and will permanently remove all exam questions and student results.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deletingExam ? deletingExamIds.has(deletingExam.id) : false}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={deletingExam ? deletingExamIds.has(deletingExam.id) : false}
-              onClick={() => {
-                const examId = deletingExam?.id;
-                setDeletingExam(null);
-                if (examId && !deletingExamIds.has(examId)) {
-                  // Set state BEFORE mutate so the item vanishes in the same render tick
-                  setDeletingExamIds(prev => new Set(prev).add(examId));
-                  deleteExamMutation.mutate(examId);
-                }
-              }}
-            >
-              {deletingExam && deletingExamIds.has(deletingExam.id) ? 'Deleting...' : 'Delete Exam'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      />
     </div>
   );
 }
