@@ -25,8 +25,10 @@ import {
   BookOpen, Clock, AlertTriangle, ChevronLeft, ChevronRight,
   Filter, Eye, EyeOff, Globe, Layers, Info,
   Search, ListChecks, BarChart3, Database, FileQuestion,
-  ChevronDown, ChevronUp, Check, GraduationCap, MoreVertical,
+  ChevronDown, ChevronUp, Check, GraduationCap, MoreVertical, Upload,
 } from "lucide-react";
+import { BulkCSVQuestionsDialog } from "@/components/shared/BulkCSVQuestionsDialog";
+import type { ParsedQuestion } from "@/components/shared/BulkCSVQuestionsDialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuTrigger,
@@ -857,9 +859,44 @@ function QuestionList({
 }) {
   const qc = useQueryClient();
   const { toast } = useToast();
-  const [editItem,      setEditItem]      = useState<any>(null);
-  const [deleteTarget,  setDeleteTarget]  = useState<any>(null);
-  const [formOpen,      setFormOpen]      = useState(false);
+  const [editItem,        setEditItem]        = useState<any>(null);
+  const [deleteTarget,    setDeleteTarget]    = useState<any>(null);
+  const [formOpen,        setFormOpen]        = useState(false);
+  const [csvUploadOpen,    setCsvUploadOpen]    = useState(false);
+  const [csvServerErrors,  setCsvServerErrors]  = useState<string[]>([]);
+
+  // Bulk CSV upload to this question bank
+  const bulkCsvMutation = useMutation({
+    mutationFn: async (questions: ParsedQuestion[]) => {
+      if (!context.bankId)    throw new Error("Select a question bank before uploading.");
+      if (!context.classId)   throw new Error("Select a class before uploading.");
+      if (!context.termId)    throw new Error("Select a term before uploading (required for question bank items).");
+      const r = await apiRequest("POST", "/api/question-bank/items/bulk-csv", {
+        bankId:    context.bankId,
+        classId:   context.classId,
+        termId:    context.termId,
+        questions,
+      });
+      if (!r.ok) { const err = await r.json(); throw new Error(err.error || err.message || "Upload failed"); }
+      return r.json();
+    },
+    onSuccess: (result) => {
+      const serverErrs: string[] = result.errors ?? [];
+      toast({
+        title: "Bulk upload complete",
+        description: `${result.created} question${result.created !== 1 ? "s" : ""} added.${serverErrs.length ? ` ${serverErrs.length} row(s) skipped — see details below.` : ""}`,
+      });
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
+      if (serverErrs.length) {
+        setCsvServerErrors(serverErrs);  // surface row errors in-dialog
+      } else {
+        setCsvServerErrors([]);
+        setCsvUploadOpen(false);
+      }
+    },
+    onError: (e: any) => toast({ title: "Upload failed", description: e.message, variant: "destructive" }),
+  });
 
   const qs = new URLSearchParams({ ...paramObj, page: String(page) }).toString();
 
@@ -936,13 +973,22 @@ function QuestionList({
         <p className="text-sm text-muted-foreground">
           <span className="font-semibold text-foreground">{pg.total}</span> question{pg.total !== 1 ? "s" : ""} found
         </p>
-        <Button
-          size="sm" className="h-8"
-          onClick={() => { setEditItem(null); setFormOpen(true); }}
-          data-testid="btn-add-question"
-        >
-          <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Question
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline" size="sm" className="h-8"
+            onClick={() => setCsvUploadOpen(true)}
+            title={!context.termId ? "Select a term to enable bulk upload" : "Bulk upload questions via CSV"}
+          >
+            <Upload className="w-3.5 h-3.5 mr-1.5" /> Bulk Upload CSV
+          </Button>
+          <Button
+            size="sm" className="h-8"
+            onClick={() => { setEditItem(null); setFormOpen(true); }}
+            data-testid="btn-add-question"
+          >
+            <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Question
+          </Button>
+        </div>
       </div>
 
       {items.length === 0 ? (
@@ -984,6 +1030,16 @@ function QuestionList({
           editItem={editItem}
         />
       )}
+
+      <BulkCSVQuestionsDialog
+        open={csvUploadOpen}
+        onOpenChange={(v) => { setCsvUploadOpen(v); if (!v) setCsvServerErrors([]); }}
+        onUpload={(questions) => { setCsvServerErrors([]); bulkCsvMutation.mutate(questions); }}
+        isPending={bulkCsvMutation.isPending}
+        showDifficulty
+        title="Bulk Upload to Question Bank"
+        serverErrors={csvServerErrors}
+      />
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
         <AlertDialogContent>
