@@ -22,7 +22,7 @@ export function SubjectCard({ subject, onEdit, onAction }: SubjectCardProps) {
 
   return (
     <Card
-      className={`transition-all ${archived ? 'opacity-60 border-dashed' : 'hover:border-primary/40 hover:shadow-sm'}`}
+      className={`group transition-all ${archived ? 'opacity-60 border-dashed' : 'hover:border-primary/40 hover:shadow-sm'}`}
       data-testid={`card-subject-${subject.id}`}
     >
       <CardContent className="p-4 space-y-3">
@@ -41,43 +41,67 @@ export function SubjectCard({ subject, onEdit, onAction }: SubjectCardProps) {
             </div>
           </div>
 
+          <div className="flex flex-col items-end gap-1 shrink-0">
+            <Badge className={`text-[10px] border-0 ${cat.color}`} data-testid={`text-category-${subject.id}`}>
+              {cat.label}
+            </Badge>
+            {archived && (
+              <Badge className="text-[10px] border-0 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" data-testid={`badge-archived-${subject.id}`}>
+                Archived
+              </Badge>
+            )}
+          </div>
+        </div>
+
+        {subject.description && (
+          <p className="text-xs text-muted-foreground line-clamp-2">{subject.description}</p>
+        )}
+
+        {/* Actions */}
+        <div className="flex gap-2 pt-1 border-t border-border/50">
+          {!archived ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 h-8 text-xs"
+              onClick={() => onEdit(subject)}
+              data-testid={`button-edit-subject-${subject.id}`}
+            >
+              <Edit className="w-3 h-3 mr-1" /> Edit
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 h-8 text-xs"
+              onClick={() => onAction(subject, 'restore')}
+              data-testid={`button-restore-subject-${subject.id}`}
+            >
+              <ArchiveRestore className="w-3 h-3 mr-1" /> Restore
+            </Button>
+          )}
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                variant="outline"
+                size="sm"
+                className="h-8 w-8 p-0 shrink-0 text-muted-foreground hover:text-foreground"
                 data-testid={`button-actions-${subject.id}`}
               >
-                <MoreVertical className="h-4 w-4" />
+                <MoreVertical className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
               {!archived && (
-                <DropdownMenuItem onClick={() => onEdit(subject)} data-testid={`button-edit-subject-${subject.id}`}>
-                  <Edit className="h-4 w-4 mr-2" /> Edit
-                </DropdownMenuItem>
-              )}
-              {!archived && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => onAction(subject, 'archive')}
-                    data-testid={`button-archive-subject-${subject.id}`}
-                  >
-                    <Archive className="h-4 w-4 mr-2" /> Archive
-                  </DropdownMenuItem>
-                </>
-              )}
-              {archived && (
                 <DropdownMenuItem
-                  onClick={() => onAction(subject, 'restore')}
-                  data-testid={`button-restore-subject-${subject.id}`}
+                  onClick={() => onAction(subject, 'archive')}
+                  data-testid={`button-archive-subject-${subject.id}`}
                 >
-                  <ArchiveRestore className="h-4 w-4 mr-2" /> Restore
+                  <Archive className="h-4 w-4 mr-2" /> Archive
                 </DropdownMenuItem>
               )}
-              <DropdownMenuSeparator />
+              {!archived && <DropdownMenuSeparator />}
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onClick={() => onAction(subject, 'delete')}
@@ -88,21 +112,6 @@ export function SubjectCard({ subject, onEdit, onAction }: SubjectCardProps) {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-
-        <div className="flex flex-wrap gap-1.5">
-          <Badge className={`text-[10px] border-0 ${cat.color}`} data-testid={`text-category-${subject.id}`}>
-            {cat.label}
-          </Badge>
-          {archived && (
-            <Badge className="text-[10px] border-0 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300" data-testid={`badge-archived-${subject.id}`}>
-              Archived
-            </Badge>
-          )}
-        </div>
-
-        {subject.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2">{subject.description}</p>
-        )}
       </CardContent>
     </Card>
   );
