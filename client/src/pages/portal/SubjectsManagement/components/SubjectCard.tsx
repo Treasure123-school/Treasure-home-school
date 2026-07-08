@@ -58,29 +58,7 @@ export function SubjectCard({ subject, onEdit, onAction }: SubjectCardProps) {
         )}
 
         {/* Actions */}
-        <div className="flex justify-end gap-2 pt-1">
-          {!archived ? (
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 shrink-0"
-              onClick={() => onEdit(subject)}
-              data-testid={`button-edit-subject-${subject.id}`}
-            >
-              <Edit className="w-3.5 h-3.5" />
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 shrink-0"
-              onClick={() => onAction(subject, 'restore')}
-              data-testid={`button-restore-subject-${subject.id}`}
-            >
-              <ArchiveRestore className="w-3.5 h-3.5" />
-            </Button>
-          )}
-
+        <div className="flex justify-end pt-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -93,6 +71,18 @@ export function SubjectCard({ subject, onEdit, onAction }: SubjectCardProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
+              {!archived ? (
+                <DropdownMenuItem onClick={() => onEdit(subject)} data-testid={`button-edit-subject-${subject.id}`}>
+                  <Edit className="h-4 w-4 mr-2" /> Edit
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  onClick={() => onAction(subject, 'restore')}
+                  data-testid={`button-restore-subject-${subject.id}`}
+                >
+                  <ArchiveRestore className="h-4 w-4 mr-2" /> Restore
+                </DropdownMenuItem>
+              )}
               {!archived && (
                 <DropdownMenuItem
                   onClick={() => onAction(subject, 'archive')}
@@ -101,7 +91,7 @@ export function SubjectCard({ subject, onEdit, onAction }: SubjectCardProps) {
                   <Archive className="h-4 w-4 mr-2" /> Archive
                 </DropdownMenuItem>
               )}
-              {!archived && <DropdownMenuSeparator />}
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-destructive focus:text-destructive"
                 onClick={() => onAction(subject, 'delete')}

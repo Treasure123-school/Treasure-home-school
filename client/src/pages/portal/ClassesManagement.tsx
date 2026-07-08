@@ -14,7 +14,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  Plus, Edit, Users, GraduationCap, BookOpen, Trash2,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Plus, Edit, Users, GraduationCap, BookOpen, Trash2, MoreVertical,
   School, Filter, AlertTriangle,
 } from 'lucide-react';
 import { PageHeader, FilterBar, EmptyState, MiniStatCard, MiniStatGrid, ConfirmDialog } from "@/components/shared";
@@ -308,25 +311,32 @@ export default function ClassesManagement() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex justify-end gap-2 pt-1">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8 shrink-0"
-                        onClick={() => handleEdit(classItem)}
-                        data-testid={`button-edit-class-${classItem.id}`}
-                      >
-                        <Edit className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
-                        onClick={() => setClassToDelete(classItem)}
-                        data-testid={`button-delete-class-${classItem.id}`}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                    <div className="flex justify-end pt-1">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                            data-testid={`button-actions-class-${classItem.id}`}
+                          >
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem onClick={() => handleEdit(classItem)} data-testid={`button-edit-class-${classItem.id}`}>
+                            <Edit className="h-4 w-4 mr-2" /> Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => setClassToDelete(classItem)}
+                            data-testid={`button-delete-class-${classItem.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </CardContent>
                 </Card>
