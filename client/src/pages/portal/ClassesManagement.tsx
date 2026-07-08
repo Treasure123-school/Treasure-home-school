@@ -308,7 +308,7 @@ export default function ClassesManagement() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2 pt-1 border-t border-border/50">
+                    <div className="flex gap-2 pt-1">
                       <Button
                         variant="outline"
                         size="sm"
