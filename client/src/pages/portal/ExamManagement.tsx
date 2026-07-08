@@ -3,6 +3,7 @@ import { useSearch } from 'wouter';
 import ExamQuestionAdder from './ExamQuestionAdder';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
+import { useClassSubjects } from '@/hooks/useClassSubjects';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { AssessmentList } from './assessments/AssessmentList';
 import { DeleteAssessmentDialog } from './assessments/DeleteAssessmentDialog';
@@ -335,46 +336,11 @@ export default function ExamManagement() {
   // Filter subjects based on selected class - only show subjects the teacher is assigned to for that class
   const selectedClassId = watchExam('classId');
 
-  // Fetch class-subject mappings for the selected class (used for admins to filter subjects - CURRENTLY DISABLED per new requirement)
-  // We still fetch it for other potential uses, but we don't block admin subject selection on it.
-  const { data: classSubjectMappings = [], isLoading: mappingsLoading } = useQuery<Array<{
-    id: number;
-    classId: number;
-    subjectId: number;
-    department: string | null;
-    isCompulsory: boolean;
-    subjectName: string;
-    subjectCode: string;
-    category: string;
-  }>>({
-    queryKey: ['/api/class-subject-mappings', selectedClassId],
-    queryFn: async () => {
-      if (!selectedClassId) return [];
-      const response = await apiRequest('GET', `/api/class-subject-mappings/${selectedClassId}`);
-      return await response.json();
-    },
-    // Only fetch mappings if not admin, or if we specifically need them for admins later.
-    // Right now, admins can select ANY subject, so we don't strictly need it for the dropdown.
-    enabled: !!selectedClassId && !myAssignments?.isAdmin,
-    staleTime: 30000,
-  });
-
-  // Filter subjects based on selected class
-  const availableSubjects = (() => {
-    if (!myAssignments || !selectedClassId) return [];
-
-    // For admins, allow them to create an exam for ANY subject in the system
-    if (myAssignments.isAdmin) {
-      return allSubjects;
-    }
-
-    // For teachers, only show subjects they are assigned to for the selected class
-    return myAssignments.subjects.filter((s: any) =>
-      myAssignments.assignments.some(a => a.classId === selectedClassId && a.subjectId === s.id && a.isActive)
-    );
-  })();
-
-  const subjectsLoading = myAssignments?.isAdmin ? (assignmentsLoading || !allSubjects.length) : (assignmentsLoading || mappingsLoading);
+  // Filter subjects to only those assigned to the selected class (reusable hook)
+  const {
+    subjects: availableSubjects,
+    isLoading: subjectsLoading,
+  } = useClassSubjects(selectedClassId);
 
   // availableSubjects is for dropdown selections (filtered to teacher's assignments or class mappings)
   const subjects = availableSubjects;

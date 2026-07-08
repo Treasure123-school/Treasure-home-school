@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useForm, Controller } from 'react-hook-form';
@@ -9,6 +9,7 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useAuth } from '@/lib/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
+import { useClassSubjects } from '@/hooks/useClassSubjects';
 import type { Class, Subject } from '@shared/schema';
 import { ROLE_IDS } from '@/lib/roles';
 import { Button } from '@/components/ui/button';
@@ -200,52 +201,11 @@ export default function CreateExam() {
   const classes = myAssignments?.classes || [];
   const classesLoading = assignmentsLoading;
 
-  // Fetch class-subject mappings for the selected class (used for admins to filter subjects)
-  const { data: classSubjectMappings = [], isLoading: mappingsLoading } = useQuery<Array<{
-    id: number;
-    classId: number;
-    subjectId: number;
-    department: string | null;
-    isCompulsory: boolean;
-    subjectName: string;
-    subjectCode: string;
-    category: string;
-  }>>({
-    queryKey: ['/api/class-subject-mappings', selectedClassId],
-    queryFn: async () => {
-      if (!selectedClassId) return [];
-      const response = await apiRequest('GET', `/api/class-subject-mappings/${selectedClassId}`);
-      return await response.json();
-    },
-    enabled: !!selectedClassId && myAssignments?.isAdmin === true,
-    staleTime: 30000,
-  });
-
-  // Filter subjects based on selected class - use class_subject_mappings as source of truth
-  const availableSubjects = useMemo(() => {
-    if (!myAssignments || !selectedClassId) return [];
-    
-    // For admins, use class-subject-mappings as the source of truth
-    if (myAssignments.isAdmin) {
-      if (mappingsLoading) return [];
-      
-      // If no mappings configured, show empty list with clear message
-      if (classSubjectMappings.length === 0) return [];
-      
-      // Return subjects from mappings - map to Subject format
-      const mappedSubjectIds = classSubjectMappings.map(m => m.subjectId);
-      return myAssignments.subjects.filter(s => mappedSubjectIds.includes(s.id));
-    }
-    
-    // For teachers, only show subjects they are assigned to for the selected class
-    const validSubjectIds = myAssignments.assignments
-      .filter(a => a.classId === selectedClassId && a.isActive)
-      .map(a => a.subjectId);
-    
-    return myAssignments.subjects.filter(s => validSubjectIds.includes(s.id));
-  }, [myAssignments, selectedClassId, classSubjectMappings, mappingsLoading]);
-
-  const subjectsLoading = assignmentsLoading || (myAssignments?.isAdmin && mappingsLoading);
+  // Filter subjects to only those assigned to the selected class (reusable hook)
+  const {
+    subjects: availableSubjects,
+    isLoading: subjectsLoading,
+  } = useClassSubjects(selectedClassId);
 
   // Fetch academic calendar (provides currentTerm + allTerms)
   const { currentTerm, allTerms: terms, isLoading: termsLoading } = useAcademicCalendar();
