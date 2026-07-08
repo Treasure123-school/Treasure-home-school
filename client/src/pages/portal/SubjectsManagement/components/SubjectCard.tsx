@@ -58,7 +58,7 @@ export function SubjectCard({ subject, onEdit, onAction }: SubjectCardProps) {
         )}
 
         {/* Actions */}
-        <div className="flex gap-2 pt-1 border-t border-border/50">
+        <div className="flex gap-2 pt-1">
           {!archived ? (
             <Button
               variant="outline"
