@@ -22,7 +22,7 @@ export function SubjectCard({ subject, onEdit, onAction }: SubjectCardProps) {
 
   return (
     <Card
-      className={`group transition-all ${archived ? 'opacity-60 border-dashed' : 'hover:border-primary/40 hover:shadow-sm'}`}
+      className={`group transition-all ${archived ? 'opacity-60 border-dashed' : 'hover:shadow-sm'}`}
       data-testid={`card-subject-${subject.id}`}
     >
       <CardContent className="p-4 space-y-3">

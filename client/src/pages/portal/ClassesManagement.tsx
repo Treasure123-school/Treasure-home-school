@@ -255,7 +255,7 @@ export default function ClassesManagement() {
               return (
                 <Card
                   key={classItem.id}
-                  className="group hover:border-primary/40 hover:shadow-sm transition-all"
+                  className="group hover:shadow-sm transition-all"
                   data-testid={`card-class-${classItem.id}`}
                 >
                   <CardContent className="p-4 space-y-3">
