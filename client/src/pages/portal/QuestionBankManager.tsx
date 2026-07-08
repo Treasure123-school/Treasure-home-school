@@ -973,22 +973,28 @@ function QuestionList({
         <p className="text-sm text-muted-foreground">
           <span className="font-semibold text-foreground">{pg.total}</span> question{pg.total !== 1 ? "s" : ""} found
         </p>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline" size="sm" className="h-8"
-            onClick={() => setCsvUploadOpen(true)}
-            title={!context.termId ? "Select a term to enable bulk upload" : "Bulk upload questions via CSV"}
-          >
-            <Upload className="w-3.5 h-3.5 mr-1.5" /> Bulk Upload CSV
-          </Button>
-          <Button
-            size="sm" className="h-8"
-            onClick={() => { setEditItem(null); setFormOpen(true); }}
-            data-testid="btn-add-question"
-          >
-            <Plus className="w-3.5 h-3.5 mr-1.5" /> Add Question
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+              <MoreVertical className="w-4 h-4" />
+              <span className="sr-only">Actions</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem
+              onClick={() => { setEditItem(null); setFormOpen(true); }}
+              data-testid="btn-add-question"
+            >
+              <Plus className="w-4 h-4 mr-2" /> Add Question
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setCsvUploadOpen(true)}
+              title={!context.termId ? "Select a term to enable bulk upload" : undefined}
+            >
+              <Upload className="w-4 h-4 mr-2" /> Bulk Upload CSV
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {items.length === 0 ? (
