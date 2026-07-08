@@ -269,14 +269,14 @@ export default function ClassesManagement() {
                           <p className="font-semibold text-sm leading-tight truncate" data-testid={`text-class-name-${classItem.id}`}>
                             {classItem.name}
                           </p>
-                          <Badge className={`text-[10px] mt-0.5 ${getLevelColor(classItem.level)}`} data-testid={`text-level-${classItem.id}`}>
+                          <Badge className={`text-[10px] mt-0.5 pointer-events-none ${getLevelColor(classItem.level)}`} data-testid={`text-level-${classItem.id}`}>
                             {classItem.level}
                           </Badge>
                         </div>
                       </div>
                       <Badge
                         variant={classItem.isActive !== false ? 'default' : 'secondary'}
-                        className="shrink-0 text-[10px]"
+                        className="shrink-0 text-[10px] pointer-events-none"
                       >
                         {classItem.isActive !== false ? 'Active' : 'Inactive'}
                       </Badge>
@@ -308,24 +308,24 @@ export default function ClassesManagement() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2 pt-1">
+                    <div className="flex justify-end gap-2 pt-1">
                       <Button
                         variant="outline"
-                        size="sm"
-                        className="flex-1 h-8 text-xs"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
                         onClick={() => handleEdit(classItem)}
                         data-testid={`button-edit-class-${classItem.id}`}
                       >
-                        <Edit className="w-3 h-3 mr-1" /> Edit
+                        <Edit className="w-3.5 h-3.5" />
                       </Button>
                       <Button
                         variant="outline"
-                        size="sm"
-                        className="flex-1 h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                        size="icon"
+                        className="h-8 w-8 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
                         onClick={() => setClassToDelete(classItem)}
                         data-testid={`button-delete-class-${classItem.id}`}
                       >
-                        <Trash2 className="w-3 h-3 mr-1" /> Delete
+                        <Trash2 className="w-3.5 h-3.5" />
                       </Button>
                     </div>
                   </CardContent>
