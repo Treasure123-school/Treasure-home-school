@@ -174,6 +174,7 @@ export default function ExamManagement() {
       assessmentCategory: 'academic',
       examType: 'exam',
       timerMode: 'individual',
+      totalMarks: 100,
       timeLimit: 60,
       isPublished: false,
       shuffleQuestions: false,
