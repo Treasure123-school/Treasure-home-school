@@ -284,10 +284,12 @@ async function autoPublishScheduledExams(): Promise<void> {
           });
 
         } catch (error) {
+          console.error(`[AUTO-PUBLISH] Failed to auto-publish exam ${exam.id} (${exam.name}):`, error);
         }
       }
     }
   } catch (error) {
+    console.error('[AUTO-PUBLISH] Failed to fetch/process scheduled exams:', error);
   }
 }
 
@@ -1542,8 +1544,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // ROOT-CAUSE FIX: termId was optional and had no fallback. If a teacher created an
+      // exam without explicitly picking a term (or the form didn't require it), the exam
+      // was saved with termId = null. The report-card sync service requires termId to link
+      // a score to a report card, so it would silently skip syncing (MISSING_EXAM_FIELDS) —
+      // this is why report cards stopped auto-generating after a student's first completed
+      // exam for some assessments. We now default to the active academic term when none is
+      // provided, so every exam that should count academically has a valid term to sync to.
+      let resolvedTermId = req.body.termId;
+      if (resolvedTermId === undefined || resolvedTermId === null || resolvedTermId === '') {
+        const currentTerm = await storage.getCurrentTerm();
+        if (currentTerm) {
+          resolvedTermId = currentTerm.id;
+          console.log(`[EXAM-CREATE] No termId provided; defaulting to active term ${currentTerm.id} (${currentTerm.name})`);
+        }
+      }
+
       const examData = insertExamSchema.parse({
         ...req.body,
+        termId: resolvedTermId,
         createdBy: teacherId,
         teacherInChargeId: assignedTeacherId
       });
@@ -3063,7 +3082,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   }
                   await storage.upsertStudentAnswer(completedSession.id, questionId, answerData);
                   flushedCount++;
-                } catch (_) {}
+                } catch (flushError) {
+                  console.error(`[SUBMIT] Failed to flush late answer for question ${pa?.questionId} on session ${completedSession.id}:`, flushError);
+                }
               }
               if (flushedCount > 0) {
                 console.log(`[SUBMIT] Flushed ${flushedCount} late answers for already-completed session ${completedSession.id}. Re-scoring...`);
@@ -3182,13 +3203,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         serverTimestamp: now.toISOString()
       };
 
-      // Mark session as submitted FIRST (before scoring to prevent race conditions)
-      await storage.updateExamSession(activeSession.id, {
-        isCompleted: true,
+      // IDEMPOTENCY: Atomically claim this session for submission. The update only
+      // succeeds if the session is still not completed (WHERE isCompleted = false at the
+      // DB level), so if two requests race for the same session (e.g. the student clicks
+      // Submit right as the timer auto-submits, or a retried request from a flaky network
+      // overlaps with the original), only one can win. The loser falls through to the
+      // "already submitted" branch below and returns the winner's result instead of
+      // re-scoring and double-processing.
+      const claimedSession = await storage.claimExamSessionForSubmission(activeSession.id, {
         submittedAt: now,
         status: reason === 'manual' ? 'submitted' : `auto_${reason}`,
         metadata: JSON.stringify(sessionMetadata)
       });
+
+      if (!claimedSession) {
+        console.log(`[SUBMIT] Session ${activeSession.id} was already claimed by a concurrent request. Returning existing result.`);
+        const existingResult = await storage.getExamResultByExamAndStudent(examId, studentId);
+        const completedSession = await storage.getExamSessionById(activeSession.id);
+        return res.json({
+          submitted: true,
+          alreadySubmitted: true,
+          message: 'Exam was already submitted by a concurrent request. Returning existing results.',
+          result: {
+            sessionId: activeSession.id,
+            score: existingResult?.score || completedSession?.score || 0,
+            maxScore: existingResult?.maxScore || completedSession?.maxScore || exam.totalMarks || 0,
+            percentage: existingResult?.maxScore
+              ? ((existingResult.score || 0) / existingResult.maxScore) * 100
+              : completedSession?.maxScore
+                ? ((completedSession.score || 0) / completedSession.maxScore) * 100
+                : 0,
+            submittedAt: completedSession?.submittedAt?.toISOString() || now.toISOString(),
+            showCorrectAnswers: exam.showCorrectAnswers ?? true
+          }
+        });
+      }
 
       // PENDING ANSWER FLUSH: Upsert any answers the client sent in the submit payload.
       // These are the full localStorage snapshot, acting as a safety net for answers that
@@ -3209,7 +3258,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             await storage.upsertStudentAnswer(activeSession.id, questionId, answerData);
             flushedCount++;
-          } catch (_) {}
+          } catch (flushError) {
+            console.error(`[SUBMIT] Failed to flush pending answer for question ${pa?.questionId} on session ${activeSession.id}:`, flushError);
+          }
         }
         if (flushedCount > 0) {
           console.log(`[SUBMIT] Flushed ${flushedCount} pending answers for session ${activeSession.id} before scoring.`);
@@ -3985,12 +4036,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // PAYMENT CHECK: Block access if exam fee is required and unpaid
       const sysSettings = await storage.getSystemSettings();
       if (sysSettings?.requireExamPayment) {
-        const payment = await storage.getExamPayment(studentId, exam.termId!);
+        // Guard against legacy exams saved before termId defaulting was added — fall back
+        // to the active term instead of passing undefined into the payment lookup.
+        const paymentTermId = exam.termId ?? (await storage.getCurrentTerm())?.id;
+        const payment = paymentTermId ? await storage.getExamPayment(studentId, paymentTermId) : undefined;
         if (!payment) {
           return res.status(402).json({
             message: 'Exam fee payment required',
             paymentRequired: true,
-            termId: exam.termId,
+            termId: paymentTermId ?? exam.termId,
             feeAmount: sysSettings.examFeeAmount ?? 0,
           });
         }

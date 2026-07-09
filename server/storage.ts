@@ -311,6 +311,7 @@ export interface IStorage {
   getExamSessionsByExam(examId: number): Promise<ExamSession[]>;
   getExamSessionsByStudent(studentId: string): Promise<ExamSession[]>;
   updateExamSession(id: number, session: Partial<InsertExamSession>): Promise<ExamSession | undefined>;
+  claimExamSessionForSubmission(id: number, updates: Partial<InsertExamSession>): Promise<ExamSession | undefined>;
   deleteExamSession(id: number): Promise<boolean>;
   getActiveExamSession(examId: number, studentId: string): Promise<ExamSession | undefined>;
   getActiveExamSessions(): Promise<ExamSession[]>; // For background cleanup service
@@ -4155,6 +4156,39 @@ export class DatabaseStorage implements IStorage {
     const result = await db.update(schema.examSessions)
       .set(allowedFields)
       .where(eq(schema.examSessions.id, id))
+      .returning({
+        id: schema.examSessions.id,
+        examId: schema.examSessions.examId,
+        studentId: schema.examSessions.studentId,
+        startedAt: schema.examSessions.startedAt,
+        submittedAt: schema.examSessions.submittedAt,
+        timeRemaining: schema.examSessions.timeRemaining,
+        isCompleted: schema.examSessions.isCompleted,
+        score: schema.examSessions.score,
+        maxScore: schema.examSessions.maxScore,
+        status: schema.examSessions.status,
+        createdAt: schema.examSessions.createdAt
+      });
+    return result[0];
+  }
+
+  // Atomically claim a session for submission. Only succeeds if the session is not
+  // already completed, preventing double-submission races when two requests (e.g. a
+  // manual click and an auto-submit-on-timeout) arrive concurrently for the same session.
+  // Returns the updated session if this call won the race, or undefined if the session
+  // was already completed by another in-flight request.
+  async claimExamSessionForSubmission(
+    id: number,
+    updates: { submittedAt: Date; status: string; metadata: string }
+  ): Promise<ExamSession | undefined> {
+    const result = await db.update(schema.examSessions)
+      .set({
+        isCompleted: true,
+        submittedAt: updates.submittedAt,
+        status: updates.status,
+        metadata: updates.metadata
+      })
+      .where(and(eq(schema.examSessions.id, id), eq(schema.examSessions.isCompleted, false)))
       .returning({
         id: schema.examSessions.id,
         examId: schema.examSessions.examId,

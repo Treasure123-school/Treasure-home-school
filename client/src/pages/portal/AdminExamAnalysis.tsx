@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useRoute, useLocation } from 'wouter';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
+import { apiRequest, queryClient } from '@/lib/queryClient';
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, Legend,
 } from 'recharts';
@@ -16,7 +22,7 @@ import {
   Users, TrendingUp, TrendingDown, Award, Target, CheckCircle2,
   XCircle, Download, Search, ChevronUp, ChevronDown, ChevronsUpDown,
   BookOpen, Clock, Calendar, User, FileText, BarChart2, AlertCircle,
-  Activity, GraduationCap, Layers,
+  Activity, GraduationCap, Layers, RotateCcw, Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -446,11 +452,40 @@ function OverviewTab({ analytics }: { analytics: AnalyticsData }) {
 // ─── Tab: Student Performance ─────────────────────────────────────────────────
 
 function StudentsTab({ analytics }: { analytics: AnalyticsData }) {
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [gradeFilter, setGradeFilter] = useState<string>('all');
   const [sortKey, setSortKey] = useState<StudentSortKey>('position');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [retakeDialog, setRetakeDialog] = useState<{ studentId: string; studentName: string } | null>(null);
+
+  const allowRetakeMutation = useMutation({
+    mutationFn: async (studentId: string) => {
+      const response = await apiRequest('POST', `/api/teacher/exams/${analytics.exam.id}/allow-retake/${studentId}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to allow retake');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Retake Allowed',
+        description: 'The student can now retake this exam. Their previous submission has been archived.',
+      });
+      setRetakeDialog(null);
+      queryClient.invalidateQueries({ queryKey: ['/api/teacher/exam-analytics', String(analytics.exam.id)] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: 'Failed to Allow Retake',
+        description: error.message,
+        variant: 'destructive',
+      });
+      setRetakeDialog(null);
+    },
+  });
 
   const handleSort = (key: StudentSortKey) => {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
@@ -569,12 +604,13 @@ function StudentsTab({ analytics }: { analytics: AnalyticsData }) {
                 </th>
                 <th className="text-center px-4 py-2.5 font-medium text-muted-foreground hidden md:table-cell">Time Taken</th>
                 <th className="text-center px-4 py-2.5 font-medium text-muted-foreground hidden lg:table-cell">Submitted</th>
+                <th className="text-center px-4 py-2.5 font-medium text-muted-foreground">Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="text-center text-muted-foreground py-12 text-sm">
+                  <td colSpan={10} className="text-center text-muted-foreground py-12 text-sm">
                     {search || statusFilter !== 'all' || gradeFilter !== 'all'
                       ? 'No students match your filters'
                       : 'No student results yet'}
@@ -616,12 +652,62 @@ function StudentsTab({ analytics }: { analytics: AnalyticsData }) {
                   <td className="px-4 py-2.5 text-center text-muted-foreground text-xs hidden lg:table-cell">
                     {s.submitted_at ? format(new Date(s.submitted_at), 'MMM dd, HH:mm') : '—'}
                   </td>
+                  <td className="px-4 py-2.5 text-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 gap-1.5 text-xs"
+                      data-testid={`button-allow-retake-${i}`}
+                      onClick={() => setRetakeDialog({ studentId: s.studentId, studentName: s.studentName })}
+                    >
+                      <RotateCcw className="h-3 w-3" /> Allow Retake
+                    </Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </CardContent>
+
+      <AlertDialog
+        open={!!retakeDialog}
+        onOpenChange={(open) => !open && setRetakeDialog(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Allow Exam Retake</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to allow <strong>{retakeDialog?.studentName}</strong> to retake this exam?
+              <br /><br />
+              This will:
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>Archive their current submission for records</li>
+                <li>Remove their current result from the exam</li>
+                <li>Allow them to start the exam fresh</li>
+              </ul>
+              <br />
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-retake">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => retakeDialog && allowRetakeMutation.mutate(retakeDialog.studentId)}
+              data-testid="button-confirm-retake"
+            >
+              {allowRetakeMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Processing...
+                </>
+              ) : (
+                'Allow Retake'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
