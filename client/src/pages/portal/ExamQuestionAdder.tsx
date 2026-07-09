@@ -498,27 +498,27 @@ export default function ExamQuestionAdder({
                                 </Select>
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
-                                <Select value={bankFilterTopicId} onValueChange={setBankFilterTopicId}
+                                <Select value={bankFilterTopicId || '_all'} onValueChange={(v) => setBankFilterTopicId(v === '_all' ? '' : v)}
                                     disabled={!bankFilterBankId}>
                                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={!bankFilterBankId ? 'Select bank first' : 'Topic (optional)'} /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">All topics</SelectItem>
+                                        <SelectItem value="_all">All topics</SelectItem>
                                         {(bankTopics as any[]).map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
-                                <Select value={bankFilterDifficulty} onValueChange={setBankFilterDifficulty}>
+                                <Select value={bankFilterDifficulty || '_all'} onValueChange={(v) => setBankFilterDifficulty(v === '_all' ? '' : v)}>
                                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Difficulty" /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">Any difficulty</SelectItem>
+                                        <SelectItem value="_all">Any difficulty</SelectItem>
                                         <SelectItem value="easy">Easy</SelectItem>
                                         <SelectItem value="medium">Medium</SelectItem>
                                         <SelectItem value="hard">Hard</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                <Select value={bankFilterType} onValueChange={setBankFilterType}>
+                                <Select value={bankFilterType || '_all'} onValueChange={(v) => setBankFilterType(v === '_all' ? '' : v)}>
                                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All types" /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">All types</SelectItem>
+                                        <SelectItem value="_all">All types</SelectItem>
                                         <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
                                         <SelectItem value="essay">Essay</SelectItem>
                                     </SelectContent>
