@@ -435,6 +435,7 @@ export default function ExamManagement() {
       setIsExamDialogOpen(false);
       setEditingExam(null);
       resetExam();
+      setCurrentStep(1);
     },
     onError: (error: any) => {
       toast({
@@ -483,6 +484,7 @@ export default function ExamManagement() {
       setIsExamDialogOpen(false);
       setEditingExam(null);
       resetExam();
+      setCurrentStep(1);
     },
     onError: (error: any, variables, context: any) => {
       if (context?.previousExams) {
@@ -1595,7 +1597,16 @@ export default function ExamManagement() {
         actions={
           <Dialog open={isExamDialogOpen} onOpenChange={handleExamDialogClose}>
             <DialogTrigger asChild>
-              <Button data-testid="button-create-exam" className="w-full sm:w-auto">
+              <Button
+                data-testid="button-create-exam"
+                className="w-full sm:w-auto"
+                onClick={() => {
+                  // Always start a fresh wizard when creating (not editing) a new assessment
+                  setEditingExam(null);
+                  resetExam();
+                  setCurrentStep(1);
+                }}
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Create Assessment
               </Button>
