@@ -312,6 +312,7 @@ export interface IStorage {
   getExamSessionsByStudent(studentId: string): Promise<ExamSession[]>;
   updateExamSession(id: number, session: Partial<InsertExamSession>): Promise<ExamSession | undefined>;
   claimExamSessionForSubmission(id: number, updates: Partial<InsertExamSession>): Promise<ExamSession | undefined>;
+  getStudentsByIds(ids: string[]): Promise<Map<string, any>>;
   deleteExamSession(id: number): Promise<boolean>;
   getActiveExamSession(examId: number, studentId: string): Promise<ExamSession | undefined>;
   getActiveExamSessions(): Promise<ExamSession[]>; // For background cleanup service
@@ -1827,6 +1828,32 @@ export class DatabaseStorage implements IStorage {
       }
     }
     return student as any;
+  }
+
+  // Batch-fetch students (with merged user fields) by id list to avoid N+1 queries
+  // in endpoints that enrich a list of exam results with student names.
+  async getStudentsByIds(ids: string[]): Promise<Map<string, any>> {
+    const map = new Map<string, any>();
+    if (ids.length === 0) return map;
+    const uniqueIds = Array.from(new Set(ids));
+    const result = await this.db
+      .select({
+        id: schema.students.id,
+        admissionNumber: schema.students.admissionNumber,
+        classId: schema.students.classId,
+        firstName: schema.users.firstName,
+        lastName: schema.users.lastName,
+        username: schema.users.username,
+      })
+      .from(schema.students)
+      .leftJoin(schema.users, eq(schema.students.id, schema.users.id))
+      .where(inArray(schema.students.id, uniqueIds));
+
+    for (const row of result) {
+      const normalizedId = normalizeUuid(row.id) || row.id;
+      map.set(normalizedId, row);
+    }
+    return map;
   }
 
   async getStudentByUserId(userId: string): Promise<Student | undefined> {

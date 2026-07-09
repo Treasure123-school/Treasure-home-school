@@ -2093,28 +2093,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get results with student info for better display
       const results = await storage.getExamResultsByExam(examId);
 
-      // Enrich with student information
-      const enrichedResults = await Promise.all(results.map(async (result: any) => {
-        try {
-          const student = await storage.getStudent(result.studentId);
-          const user = student ? await storage.getUser(result.studentId) : null;
-          return {
-            ...result,
-            studentName: user?.firstName && user?.lastName
-              ? `${user.firstName} ${user.lastName}`
-              : user?.username || 'Unknown Student',
-            studentUsername: user?.username || null,
-            admissionNumber: student?.admissionNumber || null
-          };
-        } catch (e) {
-          return {
-            ...result,
-            studentName: 'Unknown Student',
-            studentUsername: null,
-            admissionNumber: null
-          };
-        }
-      }));
+      // Enrich with student information — batched into a single query instead of
+      // one getStudent()+getUser() round-trip per result (was N+1).
+      const studentMap = await storage.getStudentsByIds(results.map((r: any) => r.studentId));
+      const enrichedResults = results.map((result: any) => {
+        const student = studentMap.get(result.studentId);
+        return {
+          ...result,
+          studentName: student?.firstName && student?.lastName
+            ? `${student.firstName} ${student.lastName}`
+            : student?.username || 'Unknown Student',
+          studentUsername: student?.username || null,
+          admissionNumber: student?.admissionNumber || null
+        };
+      });
 
       res.json(enrichedResults);
     } catch (error: any) {
@@ -2156,11 +2148,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch raw results
       const rawResults = await storage.getExamResultsByExam(examId);
 
-      // Enrich with student names
-      const results = await Promise.all(rawResults.map(async (r: any) => {
+      // Enrich with student names — batched into a single query instead of
+      // one getStudent()+getUser() round-trip per result (was N+1).
+      const studentMap = await storage.getStudentsByIds(rawResults.map((r: any) => r.studentId));
+      const results = rawResults.map((r: any) => {
         try {
-          const student = await storage.getStudent(r.studentId);
-          const user = student ? await storage.getUser(r.studentId) : null;
+          const student = studentMap.get(r.studentId);
           const scoreVal = r.score ?? r.marksObtained ?? 0;
           const maxVal = r.maxScore ?? exam.totalMarks ?? 100;
           const pct = maxVal > 0 ? Math.round((scoreVal / maxVal) * 100) : 0;
@@ -2168,7 +2161,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const passed = pct >= passingPct;
           return {
             studentId: r.studentId,
-            studentName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username : 'Unknown',
+            studentName: student?.firstName || student?.lastName
+              ? `${student.firstName || ''} ${student.lastName || ''}`.trim()
+              : student?.username || 'Unknown',
             admissionNumber: student?.admissionNumber ?? null,
             score: scoreVal,
             maxScore: maxVal,
@@ -2181,7 +2176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch {
           return null;
         }
-      }));
+      });
       const validResults = results.filter(Boolean) as any[];
 
       // Overview metrics
