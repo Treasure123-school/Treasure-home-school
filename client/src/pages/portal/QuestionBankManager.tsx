@@ -980,6 +980,20 @@ function QuestionList({
       return res.json();
     },
     onSuccess: (data: any) => {
+      // Immediately flip all non-published items in the cache to 'published'
+      // so badges update in-place without waiting for the background refetch.
+      qc.setQueriesData({ queryKey: ["/api/question-bank/items"] }, (old: any) => {
+        if (!old?.items) return old;
+        return {
+          ...old,
+          items: old.items.map((item: any) =>
+            ['draft', 'submitted', 'active', 'approved'].includes(item.status)
+              ? { ...item, status: 'published' }
+              : item
+          ),
+        };
+      });
+      // Background sync to pull exact server state
       qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
       qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
       toast({ title: "Published", description: data.message ?? "All questions published." });
