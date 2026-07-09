@@ -298,6 +298,7 @@ export interface IStorage {
   publishQuestionBankItem(id: number): Promise<QuestionBankItem | undefined>;
   unpublishQuestionBankItem(id: number): Promise<QuestionBankItem | undefined>;
   bulkPublishQuestionBankItems(bankId: number): Promise<number>;
+  bulkUnpublishQuestionBankItems(bankId: number): Promise<number>;
   getPendingQuestionBankItems(filters?: { subjectId?: number; classId?: number; createdBy?: string; page?: number; pageSize?: number }): Promise<{ items: QuestionBankItem[]; total: number; totalPages: number }>;
 
   // Exam-Question Bank Links
@@ -3862,11 +3863,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async unpublishQuestionBankItem(id: number): Promise<QuestionBankItem | undefined> {
+    // Revert to 'active' — the usable pre-publish state that re-enables the Publish button
+    // without requiring a re-approval step (teachers see it in exam imports; admins can re-publish).
     const result = await db.update(schema.questionBankItems)
-      .set({ status: 'approved', updatedAt: new Date() })
+      .set({ status: 'active', updatedAt: new Date() })
       .where(eq(schema.questionBankItems.id, id))
       .returning();
     return result[0];
+  }
+
+  async bulkUnpublishQuestionBankItems(bankId: number): Promise<number> {
+    const result = await db.update(schema.questionBankItems)
+      .set({ status: 'active', updatedAt: new Date() })
+      .where(and(
+        eq(schema.questionBankItems.bankId, bankId),
+        eq(schema.questionBankItems.status, 'published')
+      ))
+      .returning({ id: schema.questionBankItems.id });
+    return result.length;
   }
 
   async getPendingQuestionBankItems(filters?: { subjectId?: number; classId?: number; createdBy?: string; page?: number; pageSize?: number }): Promise<{ items: QuestionBankItem[]; total: number; totalPages: number }> {

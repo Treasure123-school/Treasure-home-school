@@ -969,6 +969,12 @@ function QuestionList({
     onError: (e: any) => toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
   });
 
+  // ── Shared silent-refresh helpers for bulk actions ──────────────────────────
+  // onMutate: cancel in-flight fetches → snapshot current cache → optimistic write
+  // onError:  restore snapshot (no spinner, no unmount)
+  // onSuccess: toast only (cache already updated via onMutate)
+  // onSettled: background sync — invisible to user, just corrects any drift
+
   const bulkPublishMutation = useMutation({
     mutationFn: async (bankId: number) => {
       const res = await apiRequest("POST", `/api/question-banks/${bankId}/bulk-publish`);
@@ -979,26 +985,64 @@ function QuestionList({
       }
       return res.json();
     },
-    onSuccess: (data: any) => {
-      // Immediately flip all non-published items in the cache to 'published'
-      // so badges update in-place without waiting for the background refetch.
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: ["/api/question-bank/items"] });
+      const snapshot = qc.getQueriesData({ queryKey: ["/api/question-bank/items"] });
       qc.setQueriesData({ queryKey: ["/api/question-bank/items"] }, (old: any) => {
         if (!old?.items) return old;
-        return {
-          ...old,
-          items: old.items.map((item: any) =>
-            ['draft', 'submitted', 'active', 'approved'].includes(item.status)
-              ? { ...item, status: 'published' }
-              : item
-          ),
-        };
+        // Mirror the exact status set the backend publishes — 'rejected' items are excluded
+        const publishable = new Set(['draft', 'submitted', 'active', 'approved']);
+        return { ...old, items: old.items.map((it: any) =>
+          publishable.has(it.status) ? { ...it, status: 'published' } : it
+        )};
       });
-      // Background sync to pull exact server state
-      qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
-      qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
+      return { snapshot };
+    },
+    onError: (e: any, _vars, ctx: any) => {
+      if (ctx?.snapshot) ctx.snapshot.forEach(([k, d]: [any, any]) => qc.setQueryData(k, d));
+      toast({ title: "Publish failed", description: e.message, variant: "destructive" });
+    },
+    onSuccess: (data: any) => {
       toast({ title: "Published", description: data.message ?? "All questions published." });
     },
-    onError: (e: any) => toast({ title: "Publish failed", description: e.message, variant: "destructive" }),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
+    },
+  });
+
+  const bulkUnpublishMutation = useMutation({
+    mutationFn: async (bankId: number) => {
+      const res = await apiRequest("POST", `/api/question-banks/${bankId}/bulk-unpublish`);
+      if (!res.ok) {
+        let msg = "Bulk unpublish failed";
+        try { const b = await res.json(); msg = b.message || msg; } catch { /* ignore */ }
+        throw new Error(msg);
+      }
+      return res.json();
+    },
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: ["/api/question-bank/items"] });
+      const snapshot = qc.getQueriesData({ queryKey: ["/api/question-bank/items"] });
+      qc.setQueriesData({ queryKey: ["/api/question-bank/items"] }, (old: any) => {
+        if (!old?.items) return old;
+        return { ...old, items: old.items.map((it: any) =>
+          it.status === 'published' ? { ...it, status: 'active' } : it
+        )};
+      });
+      return { snapshot };
+    },
+    onError: (e: any, _vars, ctx: any) => {
+      if (ctx?.snapshot) ctx.snapshot.forEach(([k, d]: [any, any]) => qc.setQueryData(k, d));
+      toast({ title: "Unpublish failed", description: e.message, variant: "destructive" });
+    },
+    onSuccess: (data: any) => {
+      toast({ title: "Unpublished", description: data.message ?? "All questions unpublished." });
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
+    },
   });
 
   if (!enabled) {
@@ -1043,6 +1087,11 @@ function QuestionList({
     pageSize:   data?.pageSize   ?? PAGE_SIZE,
   };
 
+  // If every visible item is already published → offer "Unpublish All" to undo.
+  // Any non-published item on the page means there's still work to do → "Publish All".
+  const allPublished = items.length > 0 && items.every((it: any) => it.status === 'published');
+  const bulkPending  = bulkPublishMutation.isPending || bulkUnpublishMutation.isPending;
+
   return (
     <>
       <div className="flex items-center justify-between mb-4">
@@ -1072,14 +1121,29 @@ function QuestionList({
             {isAdmin && context.bankId && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => bulkPublishMutation.mutate(context.bankId!)}
-                  disabled={bulkPublishMutation.isPending}
-                  className="text-purple-600 focus:text-purple-600"
-                >
-                  <Globe className="w-4 h-4 mr-2" />
-                  {bulkPublishMutation.isPending ? "Publishing…" : "Publish All"}
-                </DropdownMenuItem>
+                {allPublished ? (
+                  /* All questions are published — offer one-click undo */
+                  <DropdownMenuItem
+                    onClick={() => bulkUnpublishMutation.mutate(context.bankId!)}
+                    disabled={bulkPending}
+                    className="text-amber-600 focus:text-amber-600"
+                    data-testid="btn-bulk-unpublish"
+                  >
+                    <EyeOff className="w-4 h-4 mr-2" />
+                    {bulkUnpublishMutation.isPending ? "Unpublishing…" : "Unpublish All"}
+                  </DropdownMenuItem>
+                ) : (
+                  /* Some questions still unpublished — offer bulk publish */
+                  <DropdownMenuItem
+                    onClick={() => bulkPublishMutation.mutate(context.bankId!)}
+                    disabled={bulkPending}
+                    className="text-purple-600 focus:text-purple-600"
+                    data-testid="btn-bulk-publish"
+                  >
+                    <Globe className="w-4 h-4 mr-2" />
+                    {bulkPublishMutation.isPending ? "Publishing…" : "Publish All"}
+                  </DropdownMenuItem>
+                )}
               </>
             )}
           </DropdownMenuContent>
@@ -1384,7 +1448,9 @@ export default function QuestionBankManager() {
   // ── Status map for optimistic updates
   const ACTION_STATUS: Record<string, string> = {
     submit: "submitted", withdraw: "draft", approve: "approved",
-    reject: "rejected",  publish: "published", unpublish: "approved",
+    reject: "rejected",  publish: "published",
+    // unpublish reverts to 'active' (matches DB — allows immediate re-publish without re-approval)
+    unpublish: "active",
   };
 
   const ACTION_LABEL: Record<string, string> = {

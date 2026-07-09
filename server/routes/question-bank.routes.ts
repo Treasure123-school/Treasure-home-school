@@ -642,8 +642,10 @@ router.post('/api/question-bank/items/:id/publish', authenticateUser, authorizeR
         if (isNaN(id)) return sendBadRequest(res, 'Invalid ID');
         const existing = await storage.getQuestionBankItemById(id);
         if (!existing) return sendNotFound(res, 'Question not found');
+        // Idempotent: already published → return as-is without error
+        if (existing.status === 'published') return sendSuccess(res, existing);
         if (!['approved', 'active'].includes(existing.status))
-            return sendBadRequest(res, 'Only approved questions can be published');
+            return sendBadRequest(res, 'Only approved or active questions can be published');
 
         const updated = await storage.publishQuestionBankItem(id);
         sendSuccess(res, updated);
@@ -656,8 +658,8 @@ router.post('/api/question-bank/items/:id/unpublish', authenticateUser, authoriz
         if (isNaN(id)) return sendBadRequest(res, 'Invalid ID');
         const existing = await storage.getQuestionBankItemById(id);
         if (!existing) return sendNotFound(res, 'Question not found');
-        if (existing.status !== 'published')
-            return sendBadRequest(res, 'Only published questions can be unpublished');
+        // Idempotent: already unpublished (active/approved/draft) → return as-is without error
+        if (existing.status !== 'published') return sendSuccess(res, existing);
 
         const updated = await storage.unpublishQuestionBankItem(id);
         sendSuccess(res, updated);
@@ -672,6 +674,16 @@ router.post('/api/question-banks/:bankId/bulk-publish', authenticateUser, author
         const count = await storage.bulkPublishQuestionBankItems(bankId);
         sendSuccess(res, { published: count, message: `${count} question${count !== 1 ? 's' : ''} published.` });
     } catch (error) { handleRouteError(res, error, 'questionBank.banks.bulkPublish'); }
+});
+
+// ─── Bulk unpublish all questions in a bank ────────────────────────────────────
+router.post('/api/question-banks/:bankId/bulk-unpublish', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
+    try {
+        const bankId = parseInt(req.params.bankId);
+        if (isNaN(bankId)) return sendBadRequest(res, 'Invalid bank ID');
+        const count = await storage.bulkUnpublishQuestionBankItems(bankId);
+        sendSuccess(res, { unpublished: count, message: `${count} question${count !== 1 ? 's' : ''} unpublished.` });
+    } catch (error) { handleRouteError(res, error, 'questionBank.banks.bulkUnpublish'); }
 });
 
 // ═══════════════════════════════════════════════════════
