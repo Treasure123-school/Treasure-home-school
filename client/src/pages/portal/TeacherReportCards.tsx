@@ -19,10 +19,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   FileText,
-  Users,
   GraduationCap,
   RefreshCw,
   Eye,
@@ -30,9 +28,7 @@ import {
   CheckCircle,
   AlertCircle,
   Search,
-  TrendingUp,
   Award,
-  BarChart3,
   Printer,
   Download,
   Save,
@@ -48,15 +44,13 @@ import {
   FileClock,
   FilePen,
   Sparkles,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
   User,
-  Filter,
-  SlidersHorizontal
+  Filter
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -70,6 +64,8 @@ import { STANDARD_GRADING_SCALE, formatPosition, calculateWeightedScore, calcula
 import { calculateAge } from '@/lib/report-card-utils';
 import { ProfessionalReportCard } from '@/components/ui/professional-report-card';
 import { ContactUtils } from '@shared/contact-utils';
+import { ReportCardFilters } from '@/components/portal/ReportCardFilters';
+import { ReportCardStatsBar } from '@/components/portal/ReportCardStatsBar';
 
 interface ReportCardItem {
   id: number;
@@ -898,112 +894,28 @@ export default function TeacherReportCards() {
       {/* Compact Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Report Cards</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid="heading-report-cards">Report Cards</h1>
           <p className="text-sm text-muted-foreground">View and manage auto-generated student report cards</p>
         </div>
       </div>
 
-      {/* Streamlined Filters Card */}
-      <Card className="border-0 shadow-sm bg-card/50">
-        <CardContent className="p-3 sm:p-4">
-          {/* Primary Filters - Always Visible */}
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="flex flex-col gap-1 min-w-[120px] flex-1 sm:flex-none sm:w-40">
-              <Label className="text-xs text-muted-foreground">Class</Label>
-              <Select value={selectedClass} onValueChange={setSelectedClass}>
-                <SelectTrigger className="h-9" data-testid="select-class">
-                  <SelectValue placeholder="Select Class" />
-                </SelectTrigger>
-                <SelectContent>
-                  {classes.length === 0 ? (
-                    <SelectItem value="no-classes" disabled>
-                      No classes found
-                    </SelectItem>
-                  ) : (
-                    classes.map((cls: any) => (
-                      <SelectItem key={cls.id} value={cls.id.toString()}>
-                        {cls.name}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-col gap-1 min-w-[120px] flex-1 sm:flex-none sm:w-44">
-              <Label className="text-xs text-muted-foreground">Term</Label>
-              <Select value={selectedTerm} onValueChange={setSelectedTerm}>
-                <SelectTrigger className="h-9" data-testid="select-term">
-                  <SelectValue placeholder="Select Term" />
-                </SelectTrigger>
-                <SelectContent>
-                  {terms.map((term: any) => (
-                    <SelectItem key={term.id} value={term.id.toString()}>
-                      {term.name} ({term.year})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Status Filter - Always visible for quick filtering */}
-            <div className="flex flex-col gap-1 min-w-[100px] flex-1 sm:flex-none sm:w-32">
-              <Label className="text-xs text-muted-foreground">Status</Label>
-              <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-                <SelectTrigger className="h-9" data-testid="select-status-filter">
-                  <SelectValue placeholder="All" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="finalized">Finalized</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* More Filters Toggle Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className="h-9 gap-1.5"
-              data-testid="button-toggle-filters"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">More</span>
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAdvancedFilters ? 'rotate-180' : ''}`} />
-            </Button>
-
-            {/* Test/Exam Weight Info */}
-            <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground ml-auto">
-              <BarChart3 className="w-3 h-3" />
-              <span>Test {testWeight}% | Exam {examWeight}%</span>
-            </div>
-          </div>
-
-          {/* Collapsible Advanced Filters - Only grading scale */}
-          <Collapsible open={showAdvancedFilters}>
-            <CollapsibleContent className="mt-3 pt-3 border-t">
-              <div className="flex flex-wrap gap-3">
-                <div className="flex flex-col gap-1 min-w-[140px]">
-                  <Label className="text-xs text-muted-foreground">Grading Scale</Label>
-                  <Select value={selectedGradingScale} onValueChange={setSelectedGradingScale}>
-                    <SelectTrigger className="h-9" data-testid="select-grading-scale">
-                      <SelectValue placeholder="Grading Scale" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(gradingConfig?.availableScales ?? []).map((scaleName: string) => (
-                        <SelectItem key={scaleName} value={scaleName}>{scaleName}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CollapsibleContent>
-          </Collapsible>
-        </CardContent>
-      </Card>
+      <ReportCardFilters
+        classes={classes}
+        terms={terms}
+        selectedClass={selectedClass}
+        onClassChange={setSelectedClass}
+        selectedTerm={selectedTerm}
+        onTermChange={setSelectedTerm}
+        statusFilter={statusFilter}
+        onStatusFilterChange={handleStatusFilterChange}
+        showAdvancedFilters={showAdvancedFilters}
+        onToggleAdvancedFilters={() => setShowAdvancedFilters(!showAdvancedFilters)}
+        selectedGradingScale={selectedGradingScale}
+        onGradingScaleChange={setSelectedGradingScale}
+        availableGradingScales={gradingConfig?.availableScales ?? []}
+        testWeight={testWeight}
+        examWeight={examWeight}
+      />
 
       {!selectedClass || !selectedTerm ? (
         <Card>
@@ -1024,51 +936,9 @@ export default function TeacherReportCards() {
         </Card>
       ) : (
         <>
-          {/* Compact Stats Bar - Only visible when report cards exist */}
+          {/* Stats Grid - Only visible when report cards exist, matches other portal pages */}
           {statistics && reportCards.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 py-2 px-1" data-testid="compact-stats-bar">
-              {/* Primary Stats - Horizontal Scrollable Pills */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin flex-1">
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/60 whitespace-nowrap">
-                  <Users className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground">Total:</span>
-                  <span className="text-sm font-semibold">{statistics.totalStudents}</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-green-100 dark:bg-green-900/30 whitespace-nowrap">
-                  <CheckCircle className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
-                  <span className="text-xs text-green-700 dark:text-green-300">Passed:</span>
-                  <span className="text-sm font-semibold text-green-700 dark:text-green-300">{statistics.passedStudents}</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-100 dark:bg-red-900/30 whitespace-nowrap">
-                  <AlertCircle className="w-3.5 h-3.5 text-red-600 dark:text-red-400" />
-                  <span className="text-xs text-red-700 dark:text-red-300">Failed:</span>
-                  <span className="text-sm font-semibold text-red-700 dark:text-red-300">{statistics.failedStudents}</span>
-                </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 dark:bg-primary/5 whitespace-nowrap">
-                  <TrendingUp className="w-3.5 h-3.5 text-primary dark:text-primary/70" />
-                  <span className="text-xs text-primary dark:text-primary/60">Avg:</span>
-                  <span className="text-sm font-semibold text-primary dark:text-primary/60">{statistics.classAverage}%</span>
-                </div>
-              </div>
-
-              {/* Status Progress Indicator - Compact on mobile */}
-              <div className="hidden sm:flex items-center gap-3 px-3 py-1.5 rounded-md bg-muted/40">
-                <div className="flex items-center gap-1" title="Draft">
-                  <Clock className="w-3 h-3 text-yellow-500" />
-                  <span className="text-xs font-medium">{statistics.draftCount}</span>
-                </div>
-                <div className="w-px h-3 bg-border" />
-                <div className="flex items-center gap-1" title="Finalized">
-                  <FileCheck className="w-3 h-3 text-primary" />
-                  <span className="text-xs font-medium">{statistics.finalizedCount}</span>
-                </div>
-                <div className="w-px h-3 bg-border" />
-                <div className="flex items-center gap-1" title="Published">
-                  <Send className="w-3 h-3 text-green-500" />
-                  <span className="text-xs font-medium">{statistics.publishedCount}</span>
-                </div>
-              </div>
-            </div>
+            <ReportCardStatsBar statistics={statistics} />
           )}
 
           {/* Two tabs only: Students and Analytics */}
