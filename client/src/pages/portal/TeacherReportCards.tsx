@@ -903,7 +903,10 @@ export default function TeacherReportCards() {
       {/* Compact Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid="heading-report-cards">Report Cards</h1>
+          <div className="flex items-center gap-2">
+            <FileText className="w-6 h-6 sm:w-7 sm:h-7 text-blue-500" />
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid="heading-report-cards">Report Cards</h1>
+          </div>
           <p className="text-sm text-muted-foreground">View and manage auto-generated student report cards</p>
         </div>
       </div>
