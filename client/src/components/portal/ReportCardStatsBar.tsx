@@ -1,5 +1,5 @@
 import { StatCard, StatCardGrid } from '@/components/ui/stat-card';
-import { Users, CheckCircle, AlertCircle, TrendingUp, FileClock, FileCheck, Send } from 'lucide-react';
+import { Users, CheckCircle, AlertCircle, TrendingUp } from 'lucide-react';
 
 export interface ReportCardStatistics {
   totalStudents: number;
@@ -16,7 +16,9 @@ export interface ReportCardStatistics {
 /**
  * Standard stats grid for the teacher report cards page, using the shared
  * StatCard/StatCardGrid components so this page matches the look of other
- * portal pages (e.g. AdminExamAnalysis).
+ * portal pages (e.g. AdminExamAnalysis). Limited to the 4 most essential
+ * metrics — status breakdown (draft/finalized/published) is already
+ * available via the Status filter, so it's omitted here to avoid clutter.
  */
 export function ReportCardStatsBar({ statistics }: { statistics: ReportCardStatistics }) {
   return (
@@ -48,27 +50,6 @@ export function ReportCardStatsBar({ statistics }: { statistics: ReportCardStati
         icon={TrendingUp}
         color="text-primary"
         data-testid="card-class-average"
-      />
-      <StatCard
-        label="Draft"
-        value={statistics.draftCount}
-        icon={FileClock}
-        color="text-yellow-600"
-        data-testid="card-draft-count"
-      />
-      <StatCard
-        label="Finalized"
-        value={statistics.finalizedCount}
-        icon={FileCheck}
-        color="text-primary"
-        data-testid="card-finalized-count"
-      />
-      <StatCard
-        label="Published"
-        value={statistics.publishedCount}
-        icon={Send}
-        color="text-green-600"
-        data-testid="card-published-count"
       />
     </StatCardGrid>
   );

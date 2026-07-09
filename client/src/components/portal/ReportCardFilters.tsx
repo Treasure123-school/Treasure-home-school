@@ -56,7 +56,7 @@ export function ReportCardFilters({
   examWeight,
 }: ReportCardFiltersProps) {
   return (
-    <Card className="border-0 shadow-sm bg-card/50">
+    <Card>
       <CardContent className="p-3 sm:p-4">
         <div className="flex flex-wrap items-end gap-3">
           <div className="flex flex-col gap-1 min-w-[120px] flex-1 sm:flex-none sm:w-40">
