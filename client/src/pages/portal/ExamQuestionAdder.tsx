@@ -149,9 +149,10 @@ export default function ExamQuestionAdder({
         queryKey: ['/api/question-bank/items', 'import', bankFilterClassId, bankFilterTermId, bankFilterBankId, bankFilterTopicId, bankFilterDifficulty, bankFilterType],
         queryFn: async () => {
             const params = new URLSearchParams();
-            params.set('classId', bankFilterClassId);
-            params.set('termId',  bankFilterTermId);
-            params.set('bankId',  bankFilterBankId);
+            params.set('classId',  bankFilterClassId);
+            params.set('termId',   bankFilterTermId);
+            params.set('bankId',   bankFilterBankId);
+            params.set('fetchAll', 'true');
             if (bankFilterTopicId)    params.set('topicId',      bankFilterTopicId);
             if (bankFilterDifficulty) params.set('difficulty',   bankFilterDifficulty);
             if (bankFilterType)       params.set('questionType', bankFilterType);

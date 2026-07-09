@@ -383,6 +383,7 @@ router.get('/api/question-bank/items', authenticateUser, authorizeRoles(...STAFF
 
         const page     = clamp(parseInt((req.query.page as string) || '1', 10) || 1, 1, 9999);
         const pageSize = clamp(parseInt((req.query.pageSize as string) || '20', 10) || 20, 1, 100);
+        const fetchAll = req.query.fetchAll === 'true';
 
         const topicId      = parseIntParam(req.query.topicId as string) ?? undefined;
         const difficulty   = (req.query.difficulty as string) || undefined;
@@ -413,6 +414,29 @@ router.get('/api/question-bank/items', authenticateUser, authorizeRoles(...STAFF
             return sendSuccess(res, {
                 items: itemsWithOptions, total, page, pageSize,
                 totalPages: Math.ceil(total / pageSize),
+            });
+        }
+
+        // ── fetchAll path — used by import/search modals; bypasses pagination ──
+        if (fetchAll) {
+            const allFilters: Parameters<typeof storage.getQuestionBankItemsFiltered>[0] = {
+                bankId: bankId!, classId, termId, topicId, difficulty, questionType,
+            };
+            if (isAdmin(user.roleId)) {
+                if (statusFilter) allFilters.status = statusFilter;
+            } else if (isTeacher(user.roleId)) {
+                allFilters.statuses = ['published', 'active', 'approved'];
+            }
+            const allItems = await storage.getQuestionBankItemsFiltered(allFilters);
+            const itemsWithOptions = await Promise.all(
+                allItems.map(async (item: any) => {
+                    const options = await storage.getQuestionBankItemOptions(item.id);
+                    return { ...item, options };
+                })
+            );
+            return sendSuccess(res, {
+                items: itemsWithOptions, total: allItems.length,
+                page: 1, pageSize: allItems.length, totalPages: 1,
             });
         }
 
@@ -472,7 +496,9 @@ router.post('/api/question-bank/items', authenticateUser, authorizeRoles(...STAF
         if (!questionType) return sendBadRequest(res, 'questionType is required');
 
         const user = req.user!;
-        const initialStatus = isAdmin(user.roleId) ? 'active' : 'draft';
+        // Admins: directly published (no manual publish step needed)
+        // Teachers: active (immediately usable in exam imports without draft/submit workflow)
+        const initialStatus = isAdmin(user.roleId) ? 'published' : 'active';
 
         const item = await storage.createQuestionBankItem({
             bankId, questionText, questionType,
@@ -638,6 +664,16 @@ router.post('/api/question-bank/items/:id/unpublish', authenticateUser, authoriz
     } catch (error) { handleRouteError(res, error, 'questionBank.items.unpublish'); }
 });
 
+// ─── Bulk publish all questions in a bank ─────────────────────────────────────
+router.post('/api/question-bank/banks/:bankId/bulk-publish', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
+    try {
+        const bankId = parseInt(req.params.bankId);
+        if (isNaN(bankId)) return sendBadRequest(res, 'Invalid bank ID');
+        const count = await storage.bulkPublishQuestionBankItems(bankId);
+        sendSuccess(res, { published: count, message: `${count} question${count !== 1 ? 's' : ''} published.` });
+    } catch (error) { handleRouteError(res, error, 'questionBank.banks.bulkPublish'); }
+});
+
 // ═══════════════════════════════════════════════════════
 //  BULK CSV IMPORT
 // ═══════════════════════════════════════════════════════
@@ -654,7 +690,8 @@ router.post('/api/question-bank/items/bulk-csv', authenticateUser, authorizeRole
             return sendBadRequest(res, 'Maximum 200 questions per upload');
 
         const user = req.user!;
-        const initialStatus = isAdmin(user.roleId) ? 'active' : 'draft';
+        // Admins: directly published; Teachers: active (visible for exam use immediately)
+        const initialStatus = isAdmin(user.roleId) ? 'published' : 'active';
         const created: any[] = [];
         const errors: string[] = [];
 

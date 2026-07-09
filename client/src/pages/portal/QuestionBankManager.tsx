@@ -31,7 +31,7 @@ import { BulkCSVQuestionsDialog } from "@/components/shared/BulkCSVQuestionsDial
 import type { ParsedQuestion } from "@/components/shared/BulkCSVQuestionsDialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuTrigger,
+  DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 // ─────────────────────────────────────────────────────────────
@@ -430,7 +430,7 @@ function QuestionFormDialog({
         const tempItem = {
           id: `_temp_${Date.now()}`,
           ...data,
-          status: "draft",
+          status: isAdmin ? "published" : "active",
           createdAt: new Date().toISOString(),
           _optimistic: true,
         };
@@ -969,6 +969,24 @@ function QuestionList({
     onError: (e: any) => toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
   });
 
+  const bulkPublishMutation = useMutation({
+    mutationFn: async (bankId: number) => {
+      const res = await apiRequest("POST", `/api/question-bank/banks/${bankId}/bulk-publish`);
+      if (!res.ok) {
+        let msg = "Bulk publish failed";
+        try { const b = await res.json(); msg = b.message || msg; } catch { /* ignore */ }
+        throw new Error(msg);
+      }
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
+      toast({ title: "Published", description: data.message ?? "All questions published." });
+    },
+    onError: (e: any) => toast({ title: "Publish failed", description: e.message, variant: "destructive" }),
+  });
+
   if (!enabled) {
     return (
       <div className="flex flex-col items-center gap-4 py-20 text-muted-foreground rounded-2xl border-2 border-dashed">
@@ -1024,7 +1042,7 @@ function QuestionList({
               <span className="sr-only">Actions</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuContent align="end" className="w-52">
             <DropdownMenuItem
               onClick={() => { setEditItem(null); setFormOpen(true); }}
               data-testid="btn-add-question"
@@ -1037,6 +1055,19 @@ function QuestionList({
             >
               <Upload className="w-4 h-4 mr-2" /> Bulk Upload CSV
             </DropdownMenuItem>
+            {isAdmin && context.bankId && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => bulkPublishMutation.mutate(context.bankId!)}
+                  disabled={bulkPublishMutation.isPending}
+                  className="text-purple-600 focus:text-purple-600"
+                >
+                  <Globe className="w-4 h-4 mr-2" />
+                  {bulkPublishMutation.isPending ? "Publishing…" : "Publish All"}
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
