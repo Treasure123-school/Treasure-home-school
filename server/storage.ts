@@ -4018,7 +4018,7 @@ export class DatabaseStorage implements IStorage {
         .innerJoin(schema.exams, eq(schema.examSessions.examId, schema.exams.id))
         .where(and(
           inArray(schema.studentAnswers.sessionId, sessionIds),
-          sql`(${schema.examQuestions.questionType} = 'text' OR ${schema.examQuestions.questionType} = 'essay')`,
+          sql`${schema.examQuestions.questionType} = 'essay'`,
           sql`${schema.studentAnswers.textAnswer} IS NOT NULL`
         ));
 
@@ -4606,52 +4606,8 @@ export class DatabaseStorage implements IStorage {
           }
         }
       }
-      // ENHANCED AUTO-SCORING: Process text-based questions after collecting all data
-      for (const [questionId, question] of Array.from(questionMap.entries())) {
-        if (!question.autoGradable) continue;
-
-        // Handle text-based questions (text, fill_blank)
-        if ((question.questionType === 'text' || question.questionType === 'fill_blank') &&
-          question.expectedAnswers && question.textAnswer) {
-
-          const studentAnswer = question.textAnswer.trim();
-          if (!studentAnswer) continue; // Skip empty answers
-
-
-          // Check against all expected answers
-          for (const expectedAnswer of question.expectedAnswers) {
-            const normalizedExpected = question.caseSensitive ?
-              expectedAnswer.trim() :
-              expectedAnswer.trim().toLowerCase();
-
-            const normalizedStudent = question.caseSensitive ?
-              studentAnswer :
-              studentAnswer.toLowerCase();
-
-            // Exact match
-            if (normalizedStudent === normalizedExpected) {
-              question.isCorrect = true;
-              break;
-            }
-            // Partial credit for close matches (if enabled)
-            if (question.allowPartialCredit && !question.isCorrect) {
-              const similarity = this.calculateTextSimilarity(normalizedStudent, normalizedExpected);
-
-              try {
-                const partialRules = question.partialCreditRules ?
-                  JSON.parse(question.partialCreditRules) :
-                  { minSimilarity: 0.8, partialPercentage: 0.5 };
-
-                if (similarity >= (partialRules.minSimilarity || 0.8)) {
-                  question.partialCreditEarned = Math.ceil(question.points * (partialRules.partialPercentage || 0.5));
-                  break;
-                }
-              } catch (err) {
-              }
-            }
-          }
-        }
-      }
+      // Essay questions require manual grading; no auto-scoring path needed here.
+      // Legacy text/fill_blank questions in the database are skipped (not auto-scored).
       // Convert map to array and calculate summary
       const scoringData = Array.from(questionMap.entries()).map(([questionId, data]) => ({
         questionId,
@@ -4934,7 +4890,7 @@ export class DatabaseStorage implements IStorage {
           JOIN users u ON es.student_id = u.id
           LEFT JOIN manual_scores ms ON sa.id = ms.answer_id
           WHERE e.created_by = $1
-          AND eq.question_type IN ('text', 'essay')
+          AND eq.question_type = 'essay'
           AND es.is_completed = true
         `;
 

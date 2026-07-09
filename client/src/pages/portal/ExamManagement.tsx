@@ -1291,9 +1291,7 @@ export default function ExamManagement() {
 "What is 2 + 2?",multiple_choice,"2","3","4","5","C",1,"Choose the correct answer","4"
 "What is the capital of France?",multiple_choice,"London","Paris","Berlin","Madrid","B",1,"Select the correct capital city","Paris"
 "Explain what a Control Account is and state five advantages.",essay,"","","","","",15,"Write a detailed explanation showing your understanding of control accounts and their benefits in accounting","A Control Account is a summary account that shows the total balance of a subsidiary ledger. Advantages include: 1) Error detection 2) Time saving 3) Fraud prevention 4) Quick trial balance 5) Management control"
-"Define Partnership Deed and explain its importance.",essay,"","","","","",10,"Provide definition and explain why it's important in partnerships","A Partnership Deed is a legal document that outlines the terms and conditions of a partnership business..."
-"What is Depreciation? Distinguish between Straight Line and Reducing Balance methods.",text,"","","","","",8,"Define depreciation and compare the two methods with examples","Depreciation is the systematic allocation of an asset's cost over its useful life. Straight line method allocates equal amounts annually while reducing balance applies a fixed percentage to the reducing book value"
-"Calculate compound interest: Principal ₦50,000, Rate 10% per annum, Time 3 years.",text,"","","","","",5,"Show your working step by step","Using A = P(1 + r)^n: A = 50,000(1 + 0.1)^3 = 50,000 × 1.331 = ₦66,550. Compound Interest = ₦66,550 - ₦50,000 = ₦16,550"`;
+"Define Partnership Deed and explain its importance.",essay,"","","","","",10,"Provide definition and explain why it's important in partnerships","A Partnership Deed is a legal document that outlines the terms and conditions of a partnership business..."`;
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -1307,7 +1305,7 @@ export default function ExamManagement() {
 
     toast({
       title: "Enhanced Template Downloaded",
-      description: "CSV template with support for multiple choice, text, and essay questions has been downloaded.",
+      description: "CSV template with multiple_choice and essay question types has been downloaded.",
     });
   };
 
@@ -1441,8 +1439,8 @@ export default function ExamManagement() {
           errors.push(`Row ${i + 1}: Question text is required and must be at least 5 characters`);
           continue;
         }
-        if (!['multiple_choice', 'text', 'essay'].includes(questionType)) {
-          errors.push(`Row ${i + 1}: Invalid question type "${questionType}". Must be: multiple_choice, text, or essay`);
+        if (!['multiple_choice', 'essay'].includes(questionType)) {
+          errors.push(`Row ${i + 1}: Invalid question type "${questionType}". Please use 'multiple_choice' or 'essay'.`);
           continue;
         }
         const points = parseInt(pointsText) || 1;
@@ -1450,18 +1448,11 @@ export default function ExamManagement() {
           errors.push(`Row ${i + 1}: Points must be between 1 and 100 (found: ${pointsText})`);
           continue;
         }
-        // Enhanced validation for theory questions
+        // Validation for essay questions
         if (questionType === 'essay') {
           if (questionText.length < 20) {
             errors.push(`Row ${i + 1}: Essay questions should have detailed question text (at least 20 characters)`);
             continue;
-          }
-          if (points < 5) {
-          }
-        }
-
-        if (questionType === 'text') {
-          if (points > 10) {
           }
         }
 
@@ -2280,7 +2271,6 @@ export default function ExamManagement() {
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
-                                    <SelectItem value="text">Short Answer</SelectItem>
                                     <SelectItem value="essay">Essay</SelectItem>
                                   </SelectContent>
                                 </Select>
@@ -2410,12 +2400,10 @@ export default function ExamManagement() {
                               </div>
                             )}
 
-                            {(question.questionType === 'text' || question.questionType === 'essay') && (
+                            {question.questionType === 'essay' && (
                               <div className="ml-4 text-sm text-muted-foreground">
                                 <div className="flex items-center space-x-4">
-                                  <span>
-                                    {question.questionType === 'essay' ? '📝 Essay question' : '📝 Short answer question'}
-                                  </span>
+                                  <span>📝 Essay question</span>
                                   {question.sampleAnswer && (
                                     <span className="text-green-600">✓ Sample answer provided</span>
                                   )}
@@ -2540,11 +2528,6 @@ export default function ExamManagement() {
                             {question.questionType === 'essay' && (
                               <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded text-sm text-muted-foreground">
                                 Essay answer box would appear here
-                              </div>
-                            )}
-                            {question.questionType === 'text' && (
-                              <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded text-sm text-muted-foreground">
-                                Short answer text box would appear here
                               </div>
                             )}
                           </div>
