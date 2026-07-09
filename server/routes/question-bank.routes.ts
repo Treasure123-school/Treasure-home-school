@@ -665,7 +665,7 @@ router.post('/api/question-bank/items/:id/unpublish', authenticateUser, authoriz
 });
 
 // ─── Bulk publish all questions in a bank ─────────────────────────────────────
-router.post('/api/question-bank/banks/:bankId/bulk-publish', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
+router.post('/api/question-banks/:bankId/bulk-publish', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
     try {
         const bankId = parseInt(req.params.bankId);
         if (isNaN(bankId)) return sendBadRequest(res, 'Invalid bank ID');

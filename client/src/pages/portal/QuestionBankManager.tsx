@@ -971,7 +971,7 @@ function QuestionList({
 
   const bulkPublishMutation = useMutation({
     mutationFn: async (bankId: number) => {
-      const res = await apiRequest("POST", `/api/question-bank/banks/${bankId}/bulk-publish`);
+      const res = await apiRequest("POST", `/api/question-banks/${bankId}/bulk-publish`);
       if (!res.ok) {
         let msg = "Bulk publish failed";
         try { const b = await res.json(); msg = b.message || msg; } catch { /* ignore */ }
