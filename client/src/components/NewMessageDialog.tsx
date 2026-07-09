@@ -57,7 +57,7 @@ export function NewMessageDialog({
         const data = await res.json();
         setRecipientInfo(data);
         setRecipientId(data.id);
-        toast({ title: 'User Verified', description: `${data.firstName} ${data.lastName} (${data.roleName})` });
+        toast({ title: 'Success', description: `Recipient found: ${data.firstName} ${data.lastName} (${data.roleName})` });
       }
     } catch {
       toast({ title: 'Lookup Error', description: 'Failed to verify recipient.', variant: 'destructive' });
@@ -81,7 +81,7 @@ export function NewMessageDialog({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/messages/user', currentUserId] });
-      toast({ title: 'Message Sent', description: 'Your message has been delivered.' });
+      toast({ title: 'Success', description: 'Your message has been delivered.' });
       handleClose();
     },
     onError: (err: any) => {

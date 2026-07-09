@@ -235,7 +235,7 @@ export default function ExamFeePayment() {
   const handleCopyAccount = () => {
     if (monnifyAccount?.accountNumber) {
       navigator.clipboard.writeText(monnifyAccount.accountNumber);
-      toast({ title: "Account number copied!" });
+      toast({ title: "Success", description: "Account number copied to clipboard." });
     }
   };
 

@@ -34,6 +34,9 @@ import type {
   NewsPost, InsertNewsPost, Faq, InsertFaq, AboutSection, InsertAboutSection,
   AdmissionsEnquiry, InsertAdmissionsEnquiry,
   HomepageSection, InsertHomepageSection,
+  BillingItem, InsertBillingItem,
+  BillingPayment, InsertBillingPayment,
+  BillingFeatureLink, InsertBillingFeatureLink,
 } from "@shared/schema";
 
 // Get centralized database instance and schema from db.ts
@@ -294,6 +297,8 @@ export interface IStorage {
   rejectQuestionBankItem(id: number, rejectedBy: string, reason: string): Promise<QuestionBankItem | undefined>;
   publishQuestionBankItem(id: number): Promise<QuestionBankItem | undefined>;
   unpublishQuestionBankItem(id: number): Promise<QuestionBankItem | undefined>;
+  bulkPublishQuestionBankItems(bankId: number): Promise<number>;
+  bulkUnpublishQuestionBankItems(bankId: number): Promise<number>;
   getPendingQuestionBankItems(filters?: { subjectId?: number; classId?: number; createdBy?: string; page?: number; pageSize?: number }): Promise<{ items: QuestionBankItem[]; total: number; totalPages: number }>;
 
   // Exam-Question Bank Links
@@ -719,6 +724,29 @@ export interface IStorage {
     failed: { userId: string; error: string }[];
   }>;
   cleanupOrphanRecords(): Promise<{ tableName: string; deletedCount: number }[]>;
+
+  // ─── Billing & Payments ───────────────────────────────────────────────────
+  getBillingItems(filters?: { category?: string; isActive?: boolean }): Promise<BillingItem[]>;
+  getBillingItem(id: number): Promise<BillingItem | undefined>;
+  createBillingItem(data: InsertBillingItem): Promise<BillingItem>;
+  updateBillingItem(id: number, data: Partial<InsertBillingItem>): Promise<BillingItem | undefined>;
+  deleteBillingItem(id: number): Promise<boolean>;
+
+  getBillingPayments(filters?: { billingItemId?: number; studentId?: string; termId?: number; status?: string }): Promise<BillingPayment[]>;
+  getBillingPayment(id: number): Promise<BillingPayment | undefined>;
+  getStudentBillingPayment(studentId: string, billingItemId: number, termId?: number): Promise<BillingPayment | undefined>;
+  createBillingPayment(data: InsertBillingPayment): Promise<BillingPayment>;
+  updateBillingPayment(id: number, data: Partial<InsertBillingPayment>): Promise<BillingPayment | undefined>;
+  deleteBillingPayment(id: number): Promise<boolean>;
+  getOutstandingBillingPayments(billingItemId?: number, termId?: number): Promise<any[]>;
+  getBillingFinancialSummary(termId?: number): Promise<any>;
+
+  getBillingFeatureLink(featureKey: string): Promise<BillingFeatureLink | undefined>;
+  getBillingFeatureLinks(): Promise<BillingFeatureLink[]>;
+  createBillingFeatureLink(data: InsertBillingFeatureLink): Promise<BillingFeatureLink>;
+  deleteBillingFeatureLink(id: number): Promise<boolean>;
+  deleteBillingFeatureLinkByKey(featureKey: string): Promise<boolean>;
+  ensureDefaultBillingItem(): Promise<BillingItem>;
 }
 // Helper to normalize UUIDs from various formats
 function normalizeUuid(raw: any): string | undefined {
@@ -3323,12 +3351,11 @@ export class DatabaseStorage implements IStorage {
       const bankItem = await this.getQuestionBankItemById(itemId);
       if (!bankItem) continue;
 
-      // Validate questionType to ensure data integrity
-      const validTypes: Array<"multiple_choice" | "text" | "essay" | "true_false" | "fill_blank"> =
-        ["multiple_choice", "text", "essay", "true_false", "fill_blank"];
-      const questionType = validTypes.includes(bankItem.questionType as any)
-        ? bankItem.questionType as "multiple_choice" | "text" | "essay" | "true_false" | "fill_blank"
-        : "text"; // Default to text if invalid
+      // Validate questionType to ensure data integrity (only two types supported)
+      const validTypes: Array<"multiple_choice" | "essay"> = ["multiple_choice", "essay"];
+      const questionType: "multiple_choice" | "essay" = validTypes.includes(bankItem.questionType as any)
+        ? bankItem.questionType as "multiple_choice" | "essay"
+        : "essay"; // Default to essay for any legacy types (text, true_false, fill_blank)
 
       // Parse expectedAnswers from JSON string or comma-separated string to array
       let expectedAnswersArray: string[] | undefined = undefined;
@@ -3824,12 +3851,36 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
 
-  async unpublishQuestionBankItem(id: number): Promise<QuestionBankItem | undefined> {
+  async bulkPublishQuestionBankItems(bankId: number): Promise<number> {
     const result = await db.update(schema.questionBankItems)
-      .set({ status: 'approved', updatedAt: new Date() })
+      .set({ status: 'published', updatedAt: new Date() })
+      .where(and(
+        eq(schema.questionBankItems.bankId, bankId),
+        inArray(schema.questionBankItems.status, ['draft', 'submitted', 'active', 'approved'])
+      ))
+      .returning({ id: schema.questionBankItems.id });
+    return result.length;
+  }
+
+  async unpublishQuestionBankItem(id: number): Promise<QuestionBankItem | undefined> {
+    // Revert to 'active' — the usable pre-publish state that re-enables the Publish button
+    // without requiring a re-approval step (teachers see it in exam imports; admins can re-publish).
+    const result = await db.update(schema.questionBankItems)
+      .set({ status: 'active', updatedAt: new Date() })
       .where(eq(schema.questionBankItems.id, id))
       .returning();
     return result[0];
+  }
+
+  async bulkUnpublishQuestionBankItems(bankId: number): Promise<number> {
+    const result = await db.update(schema.questionBankItems)
+      .set({ status: 'active', updatedAt: new Date() })
+      .where(and(
+        eq(schema.questionBankItems.bankId, bankId),
+        eq(schema.questionBankItems.status, 'published')
+      ))
+      .returning({ id: schema.questionBankItems.id });
+    return result.length;
   }
 
   async getPendingQuestionBankItems(filters?: { subjectId?: number; classId?: number; createdBy?: string; page?: number; pageSize?: number }): Promise<{ items: QuestionBankItem[]; total: number; totalPages: number }> {
@@ -3993,7 +4044,7 @@ export class DatabaseStorage implements IStorage {
         .innerJoin(schema.exams, eq(schema.examSessions.examId, schema.exams.id))
         .where(and(
           inArray(schema.studentAnswers.sessionId, sessionIds),
-          sql`(${schema.examQuestions.questionType} = 'text' OR ${schema.examQuestions.questionType} = 'essay')`,
+          sql`${schema.examQuestions.questionType} = 'essay'`,
           sql`${schema.studentAnswers.textAnswer} IS NOT NULL`
         ));
 
@@ -4581,52 +4632,8 @@ export class DatabaseStorage implements IStorage {
           }
         }
       }
-      // ENHANCED AUTO-SCORING: Process text-based questions after collecting all data
-      for (const [questionId, question] of Array.from(questionMap.entries())) {
-        if (!question.autoGradable) continue;
-
-        // Handle text-based questions (text, fill_blank)
-        if ((question.questionType === 'text' || question.questionType === 'fill_blank') &&
-          question.expectedAnswers && question.textAnswer) {
-
-          const studentAnswer = question.textAnswer.trim();
-          if (!studentAnswer) continue; // Skip empty answers
-
-
-          // Check against all expected answers
-          for (const expectedAnswer of question.expectedAnswers) {
-            const normalizedExpected = question.caseSensitive ?
-              expectedAnswer.trim() :
-              expectedAnswer.trim().toLowerCase();
-
-            const normalizedStudent = question.caseSensitive ?
-              studentAnswer :
-              studentAnswer.toLowerCase();
-
-            // Exact match
-            if (normalizedStudent === normalizedExpected) {
-              question.isCorrect = true;
-              break;
-            }
-            // Partial credit for close matches (if enabled)
-            if (question.allowPartialCredit && !question.isCorrect) {
-              const similarity = this.calculateTextSimilarity(normalizedStudent, normalizedExpected);
-
-              try {
-                const partialRules = question.partialCreditRules ?
-                  JSON.parse(question.partialCreditRules) :
-                  { minSimilarity: 0.8, partialPercentage: 0.5 };
-
-                if (similarity >= (partialRules.minSimilarity || 0.8)) {
-                  question.partialCreditEarned = Math.ceil(question.points * (partialRules.partialPercentage || 0.5));
-                  break;
-                }
-              } catch (err) {
-              }
-            }
-          }
-        }
-      }
+      // Essay questions require manual grading; no auto-scoring path needed here.
+      // Legacy text/fill_blank questions in the database are skipped (not auto-scored).
       // Convert map to array and calculate summary
       const scoringData = Array.from(questionMap.entries()).map(([questionId, data]) => ({
         questionId,
@@ -4909,7 +4916,7 @@ export class DatabaseStorage implements IStorage {
           JOIN users u ON es.student_id = u.id
           LEFT JOIN manual_scores ms ON sa.id = ms.answer_id
           WHERE e.created_by = $1
-          AND eq.question_type IN ('text', 'essay')
+          AND eq.question_type = 'essay'
           AND es.is_completed = true
         `;
 
@@ -9875,6 +9882,186 @@ export class DatabaseStorage implements IStorage {
   async deleteContactMessage(id: number): Promise<boolean> {
     const result = await db.delete(schema.contactMessages).where(eq(schema.contactMessages.id, id)).returning({ id: schema.contactMessages.id });
     return result.length > 0;
+  }
+
+  // ─── Billing & Payments ───────────────────────────────────────────────────
+  async getBillingItems(filters?: { category?: string; isActive?: boolean }): Promise<BillingItem[]> {
+    let query = db.select().from(schema.billingItems);
+    const conditions = [];
+    if (filters?.category) conditions.push(eq(schema.billingItems.category, filters.category));
+    if (filters?.isActive !== undefined) conditions.push(eq(schema.billingItems.isActive, filters.isActive));
+    if (conditions.length > 0) return query.where(and(...conditions)).orderBy(schema.billingItems.name);
+    return query.orderBy(schema.billingItems.name);
+  }
+
+  async getBillingItem(id: number): Promise<BillingItem | undefined> {
+    const [item] = await db.select().from(schema.billingItems).where(eq(schema.billingItems.id, id));
+    return item;
+  }
+
+  async createBillingItem(data: InsertBillingItem): Promise<BillingItem> {
+    const [item] = await db.insert(schema.billingItems).values(data).returning();
+    return item;
+  }
+
+  async updateBillingItem(id: number, data: Partial<InsertBillingItem>): Promise<BillingItem | undefined> {
+    const [item] = await db.update(schema.billingItems).set({ ...data, updatedAt: new Date() }).where(eq(schema.billingItems.id, id)).returning();
+    return item;
+  }
+
+  async deleteBillingItem(id: number): Promise<boolean> {
+    const result = await db.delete(schema.billingItems).where(eq(schema.billingItems.id, id)).returning({ id: schema.billingItems.id });
+    return result.length > 0;
+  }
+
+  async getBillingPayments(filters?: { billingItemId?: number; studentId?: string; termId?: number; status?: string }): Promise<BillingPayment[]> {
+    let query = db.select().from(schema.billingPayments);
+    const conditions = [];
+    if (filters?.billingItemId) conditions.push(eq(schema.billingPayments.billingItemId, filters.billingItemId));
+    if (filters?.studentId) conditions.push(eq(schema.billingPayments.studentId, filters.studentId));
+    if (filters?.termId) conditions.push(eq(schema.billingPayments.termId, filters.termId));
+    if (filters?.status) conditions.push(eq(schema.billingPayments.status, filters.status));
+    if (conditions.length > 0) return query.where(and(...conditions)).orderBy(sql`${schema.billingPayments.createdAt} desc`);
+    return query.orderBy(sql`${schema.billingPayments.createdAt} desc`);
+  }
+
+  async getBillingPayment(id: number): Promise<BillingPayment | undefined> {
+    const [p] = await db.select().from(schema.billingPayments).where(eq(schema.billingPayments.id, id));
+    return p;
+  }
+
+  async getStudentBillingPayment(studentId: string, billingItemId: number, termId?: number): Promise<BillingPayment | undefined> {
+    const conditions: any[] = [eq(schema.billingPayments.studentId, studentId), eq(schema.billingPayments.billingItemId, billingItemId)];
+    if (termId) conditions.push(eq(schema.billingPayments.termId, termId));
+    const [p] = await db.select().from(schema.billingPayments).where(and(...conditions)).limit(1);
+    return p;
+  }
+
+  async createBillingPayment(data: InsertBillingPayment): Promise<BillingPayment> {
+    try {
+      const [p] = await db.insert(schema.billingPayments).values(data).returning();
+      return p;
+    } catch (err: any) {
+      if (err?.code === '23505') {
+        const existing = await this.getStudentBillingPayment(data.studentId, data.billingItemId, data.termId ?? undefined);
+        if (existing) {
+          const [updated] = await db.update(schema.billingPayments).set({ ...data }).where(eq(schema.billingPayments.id, existing.id)).returning();
+          return updated;
+        }
+      }
+      throw err;
+    }
+  }
+
+  async updateBillingPayment(id: number, data: Partial<InsertBillingPayment>): Promise<BillingPayment | undefined> {
+    const [p] = await db.update(schema.billingPayments).set(data).where(eq(schema.billingPayments.id, id)).returning();
+    return p;
+  }
+
+  async deleteBillingPayment(id: number): Promise<boolean> {
+    const result = await db.delete(schema.billingPayments).where(eq(schema.billingPayments.id, id)).returning({ id: schema.billingPayments.id });
+    return result.length > 0;
+  }
+
+  async getOutstandingBillingPayments(billingItemId?: number, termId?: number): Promise<any[]> {
+    // Returns students who have NOT paid a given billing item for a term
+    const allStudents = await db.select({
+      studentId: schema.students.id,
+      admissionNumber: schema.students.admissionNumber,
+      userId: schema.students.userId,
+      classId: schema.students.classId,
+    }).from(schema.students);
+
+    const paidConditions: any[] = [eq(schema.billingPayments.status, 'paid')];
+    if (billingItemId) paidConditions.push(eq(schema.billingPayments.billingItemId, billingItemId));
+    if (termId) paidConditions.push(eq(schema.billingPayments.termId, termId));
+
+    const paidPayments = await db.select({ studentId: schema.billingPayments.studentId })
+      .from(schema.billingPayments).where(and(...paidConditions));
+    const paidSet = new Set(paidPayments.map((p: any) => p.studentId));
+
+    const outstanding = allStudents.filter((s: any) => !paidSet.has(s.studentId));
+    // Enrich with user info
+    const enriched = await Promise.all(outstanding.map(async (s: any) => {
+      const user = s.userId ? await this.getUser(s.userId) : null;
+      const cls = s.classId ? await this.getClass(s.classId) : null;
+      return {
+        studentId: s.studentId,
+        admissionNumber: s.admissionNumber,
+        studentName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : s.admissionNumber,
+        className: cls?.name || 'N/A',
+      };
+    }));
+    return enriched;
+  }
+
+  async getBillingFinancialSummary(termId?: number): Promise<any> {
+    const conditions: any[] = [eq(schema.billingPayments.status, 'paid')];
+    if (termId) conditions.push(eq(schema.billingPayments.termId, termId));
+
+    const payments = await db.select().from(schema.billingPayments).where(and(...conditions));
+    const items = await this.getBillingItems();
+
+    const totalCollected = payments.reduce((s: number, p: any) => s + (p.amountPaid || 0), 0);
+    const byItem: Record<number, { name: string; count: number; total: number }> = {};
+    for (const p of payments) {
+      if (!byItem[p.billingItemId]) {
+        const item = items.find((i: any) => i.id === p.billingItemId);
+        byItem[p.billingItemId] = { name: item?.name || 'Unknown', count: 0, total: 0 };
+      }
+      byItem[p.billingItemId].count++;
+      byItem[p.billingItemId].total += p.amountPaid || 0;
+    }
+
+    // Count total students
+    const [{ count: totalStudents }] = await db.select({ count: sql<number>`count(*)` }).from(schema.students);
+
+    return {
+      totalCollected,
+      totalPayments: payments.length,
+      totalStudents: Number(totalStudents),
+      byItem: Object.entries(byItem).map(([id, v]) => ({ billingItemId: Number(id), ...v })),
+    };
+  }
+
+  async getBillingFeatureLink(featureKey: string): Promise<BillingFeatureLink | undefined> {
+    const [link] = await db.select().from(schema.billingFeatureLinks).where(eq(schema.billingFeatureLinks.featureKey, featureKey));
+    return link;
+  }
+
+  async getBillingFeatureLinks(): Promise<BillingFeatureLink[]> {
+    return db.select().from(schema.billingFeatureLinks);
+  }
+
+  async createBillingFeatureLink(data: InsertBillingFeatureLink): Promise<BillingFeatureLink> {
+    const [link] = await db.insert(schema.billingFeatureLinks).values(data).returning();
+    return link;
+  }
+
+  async deleteBillingFeatureLink(id: number): Promise<boolean> {
+    const result = await db.delete(schema.billingFeatureLinks).where(eq(schema.billingFeatureLinks.id, id)).returning({ id: schema.billingFeatureLinks.id });
+    return result.length > 0;
+  }
+
+  async deleteBillingFeatureLinkByKey(featureKey: string): Promise<boolean> {
+    const result = await db.delete(schema.billingFeatureLinks).where(eq(schema.billingFeatureLinks.featureKey, featureKey)).returning({ id: schema.billingFeatureLinks.id });
+    return result.length > 0;
+  }
+
+  async ensureDefaultBillingItem(): Promise<BillingItem> {
+    const existing = await db.select().from(schema.billingItems).where(eq(schema.billingItems.category, 'exam')).limit(1);
+    if (existing.length > 0) return existing[0];
+    const settings = await this.getSystemSettings();
+    const amount = settings?.examFeeAmount ?? 500000;
+    const [item] = await db.insert(schema.billingItems).values({
+      name: 'Examination Fee',
+      description: 'Termly examination access fee',
+      amount,
+      category: 'exam',
+      isActive: true,
+      isRecurring: true,
+    }).returning();
+    return item;
   }
 }
 // Initialize storage - PostgreSQL database only

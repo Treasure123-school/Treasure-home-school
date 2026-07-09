@@ -29,6 +29,7 @@ import jobVacancyRoutes from "./routes/job-vacancy.routes";
 import settingsRoutes from "./routes/settings.routes";
 import examPaymentRoutes from "./routes/exam-payment.routes";
 import { monnifyPaymentRouter } from "./routes/monnify-payment.routes";
+import { billingRouter } from "./routes/billing.routes";
 import reportCardSkillsRoutes from "./routes/report-card-skills.routes";
 import questionBankRoutes from "./routes/question-bank.routes";
 import curriculumTemplateRoutes from "./routes/curriculum-templates.routes";
@@ -1174,7 +1175,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ==================== ACTIVITY FEED (ADMIN ONLY) ====================
-  app.get('/api/admin/activity-feed', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), (_req, res) => {
+  app.get('/api/admin/activity-feed', authenticateUser, authorizeRoles(ROLES.ADMIN), (_req, res) => {
     try {
       res.json(realtimeService.getActivityFeed());
     } catch (error) {
@@ -1204,6 +1205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/upload", uploadRoutes);
   app.use("/api/exam-payments", examPaymentRoutes);
   app.use("/api/payments/monnify", monnifyPaymentRouter);
+  app.use("/api/billing", billingRouter);
   app.use(websiteManagementRoutes);
 
   // ==================== END FILE UPLOAD ROUTES ====================
@@ -1504,7 +1506,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create exam - TEACHERS ONLY (with assignment validation)
-  app.post('/api/exams', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), validateTeacherCanCreateExam, async (req, res) => {
+  app.post('/api/exams', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), validateTeacherCanCreateExam, async (req, res) => {
     try {
       const teacherId = req.user!.id;
       const assignedTeacherId = req.body.teacherInChargeId || teacherId;
@@ -1729,11 +1731,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             // Try to get subject and class info
             try {
               if (exam.subjectId) {
-                const subject = await storage.getSubject(exam.subjectId);
+                const subject = await storage.getSubject(exam.subjectId!);
                 if (subject) baseResult.subjectName = subject.name;
               }
               if (exam.classId) {
-                const examClass = await storage.getClass(exam.classId);
+                const examClass = await storage.getClass(exam.classId!);
                 if (examClass) baseResult.className = examClass.name;
               }
             } catch (lookupError) {
@@ -1839,7 +1841,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({
           message: 'No result found for this exam',
           examId: examId,
-          subjectName: exam.subjectId ? (await storage.getSubject(exam.subjectId))?.name : 'Unknown'
+          subjectName: exam.subjectId ? (await storage.getSubject(exam.subjectId!))?.name : 'Unknown'
         });
       }
 
@@ -1860,12 +1862,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let className = 'Unknown Class';
 
       if (exam.subjectId) {
-        const subject = await storage.getSubject(exam.subjectId);
+        const subject = await storage.getSubject(exam.subjectId!);
         subjectName = subject?.name || 'Unknown Subject';
       }
 
       if (exam.classId) {
-        const classInfo = await storage.getClass(exam.classId);
+        const classInfo = await storage.getClass(exam.classId!);
         className = classInfo?.name || 'Unknown Class';
       }
 
@@ -2031,7 +2033,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get exam results by exam ID - TEACHERS AND ADMINS
-  app.get('/api/exam-results/exam/:examId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.get('/api/exam-results/exam/:examId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
     try {
       const examId = parseInt(req.params.examId);
       const teacherId = req.user!.id;
@@ -2103,7 +2105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // ==================== EXAM ANALYTICS ENDPOINT ====================
-  app.get('/api/teacher/exam-analytics/:examId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.get('/api/teacher/exam-analytics/:examId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
     try {
       const examId = parseInt(req.params.examId);
       if (isNaN(examId) || examId <= 0) {
@@ -2245,8 +2247,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           passingScore: schema.exams.passingScore,
         }).from(schema.exams)
           .where(and(
-            eq(schema.exams.classId, exam.classId),
-            eq(schema.exams.subjectId, exam.subjectId),
+            eq(schema.exams.classId, exam.classId!),
+            eq(schema.exams.subjectId, exam.subjectId!),
           ))
           .orderBy(schema.exams.date);
 
@@ -2285,9 +2287,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         const [classInfo, subjectInfo, termInfo] = await Promise.all([
-          storage.getClass(exam.classId),
-          storage.getSubject(exam.subjectId),
-          storage.getAcademicTerm(exam.termId),
+          storage.getClass(exam.classId!),
+          storage.getSubject(exam.subjectId!),
+          storage.getAcademicTerm(exam.termId!),
         ]);
         if (classInfo) className = classInfo.name;
         if (subjectInfo) subjectName = subjectInfo.name;
@@ -2298,7 +2300,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (teacher) teacherName = `${teacher.firstName || ''} ${teacher.lastName || ''}`.trim() || teacher.username || '';
         }
 
-        const classStudents = await storage.getStudentsByClass(exam.classId);
+        const classStudents = await storage.getStudentsByClass(exam.classId!);
         totalClassStudents = classStudents.length;
 
         const questions = await storage.getExamQuestions(exam.id);
@@ -2357,7 +2359,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== END EXAM ANALYTICS ENDPOINT ====================
 
   // ==================== SUBMISSIONS LIST ENDPOINT ====================
-  app.get('/api/teacher/submissions', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.get('/api/teacher/submissions', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
     try {
       const teacherId = req.user!.id;
       const isTeacher = req.user!.roleId === ROLES.TEACHER;
@@ -2443,7 +2445,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Submission detail for grading panel
-  app.get('/api/teacher/submissions/:resultId/detail', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.get('/api/teacher/submissions/:resultId/detail', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
     try {
       const resultId = parseInt(req.params.resultId);
       if (isNaN(resultId)) return res.status(400).json({ message: 'Invalid result ID' });
@@ -2514,7 +2516,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ==================== END SUBMISSIONS ENDPOINTS ====================
 
   // Update exam result - TEACHERS ONLY (update test score, remarks)
-  app.patch('/api/teacher/exam-results/:resultId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.patch('/api/teacher/exam-results/:resultId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
     try {
       const resultId = parseInt(req.params.resultId);
       const teacherId = req.user!.id;
@@ -2603,7 +2605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Sync exam result to report card - TEACHERS ONLY
-  app.post('/api/teacher/exam-results/:resultId/sync-reportcard', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.post('/api/teacher/exam-results/:resultId/sync-reportcard', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
     try {
       const resultId = parseInt(req.params.resultId);
       const teacherId = req.user!.id;
@@ -2684,7 +2686,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Allow student to retake an exam - TEACHERS AND ADMINS
   // This archives the previous submission and removes session/result data so student can retake
-  app.post('/api/teacher/exams/:examId/allow-retake/:studentId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.post('/api/teacher/exams/:examId/allow-retake/:studentId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
     try {
       const examId = parseInt(req.params.examId);
       const studentId = req.params.studentId;
@@ -2770,7 +2772,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update exam - TEACHERS ONLY (creator or teacher in charge) with assignment validation
-  app.patch('/api/exams/:id', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.patch('/api/exams/:id', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
     try {
       const examId = parseInt(req.params.id);
       const teacherId = req.user!.id;
@@ -2781,7 +2783,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Admins and Super Admins can edit any exam, teachers need to be creator or assigned
-      const isAdmin = req.user!.roleId === ROLES.ADMIN || req.user!.roleId === ROLES.SUPER_ADMIN;
+      const isAdmin = req.user!.roleId === ROLES.ADMIN;
       const isCreator = existingExam.createdBy === teacherId;
       const isTeacherInCharge = existingExam.teacherInChargeId === teacherId;
       if (!isAdmin && !isCreator && !isTeacherInCharge) {
@@ -2829,9 +2831,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (sanitizedData.subjectId !== undefined && sanitizedData.subjectId !== existingExam.subjectId) {
         console.log(`[EXAM-UPDATE] Subject changed from ${existingExam.subjectId} to ${sanitizedData.subjectId} for exam ${examId}. Syncing report cards...`);
         try {
-          reportCardSyncResult = await storage.syncReportCardItemsOnExamSubjectChange(
-            examId,
-            existingExam.subjectId,
+          reportCardSyncResult = await storage.syncReportCardItemsOnExamSubjectChange(examId, existingExam.subjectId!,
             sanitizedData.subjectId
           );
           console.log(`[EXAM-UPDATE] Report card sync complete: ${reportCardSyncResult.updated} items updated`);
@@ -2862,9 +2862,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete exam - TEACHERS ONLY (only creator can delete) or ADMIN/SUPER_ADMIN
+  // Delete exam - Admins (any exam) and Teachers (own exams only)
   // Implements comprehensive smart deletion with cascade, audit logging, and cleanup
-  app.delete('/api/exams/:id', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.delete('/api/exams/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.TEACHER), async (req, res) => {
     const startTime = Date.now();
     try {
       const examId = parseInt(req.params.id);
@@ -2872,18 +2872,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const existingExam = await storage.getExamById(examId);
       if (!existingExam) {
-        return res.status(404).json({ message: 'Exam not found' });
+        // Exam already deleted — respond with 200 so the client treats it as success
+        return res.status(200).json({ message: 'Exam already deleted', alreadyDeleted: true });
       }
 
-      // Admins and Super Admins can delete any exam, teachers can only delete their own
-      const isAdmin = deletedBy.roleId === ROLES.ADMIN || deletedBy.roleId === ROLES.SUPER_ADMIN;
+      // Admins can delete any exam; teachers can only delete their own
+      const isAdmin = deletedBy.roleId === ROLES.ADMIN;
       if (!isAdmin && existingExam.createdBy !== deletedBy.id) {
         return res.status(403).json({ message: 'You can only delete exams you created' });
       }
 
       // Get additional context for audit log
-      const examClass = await storage.getClass(existingExam.classId);
-      const examSubject = await storage.getSubject(existingExam.subjectId);
+      const examClass = await storage.getClass(existingExam.classId!);
+      const examSubject = await storage.getSubject(existingExam.subjectId!);
 
       // Perform comprehensive smart deletion
       const deletionResult = await storage.deleteExam(examId);
@@ -2959,8 +2960,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Toggle exam publish status - TEACHERS ONLY (creator or teacher in charge) or ADMIN/SUPER_ADMIN
-  app.patch('/api/exams/:id/publish', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  // Toggle exam publish status - Teachers (creator or teacher in charge) and Admins only
+  app.patch('/api/exams/:id/publish', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
     try {
       const examId = parseInt(req.params.id);
       const teacherId = req.user!.id;
@@ -2972,7 +2973,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Admins and Super Admins can publish any exam, teachers need to be creator or assigned
-      const isAdmin = req.user!.roleId === ROLES.ADMIN || req.user!.roleId === ROLES.SUPER_ADMIN;
+      const isAdmin = req.user!.roleId === ROLES.ADMIN;
       const isCreator = existingExam.createdBy === teacherId;
       const isTeacherInCharge = existingExam.teacherInChargeId === teacherId;
       if (!isAdmin && !isCreator && !isTeacherInCharge) {
@@ -3971,7 +3972,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // PAYMENT CHECK: Block access if exam fee is required and unpaid
       const sysSettings = await storage.getSystemSettings();
       if (sysSettings?.requireExamPayment) {
-        const payment = await storage.getExamPayment(studentId, exam.termId);
+        const payment = await storage.getExamPayment(studentId, exam.termId!);
         if (!payment) {
           return res.status(402).json({
             message: 'Exam fee payment required',
@@ -4834,7 +4835,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET class detail with student list (joined with user info) for teacher
-  app.get('/api/teacher/classes/:classId/detail', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.get('/api/teacher/classes/:classId/detail', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
     try {
       const classId = parseInt(req.params.classId);
       if (isNaN(classId)) return res.status(400).json({ message: 'Invalid class ID' });
@@ -5144,7 +5145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ── Parent Management Endpoints (Admin) ─────────────────────────────────────
 
   // List all parents enriched with linked students
-  app.get('/api/parents', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.get('/api/parents', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
     try {
       const parentRole = await storage.getRoleByName('Parent');
       if (!parentRole) return res.status(500).json({ message: 'Parent role not found' });
@@ -5188,7 +5189,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Student autocomplete search for parent linking
-  app.get('/api/students/search', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.TEACHER), async (req, res) => {
+  app.get('/api/students/search', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.TEACHER), async (req, res) => {
     try {
       const q = (req.query.q as string || '').toLowerCase().trim();
       if (!q || q.length < 1) return res.json([]);
@@ -5237,7 +5238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a new parent
-  app.post('/api/parents', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.post('/api/parents', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
     try {
       const { firstName, lastName, email, phone, gender, studentIds = [] } = req.body;
       if (!firstName || !lastName) {
@@ -5293,7 +5294,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update parent info
-  app.put('/api/parents/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.put('/api/parents/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
     try {
       const { id } = req.params;
       const { firstName, lastName, email, phone, gender } = req.body;
@@ -5309,7 +5310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Link additional students to an existing parent
-  app.post('/api/parents/:id/link-students', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.post('/api/parents/:id/link-students', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
     try {
       const parentId = req.params.id;
       const { studentIds } = req.body;
@@ -5334,7 +5335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Unlink a student from a parent
-  app.delete('/api/parents/:id/unlink/:studentId', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.delete('/api/parents/:id/unlink/:studentId', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
     try {
       const { id: parentId, studentId } = req.params;
       await storage.updateStudent(studentId, { studentPatch: { parentId: null } });
@@ -5376,7 +5377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ═══════════════════════════════════════════════════════
 
   // GET /api/parent/children - Parent's own children (convenience, no ID needed)
-  app.get('/api/parent/children', authenticateUser, authorizeRoles(ROLES.PARENT, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.get('/api/parent/children', authenticateUser, authorizeRoles(ROLES.PARENT, ROLES.ADMIN), async (req, res) => {
     try {
       const parentId = req.user!.id;
       const students = await storage.getStudentsByParentId(parentId);
@@ -5408,13 +5409,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/parent/child-reports/:childId - Report cards for a specific child
-  app.get('/api/parent/child-reports/:childId', authenticateUser, authorizeRoles(ROLES.PARENT, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.get('/api/parent/child-reports/:childId', authenticateUser, authorizeRoles(ROLES.PARENT, ROLES.ADMIN), async (req, res) => {
     try {
       const parentId = req.user!.id;
       const { childId } = req.params;
       // Verify ownership
       const children = await storage.getStudentsByParentId(parentId);
-      const isOwner = (req.user!.roleId === ROLES.ADMIN || req.user!.roleId === ROLES.SUPER_ADMIN) ||
+      const isOwner = (req.user!.roleId === ROLES.ADMIN) ||
         children.some((c: any) => c.id === childId);
       if (!isOwner) return res.status(403).json({ message: 'Access denied' });
 
@@ -5541,12 +5542,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/parent/attendance/:childId - Attendance records for a specific child
-  app.get('/api/parent/attendance/:childId', authenticateUser, authorizeRoles(ROLES.PARENT, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.get('/api/parent/attendance/:childId', authenticateUser, authorizeRoles(ROLES.PARENT, ROLES.ADMIN), async (req, res) => {
     try {
       const parentId = req.user!.id;
       const { childId } = req.params;
       const children = await storage.getStudentsByParentId(parentId);
-      const isOwner = (req.user!.roleId === ROLES.ADMIN || req.user!.roleId === ROLES.SUPER_ADMIN) ||
+      const isOwner = (req.user!.roleId === ROLES.ADMIN) ||
         children.some((c: any) => c.id === childId);
       if (!isOwner) return res.status(403).json({ message: 'Access denied' });
 
@@ -5565,12 +5566,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // GET /api/parent/grades/:childId - Exam results for a specific child
-  app.get('/api/parent/grades/:childId', authenticateUser, authorizeRoles(ROLES.PARENT, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.get('/api/parent/grades/:childId', authenticateUser, authorizeRoles(ROLES.PARENT, ROLES.ADMIN), async (req, res) => {
     try {
       const parentId = req.user!.id;
       const { childId } = req.params;
       const children = await storage.getStudentsByParentId(parentId);
-      const isOwner = (req.user!.roleId === ROLES.ADMIN || req.user!.roleId === ROLES.SUPER_ADMIN) ||
+      const isOwner = (req.user!.roleId === ROLES.ADMIN) ||
         children.some((c: any) => c.id === childId);
       if (!isOwner) return res.status(403).json({ message: 'Access denied' });
 
@@ -5590,12 +5591,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             examDate = exam.date;
             examType = exam.examType ?? 'exam';
             if (exam.subjectId) {
-              const subj = await storage.getSubject(exam.subjectId);
+              const subj = await storage.getSubject(exam.subjectId!);
               subjectName = subj?.name ?? 'Unknown';
             }
             if (exam.termId) {
               termId = exam.termId;
-              const term = await storage.getAcademicTerm(exam.termId);
+              const term = await storage.getAcademicTerm(exam.termId!);
               if (term) {
                 termName = term.name ?? null;
                 termYear = (term as any).year ?? null;
@@ -5827,7 +5828,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Subjects API endpoint - cached for performance
   // GET /api/subjects/all — returns ALL subjects including archived (Admin/SuperAdmin only, for management page)
-  app.get('/api/subjects/all', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res) => {
+  app.get('/api/subjects/all', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res) => {
     try {
       const subjects = await performanceCache.getOrSet(
         PerformanceCache.keys.subjects(),
@@ -5969,7 +5970,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Audit a subject — returns linked record counts across all tables
-  app.get('/api/subjects/:id/audit', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.get('/api/subjects/:id/audit', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
     try {
       const subjectId = parseInt(req.params.id);
       if (isNaN(subjectId)) return res.status(400).json({ message: 'Invalid subject ID' });
@@ -5984,7 +5985,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Archive a subject — hides it from dropdowns but preserves all historical data
-  app.patch('/api/subjects/:id/archive', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res) => {
+  app.patch('/api/subjects/:id/archive', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res) => {
     try {
       const subjectId = parseInt(req.params.id);
       if (isNaN(subjectId)) return res.status(400).json({ message: 'Invalid subject ID' });
@@ -6003,7 +6004,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Restore an archived subject — makes it active and visible in dropdowns again
-  app.patch('/api/subjects/:id/restore', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res) => {
+  app.patch('/api/subjects/:id/restore', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res) => {
     try {
       const subjectId = parseInt(req.params.id);
       if (isNaN(subjectId)) return res.status(400).json({ message: 'Invalid subject ID' });
@@ -6022,7 +6023,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Permanently delete a subject — only allowed when zero linked records exist
-  app.delete('/api/subjects/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res) => {
+  app.delete('/api/subjects/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res) => {
     try {
       const subjectId = parseInt(req.params.id);
       if (isNaN(subjectId)) return res.status(400).json({ message: 'Invalid subject ID' });
@@ -6559,7 +6560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin: get all homepage sections (authenticated)
-  app.get('/api/homepage-sections', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.get('/api/homepage-sections', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
     try {
       const sections = await storage.getHomepageSections();
       res.json(sections);
@@ -6569,7 +6570,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin: upsert a homepage section (supports draft/publish workflow)
-  app.put('/api/homepage-sections/:sectionKey', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.put('/api/homepage-sections/:sectionKey', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
     try {
       const { sectionKey } = req.params;
       const { sectionTitle, isEnabled, displayOrder, content, draftContent, status } = req.body;
@@ -6581,7 +6582,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin: batch reorder homepage sections
-  app.put('/api/homepage-sections-order', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.put('/api/homepage-sections-order', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
     try {
       const { sections } = req.body as { sections: { sectionKey: string; displayOrder: number }[] };
       await storage.updateHomepageSectionsOrder(sections);
@@ -6592,7 +6593,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Admin: get all homepage content (both admin-owned and active)
-  app.get('/api/homepage-content/all', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.get('/api/homepage-content/all', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
     try {
       const content = await storage.getHomePageContent();
       res.json(content);
@@ -6642,7 +6643,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Consolidated endpoint for fetching announcements
-  app.get('/api/admin/announcements', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.TEACHER), async (req, res) => {
+  app.get('/api/admin/announcements', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.TEACHER), async (req, res) => {
     try {
       const { targetRole, includeDrafts } = req.query;
       const announcements = await storage.getAnnouncements(targetRole as string, includeDrafts === 'true');
@@ -6653,7 +6654,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a new announcement
-  app.post('/api/announcements', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.TEACHER), async (req, res) => {
+  app.post('/api/announcements', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.TEACHER), async (req, res) => {
     try {
       const { title, content, targetRoles, targetClasses, priority, announcementType, publishOption, scheduledAt, expiryDate, attachments, coverImageUrl, notificationSettings, allowComments, allowEdit, status, isPublished, publishedAt } = req.body;
 
@@ -6695,7 +6696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update an announcement - Admin only
-  app.put('/api/announcements/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.TEACHER), async (req, res) => {
+  app.put('/api/announcements/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.TEACHER), async (req, res) => {
     try {
       const announcementId = parseInt(req.params.id);
 
@@ -6744,7 +6745,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete an announcement - Admin and Teacher (own only)
-  app.delete('/api/announcements/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.TEACHER), async (req, res) => {
+  app.delete('/api/announcements/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.TEACHER), async (req, res) => {
     try {
       const announcementId = parseInt(req.params.id);
 
@@ -6902,7 +6903,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // School-wide attendance overview - Admin only
-  app.get('/api/attendance/overview', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.get('/api/attendance/overview', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
     try {
       const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
 
@@ -6972,7 +6973,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Attendance trends - Admin or Teacher
-  app.get('/api/attendance/trends', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.TEACHER), async (req, res) => {
+  app.get('/api/attendance/trends', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.TEACHER), async (req, res) => {
     try {
       const { classId, view = 'daily' } = req.query;
       const now = new Date();
@@ -9123,7 +9124,7 @@ School Management System Administration
   });
 
   // Reset user password (Admin and Super Admin)
-  app.post("/api/users/:id/reset-password", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.post("/api/users/:id/reset-password", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
     try {
       const { id } = req.params;
       const { newPassword, forceChange } = z.object({
@@ -10152,7 +10153,7 @@ School Management System Administration
   });
 
   // Block / Unblock student (Admin only)
-  app.patch('/api/students/:id/block', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.patch('/api/students/:id/block', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
     try {
       const studentId = req.params.id;
       const { isActive } = req.body;
@@ -10197,7 +10198,7 @@ School Management System Administration
   });
 
   // Delete student (soft delete - sets isActive to false)
-  app.delete('/api/students/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.delete('/api/students/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
     try {
       const studentId = req.params.id;
 
@@ -10783,7 +10784,7 @@ School Management System Administration
   // ==================== SCHOOL LEADERSHIP ROUTES (Admin + Super Admin) ====================
 
   // GET /api/leadership/principal — current designation + all admins with signature info
-  app.get('/api/leadership/principal', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.ADMIN), async (req: Request, res: Response) => {
+  app.get('/api/leadership/principal', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const [sysSettings] = await db.select().from(schema.systemSettings).limit(1);
       const designatedPrincipalId = (sysSettings as any)?.designatedPrincipalId || null;
@@ -10820,7 +10821,7 @@ School Management System Administration
   });
 
   // PUT /api/leadership/principal — assign or clear the designated principal
-  app.put('/api/leadership/principal', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.ADMIN), async (req: Request, res: Response) => {
+  app.put('/api/leadership/principal', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { designatedPrincipalId } = req.body;
       if (designatedPrincipalId) {
@@ -11129,7 +11130,7 @@ School Management System Administration
   });
 
   // Update grading settings (Admin only)
-  app.put('/api/grading-settings', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.ADMIN), async (req: Request, res: Response) => {
+  app.put('/api/grading-settings', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { testWeight, examWeight, defaultGradingScale } = req.body;
 
@@ -11182,7 +11183,7 @@ School Management System Administration
   });
 
   // Get class positioning method setting (Admin only)
-  app.get('/api/settings/positioning-method', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.ADMIN), async (req: Request, res: Response) => {
+  app.get('/api/settings/positioning-method', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const settings = await storage.getSystemSettings();
       res.json({
@@ -11194,7 +11195,7 @@ School Management System Administration
   });
 
   // Update class positioning method setting (Admin only)
-  app.patch('/api/settings/positioning-method', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.ADMIN), async (req: Request, res: Response) => {
+  app.patch('/api/settings/positioning-method', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { positioningMethod } = req.body;
 
@@ -11573,17 +11574,17 @@ School Management System Administration
       }
 
       for (const exam of exams) {
-        if (!subjectScores[exam.subjectId]) continue;
+        if (!subjectScores[exam.subjectId!]) continue;
         const result = await storage.getExamResultByExamAndStudent(exam.id, studentId);
         if (result && result.marksObtained !== null) {
           const actualMaxScore = result.maxScore || exam.totalMarks;
-          subjectScores[exam.subjectId].hasData = true;
+          subjectScores[exam.subjectId!].hasData = true;
           if (exam.examType === 'test' || exam.examType === 'quiz') {
-            subjectScores[exam.subjectId].testScores.push(result.marksObtained);
-            subjectScores[exam.subjectId].testMax.push(actualMaxScore);
+            subjectScores[exam.subjectId!].testScores.push(result.marksObtained);
+            subjectScores[exam.subjectId!].testMax.push(actualMaxScore);
           } else {
-            subjectScores[exam.subjectId].examScores.push(result.marksObtained);
-            subjectScores[exam.subjectId].examMax.push(actualMaxScore);
+            subjectScores[exam.subjectId!].examScores.push(result.marksObtained);
+            subjectScores[exam.subjectId!].examMax.push(actualMaxScore);
           }
         }
       }
@@ -11732,7 +11733,7 @@ School Management System Administration
   });
 
   // Get all students in a class with their report card data (Teacher/Admin)
-  app.get('/api/reports/class/:classId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.get('/api/reports/class/:classId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { classId } = req.params;
       const { termId } = req.query;
@@ -11787,16 +11788,16 @@ School Management System Administration
         }
 
         for (const exam of exams) {
-          if (!subjectScores[exam.subjectId]) continue;
+          if (!subjectScores[exam.subjectId!]) continue;
           const result = await storage.getExamResultByExamAndStudent(exam.id, student.id);
           if (result && result.marksObtained !== null) {
-            subjectScores[exam.subjectId].hasData = true;
+            subjectScores[exam.subjectId!].hasData = true;
             if (exam.examType === 'test' || exam.examType === 'quiz') {
-              subjectScores[exam.subjectId].testScores.push(result.marksObtained);
-              subjectScores[exam.subjectId].testMax.push(exam.totalMarks);
+              subjectScores[exam.subjectId!].testScores.push(result.marksObtained);
+              subjectScores[exam.subjectId!].testMax.push(exam.totalMarks);
             } else {
-              subjectScores[exam.subjectId].examScores.push(result.marksObtained);
-              subjectScores[exam.subjectId].examMax.push(exam.totalMarks);
+              subjectScores[exam.subjectId!].examScores.push(result.marksObtained);
+              subjectScores[exam.subjectId!].examMax.push(exam.totalMarks);
             }
           }
         }
@@ -11876,7 +11877,7 @@ School Management System Administration
   });
 
   // Generate/Update report card for a student (Teacher/Admin)
-  app.post('/api/reports/generate', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/reports/generate', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { studentId, termId, teacherRemarks, status } = req.body;
 
@@ -11916,18 +11917,18 @@ School Management System Administration
       const subjectScores: Record<number, { testScores: number[], testMax: number[], examScores: number[], examMax: number[] }> = {};
 
       for (const exam of exams) {
-        if (!subjectScores[exam.subjectId]) {
-          subjectScores[exam.subjectId] = { testScores: [], testMax: [], examScores: [], examMax: [] };
+        if (!subjectScores[exam.subjectId!]) {
+          subjectScores[exam.subjectId!] = { testScores: [], testMax: [], examScores: [], examMax: [] };
         }
 
         const result = await storage.getExamResultByExamAndStudent(exam.id, studentId);
         if (result && result.marksObtained !== null) {
           if (exam.examType === 'test' || exam.examType === 'quiz') {
-            subjectScores[exam.subjectId].testScores.push(result.marksObtained);
-            subjectScores[exam.subjectId].testMax.push(exam.totalMarks);
+            subjectScores[exam.subjectId!].testScores.push(result.marksObtained);
+            subjectScores[exam.subjectId!].testMax.push(exam.totalMarks);
           } else {
-            subjectScores[exam.subjectId].examScores.push(result.marksObtained);
-            subjectScores[exam.subjectId].examMax.push(exam.totalMarks);
+            subjectScores[exam.subjectId!].examScores.push(result.marksObtained);
+            subjectScores[exam.subjectId!].examMax.push(exam.totalMarks);
           }
         }
       }
@@ -12037,7 +12038,7 @@ School Management System Administration
   });
 
   // Update report card remarks/status (Teacher/Admin)
-  app.put('/api/reports/:reportCardId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.put('/api/reports/:reportCardId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { reportCardId } = req.params;
       const { teacherRemarks, principalRemarks, status } = req.body;
@@ -12138,7 +12139,7 @@ School Management System Administration
       const { parentId } = req.params;
       const { termId } = req.query;
 
-      if (req.user!.id !== parentId && req.user!.roleId !== ROLES.ADMIN && req.user!.roleId !== ROLES.SUPER_ADMIN) {
+      if (req.user!.id !== parentId && req.user!.roleId !== ROLES.ADMIN) {
         return res.status(403).json({ message: 'You can only view your own children\'s report cards' });
       }
 
@@ -12193,7 +12194,7 @@ School Management System Administration
   // Bulk generate report cards for a class (Admin only) - FALLBACK for edge cases
   // NOTE: Report cards are normally auto-generated when students complete exams
   // This route is a fallback for administrative purposes or data recovery
-  app.post('/api/reports/generate-class/:classId', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/reports/generate-class/:classId', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { classId } = req.params;
       const { termId, status } = req.body;
@@ -12214,18 +12215,18 @@ School Management System Administration
           const subjectScores: Record<number, { testScores: number[], testMax: number[], examScores: number[], examMax: number[] }> = {};
 
           for (const exam of exams) {
-            if (!subjectScores[exam.subjectId]) {
-              subjectScores[exam.subjectId] = { testScores: [], testMax: [], examScores: [], examMax: [] };
+            if (!subjectScores[exam.subjectId!]) {
+              subjectScores[exam.subjectId!] = { testScores: [], testMax: [], examScores: [], examMax: [] };
             }
 
             const result = await storage.getExamResultByExamAndStudent(exam.id, student.id);
             if (result && result.marksObtained !== null) {
               if (exam.examType === 'test' || exam.examType === 'quiz') {
-                subjectScores[exam.subjectId].testScores.push(result.marksObtained);
-                subjectScores[exam.subjectId].testMax.push(exam.totalMarks);
+                subjectScores[exam.subjectId!].testScores.push(result.marksObtained);
+                subjectScores[exam.subjectId!].testMax.push(exam.totalMarks);
               } else {
-                subjectScores[exam.subjectId].examScores.push(result.marksObtained);
-                subjectScores[exam.subjectId].examMax.push(exam.totalMarks);
+                subjectScores[exam.subjectId!].examScores.push(result.marksObtained);
+                subjectScores[exam.subjectId!].examMax.push(exam.totalMarks);
               }
             }
           }
@@ -12363,7 +12364,7 @@ School Management System Administration
   });
 
   // Get all report cards for a class and term
-  app.get('/api/reports/class-term/:classId/:termId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.get('/api/reports/class-term/:classId/:termId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { classId, termId } = req.params;
       const reportCards = await storage.getReportCardsByClassAndTerm(Number(classId), Number(termId));
@@ -12516,7 +12517,7 @@ School Management System Administration
   // Generate report cards for a class with auto-population (Enhanced version) - FALLBACK
   // NOTE: Report cards are normally auto-generated when students complete exams
   // This route is a fallback for teachers/admins to regenerate or update report cards
-  app.post('/api/reports/generate-enhanced/:classId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/reports/generate-enhanced/:classId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { classId } = req.params;
       const { termId, gradingScale = 'standard' } = req.body;
@@ -12543,7 +12544,7 @@ School Management System Administration
   });
 
   // Auto-populate scores for a specific report card
-  app.post('/api/reports/:reportCardId/auto-populate', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/reports/:reportCardId/auto-populate', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { reportCardId } = req.params;
 
@@ -12565,7 +12566,7 @@ School Management System Administration
   // - They are assigned to teach this class/subject, OR
   // - No exam exists yet for this score type (null creator)
   // Admins and Super Admins can edit all scores
-  app.patch('/api/reports/items/:itemId/override', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.patch('/api/reports/items/:itemId/override', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { itemId } = req.params;
       const { testScore, testMaxScore, examScore, examMaxScore, teacherRemarks } = req.body;
@@ -12817,7 +12818,7 @@ School Management System Administration
   });
 
   // Update report card status (finalize, publish, revert) - OPTIMIZED for instant response
-  app.patch('/api/reports/:reportCardId/status', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.patch('/api/reports/:reportCardId/status', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { reportCardId } = req.params;
       const { status } = req.body;
@@ -12853,15 +12854,10 @@ School Management System Administration
           }
         }
       } else if (status === 'published' && updatedReportCard && !updatedReportCard.principalSignatureUrl) {
-        // Apply principal signature from admin/superadmin profile
+        // Apply principal signature from admin profile
         let principalSig: string | null = null;
-        if (req.user!.roleId === ROLES.SUPER_ADMIN) {
-          const profile = await storage.getSuperAdminProfile(req.user!.id);
-          principalSig = profile?.signatureUrl || null;
-        } else {
-          const profile = await storage.getAdminProfile(req.user!.id);
-          principalSig = profile?.signatureUrl || null;
-        }
+        const profile = await storage.getAdminProfile(req.user!.id);
+        principalSig = profile?.signatureUrl || null;
         if (principalSig) {
           signatureUpdate.principalSignatureUrl = principalSig;
           signatureUpdate.principalSignedBy = req.user!.id;
@@ -12939,7 +12935,7 @@ School Management System Administration
   // - Class teacher (or admin) can edit teacherRemarks
   // - Only admin can edit principalRemarks
   // SECURITY: Rejects requests where user submits unauthorized fields
-  app.patch('/api/reports/:reportCardId/remarks', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.patch('/api/reports/:reportCardId/remarks', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { reportCardId } = req.params;
       const { teacherRemarks, principalRemarks } = req.body;
@@ -13028,7 +13024,7 @@ School Management System Administration
   });
 
   // Get default comments based on student performance
-  app.get('/api/reports/:reportCardId/default-comments', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.get('/api/reports/:reportCardId/default-comments', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { reportCardId } = req.params;
 
@@ -13060,7 +13056,7 @@ School Management System Administration
 
   // Backfill default comments for all report cards that don't have comments
   // Admin-only endpoint to populate existing reports with auto-generated comments
-  app.post('/api/reports/backfill-comments', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/reports/backfill-comments', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { termId, classId, overwrite = false } = req.body;
 
@@ -13145,7 +13141,7 @@ School Management System Administration
   // Sign report card as class teacher
   // SECURITY: Only the actual assigned class teacher can sign as teacher
   // Admins cannot sign as teacher - they must use the principal signing endpoint
-  app.post('/api/reports/:reportCardId/sign/teacher', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/reports/:reportCardId/sign/teacher', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { reportCardId } = req.params;
       const { teacherRemarks } = req.body;
@@ -13218,7 +13214,7 @@ School Management System Administration
   });
 
   // Sign report card as principal (Admin/Super Admin only)
-  app.post('/api/reports/:reportCardId/sign/principal', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/reports/:reportCardId/sign/principal', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { reportCardId } = req.params;
       const { principalRemarks } = req.body;
@@ -13460,7 +13456,7 @@ School Management System Administration
   // ==================== END SIGNATURE ROUTES ====================
 
   // Get exams by class and term with subject info
-  app.get('/api/reports/exams/:classId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.get('/api/reports/exams/:classId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { classId } = req.params;
       const { termId } = req.query;
@@ -13478,7 +13474,7 @@ School Management System Administration
   });
 
   // Recalculate a report card
-  app.post('/api/reports/:reportCardId/recalculate', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/reports/:reportCardId/recalculate', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { reportCardId } = req.params;
       const { gradingScale = 'standard' } = req.body;
@@ -13504,7 +13500,7 @@ School Management System Administration
   // ==================== TEACHER ASSIGNMENT ROUTES ====================
 
   // Create teacher class/subject assignment (Admin only)
-  app.post('/api/teacher-assignments', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/teacher-assignments', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { teacherId, classId, subjectId, termId } = req.body;
 
@@ -13594,7 +13590,7 @@ School Management System Administration
         return res.json(enrichedAssignments);
       }
       // Only admins and super admins can view assignments for other teachers
-      if (req.user!.roleId !== ROLES.ADMIN && req.user!.roleId !== ROLES.SUPER_ADMIN) {
+      if (req.user!.roleId !== ROLES.ADMIN) {
         return res.status(403).json({ message: "Insufficient permissions" });
       }
       // Admins can view all or filter by teacherId
@@ -13681,7 +13677,7 @@ School Management System Administration
   });
 
   // Update teacher assignment (Admin only)
-  app.put('/api/teacher-assignments/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.put('/api/teacher-assignments/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const updateData = req.body;
@@ -13702,7 +13698,7 @@ School Management System Administration
   });
 
   // Delete teacher assignment (Admin only)
-  app.delete('/api/teacher-assignments/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.delete('/api/teacher-assignments/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
 
@@ -13840,7 +13836,7 @@ School Management System Administration
   });
 
   // Auto-assign subjects to student based on class level and department
-  app.post('/api/students/:studentId/auto-assign-subjects', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/students/:studentId/auto-assign-subjects', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { studentId } = req.params;
 
@@ -13872,7 +13868,7 @@ School Management System Administration
   });
 
   // Manually assign subjects to student
-  app.post('/api/students/:studentId/subjects', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/students/:studentId/subjects', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { studentId } = req.params;
       const { subjectIds, termId } = req.body;
@@ -13909,7 +13905,7 @@ School Management System Administration
   });
 
   // Remove subject assignment from student
-  app.delete('/api/student-subject-assignments/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.delete('/api/student-subject-assignments/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
 
@@ -13954,7 +13950,7 @@ School Management System Administration
   });
 
   // Create class-subject mapping
-  app.post('/api/class-subject-mappings', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/class-subject-mappings', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { classId, subjectId, department, isCompulsory } = req.body;
 
@@ -14024,7 +14020,7 @@ School Management System Administration
   });
 
   // Delete class-subject mapping
-  app.delete('/api/class-subject-mappings/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.delete('/api/class-subject-mappings/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
 
@@ -14075,7 +14071,7 @@ School Management System Administration
   // Single source of truth for all subject visibility across the system
 
   // Get all subject assignments (for the unified configuration page)
-  app.get('/api/unified-subject-assignments', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.get('/api/unified-subject-assignments', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const allMappings = await storage.getAllClassSubjectMappings();
       res.json(allMappings);
@@ -14086,7 +14082,7 @@ School Management System Administration
   });
 
   // Bulk update subject assignments (additions and removals)
-  app.put('/api/unified-subject-assignments', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.put('/api/unified-subject-assignments', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { additions, removals } = req.body;
 
@@ -14187,7 +14183,7 @@ School Management System Administration
 
   // ADMIN: Sync all students with class_subject_mappings
   // Use this to fix existing students who have incorrect subject assignments
-  app.post('/api/admin/sync-all-student-subjects', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/admin/sync-all-student-subjects', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       console.log('[ADMIN-SYNC] Starting full sync of all students with class_subject_mappings...');
 
@@ -14217,7 +14213,7 @@ School Management System Administration
 
   // ADMIN: Cleanup report cards - remove items for subjects no longer in class_subject_mappings
   // Use this to fix existing report cards that have extra subjects
-  app.post('/api/admin/cleanup-report-cards', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/admin/cleanup-report-cards', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       console.log('[ADMIN-CLEANUP] Starting report card cleanup...');
 
@@ -14242,7 +14238,7 @@ School Management System Administration
   // Repair profile completion percentages for all students.
   // Recalculates the canonical 7-field completion for every student and persists the
   // corrected profileCompletionPercentage and profileCompleted values.
-  app.post('/api/admin/repair-profile-completion', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/admin/repair-profile-completion', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { db: drizzleDb } = await import('./db');
       const { users, students } = await import('../shared/schema.pg');
@@ -14290,7 +14286,7 @@ School Management System Administration
 
   // FIX: This addresses the bug where report cards created before a subject mapping was added
   // don't include that subject. This function adds missing subjects and syncs any existing exam results.
-  app.post('/api/admin/repair-report-cards', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/admin/repair-report-cards', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       console.log('[ADMIN-REPAIR] Starting report card repair (add missing subjects and sync exam scores)...');
 
@@ -14321,7 +14317,7 @@ School Management System Administration
   // ==================== REPORT COMMENT TEMPLATES (Admin-managed) ====================
 
   // ADMIN: Get all comment templates
-  app.get('/api/admin/report-comment-templates', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.get('/api/admin/report-comment-templates', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { role } = req.query;
       const templates = await storage.getReportCommentTemplates(role as string | undefined);
@@ -14333,7 +14329,7 @@ School Management System Administration
   });
 
   // ADMIN: Get single comment template
-  app.get('/api/admin/report-comment-templates/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.get('/api/admin/report-comment-templates/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const template = await storage.getReportCommentTemplate(parseInt(req.params.id));
       if (!template) {
@@ -14347,7 +14343,7 @@ School Management System Administration
   });
 
   // ADMIN: Create comment template
-  app.post('/api/admin/report-comment-templates', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/admin/report-comment-templates', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { role, performanceLevel, minPercentage, maxPercentage, commentTemplate, isActive } = req.body;
 
@@ -14377,7 +14373,7 @@ School Management System Administration
   });
 
   // ADMIN: Update comment template
-  app.patch('/api/admin/report-comment-templates/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.patch('/api/admin/report-comment-templates/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { role, performanceLevel, minPercentage, maxPercentage, commentTemplate, isActive } = req.body;
 
@@ -14402,7 +14398,7 @@ School Management System Administration
   });
 
   // ADMIN: Delete comment template
-  app.delete('/api/admin/report-comment-templates/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.delete('/api/admin/report-comment-templates/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const success = await storage.deleteReportCommentTemplate(parseInt(req.params.id));
       if (!success) {
@@ -14416,7 +14412,7 @@ School Management System Administration
   });
 
   // ADMIN: Get all finalized report cards for approval/publishing
-  app.get('/api/admin/report-cards/finalized', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.get('/api/admin/report-cards/finalized', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { classId, termId, status = 'finalized' } = req.query;
 
@@ -14507,7 +14503,7 @@ School Management System Administration
   });
 
   // ADMIN: Bulk publish report cards
-  app.post('/api/admin/report-cards/bulk-publish', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/admin/report-cards/bulk-publish', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { reportCardIds } = req.body;
 
@@ -14517,13 +14513,8 @@ School Management System Administration
 
       // Pre-fetch principal signature once for all bulk operations
       let bulkPrincipalSignature: string | null = null;
-      if (req.user!.roleId === ROLES.SUPER_ADMIN) {
-        const profile = await storage.getSuperAdminProfile(req.user!.id);
-        bulkPrincipalSignature = profile?.signatureUrl || null;
-      } else {
-        const profile = await storage.getAdminProfile(req.user!.id);
-        bulkPrincipalSignature = profile?.signatureUrl || null;
-      }
+      const bulkProfile = await storage.getAdminProfile(req.user!.id);
+      bulkPrincipalSignature = bulkProfile?.signatureUrl || null;
 
       const results = await Promise.all(
         reportCardIds.map(async (id: number) => {
@@ -14602,7 +14593,7 @@ School Management System Administration
   });
 
   // ADMIN: Reject report card (revert to draft)
-  app.post('/api/admin/report-cards/:id/reject', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/admin/report-cards/:id/reject', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       const { reason } = req.body;
@@ -14640,7 +14631,7 @@ School Management System Administration
 
   // ADMIN DEBUG: Force resync exam score to report card
   // This is a temporary debug endpoint to test the fix for pg_strtoint32_safe error
-  app.post('/api/admin/resync-exam-score', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/admin/resync-exam-score', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { studentId, examId, score, maxScore } = req.body;
 
@@ -14664,7 +14655,7 @@ School Management System Administration
   // ADMIN: Resync report card items when exam subject has been changed
   // This endpoint allows admin to manually trigger a resync for exams whose subjects were changed
   // before the automatic sync fix was implemented (useful for fixing historical data)
-  app.post('/api/admin/resync-report-card-subjects', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/admin/resync-report-card-subjects', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { examIds, newSubjectId } = req.body;
 
@@ -14700,7 +14691,7 @@ School Management System Administration
           }
 
           // Get the exam's current subject for logging
-          const oldSubjectId = exam.subjectId;
+          const oldSubjectId = exam.subjectId!;
 
           // Sync report card items for this exam
           const syncResult = await storage.syncReportCardItemsOnExamSubjectChange(
@@ -14736,7 +14727,7 @@ School Management System Administration
 
   // ADMIN: Comprehensive sync of ALL missing exam scores to report cards
   // This is a powerful data repair tool that finds all exam results not reflected in report cards
-  app.post('/api/admin/sync-all-missing-exam-scores', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/admin/sync-all-missing-exam-scores', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { termId } = req.body;
 
@@ -14764,7 +14755,7 @@ School Management System Administration
 
   // ADMIN: Force re-sync ALL exam results for a term to report cards, clearing any override flags
   // This is the recovery tool for fixing historical data where scores were blocked by isOverridden
-  app.post('/api/admin/force-resync-all-exams', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/admin/force-resync-all-exams', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { termId } = req.body;
       const adminId = req.user!.id;
@@ -14833,7 +14824,7 @@ School Management System Administration
 
   // TEACHER: Bulk sync all results from a specific exam to report cards
   // This allows teachers to sync all their exam results at once
-  app.post('/api/teacher/exams/:examId/sync-all-to-reportcards', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/teacher/exams/:examId/sync-all-to-reportcards', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const examId = parseInt(req.params.examId);
       const teacherId = req.user!.id;
@@ -14889,7 +14880,7 @@ School Management System Administration
   });
 
   // TEACHER: Get sync status for exam results (shows which results are synced/pending/failed)
-  app.get('/api/teacher/exams/:examId/sync-status', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.get('/api/teacher/exams/:examId/sync-status', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const examId = parseInt(req.params.examId);
 
@@ -14944,7 +14935,7 @@ School Management System Administration
   // ==================== SYNC AUDIT LOG ENDPOINTS ====================
 
   // ADMIN: Get sync audit logs with filters
-  app.get('/api/admin/sync-audit-logs', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.get('/api/admin/sync-audit-logs', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { studentId, examId, status, syncType, limit, offset } = req.query;
 
@@ -14965,7 +14956,7 @@ School Management System Administration
   });
 
   // ADMIN: Retry all failed syncs (batch retry)
-  app.post('/api/admin/sync-audit-logs/retry-failed', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/admin/sync-audit-logs/retry-failed', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       console.log(`[SYNC-AUDIT] User ${req.user!.id} triggered batch retry of failed syncs`);
 
@@ -14984,7 +14975,7 @@ School Management System Administration
   });
 
   // ADMIN: Manually resync a specific audit log entry
-  app.post('/api/admin/sync-audit-logs/:auditLogId/resync', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/admin/sync-audit-logs/:auditLogId/resync', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const auditLogId = parseInt(req.params.auditLogId);
       const adminId = req.user!.id;
@@ -15018,7 +15009,7 @@ School Management System Administration
   });
 
   // ADMIN: Get sync statistics summary
-  app.get('/api/admin/sync-audit-logs/stats', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.get('/api/admin/sync-audit-logs/stats', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const [
         totalLogs,
@@ -15272,7 +15263,7 @@ School Management System Administration
 
       for (const exam of classExams) {
         // Skip if exam is not for student's assigned subjects
-        if (!subjectIds.has(exam.subjectId)) continue;
+        if (!subjectIds.has(exam.subjectId!)) continue;
 
         // Check if exam is published and active
         const isPublished = exam.isPublished;
@@ -15285,14 +15276,14 @@ School Management System Administration
 
         // Count all available exams per subject (published and not ended)
         if (isPublished && (!endTime || endTime >= now)) {
-          examCountsBySubject[exam.subjectId] = (examCountsBySubject[exam.subjectId] || 0) + 1;
+          examCountsBySubject[exam.subjectId!] = (examCountsBySubject[exam.subjectId!] || 0) + 1;
         }
 
         if (isActiveNow) {
-          if (!activeExamsBySubject[exam.subjectId]) {
-            activeExamsBySubject[exam.subjectId] = [];
+          if (!activeExamsBySubject[exam.subjectId!]) {
+            activeExamsBySubject[exam.subjectId!] = [];
           }
-          activeExamsBySubject[exam.subjectId].push({
+          activeExamsBySubject[exam.subjectId!].push({
             id: exam.id,
             title: exam.name,
             examType: exam.examType,
@@ -15605,7 +15596,7 @@ School Management System Administration
   // ==================== END STUDENT ASSIGNMENTS ROUTES ====================
 
   // ==================== ADMIN TIMETABLE ROUTES ====================
-  app.get('/api/admin/timetable', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.get('/api/admin/timetable', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const classId = req.query.classId ? parseInt(req.query.classId as string) : undefined;
       const teacherId = req.query.teacherId as string | undefined;
@@ -15618,7 +15609,7 @@ School Management System Administration
     }
   });
 
-  app.post('/api/admin/timetable', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.post('/api/admin/timetable', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { teacherId, classId, subjectId, dayOfWeek, startTime, endTime, location, termId } = req.body;
       if (!teacherId || !classId || !subjectId || !dayOfWeek || !startTime || !endTime) {
@@ -15645,7 +15636,7 @@ School Management System Administration
     }
   });
 
-  app.put('/api/admin/timetable/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.put('/api/admin/timetable/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const { teacherId, classId, subjectId, dayOfWeek, startTime, endTime, location, termId } = req.body;
@@ -15682,7 +15673,7 @@ School Management System Administration
     }
   });
 
-  app.delete('/api/admin/timetable/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+  app.delete('/api/admin/timetable/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const id = parseInt(req.params.id);
       const deleted = await storage.deleteTimetableEntry(id);
@@ -15774,7 +15765,7 @@ School Management System Administration
   });
 
   // GET all events for admin (includes inactive)
-  app.get('/api/admin/events', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.get('/api/admin/events', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
     try {
       const { eventType, startDate, endDate } = req.query;
       const filters: any = {};
@@ -15802,7 +15793,7 @@ School Management System Administration
   });
 
   // POST create event (admin only)
-  app.post('/api/admin/events', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.post('/api/admin/events', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
     try {
       const data = {
         ...req.body,
@@ -15819,7 +15810,7 @@ School Management System Administration
   });
 
   // PUT update event (admin only)
-  app.put('/api/admin/events/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.put('/api/admin/events/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const event = await storage.updateSchoolEvent(id, req.body);
@@ -15832,7 +15823,7 @@ School Management System Administration
   });
 
   // DELETE event (admin only)
-  app.delete('/api/admin/events/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req, res) => {
+  app.delete('/api/admin/events/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const deleted = await storage.deleteSchoolEvent(id);

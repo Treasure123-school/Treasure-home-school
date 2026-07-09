@@ -69,7 +69,7 @@ export default function VacancyManagement() {
       queryClient.invalidateQueries({ queryKey: ['/api/vacancies'] });
       setIsCreateDialogOpen(false);
       form.reset();
-      toast({ title: 'Vacancy created successfully' });
+      toast({ title: 'Success', description: 'Vacancy created successfully' });
     },
     onError: (e: any, _v, ctx: any) => {
       if (ctx?.prev) queryClient.setQueryData(['/api/vacancies'], ctx.prev);
@@ -89,7 +89,7 @@ export default function VacancyManagement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/vacancies'] });
-      toast({ title: 'Vacancy closed' });
+      toast({ title: 'Success', description: 'Vacancy closed.' });
     },
     onError: (e: any, _v, ctx: any) => {
       if (ctx?.prev) queryClient.setQueryData(['/api/vacancies'], ctx.prev);
@@ -111,7 +111,7 @@ export default function VacancyManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/applications'] });
       setSelectedApplication(null);
-      toast({ title: 'Application updated' });
+      toast({ title: 'Success', description: 'Application status updated.' });
     },
     onError: (e: any, _v, ctx: any) => {
       if (ctx?.prev) queryClient.setQueryData(['/api/admin/applications'], ctx.prev);

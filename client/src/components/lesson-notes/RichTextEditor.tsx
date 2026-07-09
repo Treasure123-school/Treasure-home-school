@@ -11,6 +11,7 @@ import { TableHeader } from '@tiptap/extension-table-header';
 import Color from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Highlight from '@tiptap/extension-highlight';
+import { Mark } from '@tiptap/core';
 import { useRef, useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -20,7 +21,28 @@ import {
   List, ListOrdered, Quote, Minus, Link as LinkIcon, Image as ImageIcon, Table as TableIcon,
   Undo, Redo, Heading1, Heading2, Heading3, Pilcrow, Highlighter, Type, Link2Off,
   Rows, Columns, Trash2,
+  Subscript as SubscriptIcon, Superscript as SuperscriptIcon,
 } from 'lucide-react';
+
+// ── Custom Subscript & Superscript marks ──────────────────────────────────
+const RteSubscript = Mark.create({
+  name: 'subscript',
+  excludes: 'superscript',
+  parseHTML() { return [{ tag: 'sub' }]; },
+  renderHTML() { return ['sub', 0]; },
+  addCommands() {
+    return { toggleSubscript: () => ({ commands }: any) => commands.toggleMark(this.name) };
+  },
+});
+const RteSuperscript = Mark.create({
+  name: 'superscript',
+  excludes: 'subscript',
+  parseHTML() { return [{ tag: 'sup' }]; },
+  renderHTML() { return ['sup', 0]; },
+  addCommands() {
+    return { toggleSuperscript: () => ({ commands }: any) => commands.toggleMark(this.name) };
+  },
+});
 
 interface RichTextEditorProps {
   content: string;
@@ -108,6 +130,8 @@ export default function RichTextEditor({
       TextStyle,
       Color,
       Highlight.configure({ multicolor: true, HTMLAttributes: { class: 'rounded px-0.5' } }),
+      RteSubscript,
+      RteSuperscript,
     ],
     content: content || '',
     editable: !disabled,
@@ -209,6 +233,12 @@ export default function RichTextEditor({
       </ToolbarBtn>
       <ToolbarBtn title="Strikethrough" onClick={() => editor.chain().focus().toggleStrike().run()} active={editor.isActive('strike')}>
         <Strikethrough className="w-3.5 h-3.5" />
+      </ToolbarBtn>
+      <ToolbarBtn title="Subscript" onClick={() => (editor.chain().focus() as any).toggleSubscript().run()} active={editor.isActive('subscript')}>
+        <SubscriptIcon className="w-3.5 h-3.5" />
+      </ToolbarBtn>
+      <ToolbarBtn title="Superscript" onClick={() => (editor.chain().focus() as any).toggleSuperscript().run()} active={editor.isActive('superscript')}>
+        <SuperscriptIcon className="w-3.5 h-3.5" />
       </ToolbarBtn>
       <ToolbarSep />
       <ToolbarBtn title="Align Left" onClick={() => editor.chain().focus().setTextAlign('left').run()} active={editor.isActive({ textAlign: 'left' })}>

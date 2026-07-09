@@ -193,7 +193,7 @@ export default function TeacherReportCards() {
         scale: 2,
       });
 
-      toast({ title: "Downloaded", description: "Report card downloaded as image" });
+      toast({ title: "Success", description: "Report card downloaded as image" });
     } catch (error: any) {
       toast({ title: "Download Failed", description: error?.message || "Could not download the report card image. Please try again.", variant: "destructive" });
     } finally {
@@ -212,7 +212,7 @@ export default function TeacherReportCards() {
         scale: 2,
       });
 
-      toast({ title: "Downloaded", description: "Report card PDF downloaded" });
+      toast({ title: "Success", description: "Report card PDF downloaded" });
     } catch (error: any) {
       toast({ title: "Download Failed", description: error?.message || "Could not download the PDF. Please try again.", variant: "destructive" });
     } finally {

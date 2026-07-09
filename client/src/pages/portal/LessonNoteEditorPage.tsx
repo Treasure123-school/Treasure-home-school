@@ -50,11 +50,11 @@ import {
 import {
   Save, Send, Eye, AlertCircle, Info,
   Sparkles, ChevronLeft, Loader2, GraduationCap, BookMarked, Calendar,
-  Copy, Check, ImagePlus, X, RefreshCw, DownloadCloud, Wand2, ClipboardEdit,
+  Copy, Check, ImagePlus, X, RefreshCw, DownloadCloud, ClipboardEdit,
 } from 'lucide-react';
-import FormatNoteDialog from '@/components/lesson-notes/FormatNoteDialog';
-import PasteEnhancePanel from '@/components/lesson-notes/PasteEnhancePanel';
+import PasteEnhanceDialog from '@/components/lesson-notes/PasteEnhanceDialog';
 import { formatLessonNote, fixUnicodeChemistryInHtml } from '@/lib/lessonNoteFormatter';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 
 // ── Pure helpers ───────────────────────────────────────────────────────────────
 
@@ -175,11 +175,16 @@ export default function LessonNoteEditorPage() {
   const qc = useQueryClient();
 
   const isEdit    = !!id;
-  const isAdmin   = user?.roleId === ROLE_IDS.ADMIN || user?.roleId === ROLE_IDS.SUPER_ADMIN;
+  const isAdmin   = user?.roleId === ROLE_IDS.ADMIN;
   const isTeacher = user?.roleId === ROLE_IDS.TEACHER;
   const basePortal = isAdmin ? '/portal/admin' : '/portal/teacher';
   const listUrl    = `${basePortal}/lesson-notes`;
   const query      = parseQuery(window.location.search);
+
+  // ── Draft key for localStorage ─────────────────────────────────────────────
+  const draftKey = isEdit && id
+    ? `lesson-note-draft-${id}`
+    : `lesson-note-draft-new-${query.topicId || query.topicName || 'untitled'}`;
 
   // ── Core state ─────────────────────────────────────────────────────────────
   const [title,       setTitle]       = useState(query.topicName || '');
@@ -187,6 +192,7 @@ export default function LessonNoteEditorPage() {
   const [initialized, setInitialized] = useState(false);
   const [mode,        setMode]        = useState<'choose' | 'editing'>(isEdit ? 'editing' : 'choose');
   const [saveStatus,  setSaveStatus]  = useState<'saved' | 'saving' | 'unsaved' | 'error'>('saved');
+  const [draftBanner, setDraftBanner] = useState<{ title: string; content: string; savedAt: number } | null>(null);
 
   // AI text generation state
   const [aiLoading,            setAiLoading]            = useState(false);
@@ -204,7 +210,6 @@ export default function LessonNoteEditorPage() {
   const [copied,          setCopied]          = useState(false);
   const [regenFig,        setRegenFig]        = useState<RegenFig | null>(null);
   const [regenBusy,       setRegenBusy]       = useState(false);
-  const [formatDialogOpen, setFormatDialogOpen] = useState(false);
 
   // Inline AI image generation state
   const [imgGenLoading,   setImgGenLoading]   = useState(false);
@@ -219,10 +224,16 @@ export default function LessonNoteEditorPage() {
   const [enhanceLoading,     setEnhanceLoading]     = useState(false);
   const [smartConvertLoading, setSmartConvertLoading] = useState(false);
 
+  // AI Generate confirmation
+  const [aiConfirmOpen, setAiConfirmOpen] = useState(false);
+
   // Refs
   const liveHtmlRef     = useRef('');
   const userEditedRef   = useRef(false);
   const imgGenActiveRef = useRef(false);
+  // Guard: only save to localStorage AFTER initialization settles (prevents Tiptap's
+  // init onUpdate from overwriting a real draft with server content).
+  const draftEnabledRef = useRef(false);
   const editorWrapRef   = useRef<HTMLDivElement>(null);
   const generatingDiv   = useRef<HTMLDivElement>(null);   // plain HTML overlay div
   const autoSaveTimer   = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -245,18 +256,50 @@ export default function LessonNoteEditorPage() {
   });
   const { data: settings } = useQuery<any>({ queryKey: ['/api/public/settings'] });
 
-  // ── Init from existing note ────────────────────────────────────────────────
+  // ── Init from existing note + check for localStorage draft ────────────────
   useEffect(() => {
     if (initialized) return;
     if (isEdit && note) {
       const html = migrateContent(note.content, note.objectives);
+      const serverUpdated = note.updatedAt ? new Date(note.updatedAt).getTime() : 0;
+      // Only show banner if draft is genuinely newer AND has meaningfully different content
+      try {
+        const raw = localStorage.getItem(draftKey);
+        if (raw) {
+          const draft = JSON.parse(raw);
+          const draftIsNewer = draft?.savedAt > serverUpdated;
+          const draftHasDifferentContent = draft?.content && draft.content !== html;
+          const draftHasDifferentTitle = draft?.title && draft.title !== (note.title || '');
+          if (draftIsNewer && (draftHasDifferentContent || draftHasDifferentTitle)) {
+            setDraftBanner(draft);
+          } else {
+            // Stale or identical draft — silently remove it
+            try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
+          }
+        }
+      } catch { /* ignore */ }
       setTitle(note.title || '');
       setContent(html);
       liveHtmlRef.current = html;
       setInitialized(true);
       setSaveStatus('saved');
+      // Enable draft saving only after Tiptap's init onUpdate has fired and settled
+      setTimeout(() => { draftEnabledRef.current = true; }, 800);
     }
-    if (!isEdit) { setTitle(query.topicName || ''); setInitialized(true); }
+    if (!isEdit) {
+      // Check for a saved draft for this new note
+      try {
+        const raw = localStorage.getItem(draftKey);
+        if (raw) {
+          const draft = JSON.parse(raw);
+          if (draft?.content || draft?.title) setDraftBanner(draft);
+        }
+      } catch { /* ignore */ }
+      setTitle(query.topicName || '');
+      setInitialized(true);
+      // For new notes start saving immediately (no server content to conflict with)
+      setTimeout(() => { draftEnabledRef.current = true; }, 400);
+    }
   }, [note, isEdit, initialized]);
 
   // ── Derived permissions ────────────────────────────────────────────────────
@@ -317,6 +360,17 @@ export default function LessonNoteEditorPage() {
     });
   }, [content]);
 
+  // ── LocalStorage draft helpers ─────────────────────────────────────────────
+  const saveDraft = useCallback((html: string, noteTitle: string) => {
+    try {
+      localStorage.setItem(draftKey, JSON.stringify({ title: noteTitle, content: html, savedAt: Date.now() }));
+    } catch { /* storage full or disabled — ignore */ }
+  }, [draftKey]);
+
+  const clearDraft = useCallback(() => {
+    try { localStorage.removeItem(draftKey); } catch { /* ignore */ }
+  }, [draftKey]);
+
   // ── Content change handler + auto-save ────────────────────────────────────
   const handleContentChange = useCallback((html: string) => {
     setContent(html);
@@ -325,7 +379,10 @@ export default function LessonNoteEditorPage() {
     if (imgGenActiveRef.current) userEditedRef.current = true;
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     autoSaveTimer.current = setTimeout(() => triggerAutoSave(html), 2000);
-  }, []);
+    // Only mirror to localStorage after init has settled — prevents Tiptap's
+    // init onUpdate from overwriting a real draft with the server content.
+    if (draftEnabledRef.current) saveDraft(html, title);
+  }, [title, saveDraft]);
 
   // ── Click on diagram → Regenerate panel ───────────────────────────────────
   const handleEditorClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -374,7 +431,7 @@ export default function LessonNoteEditorPage() {
       const updated = replacePlaceholder(liveHtmlRef.current, figId, imageUrl, heading);
       liveHtmlRef.current = updated;
       setContent(updated);
-      toast({ title: '✅ Diagram regenerated', description: heading });
+      toast({ title: 'Success', description: `Diagram regenerated: ${heading}` });
     } catch {
       const failed = markPlaceholderFailed(liveHtmlRef.current, figId, heading);
       liveHtmlRef.current = failed;
@@ -473,7 +530,7 @@ export default function LessonNoteEditorPage() {
     setSaveStatus('unsaved');
     setImgGenPanel(false);
     setImgGenUrl(null);
-    toast({ title: '✅ Image inserted', description: 'AI-generated image added to your lesson note.' });
+    toast({ title: 'Success', description: 'AI-generated image added to your lesson note.' });
   }, [imgGenUrl, content, title, query]);
 
   const triggerAutoSave = useCallback(async (html: string) => {
@@ -493,7 +550,7 @@ export default function LessonNoteEditorPage() {
   const saveMutation = useMutation({
     mutationFn: () => doSave(content),
     onMutate:   () => setSaveStatus('saving'),
-    onSuccess:  () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); setSaveStatus('saved'); toast({ title: 'Saved', description: 'Draft saved successfully.' }); },
+    onSuccess:  () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); setSaveStatus('saved'); clearDraft(); toast({ title: 'Success', description: 'Draft saved.' }); },
     onError:    (e: any) => { setSaveStatus('error'); toast({ title: 'Save failed', description: e.message, variant: 'destructive' }); },
   });
 
@@ -502,7 +559,7 @@ export default function LessonNoteEditorPage() {
       const nid = await doSave(content);
       return (await apiRequest('POST', `/api/lesson-notes/${nid}/submit`)).json();
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); toast({ title: 'Submitted for review' }); navigate(listUrl); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); clearDraft(); toast({ title: 'Success', description: 'Lesson note submitted for review.' }); navigate(listUrl); },
     onError:   (e: any) => toast({ title: 'Submit failed', description: e.message, variant: 'destructive' }),
   });
 
@@ -511,7 +568,7 @@ export default function LessonNoteEditorPage() {
       const nid = await doSave(content);
       return (await apiRequest('POST', `/api/lesson-notes/${nid}/approve-publish`)).json();
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); toast({ title: 'Published!', description: 'Lesson note is now visible to students.' }); navigate(listUrl); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['/api/lesson-notes'] }); clearDraft(); toast({ title: 'Success', description: 'Lesson note published and visible to students.' }); navigate(listUrl); },
     onError:   (e: any) => toast({ title: 'Publish failed', description: e.message, variant: 'destructive' }),
   });
 
@@ -701,7 +758,7 @@ export default function LessonNoteEditorPage() {
                     // Show result toast
                     const total = imgJobs.length;
                     if (imgSuccessCount === total) {
-                      toast({ title: `✅ All ${total} diagram${total > 1 ? 's' : ''} generated`, description: 'Note is ready to save.' });
+                      toast({ title: 'Success', description: `All ${total} diagram${total > 1 ? 's' : ''} generated — note is ready to save.` });
                     } else if (imgSuccessCount > 0) {
                       toast({
                         title: `⚠️ ${imgSuccessCount} of ${total} diagrams generated`,
@@ -955,7 +1012,11 @@ export default function LessonNoteEditorPage() {
             {canEdit && (
               <Button size="sm" variant="outline"
                 className="h-8 text-xs gap-1.5 rounded border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-400 font-semibold"
-                onClick={generateWithAI} disabled={aiLoading || isGeneratingImages || busy}>
+                onClick={() => {
+                  const hasContent = !!(liveHtmlRef.current || content)?.replace(/<[^>]*>/g, '').trim();
+                  if (hasContent) { setAiConfirmOpen(true); } else { generateWithAI(); }
+                }}
+                disabled={aiLoading || isGeneratingImages || busy}>
                 {aiLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                 <span className="hidden sm:inline">{aiLoading ? 'Generating…' : 'AI Generate'}</span>
               </Button>
@@ -963,23 +1024,12 @@ export default function LessonNoteEditorPage() {
 
             {canEdit && (
               <Button size="sm" variant="outline"
-                className="h-8 text-xs gap-1.5 rounded border-violet-200 text-violet-700 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-400 font-semibold"
-                onClick={() => setFormatDialogOpen(true)}
-                disabled={aiLoading || isGeneratingImages || busy || !content}
-                title="Auto-detect headings, lists, tables, equations and chemistry in your note">
-                <Wand2 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Format Note</span>
-              </Button>
-            )}
-
-            {canEdit && (
-              <Button size="sm" variant="outline"
                 className="h-8 text-xs gap-1.5 rounded border-teal-200 text-teal-700 hover:bg-teal-50 dark:border-teal-800 dark:text-teal-400 font-semibold"
-                onClick={() => { setPastePanel(p => !p); }}
+                onClick={() => setPastePanel(true)}
                 disabled={aiLoading || isGeneratingImages || busy}
                 title="Paste your own lesson note text and let AI rewrite it professionally">
                 <ClipboardEdit className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{pastePanel ? 'Hide Paste' : 'Paste & Enhance'}</span>
+                <span className="hidden sm:inline">Paste &amp; Enhance</span>
               </Button>
             )}
 
@@ -1079,18 +1129,43 @@ export default function LessonNoteEditorPage() {
         )}
       </div>
 
-      {/* ── Paste & Enhance panel ── */}
-      {pastePanel && canEdit && (
-        <PasteEnhancePanel
-          text={pasteText}
-          onChange={setPasteText}
-          onEnhance={enhanceWithAI}
-          onSmartConvert={smartConvert}
-          onClose={() => { setPastePanel(false); setPasteText(''); }}
-          loading={enhanceLoading || aiLoading}
-          smartConverting={smartConvertLoading}
-        />
+      {/* ── Local draft restore banner ── */}
+      {draftBanner && canEdit && (
+        <div className="shrink-0 flex items-center gap-3 px-4 py-2.5 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800">
+          <span className="text-xs text-amber-800 dark:text-amber-300 flex-1">
+            📝 You have an unsaved local draft from {new Date(draftBanner.savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}. Restore it?
+          </span>
+          <button
+            className="shrink-0 text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded transition-colors"
+            onClick={() => {
+              if (draftBanner.title) setTitle(draftBanner.title);
+              if (draftBanner.content) { setContent(draftBanner.content); liveHtmlRef.current = draftBanner.content; setSaveStatus('unsaved'); }
+              setDraftBanner(null);
+              toast({ title: 'Success', description: 'Draft restored — your unsaved work has been recovered.' });
+            }}
+          >
+            Restore
+          </button>
+          <button
+            className="shrink-0 text-xs text-amber-600 dark:text-amber-400 hover:text-amber-800 px-2 py-1 rounded hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+            onClick={() => { clearDraft(); setDraftBanner(null); }}
+          >
+            Discard
+          </button>
+        </div>
       )}
+
+      {/* ── Paste & Enhance modal dialog ── */}
+      <PasteEnhanceDialog
+        open={pastePanel && canEdit}
+        onOpenChange={open => { setPastePanel(open); if (!open) setPasteText(''); }}
+        text={pasteText}
+        onChange={setPasteText}
+        onEnhance={enhanceWithAI}
+        onSmartConvert={smartConvert}
+        loading={enhanceLoading || aiLoading}
+        smartConverting={smartConvertLoading}
+      />
 
       {/* ── AI Image panel ── */}
       {imgGenPanel && (
@@ -1240,19 +1315,16 @@ export default function LessonNoteEditorPage() {
         </div>
       )}
 
-      {/* ── Smart Format Note dialog ── */}
-      <FormatNoteDialog
-        open={formatDialogOpen}
-        onClose={() => setFormatDialogOpen(false)}
-        currentHtml={liveHtmlRef.current || content}
-        onApply={(formattedHtml) => {
-          setContent(formattedHtml);
-          liveHtmlRef.current = formattedHtml;
-          setSaveStatus('unsaved');
-          if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-          autoSaveTimer.current = setTimeout(() => triggerAutoSave(formattedHtml), 2000);
-          toast({ title: '✅ Formatting applied', description: 'Your note has been formatted. You can continue editing.' });
-        }}
+      {/* ── AI Generate overwrite confirmation ── */}
+      <ConfirmDialog
+        open={aiConfirmOpen}
+        onOpenChange={setAiConfirmOpen}
+        title="Replace existing note?"
+        description="Generating a new note with AI will clear the current content. This cannot be undone. Are you sure you want to continue?"
+        confirmLabel="Yes, generate"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={() => { setAiConfirmOpen(false); generateWithAI(); }}
       />
 
     </div>

@@ -22,8 +22,8 @@ import {
 
 const router = Router();
 
-const ADMIN_ROLES  = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
-const STAFF_ROLES  = [ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER];
+const ADMIN_ROLES  = [ROLES.ADMIN];
+const STAFF_ROLES  = [ROLES.ADMIN, ROLES.TEACHER];
 
 const isAdmin   = (roleId: number) => (ADMIN_ROLES as readonly number[]).includes(roleId);
 const isTeacher = (roleId: number) => roleId === ROLES.TEACHER;
@@ -383,6 +383,7 @@ router.get('/api/question-bank/items', authenticateUser, authorizeRoles(...STAFF
 
         const page     = clamp(parseInt((req.query.page as string) || '1', 10) || 1, 1, 9999);
         const pageSize = clamp(parseInt((req.query.pageSize as string) || '20', 10) || 20, 1, 100);
+        const fetchAll = req.query.fetchAll === 'true';
 
         const topicId      = parseIntParam(req.query.topicId as string) ?? undefined;
         const difficulty   = (req.query.difficulty as string) || undefined;
@@ -413,6 +414,29 @@ router.get('/api/question-bank/items', authenticateUser, authorizeRoles(...STAFF
             return sendSuccess(res, {
                 items: itemsWithOptions, total, page, pageSize,
                 totalPages: Math.ceil(total / pageSize),
+            });
+        }
+
+        // ── fetchAll path — used by import/search modals; bypasses pagination ──
+        if (fetchAll) {
+            const allFilters: Parameters<typeof storage.getQuestionBankItemsFiltered>[0] = {
+                bankId: bankId!, classId, termId, topicId, difficulty, questionType,
+            };
+            if (isAdmin(user.roleId)) {
+                if (statusFilter) allFilters.status = statusFilter;
+            } else if (isTeacher(user.roleId)) {
+                allFilters.statuses = ['published', 'active', 'approved'];
+            }
+            const allItems = await storage.getQuestionBankItemsFiltered(allFilters);
+            const itemsWithOptions = await Promise.all(
+                allItems.map(async (item: any) => {
+                    const options = await storage.getQuestionBankItemOptions(item.id);
+                    return { ...item, options };
+                })
+            );
+            return sendSuccess(res, {
+                items: itemsWithOptions, total: allItems.length,
+                page: 1, pageSize: allItems.length, totalPages: 1,
             });
         }
 
@@ -472,7 +496,9 @@ router.post('/api/question-bank/items', authenticateUser, authorizeRoles(...STAF
         if (!questionType) return sendBadRequest(res, 'questionType is required');
 
         const user = req.user!;
-        const initialStatus = isAdmin(user.roleId) ? 'active' : 'draft';
+        // Admins: directly published (no manual publish step needed)
+        // Teachers: active (immediately usable in exam imports without draft/submit workflow)
+        const initialStatus = isAdmin(user.roleId) ? 'published' : 'active';
 
         const item = await storage.createQuestionBankItem({
             bankId, questionText, questionType,
@@ -616,8 +642,10 @@ router.post('/api/question-bank/items/:id/publish', authenticateUser, authorizeR
         if (isNaN(id)) return sendBadRequest(res, 'Invalid ID');
         const existing = await storage.getQuestionBankItemById(id);
         if (!existing) return sendNotFound(res, 'Question not found');
+        // Idempotent: already published → return as-is without error
+        if (existing.status === 'published') return sendSuccess(res, existing);
         if (!['approved', 'active'].includes(existing.status))
-            return sendBadRequest(res, 'Only approved questions can be published');
+            return sendBadRequest(res, 'Only approved or active questions can be published');
 
         const updated = await storage.publishQuestionBankItem(id);
         sendSuccess(res, updated);
@@ -630,12 +658,32 @@ router.post('/api/question-bank/items/:id/unpublish', authenticateUser, authoriz
         if (isNaN(id)) return sendBadRequest(res, 'Invalid ID');
         const existing = await storage.getQuestionBankItemById(id);
         if (!existing) return sendNotFound(res, 'Question not found');
-        if (existing.status !== 'published')
-            return sendBadRequest(res, 'Only published questions can be unpublished');
+        // Idempotent: already unpublished (active/approved/draft) → return as-is without error
+        if (existing.status !== 'published') return sendSuccess(res, existing);
 
         const updated = await storage.unpublishQuestionBankItem(id);
         sendSuccess(res, updated);
     } catch (error) { handleRouteError(res, error, 'questionBank.items.unpublish'); }
+});
+
+// ─── Bulk publish all questions in a bank ─────────────────────────────────────
+router.post('/api/question-banks/:bankId/bulk-publish', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
+    try {
+        const bankId = parseInt(req.params.bankId);
+        if (isNaN(bankId)) return sendBadRequest(res, 'Invalid bank ID');
+        const count = await storage.bulkPublishQuestionBankItems(bankId);
+        sendSuccess(res, { published: count, message: `${count} question${count !== 1 ? 's' : ''} published.` });
+    } catch (error) { handleRouteError(res, error, 'questionBank.banks.bulkPublish'); }
+});
+
+// ─── Bulk unpublish all questions in a bank ────────────────────────────────────
+router.post('/api/question-banks/:bankId/bulk-unpublish', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
+    try {
+        const bankId = parseInt(req.params.bankId);
+        if (isNaN(bankId)) return sendBadRequest(res, 'Invalid bank ID');
+        const count = await storage.bulkUnpublishQuestionBankItems(bankId);
+        sendSuccess(res, { unpublished: count, message: `${count} question${count !== 1 ? 's' : ''} unpublished.` });
+    } catch (error) { handleRouteError(res, error, 'questionBank.banks.bulkUnpublish'); }
 });
 
 // ═══════════════════════════════════════════════════════
@@ -654,7 +702,8 @@ router.post('/api/question-bank/items/bulk-csv', authenticateUser, authorizeRole
             return sendBadRequest(res, 'Maximum 200 questions per upload');
 
         const user = req.user!;
-        const initialStatus = isAdmin(user.roleId) ? 'active' : 'draft';
+        // Admins: directly published; Teachers: active (visible for exam use immediately)
+        const initialStatus = isAdmin(user.roleId) ? 'published' : 'active';
         const created: any[] = [];
         const errors: string[] = [];
 
@@ -664,9 +713,9 @@ router.post('/api/question-bank/items/bulk-csv', authenticateUser, authorizeRole
                 if (!q.questionText || q.questionText.trim().length < 5) {
                     errors.push(`Row ${i + 1}: Question text must be at least 5 characters`); continue;
                 }
-                const questionType = q.questionType || 'text';
-                if (!['multiple_choice', 'text', 'essay', 'true_false', 'fill_blank'].includes(questionType)) {
-                    errors.push(`Row ${i + 1}: Invalid question type "${questionType}"`); continue;
+                const questionType = q.questionType || 'essay';
+                if (!['multiple_choice', 'essay'].includes(questionType)) {
+                    errors.push(`Row ${i + 1}: Invalid question type "${questionType}". Please use 'multiple_choice' or 'essay'.`); continue;
                 }
                 let options: any[] | undefined;
                 if (questionType === 'multiple_choice' && q.options?.length >= 2) {
@@ -727,7 +776,7 @@ router.post('/api/question-bank/auto-generate', authenticateUser, async (req: an
 
         let pool = await storage.getQuestionBankItemsFiltered(filters);
         if (questionType === 'both')
-            pool = pool.filter((q: any) => ['multiple_choice', 'text', 'essay'].includes(q.questionType));
+            pool = pool.filter((q: any) => ['multiple_choice', 'essay'].includes(q.questionType));
 
         const excludeSet = new Set((excludeIds || []).map((id: any) => parseInt(id)));
         if (excludeSet.size > 0) pool = pool.filter((q: any) => !excludeSet.has(q.id));

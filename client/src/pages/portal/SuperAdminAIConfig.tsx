@@ -152,7 +152,7 @@ export default function SuperAdminAIConfig() {
   const saveMutation = useMutation({
     mutationFn: (data: any) => apiRequest("PUT", "/api/superadmin/ai-config", data),
     onSuccess: () => {
-      toast({ title: "Configuration Saved", description: "AI settings have been updated successfully." });
+      toast({ title: "Success", description: "AI settings have been updated successfully." });
       qc.invalidateQueries({ queryKey: ["/api/superadmin/ai-config"] });
       setLocalConfig({});
       setEditKeys({});
@@ -165,7 +165,7 @@ export default function SuperAdminAIConfig() {
   const savePromptsMutation = useMutation({
     mutationFn: (data: any) => apiRequest("PUT", "/api/superadmin/ai-config/prompts", data),
     onSuccess: () => {
-      toast({ title: "Prompts Saved", description: "System prompts have been updated." });
+      toast({ title: "Success", description: "System prompts have been updated." });
       qc.invalidateQueries({ queryKey: ["/api/superadmin/ai-config"] });
       setLocalPrompts({});
     },
@@ -177,7 +177,7 @@ export default function SuperAdminAIConfig() {
   const resetUsageMutation = useMutation({
     mutationFn: (period: string) => apiRequest("POST", "/api/superadmin/ai-config/reset-usage", { period }),
     onSuccess: () => {
-      toast({ title: "Usage Reset", description: "Usage counters have been reset." });
+      toast({ title: "Success", description: "Usage counters have been reset." });
       qc.invalidateQueries({ queryKey: ["/api/superadmin/ai-config/usage"] });
     },
   });
@@ -213,7 +213,7 @@ export default function SuperAdminAIConfig() {
   const saveCfMutation = useMutation({
     mutationFn: (data: any) => apiRequest("PUT", "/api/superadmin/ai-config/cloudflare", data),
     onSuccess: () => {
-      toast({ title: "Cloudflare Config Saved" });
+      toast({ title: "Success", description: "Cloudflare image configuration saved" });
       qc.invalidateQueries({ queryKey: ["/api/superadmin/ai-config/cloudflare"] });
       setCfAccountId(""); setCfApiToken(""); setLocalCfConfig({});
     },
@@ -267,7 +267,7 @@ export default function SuperAdminAIConfig() {
   const saveNvMutation = useMutation({
     mutationFn: (data: any) => apiRequest("PUT", "/api/superadmin/ai-config/nvidia-image", data),
     onSuccess: () => {
-      toast({ title: "NVIDIA Config Saved" });
+      toast({ title: "Success", description: "NVIDIA image configuration saved" });
       qc.invalidateQueries({ queryKey: ["/api/superadmin/ai-config/nvidia-image"] });
       setNvidiaApiKey(""); setLocalNvConfig({});
     },
@@ -303,7 +303,7 @@ export default function SuperAdminAIConfig() {
   const saveProviderMutation = useMutation({
     mutationFn: (data: any) => apiRequest("PUT", "/api/superadmin/ai-config/image-provider", data),
     onSuccess: () => {
-      toast({ title: "Image Provider Saved", description: `Active provider: ${activeImgProvider}` });
+      toast({ title: "Success", description: `Image provider saved — active: ${activeImgProvider}` });
       qc.invalidateQueries({ queryKey: ["/api/superadmin/ai-config/cloudflare"] });
     },
     onError: (err: any) => toast({ title: "Save Failed", description: err.message, variant: "destructive" }),
@@ -923,7 +923,7 @@ export default function SuperAdminAIConfig() {
                         };
                         savePromptsMutation.mutate(toSave, {
                           onSuccess: () => {
-                            toast({ title: "Reset to Default", description: "The built-in expert prompt has been restored." });
+                            toast({ title: "Success", description: "Built-in expert prompt restored." });
                           }
                         });
                       }}

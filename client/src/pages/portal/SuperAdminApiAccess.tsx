@@ -42,7 +42,7 @@ export default function SuperAdminApiAccess() {
       return apiRequest("PUT", "/api/superadmin/settings", data);
     },
     onSuccess: () => {
-      toast({ title: "API Settings Saved", description: "API access status has been updated." });
+      toast({ title: "Success", description: "API access settings saved." });
       queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
       setIsEditing(false);
     },
@@ -56,7 +56,7 @@ export default function SuperAdminApiAccess() {
       return apiRequest("POST", "/api/superadmin/api-keys/generate", {});
     },
     onSuccess: () => {
-      toast({ title: "API Key Generated", description: "A new API access key has been created." });
+      toast({ title: "Success", description: "New API access key generated." });
       queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
     }
   });

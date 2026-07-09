@@ -185,10 +185,7 @@ export default function AssignSubjectTeachers() {
       return await response.json();
     },
     onSuccess: () => {
-      toast({
-        title: 'Assignment Removed',
-        description: 'Teacher assignment has been removed',
-      });
+      toast({ title: 'Success', description: 'Teacher assignment removed' });
       refetchAssignments();
       queryClient.invalidateQueries({ queryKey: ['/api/teacher-assignments'] });
     },
@@ -225,10 +222,7 @@ export default function AssignSubjectTeachers() {
     
     try {
       await Promise.all(promises);
-      toast({
-        title: 'Assignments Created',
-        description: `Successfully assigned ${selectedClasses.length} class(es) and ${selectedSubjects.length} subject(s)`,
-      });
+      toast({ title: 'Success', description: `Assigned ${selectedClasses.length} class(es) and ${selectedSubjects.length} subject(s)` });
       setIsAssignDialogOpen(false);
       setSelectedClasses([]);
       setSelectedSubjects([]);

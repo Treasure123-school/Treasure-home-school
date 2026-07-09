@@ -381,7 +381,7 @@ export default function SuperAdminCurriculumTemplates() {
   const createMutation = useMutation({
     mutationFn: (data: typeof tplForm) => apiRequest("POST", "/api/curriculum-templates", data),
     onSuccess: () => {
-      toast({ title: "Template created" });
+      toast({ title: "Success", description: "Curriculum template created" });
       queryClient.invalidateQueries({ queryKey: ["/api/curriculum-templates"] });
       queryClient.invalidateQueries({ queryKey: ["/api/curriculum-templates/stats"] });
       setShowCreateTemplate(false);

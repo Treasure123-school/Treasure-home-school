@@ -25,7 +25,7 @@ router.get('/api/reports/:reportCardId/skills', authenticateUser, async (req: Re
 
 // Save/update skills for a report card
 // AUTHORIZATION: Only the class teacher or admins can rate skills
-router.post('/api/reports/:reportCardId/skills', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.post('/api/reports/:reportCardId/skills', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
         const { reportCardId } = req.params;
         const userId = req.user!.id;

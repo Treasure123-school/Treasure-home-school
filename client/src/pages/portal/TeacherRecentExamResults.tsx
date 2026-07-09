@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAuth } from '@/lib/auth';
+import { ROLE_IDS } from '@/lib/roles';
 import { apiRequest } from '@/lib/queryClient';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { useToast } from '@/hooks/use-toast';
@@ -88,8 +89,11 @@ export default function TeacherRecentExamResults() {
     }
   });
 
+  const isAdmin = user.roleId === ROLE_IDS.ADMIN;
+  const viewResultsBase = isAdmin ? '/portal/admin/exams/analysis' : '/portal/teacher/results/exam';
+
   const teacherExams = (exams as Exam[])
-    .filter((exam) => exam.createdBy === user.id)
+    .filter((exam) => isAdmin ? true : exam.createdBy === user.id)
     .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
   const filteredExams = teacherExams.filter((exam) => {
@@ -279,6 +283,7 @@ export default function TeacherRecentExamResults() {
                       index={index}
                       getClassName={getClassName}
                       getSubjectName={getSubjectName}
+                      viewResultsBase={viewResultsBase}
                     />
                   ))}
                 </div>
@@ -304,6 +309,7 @@ export default function TeacherRecentExamResults() {
                           index={index}
                           getClassName={getClassName}
                           getSubjectName={getSubjectName}
+                          viewResultsBase={viewResultsBase}
                         />
                       ))}
                     </TableBody>
@@ -350,12 +356,14 @@ function ExamResultRow({
   exam, 
   index,
   getClassName,
-  getSubjectName 
+  getSubjectName,
+  viewResultsBase,
 }: { 
   exam: Exam; 
   index: number;
   getClassName: (id: number | null | undefined) => string;
   getSubjectName: (id: number | null | undefined) => string;
+  viewResultsBase: string;
 }) {
   const { data: examResults = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/exam-results/exam/${exam.id}`],
@@ -413,7 +421,7 @@ function ExamResultRow({
           asChild
           data-testid={`button-view-results-${index}`}
         >
-          <Link href={`/portal/teacher/results/exam/${exam.id}`}>
+          <Link href={`${viewResultsBase}/${exam.id}`}>
             <Eye className="h-4 w-4 mr-1" />
             View Results
           </Link>
@@ -427,12 +435,14 @@ function ExamResultCardMobile({
   exam, 
   index,
   getClassName,
-  getSubjectName 
+  getSubjectName,
+  viewResultsBase,
 }: { 
   exam: Exam; 
   index: number;
   getClassName: (id: number | null | undefined) => string;
   getSubjectName: (id: number | null | undefined) => string;
+  viewResultsBase: string;
 }) {
   const { data: examResults = [], isLoading } = useQuery<any[]>({
     queryKey: [`/api/exam-results/exam/${exam.id}`],
@@ -489,7 +499,7 @@ function ExamResultCardMobile({
             asChild
             data-testid={`button-view-results-mobile-${index}`}
           >
-            <Link href={`/portal/teacher/results/exam/${exam.id}`}>
+            <Link href={`${viewResultsBase}/${exam.id}`}>
               View Results
             </Link>
           </Button>

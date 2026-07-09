@@ -73,7 +73,7 @@ export default function SuperAdminBrandingTheme() {
       // Only show a preview — do NOT save to DB yet, do NOT update any public query cache.
       setPendingLogoUrl(data.url);
       setFormData(prev => ({ ...prev, schoolLogo: data.url }));
-      toast({ title: "Logo Ready", description: "Click 'Save Changes' to apply this logo to the portal." });
+      toast({ title: "Success", description: "Logo ready — click 'Save Changes' to apply it." });
     },
     onError: (error: any) => {
       toast({ title: "Upload Failed", description: error.message || "Error uploading logo.", variant: "destructive" });
@@ -106,7 +106,7 @@ export default function SuperAdminBrandingTheme() {
       // Only show a preview — do NOT update browser favicon tab yet.
       setPendingFaviconUrl(data.url);
       setFormData(prev => ({ ...prev, favicon: data.url }));
-      toast({ title: "Favicon Ready", description: "Click 'Save Changes' to apply this favicon to the portal." });
+      toast({ title: "Success", description: "Favicon ready — click 'Save Changes' to apply it." });
     },
     onError: (error: any) => {
       toast({ title: "Upload Failed", description: error.message || "Error uploading favicon.", variant: "destructive" });
@@ -200,7 +200,7 @@ export default function SuperAdminBrandingTheme() {
       setPendingLogoUrl(null);
       setPendingFaviconUrl(null);
 
-      toast({ title: "Branding Updated", description: "Your branding and theme settings have been saved." });
+      toast({ title: "Success", description: "Branding and theme settings saved." });
 
       // Force-refetch both settings queries so BrandColorSync and the rest of
       // the app stay in sync (refetchQueries bypasses staleTime).

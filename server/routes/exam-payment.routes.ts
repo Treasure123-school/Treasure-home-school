@@ -49,7 +49,7 @@ router.get("/status", authenticateUser, authorizeRoles(ROLES.STUDENT), async (re
 
 // ─── GET /api/exam-payments ─────────────────────────────────────────────────
 // Admin: list all payments (optionally filtered by termId)
-router.get("/", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.get("/", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const termId = req.query.termId ? parseInt(req.query.termId as string) : null;
 
@@ -99,7 +99,7 @@ router.get("/", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN)
 
 // ─── GET /api/exam-payments/students-status ──────────────────────────────────
 // Admin: get all students with their payment status for a term
-router.get("/students-status", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.get("/students-status", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const termId = req.query.termId ? parseInt(req.query.termId as string) : null;
 
@@ -163,7 +163,7 @@ const createPaymentSchema = z.object({
   notes: z.string().optional(),
 });
 
-router.post("/", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.post("/", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const parsed = createPaymentSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -224,7 +224,7 @@ router.post("/", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN
 
 // ─── POST /api/exam-payments/bulk ────────────────────────────────────────────
 // Admin: bulk-mark multiple students as paid
-router.post("/bulk", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.post("/bulk", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const { studentIds, termId, amountPaid = 0, paymentMethod = "cash", notes = "" } = req.body;
     if (!Array.isArray(studentIds) || studentIds.length === 0) {
@@ -756,7 +756,7 @@ router.post("/webhook", async (req: Request, res: Response) => {
 
 // ─── GET /api/exam-payments/settings ─────────────────────────────────────────
 // Admin & Super Admin: get exam payment configuration
-router.get("/settings", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.get("/settings", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const settings = await storage.getSystemSettings();
     res.json({
@@ -775,7 +775,7 @@ const updateSettingsSchema = z.object({
   examFeeAmount: z.number().int().min(0),
 });
 
-router.put("/settings", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.put("/settings", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const parsed = updateSettingsSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -805,7 +805,7 @@ router.put("/settings", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPE
 
 // ─── DELETE /api/exam-payments/:id ───────────────────────────────────────────
 // Admin: revoke a payment
-router.delete("/:id", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.delete("/:id", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return res.status(400).json({ message: "Invalid payment ID" });

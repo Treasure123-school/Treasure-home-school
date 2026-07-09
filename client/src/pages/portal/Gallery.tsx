@@ -38,10 +38,7 @@ export default function Gallery() {
   });
 
   const handleImageUpload = (result: any) => {
-    toast({
-      title: "Image uploaded",
-      description: "Your image has been added to the gallery successfully.",
-    });
+    toast({ title: "Success", description: "Image added to the gallery successfully." });
     
     // Refresh gallery images
     queryClient.invalidateQueries({ queryKey: ['gallery-images'] });
@@ -56,10 +53,7 @@ export default function Gallery() {
       });
 
       if (response.ok) {
-        toast({
-          title: "Image deleted",
-          description: "The image has been removed from the gallery.",
-        });
+        toast({ title: "Success", description: "Image removed from the gallery." });
         queryClient.invalidateQueries({ queryKey: ['gallery-images'] });
       } else {
         throw new Error('Failed to delete image');

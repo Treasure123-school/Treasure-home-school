@@ -97,10 +97,7 @@ export function ImageCapture({
         URL.revokeObjectURL(selectedImageUrl);
         setSelectedImageUrl(null);
       }
-      toast({
-        title: "✅ Photo Ready",
-        description: "Your photo has been captured and cropped successfully.",
-      });
+      toast({ title: "Success", description: "Photo captured and cropped successfully." });
     } catch (error) {
       toast({
         title: "Process Failed",

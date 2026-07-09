@@ -31,7 +31,7 @@ export default function LessonNoteViewPage() {
   const [returnReason, setReturnReason] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const isAdmin   = user?.roleId === ROLE_IDS.ADMIN || user?.roleId === ROLE_IDS.SUPER_ADMIN;
+  const isAdmin   = user?.roleId === ROLE_IDS.ADMIN;
   const isTeacher = user?.roleId === ROLE_IDS.TEACHER;
   const basePortal = isAdmin ? '/portal/admin' : '/portal/teacher';
   const listUrl    = `${basePortal}/lesson-notes`;
@@ -67,7 +67,7 @@ export default function LessonNoteViewPage() {
         approve: 'Approved', reject: 'Rejected', return: 'Returned for revision', publish: 'Published',
         unpublish: 'Unpublished', 'approve-publish': 'Approved & Published', submit: 'Submitted',
       };
-      toast({ title: labels[action] || 'Done' });
+      toast({ title: 'Success', description: labels[action] || 'Action completed.' });
       navigate(listUrl);
     } catch (e: any) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' });

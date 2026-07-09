@@ -1614,7 +1614,7 @@ export default function TeachersManagement() {
                     size="sm"
                     onClick={() => {
                       navigator.clipboard.writeText(credentialsDialog.username);
-                      toast({ title: "Copied!", description: "Username copied to clipboard" });
+                      toast({ title: "Success", description: "Username copied to clipboard." });
                     }}
                     data-testid="button-copy-username"
                   >
@@ -1634,7 +1634,7 @@ export default function TeachersManagement() {
                     size="sm"
                     onClick={() => {
                       navigator.clipboard.writeText(credentialsDialog.password);
-                      toast({ title: "Copied!", description: "Password copied to clipboard" });
+                      toast({ title: "Success", description: "Password copied to clipboard." });
                     }}
                     data-testid="button-copy-password"
                   >

@@ -6,7 +6,7 @@
  * Tab 3: Import from Question Bank — browse/filter/select from bank
  * Tab 4: Auto Generate — auto-generate questions from question bank with filters
  */
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -20,10 +20,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import {
-    PenLine, Upload, Database, Download, Search, Filter,
-    CheckCircle2, XCircle, AlertTriangle, Plus, Trash2, FileUp,
+    PenLine, Upload, Database, Search, Filter,
+    CheckCircle2, XCircle, AlertTriangle, Plus, Trash2,
     Wand2, RefreshCw, Sparkles, Loader2
 } from 'lucide-react';
+import { BulkCSVUploadPanel } from '@/components/shared/BulkCSVQuestionsDialog';
+import type { ParsedQuestion } from '@/components/shared/BulkCSVQuestionsDialog';
 
 interface ExamQuestionAdderProps {
     open: boolean;
@@ -38,10 +40,12 @@ export default function ExamQuestionAdder({
     open, onOpenChange, examId, examClassId, examSubjectId, onQuestionsAdded
 }: ExamQuestionAdderProps) {
     const { toast } = useToast();
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // ═══ TAB STATE ═══
     const [activeTab, setActiveTab] = useState('manual');
+
+    // ═══ CSV TAB STATE ═══
+    const [csvServerErrors, setCsvServerErrors] = useState<string[]>([]);
 
     // ═══ MANUAL TAB STATE ═══
     const [questionText, setQuestionText] = useState('');
@@ -57,14 +61,11 @@ export default function ExamQuestionAdder({
     const [instructions, setInstructions] = useState('');
     const [sampleAnswer, setSampleAnswer] = useState('');
 
-    // ═══ CSV TAB STATE ═══
-    const [csvPreview, setCsvPreview] = useState<any[]>([]);
-    const [csvErrors, setCsvErrors] = useState<string[]>([]);
-
     // ═══ BANK IMPORT TAB STATE ═══
     const [bankFilterClassId, setBankFilterClassId] = useState(examClassId ? String(examClassId) : '');
     const [bankFilterSubjectId, setBankFilterSubjectId] = useState(examSubjectId ? String(examSubjectId) : '');
     const [bankFilterTermId, setBankFilterTermId] = useState('');
+    const [bankFilterBankId, setBankFilterBankId] = useState('');
     const [bankFilterTopicId, setBankFilterTopicId] = useState('');
     const [bankFilterDifficulty, setBankFilterDifficulty] = useState('');
     const [bankFilterType, setBankFilterType] = useState('');
@@ -101,13 +102,28 @@ export default function ExamQuestionAdder({
         }
     }, [currentTerm]);
 
+    // ═══ BANK IMPORT — available banks (requires class + subject + term) ═══
+    const { data: importBanks = [] } = useQuery({
+        queryKey: ['/api/question-banks', 'import', bankFilterClassId, bankFilterSubjectId, bankFilterTermId],
+        queryFn: async () => {
+            const params = new URLSearchParams();
+            if (bankFilterClassId)   params.set('classId',   bankFilterClassId);
+            if (bankFilterSubjectId) params.set('subjectId', bankFilterSubjectId);
+            if (bankFilterTermId)    params.set('termId',    bankFilterTermId);
+            const r = await apiRequest('GET', `/api/question-banks?${params.toString()}`);
+            return r.ok ? r.json() : [];
+        },
+        enabled: !!(bankFilterClassId && bankFilterSubjectId && bankFilterTermId),
+        staleTime: 30_000,
+    });
+
     const { data: bankTopics = [] } = useQuery({
         queryKey: ['/api/syllabus-topics', 'bank-import', bankFilterClassId, bankFilterSubjectId, bankFilterTermId],
         queryFn: async () => {
             const params = new URLSearchParams();
-            if (bankFilterClassId) params.set('classId', bankFilterClassId);
+            if (bankFilterClassId)   params.set('classId',   bankFilterClassId);
             if (bankFilterSubjectId) params.set('subjectId', bankFilterSubjectId);
-            if (bankFilterTermId) params.set('termId', bankFilterTermId);
+            if (bankFilterTermId)    params.set('termId',    bankFilterTermId);
             const r = await apiRequest('GET', `/api/syllabus-topics?${params.toString()}`);
             return r.ok ? r.json() : [];
         },
@@ -128,21 +144,24 @@ export default function ExamQuestionAdder({
         enabled: !!(autoClassId && autoSubjectId && autoTermId),
     });
 
-    // ═══ BANK ITEMS QUERY ═══
+    // ═══ BANK ITEMS QUERY — requires bankId + classId + termId ═══
     const { data: bankItems = [], isLoading: loadingBankItems } = useQuery({
-        queryKey: ['/api/question-bank/items', 'import', bankFilterClassId, bankFilterSubjectId, bankFilterTermId, bankFilterTopicId, bankFilterDifficulty, bankFilterType],
+        queryKey: ['/api/question-bank/items', 'import', bankFilterClassId, bankFilterTermId, bankFilterBankId, bankFilterTopicId, bankFilterDifficulty, bankFilterType],
         queryFn: async () => {
             const params = new URLSearchParams();
-            if (bankFilterClassId) params.set('classId', bankFilterClassId);
-            if (bankFilterSubjectId) params.set('subjectId', bankFilterSubjectId);
-            if (bankFilterTermId) params.set('termId', bankFilterTermId);
-            if (bankFilterTopicId) params.set('topicId', bankFilterTopicId);
-            if (bankFilterDifficulty) params.set('difficulty', bankFilterDifficulty);
-            if (bankFilterType) params.set('questionType', bankFilterType);
+            params.set('classId',  bankFilterClassId);
+            params.set('termId',   bankFilterTermId);
+            params.set('bankId',   bankFilterBankId);
+            params.set('fetchAll', 'true');
+            if (bankFilterTopicId)    params.set('topicId',      bankFilterTopicId);
+            if (bankFilterDifficulty) params.set('difficulty',   bankFilterDifficulty);
+            if (bankFilterType)       params.set('questionType', bankFilterType);
             const r = await apiRequest('GET', `/api/question-bank/items?${params.toString()}`);
-            return r.ok ? r.json() : [];
+            if (!r.ok) return [];
+            const data = await r.json();
+            return Array.isArray(data) ? data : (data.items ?? []);
         },
-        enabled: open && activeTab === 'bank',
+        enabled: open && activeTab === 'bank' && !!(bankFilterClassId && bankFilterTermId && bankFilterBankId),
     });
 
     // ═══ MUTATIONS ═══
@@ -165,20 +184,21 @@ export default function ExamQuestionAdder({
 
     // CSV bulk upload to exam
     const csvUploadMutation = useMutation({
-        mutationFn: async (questions: any[]) => {
+        mutationFn: async (questions: ParsedQuestion[]) => {
             const r = await apiRequest('POST', '/api/exam-questions/bulk', { examId, questions });
             if (!r.ok) { const err = await r.json(); throw new Error(err.error || 'Upload failed'); }
             return r.json();
         },
         onSuccess: (result) => {
-            toast({ title: '✓ Upload Complete', description: `${result.created} question${result.created !== 1 ? 's' : ''} added.${result.errors?.length ? ` ${result.errors.length} failed.` : ''}` });
+            const serverErrs: string[] = result.errors ?? [];
+            toast({ title: 'Success', description: `${result.created} question${result.created !== 1 ? 's' : ''} added.${serverErrs.length ? ` ${serverErrs.length} row(s) skipped — see details below.` : ''}` });
             queryClient.invalidateQueries({ queryKey: ['/api/exam-questions', examId] });
             queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'] });
-            if (!result.errors?.length) {
-                setCsvPreview([]); setCsvErrors([]);
-                onQuestionsAdded();
+            if (serverErrs.length) {
+                setCsvServerErrors(serverErrs); // surface row errors in-panel
             } else {
-                setCsvErrors(result.errors);
+                setCsvServerErrors([]);
+                onQuestionsAdded();
             }
         },
         onError: (e: any) => toast({ title: 'Upload Error', description: e.message, variant: 'destructive' }),
@@ -194,7 +214,7 @@ export default function ExamQuestionAdder({
             return r.json();
         },
         onSuccess: (result) => {
-            toast({ title: '✓ Import Complete', description: `${result.imported} question${result.imported !== 1 ? 's' : ''} imported from bank` });
+            toast({ title: 'Success', description: `${result.imported} question${result.imported !== 1 ? 's' : ''} imported from bank.` });
             queryClient.invalidateQueries({ queryKey: ['/api/exam-questions', examId] });
             queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'] });
             setSelectedBankItems(new Set());
@@ -219,7 +239,7 @@ export default function ExamQuestionAdder({
             setAutoTotalAvailable(result.totalAvailable ?? null);
             setAutoShortfall(result.shortfall ?? null);
             if (result.questions?.length > 0) {
-                toast({ title: '✓ Questions Generated', description: `${result.questions.length} question${result.questions.length !== 1 ? 's' : ''} ready for review` });
+                toast({ title: 'Success', description: `${result.questions.length} question${result.questions.length !== 1 ? 's' : ''} ready for review.` });
             } else {
                 toast({ title: 'No Questions Found', description: 'No questions match your filters. Try adjusting your criteria.', variant: 'destructive' });
             }
@@ -237,7 +257,7 @@ export default function ExamQuestionAdder({
             return r.json();
         },
         onSuccess: (result) => {
-            toast({ title: '✓ Import Complete', description: `${result.imported} question${result.imported !== 1 ? 's' : ''} added to exam` });
+            toast({ title: 'Success', description: `${result.imported} question${result.imported !== 1 ? 's' : ''} added to exam.` });
             queryClient.invalidateQueries({ queryKey: ['/api/exam-questions', examId] });
             queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'] });
             setAutoGeneratedQuestions([]);
@@ -267,7 +287,7 @@ export default function ExamQuestionAdder({
                 setAutoGeneratedQuestions(prev =>
                     prev.map(q => q.id === replacedId ? replacement : q)
                 );
-                toast({ title: 'Question Replaced', description: 'Swapped with another question from the bank' });
+                toast({ title: 'Success', description: 'Question swapped with another from the bank.' });
             } else {
                 toast({ title: 'No Replacement Available', description: 'No more questions match your filters', variant: 'destructive' });
             }
@@ -304,73 +324,6 @@ export default function ExamQuestionAdder({
         createManualMutation.mutate(data);
     };
 
-    // CSV parsing
-    const parseCSVLine = (line: string): string[] => {
-        const result: string[] = []; let current = ''; let inQuotes = false;
-        for (let i = 0; i < line.length; i++) {
-            const ch = line[i];
-            if (ch === '"') { if (inQuotes && line[i + 1] === '"') { current += '"'; i++; } else { inQuotes = !inQuotes; } }
-            else if (ch === ',' && !inQuotes) { result.push(current.trim()); current = ''; }
-            else { current += ch; }
-        }
-        result.push(current.trim());
-        return result;
-    };
-
-    const handleCSVFile = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (!file) return;
-        event.target.value = '';
-        if (!file.name.toLowerCase().endsWith('.csv')) {
-            return toast({ title: 'Invalid File', description: 'Please select a .csv file', variant: 'destructive' });
-        }
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const csv = e.target?.result as string;
-                const lines = csv.trim().split('\n').filter(l => l.trim());
-                if (lines.length < 2) throw new Error('CSV needs a header + at least one data row');
-                const headers = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
-                const questions: any[] = []; const errors: string[] = [];
-                for (let i = 1; i < lines.length; i++) {
-                    const row = parseCSVLine(lines[i]);
-                    const get = (name: string) => { const idx = headers.indexOf(name.toLowerCase()); return idx >= 0 ? row[idx]?.trim() : ''; };
-                    const questionText = get('questiontext');
-                    const type = get('type')?.toLowerCase().replace(/[-\s]/g, '_') || 'text';
-                    const pts = parseInt(get('points')) || 1;
-                    if (!questionText || questionText.length < 5) { errors.push(`Row ${i + 1}: Question too short`); continue; }
-                    const q: any = { questionText, questionType: type, points: pts };
-                    if (get('instructions')) q.instructions = get('instructions');
-                    if (get('sampleanswer')) q.sampleAnswer = get('sampleanswer');
-                    if (type === 'multiple_choice') {
-                        const opts = ['optiona', 'optionb', 'optionc', 'optiond'].map(get).filter(Boolean);
-                        const correct = get('correctanswer')?.toUpperCase();
-                        if (opts.length < 2) { errors.push(`Row ${i + 1}: MCQ needs 2+ options`); continue; }
-                        q.options = opts.map((text, idx) => ({ optionText: text, isCorrect: String.fromCharCode(65 + idx) === correct }));
-                        if (!q.options.some((o: any) => o.isCorrect)) { errors.push(`Row ${i + 1}: No correct answer`); continue; }
-                    }
-                    questions.push(q);
-                }
-                setCsvPreview(questions); setCsvErrors(errors);
-            } catch (err: any) {
-                toast({ title: 'Parse Error', description: err.message, variant: 'destructive' });
-            }
-        };
-        reader.readAsText(file);
-    };
-
-    const downloadTemplate = () => {
-        const csv = `QuestionText,Type,OptionA,OptionB,OptionC,OptionD,CorrectAnswer,Points,Instructions,SampleAnswer
-"What is 2 + 2?",multiple_choice,"2","3","4","5","C",1,"Choose the correct answer","4"
-"Explain photosynthesis in detail.",essay,"","","","","",10,"Write a comprehensive explanation","Photosynthesis is the process..."
-"The capital of Nigeria is ___.",text,"","","","","Abuja",2,"Fill in the answer","Abuja"`;
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = 'exam_questions_template.csv';
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-    };
-
     // Bank item helpers
     const toggleBankItem = (id: number) => {
         const next = new Set(selectedBankItems);
@@ -384,8 +337,8 @@ export default function ExamQuestionAdder({
             setSelectedBankItems(new Set(bankItems.map((q: any) => q.id)));
         }
     };
-    const handleBankFilterClassChange = (v: string) => { setBankFilterClassId(v); setBankFilterTermId(''); setBankFilterTopicId(''); };
-    const handleBankFilterTermChange = (v: string) => { setBankFilterTermId(v); setBankFilterTopicId(''); };
+    const handleBankFilterClassChange = (v: string) => { setBankFilterClassId(v); setBankFilterTermId(''); setBankFilterBankId(''); setBankFilterTopicId(''); };
+    const handleBankFilterTermChange = (v: string) => { setBankFilterTermId(v); setBankFilterBankId(''); setBankFilterTopicId(''); };
 
     // Auto Generate helpers
     const handleAutoClassChange = (v: string) => { setAutoClassId(v); setAutoTermId(''); setAutoTopicId(''); setAutoGeneratedQuestions([]); };
@@ -437,9 +390,7 @@ export default function ExamQuestionAdder({
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
-                                        <SelectItem value="text">Short Answer</SelectItem>
                                         <SelectItem value="essay">Essay</SelectItem>
-                                        <SelectItem value="true_false">True/False</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -481,13 +432,11 @@ export default function ExamQuestionAdder({
                             </div>
                         )}
 
-                        {(questionType === 'text' || questionType === 'essay') && (
+                        {questionType === 'essay' && (
                             <div>
-                                <Label>Expected/Sample Answer</Label>
-                                <Textarea value={expectedAnswer || sampleAnswer} onChange={(e) => {
-                                    if (questionType === 'essay') setSampleAnswer(e.target.value);
-                                    else setExpectedAnswer(e.target.value);
-                                }} placeholder="Answer for auto-grading or reference" rows={2} />
+                                <Label>Sample Answer</Label>
+                                <Textarea value={sampleAnswer} onChange={(e) => setSampleAnswer(e.target.value)}
+                                    placeholder="Reference answer for grading" rows={3} />
                             </div>
                         )}
 
@@ -500,60 +449,13 @@ export default function ExamQuestionAdder({
                     </TabsContent>
 
                     {/* ═══ TAB 2: CSV UPLOAD ═══ */}
-                    <TabsContent value="csv" className="space-y-4 mt-4">
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <Button variant="outline" size="sm" onClick={downloadTemplate}>
-                                <Download className="w-4 h-4 mr-1" /> Download Template
-                            </Button>
-                            <label className="cursor-pointer">
-                                <Button variant="outline" size="sm" asChild>
-                                    <span><FileUp className="w-4 h-4 mr-1" /> Choose CSV File</span>
-                                </Button>
-                                <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleCSVFile} />
-                            </label>
-                        </div>
-
-                        <div className="border rounded-lg p-3 bg-muted/30 text-xs">
-                            <p className="font-medium mb-1">CSV Format:</p>
-                            <p className="text-muted-foreground">QuestionText, Type (multiple_choice/text/essay), OptionA-D, CorrectAnswer (A/B/C/D), Points, Instructions, SampleAnswer</p>
-                        </div>
-
-                        {csvPreview.length > 0 && (
-                            <div className="border rounded-lg">
-                                <div className="p-2 bg-muted/50 flex items-center justify-between rounded-t-lg">
-                                    <span className="text-sm font-medium">{csvPreview.length} question{csvPreview.length !== 1 ? 's' : ''} parsed</span>
-                                    <Badge variant="secondary">{csvPreview.filter((q: any) => q.questionType === 'multiple_choice').length} MCQ, {csvPreview.filter((q: any) => q.questionType !== 'multiple_choice').length} Theory</Badge>
-                                </div>
-                                <div className="max-h-40 overflow-y-auto divide-y">
-                                    {csvPreview.slice(0, 8).map((q: any, i: number) => (
-                                        <div key={i} className="p-2 text-xs flex items-center gap-2">
-                                            <Badge variant="outline" className="shrink-0 text-[10px]">{q.questionType === 'multiple_choice' ? 'MCQ' : q.questionType}</Badge>
-                                            <span className="line-clamp-1 flex-1">{q.questionText}</span>
-                                            <Badge variant="secondary" className="shrink-0 text-[10px]">{q.points}pt</Badge>
-                                        </div>
-                                    ))}
-                                    {csvPreview.length > 8 && <div className="p-2 text-xs text-center text-muted-foreground">...and {csvPreview.length - 8} more</div>}
-                                </div>
-                            </div>
-                        )}
-
-                        {csvErrors.length > 0 && (
-                            <div className="border border-destructive/30 rounded-lg p-3 bg-destructive/5">
-                                <p className="text-sm font-medium text-destructive flex items-center gap-1 mb-1">
-                                    <AlertTriangle className="w-4 h-4" /> {csvErrors.length} Error{csvErrors.length !== 1 ? 's' : ''}
-                                </p>
-                                <div className="max-h-24 overflow-y-auto space-y-1">
-                                    {csvErrors.map((err, i) => <p key={i} className="text-xs text-destructive/80">{err}</p>)}
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="flex justify-end gap-2">
-                            <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                            <Button onClick={() => csvUploadMutation.mutate(csvPreview)} disabled={csvPreview.length === 0 || csvUploadMutation.isPending}>
-                                {csvUploadMutation.isPending ? 'Uploading...' : `Upload ${csvPreview.length} Question${csvPreview.length !== 1 ? 's' : ''}`}
-                            </Button>
-                        </div>
+                    <TabsContent value="csv" className="mt-4">
+                        <BulkCSVUploadPanel
+                            onUpload={(questions) => { setCsvServerErrors([]); csvUploadMutation.mutate(questions); }}
+                            isPending={csvUploadMutation.isPending}
+                            onCancel={() => onOpenChange(false)}
+                            serverErrors={csvServerErrors}
+                        />
                     </TabsContent>
 
                     {/* ═══ TAB 3: IMPORT FROM QUESTION BANK ═══ */}
@@ -564,41 +466,62 @@ export default function ExamQuestionAdder({
                                 <span className="text-xs font-medium flex items-center gap-1"><Filter className="w-3 h-3" /> Filter Questions</span>
                                 <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => {
                                     setBankFilterClassId(''); setBankFilterSubjectId(''); setBankFilterTermId('');
-                                    setBankFilterTopicId(''); setBankFilterDifficulty(''); setBankFilterType('');
+                                    setBankFilterBankId(''); setBankFilterTopicId(''); setBankFilterDifficulty(''); setBankFilterType('');
                                 }}>Clear</Button>
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                            <p className="text-[10px] text-muted-foreground mb-2">Class, Subject, Term and Bank are all required to search.</p>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                 <Select value={bankFilterClassId} onValueChange={handleBankFilterClassChange}>
-                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Class" /></SelectTrigger>
-                                    <SelectContent>{classes.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
+                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Class *" /></SelectTrigger>
+                                    <SelectContent>{(classes as any[]).map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
                                 </Select>
-                                <Select value={bankFilterSubjectId} onValueChange={setBankFilterSubjectId}>
-                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Subject" /></SelectTrigger>
-                                    <SelectContent>{subjects.map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
+                                <Select value={bankFilterSubjectId} onValueChange={(v) => { setBankFilterSubjectId(v); setBankFilterBankId(''); setBankFilterTopicId(''); }}>
+                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Subject *" /></SelectTrigger>
+                                    <SelectContent>{(subjects as any[]).map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
                                 </Select>
                                 <Select value={bankFilterTermId} onValueChange={handleBankFilterTermChange}>
-                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Term" /></SelectTrigger>
-                                    <SelectContent>{terms.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
+                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Term *" /></SelectTrigger>
+                                    <SelectContent>{(terms as any[]).map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
                                 </Select>
-                                <Select value={bankFilterTopicId} onValueChange={setBankFilterTopicId} disabled={!bankFilterClassId || !bankFilterSubjectId || !bankFilterTermId}>
-                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={!bankFilterClassId || !bankFilterSubjectId || !bankFilterTermId ? 'Set class, subject & term' : 'Topic'} /></SelectTrigger>
-                                    <SelectContent>{bankTopics.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
+                                <Select value={bankFilterBankId} onValueChange={(v) => { setBankFilterBankId(v); setBankFilterTopicId(''); }}
+                                    disabled={!bankFilterClassId || !bankFilterSubjectId || !bankFilterTermId}>
+                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={
+                                        !bankFilterClassId || !bankFilterSubjectId || !bankFilterTermId ? 'Set class/subject/term first' :
+                                        (importBanks as any[]).length === 0 ? 'No banks found' : 'Bank *'
+                                    } /></SelectTrigger>
+                                    <SelectContent>
+                                        {(importBanks as any[]).length === 0 ? (
+                                            <div className="px-3 py-2 text-xs text-muted-foreground">No banks for this selection</div>
+                                        ) : (
+                                            (importBanks as any[]).map((b: any) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)
+                                        )}
+                                    </SelectContent>
                                 </Select>
-                                <Select value={bankFilterDifficulty} onValueChange={setBankFilterDifficulty}>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                                <Select value={bankFilterTopicId || '_all'} onValueChange={(v) => setBankFilterTopicId(v === '_all' ? '' : v)}
+                                    disabled={!bankFilterBankId}>
+                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={!bankFilterBankId ? 'Select bank first' : 'Topic (optional)'} /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="_all">All topics</SelectItem>
+                                        {(bankTopics as any[]).map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <Select value={bankFilterDifficulty || '_all'} onValueChange={(v) => setBankFilterDifficulty(v === '_all' ? '' : v)}>
                                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Difficulty" /></SelectTrigger>
                                     <SelectContent>
+                                        <SelectItem value="_all">Any difficulty</SelectItem>
                                         <SelectItem value="easy">Easy</SelectItem>
                                         <SelectItem value="medium">Medium</SelectItem>
                                         <SelectItem value="hard">Hard</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                <Select value={bankFilterType} onValueChange={setBankFilterType}>
-                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
+                                <Select value={bankFilterType || '_all'} onValueChange={(v) => setBankFilterType(v === '_all' ? '' : v)}>
+                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All types" /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="multiple_choice">MCQ</SelectItem>
-                                        <SelectItem value="text">Short Answer</SelectItem>
+                                        <SelectItem value="_all">All types</SelectItem>
+                                        <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
                                         <SelectItem value="essay">Essay</SelectItem>
-                                        <SelectItem value="true_false">True/False</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -624,7 +547,9 @@ export default function ExamQuestionAdder({
                                 {bankItems.length === 0 && !loadingBankItems && (
                                     <div className="p-6 text-center text-sm text-muted-foreground">
                                         <Database className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                                        No questions found. Try adjusting filters.
+                                        {!bankFilterBankId
+                                            ? 'Select Class, Subject, Term and Bank to load questions.'
+                                            : 'No questions found. Try adjusting filters.'}
                                     </div>
                                 )}
                                 {bankItems.map((q: any) => (
@@ -716,9 +641,7 @@ export default function ExamQuestionAdder({
                                         <SelectContent>
                                             <SelectItem value="all">All Types</SelectItem>
                                             <SelectItem value="multiple_choice">MCQ Only</SelectItem>
-                                            <SelectItem value="text">Short Answer</SelectItem>
                                             <SelectItem value="essay">Essay Only</SelectItem>
-                                            <SelectItem value="both">MCQ + Theory</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

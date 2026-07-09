@@ -137,7 +137,7 @@ export default function UserManagement() {
   const approveMutation = useMutation({
     mutationFn: async (userId: string) => apiRequest('POST', `/api/users/${userId}/approve`),
     onSuccess: () => {
-      toast({ title: "User Approved", description: "Account activated successfully." });
+      toast({ title: "Success", description: "User account activated successfully." });
       queryClient.invalidateQueries({ queryKey: ['/api/users'] });
     }
   });
@@ -165,7 +165,7 @@ export default function UserManagement() {
           old.map(u => u.id === data.user.id ? { ...u, ...data.user } : u)
         );
       }
-      toast({ title: "Account Unsuspended", description: "The user can now sign in again." });
+      toast({ title: "Success", description: "Account unsuspended — user can now sign in." });
     },
     onError: (error: Error, _, context) => {
       if (context?.previousUsers) {
@@ -258,7 +258,7 @@ export default function UserManagement() {
 
   const handleCopyPassword = (password: string) => {
     navigator.clipboard.writeText(password).then(() => {
-      toast({ title: "Copied", description: "Password copied to clipboard." });
+      toast({ title: "Success", description: "Password copied to clipboard." });
     });
   };
 

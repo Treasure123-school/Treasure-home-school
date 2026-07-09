@@ -164,9 +164,9 @@ export default function AdminCurriculumLibrary() {
       const result: ImportResult = await res.json();
       setImportResult(result);
       queryClient.invalidateQueries({ queryKey: ["/api/syllabus-topics"] });
-      toast({ title: result.created > 0 ? "Import successful!" : "Import complete", description: result.message });
+      toast({ title: "Success", description: result.message });
     },
-    onError: () => toast({ title: "Import failed", variant: "destructive" }),
+    onError: () => toast({ title: "Error", description: "Failed to import curriculum", variant: "destructive" }),
   });
 
   // ── Helpers ───────────────────────────────────────────────────────────────────

@@ -35,7 +35,7 @@ export default function SuperAdminAllUsers() {
     mutationFn: async (userId: string) =>
       apiRequest("POST", `/api/users/${userId}/suspend`, { reason: "Suspended by Super Admin" }),
     onSuccess: () => {
-      toast({ title: "Account Disabled", description: "The user account has been deactivated." });
+      toast({ title: "Success", description: "User account has been disabled." });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
   });
@@ -43,7 +43,7 @@ export default function SuperAdminAllUsers() {
   const unsuspendMutation = useMutation({
     mutationFn: async (userId: string) => apiRequest("POST", `/api/users/${userId}/unsuspend`, {}),
     onSuccess: () => {
-      toast({ title: "Account Activated", description: "The user account has been reactivated." });
+      toast({ title: "Success", description: "User account has been reactivated." });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
     },
   });
@@ -51,7 +51,7 @@ export default function SuperAdminAllUsers() {
   const resetPasswordMutation = useMutation({
     mutationFn: async (userId: string) => apiRequest("POST", `/api/users/${userId}/reset-password`, {}),
     onSuccess: () => {
-      toast({ title: "Password Reset", description: "A temporary password has been generated." });
+      toast({ title: "Success", description: "Password reset — a temporary password has been generated." });
     },
   });
 

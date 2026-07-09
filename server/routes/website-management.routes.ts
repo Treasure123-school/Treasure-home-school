@@ -84,7 +84,7 @@ router.get("/api/public/gallery/categories", async (_req: Request, res: Response
   }
 });
 
-router.get("/api/admin/gallery", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.get("/api/admin/gallery", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const categoryId = req.query.categoryId ? parseInt(req.query.categoryId as string) : undefined;
     const images = await storage.getGalleryImages(categoryId);
@@ -97,7 +97,7 @@ router.get("/api/admin/gallery", authenticateUser, authorizeRoles(ROLES.ADMIN, R
 router.post(
   "/api/admin/gallery",
   authenticateUser,
-  authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN),
+  authorizeRoles(ROLES.ADMIN),
   upload.single("image"),
   async (req: Request, res: Response) => {
     try {
@@ -122,7 +122,7 @@ router.post(
   }
 );
 
-router.put("/api/admin/gallery/:id", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.put("/api/admin/gallery/:id", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const id = req.params.id;
     const data = galleryUpdateSchema.parse(req.body);
@@ -134,7 +134,7 @@ router.put("/api/admin/gallery/:id", authenticateUser, authorizeRoles(ROLES.ADMI
   }
 });
 
-router.delete("/api/admin/gallery/:id", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.delete("/api/admin/gallery/:id", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const deleted = await storage.deleteGalleryImage(req.params.id);
     if (!deleted) return res.status(404).json({ message: "Image not found" });
@@ -144,7 +144,7 @@ router.delete("/api/admin/gallery/:id", authenticateUser, authorizeRoles(ROLES.A
   }
 });
 
-router.post("/api/admin/gallery-categories", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.post("/api/admin/gallery-categories", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const { name, description } = req.body;
     if (!name) return res.status(400).json({ message: "Name required" });
@@ -155,7 +155,7 @@ router.post("/api/admin/gallery-categories", authenticateUser, authorizeRoles(RO
   }
 });
 
-router.delete("/api/admin/gallery-categories/:id", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.delete("/api/admin/gallery-categories/:id", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const deleted = await storage.deleteGalleryCategory(parseInt(req.params.id));
     if (!deleted) return res.status(404).json({ message: "Category not found" });
@@ -189,7 +189,7 @@ router.get("/api/public/news/:slug", async (req: Request, res: Response) => {
   }
 });
 
-router.get("/api/admin/news", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (_req: Request, res: Response) => {
+router.get("/api/admin/news", authenticateUser, authorizeRoles(ROLES.ADMIN), async (_req: Request, res: Response) => {
   try {
     const posts = await storage.getNewsPosts({});
     res.json(posts);
@@ -201,7 +201,7 @@ router.get("/api/admin/news", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLE
 router.post(
   "/api/admin/news",
   authenticateUser,
-  authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN),
+  authorizeRoles(ROLES.ADMIN),
   upload.single("coverImage"),
   async (req: Request, res: Response) => {
     try {
@@ -236,7 +236,7 @@ router.post(
 router.put(
   "/api/admin/news/:id",
   authenticateUser,
-  authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN),
+  authorizeRoles(ROLES.ADMIN),
   upload.single("coverImage"),
   async (req: Request, res: Response) => {
     try {
@@ -268,7 +268,7 @@ router.put(
   }
 );
 
-router.delete("/api/admin/news/:id", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.delete("/api/admin/news/:id", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const deleted = await storage.deleteNewsPost(parseInt(req.params.id));
     if (!deleted) return res.status(404).json({ message: "Not found" });
@@ -291,7 +291,7 @@ router.get("/api/public/faq", async (_req: Request, res: Response) => {
   }
 });
 
-router.get("/api/admin/faq", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (_req: Request, res: Response) => {
+router.get("/api/admin/faq", authenticateUser, authorizeRoles(ROLES.ADMIN), async (_req: Request, res: Response) => {
   try {
     const faqs = await storage.getFaqs({});
     res.json(faqs);
@@ -300,7 +300,7 @@ router.get("/api/admin/faq", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES
   }
 });
 
-router.post("/api/admin/faq", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.post("/api/admin/faq", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const data = faqSchema.parse(req.body);
     const faq = await storage.createFaq(data);
@@ -310,7 +310,7 @@ router.post("/api/admin/faq", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLE
   }
 });
 
-router.put("/api/admin/faq/:id", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.put("/api/admin/faq/:id", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const data = faqSchema.partial().parse(req.body);
     const updated = await storage.updateFaq(parseInt(req.params.id), { ...data, updatedAt: new Date() });
@@ -321,7 +321,7 @@ router.put("/api/admin/faq/:id", authenticateUser, authorizeRoles(ROLES.ADMIN, R
   }
 });
 
-router.delete("/api/admin/faq/:id", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.delete("/api/admin/faq/:id", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const deleted = await storage.deleteFaq(parseInt(req.params.id));
     if (!deleted) return res.status(404).json({ message: "Not found" });
@@ -344,7 +344,7 @@ router.get("/api/public/about-sections", async (_req: Request, res: Response) =>
   }
 });
 
-router.get("/api/admin/about-sections", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (_req: Request, res: Response) => {
+router.get("/api/admin/about-sections", authenticateUser, authorizeRoles(ROLES.ADMIN), async (_req: Request, res: Response) => {
   try {
     const sections = await storage.getAboutSections({});
     res.json(sections);
@@ -356,7 +356,7 @@ router.get("/api/admin/about-sections", authenticateUser, authorizeRoles(ROLES.A
 router.post(
   "/api/admin/about-sections",
   authenticateUser,
-  authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN),
+  authorizeRoles(ROLES.ADMIN),
   upload.single("image"),
   async (req: Request, res: Response) => {
     try {
@@ -379,7 +379,7 @@ router.post(
 router.put(
   "/api/admin/about-sections/:id",
   authenticateUser,
-  authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN),
+  authorizeRoles(ROLES.ADMIN),
   upload.single("image"),
   async (req: Request, res: Response) => {
     try {
@@ -400,7 +400,7 @@ router.put(
   }
 );
 
-router.delete("/api/admin/about-sections/:id", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.delete("/api/admin/about-sections/:id", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const deleted = await storage.deleteAboutSection(parseInt(req.params.id));
     if (!deleted) return res.status(404).json({ message: "Not found" });
@@ -414,7 +414,7 @@ router.delete("/api/admin/about-sections/:id", authenticateUser, authorizeRoles(
 // CONTACT MESSAGES (Admin Inbox)
 // ═══════════════════════════════════════════════════════════════
 
-router.get("/api/admin/contact-messages", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (_req: Request, res: Response) => {
+router.get("/api/admin/contact-messages", authenticateUser, authorizeRoles(ROLES.ADMIN), async (_req: Request, res: Response) => {
   try {
     const messages = await storage.getContactMessages();
     res.json(messages);
@@ -423,7 +423,7 @@ router.get("/api/admin/contact-messages", authenticateUser, authorizeRoles(ROLES
   }
 });
 
-router.patch("/api/admin/contact-messages/:id/read", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.patch("/api/admin/contact-messages/:id/read", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     await storage.markContactMessageAsRead(parseInt(req.params.id));
     res.json({ message: "Marked as read" });
@@ -432,7 +432,7 @@ router.patch("/api/admin/contact-messages/:id/read", authenticateUser, authorize
   }
 });
 
-router.post("/api/admin/contact-messages/:id/respond", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.post("/api/admin/contact-messages/:id/respond", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const { response } = req.body;
     if (!response) return res.status(400).json({ message: "Response text required" });
@@ -444,7 +444,7 @@ router.post("/api/admin/contact-messages/:id/respond", authenticateUser, authori
   }
 });
 
-router.delete("/api/admin/contact-messages/:id", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.delete("/api/admin/contact-messages/:id", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const deleted = await storage.deleteContactMessage(parseInt(req.params.id));
     if (!deleted) return res.status(404).json({ message: "Not found" });
@@ -499,7 +499,7 @@ router.post("/api/admissions", async (req: Request, res: Response) => {
 // ADMISSIONS ENQUIRIES (Admin)
 // ═══════════════════════════════════════════════════════════════
 
-router.get("/api/admin/admissions-enquiries", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.get("/api/admin/admissions-enquiries", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const status = req.query.status as string | undefined;
     const enquiries = await storage.getAdmissionsEnquiries(status);
@@ -509,7 +509,7 @@ router.get("/api/admin/admissions-enquiries", authenticateUser, authorizeRoles(R
   }
 });
 
-router.patch("/api/admin/admissions-enquiries/:id/status", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.patch("/api/admin/admissions-enquiries/:id/status", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const data = enquiryStatusSchema.parse(req.body);
     const updated = await storage.updateAdmissionsEnquiry(parseInt(req.params.id), {
@@ -524,7 +524,7 @@ router.patch("/api/admin/admissions-enquiries/:id/status", authenticateUser, aut
   }
 });
 
-router.delete("/api/admin/admissions-enquiries/:id", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.delete("/api/admin/admissions-enquiries/:id", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const deleted = await storage.deleteAdmissionsEnquiry(parseInt(req.params.id));
     if (!deleted) return res.status(404).json({ message: "Not found" });

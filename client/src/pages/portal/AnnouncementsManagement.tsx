@@ -690,7 +690,7 @@ export default function AnnouncementsManagement() {
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
-                                toast({ title: "Info", description: "File upload will be available soon. Please use a URL for now." });
+                                toast({ title: "Warning", description: "File upload is not available yet. Please use a URL instead." });
                               }
                             }}
                           />

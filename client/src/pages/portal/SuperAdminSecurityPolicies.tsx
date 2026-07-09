@@ -66,7 +66,7 @@ export default function SuperAdminSecurityPolicies() {
       return apiRequest("PUT", "/api/superadmin/settings", data);
     },
     onSuccess: () => {
-      toast({ title: "Policies Updated", description: "Security policies have been successfully saved." });
+      toast({ title: "Success", description: "Security policies saved." });
       queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
       setIsEditing(false);
     },

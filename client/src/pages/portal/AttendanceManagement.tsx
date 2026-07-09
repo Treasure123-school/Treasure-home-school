@@ -217,7 +217,7 @@ export default function AttendanceManagement() {
       queryClient.invalidateQueries({ queryKey: ['/api/attendance/class', detailClassId, date] });
       queryClient.invalidateQueries({ queryKey: ['/api/attendance/overview', date] });
       setEditRecord(null);
-      toast({ title: 'Updated', description: 'Attendance record updated successfully.' });
+      toast({ title: 'Success', description: 'Attendance record updated successfully.' });
     },
     onError: (err: any) =>
       toast({ title: 'Update Failed', description: err.message || 'Could not update record.', variant: 'destructive' }),

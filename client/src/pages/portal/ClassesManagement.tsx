@@ -14,7 +14,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import {
-  Plus, Edit, Users, GraduationCap, BookOpen, Trash2,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Plus, Edit, Users, GraduationCap, BookOpen, Trash2, MoreVertical,
   School, Filter, AlertTriangle,
 } from 'lucide-react';
 import { PageHeader, FilterBar, EmptyState, MiniStatCard, MiniStatGrid, ConfirmDialog } from "@/components/shared";
@@ -91,7 +94,7 @@ export default function ClassesManagement() {
       return { previousClasses };
     },
     onSuccess: () => {
-      toast({ title: 'Class created successfully' });
+      toast({ title: 'Success', description: 'Class created successfully' });
       queryClient.invalidateQueries({ queryKey: ['/api/classes'] });
       handleCloseDialog();
     },
@@ -119,7 +122,7 @@ export default function ClassesManagement() {
       return { previousClasses };
     },
     onSuccess: () => {
-      toast({ title: 'Class updated successfully' });
+      toast({ title: 'Success', description: 'Class updated successfully' });
       queryClient.invalidateQueries({ queryKey: ['/api/classes'] });
       handleCloseDialog();
     },
@@ -142,7 +145,7 @@ export default function ClassesManagement() {
       return { previousClasses };
     },
     onSuccess: () => {
-      toast({ title: 'Class deleted successfully' });
+      toast({ title: 'Success', description: 'Class deleted successfully' });
       queryClient.invalidateQueries({ queryKey: ['/api/classes'] });
       setClassToDelete(null);
     },
@@ -195,7 +198,7 @@ export default function ClassesManagement() {
         title="Classes Management"
         description="Manage school classes, assign teachers and set capacities"
         actions={
-          <Button onClick={() => { reset(); setEditingClass(null); setIsDialogOpen(true); }} data-testid="button-add-class">
+          <Button className="w-full sm:w-auto" onClick={() => { reset(); setEditingClass(null); setIsDialogOpen(true); }} data-testid="button-add-class">
             <Plus className="w-4 h-4 mr-2" />
             Add Class
           </Button>
@@ -255,7 +258,7 @@ export default function ClassesManagement() {
               return (
                 <Card
                   key={classItem.id}
-                  className="group hover:border-primary/40 hover:shadow-sm transition-all"
+                  className="group hover:shadow-sm transition-all"
                   data-testid={`card-class-${classItem.id}`}
                 >
                   <CardContent className="p-4 space-y-3">
@@ -269,14 +272,14 @@ export default function ClassesManagement() {
                           <p className="font-semibold text-sm leading-tight truncate" data-testid={`text-class-name-${classItem.id}`}>
                             {classItem.name}
                           </p>
-                          <Badge className={`text-[10px] mt-0.5 ${getLevelColor(classItem.level)}`} data-testid={`text-level-${classItem.id}`}>
+                          <Badge className={`text-[10px] mt-0.5 pointer-events-none ${getLevelColor(classItem.level)}`} data-testid={`text-level-${classItem.id}`}>
                             {classItem.level}
                           </Badge>
                         </div>
                       </div>
                       <Badge
                         variant={classItem.isActive !== false ? 'default' : 'secondary'}
-                        className="shrink-0 text-[10px]"
+                        className="shrink-0 text-[10px] pointer-events-none"
                       >
                         {classItem.isActive !== false ? 'Active' : 'Inactive'}
                       </Badge>
@@ -308,25 +311,32 @@ export default function ClassesManagement() {
                     </div>
 
                     {/* Actions */}
-                    <div className="flex gap-2 pt-1 border-t border-border/50">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 h-8 text-xs"
-                        onClick={() => handleEdit(classItem)}
-                        data-testid={`button-edit-class-${classItem.id}`}
-                      >
-                        <Edit className="w-3 h-3 mr-1" /> Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 h-8 text-xs text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
-                        onClick={() => setClassToDelete(classItem)}
-                        data-testid={`button-delete-class-${classItem.id}`}
-                      >
-                        <Trash2 className="w-3 h-3 mr-1" /> Delete
-                      </Button>
+                    <div className="flex justify-end pt-1">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                            data-testid={`button-actions-class-${classItem.id}`}
+                          >
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem onClick={() => handleEdit(classItem)} data-testid={`button-edit-class-${classItem.id}`}>
+                            <Edit className="h-4 w-4 mr-2" /> Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => setClassToDelete(classItem)}
+                            data-testid={`button-delete-class-${classItem.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </CardContent>
                 </Card>

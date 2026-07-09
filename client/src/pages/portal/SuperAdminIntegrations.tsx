@@ -52,7 +52,7 @@ export default function SuperAdminIntegrations() {
       return apiRequest("PUT", "/api/superadmin/settings", data);
     },
     onSuccess: () => {
-      toast({ title: "Integrations Updated", description: "Integration statuses have been saved." });
+      toast({ title: "Success", description: "Integration settings saved." });
       queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
       setIsEditing(false);
     },

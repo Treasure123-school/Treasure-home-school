@@ -6,7 +6,7 @@ const router = Router();
 
 // ==================== SETTINGS API ROUTES ====================
 // Settings API endpoints (for report card subject rules, etc.)
-router.get('/api/settings', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.get('/api/settings', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
         const { key } = req.query;
         if (key) {
@@ -24,7 +24,7 @@ router.get('/api/settings', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.
     }
 });
 
-router.put('/api/settings', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.put('/api/settings', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
         const { key, value, description, dataType } = req.body;
 
@@ -77,7 +77,7 @@ const ADMIN_EDITABLE_FIELDS = new Set([
   'tempPasswordFormat',
 ]);
 
-router.get('/api/admin/settings', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (_req: Request, res: Response) => {
+router.get('/api/admin/settings', authenticateUser, authorizeRoles(ROLES.ADMIN), async (_req: Request, res: Response) => {
   try {
     const settings = await storage.getSystemSettings();
     res.json(settings || {});
@@ -87,7 +87,7 @@ router.get('/api/admin/settings', authenticateUser, authorizeRoles(ROLES.ADMIN, 
   }
 });
 
-router.put('/api/admin/settings', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: Request, res: Response) => {
+router.put('/api/admin/settings', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
   try {
     const input = req.body as Record<string, any>;
     const filtered: Record<string, any> = {};

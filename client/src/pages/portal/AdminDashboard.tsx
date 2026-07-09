@@ -57,7 +57,7 @@ export default function AdminDashboard() {
 
   const { data: allUsers = [] } = useQuery<any[]>({
     queryKey: ['/api/users'],
-    enabled: !!user && (user.roleId === ROLE_IDS.ADMIN || user.roleId === ROLE_IDS.SUPER_ADMIN),
+    enabled: !!user && (user.roleId === ROLE_IDS.ADMIN),
   });
 
   const { data: allExams = [] } = useQuery<any[]>({

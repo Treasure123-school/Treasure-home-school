@@ -252,7 +252,7 @@ export default function StudentExams() {
       // Handle exam deleted
       if (event.eventType === 'exam.deleted' && event.data?.id === selectedExam?.id) {
         toast({
-          title: "Exam Removed",
+          title: "Notice",
           description: "This exam is no longer available.",
           variant: "destructive",
         });
@@ -426,8 +426,8 @@ export default function StudentExams() {
         queryClient.invalidateQueries({ queryKey: ["/api/exam-payments/status"] });
         queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
         toast({
-          title: "Payment Restored",
-          description: "Your previous payment was found and your exam access has been unlocked.",
+          title: "Success",
+          description: "Previous payment found — your exam access has been unlocked.",
         });
       } else if (isManualRecoveryRef.current && (
         data?.reason === "no_pending_payment" ||
@@ -467,8 +467,8 @@ export default function StudentExams() {
         queryClient.invalidateQueries({ queryKey: ["/api/exam-payments/status"] });
         queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
         toast({
-          title: "Access Restored!",
-          description: "Your payment has been verified and your exam access is now unlocked.",
+          title: "Success",
+          description: "Payment verified — your exam access is now unlocked.",
         });
       }
     },

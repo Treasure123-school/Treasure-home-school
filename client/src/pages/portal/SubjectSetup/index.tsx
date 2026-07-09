@@ -99,7 +99,7 @@ export default function SubjectSetup() {
         parts.push(`${result.reportCardItemsRemoved} empty row${result.reportCardItemsRemoved !== 1 ? 's' : ''} removed`);
 
       toast({
-        title: 'Changes saved',
+        title: 'Success',
         description: `${additions.length} assigned, ${removals.length} unassigned.${parts.length ? ` ${parts.join('; ')}.` : ''}`,
       });
 
@@ -121,7 +121,7 @@ export default function SubjectSetup() {
 
   const handleDiscard = () => {
     state.reset();
-    toast({ title: 'Changes discarded', description: 'All pending changes have been reverted.' });
+    toast({ title: 'Success', description: 'All pending changes have been discarded.' });
   };
 
   const isLoading = subjectsLoading || classesLoading || assignmentsLoading;

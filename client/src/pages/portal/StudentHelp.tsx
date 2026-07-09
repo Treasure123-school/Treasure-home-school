@@ -140,7 +140,7 @@ export default function StudentHelp() {
     },
     onSuccess: () => {
       setSubmitted(true);
-      toast({ title: 'Message sent!', description: 'We\'ll get back to you as soon as possible.' });
+      toast({ title: 'Success', description: "Message sent — we'll get back to you as soon as possible." });
     },
     onError: (err: Error) => {
       toast({ title: 'Failed to send', description: err.message, variant: 'destructive' });

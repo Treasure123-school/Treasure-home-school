@@ -55,7 +55,7 @@ export default function ChangePasswordPage() {
     onSuccess: () => {
       setForm(defaultForm);
       setSuccess(true);
-      toast({ title: "Password Changed", description: "Your password has been updated successfully." });
+      toast({ title: "Success", description: "Your password has been updated." });
     },
     onError: (error: Error) => {
       toast({

@@ -129,7 +129,7 @@ export default function ExamPaymentManagement() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: 'Payment recorded', description: 'Exam fee payment has been recorded successfully.' });
+      toast({ title: 'Success', description: 'Exam fee payment recorded.' });
       setShowAddDialog(false);
       setAddForm({ studentId: '', termId: effectiveTermId ?? 0, amountPaid: feeAmount, paymentMethod: 'cash', paymentReference: '', notes: '' });
       queryClient.invalidateQueries({ queryKey: ['/api/exam-payments'] });
@@ -180,7 +180,7 @@ export default function ExamPaymentManagement() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: 'Payment revoked', description: 'Exam payment has been revoked.' });
+      toast({ title: 'Success', description: 'Exam payment revoked.' });
       queryClient.invalidateQueries({ queryKey: ['/api/exam-payments'] });
       queryClient.invalidateQueries({ queryKey: ['/api/exam-payments/students-status'] });
     },
@@ -200,7 +200,7 @@ export default function ExamPaymentManagement() {
       return res.json();
     },
     onSuccess: () => {
-      toast({ title: 'Settings saved', description: 'Exam fee settings updated successfully.' });
+      toast({ title: 'Success', description: 'Exam fee settings saved.' });
       setShowSettingsDialog(false);
       queryClient.invalidateQueries({ queryKey: ['/api/exam-payments/settings'] });
       queryClient.invalidateQueries({ queryKey: ['/api/exam-payments'] });

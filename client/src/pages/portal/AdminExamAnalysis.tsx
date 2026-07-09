@@ -934,23 +934,43 @@ export default function AdminExamAnalysis() {
 
       {/* Content */}
       {analytics && !isLoading && (
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="w-full" data-testid="tabs-analysis">
+        <AdminAnalysisTabs analytics={analytics} />
+      )}
+    </div>
+  );
+}
+
+function AdminAnalysisTabs({ analytics }: { analytics: AnalyticsData }) {
+  const [activeTab, setActiveTab] = useState('overview');
+  return (
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          {/* Mobile: dropdown tab selector */}
+          <div className="sm:hidden">
+            <Select value={activeTab} onValueChange={setActiveTab}>
+              <SelectTrigger className="w-full" data-testid="tabs-analysis-mobile">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="overview">Overview</SelectItem>
+                <SelectItem value="students">Students</SelectItem>
+                <SelectItem value="questions">Questions</SelectItem>
+                <SelectItem value="participation">Participation</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {/* Desktop: tab bar */}
+          <TabsList className="hidden sm:flex w-full" data-testid="tabs-analysis">
             <TabsTrigger value="overview" className="flex-1" data-testid="tab-overview">
-              <BarChart2 className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden sm:inline">Overview</span>
+              Overview
             </TabsTrigger>
             <TabsTrigger value="students" className="flex-1" data-testid="tab-students">
-              <Users className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden sm:inline">Students</span>
+              Students
             </TabsTrigger>
             <TabsTrigger value="questions" className="flex-1" data-testid="tab-questions">
-              <Target className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden sm:inline">Questions</span>
+              Questions
             </TabsTrigger>
             <TabsTrigger value="participation" className="flex-1" data-testid="tab-participation">
-              <Activity className="h-3.5 w-3.5 shrink-0" />
-              <span className="hidden sm:inline">Participation</span>
+              Participation
             </TabsTrigger>
           </TabsList>
 
@@ -967,7 +987,5 @@ export default function AdminExamAnalysis() {
             <ParticipationTab analytics={analytics} />
           </TabsContent>
         </Tabs>
-      )}
-    </div>
   );
 }

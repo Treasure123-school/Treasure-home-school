@@ -77,7 +77,7 @@ export default function SuperAdminSettings() {
     mutationFn: async (id: string) =>
       apiRequest("PUT", "/api/leadership/principal", { designatedPrincipalId: id || null }),
     onSuccess: () => {
-      toast({ title: "Principal Designated", description: "The school principal has been updated successfully." });
+      toast({ title: "Success", description: "School principal designation updated." });
       queryClient.invalidateQueries({ queryKey: ["/api/leadership/principal"] });
     },
     onError: (error: any) => {
@@ -177,7 +177,7 @@ export default function SuperAdminSettings() {
       return apiRequest("PUT", "/api/superadmin/settings", finalData);
     },
     onSuccess: () => {
-      toast({ title: "Configuration Saved", description: "General configuration has been successfully updated." });
+      toast({ title: "Success", description: "School configuration saved." });
       queryClient.invalidateQueries({ queryKey: ["/api/superadmin/settings"] });
       queryClient.invalidateQueries({ queryKey: ["/api/public/settings"] });
       setIsEditing(false);

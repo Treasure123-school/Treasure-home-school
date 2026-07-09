@@ -73,7 +73,7 @@ export default function FaqManagement() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/faq'] });
       queryClient.invalidateQueries({ queryKey: ['/api/public/faq'] });
       setShowForm(false);
-      toast({ title: editingFaq ? 'FAQ updated' : 'FAQ created' });
+      toast({ title: 'Success', description: editingFaq ? 'FAQ updated.' : 'FAQ created.' });
     },
     onError: () => toast({ title: 'Save failed', variant: 'destructive' }),
   });
@@ -94,7 +94,7 @@ export default function FaqManagement() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/faq'] });
       queryClient.invalidateQueries({ queryKey: ['/api/public/faq'] });
       setDeleteTarget(null);
-      toast({ title: 'FAQ deleted' });
+      toast({ title: 'Success', description: 'FAQ deleted.' });
     },
     onError: () => toast({ title: 'Delete failed', variant: 'destructive' }),
   });

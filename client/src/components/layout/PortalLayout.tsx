@@ -121,11 +121,13 @@ export default function PortalLayout({ children, userRole, userName, userInitial
       const academicRoutes = ['/classes', '/subjects', '/subject-manager', '/academic-terms', '/syllabus-topics', '/academics/curriculum', '/lesson-notes', '/lesson-note-library', '/academics/timetable'];
       const studentRoutes = ['/students', '/parents', '/attendance'];
       const staffRoutes = ['/teachers', '/users', '/job-vacancies', '/recovery-tools'];
-      const examRoutes = ['/exams', '/grading-queue', '/exam-analytics', '/question-bank', '/results', '/exam-payments'];
+      const examRoutes = ['/exams', '/grading-queue', '/exam-analytics', '/question-bank', '/results', '/recent-exam-results'];
+      const financeRoutes = ['/billing-items', '/billing-payments', '/billing-outstanding', '/billing-reports'];
       if (academicRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-academics'); return; }
       if (studentRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-students'); return; }
       if (staffRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-staff'); return; }
       if (examRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-exams'); return; }
+      if (financeRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-finance'); return; }
     }
   }, [location, userRole]);
 
@@ -163,7 +165,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: `/portal/${userRole}/subjects`, icon: BookOpen, label: 'Subjects' },
               { href: `/portal/${userRole}/scheme-of-work`, icon: ListChecks, label: 'Scheme of Work' },
               { href: `/portal/${userRole}/assignments`, icon: ClipboardPen, label: 'Assignments' },
-              { href: `/portal/${userRole}/exams`, icon: PenTool, label: 'Exams / Tests' },
+              { href: `/portal/${userRole}/exams`, icon: PenTool, label: 'Assessments' },
               { href: `/portal/${userRole}/grades`, icon: BarChart3, label: 'Gradebook' },
               { href: `/portal/${userRole}/report-card`, icon: FileText, label: 'Report Card' },
             ],
@@ -183,7 +185,6 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: `/portal/${userRole}/forum`, icon: MessagesSquare, label: 'Discussion Forum' },
             ],
           },
-          { name: 'Exam Fee Payment', href: `/portal/${userRole}/exam-payment`, icon: CreditCard },
           { name: 'Library', href: `/portal/${userRole}/library`, icon: Library },
           { name: 'Extracurricular', href: `/portal/${userRole}/extracurricular`, icon: Trophy },
           { name: 'Help & Support', href: `/portal/${userRole}/help`, icon: HelpCircle },
@@ -197,14 +198,15 @@ export default function PortalLayout({ children, userRole, userName, userInitial
           { name: 'Attendance', href: `/portal/${userRole}/attendance`, icon: Calendar },
           {
             type: 'group',
-            label: 'Exam Management',
+            label: 'Assessment Management',
             icon: ClipboardList,
             isOpen: openMenuKey === 'teacher-exam',
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'teacher-exam' : null),
             items: [
-              { href: '/portal/teacher/exams', icon: PenTool, label: 'Exam System' },
+              { href: '/portal/teacher/exams', icon: PenTool, label: 'Assessments' },
               { href: '/portal/teacher/grading-queue', icon: CheckSquare, label: 'Assessment Review' },
-              { href: '/portal/teacher/exam-analytics', icon: Award, label: 'Exam Analytics' },
+              { href: '/portal/teacher/exam-analytics', icon: Award, label: 'Assessment Analytics' },
+              { href: '/portal/teacher/recent-exam-results', icon: History, label: 'Assessment History' },
               { href: '/portal/teacher/question-bank', icon: Database, label: 'Question Bank' },
             ],
           },
@@ -258,25 +260,26 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             ],
           },
           {
-            type: 'group', label: 'Exams & Results', icon: ClipboardList,
+            type: 'group', label: 'Assessments & Results', icon: ClipboardList,
             isOpen: openMenuKey === 'admin-exams',
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-exams' : null),
             items: [
-              { href: '/portal/admin/exams/manage', icon: PenTool, label: 'Exam System' },
-              { href: '/portal/admin/exams/overview', icon: BarChart3, label: 'Exam Analytics' },
+              { href: '/portal/admin/exams/manage', icon: PenTool, label: 'Assessment Management' },
+              { href: '/portal/admin/exams/overview', icon: BarChart3, label: 'Assessment Analytics' },
               { href: '/portal/admin/question-bank', icon: Database, label: 'Question Bank' },
               { href: '/portal/admin/results/publishing', icon: Eye, label: 'Results Publishing' },
-              { href: '/portal/admin/exam-payments', icon: CreditCard, label: 'Exam Payment' },
+              { href: '/portal/admin/recent-exam-results', icon: History, label: 'Assessment History' },
             ],
           },
           {
-            type: 'group', label: 'Finance Operations', icon: DollarSign,
+            type: 'group', label: 'Billing & Payments', icon: DollarSign,
             isOpen: openMenuKey === 'admin-finance',
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-finance' : null),
             items: [
-              { href: `/portal/${userRole}/coming-soon?page=payments`, icon: DollarSign, label: 'Fee Collection' },
-              { href: `/portal/${userRole}/coming-soon?page=records`, icon: FileText, label: 'Payment Records' },
-              { href: `/portal/${userRole}/coming-soon?page=outstanding`, icon: Clock, label: 'Outstanding Fees' },
+              { href: `/portal/${userRole}/billing-items`, icon: Receipt, label: 'Billing Items' },
+              { href: `/portal/${userRole}/billing-payments`, icon: CreditCard, label: 'Payments' },
+              { href: `/portal/${userRole}/billing-outstanding`, icon: Clock, label: 'Outstanding' },
+              { href: `/portal/${userRole}/billing-reports`, icon: BarChart3, label: 'Financial Reports' },
             ],
           },
           {

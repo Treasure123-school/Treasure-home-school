@@ -1,10 +1,12 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSearch } from 'wouter';
 import ExamQuestionAdder from './ExamQuestionAdder';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
+import { useClassSubjects } from '@/hooks/useClassSubjects';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import { optimisticToggle, optimisticDelete, optimisticCreate, optimisticUpdateItem, rollbackOnError } from '@/lib/optimisticUpdates';
+import { AssessmentList } from './assessments/AssessmentList';
+import { DeleteAssessmentDialog } from './assessments/DeleteAssessmentDialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,7 +26,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { insertExamSchema, insertExamQuestionSchema, insertQuestionOptionSchema, type Exam, type ExamQuestion, type QuestionOption, type Class, type Subject } from '@shared/schema';
 import { z } from 'zod';
-import { Plus, Edit, BookOpen, Trash2, Clock, Users, FileText, Eye, Play, Upload, Save, Shield, MoreVertical, ChevronDown, ChevronUp, Settings, ChevronLeft, ChevronRight, Check, Calendar } from 'lucide-react';
+import { Plus, Edit, BookOpen, Trash2, Clock, Users, FileText, Eye, Play, Upload, Save, Shield, MoreVertical, ChevronDown, ChevronUp, Settings, ChevronLeft, ChevronRight, Check, Calendar, Layers, Target, MapPin, DollarSign, UserCheck, Ticket, Trophy as TrophyIcon, Award as AwardIcon, Clipboard } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { PageHeader, SearchInput, EmptyState, MiniStatCard, MiniStatGrid } from "@/components/shared";
@@ -136,6 +138,7 @@ export default function ExamManagement() {
   const [previewExam, setPreviewExam] = useState<Exam | null>(null);
   const [isSecurityExpanded, setIsSecurityExpanded] = useState(false);
   const [deletingExam, setDeletingExam] = useState<Exam | null>(null);
+  const [deletingExamIds, setDeletingExamIds] = useState<Set<number>>(new Set());
   const [currentStep, setCurrentStep] = useState(1);
 
   const searchParams = useSearch();
@@ -157,19 +160,37 @@ export default function ExamManagement() {
   const pendingDeletionsRef = useRef<Set<number>>(new Set());
   const pendingQuestionDeletionsRef = useRef<Set<number>>(new Set());
 
-  // Track which specific exam is currently being toggled (for button loading state)
-  const [togglingExamId, setTogglingExamId] = useState<number | null>(null);
-  // Keep a ref in sync for use in real-time event handlers (avoids stale closure)
-  const togglingExamIdRef = useRef<number | null>(null);
+  // Track publish/unpublish state PER EXAM (not a single global id/action) so that
+  // toggling two different exams close together can never stomp on each other's
+  // pending label. Map value is the *intended* action ('publish' | 'unpublish'),
+  // recorded up front in onMutate — never re-derived from exam.isPublished, which
+  // is already flipped to the target value by the optimistic update, so reading it
+  // back after the fact always yields the opposite word.
+  const [togglingExams, setTogglingExams] = useState<Record<number, 'publish' | 'unpublish'>>({});
+  // Keep a ref in sync for use in real-time event handlers (avoids stale closures)
+  const togglingExamsRef = useRef<Record<number, 'publish' | 'unpublish'>>({});
   useEffect(() => {
-    togglingExamIdRef.current = togglingExamId;
-  }, [togglingExamId]);
+    togglingExamsRef.current = togglingExams;
+  }, [togglingExams]);
+
+  const setExamToggling = useCallback((examId: number, action: 'publish' | 'unpublish' | null) => {
+    setTogglingExams(prev => {
+      if (action === null) {
+        if (!(examId in prev)) return prev; // no-op, avoids extra renders
+        const { [examId]: _removed, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [examId]: action };
+    });
+  }, []);
 
   const { register: registerExam, handleSubmit: handleExamSubmit, formState: { errors: examErrors }, control: examControl, setValue: setExamValue, reset: resetExam, watch: watchExam, trigger: triggerExam } = useForm<ExamForm>({
     resolver: zodResolver(examFormSchema),
     defaultValues: {
+      assessmentCategory: 'academic',
       examType: 'exam',
       timerMode: 'individual',
+      totalMarks: 100,
       timeLimit: 60,
       isPublished: false,
       shuffleQuestions: false,
@@ -178,6 +199,11 @@ export default function ExamManagement() {
       showCorrectAnswers: true,
       passingScore: 60,
       gradingScale: 'active',
+      registrationOpen: false,
+      generateAdmitCards: false,
+      generateCandidateNumbers: false,
+      certificateEnabled: false,
+      leaderboardEnabled: false,
     }
   });
 
@@ -200,6 +226,8 @@ export default function ExamManagement() {
   const watchTimerMode = watchExam('timerMode');
   const watchDuration = watchExam('timeLimit');
   const watchGlobalStartTime = watchExam('startTime');
+  const watchAssessmentCategory = watchExam('assessmentCategory') || 'academic';
+  const isStandalone = watchAssessmentCategory === 'standalone';
 
   // Fetch exams with pending deletion filter
   const { data: rawExams = [], isLoading: loadingExams } = useQuery({
@@ -210,8 +238,10 @@ export default function ExamManagement() {
     },
   });
 
-  // Filter out exams that are pending deletion to prevent race conditions
-  const exams = rawExams.filter((exam: Exam) => !pendingDeletionsRef.current.has(exam.id));
+  // Assessments stay visible until the backend actually confirms deletion —
+  // see deleteExamMutation below. deletingExamIds only tracks in-flight
+  // deletions for "Deleting..." button/menu labels, it no longer hides items.
+  const exams = rawExams;
 
   // Enable real-time updates for exams with specific event handlers
   useSocketIORealtime({
@@ -241,8 +271,8 @@ export default function ExamManagement() {
         const updatedExam = event.data;
         if (updatedExam?.id) {
           // Use ref to get current toggling state (avoids stale closure)
-          if (togglingExamIdRef.current === updatedExam.id) {
-            setTogglingExamId(null);
+          if (updatedExam.id in togglingExamsRef.current) {
+            setExamToggling(updatedExam.id, null);
           }
           queryClient.setQueryData(['/api/exams'], (old: Exam[] | undefined) =>
             old?.map((e) => e.id === updatedExam.id ? updatedExam : e) || []
@@ -254,8 +284,8 @@ export default function ExamManagement() {
         const updatedExam = event.data;
         if (updatedExam?.id) {
           // Use ref to get current toggling state (avoids stale closure)
-          if (togglingExamIdRef.current === updatedExam.id) {
-            setTogglingExamId(null);
+          if (updatedExam.id in togglingExamsRef.current) {
+            setExamToggling(updatedExam.id, null);
           }
         }
       }
@@ -323,46 +353,11 @@ export default function ExamManagement() {
   // Filter subjects based on selected class - only show subjects the teacher is assigned to for that class
   const selectedClassId = watchExam('classId');
 
-  // Fetch class-subject mappings for the selected class (used for admins to filter subjects - CURRENTLY DISABLED per new requirement)
-  // We still fetch it for other potential uses, but we don't block admin subject selection on it.
-  const { data: classSubjectMappings = [], isLoading: mappingsLoading } = useQuery<Array<{
-    id: number;
-    classId: number;
-    subjectId: number;
-    department: string | null;
-    isCompulsory: boolean;
-    subjectName: string;
-    subjectCode: string;
-    category: string;
-  }>>({
-    queryKey: ['/api/class-subject-mappings', selectedClassId],
-    queryFn: async () => {
-      if (!selectedClassId) return [];
-      const response = await apiRequest('GET', `/api/class-subject-mappings/${selectedClassId}`);
-      return await response.json();
-    },
-    // Only fetch mappings if not admin, or if we specifically need them for admins later.
-    // Right now, admins can select ANY subject, so we don't strictly need it for the dropdown.
-    enabled: !!selectedClassId && !myAssignments?.isAdmin,
-    staleTime: 30000,
-  });
-
-  // Filter subjects based on selected class
-  const availableSubjects = (() => {
-    if (!myAssignments || !selectedClassId) return [];
-
-    // For admins, allow them to create an exam for ANY subject in the system
-    if (myAssignments.isAdmin) {
-      return allSubjects;
-    }
-
-    // For teachers, only show subjects they are assigned to for the selected class
-    return myAssignments.subjects.filter((s: any) =>
-      myAssignments.assignments.some(a => a.classId === selectedClassId && a.subjectId === s.id && a.isActive)
-    );
-  })();
-
-  const subjectsLoading = myAssignments?.isAdmin ? (assignmentsLoading || !allSubjects.length) : (assignmentsLoading || mappingsLoading);
+  // Filter subjects to only those assigned to the selected class (reusable hook)
+  const {
+    subjects: availableSubjects,
+    isLoading: subjectsLoading,
+  } = useClassSubjects(selectedClassId);
 
   // availableSubjects is for dropdown selections (filtered to teacher's assignments or class mappings)
   const subjects = availableSubjects;
@@ -421,10 +416,14 @@ export default function ExamManagement() {
   // Filter out questions that are pending deletion to prevent race conditions in preview
   const previewQuestions = rawPreviewQuestions.filter((question: ExamQuestion) => !pendingQuestionDeletionsRef.current.has(question.id));
 
+  // Stable, memoized exam ID list — prevents the question-counts query key from
+  // changing on every render (which would trigger spurious refetches)
+  const examIds = useMemo(() => exams.map((exam: Exam) => exam.id), [exams]);
+
   // Fetch question counts for all exams
   const { data: questionCounts = {} } = useQuery<Record<number, number>>({
-    queryKey: ['/api/exams/question-counts', exams.map((exam: Exam) => exam.id)],
-    enabled: exams.length > 0,
+    queryKey: ['/api/exams/question-counts', examIds],
+    enabled: examIds.length > 0,
     queryFn: async () => {
       const examIds = exams.map((exam: Exam) => exam.id);
       if (examIds.length === 0) return {};
@@ -452,6 +451,7 @@ export default function ExamManagement() {
       setIsExamDialogOpen(false);
       setEditingExam(null);
       resetExam();
+      setCurrentStep(1);
     },
     onError: (error: any) => {
       toast({
@@ -500,6 +500,7 @@ export default function ExamManagement() {
       setIsExamDialogOpen(false);
       setEditingExam(null);
       resetExam();
+      setCurrentStep(1);
     },
     onError: (error: any, variables, context: any) => {
       if (context?.previousExams) {
@@ -521,8 +522,13 @@ export default function ExamManagement() {
       return response.json();
     },
     onMutate: async ({ examId, isPublished }) => {
-      // Track which exam is being toggled for button loading state
-      setTogglingExamId(examId);
+      // Track this exam's in-flight action explicitly, keyed by its own id, so a
+      // second toggle on a different exam can never clear or overwrite this one's
+      // pending label. Recording it here (before the cache flips) is what lets the
+      // button correctly say "Publishing..." vs "Unpublishing..." — reading it back
+      // off exam.isPublished after the optimistic update would always show the
+      // opposite word, since that field is already the new value.
+      setExamToggling(examId, isPublished ? 'publish' : 'unpublish');
 
       await queryClient.cancelQueries({ queryKey: ['/api/exams'] });
       const previousExams = queryClient.getQueryData(['/api/exams']);
@@ -538,7 +544,8 @@ export default function ExamManagement() {
       return { previousExams };
     },
     onSuccess: (data, { isPublished }) => {
-      // Update cache with confirmed backend data
+      // Reconcile with confirmed backend data (covers any other fields the
+      // server may have changed alongside isPublished, e.g. publishedAt).
       queryClient.setQueryData(['/api/exams'], (old: any) => {
         if (!old) return old;
         return old.map((exam: any) =>
@@ -550,9 +557,6 @@ export default function ExamManagement() {
         title: "Success",
         description: `Exam ${isPublished ? 'published' : 'unpublished'} successfully`,
       });
-
-      // Clear the toggling state
-      setTogglingExamId(null);
     },
     onError: (error: any, variables, context: any) => {
       if (context?.previousExams) {
@@ -563,32 +567,64 @@ export default function ExamManagement() {
         description: error.message || "Failed to update exam publish status",
         variant: "destructive",
       });
-
-      // Clear the toggling state on error
-      setTogglingExamId(null);
+    },
+    onSettled: (_data, _error, variables) => {
+      // Clear only THIS exam's toggling state once its own request finishes,
+      // success or failure — guarantees the button never gets stuck reading
+      // "Publishing..."/"Unpublishing..." forever, and never clears a different
+      // exam's still-in-flight toggle if multiple are triggered concurrently.
+      setExamToggling(variables.examId, null);
     },
   });
 
-  // Delete exam mutation with optimistic update - instant deletion
-  // Uses smart deletion system that cascade deletes all related data
+  // Delete exam mutation — confirm-first (not optimistic).
+  // The frontend never touches the exams list until the backend has actually
+  // returned a success status for the DELETE request. This guarantees the
+  // item can never flicker back in: it simply never leaves until the server
+  // confirms it's really gone. Uses the smart deletion system on the backend,
+  // which cascade-deletes all related data.
   const deleteExamMutation = useMutation({
     mutationFn: async (examId: number) => {
-      const response = await apiRequest('DELETE', `/api/exams/${examId}`);
-      if (!response.ok) throw new Error('Failed to delete exam');
-      // Handle both 204 (legacy) and 200 with deletion stats
-      if (response.status === 204) return null;
-      const contentLength = response.headers.get('content-length');
-      if (contentLength && parseInt(contentLength) > 0) {
-        return response.json();
+      try {
+        const response = await apiRequest('DELETE', `/api/exams/${examId}`);
+        // 404 means the exam is already gone from the database (stale cache).
+        // Goal achieved — treat it as success.
+        if (response.status === 404) return null;
+        if (!response.ok) {
+          // Read the actual server error so the toast shows a meaningful message
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body?.message || `Failed to delete exam (${response.status})`);
+        }
+        // Handle both 204 (legacy) and 200 with deletion stats
+        if (response.status === 204) return null;
+        const contentLength = response.headers.get('content-length');
+        if (contentLength && parseInt(contentLength) > 0) {
+          return response.json();
+        }
+        return null;
+      } catch (error) {
+        // Re-throw so react-query's onError handles the UI feedback consistently,
+        // whether the failure was a thrown network error or a non-OK response above.
+        throw error instanceof Error ? error : new Error('Failed to delete exam');
       }
-      return null;
     },
     onMutate: async (examId) => {
-      // Mark this deletion as pending to prevent Realtime from overriding
+      // Mark this deletion as pending to prevent the Realtime socket from
+      // re-adding it while the request is in flight. Intentionally does NOT
+      // remove the item from the cache — it must stay visible until the
+      // backend confirms success, so there is nothing to roll back on error.
       pendingDeletionsRef.current.add(examId);
+      setDeletingExamIds(prev => new Set(prev).add(examId));
+    },
+    onSuccess: (_, examId) => {
+      // Clear pending/in-flight flags
+      pendingDeletionsRef.current.delete(examId);
+      setDeletingExamIds(prev => { const next = new Set(prev); next.delete(examId); return next; });
 
-      const queryKey = ['/api/exams'];
-      const context = await optimisticDelete<Exam[]>({ queryKey, idToDelete: examId });
+      // Only now — after the backend confirmed the deletion — remove it from the UI.
+      queryClient.setQueryData<Exam[]>(['/api/exams'], (old) =>
+        old?.filter((e) => e.id !== examId) ?? []
+      );
 
       if (selectedExam?.id === examId) {
         setSelectedExam(null);
@@ -596,101 +632,77 @@ export default function ExamManagement() {
         setEditingQuestion(null);
       }
 
-      return context;
-    },
-    onSuccess: (data, examId) => {
-      // Clear pending flag immediately
-      pendingDeletionsRef.current.delete(examId);
+      toast({ title: "Success", description: "Exam deleted successfully" });
 
-      // Build detailed success message with deletion stats
-      let description = "Exam deleted successfully";
-      if (data?.deletedCounts) {
-        const { questions, studentAnswers, results, sessions } = data.deletedCounts;
-        const parts = [];
-        if (questions > 0) parts.push(`${questions} questions`);
-        if (studentAnswers > 0) parts.push(`${studentAnswers} student answers`);
-        if (results > 0) parts.push(`${results} results`);
-        if (sessions > 0) parts.push(`${sessions} sessions`);
-        if (parts.length > 0) {
-          description = `Exam and ${parts.join(', ')} permanently deleted`;
-        }
-      }
-
-      toast({
-        title: "Success",
-        description,
-      });
-
-      // Invalidate related caches since exam and its data were deleted
+      // Silent background invalidations — these never block the UI
       queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/exam-results'] });
       queryClient.invalidateQueries({ queryKey: ['/api/exam-sessions'] });
     },
-    onError: (error: any, examId, context) => {
-      // Remove from pending deletions on error
+    onError: (error: any, examId) => {
+      // Remove from pending flags — the item was never hidden, so nothing to restore
       pendingDeletionsRef.current.delete(examId);
+      setDeletingExamIds(prev => { const next = new Set(prev); next.delete(examId); return next; });
 
-      if (context?.previousData) {
-        rollbackOnError(['/api/exams'], context.previousData);
-      }
       toast({
-        title: "Error",
-        description: error.message || "Failed to delete exam",
+        title: "Deletion Failed",
+        description: error.message || "Failed to delete exam. Please try again.",
         variant: "destructive",
       });
     },
   });
 
-  // Delete question mutation with optimistic update - instant deletion
+  // Delete question mutation — confirm-first (not optimistic). The question
+  // only leaves the list after the backend confirms the deletion succeeded.
   const deleteQuestionMutation = useMutation({
     mutationFn: async (questionId: number) => {
-      const response = await apiRequest('DELETE', `/api/exam-questions/${questionId}`);
-      if (!response.ok) throw new Error('Failed to delete question');
-      if (response.status === 204) return;
-      const contentLength = response.headers.get('content-length');
-      if (contentLength && parseInt(contentLength) > 0) {
-        return response.json();
+      try {
+        const response = await apiRequest('DELETE', `/api/exam-questions/${questionId}`);
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body?.message || 'Failed to delete question');
+        }
+        if (response.status === 204) return null;
+        const contentLength = response.headers.get('content-length');
+        if (contentLength && parseInt(contentLength) > 0) {
+          return response.json();
+        }
+        return null;
+      } catch (error) {
+        throw error instanceof Error ? error : new Error('Failed to delete question');
       }
-      return;
     },
     onMutate: async (questionId) => {
-      // Capture the current exam ID before any state changes
-      const currentExamId = selectedExam?.id;
-      const queryKey = ['/api/exam-questions', currentExamId];
-      const context = await optimisticDelete<ExamQuestion[]>({ queryKey, idToDelete: questionId });
-
-      // Mark question as pending deletion to prevent race conditions with Realtime
+      // Mark question as pending deletion to prevent race conditions with Realtime.
+      // The item itself is left in place until onSuccess confirms the delete.
       pendingQuestionDeletionsRef.current.add(questionId);
-
-      // Return context with captured examId for use in onSuccess/onError
-      return { ...context, examId: currentExamId };
     },
-    onSuccess: (_, questionId, context) => {
-      // Clear pending flag immediately
+    onSuccess: (_, questionId) => {
+      // Only now remove the question from the cache — after backend confirmation.
+      const examId = selectedExam?.id;
+      if (examId) {
+        queryClient.setQueryData<ExamQuestion[]>(['/api/exam-questions', examId], (old) =>
+          old?.filter((q) => q.id !== questionId) ?? []
+        );
+      }
+      if (editingQuestion?.id === questionId) {
+        setEditingQuestion(null);
+      }
+
       pendingQuestionDeletionsRef.current.delete(questionId);
 
-      toast({
-        title: "Success",
-        description: "Question deleted successfully",
-      });
+      toast({ title: "Success", description: "Question deleted successfully" });
 
-      // Invalidate question counts and options caches
+      // Silent background invalidations
       queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/question-options', questionId] });
     },
-    onError: (error: any, questionId, context) => {
-      // Remove from pending deletions on error
+    onError: (error: any, questionId) => {
       pendingQuestionDeletionsRef.current.delete(questionId);
 
-      // Use examId from context to ensure we target the correct cache
-      const examId = context?.examId;
-
-      if (context?.previousData && examId) {
-        rollbackOnError(['/api/exam-questions', examId], context.previousData);
-      }
       toast({
-        title: "Error",
-        description: error.message || "Failed to delete question",
+        title: "Deletion Failed",
+        description: error.message || "Failed to delete question. Please try again.",
         variant: "destructive",
       });
     },
@@ -949,10 +961,11 @@ export default function ExamManagement() {
 
     // Populate form with exam data
     resetExam({
+      assessmentCategory: (exam as any).assessmentCategory || 'academic',
       name: exam.name || '',
       date: formatDate(exam.date),
-      classId: exam.classId,
-      subjectId: exam.subjectId,
+      classId: exam.classId ?? undefined,
+      subjectId: exam.subjectId ?? undefined,
       termId: exam.termId || undefined,
       examType: (exam.examType as 'test' | 'exam') || 'exam',
       teacherInChargeId: exam.teacherInChargeId || undefined,
@@ -969,6 +982,17 @@ export default function ExamManagement() {
       showCorrectAnswers: exam.showCorrectAnswers ?? true,
       passingScore: exam.passingScore || 60,
       gradingScale: exam.gradingScale || 'active',
+      purpose: (exam as any).purpose || undefined,
+      venue: (exam as any).venue || undefined,
+      targetType: (exam as any).targetType || undefined,
+      registrationFee: (exam as any).registrationFee ?? undefined,
+      registrationOpen: (exam as any).registrationOpen || false,
+      registrationDeadline: (exam as any).registrationDeadline || undefined,
+      candidateType: (exam as any).candidateType || undefined,
+      generateAdmitCards: (exam as any).generateAdmitCards || false,
+      generateCandidateNumbers: (exam as any).generateCandidateNumbers || false,
+      certificateEnabled: (exam as any).certificateEnabled || false,
+      leaderboardEnabled: (exam as any).leaderboardEnabled || false,
     });
 
     setCurrentStep(1);
@@ -986,8 +1010,8 @@ export default function ExamManagement() {
   };
 
   const EXAM_STEPS = [
-    { id: 1, title: 'Exam Details', icon: FileText },
-    { id: 2, title: 'Academic & Timing', icon: Calendar },
+    { id: 1, title: 'Assessment Details', icon: FileText },
+    { id: 2, title: isStandalone ? 'Configuration' : 'Academic & Timing', icon: Calendar },
     { id: 3, title: 'Options & Grading', icon: Settings },
     { id: 4, title: 'Review & Create', icon: Check },
   ];
@@ -998,8 +1022,14 @@ export default function ExamManagement() {
       setCurrentStep(4);
       return;
     }
-    if (currentStep === 1) fieldsToValidate = ['name', 'date', 'classId', 'subjectId', 'examType'];
-    if (currentStep === 2) fieldsToValidate = ['termId', 'totalMarks', 'timeLimit'];
+    if (currentStep === 1) {
+      fieldsToValidate = ['name', 'date', 'examType'];
+      if (!isStandalone) fieldsToValidate.push('classId', 'subjectId');
+    }
+    if (currentStep === 2) {
+      fieldsToValidate = ['totalMarks', 'timeLimit'];
+      if (!isStandalone) fieldsToValidate.push('termId');
+    }
     const valid = await triggerExam(fieldsToValidate);
     if (valid) setCurrentStep(s => s + 1);
   };
@@ -1286,9 +1316,7 @@ export default function ExamManagement() {
 "What is 2 + 2?",multiple_choice,"2","3","4","5","C",1,"Choose the correct answer","4"
 "What is the capital of France?",multiple_choice,"London","Paris","Berlin","Madrid","B",1,"Select the correct capital city","Paris"
 "Explain what a Control Account is and state five advantages.",essay,"","","","","",15,"Write a detailed explanation showing your understanding of control accounts and their benefits in accounting","A Control Account is a summary account that shows the total balance of a subsidiary ledger. Advantages include: 1) Error detection 2) Time saving 3) Fraud prevention 4) Quick trial balance 5) Management control"
-"Define Partnership Deed and explain its importance.",essay,"","","","","",10,"Provide definition and explain why it's important in partnerships","A Partnership Deed is a legal document that outlines the terms and conditions of a partnership business..."
-"What is Depreciation? Distinguish between Straight Line and Reducing Balance methods.",text,"","","","","",8,"Define depreciation and compare the two methods with examples","Depreciation is the systematic allocation of an asset's cost over its useful life. Straight line method allocates equal amounts annually while reducing balance applies a fixed percentage to the reducing book value"
-"Calculate compound interest: Principal ₦50,000, Rate 10% per annum, Time 3 years.",text,"","","","","",5,"Show your working step by step","Using A = P(1 + r)^n: A = 50,000(1 + 0.1)^3 = 50,000 × 1.331 = ₦66,550. Compound Interest = ₦66,550 - ₦50,000 = ₦16,550"`;
+"Define Partnership Deed and explain its importance.",essay,"","","","","",10,"Provide definition and explain why it's important in partnerships","A Partnership Deed is a legal document that outlines the terms and conditions of a partnership business..."`;
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -1302,7 +1330,7 @@ export default function ExamManagement() {
 
     toast({
       title: "Enhanced Template Downloaded",
-      description: "CSV template with support for multiple choice, text, and essay questions has been downloaded.",
+      description: "CSV template with multiple_choice and essay question types has been downloaded.",
     });
   };
 
@@ -1436,8 +1464,8 @@ export default function ExamManagement() {
           errors.push(`Row ${i + 1}: Question text is required and must be at least 5 characters`);
           continue;
         }
-        if (!['multiple_choice', 'text', 'essay'].includes(questionType)) {
-          errors.push(`Row ${i + 1}: Invalid question type "${questionType}". Must be: multiple_choice, text, or essay`);
+        if (!['multiple_choice', 'essay'].includes(questionType)) {
+          errors.push(`Row ${i + 1}: Invalid question type "${questionType}". Please use 'multiple_choice' or 'essay'.`);
           continue;
         }
         const points = parseInt(pointsText) || 1;
@@ -1445,18 +1473,11 @@ export default function ExamManagement() {
           errors.push(`Row ${i + 1}: Points must be between 1 and 100 (found: ${pointsText})`);
           continue;
         }
-        // Enhanced validation for theory questions
+        // Validation for essay questions
         if (questionType === 'essay') {
           if (questionText.length < 20) {
             errors.push(`Row ${i + 1}: Essay questions should have detailed question text (at least 20 characters)`);
             continue;
-          }
-          if (points < 5) {
-          }
-        }
-
-        if (questionType === 'text') {
-          if (points > 10) {
           }
         }
 
@@ -1556,8 +1577,11 @@ export default function ExamManagement() {
     return result;
   };
 
-  const filteredExams = exams.filter((exam: Exam) =>
-    exam.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredExams = useMemo(
+    () => exams.filter((exam: Exam) =>
+      exam.name.toLowerCase().includes(searchTerm.toLowerCase())
+    ),
+    [exams, searchTerm]
   );
 
   const getClassNameById = (classId: number) => {
@@ -1590,20 +1614,29 @@ export default function ExamManagement() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Exam Management"
-        description="Create and manage exams for your classes"
-        icon={BookOpen}
+        title="Assessment Management"
+        description="Create and manage academic and standalone assessments"
+        icon={Clipboard}
         actions={
           <Dialog open={isExamDialogOpen} onOpenChange={handleExamDialogClose}>
             <DialogTrigger asChild>
-              <Button data-testid="button-create-exam" className="w-full sm:w-auto">
+              <Button
+                data-testid="button-create-exam"
+                className="w-full sm:w-auto"
+                onClick={() => {
+                  // Always start a fresh wizard when creating (not editing) a new assessment
+                  setEditingExam(null);
+                  resetExam();
+                  setCurrentStep(1);
+                }}
+              >
                 <Plus className="w-4 h-4 mr-2" />
-                Create New Exam
+                Create Assessment
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>{editingExam ? 'Edit Exam' : 'Create New Exam'}</DialogTitle>
+                <DialogTitle>{editingExam ? 'Edit Assessment' : 'Create New Assessment'}</DialogTitle>
               </DialogHeader>
 
               {/* Step Indicator */}
@@ -1627,68 +1660,150 @@ export default function ExamManagement() {
 
               <div className="space-y-4">
 
-                {/* ── Step 1: Exam Details ── */}
+                {/* ── Step 1: Assessment Details ── */}
                 {currentStep === 1 && (
                   <div className="space-y-4">
+
+                    {/* Assessment Category Picker */}
+                    <div className="space-y-2">
+                      <Label>Assessment Category *</Label>
+                      <Controller name="assessmentCategory" control={examControl} render={({ field }) => (
+                        <div className="grid grid-cols-2 gap-3">
+                          <button
+                            type="button"
+                            onClick={() => field.onChange('academic')}
+                            className={`flex flex-col items-start gap-1 p-3 rounded-lg border-2 text-left transition-colors ${field.value === 'academic' ? 'border-primary bg-primary/5' : 'border-border hover:border-muted-foreground/40'}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <BookOpen className="w-4 h-4 text-primary" />
+                              <span className="text-sm font-semibold">Academic</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">Updates report cards &amp; cumulative records</p>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => field.onChange('standalone')}
+                            className={`flex flex-col items-start gap-1 p-3 rounded-lg border-2 text-left transition-colors ${field.value === 'standalone' ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/20' : 'border-border hover:border-muted-foreground/40'}`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Layers className="w-4 h-4 text-amber-600" />
+                              <span className="text-sm font-semibold">Standalone</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">Independent — no report card effect</p>
+                          </button>
+                        </div>
+                      )} />
+                      {isStandalone && (
+                        <p className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded p-2">
+                          Standalone: results are stored independently and never affect report cards. Examples: Mock WAEC, Common Entrance, Quiz Competition.
+                        </p>
+                      )}
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="name">Exam Name *</Label>
-                        <Input id="name" {...registerExam('name')} data-testid="input-exam-name" placeholder="e.g., Mid-term Mathematics Test" />
+                        <Label htmlFor="name">Assessment Name *</Label>
+                        <Input id="name" {...registerExam('name')} data-testid="input-exam-name" placeholder={isStandalone ? "e.g., Common Entrance Exam 2025" : "e.g., Mid-term Mathematics Test"} />
                         {examErrors.name && <p className="text-sm text-red-500 mt-1">{examErrors.name.message}</p>}
                       </div>
                       <div>
-                        <Label htmlFor="date">Exam Date *</Label>
+                        <Label htmlFor="date">Date *</Label>
                         <Input id="date" type="date" {...registerExam('date')} data-testid="input-exam-date" />
                         {examErrors.date && <p className="text-sm text-red-500 mt-1">{examErrors.date.message}</p>}
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label>Class *</Label>
-                        <Controller name="classId" control={examControl} render={({ field }) => (
-                          <Select onValueChange={(v) => { const n = Number(v); if (!isNaN(n)) field.onChange(n); }}
-                            value={field.value != null ? field.value.toString() : ''}>
-                            <SelectTrigger data-testid="select-exam-class"><SelectValue placeholder="Select class" /></SelectTrigger>
-                            <SelectContent>
-                              {classes.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        )} />
-                        {examErrors.classId && <p className="text-sm text-red-500 mt-1">{examErrors.classId.message}</p>}
+                    {/* Academic-only: Class and Subject */}
+                    {!isStandalone && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Class *</Label>
+                          <Controller name="classId" control={examControl} render={({ field }) => (
+                            <Select onValueChange={(v) => { const n = Number(v); if (!isNaN(n)) field.onChange(n); }}
+                              value={field.value != null ? field.value.toString() : ''}>
+                              <SelectTrigger data-testid="select-exam-class"><SelectValue placeholder="Select class" /></SelectTrigger>
+                              <SelectContent>
+                                {classes.map((c: any) => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          )} />
+                          {examErrors.classId && <p className="text-sm text-red-500 mt-1">{examErrors.classId.message}</p>}
+                        </div>
+                        <div>
+                          <Label>Subject *</Label>
+                          <Controller name="subjectId" control={examControl} render={({ field }) => (
+                            <Select onValueChange={(v) => { const n = Number(v); if (!isNaN(n)) field.onChange(n); }}
+                              value={field.value != null ? field.value.toString() : ''} disabled={subjectsLoading || !selectedClassId}>
+                              <SelectTrigger data-testid="select-exam-subject">
+                                <SelectValue placeholder={subjectsLoading ? "Loading..." : !selectedClassId ? "Select class first" : subjects.length === 0 ? "No subjects" : "Select subject"} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {subjects.map((s: any) => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          )} />
+                          {examErrors.subjectId && <p className="text-sm text-red-500 mt-1">{examErrors.subjectId.message}</p>}
+                        </div>
                       </div>
-                      <div>
-                        <Label>Subject *</Label>
-                        <Controller name="subjectId" control={examControl} render={({ field }) => (
-                          <Select onValueChange={(v) => { const n = Number(v); if (!isNaN(n)) field.onChange(n); }}
-                            value={field.value != null ? field.value.toString() : ''} disabled={subjectsLoading || !selectedClassId}>
-                            <SelectTrigger data-testid="select-exam-subject">
-                              <SelectValue placeholder={subjectsLoading ? "Loading..." : !selectedClassId ? "Select class first" : subjects.length === 0 ? "No subjects" : "Select subject"} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {subjects.map((s: any) => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        )} />
-                        {examErrors.subjectId && <p className="text-sm text-red-500 mt-1">{examErrors.subjectId.message}</p>}
+                    )}
+
+                    {/* Standalone-only: Purpose */}
+                    {isStandalone && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label>Assessment Purpose</Label>
+                          <Controller name="purpose" control={examControl} render={({ field }) => (
+                            <Select onValueChange={field.onChange} value={field.value || ''}>
+                              <SelectTrigger><SelectValue placeholder="Select purpose (optional)" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="common_entrance">Common Entrance</SelectItem>
+                                <SelectItem value="scholarship">Scholarship Exam</SelectItem>
+                                <SelectItem value="mock_waec">Mock WAEC</SelectItem>
+                                <SelectItem value="mock_jamb">Mock JAMB</SelectItem>
+                                <SelectItem value="olympiad">Olympiad / Competition</SelectItem>
+                                <SelectItem value="quiz">Quiz Competition</SelectItem>
+                                <SelectItem value="practice_cbt">Practice CBT</SelectItem>
+                                <SelectItem value="weekly_test">Weekly Test</SelectItem>
+                                <SelectItem value="entrance_screening">Entrance Screening</SelectItem>
+                                <SelectItem value="interview">Interview Assessment</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )} />
+                        </div>
+                        <div>
+                          <Label>Candidate Type</Label>
+                          <Controller name="candidateType" control={examControl} render={({ field }) => (
+                            <Select onValueChange={field.onChange} value={field.value || ''}>
+                              <SelectTrigger><SelectValue placeholder="Who can sit this?" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="internal">Internal (enrolled students)</SelectItem>
+                                <SelectItem value="external">External candidates only</SelectItem>
+                                <SelectItem value="both">Both internal &amp; external</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )} />
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <Label>Assessment Type *</Label>
-                        <Controller name="examType" control={examControl} render={({ field }) => (
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger data-testid="select-exam-type"><SelectValue placeholder="Select type" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="test">Test (40% weight)</SelectItem>
-                              <SelectItem value="exam">Exam (60% weight)</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )} />
-                        {examErrors.examType && <p className="text-sm text-red-500 mt-1">{examErrors.examType.message}</p>}
-                        <p className="text-xs text-muted-foreground mt-1">Test (40%) + Exam (60%) = Total (100%)</p>
-                      </div>
+                      {!isStandalone && (
+                        <div>
+                          <Label>Exam Format *</Label>
+                          <Controller name="examType" control={examControl} render={({ field }) => (
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <SelectTrigger data-testid="select-exam-type"><SelectValue placeholder="Select format" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="test">Test (40% weight)</SelectItem>
+                                <SelectItem value="exam">Exam (60% weight)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )} />
+                          {examErrors.examType && <p className="text-sm text-red-500 mt-1">{examErrors.examType.message}</p>}
+                          <p className="text-xs text-muted-foreground mt-1">Test (40%) + Exam (60%) = Total (100%)</p>
+                        </div>
+                      )}
                       <div>
                         <Label>Teacher In-Charge</Label>
                         <Controller name="teacherInChargeId" control={examControl} render={({ field }) => (
@@ -1707,87 +1822,164 @@ export default function ExamManagement() {
                     <div>
                       <Label htmlFor="instructions">Instructions</Label>
                       <Textarea id="instructions" {...registerExam('instructions')} data-testid="textarea-exam-instructions"
-                        placeholder="Enter exam instructions for students..." rows={3} />
-                      <p className="text-xs text-muted-foreground mt-1">Shown to students before they start</p>
+                        placeholder="Enter instructions shown to candidates before they start..." rows={3} />
+                      <p className="text-xs text-muted-foreground mt-1">Shown to candidates before they start</p>
                     </div>
                   </div>
                 )}
 
-                {/* ── Step 2: Academic & Timing ── */}
+                {/* ── Step 2: Academic & Timing / Standalone Configuration ── */}
                 {currentStep === 2 && (
                   <div className="space-y-4">
-                    <div>
-                      <Label>Academic Term *</Label>
-                      <Controller name="termId" control={examControl} render={({ field }) => (
-                        <Select onValueChange={(v) => { const n = parseInt(v); if (!isNaN(n)) field.onChange(n); }}
-                          value={field.value != null ? field.value.toString() : ''}>
-                        <SelectTrigger data-testid="select-term"><SelectValue placeholder="Select term" /></SelectTrigger>
-                        <SelectContent>
-                          {terms && terms.length > 0
-                            ? terms.map((t: any) => <SelectItem key={t.id} value={t.id.toString()}>{t.name} - {t.year}</SelectItem>)
-                            : <SelectItem value="no-terms" disabled>No academic terms available</SelectItem>}
-                        </SelectContent>
-                      </Select>
-                    )} />
-                    {examErrors.termId && <p className="text-sm text-red-500 mt-1">{examErrors.termId.message}</p>}
-                  </div>
-
-                  <div className="space-y-3 p-3 border rounded-lg bg-primary/5 dark:bg-primary/5">
-                    <h4 className="font-medium text-sm flex items-center gap-2"><Clock className="w-4 h-4" />Timer Mode</h4>
-                    <Controller name="timerMode" control={examControl} render={({ field }) => (
-                      <Select onValueChange={field.onChange} value={field.value || 'individual'}>
-                        <SelectTrigger data-testid="select-timer-mode"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="individual">Individual Timer — each student starts their own</SelectItem>
-                          <SelectItem value="global">Global Timer — all students start/end together</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )} />
-                    {watchTimerMode === 'individual' && (
-                      <p className="text-xs text-muted-foreground">Students can start at any time; each gets the full duration from when they click Start.</p>
+                    {/* Academic-only: Term */}
+                    {!isStandalone && (
+                      <div>
+                        <Label>Academic Term *</Label>
+                        <Controller name="termId" control={examControl} render={({ field }) => (
+                          <Select onValueChange={(v) => { const n = parseInt(v); if (!isNaN(n)) field.onChange(n); }}
+                            value={field.value != null ? field.value.toString() : ''}>
+                          <SelectTrigger data-testid="select-term"><SelectValue placeholder="Select term" /></SelectTrigger>
+                          <SelectContent>
+                            {terms && terms.length > 0
+                              ? terms.map((t: any) => <SelectItem key={t.id} value={t.id.toString()}>{t.name} - {t.year}</SelectItem>)
+                              : <SelectItem value="no-terms" disabled>No academic terms available</SelectItem>}
+                          </SelectContent>
+                        </Select>
+                        )} />
+                        {examErrors.termId && <p className="text-sm text-red-500 mt-1">{examErrors.termId.message}</p>}
+                      </div>
                     )}
-                    {watchTimerMode === 'global' && (
-                      <p className="text-xs text-muted-foreground">All students must complete within the scheduled window. Exam auto-submits at end time.</p>
-                    )}
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="totalMarks">Total Marks *</Label>
-                      <Input id="totalMarks" type="number" {...registerExam('totalMarks', { valueAsNumber: true })}
-                        data-testid="input-exam-total-marks" placeholder="100" />
-                      {examErrors.totalMarks && <p className="text-sm text-red-500 mt-1">{examErrors.totalMarks.message}</p>}
-                    </div>
-                    <div>
-                      <Label htmlFor="timeLimit">{watchTimerMode === 'individual' ? 'Duration/Student' : 'Total Duration'} (min) *</Label>
-                      <Input id="timeLimit" type="number" {...registerExam('timeLimit', { valueAsNumber: true })}
-                        data-testid="input-exam-time-limit" placeholder="60" />
-                      {examErrors.timeLimit && <p className="text-sm text-red-500 mt-1">{examErrors.timeLimit.message}</p>}
-                    </div>
-                  </div>
-
-                  {watchTimerMode === 'global' && (
-                    <div className="border rounded-lg p-3 bg-primary/5 dark:bg-primary/5 space-y-3">
-                      <h4 className="font-medium text-sm flex items-center gap-2"><Clock className="w-4 h-4" />Global Timer Window</h4>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <Label htmlFor="startTime">Start Time</Label>
-                          <Input id="startTime" type="datetime-local" {...registerExam('startTime')}
-                            data-testid="input-exam-start-time" min={new Date().toISOString().slice(0, 16)} />
-                          {examErrors.startTime && <p className="text-sm text-red-500 mt-1">{examErrors.startTime.message}</p>}
+                    {/* Standalone-only: Venue, Target, Registration */}
+                    {isStandalone && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label>Venue / Location</Label>
+                            <Input {...registerExam('venue')} placeholder="e.g., School Hall, CBT Lab" />
+                          </div>
+                          <div>
+                            <Label>Target Audience</Label>
+                            <Controller name="targetType" control={examControl} render={({ field }) => (
+                              <Select onValueChange={field.onChange} value={field.value || ''}>
+                                <SelectTrigger><SelectValue placeholder="Who is this for?" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="whole_school">Whole School</SelectItem>
+                                  <SelectItem value="class">Specific Class</SelectItem>
+                                  <SelectItem value="selected_students">Selected Students</SelectItem>
+                                  <SelectItem value="external">External Candidates</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )} />
+                          </div>
                         </div>
-                        <div>
-                          <Label htmlFor="endTime">End Time</Label>
-                          <Input id="endTime" type="datetime-local" {...registerExam('endTime')}
-                            data-testid="input-exam-end-time"
-                            min={watchGlobalStartTime ? (typeof watchGlobalStartTime === 'string' ? watchGlobalStartTime : new Date(watchGlobalStartTime).toISOString().slice(0, 16)) : new Date().toISOString().slice(0, 16)} />
-                          {examErrors.endTime && <p className="text-sm text-red-500 mt-1">{examErrors.endTime.message}</p>}
+
+                        <div className="space-y-3 p-3 border rounded-lg bg-amber-50 dark:bg-amber-950/20">
+                          <h4 className="font-medium text-sm flex items-center gap-2">
+                            <DollarSign className="w-4 h-4 text-amber-600" />Registration
+                          </h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label>Registration Fee (₦)</Label>
+                              <Input type="number" min="0" {...registerExam('registrationFee', { valueAsNumber: true })} placeholder="0 = free" />
+                              <p className="text-xs text-muted-foreground mt-1">Leave 0 or blank for free entry</p>
+                            </div>
+                            <div>
+                              <Label>Registration Deadline</Label>
+                              <Input type="date" {...registerExam('registrationDeadline')} />
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Controller name="registrationOpen" control={examControl} render={({ field }) => (
+                              <Switch checked={field.value || false} onCheckedChange={field.onChange} />
+                            )} />
+                            <div>
+                              <Label>Open Registration Now</Label>
+                              <p className="text-xs text-muted-foreground">Allow candidates to register for this assessment</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3 p-3 border rounded-lg bg-muted/40">
+                          <h4 className="font-medium text-sm flex items-center gap-2">
+                            <Ticket className="w-4 h-4" />Candidate Features
+                          </h4>
+                          {[
+                            { name: 'generateCandidateNumbers' as const, label: 'Generate Candidate Numbers', desc: 'Auto-assign unique exam numbers to each candidate' },
+                            { name: 'generateAdmitCards' as const, label: 'Generate Admit Cards', desc: 'Produce printable admit cards for candidates' },
+                            { name: 'certificateEnabled' as const, label: 'Generate Certificates', desc: 'Issue digital/printable certificates to candidates' },
+                            { name: 'leaderboardEnabled' as const, label: 'Enable Leaderboard', desc: 'Show ranked results after the assessment ends' },
+                          ].map(({ name, label, desc }) => (
+                            <div key={name} className="flex items-center gap-3">
+                              <Controller name={name} control={examControl} render={({ field }) => (
+                                <Switch checked={Boolean(field.value)} onCheckedChange={field.onChange} />
+                              )} />
+                              <div>
+                                <Label>{label}</Label>
+                                <p className="text-xs text-muted-foreground">{desc}</p>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
+                    )}
+
+                    <div className="space-y-3 p-3 border rounded-lg bg-primary/5 dark:bg-primary/5">
+                      <h4 className="font-medium text-sm flex items-center gap-2"><Clock className="w-4 h-4" />Timer Mode</h4>
+                      <Controller name="timerMode" control={examControl} render={({ field }) => (
+                        <Select onValueChange={field.onChange} value={field.value || 'individual'}>
+                          <SelectTrigger data-testid="select-timer-mode"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="individual">Individual Timer — each candidate starts their own</SelectItem>
+                            <SelectItem value="global">Global Timer — all candidates start/end together</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )} />
+                      {watchTimerMode === 'individual' && (
+                        <p className="text-xs text-muted-foreground">Candidates can start at any time; each gets the full duration from when they click Start.</p>
+                      )}
+                      {watchTimerMode === 'global' && (
+                        <p className="text-xs text-muted-foreground">All candidates must complete within the scheduled window. Auto-submits at end time.</p>
+                      )}
                     </div>
-                  )}
-                </div>
-              )}
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="totalMarks">Total Marks *</Label>
+                        <Input id="totalMarks" type="number" {...registerExam('totalMarks', { valueAsNumber: true })}
+                          data-testid="input-exam-total-marks" placeholder="100" />
+                        {examErrors.totalMarks && <p className="text-sm text-red-500 mt-1">{examErrors.totalMarks.message}</p>}
+                      </div>
+                      <div>
+                        <Label htmlFor="timeLimit">{watchTimerMode === 'individual' ? 'Duration/Candidate' : 'Total Duration'} (min) *</Label>
+                        <Input id="timeLimit" type="number" {...registerExam('timeLimit', { valueAsNumber: true })}
+                          data-testid="input-exam-time-limit" placeholder="60" />
+                        {examErrors.timeLimit && <p className="text-sm text-red-500 mt-1">{examErrors.timeLimit.message}</p>}
+                      </div>
+                    </div>
+
+                    {watchTimerMode === 'global' && (
+                      <div className="border rounded-lg p-3 bg-primary/5 dark:bg-primary/5 space-y-3">
+                        <h4 className="font-medium text-sm flex items-center gap-2"><Clock className="w-4 h-4" />Global Timer Window</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label htmlFor="startTime">Start Time</Label>
+                            <Input id="startTime" type="datetime-local" {...registerExam('startTime')}
+                              data-testid="input-exam-start-time" min={new Date().toISOString().slice(0, 16)} />
+                            {examErrors.startTime && <p className="text-sm text-red-500 mt-1">{examErrors.startTime.message}</p>}
+                          </div>
+                          <div>
+                            <Label htmlFor="endTime">End Time</Label>
+                            <Input id="endTime" type="datetime-local" {...registerExam('endTime')}
+                              data-testid="input-exam-end-time"
+                              min={watchGlobalStartTime ? (typeof watchGlobalStartTime === 'string' ? watchGlobalStartTime : new Date(watchGlobalStartTime).toISOString().slice(0, 16)) : new Date().toISOString().slice(0, 16)} />
+                            {examErrors.endTime && <p className="text-sm text-red-500 mt-1">{examErrors.endTime.message}</p>}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
               {/* ── Step 3: Options & Grading ── */}
               {currentStep === 3 && (
@@ -1867,14 +2059,29 @@ export default function ExamManagement() {
               {/* ── Step 4: Review & Create ── */}
               {currentStep === 4 && (
                 <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">Review your exam before {editingExam ? 'updating' : 'creating'}.</p>
+                  <div className="flex items-center gap-2 mb-2">
+                    {isStandalone
+                      ? <Badge className="bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300"><Layers className="w-3 h-3 mr-1" />Standalone Assessment</Badge>
+                      : <Badge className="bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-300"><BookOpen className="w-3 h-3 mr-1" />Academic Assessment</Badge>
+                    }
+                  </div>
+                  <p className="text-sm text-muted-foreground">Review your assessment before {editingExam ? 'updating' : 'creating'}.</p>
                   {[
-                    { label: 'Exam Name', value: watchExam('name') },
+                    { label: 'Name', value: watchExam('name') },
                     { label: 'Date', value: watchExam('date') },
-                    { label: 'Class', value: classes.find((c: any) => c.id === watchExam('classId'))?.name || '—' },
-                    { label: 'Subject', value: subjects.find((s: any) => s.id === watchExam('subjectId'))?.name || '—' },
-                    { label: 'Type', value: watchExam('examType') === 'exam' ? 'Exam (60%)' : 'Test (40%)' },
-                    { label: 'Term', value: (() => { const t = (terms as any[]).find((t: any) => t.id === watchExam('termId')); return t ? `${t.name} - ${t.year}` : '—'; })() },
+                    ...(!isStandalone ? [
+                      { label: 'Class', value: (allClasses as any[]).find((c: any) => c.id === watchExam('classId'))?.name || '—' },
+                      { label: 'Subject', value: (allSubjects as any[]).find((s: any) => s.id === watchExam('subjectId'))?.name || '—' },
+                      { label: 'Format', value: watchExam('examType') === 'exam' ? 'Exam (60% weight)' : 'Test (40% weight)' },
+                      { label: 'Term', value: (() => { const t = (terms as any[]).find((t: any) => t.id === watchExam('termId')); return t ? `${t.name} - ${t.year}` : '—'; })() },
+                    ] : [
+                      { label: 'Purpose', value: watchExam('purpose' as any) || '—' },
+                      { label: 'Venue', value: (watchExam as any)('venue') || '—' },
+                      { label: 'Target', value: (watchExam as any)('targetType') || '—' },
+                      { label: 'Registration Fee', value: (() => { const fee = (watchExam as any)('registrationFee'); return fee && fee > 0 ? `₦${Number(fee).toLocaleString()}` : 'Free'; })() },
+                      { label: 'Candidate Numbers', value: (watchExam as any)('generateCandidateNumbers') ? 'Yes' : 'No' },
+                      { label: 'Admit Cards', value: (watchExam as any)('generateAdmitCards') ? 'Yes' : 'No' },
+                    ]),
                     { label: 'Total Marks', value: watchExam('totalMarks') },
                     { label: 'Duration', value: watchExam('timeLimit') ? `${watchExam('timeLimit')} min` : '—' },
                     { label: 'Timer Mode', value: watchExam('timerMode') === 'individual' ? 'Individual' : 'Global' },
@@ -1916,7 +2123,7 @@ export default function ExamManagement() {
 
     <MiniStatGrid cols={4}>
       <MiniStatCard
-        label="Total Exams"
+        label="Total Assessments"
         value={exams.length}
         icon={FileText}
         color="text-blue-600"
@@ -1949,7 +2156,7 @@ export default function ExamManagement() {
 
     <div className="flex items-center space-x-2">
       <SearchInput
-        placeholder="Search exams..."
+        placeholder="Search assessments..."
         value={searchTerm}
         onChange={setSearchTerm}
         className="max-w-sm"
@@ -1957,349 +2164,25 @@ export default function ExamManagement() {
       />
     </div>
 
-      {/* Exams Table/Cards */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Exams</CardTitle>
-        </CardHeader>
-        <CardContent className="p-3 sm:p-6">
-          {loadingExams ? (
-            <div className="text-center py-8">Loading exams...</div>
-          ) : (
-            <>
-              {/* Mobile Card View */}
-              <div className="sm:hidden space-y-3">
-                {filteredExams.map((exam: any) => (
-                  <div
-                    key={exam.id}
-                    className="border border-border rounded-lg p-3 bg-muted/30"
-                    data-testid={`card-exam-${exam.id}`}
-                  >
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-sm truncate">{exam.name}</h3>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {getClassNameById(exam.classId)} • {getSubjectNameById(exam.subjectId)}
-                          </p>
-                        </div>
-                        <Badge variant={exam.isPublished ? 'default' : 'secondary'} className="ml-2 flex-shrink-0">
-                          {exam.isPublished ? 'Published' : 'Draft'}
-                        </Badge>
-                      </div>
+      {/* Assessments Table/Cards */}
+      <AssessmentList
+        exams={filteredExams}
+        isLoading={loadingExams}
+        searchTerm={searchTerm}
+        questionCounts={questionCounts}
+        togglingExams={togglingExams}
+        deletingExamIds={deletingExamIds}
+        onManageQuestions={(exam) => setSelectedExam(exam)}
+        onTogglePublish={(exam) => togglePublishMutation.mutate({ examId: exam.id, isPublished: !exam.isPublished })}
+        onPreview={(exam) => setPreviewExam(exam)}
+        onEditSettings={(exam) => handleEditExam(exam)}
+        onRequestDelete={(exam) => setDeletingExam(exam)}
+        onClearSearch={() => setSearchTerm('')}
+        onCreateFirst={() => setIsExamDialogOpen(true)}
+        getClassNameById={getClassNameById}
+        getSubjectNameById={getSubjectNameById}
+      />
 
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <div className="flex items-center space-x-3">
-                          <span>{new Date(exam.date).toLocaleDateString()}</span>
-                          {exam.timeLimit && (
-                            <div className="flex items-center">
-                              <Clock className="w-3 h-3 mr-1" />
-                              {exam.timeLimit}m
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center">
-                          <FileText className="w-3 h-3 mr-1" />
-                          {questionCounts[exam.id] || 0}
-                        </div>
-                      </div>
-
-                      {(() => {
-                        const now = new Date();
-                        const startTime = exam.startTime ? new Date(exam.startTime) : null;
-                        const endTime = exam.endTime ? new Date(exam.endTime) : null;
-
-                        if (exam.timerMode === 'global' && startTime && endTime) {
-                          if (now < startTime) {
-                            return (
-                              <Badge variant="outline" className="bg-yellow-50 w-fit">
-                                <Clock className="w-3 h-3 mr-1" />
-                                Scheduled
-                              </Badge>
-                            );
-                          } else if (now >= startTime && now <= endTime) {
-                            return (
-                              <Badge variant="default" className="bg-green-600 w-fit">
-                                <Play className="w-3 h-3 mr-1" />
-                                Live Now
-                              </Badge>
-                            );
-                          } else {
-                            return (
-                              <Badge variant="secondary" className="w-fit">
-                                Ended
-                              </Badge>
-                            );
-                          }
-                        }
-                        return null;
-                      })()}
-
-                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSelectedExam(exam)}
-                          data-testid={`button-manage-questions-${exam.id}`}
-                          className="flex-1"
-                        >
-                          <Edit className="w-4 h-4 mr-1" />
-                          Questions
-                        </Button>
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              data-testid={`button-exam-actions-${exam.id}`}
-                            >
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem
-                              onClick={() => togglePublishMutation.mutate({
-                                examId: exam.id,
-                                isPublished: !exam.isPublished
-                              })}
-                              disabled={togglingExamId === exam.id}
-                              data-testid={`dropdown-toggle-publish-${exam.id}`}
-                            >
-                              <Play className="w-4 h-4 mr-2" />
-                              {togglingExamId === exam.id
-                                ? (exam.isPublished ? 'Unpublishing...' : 'Publishing...')
-                                : (exam.isPublished ? 'Unpublish' : 'Publish')
-                              }
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => setPreviewExam(exam)}
-                              data-testid={`dropdown-preview-exam-${exam.id}`}
-                            >
-                              <Eye className="w-4 h-4 mr-2" />
-                              Preview
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleEditExam(exam)}
-                              data-testid={`dropdown-edit-exam-${exam.id}`}
-                            >
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit Exam
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <DropdownMenuItem
-                                  onSelect={(e) => e.preventDefault()}
-                                  className="text-destructive focus:text-destructive"
-                                  data-testid={`dropdown-delete-exam-${exam.id}`}
-                                >
-                                  <Trash2 className="w-4 h-4 mr-2" />
-                                  Delete Exam
-                                </DropdownMenuItem>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Exam</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete the exam "{exam.name}"? This action cannot be undone and will permanently remove all exam questions and student results.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => deleteExamMutation.mutate(exam.id)}
-                                    className="bg-destructive hover:bg-destructive/90"
-                                  >
-                                    Delete Exam
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {filteredExams.length === 0 && (
-                  <EmptyState
-                    title={searchTerm ? "No exams match your search" : "No exams created yet"}
-                    description={searchTerm 
-                      ? `We couldn't find any exams matching "${searchTerm}". Try a different search term.`
-                      : "Create your first exam to get started with assessment management."
-                    }
-                    icon={BookOpen}
-                    action={searchTerm
-                      ? { label: "Clear Search", onClick: () => setSearchTerm("") }
-                      : { label: "Create Your First Exam", onClick: () => setIsExamDialogOpen(true), icon: Plus }
-                    }
-                  />
-                )}
-              </div>
-
-              {/* Desktop Table View */}
-              <div className="hidden sm:block overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Class</TableHead>
-                      <TableHead>Subject</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Duration</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Schedule</TableHead>
-                      <TableHead>Questions</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredExams.map((exam: any) => (
-                      <TableRow key={exam.id} data-testid={`row-exam-${exam.id}`}>
-                        <TableCell className="font-medium">{exam.name}</TableCell>
-                        <TableCell>{getClassNameById(exam.classId)}</TableCell>
-                        <TableCell>{getSubjectNameById(exam.subjectId)}</TableCell>
-                        <TableCell>{new Date(exam.date).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                          {exam.timeLimit ? (
-                            <div className="flex items-center">
-                              <Clock className="w-4 h-4 mr-1" />
-                              {exam.timeLimit}m
-                            </div>
-                          ) : 'No limit'}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={exam.isPublished ? 'default' : 'secondary'}>
-                            {exam.isPublished ? 'Published' : 'Draft'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {(() => {
-                            const now = new Date();
-                            const startTime = exam.startTime ? new Date(exam.startTime) : null;
-                            const endTime = exam.endTime ? new Date(exam.endTime) : null;
-
-                            if (exam.timerMode === 'global' && startTime && endTime) {
-                              if (now < startTime) {
-                                return (
-                                  <Badge variant="outline" className="bg-yellow-50">
-                                    <Clock className="w-3 h-3 mr-1" />
-                                    Scheduled
-                                  </Badge>
-                                );
-                              } else if (now >= startTime && now <= endTime) {
-                                return (
-                                  <Badge variant="default" className="bg-green-600">
-                                    <Play className="w-3 h-3 mr-1" />
-                                    Live Now
-                                  </Badge>
-                                );
-                              } else {
-                                return (
-                                  <Badge variant="secondary">
-                                    Ended
-                                  </Badge>
-                                );
-                              }
-                            }
-                            return (
-                              <span className="text-sm text-muted-foreground">
-                                Individual Timer
-                              </span>
-                            );
-                          })()}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <FileText className="w-4 h-4 mr-1" />
-                            {questionCounts[exam.id] || 0} question{(questionCounts[exam.id] || 0) !== 1 ? 's' : ''}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" data-testid={`button-exam-actions-${exam.id}`}>
-                                <MoreVertical className="h-4 w-4" />
-                                <span className="sr-only">Open actions</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem 
-                                onClick={() => setSelectedExam(exam)}
-                                className="cursor-pointer"
-                                data-testid={`menu-manage-questions-${exam.id}`}
-                              >
-                                <Edit className="w-4 h-4 mr-2 text-primary" />
-                                Manage Questions
-                              </DropdownMenuItem>
-                              
-                              <DropdownMenuItem 
-                                onClick={() => togglePublishMutation.mutate({
-                                  examId: exam.id,
-                                  isPublished: !exam.isPublished
-                                })}
-                                disabled={togglingExamId === exam.id}
-                                className="cursor-pointer"
-                                data-testid={`menu-toggle-publish-${exam.id}`}
-                              >
-                                <Play className={`w-4 h-4 mr-2 ${exam.isPublished ? "text-amber-500" : "text-green-500"}`} />
-                                {togglingExamId === exam.id
-                                  ? (exam.isPublished ? 'Unpublishing...' : 'Publishing...')
-                                  : (exam.isPublished ? 'Unpublish' : 'Publish')
-                                }
-                              </DropdownMenuItem>
-
-                              <DropdownMenuItem 
-                                onClick={() => setPreviewExam(exam)}
-                                className="cursor-pointer"
-                                data-testid={`menu-preview-exam-${exam.id}`}
-                              >
-                                <Eye className="w-4 h-4 mr-2 text-purple-500" />
-                                Preview Exam
-                              </DropdownMenuItem>
-
-                              <DropdownMenuItem 
-                                onClick={() => handleEditExam(exam)}
-                                className="cursor-pointer"
-                                data-testid={`menu-edit-exam-${exam.id}`}
-                              >
-                                <Settings className="w-4 h-4 mr-2 text-gray-500" />
-                                Exam Settings
-                              </DropdownMenuItem>
-
-                              <DropdownMenuSeparator />
-                              
-                              <DropdownMenuItem 
-                                className="text-destructive focus:text-destructive cursor-pointer"
-                                data-testid={`menu-delete-exam-${exam.id}`}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  setDeletingExam(exam);
-                                }}
-                              >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete Exam
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {filteredExams.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
-                          No exams found. Create your first exam to get started.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Empty state guidance when no exam is selected */}
       {!selectedExam && (
@@ -2377,7 +2260,7 @@ export default function ExamManagement() {
                           {questionErrors.questionText && <p className="text-sm text-red-500">{questionErrors.questionText.message}</p>}
                         </div>
 
-                        {(questionType === 'text' || questionType === 'essay') && (
+                        {questionType === 'essay' && (
                           <>
                             <div>
                               <Label htmlFor="instructions">Instructions (Optional)</Label>
@@ -2422,7 +2305,6 @@ export default function ExamManagement() {
                                   </SelectTrigger>
                                   <SelectContent>
                                     <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
-                                    <SelectItem value="text">Short Answer</SelectItem>
                                     <SelectItem value="essay">Essay</SelectItem>
                                   </SelectContent>
                                 </Select>
@@ -2552,12 +2434,10 @@ export default function ExamManagement() {
                               </div>
                             )}
 
-                            {(question.questionType === 'text' || question.questionType === 'essay') && (
+                            {question.questionType === 'essay' && (
                               <div className="ml-4 text-sm text-muted-foreground">
                                 <div className="flex items-center space-x-4">
-                                  <span>
-                                    {question.questionType === 'essay' ? '📝 Essay question' : '📝 Short answer question'}
-                                  </span>
+                                  <span>📝 Essay question</span>
                                   {question.sampleAnswer && (
                                     <span className="text-green-600">✓ Sample answer provided</span>
                                   )}
@@ -2633,10 +2513,10 @@ export default function ExamManagement() {
                 <CardContent className="pt-4">
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <span className="font-medium">Class:</span> {getClassNameById(previewExam.classId)}
+                      <span className="font-medium">Class:</span> {previewExam.classId ? getClassNameById(previewExam.classId) : '—'}
                     </div>
                     <div>
-                      <span className="font-medium">Subject:</span> {getSubjectNameById(previewExam.subjectId)}
+                      <span className="font-medium">Subject:</span> {previewExam.subjectId ? getSubjectNameById(previewExam.subjectId) : '—'}
                     </div>
                     <div>
                       <span className="font-medium">Total Marks:</span> {previewExam.totalMarks}
@@ -2684,11 +2564,6 @@ export default function ExamManagement() {
                                 Essay answer box would appear here
                               </div>
                             )}
-                            {question.questionType === 'text' && (
-                              <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded text-sm text-muted-foreground">
-                                Short answer text box would appear here
-                              </div>
-                            )}
                           </div>
                         </div>
                       </CardContent>
@@ -2713,8 +2588,8 @@ export default function ExamManagement() {
           open={isQuestionAdderOpen}
           onOpenChange={setIsQuestionAdderOpen}
           examId={selectedExam.id}
-          examClassId={selectedExam.classId}
-          examSubjectId={selectedExam.subjectId}
+          examClassId={selectedExam.classId ?? undefined}
+          examSubjectId={selectedExam.subjectId ?? undefined}
           onQuestionsAdded={() => {
             queryClient.invalidateQueries({ queryKey: ['/api/exam-questions', selectedExam.id] });
             queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'] });
@@ -2722,35 +2597,21 @@ export default function ExamManagement() {
         />
       )}
 
-      {/* Delete Exam Confirmation Modal */}
-      <AlertDialog 
-        open={!!deletingExam} 
-        onOpenChange={(open) => {
-          if (!open) setDeletingExam(null);
+      {/* Delete Exam Confirmation Modal — shared by both the mobile card and
+          desktop table actions menu (see AssessmentActionsMenu). The mutation
+          only fires on confirm, and the item only leaves the list once the
+          backend responds with success (see deleteExamMutation above). */}
+      <DeleteAssessmentDialog
+        exam={deletingExam}
+        isDeleting={deletingExam ? deletingExamIds.has(deletingExam.id) : false}
+        onCancel={() => setDeletingExam(null)}
+        onConfirm={(exam) => {
+          setDeletingExam(null);
+          if (!deletingExamIds.has(exam.id)) {
+            deleteExamMutation.mutate(exam.id);
+          }
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Exam</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete the exam "{deletingExam?.name}"? This action cannot be undone and will permanently remove all exam questions and student results.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
-                const examId = deletingExam?.id;
-                setDeletingExam(null);
-                if (examId) deleteExamMutation.mutate(examId);
-              }}
-            >
-              Delete Exam
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      />
     </div>
   );
 }

@@ -117,7 +117,7 @@ export default function StudentProfile() {
     try {
       const response = await apiRequest('DELETE', '/api/upload/profile');
       if (!response.ok) throw new Error('Failed to remove image');
-      toast({ title: "Profile image removed", description: "Your profile image has been removed successfully." });
+      toast({ title: "Success", description: "Profile image removed." });
       updateUser({ profileImageUrl: undefined });
       const cached = queryClient.getQueryData<any>(['student', user.id]);
       if (cached) {
@@ -175,7 +175,7 @@ export default function StudentProfile() {
         throw new Error(error.message || 'Failed to update profile');
       }
 
-      toast({ title: "Profile Updated", description: "Your profile has been updated successfully." });
+      toast({ title: "Success", description: "Profile updated successfully." });
       setProfileImageFile(null);
       setIsEditing(false);
 

@@ -118,7 +118,7 @@ export default function ParentReportCards() {
       try {
         const filename = `report-card-${(activeExportReport.studentName || 'student').replace(/\s+/g, '-')}-${(activeExportReport.termName || 'term').replace(/\s+/g, '-')}`;
         await exportToPDF(printTemplateRef.current, { filename });
-        toast({ title: 'Downloaded', description: 'Report card downloaded successfully.' });
+        toast({ title: 'Success', description: 'Report card downloaded successfully.' });
       } catch (e: any) {
         toast({ title: 'Download Failed', description: e?.message || 'Could not download the report card. Please try again.', variant: 'destructive' });
       } finally {

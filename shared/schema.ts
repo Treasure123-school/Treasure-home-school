@@ -362,11 +362,12 @@ export const attendance = sqliteTable("attendance", {
 export const exams = sqliteTable("exams", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
-  classId: integer("class_id").notNull().references(() => classes.id),
-  subjectId: integer("subject_id").notNull().references(() => subjects.id),
+  assessmentCategory: text("assessment_category").notNull().default('academic'), // 'academic' | 'standalone'
+  classId: integer("class_id").references(() => classes.id),
+  subjectId: integer("subject_id").references(() => subjects.id),
   totalMarks: integer("total_marks").notNull(),
   date: text("date").notNull(), // YYYY-MM-DD format
-  termId: integer("term_id").notNull().references(() => academicTerms.id),
+  termId: integer("term_id").references(() => academicTerms.id),
   createdBy: text("created_by").references(() => users.id, { onDelete: 'set null' }),
   teacherInChargeId: text("teacher_in_charge_id").references(() => users.id, { onDelete: 'set null' }),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
@@ -391,6 +392,19 @@ export const exams = sqliteTable("exams", {
   maxTabSwitches: integer("max_tab_switches").notNull().default(3),
   shuffleOptions: integer("shuffle_options", { mode: "boolean" }).notNull().default(false),
   showInstructionsScreen: integer("show_instructions_screen", { mode: "boolean" }).notNull().default(true),
+  // Standalone assessment fields
+  purpose: text("purpose"), // e.g. 'common_entrance', 'mock_waec', 'scholarship'
+  venue: text("venue"),
+  targetType: text("target_type"), // 'whole_school' | 'class' | 'selected_students' | 'external'
+  registrationFee: integer("registration_fee"), // in kobo/cents; 0 = free
+  registrationOpen: integer("registration_open", { mode: "boolean" }).notNull().default(false),
+  registrationDeadline: text("registration_deadline"), // YYYY-MM-DD
+  candidateType: text("candidate_type"), // 'internal' | 'external' | 'both'
+  generateAdmitCards: integer("generate_admit_cards", { mode: "boolean" }).notNull().default(false),
+  generateCandidateNumbers: integer("generate_candidate_numbers", { mode: "boolean" }).notNull().default(false),
+  certificateEnabled: integer("certificate_enabled", { mode: "boolean" }).notNull().default(false),
+  leaderboardEnabled: integer("leaderboard_enabled", { mode: "boolean" }).notNull().default(false),
+  resultPublished: integer("result_published", { mode: "boolean" }).notNull().default(false),
 });
 
 // Exam questions table
@@ -1122,17 +1136,18 @@ export const insertSubjectSchema = createInsertSchema(subjects).omit({ id: true,
 export const insertAcademicTermSchema = createInsertSchema(academicTerms).omit({ id: true, createdAt: true });
 export const insertAttendanceSchema = createInsertSchema(attendance).omit({ id: true, createdAt: true });
 export const insertExamSchema = createInsertSchema(exams).omit({ id: true, createdAt: true }).extend({
+  assessmentCategory: z.enum(['academic', 'standalone']).default('academic'),
   classId: z.preprocess(
     (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
-    z.number().positive("Please select a valid class")
+    z.number().positive("Please select a valid class").optional()
   ),
   subjectId: z.preprocess(
     (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
-    z.number().positive("Please select a valid subject")
+    z.number().positive("Please select a valid subject").optional()
   ),
   termId: z.preprocess(
     (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
-    z.number().positive("Please select a valid term")
+    z.number().positive("Please select a valid term").optional()
   ),
   totalMarks: z.preprocess(
     (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
@@ -1182,6 +1197,36 @@ export const insertExamSchema = createInsertSchema(exams).omit({ id: true, creat
   autoGradingEnabled: z.boolean().default(true),
   instantFeedback: z.boolean().default(false),
   showCorrectAnswers: z.boolean().default(false),
+  purpose: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : val,
+    z.string().optional()
+  ),
+  venue: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : val,
+    z.string().optional()
+  ),
+  targetType: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : val,
+    z.enum(['whole_school', 'class', 'selected_students', 'external']).optional()
+  ),
+  registrationFee: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
+    z.number().int().min(0).optional()
+  ),
+  registrationOpen: z.boolean().default(false),
+  registrationDeadline: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : val,
+    z.string().optional()
+  ),
+  candidateType: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : val,
+    z.enum(['internal', 'external', 'both']).optional()
+  ),
+  generateAdmitCards: z.boolean().default(false),
+  generateCandidateNumbers: z.boolean().default(false),
+  certificateEnabled: z.boolean().default(false),
+  leaderboardEnabled: z.boolean().default(false),
+  resultPublished: z.boolean().default(false),
 });
 export const insertExamResultSchema = createInsertSchema(examResults).omit({ id: true, createdAt: true });
 export const insertExamSubmissionsArchiveSchema = createInsertSchema(examSubmissionsArchive).omit({ id: true, archivedAt: true });
@@ -1282,7 +1327,7 @@ export type CsvStudentData = z.infer<typeof csvStudentSchema>;
 export const insertExamQuestionSchema = createInsertSchema(examQuestions).omit({ id: true, createdAt: true }).extend({
   examId: z.coerce.number().positive("Please select a valid exam"),
   questionText: z.string().min(1, "Question text is required"),
-  questionType: z.enum(['multiple_choice', 'text', 'essay', 'true_false', 'fill_blank'], { required_error: "Question type is required" }),
+  questionType: z.enum(['multiple_choice', 'essay'], { required_error: "Question type is required. Use 'multiple_choice' or 'essay'." }),
   points: z.preprocess((val) => val === '' ? 1 : val, z.coerce.number().int().min(0, "Points must be a non-negative number").default(1)),
   orderNumber: z.coerce.number().int().min(1, "Order number must be a positive number"),
   imageUrl: z.preprocess((val) => val === '' ? undefined : val, z.string().optional()),
@@ -1436,6 +1481,73 @@ export const monnifyVirtualAccounts = sqliteTable("monnify_virtual_accounts", {
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 });
 export const insertMonnifyVirtualAccountSchema = createInsertSchema(monnifyVirtualAccounts).omit({ id: true, createdAt: true });
+
+// ─── Unified Billing & Payments ───────────────────────────────────────────────
+
+export const billingItems = sqliteTable("billing_items", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  name: text("name").notNull(),
+  description: text("description"),
+  amount: integer("amount").notNull().default(0),
+  category: text("category").notNull().default("general"),
+  isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
+  isRecurring: integer("is_recurring", { mode: "boolean" }).notNull().default(false),
+  paymentType: text("payment_type").notNull().default("one_time"),
+  classLevels: text("class_levels"),
+  termId: integer("term_id").references(() => academicTerms.id),
+  session: text("session"),
+  dueDate: integer("due_date", { mode: "timestamp" }),
+  lateFee: integer("late_fee").default(0),
+  discount: integer("discount").default(0),
+  createdBy: text("created_by").references(() => users.id, { onDelete: "set null" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+  updatedAt: integer("updated_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+}, (t) => ({
+  billingItemsNameIdx: index("billing_items_name_idx").on(t.name),
+  billingItemsCategoryIdx: index("billing_items_category_idx").on(t.category),
+}));
+export const insertBillingItemSchema = createInsertSchema(billingItems).omit({ id: true, createdAt: true, updatedAt: true });
+export type BillingItem = typeof billingItems.$inferSelect;
+export type InsertBillingItem = z.infer<typeof insertBillingItemSchema>;
+
+export const billingPayments = sqliteTable("billing_payments", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  billingItemId: integer("billing_item_id").notNull().references(() => billingItems.id, { onDelete: "restrict" }),
+  studentId: text("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
+  termId: integer("term_id").references(() => academicTerms.id),
+  amountPaid: integer("amount_paid").notNull().default(0),
+  paymentMethod: text("payment_method").notNull().default("cash"),
+  paymentReference: text("payment_reference"),
+  status: text("status").notNull().default("paid"),
+  provider: text("provider").default("manual"),
+  recordedBy: text("recorded_by").references(() => users.id, { onDelete: "set null" }),
+  notes: text("notes"),
+  gatewayResponse: text("gateway_response"),
+  paidAt: integer("paid_at", { mode: "timestamp" }),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+}, (t) => ({
+  billingPaymentsStudentIdx: index("billing_payments_student_idx").on(t.studentId),
+  billingPaymentsItemIdx: index("billing_payments_item_idx").on(t.billingItemId),
+  billingPaymentsTermIdx: index("billing_payments_term_idx").on(t.termId),
+  billingPaymentsStatusIdx: index("billing_payments_status_idx").on(t.status),
+  billingPaymentsUniqueIdx: uniqueIndex("billing_payments_unique_idx").on(t.studentId, t.billingItemId, t.termId),
+}));
+export const insertBillingPaymentSchema = createInsertSchema(billingPayments).omit({ id: true, createdAt: true });
+export type BillingPayment = typeof billingPayments.$inferSelect;
+export type InsertBillingPayment = z.infer<typeof insertBillingPaymentSchema>;
+
+export const billingFeatureLinks = sqliteTable("billing_feature_links", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  billingItemId: integer("billing_item_id").notNull().references(() => billingItems.id, { onDelete: "cascade" }),
+  featureKey: text("feature_key").notNull(),
+  createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
+}, (t) => ({
+  billingFeatureLinksItemIdx: index("billing_feature_links_item_idx").on(t.billingItemId),
+  billingFeatureLinksKeyIdx: uniqueIndex("billing_feature_links_key_idx").on(t.featureKey),
+}));
+export const insertBillingFeatureLinkSchema = createInsertSchema(billingFeatureLinks).omit({ id: true, createdAt: true });
+export type BillingFeatureLink = typeof billingFeatureLinks.$inferSelect;
+export type InsertBillingFeatureLink = z.infer<typeof insertBillingFeatureLinkSchema>;
 
 // Types
 export type Role = typeof roles.$inferSelect;

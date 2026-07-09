@@ -20,15 +20,20 @@ import Color from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
 import FontFamily from '@tiptap/extension-font-family';
 import Highlight from '@tiptap/extension-highlight';
-import { Extension } from '@tiptap/core';
+import { Extension, Mark } from '@tiptap/core';
 import { Plugin } from '@tiptap/pm/state';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Bold, Italic, Underline, Strikethrough, List, ListOrdered,
   AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Link as LinkIcon, Link2Off, Image as ImageIcon, Minus, Undo, Redo,
   Table as TableIcon, Rows, Columns, Trash2, Highlighter,
-  ChevronDown, Type,
+  ChevronDown, Type, Quote, ListChecks, RemoveFormatting,
+  Subscript as SubscriptIcon, Superscript as SuperscriptIcon,
+  IndentIncrease, IndentDecrease, MoreHorizontal, Check as CheckIcon,
+  TextCursorInput,
 } from 'lucide-react';
 
 // ── Custom FontSize extension ──────────────────────────────────────────────
@@ -39,6 +44,8 @@ declare module '@tiptap/core' {
       setFontSize: (size: string) => ReturnType;
       unsetFontSize: () => ReturnType;
     };
+    subscript: { toggleSubscript: () => ReturnType };
+    superscript: { toggleSuperscript: () => ReturnType };
   }
 }
 
@@ -64,6 +71,34 @@ const FontSize = Extension.create({
       unsetFontSize: () => ({ chain }: any) =>
         chain().setMark('textStyle', { fontSize: null }).removeEmptyTextStyle().run(),
     };
+  },
+});
+
+// ── Subscript & Superscript custom marks ──────────────────────────────────
+
+const Subscript = Mark.create({
+  name: 'subscript',
+  excludes: 'superscript',
+  parseHTML() { return [{ tag: 'sub' }]; },
+  renderHTML() { return ['sub', 0]; },
+  addCommands() {
+    return { toggleSubscript: () => ({ commands }: any) => commands.toggleMark(this.name) };
+  },
+  addKeyboardShortcuts() {
+    return { 'Mod-,': () => (this.editor.commands as any).toggleSubscript() };
+  },
+});
+
+const Superscript = Mark.create({
+  name: 'superscript',
+  excludes: 'subscript',
+  parseHTML() { return [{ tag: 'sup' }]; },
+  renderHTML() { return ['sup', 0]; },
+  addCommands() {
+    return { toggleSuperscript: () => ({ commands }: any) => commands.toggleMark(this.name) };
+  },
+  addKeyboardShortcuts() {
+    return { 'Mod-.': () => (this.editor.commands as any).toggleSuperscript() };
   },
 });
 
@@ -149,17 +184,24 @@ function TSelect({
   options: { label: string; value: string }[]; width?: string; title: string;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const current = options.find(o => o.value === value);
 
   useEffect(() => {
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
+    if (!open) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler, true);
+    document.addEventListener('touchstart', handler, true);
+    return () => {
+      document.removeEventListener('mousedown', handler, true);
+      document.removeEventListener('touchstart', handler, true);
+    };
+  }, [open]);
 
   return (
-    <div ref={ref} className={`relative ${width} shrink-0`}>
+    <div ref={containerRef} className={`relative ${width} shrink-0`}>
       <Tooltip>
         <TooltipTrigger asChild>
           <button
@@ -179,7 +221,7 @@ function TSelect({
             <button
               key={o.value}
               type="button"
-              onPointerDown={e => { e.preventDefault(); onChange(o.value); setOpen(false); }}
+              onMouseDown={e => { e.preventDefault(); onChange(o.value); setOpen(false); }}
               className={[
                 'w-full text-left px-3 py-2 text-xs whitespace-nowrap transition-colors',
                 o.value === value
@@ -242,14 +284,20 @@ function ColorPicker({ value, colors, onChange, icon: Icon, title }: {
 }) {
   const [open, setOpen] = useState(false);
   const [hexInput, setHexInput] = useState('');
-  const ref = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const h = (e: Event) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    document.addEventListener('mousedown', h);
-    document.addEventListener('touchstart', h);
-    return () => { document.removeEventListener('mousedown', h); document.removeEventListener('touchstart', h); };
-  }, []);
+    if (!open) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (!containerRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler, true);
+    document.addEventListener('touchstart', handler, true);
+    return () => {
+      document.removeEventListener('mousedown', handler, true);
+      document.removeEventListener('touchstart', handler, true);
+    };
+  }, [open]);
 
   const applyHex = () => {
     const v = hexInput.startsWith('#') ? hexInput : '#' + hexInput;
@@ -258,7 +306,7 @@ function ColorPicker({ value, colors, onChange, icon: Icon, title }: {
 
   const cols = 10;
   return (
-    <div ref={ref} className="relative shrink-0">
+    <div ref={containerRef} className="relative shrink-0">
       <Tooltip>
         <TooltipTrigger asChild>
           <button
@@ -274,14 +322,14 @@ function ColorPicker({ value, colors, onChange, icon: Icon, title }: {
       </Tooltip>
 
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-[200] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-3 w-[252px]">
+        <div className="absolute top-full right-0 mt-1 z-[200] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-3 w-[252px] max-w-[calc(100vw-16px)]">
           {/* Color grid */}
           <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
             {colors.map((c, i) => (
               <button
                 key={i}
                 type="button"
-                onPointerDown={e => { e.preventDefault(); onChange(c); setOpen(false); }}
+                onMouseDown={e => { e.preventDefault(); onChange(c); setOpen(false); }}
                 className={[
                   'rounded transition-transform hover:scale-125 focus:outline-none border',
                   value === c ? 'ring-2 ring-offset-1 ring-primary scale-110' : 'border-gray-200 dark:border-gray-600',
@@ -293,13 +341,13 @@ function ColorPicker({ value, colors, onChange, icon: Icon, title }: {
             ))}
           </div>
 
-          {/* Spectrum gradient bar — tap to pick */}
+          {/* Spectrum gradient bar */}
           <div className="mt-3">
             <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-1.5 uppercase tracking-wide font-medium">Spectrum</p>
             <div
               className="w-full h-5 rounded cursor-crosshair border border-gray-200 dark:border-gray-600"
               style={{ background: 'linear-gradient(to right, #ff0000, #ff8000, #ffff00, #00ff00, #00ffff, #0000ff, #8000ff, #ff00ff, #ff0080, #ff0000)' }}
-              onPointerDown={e => {
+              onMouseDown={e => {
                 e.preventDefault();
                 const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
                 const x = (e.clientX - rect.left) / rect.width;
@@ -315,25 +363,28 @@ function ColorPicker({ value, colors, onChange, icon: Icon, title }: {
             />
           </div>
 
-          {/* Hex input */}
-          <div className="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-700 flex items-center gap-2">
-            <div className="w-6 h-6 rounded border border-gray-300 dark:border-gray-600 shrink-0" style={{ background: hexInput ? (hexInput.startsWith('#') ? hexInput : '#' + hexInput) : (value || '#000') }} />
-            <input
-              type="text"
-              maxLength={7}
-              placeholder="#000000"
-              value={hexInput}
-              onChange={e => setHexInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') applyHex(); }}
-              className="flex-1 text-xs border border-gray-200 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-mono focus:outline-none focus:ring-1 focus:ring-primary/70"
-            />
-            <button
-              type="button"
-              onPointerDown={e => { e.preventDefault(); applyHex(); }}
-              className="text-xs bg-primary hover:bg-primary/90 text-white px-2 py-1 rounded transition-colors"
-            >
-              OK
-            </button>
+          {/* Hex input row — contained fully inside the panel */}
+          <div className="mt-2.5 pt-2.5 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex items-center gap-1.5">
+              <div className="w-6 h-6 rounded border border-gray-300 dark:border-gray-600 shrink-0" style={{ background: hexInput ? (hexInput.startsWith('#') ? hexInput : '#' + hexInput) : (value || '#000') }} />
+              <input
+                type="text"
+                maxLength={7}
+                placeholder="#000000"
+                value={hexInput}
+                onChange={e => setHexInput(e.target.value)}
+                onMouseDown={e => e.stopPropagation()}
+                onKeyDown={e => { if (e.key === 'Enter') applyHex(); }}
+                className="flex-1 min-w-0 text-xs border border-gray-200 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 font-mono focus:outline-none focus:ring-1 focus:ring-primary/70"
+              />
+              <button
+                type="button"
+                onMouseDown={e => { e.preventDefault(); applyHex(); }}
+                className="shrink-0 text-xs bg-primary hover:bg-primary/90 text-white px-2.5 py-1 rounded transition-colors font-medium"
+              >
+                OK
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -348,12 +399,18 @@ function FloatingSelectionMenu({ editor }: { editor: any }) {
   const [showLink, setShowLink] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
-  const containerRef = useRef<HTMLElement | null>(null);
+  const linkInputRef = useRef<HTMLInputElement>(null);
+  const frozenRef = useRef(false);          // true while link input is open
+  const savedFrom = useRef<number>(0);      // saved selection start position
+  const savedTo = useRef<number>(0);        // saved selection end position
 
   useEffect(() => {
     if (!editor) return;
 
     const updatePosition = () => {
+      // Don't move or hide while the inline link input is showing
+      if (frozenRef.current) return;
+
       const { state } = editor;
       const { selection } = state;
       if (selection.empty || editor.isDestroyed) { setPos(null); return; }
@@ -365,23 +422,18 @@ function FloatingSelectionMenu({ editor }: { editor: any }) {
       const rect = range.getBoundingClientRect();
       if (!rect.width) { setPos(null); return; }
 
-      // Find the editor's paper container for relative positioning
       const editorEl = editor.view.dom as HTMLElement;
       const paperEl = editorEl.closest('.doc-paper') as HTMLElement | null;
       if (!paperEl) return;
-      containerRef.current = paperEl;
 
       const paperRect = paperEl.getBoundingClientRect();
       setPos({
-        top: rect.top - paperRect.top - 44, // 44 = menu height + 8px gap
-        left: Math.max(0, rect.left - paperRect.left + rect.width / 2 - 150), // center on selection
+        top: rect.top - paperRect.top - 44,
+        left: Math.max(0, rect.left - paperRect.left + rect.width / 2 - 150),
       });
     };
 
-    const onSelectionChange = () => {
-      // Small delay so the selection is stable
-      requestAnimationFrame(updatePosition);
-    };
+    const onSelectionChange = () => { requestAnimationFrame(updatePosition); };
 
     editor.on('selectionUpdate', onSelectionChange);
     document.addEventListener('selectionchange', onSelectionChange);
@@ -393,10 +445,41 @@ function FloatingSelectionMenu({ editor }: { editor: any }) {
 
   if (!pos || !editor || editor.isDestroyed) return null;
 
+  const openLink = () => {
+    // Save selection positions before input steals focus
+    const { from, to } = editor.state.selection;
+    savedFrom.current = from;
+    savedTo.current = to;
+    frozenRef.current = true;
+    setLinkUrl(editor.getAttributes('link').href || '');
+    setShowLink(true);
+    // Focus input after render
+    setTimeout(() => linkInputRef.current?.focus(), 20);
+  };
+
   const applyLink = () => {
-    if (linkUrl) editor.chain().focus().extendMarkRange('link').setLink({ href: linkUrl, target: '_blank' }).run();
+    const href = linkUrl.trim();
+    const docSize = editor.state.doc.content.size;
+    const from = Math.min(savedFrom.current, docSize - 1);
+    const to   = Math.min(savedTo.current,   docSize - 1);
+    if (href) {
+      const full = href.startsWith('http') ? href : `https://${href}`;
+      editor.chain().focus()
+        .setTextSelection({ from, to })
+        .extendMarkRange('link')
+        .setLink({ href: full, target: '_blank' })
+        .run();
+    }
+    closeLink();
+  };
+
+  const closeLink = () => {
+    frozenRef.current = false;
+    savedFrom.current = 0;
+    savedTo.current = 0;
     setShowLink(false);
     setLinkUrl('');
+    setPos(null);
   };
 
   return (
@@ -409,15 +492,21 @@ function FloatingSelectionMenu({ editor }: { editor: any }) {
       {showLink ? (
         <div className="flex items-center gap-1 px-1">
           <input
-            autoFocus value={linkUrl} onChange={e => setLinkUrl(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') applyLink(); if (e.key === 'Escape') setShowLink(false); }}
+            ref={linkInputRef}
+            value={linkUrl}
+            onChange={e => setLinkUrl(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') applyLink(); if (e.key === 'Escape') closeLink(); }}
             placeholder="https://…"
             className="text-xs border border-gray-200 rounded px-2 py-1 w-44 focus:outline-none focus:ring-1 focus:ring-primary bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           />
           <button onMouseDown={e => { e.preventDefault(); applyLink(); }}
             className="text-xs bg-primary text-white rounded px-2 py-1 hover:bg-primary/90">OK</button>
-          <button onMouseDown={e => { e.preventDefault(); setShowLink(false); }}
-            className="text-xs text-gray-500 hover:text-gray-700 px-1 leading-none">✕</button>
+          {editor.isActive('link') && (
+            <button onMouseDown={e => { e.preventDefault(); editor.chain().focus().unsetLink().run(); closeLink(); }}
+              className="text-xs text-red-500 hover:text-red-700 px-1">Remove</button>
+          )}
+          <button onMouseDown={e => { e.preventDefault(); closeLink(); }}
+            className="text-xs text-gray-400 hover:text-gray-600 px-1 leading-none">✕</button>
         </div>
       ) : (
         <>
@@ -428,8 +517,8 @@ function FloatingSelectionMenu({ editor }: { editor: any }) {
           <TSep small />
           <TBtn small title="Highlight" onClick={() => editor.chain().focus().toggleHighlight().run()} active={editor.isActive('highlight')}><Highlighter className="h-3 w-3" /></TBtn>
           <TSep small />
-          <TBtn small title="Link" onClick={() => { setLinkUrl(editor.getAttributes('link').href || ''); setShowLink(true); }} active={editor.isActive('link')}><LinkIcon className="h-3 w-3" /></TBtn>
-          {editor.isActive('link') && <TBtn small title="Remove Link" onClick={() => editor.chain().focus().unsetLink().run()}><Link2Off className="h-3 w-3" /></TBtn>}
+          <TBtn small title="Add / Edit Link" onClick={openLink} active={editor.isActive('link')}><LinkIcon className="h-3 w-3" /></TBtn>
+          {editor.isActive('link') && <TBtn small title="Remove Link" onClick={() => { editor.chain().focus().unsetLink().run(); setPos(null); }}><Link2Off className="h-3 w-3" /></TBtn>}
         </>
       )}
     </div>
@@ -564,7 +653,14 @@ export interface DocEditorProps {
 export default function DocEditor({ content, onChange, disabled = false, placeholder, onEditorReady, brandColor = '#3b82f6' }: DocEditorProps) {
   const imageInputRef = useRef<HTMLInputElement>(null!);
   const [hlColor, setHlColor] = useState('#fef08a');
+  const [txtColor, setTxtColor] = useState('#000000');
   const [wordStats, setWordStats] = useState(() => countWords(content));
+  const [showMore, setShowMore] = useState(false);
+  const [showLinkBar, setShowLinkBar] = useState(false);
+  const [linkBarUrl, setLinkBarUrl] = useState('');
+  const linkInputRef = useRef<HTMLInputElement>(null);
+
+  // Close "More" dropdown on outside click
 
   const editor = useEditor({
     extensions: [
@@ -614,6 +710,10 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
       TableRow,
       TableHeader.configure({ HTMLAttributes: { class: 'doc-th' } }),
       TableCell.configure({ HTMLAttributes: { class: 'doc-td' } }),
+      Subscript,
+      Superscript,
+      TaskList.configure({ HTMLAttributes: { class: 'doc-task-list' } }),
+      TaskItem.configure({ nested: true, HTMLAttributes: { class: 'doc-task-item' } }),
       DropPaste,
     ],
     content: content || '',
@@ -664,14 +764,25 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
     reader.readAsDataURL(file);
   }, [e]);
 
-  const insertLink = useCallback(() => {
+  const openLinkBar = useCallback(() => {
     if (!e) return;
     const prev = e.getAttributes('link').href || '';
-    const url = window.prompt('Enter URL:', prev);
-    if (url === null) return;
-    if (url === '') { e.chain().focus().extendMarkRange('link').unsetLink().run(); return; }
-    e.chain().focus().extendMarkRange('link').setLink({ href: url, target: '_blank' }).run();
+    setLinkBarUrl(prev);
+    setShowLinkBar(true);
+    setTimeout(() => linkInputRef.current?.focus(), 30);
   }, [e]);
+
+  const applyLink = useCallback(() => {
+    if (!e) return;
+    const url = linkBarUrl.trim();
+    if (!url) { e.chain().focus().extendMarkRange('link').unsetLink().run(); }
+    else {
+      const href = url.startsWith('http') ? url : `https://${url}`;
+      e.chain().focus().extendMarkRange('link').setLink({ href, target: '_blank' }).run();
+    }
+    setShowLinkBar(false);
+    setLinkBarUrl('');
+  }, [e, linkBarUrl]);
 
   const getCurrentHeading = () => {
     if (!e) return 'p';
@@ -692,9 +803,13 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
   return (
     <div className="flex flex-col h-full">
 
-      {/* ── Formatting Toolbar ── */}
+      {/* ── Scrollable area: sticky toolbar + canvas ── */}
+      <div className="flex-1 overflow-y-auto bg-gray-100 dark:bg-gray-950 min-h-0">
+
+      {/* ── Formatting Toolbar (sticky at top of scroll area) ── */}
       {!disabled && (
-        <div className="shrink-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+        <div className="sticky top-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 shadow-sm">
+
           {/* Row 1: History · Block style · Font · Size · Colors */}
           <div className="flex items-center flex-wrap gap-0.5 px-3 py-1.5 border-b border-gray-100 dark:border-gray-800">
             <TBtn title="Undo (Ctrl+Z)" onClick={() => e?.chain().focus().undo().run()} disabled={!e?.can().undo()}>
@@ -714,38 +829,78 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
               ]}
             />
             <TSep />
-            <TSelect title="Font family" value={e?.getAttributes('textStyle')?.fontFamily || ''} width="w-36" onChange={v =>
-              v ? e?.chain().focus().setFontFamily(v).run() : e?.chain().focus().unsetFontFamily().run()
-            } options={FONT_FAMILIES} />
+            <TSelect title="Font family" value={e?.getAttributes('textStyle')?.fontFamily || ''} width="w-28" onChange={v => {
+              if (!e) return;
+              const { selection } = e.state;
+              if (selection.empty) {
+                const { $from } = selection;
+                const from = $from.start(), to = $from.end();
+                if (v) e.chain().focus().setTextSelection({ from, to }).setFontFamily(v).run();
+                else   e.chain().focus().setTextSelection({ from, to }).unsetFontFamily().run();
+              } else {
+                if (v) e.chain().focus().setFontFamily(v).run();
+                else   e.chain().focus().unsetFontFamily().run();
+              }
+            }} options={FONT_FAMILIES} />
             <TSep />
-            <TSelect title="Font size" value={e?.getAttributes('textStyle')?.fontSize || ''} width="w-16" onChange={v =>
-              v ? e?.chain().focus().setFontSize(v).run() : e?.chain().focus().unsetFontSize().run()
-            } options={[{ label: 'Size', value: '' }, ...FONT_SIZES]} />
+            <TSelect title="Font size" value={e?.getAttributes('textStyle')?.fontSize || ''} width="w-14" onChange={v => {
+              if (!e) return;
+              const { selection } = e.state;
+              if (selection.empty) {
+                const { $from } = selection;
+                const from = $from.start(), to = $from.end();
+                if (v) e.chain().focus().setTextSelection({ from, to }).setFontSize(v).run();
+                else   e.chain().focus().setTextSelection({ from, to }).unsetFontSize().run();
+              } else {
+                if (v) e.chain().focus().setFontSize(v).run();
+                else   e.chain().focus().unsetFontSize().run();
+              }
+            }} options={[{ label: 'Size', value: '' }, ...FONT_SIZES]} />
             <TSep />
+            <ColorPicker title="Text color" icon={Type} value={txtColor} colors={TEXT_COLORS}
+              onChange={c => { setTxtColor(c); e?.chain().focus().setColor(c).run(); }} />
             <ColorPicker title="Highlight color" icon={Highlighter} value={hlColor} colors={HIGHLIGHT_COLORS}
               onChange={c => { setHlColor(c); e?.chain().focus().toggleHighlight({ color: c }).run(); }} />
           </div>
 
-          {/* Row 2: Formatting · Alignment · Lists · Insert */}
+          {/* Row 2: Core formatting · Alignment · Lists · Insert · [More ▾] */}
           <div className="flex items-center flex-wrap gap-0.5 px-3 py-1">
+            {/* Core text marks */}
             <TBtn title="Bold (Ctrl+B)" onClick={() => e?.chain().focus().toggleBold().run()} active={!!e?.isActive('bold')}><Bold className="h-3.5 w-3.5" /></TBtn>
             <TBtn title="Italic (Ctrl+I)" onClick={() => e?.chain().focus().toggleItalic().run()} active={!!e?.isActive('italic')}><Italic className="h-3.5 w-3.5" /></TBtn>
             <TBtn title="Underline (Ctrl+U)" onClick={() => e?.chain().focus().toggleUnderline().run()} active={!!e?.isActive('underline')}><Underline className="h-3.5 w-3.5" /></TBtn>
             <TBtn title="Strikethrough" onClick={() => e?.chain().focus().toggleStrike().run()} active={!!e?.isActive('strike')}><Strikethrough className="h-3.5 w-3.5" /></TBtn>
+            <TBtn title="Subscript — e.g. H₂O (Ctrl+,)" onClick={() => (e?.commands as any)?.toggleSubscript()} active={!!e?.isActive('subscript')}>
+              <SubscriptIcon className="h-3.5 w-3.5" />
+            </TBtn>
+            <TBtn title="Superscript — e.g. x² (Ctrl+.)" onClick={() => (e?.commands as any)?.toggleSuperscript()} active={!!e?.isActive('superscript')}>
+              <SuperscriptIcon className="h-3.5 w-3.5" />
+            </TBtn>
             <TSep />
+            {/* Alignment */}
             <TBtn title="Align Left" onClick={() => e?.chain().focus().setTextAlign('left').run()} active={!!e?.isActive({ textAlign: 'left' })}><AlignLeft className="h-3.5 w-3.5" /></TBtn>
             <TBtn title="Align Center" onClick={() => e?.chain().focus().setTextAlign('center').run()} active={!!e?.isActive({ textAlign: 'center' })}><AlignCenter className="h-3.5 w-3.5" /></TBtn>
             <TBtn title="Align Right" onClick={() => e?.chain().focus().setTextAlign('right').run()} active={!!e?.isActive({ textAlign: 'right' })}><AlignRight className="h-3.5 w-3.5" /></TBtn>
             <TBtn title="Justify" onClick={() => e?.chain().focus().setTextAlign('justify').run()} active={!!e?.isActive({ textAlign: 'justify' })}><AlignJustify className="h-3.5 w-3.5" /></TBtn>
             <TSep />
+            {/* Lists */}
             <TBtn title="Bullet List" onClick={() => e?.chain().focus().toggleBulletList().run()} active={!!e?.isActive('bulletList')}><List className="h-3.5 w-3.5" /></TBtn>
             <TBtn title="Numbered List" onClick={() => e?.chain().focus().toggleOrderedList().run()} active={!!e?.isActive('orderedList')}><ListOrdered className="h-3.5 w-3.5" /></TBtn>
+            {/* Indent/Outdent — only when cursor is in a list */}
+            {(e?.isActive('bulletList') || e?.isActive('orderedList')) && (
+              <>
+                <TBtn title="Increase Indent (Tab)" onClick={() => e?.chain().focus().sinkListItem('listItem').run()}><IndentIncrease className="h-3.5 w-3.5" /></TBtn>
+                <TBtn title="Decrease Indent (Shift+Tab)" onClick={() => e?.chain().focus().liftListItem('listItem').run()}><IndentDecrease className="h-3.5 w-3.5" /></TBtn>
+              </>
+            )}
             <TSep />
-            <TBtn title="Insert / Edit Link" onClick={insertLink} active={!!e?.isActive('link')}><LinkIcon className="h-3.5 w-3.5" /></TBtn>
+            {/* Link — inline input bar */}
+            <TBtn title="Insert / Edit Link" onClick={openLinkBar} active={!!e?.isActive('link')}><LinkIcon className="h-3.5 w-3.5" /></TBtn>
             {e?.isActive('link') && <TBtn title="Remove Link" onClick={() => e.chain().focus().unsetLink().run()}><Link2Off className="h-3.5 w-3.5" /></TBtn>}
+            {/* Image & HR */}
             <TBtn title="Insert Image" onClick={() => imageInputRef.current?.click()}><ImageIcon className="h-3.5 w-3.5" /></TBtn>
             <TBtn title="Horizontal Rule" onClick={() => e?.chain().focus().setHorizontalRule().run()}><Minus className="h-3.5 w-3.5" /></TBtn>
-            <TSep />
+            {/* Table */}
             <TBtn title="Insert Table (3×3)" onClick={() => e?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>
               <TableIcon className="h-3.5 w-3.5" />
             </TBtn>
@@ -754,13 +909,83 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
                 <TSep />
                 <TBtn title="Add Row Below" onClick={() => e.chain().focus().addRowAfter().run()}><Rows className="h-3.5 w-3.5" /></TBtn>
                 <TBtn title="Add Column After" onClick={() => e.chain().focus().addColumnAfter().run()}><Columns className="h-3.5 w-3.5" /></TBtn>
-                <TSep />
                 <TBtn title="Delete Row" onClick={() => e.chain().focus().deleteRow().run()} danger><Rows className="h-3.5 w-3.5" /></TBtn>
                 <TBtn title="Delete Column" onClick={() => e.chain().focus().deleteColumn().run()} danger><Columns className="h-3.5 w-3.5" /></TBtn>
                 <TBtn title="Delete Table" onClick={() => e.chain().focus().deleteTable().run()} danger><Trash2 className="h-3.5 w-3.5" /></TBtn>
               </>
             )}
+            <TSep />
+
+            {/* ── More ▾ dropdown for less-frequent tools ── */}
+            <div className="relative shrink-0">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    onMouseDown={ev => { ev.preventDefault(); setShowMore(o => !o); }}
+                    className={[
+                      'inline-flex items-center gap-0.5 h-7 px-1.5 rounded text-xs transition-colors select-none shrink-0',
+                      showMore
+                        ? 'bg-primary/10 text-primary'
+                        : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300',
+                    ].join(' ')}
+                  >
+                    <MoreHorizontal className="h-4 w-4" />
+                    <ChevronDown className="h-2.5 w-2.5 opacity-60" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="text-xs z-[100]">More tools</TooltipContent>
+              </Tooltip>
+
+              {showMore && (
+                <>
+                  <div className="fixed inset-0 z-[150]" onPointerDown={() => setShowMore(false)} />
+                  <div className="absolute top-full left-0 mt-1 z-[200] bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl p-1.5 flex flex-col gap-0.5 min-w-[170px]">
+                    <button type="button" onPointerDown={ev => { ev.stopPropagation(); e?.chain().focus().toggleBlockquote().run(); setShowMore(false); }}
+                      className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs text-left transition-colors ${e?.isActive('blockquote') ? 'bg-primary/10 text-primary' : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200'}`}>
+                      <Quote className="h-3.5 w-3.5 shrink-0" />Blockquote
+                    </button>
+                    <button type="button" onPointerDown={ev => { ev.stopPropagation(); e?.chain().focus().toggleTaskList().run(); setShowMore(false); }}
+                      className={`w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs text-left transition-colors ${e?.isActive('taskList') ? 'bg-primary/10 text-primary' : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200'}`}>
+                      <ListChecks className="h-3.5 w-3.5 shrink-0" />Checklist
+                    </button>
+                    <div className="h-px bg-gray-100 dark:bg-gray-800 my-0.5" />
+                    <button type="button" onPointerDown={ev => { ev.stopPropagation(); e?.chain().focus().clearNodes().unsetAllMarks().run(); setShowMore(false); }}
+                      className="w-full flex items-center gap-2 px-3 py-1.5 rounded text-xs text-left hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-200 transition-colors">
+                      <RemoveFormatting className="h-3.5 w-3.5 shrink-0" />Clear Formatting
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
+
+          {/* Inline Link Bar — appears below toolbar when link button clicked */}
+          {showLinkBar && (
+            <div className="flex items-center gap-2 px-3 py-2 border-t border-gray-100 dark:border-gray-800 bg-blue-50 dark:bg-blue-950/20">
+              <TextCursorInput className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+              <input
+                ref={linkInputRef}
+                value={linkBarUrl}
+                onChange={ev => setLinkBarUrl(ev.target.value)}
+                onKeyDown={ev => { if (ev.key === 'Enter') applyLink(); if (ev.key === 'Escape') { setShowLinkBar(false); setLinkBarUrl(''); } }}
+                placeholder="https://example.com"
+                className="flex-1 min-w-0 text-xs border border-blue-200 dark:border-blue-700 rounded px-2 py-1 bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-400"
+              />
+              <button type="button" onMouseDown={ev => { ev.preventDefault(); applyLink(); }}
+                className="shrink-0 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-1 font-medium flex items-center gap-1">
+                <CheckIcon className="h-3 w-3" />Apply
+              </button>
+              {e?.isActive('link') && (
+                <button type="button" onMouseDown={ev => { ev.preventDefault(); e.chain().focus().unsetLink().run(); setShowLinkBar(false); }}
+                  className="shrink-0 text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-1">
+                  <Link2Off className="h-3 w-3" />Remove
+                </button>
+              )}
+              <button type="button" onMouseDown={ev => { ev.preventDefault(); setShowLinkBar(false); setLinkBarUrl(''); }}
+                className="shrink-0 text-gray-400 hover:text-gray-600 px-1">✕</button>
+            </div>
+          )}
         </div>
       )}
 
@@ -768,20 +993,20 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
       <input ref={imageInputRef} type="file" accept="image/*" className="hidden"
         onChange={ev => { const f = ev.target.files?.[0]; if (f) insertImage(f); ev.target.value = ''; }} />
 
-      {/* ── Editor canvas ── */}
-      <div className="flex-1 overflow-y-auto bg-gray-100 dark:bg-gray-950 min-h-0">
-        <div className="min-h-full py-8 px-4 flex justify-center">
-          <div
-            className="doc-paper relative w-full max-w-4xl bg-white dark:bg-gray-900 shadow-md border border-gray-200 dark:border-gray-700 min-h-[1056px] px-16 py-14"
-            style={{ fontFamily: 'Georgia, serif', '--doc-heading-color': brandColor } as React.CSSProperties}
-          >
-            {/* Floating selection toolbar */}
-            {e && !disabled && <FloatingSelectionMenu editor={e} />}
+      {/* ── Editor canvas (inside the outer scroll container) ── */}
+      <div className="min-h-full py-8 px-4 flex justify-center">
+        <div
+          className="doc-paper relative w-full max-w-4xl bg-white dark:bg-gray-900 shadow-md border border-gray-200 dark:border-gray-700 min-h-[1056px] px-16 py-14"
+          style={{ fontFamily: 'Georgia, serif', '--doc-heading-color': brandColor } as React.CSSProperties}
+        >
+          {/* Floating selection toolbar */}
+          {e && !disabled && <FloatingSelectionMenu editor={e} />}
 
-            <EditorContent editor={editor} />
-          </div>
+          <EditorContent editor={editor} />
         </div>
       </div>
+
+      </div>{/* end outer scroll container */}
 
       {/* ── Status bar: word count + reading time ── */}
       <div className="shrink-0 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 px-5 py-1.5 flex items-center gap-4">
@@ -844,7 +1069,6 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
         .doc-root .doc-img {
           max-width: 100%; height: auto; display: block;
           margin: 0.75em auto; border-radius: 0.375rem;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.12);
         }
         .doc-root .doc-img.ProseMirror-selectednode {
           outline: 2px solid #3b82f6; outline-offset: 2px;
@@ -870,6 +1094,17 @@ export default function DocEditor({ content, onChange, disabled = false, placeho
         }
         .tableWrapper { overflow-x: auto; }
         .resize-cursor { cursor: col-resize; }
+
+        /* Subscript & Superscript */
+        .doc-root sub { font-size: 0.72em; vertical-align: sub; line-height: 0; }
+        .doc-root sup { font-size: 0.72em; vertical-align: super; line-height: 0; }
+
+        /* Task / Checklist */
+        .doc-root .doc-task-list { list-style: none; padding-left: 0.25em; margin: 0.4em 0; }
+        .doc-root .doc-task-item { display: flex; align-items: flex-start; gap: 0.5em; margin: 0.25em 0; }
+        .doc-root .doc-task-item > label { display: flex; align-items: flex-start; gap: 0.45em; cursor: pointer; }
+        .doc-root .doc-task-item input[type="checkbox"] { margin-top: 0.2em; accent-color: #3b82f6; width: 1em; height: 1em; cursor: pointer; shrink: 0; }
+        .doc-root .doc-task-item p { margin: 0; }
 
         /* Dark mode */
         .dark .doc-root .doc-th { background: #1e293b; border-color: #334155; }

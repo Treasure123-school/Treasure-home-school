@@ -416,7 +416,7 @@ function GalleryImageManager() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/homepage-content'] });
-      toast({ title: 'Image uploaded successfully' });
+      toast({ title: 'Success', description: 'Image uploaded successfully' });
       setUploadFile(null); setAltText(''); setShowUpload(false);
     },
     onError: (e: Error) => toast({ title: 'Upload failed', description: e.message, variant: 'destructive' }),
@@ -427,7 +427,7 @@ function GalleryImageManager() {
       const r = await fetch(getApiUrl(`/api/homepage-content/${id}`), { method: 'DELETE', headers: authHdr(), credentials: 'include' });
       if (!r.ok) throw new Error('Delete failed');
     },
-    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/homepage-content'] }); toast({ title: 'Image deleted' }); },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['/api/homepage-content'] }); toast({ title: 'Success', description: 'Image deleted' }); },
     onError: (e: Error) => toast({ title: 'Delete failed', description: e.message, variant: 'destructive' }),
   });
 

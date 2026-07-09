@@ -35,8 +35,8 @@ function getUser(req: Request) {
   return (req as any).user as { id: string; roleId: number };
 }
 
-const ADMIN_ROLES = [ROLES.ADMIN, ROLES.SUPER_ADMIN];
-const ALL_STAFF   = [ROLES.ADMIN, ROLES.SUPER_ADMIN, ROLES.TEACHER];
+const ADMIN_ROLES = [ROLES.ADMIN];
+const ALL_STAFF   = [ROLES.ADMIN, ROLES.TEACHER];
 
 // ─── GET /stats  (admin only) ───────────────────────────────────────────────
 router.get('/stats', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: Request, res: Response) => {

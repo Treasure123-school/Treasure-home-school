@@ -80,7 +80,10 @@ const LessonNoteEditorPage = lazy(() => import('@/pages/portal/LessonNoteEditorP
 const LessonNoteViewPage = lazy(() => import('@/pages/portal/LessonNoteViewPage'));
 const LessonNotePreviewPage = lazy(() => import('@/pages/portal/LessonNotePreviewPage'));
 const StudentLessonNoteViewPage = lazy(() => import('@/pages/portal/StudentLessonNoteViewPage'));
-const ExamPaymentManagement = lazy(() => import('@/pages/portal/ExamPaymentManagement'));
+const BillingItems = lazy(() => import('@/pages/portal/BillingItems'));
+const BillingPayments = lazy(() => import('@/pages/portal/BillingPayments'));
+const BillingOutstanding = lazy(() => import('@/pages/portal/BillingOutstanding'));
+const BillingReports = lazy(() => import('@/pages/portal/BillingReports'));
 const AttendanceManagement = lazy(() => import('@/pages/portal/AttendanceManagement'));
 const ParentManagement = lazy(() => import('@/pages/portal/ParentManagement'));
 const AdminTimetable = lazy(() => import('@/pages/portal/AdminTimetable'));
@@ -249,7 +252,11 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/lesson-notes/preview/:id" component={LessonNotePreviewPage} />
             <Route path="/portal/admin/lesson-notes/view/:id" component={LessonNoteViewPage} />
             <Route path="/portal/admin/lesson-notes" component={AdminLessonNoteReview} />
-            <Route path="/portal/admin/exam-payments" component={ExamPaymentManagement} />
+            <Route path="/portal/admin/recent-exam-results" component={TeacherRecentExamResults} />
+            <Route path="/portal/admin/billing-items" component={BillingItems} />
+            <Route path="/portal/admin/billing-payments" component={BillingPayments} />
+            <Route path="/portal/admin/billing-outstanding" component={BillingOutstanding} />
+            <Route path="/portal/admin/billing-reports" component={BillingReports} />
             <Route path="/portal/admin/attendance" component={AttendanceManagement} />
             <Route path="/portal/admin/parents" component={ParentManagement} />
             <Route path="/portal/admin/calendar" component={AdminCalendarPage} />

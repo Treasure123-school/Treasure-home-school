@@ -338,11 +338,12 @@ export const attendance = pgTable("attendance", {
 export const exams = pgTable("exams", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
-  classId: integer("class_id").notNull().references(() => classes.id),
-  subjectId: integer("subject_id").notNull().references(() => subjects.id),
+  assessmentCategory: varchar("assessment_category", { length: 20 }).notNull().default('academic'),
+  classId: integer("class_id").references(() => classes.id),
+  subjectId: integer("subject_id").references(() => subjects.id),
   totalMarks: integer("total_marks").notNull(),
   date: varchar("date", { length: 10 }).notNull(),
-  termId: integer("term_id").notNull().references(() => academicTerms.id),
+  termId: integer("term_id").references(() => academicTerms.id),
   createdBy: varchar("created_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
   teacherInChargeId: varchar("teacher_in_charge_id", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -367,6 +368,18 @@ export const exams = pgTable("exams", {
   maxTabSwitches: integer("max_tab_switches").notNull().default(3),
   shuffleOptions: boolean("shuffle_options").notNull().default(false),
   showInstructionsScreen: boolean("show_instructions_screen").notNull().default(true),
+  purpose: varchar("purpose", { length: 100 }),
+  venue: varchar("venue", { length: 255 }),
+  targetType: varchar("target_type", { length: 30 }),
+  registrationFee: integer("registration_fee"),
+  registrationOpen: boolean("registration_open").notNull().default(false),
+  registrationDeadline: varchar("registration_deadline", { length: 10 }),
+  candidateType: varchar("candidate_type", { length: 20 }),
+  generateAdmitCards: boolean("generate_admit_cards").notNull().default(false),
+  generateCandidateNumbers: boolean("generate_candidate_numbers").notNull().default(false),
+  certificateEnabled: boolean("certificate_enabled").notNull().default(false),
+  leaderboardEnabled: boolean("leaderboard_enabled").notNull().default(false),
+  resultPublished: boolean("result_published").notNull().default(false),
 });
 
 // Exam questions table
@@ -1669,3 +1682,78 @@ export const homepageSections = pgTable("homepage_sections", {
 
 export type HomepageSection = typeof homepageSections.$inferSelect;
 export type InsertHomepageSection = typeof homepageSections.$inferInsert;
+
+// ─── Unified Billing & Payments ───────────────────────────────────────────────
+
+// Billing Items — the fee catalogue (e.g. "Examination Fee", "Registration Fee")
+export const billingItems = pgTable("billing_items", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  amount: integer("amount").notNull().default(0), // stored in kobo
+  category: varchar("category", { length: 50 }).notNull().default("general"), // general | exam | registration | resources | cbt | result_checker | library | excursion | uniform | pta | other
+  isActive: boolean("is_active").notNull().default(true),
+  isRecurring: boolean("is_recurring").notNull().default(false), // per-term vs one-time
+  paymentType: varchar("payment_type", { length: 20 }).notNull().default("one_time"), // one_time | recurring
+  classLevels: text("class_levels"), // JSON array of class IDs or level names, null = all
+  termId: integer("term_id").references(() => academicTerms.id, { onDelete: "set null" }),
+  session: varchar("session", { length: 20 }), // e.g. "2024/2025"
+  dueDate: timestamp("due_date"),
+  lateFee: integer("late_fee").default(0), // additional fee in kobo if paid after due date
+  discount: integer("discount").default(0), // flat discount in kobo
+  createdBy: varchar("created_by", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (t) => ({
+  billingItemsNameIdx: index("billing_items_name_idx").on(t.name),
+  billingItemsCategoryIdx: index("billing_items_category_idx").on(t.category),
+  billingItemsTermIdx: index("billing_items_term_idx").on(t.termId),
+  billingItemsActiveIdx: index("billing_items_active_idx").on(t.isActive),
+}));
+
+export const insertBillingItemSchema = createInsertSchema(billingItems).omit({ id: true, createdAt: true, updatedAt: true });
+export type BillingItem = typeof billingItems.$inferSelect;
+export type InsertBillingItem = z.infer<typeof insertBillingItemSchema>;
+
+// Billing Payments — unified payment records for all fee types
+export const billingPayments = pgTable("billing_payments", {
+  id: serial("id").primaryKey(),
+  billingItemId: integer("billing_item_id").notNull().references(() => billingItems.id, { onDelete: "restrict" }),
+  studentId: varchar("student_id", { length: 36 }).notNull().references(() => students.id, { onDelete: "cascade" }),
+  termId: integer("term_id").references(() => academicTerms.id),
+  amountPaid: integer("amount_paid").notNull().default(0), // in kobo
+  paymentMethod: varchar("payment_method", { length: 50 }).notNull().default("cash"), // cash | paystack | monnify | bank_transfer
+  paymentReference: varchar("payment_reference", { length: 255 }),
+  status: varchar("status", { length: 20 }).notNull().default("paid"), // paid | pending | failed | refunded
+  provider: varchar("provider", { length: 50 }).default("manual"), // manual | paystack | monnify
+  recordedBy: varchar("recorded_by", { length: 36 }).references(() => users.id, { onDelete: "set null" }),
+  notes: text("notes"),
+  gatewayResponse: text("gateway_response"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  billingPaymentsStudentIdx: index("billing_payments_student_idx").on(t.studentId),
+  billingPaymentsItemIdx: index("billing_payments_item_idx").on(t.billingItemId),
+  billingPaymentsTermIdx: index("billing_payments_term_idx").on(t.termId),
+  billingPaymentsStatusIdx: index("billing_payments_status_idx").on(t.status),
+  billingPaymentsUniqueIdx: uniqueIndex("billing_payments_unique_idx").on(t.studentId, t.billingItemId, t.termId),
+}));
+
+export const insertBillingPaymentSchema = createInsertSchema(billingPayments).omit({ id: true, createdAt: true });
+export type BillingPayment = typeof billingPayments.$inferSelect;
+export type InsertBillingPayment = z.infer<typeof insertBillingPaymentSchema>;
+
+// Billing Feature Links — link a billing item to a feature gate (e.g. exam access)
+export const billingFeatureLinks = pgTable("billing_feature_links", {
+  id: serial("id").primaryKey(),
+  billingItemId: integer("billing_item_id").notNull().references(() => billingItems.id, { onDelete: "cascade" }),
+  featureKey: varchar("feature_key", { length: 100 }).notNull(), // e.g. "exam_access"
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  billingFeatureLinksItemIdx: index("billing_feature_links_item_idx").on(t.billingItemId),
+  billingFeatureLinksKeyIdx: uniqueIndex("billing_feature_links_key_idx").on(t.featureKey),
+}));
+
+export const insertBillingFeatureLinkSchema = createInsertSchema(billingFeatureLinks).omit({ id: true, createdAt: true });
+export type BillingFeatureLink = typeof billingFeatureLinks.$inferSelect;
+export type InsertBillingFeatureLink = z.infer<typeof insertBillingFeatureLinkSchema>;

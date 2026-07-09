@@ -44,7 +44,7 @@ type UploadFormData = {
 };
 
 const DEFAULT_UPLOAD_FORM: UploadFormData = {
-  title: '', eventName: '', altText: '', caption: '', categoryId: '', displayOrder: '0',
+  title: '', eventName: '', altText: '', caption: '', categoryId: 'none', displayOrder: '0',
 };
 
 export default function GalleryManagement() {
@@ -83,7 +83,7 @@ export default function GalleryManagement() {
       if (!uploadFile) throw new Error('No file selected');
       const formData = new FormData();
       formData.append('image', uploadFile);
-      Object.entries(uploadForm).forEach(([k, v]) => { if (v) formData.append(k, v); });
+      Object.entries(uploadForm).forEach(([k, v]) => { if (v && v !== 'none') formData.append(k, v); });
       const res = await fetch('/api/admin/gallery', {
         method: 'POST',
         headers: { Authorization: `Bearer ${token()}` },
@@ -99,7 +99,7 @@ export default function GalleryManagement() {
       setShowUploadDialog(false);
       setUploadFile(null);
       setUploadForm(DEFAULT_UPLOAD_FORM);
-      toast({ title: 'Image uploaded successfully' });
+      toast({ title: 'Success', description: 'Image uploaded to gallery.' });
     },
     onError: (e: any) => toast({ title: 'Upload failed', description: e.message, variant: 'destructive' }),
   });
@@ -111,7 +111,7 @@ export default function GalleryManagement() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/gallery'] });
       queryClient.invalidateQueries({ queryKey: ['/api/public/gallery'] });
       setEditingImage(null);
-      toast({ title: 'Image updated' });
+      toast({ title: 'Success', description: 'Image updated.' });
     },
     onError: () => toast({ title: 'Update failed', variant: 'destructive' }),
   });
@@ -122,7 +122,7 @@ export default function GalleryManagement() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/gallery'] });
       queryClient.invalidateQueries({ queryKey: ['/api/public/gallery'] });
       setDeleteTarget(null);
-      toast({ title: 'Image deleted' });
+      toast({ title: 'Success', description: 'Image deleted.' });
     },
     onError: () => toast({ title: 'Delete failed', variant: 'destructive' }),
   });
@@ -135,7 +135,7 @@ export default function GalleryManagement() {
       setShowCategoryDialog(false);
       setNewCategoryName('');
       setNewCategoryDesc('');
-      toast({ title: 'Category created' });
+      toast({ title: 'Success', description: 'Gallery category created.' });
     },
     onError: () => toast({ title: 'Failed to create category', variant: 'destructive' }),
   });
@@ -144,7 +144,7 @@ export default function GalleryManagement() {
     mutationFn: async (id: number) => apiRequest('DELETE', `/api/admin/gallery-categories/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/public/gallery/categories'] });
-      toast({ title: 'Category deleted' });
+      toast({ title: 'Success', description: 'Gallery category deleted.' });
     },
     onError: () => toast({ title: 'Failed to delete category', variant: 'destructive' }),
   });
@@ -296,7 +296,7 @@ export default function GalleryManagement() {
                 <Select value={uploadForm.categoryId} onValueChange={v => setUploadForm(p => ({ ...p, categoryId: v }))}>
                   <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">No category</SelectItem>
+                    <SelectItem value="none">No category</SelectItem>
                     {categories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -343,12 +343,12 @@ export default function GalleryManagement() {
                 <div>
                   <Label>Category</Label>
                   <Select
-                    value={editingImage.categoryId ? String(editingImage.categoryId) : ''}
-                    onValueChange={v => setEditingImage(p => p ? ({ ...p, categoryId: v ? parseInt(v) : undefined }) : null)}
+                    value={editingImage.categoryId ? String(editingImage.categoryId) : 'none'}
+                    onValueChange={v => setEditingImage(p => p ? ({ ...p, categoryId: v !== 'none' ? parseInt(v) : undefined }) : null)}
                   >
                     <SelectTrigger><SelectValue placeholder="No category" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">No category</SelectItem>
+                      <SelectItem value="none">No category</SelectItem>
                       {categories.map(c => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
                     </SelectContent>
                   </Select>

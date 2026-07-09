@@ -29,7 +29,7 @@ export default function SuperAdminUserAccessControl() {
       return apiRequest("POST", `/api/users/${userId}/${endpoint}`, { reason: accessReason });
     },
     onSuccess: () => {
-      toast({ title: "Access Updated", description: "Individual user access status has been modified." });
+      toast({ title: "Success", description: "User access status updated." });
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       setAccessReason("");
     },

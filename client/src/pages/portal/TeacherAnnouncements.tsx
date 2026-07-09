@@ -137,7 +137,7 @@ export default function TeacherAnnouncements() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/announcements'] });
       setIsCreateOpen(false);
       setForm(DEFAULT_FORM);
-      toast({ title: 'Announcement Created', description: 'Your announcement has been published.' });
+      toast({ title: 'Success', description: 'Announcement published.' });
     },
     onError: (error: any) => toast({ title: 'Failed to Create', description: error.message || 'Could not create announcement. Please try again.', variant: 'destructive' }),
   });
@@ -155,7 +155,7 @@ export default function TeacherAnnouncements() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/announcements'] });
       setEditingAnnouncement(null);
       setForm(DEFAULT_FORM);
-      toast({ title: 'Announcement Updated', description: 'Your changes have been saved.' });
+      toast({ title: 'Success', description: 'Announcement updated.' });
     },
     onError: (error: any) => toast({ title: 'Failed to Update', description: error.message || 'Could not update announcement. Please try again.', variant: 'destructive' }),
   });
@@ -171,7 +171,7 @@ export default function TeacherAnnouncements() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/announcements'] });
       setDeleteConfirmId(null);
-      toast({ title: 'Deleted', description: 'Announcement removed.' });
+      toast({ title: 'Success', description: 'Announcement deleted.' });
     },
     onError: (error: any) => toast({ title: 'Failed to Delete', description: error.message || 'Could not delete announcement. Please try again.', variant: 'destructive' }),
   });
