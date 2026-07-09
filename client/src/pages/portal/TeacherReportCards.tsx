@@ -240,6 +240,15 @@ export default function TeacherReportCards() {
   const testWeight = gradingConfig?.dbSettings?.testWeight ?? STANDARD_GRADING_SCALE.testWeight;
   const examWeight = gradingConfig?.dbSettings?.examWeight ?? STANDARD_GRADING_SCALE.examWeight;
 
+  // The grading-scale select's value must match one of the option values it
+  // renders, or the trigger shows blank. Sync to the server's active scale
+  // name once it loads, since our initial state ('standard') is just a key.
+  useEffect(() => {
+    if (gradingConfig?.currentConfig?.name && selectedGradingScale === 'standard') {
+      setSelectedGradingScale(gradingConfig.currentConfig.name);
+    }
+  }, [gradingConfig?.currentConfig?.name]);
+
   // Real-time subscription for report card updates - scoped to class
   // Skip cache invalidation because we use optimistic updates in mutations
   // which handle cache updates directly from server response

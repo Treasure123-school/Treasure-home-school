@@ -131,13 +131,13 @@ export function ReportCardFilters({
         </div>
 
         <Collapsible open={showAdvancedFilters}>
-          <CollapsibleContent className="mt-3 pt-3 border-t">
+          <CollapsibleContent className="mt-3">
             <div className="flex flex-wrap gap-3">
               <div className="flex flex-col gap-1 min-w-[140px]">
                 <Label className="text-xs text-muted-foreground">Grading Scale</Label>
                 <Select value={selectedGradingScale} onValueChange={onGradingScaleChange}>
                   <SelectTrigger className="h-9" data-testid="select-grading-scale">
-                    <SelectValue placeholder="Grading Scale" />
+                    <SelectValue placeholder="Select Grading Scale" />
                   </SelectTrigger>
                   <SelectContent>
                     {availableGradingScales.map((scaleName) => (
