@@ -8,6 +8,7 @@ export interface AssessmentCardProps {
   exam: Exam;
   questionCount: number;
   isPublishToggling: boolean;
+  togglingAction: 'publish' | 'unpublish' | null;
   isDeleting: boolean;
   onManageQuestions: (exam: Exam) => void;
   onTogglePublish: (exam: Exam) => void;
@@ -53,6 +54,7 @@ export function AssessmentCard({
   exam,
   questionCount,
   isPublishToggling,
+  togglingAction,
   isDeleting,
   onManageQuestions,
   onTogglePublish,
@@ -129,6 +131,7 @@ export function AssessmentCard({
             exam={exam}
             variant="mobile"
             isPublishToggling={isPublishToggling}
+            togglingAction={togglingAction}
             isDeleting={isDeleting}
             onManageQuestions={onManageQuestions}
             onTogglePublish={onTogglePublish}

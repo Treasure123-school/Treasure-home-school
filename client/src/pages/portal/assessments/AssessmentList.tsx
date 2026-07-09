@@ -11,7 +11,11 @@ export interface AssessmentListProps {
   isLoading: boolean;
   searchTerm: string;
   questionCounts: Record<number, number>;
-  togglingExamId: number | null;
+  /** Per-exam in-flight publish/unpublish action, keyed by exam id. Explicit rather
+   *  than inferred from exam.isPublished (which is already flipped by the optimistic
+   *  update by the time this renders), and per-exam so concurrent toggles on
+   *  different rows never interfere with each other's pending label. */
+  togglingExams: Record<number, 'publish' | 'unpublish'>;
   deletingExamIds: Set<number>;
   onManageQuestions: (exam: Exam) => void;
   onTogglePublish: (exam: Exam) => void;
@@ -34,7 +38,7 @@ export function AssessmentList({
   isLoading,
   searchTerm,
   questionCounts,
-  togglingExamId,
+  togglingExams,
   deletingExamIds,
   onManageQuestions,
   onTogglePublish,
@@ -80,7 +84,8 @@ export function AssessmentList({
                   key={exam.id}
                   exam={exam}
                   questionCount={questionCounts[exam.id] || 0}
-                  isPublishToggling={togglingExamId === exam.id}
+                  isPublishToggling={exam.id in togglingExams}
+                  togglingAction={togglingExams[exam.id] ?? null}
                   isDeleting={deletingExamIds.has(exam.id)}
                   onManageQuestions={onManageQuestions}
                   onTogglePublish={onTogglePublish}
@@ -117,7 +122,8 @@ export function AssessmentList({
                       key={exam.id}
                       exam={exam}
                       questionCount={questionCounts[exam.id] || 0}
-                      isPublishToggling={togglingExamId === exam.id}
+                      isPublishToggling={exam.id in togglingExams}
+                      togglingAction={togglingExams[exam.id] ?? null}
                       isDeleting={deletingExamIds.has(exam.id)}
                       onManageQuestions={onManageQuestions}
                       onTogglePublish={onTogglePublish}

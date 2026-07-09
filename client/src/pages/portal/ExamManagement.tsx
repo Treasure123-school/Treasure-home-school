@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSearch } from 'wouter';
 import ExamQuestionAdder from './ExamQuestionAdder';
 import { useQuery, useMutation } from '@tanstack/react-query';
@@ -160,13 +160,29 @@ export default function ExamManagement() {
   const pendingDeletionsRef = useRef<Set<number>>(new Set());
   const pendingQuestionDeletionsRef = useRef<Set<number>>(new Set());
 
-  // Track which specific exam is currently being toggled (for button loading state)
-  const [togglingExamId, setTogglingExamId] = useState<number | null>(null);
-  // Keep a ref in sync for use in real-time event handlers (avoids stale closure)
-  const togglingExamIdRef = useRef<number | null>(null);
+  // Track publish/unpublish state PER EXAM (not a single global id/action) so that
+  // toggling two different exams close together can never stomp on each other's
+  // pending label. Map value is the *intended* action ('publish' | 'unpublish'),
+  // recorded up front in onMutate — never re-derived from exam.isPublished, which
+  // is already flipped to the target value by the optimistic update, so reading it
+  // back after the fact always yields the opposite word.
+  const [togglingExams, setTogglingExams] = useState<Record<number, 'publish' | 'unpublish'>>({});
+  // Keep a ref in sync for use in real-time event handlers (avoids stale closures)
+  const togglingExamsRef = useRef<Record<number, 'publish' | 'unpublish'>>({});
   useEffect(() => {
-    togglingExamIdRef.current = togglingExamId;
-  }, [togglingExamId]);
+    togglingExamsRef.current = togglingExams;
+  }, [togglingExams]);
+
+  const setExamToggling = useCallback((examId: number, action: 'publish' | 'unpublish' | null) => {
+    setTogglingExams(prev => {
+      if (action === null) {
+        if (!(examId in prev)) return prev; // no-op, avoids extra renders
+        const { [examId]: _removed, ...rest } = prev;
+        return rest;
+      }
+      return { ...prev, [examId]: action };
+    });
+  }, []);
 
   const { register: registerExam, handleSubmit: handleExamSubmit, formState: { errors: examErrors }, control: examControl, setValue: setExamValue, reset: resetExam, watch: watchExam, trigger: triggerExam } = useForm<ExamForm>({
     resolver: zodResolver(examFormSchema),
@@ -255,8 +271,8 @@ export default function ExamManagement() {
         const updatedExam = event.data;
         if (updatedExam?.id) {
           // Use ref to get current toggling state (avoids stale closure)
-          if (togglingExamIdRef.current === updatedExam.id) {
-            setTogglingExamId(null);
+          if (updatedExam.id in togglingExamsRef.current) {
+            setExamToggling(updatedExam.id, null);
           }
           queryClient.setQueryData(['/api/exams'], (old: Exam[] | undefined) =>
             old?.map((e) => e.id === updatedExam.id ? updatedExam : e) || []
@@ -268,8 +284,8 @@ export default function ExamManagement() {
         const updatedExam = event.data;
         if (updatedExam?.id) {
           // Use ref to get current toggling state (avoids stale closure)
-          if (togglingExamIdRef.current === updatedExam.id) {
-            setTogglingExamId(null);
+          if (updatedExam.id in togglingExamsRef.current) {
+            setExamToggling(updatedExam.id, null);
           }
         }
       }
@@ -506,8 +522,13 @@ export default function ExamManagement() {
       return response.json();
     },
     onMutate: async ({ examId, isPublished }) => {
-      // Track which exam is being toggled for button loading state
-      setTogglingExamId(examId);
+      // Track this exam's in-flight action explicitly, keyed by its own id, so a
+      // second toggle on a different exam can never clear or overwrite this one's
+      // pending label. Recording it here (before the cache flips) is what lets the
+      // button correctly say "Publishing..." vs "Unpublishing..." — reading it back
+      // off exam.isPublished after the optimistic update would always show the
+      // opposite word, since that field is already the new value.
+      setExamToggling(examId, isPublished ? 'publish' : 'unpublish');
 
       await queryClient.cancelQueries({ queryKey: ['/api/exams'] });
       const previousExams = queryClient.getQueryData(['/api/exams']);
@@ -523,7 +544,8 @@ export default function ExamManagement() {
       return { previousExams };
     },
     onSuccess: (data, { isPublished }) => {
-      // Update cache with confirmed backend data
+      // Reconcile with confirmed backend data (covers any other fields the
+      // server may have changed alongside isPublished, e.g. publishedAt).
       queryClient.setQueryData(['/api/exams'], (old: any) => {
         if (!old) return old;
         return old.map((exam: any) =>
@@ -535,9 +557,6 @@ export default function ExamManagement() {
         title: "Success",
         description: `Exam ${isPublished ? 'published' : 'unpublished'} successfully`,
       });
-
-      // Clear the toggling state
-      setTogglingExamId(null);
     },
     onError: (error: any, variables, context: any) => {
       if (context?.previousExams) {
@@ -548,9 +567,13 @@ export default function ExamManagement() {
         description: error.message || "Failed to update exam publish status",
         variant: "destructive",
       });
-
-      // Clear the toggling state on error
-      setTogglingExamId(null);
+    },
+    onSettled: (_data, _error, variables) => {
+      // Clear only THIS exam's toggling state once its own request finishes,
+      // success or failure — guarantees the button never gets stuck reading
+      // "Publishing..."/"Unpublishing..." forever, and never clears a different
+      // exam's still-in-flight toggle if multiple are triggered concurrently.
+      setExamToggling(variables.examId, null);
     },
   });
 
@@ -2147,7 +2170,7 @@ export default function ExamManagement() {
         isLoading={loadingExams}
         searchTerm={searchTerm}
         questionCounts={questionCounts}
-        togglingExamId={togglingExamId}
+        togglingExams={togglingExams}
         deletingExamIds={deletingExamIds}
         onManageQuestions={(exam) => setSelectedExam(exam)}
         onTogglePublish={(exam) => togglePublishMutation.mutate({ examId: exam.id, isPublished: !exam.isPublished })}

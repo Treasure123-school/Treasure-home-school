@@ -8,6 +8,7 @@ export interface AssessmentRowProps {
   exam: Exam;
   questionCount: number;
   isPublishToggling: boolean;
+  togglingAction: 'publish' | 'unpublish' | null;
   isDeleting: boolean;
   onManageQuestions: (exam: Exam) => void;
   onTogglePublish: (exam: Exam) => void;
@@ -50,6 +51,7 @@ export function AssessmentRow({
   exam,
   questionCount,
   isPublishToggling,
+  togglingAction,
   isDeleting,
   onManageQuestions,
   onTogglePublish,
@@ -111,6 +113,7 @@ export function AssessmentRow({
           exam={exam}
           variant="desktop"
           isPublishToggling={isPublishToggling}
+          togglingAction={togglingAction}
           isDeleting={isDeleting}
           onManageQuestions={onManageQuestions}
           onTogglePublish={onTogglePublish}

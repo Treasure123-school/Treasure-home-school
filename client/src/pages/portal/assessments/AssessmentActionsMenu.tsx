@@ -25,6 +25,10 @@ export interface AssessmentActionsMenuProps {
    *  and includes a "Manage Questions" entry (mobile has its own dedicated button). */
   variant: 'mobile' | 'desktop';
   isPublishToggling: boolean;
+  /** Explicit in-flight action — do not infer this from exam.isPublished, which is
+   *  already flipped to the target value by the optimistic update as soon as the
+   *  mutation starts, so re-deriving the label from it always shows the wrong word. */
+  togglingAction: 'publish' | 'unpublish' | null;
   isDeleting: boolean;
   onManageQuestions: (exam: Exam) => void;
   onTogglePublish: (exam: Exam) => void;
@@ -37,6 +41,7 @@ export function AssessmentActionsMenu({
   exam,
   variant,
   isPublishToggling,
+  togglingAction,
   isDeleting,
   onManageQuestions,
   onTogglePublish,
@@ -78,7 +83,7 @@ export function AssessmentActionsMenu({
         >
           <Play className={variant === 'desktop' ? `w-4 h-4 mr-2 ${exam.isPublished ? 'text-amber-500' : 'text-green-500'}` : 'w-4 h-4 mr-2'} />
           {isPublishToggling
-            ? (exam.isPublished ? 'Unpublishing...' : 'Publishing...')
+            ? (togglingAction === 'publish' ? 'Publishing...' : 'Unpublishing...')
             : (exam.isPublished ? 'Unpublish' : 'Publish')}
         </DropdownMenuItem>
 
