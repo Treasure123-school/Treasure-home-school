@@ -65,6 +65,7 @@ export default function ExamQuestionAdder({
     const [bankFilterClassId, setBankFilterClassId] = useState(examClassId ? String(examClassId) : '');
     const [bankFilterSubjectId, setBankFilterSubjectId] = useState(examSubjectId ? String(examSubjectId) : '');
     const [bankFilterTermId, setBankFilterTermId] = useState('');
+    const [bankFilterBankId, setBankFilterBankId] = useState('');
     const [bankFilterTopicId, setBankFilterTopicId] = useState('');
     const [bankFilterDifficulty, setBankFilterDifficulty] = useState('');
     const [bankFilterType, setBankFilterType] = useState('');
@@ -101,13 +102,28 @@ export default function ExamQuestionAdder({
         }
     }, [currentTerm]);
 
+    // ═══ BANK IMPORT — available banks (requires class + subject + term) ═══
+    const { data: importBanks = [] } = useQuery({
+        queryKey: ['/api/question-banks', 'import', bankFilterClassId, bankFilterSubjectId, bankFilterTermId],
+        queryFn: async () => {
+            const params = new URLSearchParams();
+            if (bankFilterClassId)   params.set('classId',   bankFilterClassId);
+            if (bankFilterSubjectId) params.set('subjectId', bankFilterSubjectId);
+            if (bankFilterTermId)    params.set('termId',    bankFilterTermId);
+            const r = await apiRequest('GET', `/api/question-banks?${params.toString()}`);
+            return r.ok ? r.json() : [];
+        },
+        enabled: !!(bankFilterClassId && bankFilterSubjectId && bankFilterTermId),
+        staleTime: 30_000,
+    });
+
     const { data: bankTopics = [] } = useQuery({
         queryKey: ['/api/syllabus-topics', 'bank-import', bankFilterClassId, bankFilterSubjectId, bankFilterTermId],
         queryFn: async () => {
             const params = new URLSearchParams();
-            if (bankFilterClassId) params.set('classId', bankFilterClassId);
+            if (bankFilterClassId)   params.set('classId',   bankFilterClassId);
             if (bankFilterSubjectId) params.set('subjectId', bankFilterSubjectId);
-            if (bankFilterTermId) params.set('termId', bankFilterTermId);
+            if (bankFilterTermId)    params.set('termId',    bankFilterTermId);
             const r = await apiRequest('GET', `/api/syllabus-topics?${params.toString()}`);
             return r.ok ? r.json() : [];
         },
@@ -128,21 +144,23 @@ export default function ExamQuestionAdder({
         enabled: !!(autoClassId && autoSubjectId && autoTermId),
     });
 
-    // ═══ BANK ITEMS QUERY ═══
+    // ═══ BANK ITEMS QUERY — requires bankId + classId + termId ═══
     const { data: bankItems = [], isLoading: loadingBankItems } = useQuery({
-        queryKey: ['/api/question-bank/items', 'import', bankFilterClassId, bankFilterSubjectId, bankFilterTermId, bankFilterTopicId, bankFilterDifficulty, bankFilterType],
+        queryKey: ['/api/question-bank/items', 'import', bankFilterClassId, bankFilterTermId, bankFilterBankId, bankFilterTopicId, bankFilterDifficulty, bankFilterType],
         queryFn: async () => {
             const params = new URLSearchParams();
-            if (bankFilterClassId) params.set('classId', bankFilterClassId);
-            if (bankFilterSubjectId) params.set('subjectId', bankFilterSubjectId);
-            if (bankFilterTermId) params.set('termId', bankFilterTermId);
-            if (bankFilterTopicId) params.set('topicId', bankFilterTopicId);
-            if (bankFilterDifficulty) params.set('difficulty', bankFilterDifficulty);
-            if (bankFilterType) params.set('questionType', bankFilterType);
+            params.set('classId', bankFilterClassId);
+            params.set('termId',  bankFilterTermId);
+            params.set('bankId',  bankFilterBankId);
+            if (bankFilterTopicId)    params.set('topicId',      bankFilterTopicId);
+            if (bankFilterDifficulty) params.set('difficulty',   bankFilterDifficulty);
+            if (bankFilterType)       params.set('questionType', bankFilterType);
             const r = await apiRequest('GET', `/api/question-bank/items?${params.toString()}`);
-            return r.ok ? r.json() : [];
+            if (!r.ok) return [];
+            const data = await r.json();
+            return Array.isArray(data) ? data : (data.items ?? []);
         },
-        enabled: open && activeTab === 'bank',
+        enabled: open && activeTab === 'bank' && !!(bankFilterClassId && bankFilterTermId && bankFilterBankId),
     });
 
     // ═══ MUTATIONS ═══
@@ -318,8 +336,8 @@ export default function ExamQuestionAdder({
             setSelectedBankItems(new Set(bankItems.map((q: any) => q.id)));
         }
     };
-    const handleBankFilterClassChange = (v: string) => { setBankFilterClassId(v); setBankFilterTermId(''); setBankFilterTopicId(''); };
-    const handleBankFilterTermChange = (v: string) => { setBankFilterTermId(v); setBankFilterTopicId(''); };
+    const handleBankFilterClassChange = (v: string) => { setBankFilterClassId(v); setBankFilterTermId(''); setBankFilterBankId(''); setBankFilterTopicId(''); };
+    const handleBankFilterTermChange = (v: string) => { setBankFilterTermId(v); setBankFilterBankId(''); setBankFilterTopicId(''); };
 
     // Auto Generate helpers
     const handleAutoClassChange = (v: string) => { setAutoClassId(v); setAutoTermId(''); setAutoTopicId(''); setAutoGeneratedQuestions([]); };
@@ -371,9 +389,7 @@ export default function ExamQuestionAdder({
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
-                                        <SelectItem value="text">Short Answer</SelectItem>
                                         <SelectItem value="essay">Essay</SelectItem>
-                                        <SelectItem value="true_false">True/False</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -415,13 +431,11 @@ export default function ExamQuestionAdder({
                             </div>
                         )}
 
-                        {(questionType === 'text' || questionType === 'essay') && (
+                        {questionType === 'essay' && (
                             <div>
-                                <Label>Expected/Sample Answer</Label>
-                                <Textarea value={expectedAnswer || sampleAnswer} onChange={(e) => {
-                                    if (questionType === 'essay') setSampleAnswer(e.target.value);
-                                    else setExpectedAnswer(e.target.value);
-                                }} placeholder="Answer for auto-grading or reference" rows={2} />
+                                <Label>Sample Answer</Label>
+                                <Textarea value={sampleAnswer} onChange={(e) => setSampleAnswer(e.target.value)}
+                                    placeholder="Reference answer for grading" rows={3} />
                             </div>
                         )}
 
@@ -451,41 +465,62 @@ export default function ExamQuestionAdder({
                                 <span className="text-xs font-medium flex items-center gap-1"><Filter className="w-3 h-3" /> Filter Questions</span>
                                 <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => {
                                     setBankFilterClassId(''); setBankFilterSubjectId(''); setBankFilterTermId('');
-                                    setBankFilterTopicId(''); setBankFilterDifficulty(''); setBankFilterType('');
+                                    setBankFilterBankId(''); setBankFilterTopicId(''); setBankFilterDifficulty(''); setBankFilterType('');
                                 }}>Clear</Button>
                             </div>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                            <p className="text-[10px] text-muted-foreground mb-2">Class, Subject, Term and Bank are all required to search.</p>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                 <Select value={bankFilterClassId} onValueChange={handleBankFilterClassChange}>
-                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Class" /></SelectTrigger>
-                                    <SelectContent>{classes.map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
+                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Class *" /></SelectTrigger>
+                                    <SelectContent>{(classes as any[]).map((c: any) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}</SelectContent>
                                 </Select>
-                                <Select value={bankFilterSubjectId} onValueChange={setBankFilterSubjectId}>
-                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Subject" /></SelectTrigger>
-                                    <SelectContent>{subjects.map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
+                                <Select value={bankFilterSubjectId} onValueChange={(v) => { setBankFilterSubjectId(v); setBankFilterBankId(''); setBankFilterTopicId(''); }}>
+                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Subject *" /></SelectTrigger>
+                                    <SelectContent>{(subjects as any[]).map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
                                 </Select>
                                 <Select value={bankFilterTermId} onValueChange={handleBankFilterTermChange}>
-                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Term" /></SelectTrigger>
-                                    <SelectContent>{terms.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
+                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Term *" /></SelectTrigger>
+                                    <SelectContent>{(terms as any[]).map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
                                 </Select>
-                                <Select value={bankFilterTopicId} onValueChange={setBankFilterTopicId} disabled={!bankFilterClassId || !bankFilterSubjectId || !bankFilterTermId}>
-                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={!bankFilterClassId || !bankFilterSubjectId || !bankFilterTermId ? 'Set class, subject & term' : 'Topic'} /></SelectTrigger>
-                                    <SelectContent>{bankTopics.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
+                                <Select value={bankFilterBankId} onValueChange={(v) => { setBankFilterBankId(v); setBankFilterTopicId(''); }}
+                                    disabled={!bankFilterClassId || !bankFilterSubjectId || !bankFilterTermId}>
+                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={
+                                        !bankFilterClassId || !bankFilterSubjectId || !bankFilterTermId ? 'Set class/subject/term first' :
+                                        (importBanks as any[]).length === 0 ? 'No banks found' : 'Bank *'
+                                    } /></SelectTrigger>
+                                    <SelectContent>
+                                        {(importBanks as any[]).length === 0 ? (
+                                            <div className="px-3 py-2 text-xs text-muted-foreground">No banks for this selection</div>
+                                        ) : (
+                                            (importBanks as any[]).map((b: any) => <SelectItem key={b.id} value={String(b.id)}>{b.name}</SelectItem>)
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mt-2">
+                                <Select value={bankFilterTopicId} onValueChange={setBankFilterTopicId}
+                                    disabled={!bankFilterBankId}>
+                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={!bankFilterBankId ? 'Select bank first' : 'Topic (optional)'} /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="">All topics</SelectItem>
+                                        {(bankTopics as any[]).map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+                                    </SelectContent>
                                 </Select>
                                 <Select value={bankFilterDifficulty} onValueChange={setBankFilterDifficulty}>
                                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Difficulty" /></SelectTrigger>
                                     <SelectContent>
+                                        <SelectItem value="">Any difficulty</SelectItem>
                                         <SelectItem value="easy">Easy</SelectItem>
                                         <SelectItem value="medium">Medium</SelectItem>
                                         <SelectItem value="hard">Hard</SelectItem>
                                     </SelectContent>
                                 </Select>
                                 <Select value={bankFilterType} onValueChange={setBankFilterType}>
-                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Type" /></SelectTrigger>
+                                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="All types" /></SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="multiple_choice">MCQ</SelectItem>
-                                        <SelectItem value="text">Short Answer</SelectItem>
+                                        <SelectItem value="">All types</SelectItem>
+                                        <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
                                         <SelectItem value="essay">Essay</SelectItem>
-                                        <SelectItem value="true_false">True/False</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -511,7 +546,9 @@ export default function ExamQuestionAdder({
                                 {bankItems.length === 0 && !loadingBankItems && (
                                     <div className="p-6 text-center text-sm text-muted-foreground">
                                         <Database className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                                        No questions found. Try adjusting filters.
+                                        {!bankFilterBankId
+                                            ? 'Select Class, Subject, Term and Bank to load questions.'
+                                            : 'No questions found. Try adjusting filters.'}
                                     </div>
                                 )}
                                 {bankItems.map((q: any) => (
@@ -603,9 +640,7 @@ export default function ExamQuestionAdder({
                                         <SelectContent>
                                             <SelectItem value="all">All Types</SelectItem>
                                             <SelectItem value="multiple_choice">MCQ Only</SelectItem>
-                                            <SelectItem value="text">Short Answer</SelectItem>
                                             <SelectItem value="essay">Essay Only</SelectItem>
-                                            <SelectItem value="both">MCQ + Theory</SelectItem>
                                         </SelectContent>
                                     </Select>
                                 </div>

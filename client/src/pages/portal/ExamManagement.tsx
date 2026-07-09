@@ -2235,7 +2235,7 @@ export default function ExamManagement() {
                           {questionErrors.questionText && <p className="text-sm text-red-500">{questionErrors.questionText.message}</p>}
                         </div>
 
-                        {(questionType === 'text' || questionType === 'essay') && (
+                        {questionType === 'essay' && (
                           <>
                             <div>
                               <Label htmlFor="instructions">Instructions (Optional)</Label>

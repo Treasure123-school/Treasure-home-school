@@ -44,10 +44,7 @@ const DIFFICULTY_OPTS = ["easy", "medium", "hard"];
 
 const TYPE_OPTS = [
   { value: "multiple_choice", label: "Multiple Choice" },
-  { value: "text",            label: "Short Answer" },
   { value: "essay",           label: "Essay" },
-  { value: "true_false",      label: "True / False" },
-  { value: "fill_blank",      label: "Fill in the Blank" },
 ];
 
 const STATUS_META: Record<string, { label: string; color: string }> = {
@@ -122,7 +119,7 @@ function ContextFilterBar({
     staleTime: 60_000,
   });
 
-  const canLoadBanks = !!value.classId && !!value.subjectId;
+  const canLoadBanks = !!value.classId && !!value.subjectId && !!value.termId;
   const bankParams = useMemo(() => {
     if (!canLoadBanks) return null;
     const p = new URLSearchParams({
@@ -141,10 +138,10 @@ function ContextFilterBar({
   });
 
   const steps = [
-    { n: 1, label: "Class",         done: !!value.classId },
-    { n: 2, label: "Subject",       done: !!value.subjectId },
-    { n: 3, label: "Term (opt.)",   done: !!value.termId },
-    ...(showBank ? [{ n: 4, label: "Bank", done: !!value.bankId }] : []),
+    { n: 1, label: "Class",   done: !!value.classId },
+    { n: 2, label: "Subject", done: !!value.subjectId },
+    { n: 3, label: "Term *",  done: !!value.termId },
+    ...(showBank ? [{ n: 4, label: "Bank *", done: !!value.bankId }] : []),
   ];
 
   return (
@@ -233,21 +230,17 @@ function ContextFilterBar({
         {/* Term */}
         <div className="space-y-1.5">
           <Label className="text-xs font-semibold text-foreground/70 uppercase tracking-wide">
-            Term
-            <span className="text-muted-foreground normal-case tracking-normal font-normal text-[10px] ml-1">(optional)</span>
+            Term <span className="text-destructive normal-case tracking-normal">*</span>
           </Label>
           <Select
-            value={value.termId ? String(value.termId) : "_all"}
-            onValueChange={(v) => onChange({ ...value, termId: v === "_all" ? undefined : Number(v), bankId: undefined })}
+            value={value.termId ? String(value.termId) : ""}
+            onValueChange={(v) => onChange({ ...value, termId: Number(v), bankId: undefined })}
             disabled={!value.subjectId}
           >
             <SelectTrigger data-testid="ctx-select-term" className="h-9">
-              <SelectValue placeholder={value.subjectId ? "All terms" : "Select subject first"} />
+              <SelectValue placeholder={value.subjectId ? "Select term…" : "Select subject first"} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="_all">
-                <span className="text-muted-foreground">— All Terms —</span>
-              </SelectItem>
               {(terms as any[]).map((t) => (
                 <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
               ))}
@@ -299,12 +292,11 @@ function ContextFilterBar({
         )}
       </div>
 
-      {(!value.classId || !value.subjectId) && (
+      {(!value.classId || !value.subjectId || !value.termId || (showBank && !value.bankId)) && (
         <div className="flex items-start gap-2 bg-primary/5 dark:bg-primary/5 border border-primary/20 dark:border-primary/30/50 rounded-lg px-3 py-2.5">
           <Info className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
           <p className="text-xs text-primary dark:text-primary/60">
-            Select <strong>Class → Subject</strong>{showBank ? " → Bank" : ""} to load questions.
-            Term is optional — leave it as <strong>All Terms</strong> to see banks from any term.
+            All fields are required. Select <strong>Class → Subject → Term{showBank ? " → Question Bank" : ""}</strong> to load questions.
           </p>
         </div>
       )}
@@ -378,7 +370,25 @@ function QuestionFormDialog({
     points:       editItem?.points       ?? 1,
     classId:      editItem?.classId      ?? context.classId,
     termId:       editItem?.termId       ?? context.termId,
+    topicId:      editItem?.topicId      ?? null,
   }));
+
+  // Derive subjectId from the selected bank for topic fetching
+  const selectedBank = banks.find((b: any) => b.id === Number(form.bankId));
+  const topicSubjectId = selectedBank?.subjectId ?? null;
+
+  const { data: formTopics = [] } = useQuery<any[]>({
+    queryKey: ["/api/syllabus-topics", "form", form.classId, topicSubjectId, form.termId],
+    queryFn: () => {
+      const p = new URLSearchParams();
+      if (form.classId)    p.set("classId",   String(form.classId));
+      if (topicSubjectId)  p.set("subjectId", String(topicSubjectId));
+      if (form.termId)     p.set("termId",    String(form.termId));
+      return apiRequest("GET", `/api/syllabus-topics?${p.toString()}`).then(r => r.json());
+    },
+    enabled: !!(form.classId && topicSubjectId && form.termId),
+    staleTime: 60_000,
+  });
 
   const [options, setOptions] = useState<Array<{ optionText: string; isCorrect: boolean }>>(() =>
     editItem?.options?.length
@@ -540,6 +550,40 @@ function QuestionFormDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* Topic (optional — fetched from syllabus) */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-foreground/70">
+              Topic <span className="text-muted-foreground font-normal">(optional)</span>
+            </Label>
+            <Select
+              value={form.topicId ? String(form.topicId) : "_none"}
+              onValueChange={(v) => setForm((p: any) => ({ ...p, topicId: v === "_none" ? null : Number(v) }))}
+              disabled={!form.classId || !topicSubjectId || !form.termId}
+            >
+              <SelectTrigger data-testid="form-select-topic" className="h-9">
+                <SelectValue placeholder={
+                  !form.classId || !topicSubjectId || !form.termId
+                    ? "Set class, subject & term first"
+                    : formTopics.length === 0
+                    ? "No topics"
+                    : "Select topic…"
+                } />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_none">
+                  <span className="text-muted-foreground">— No specific topic —</span>
+                </SelectItem>
+                {formTopics.length === 0 ? (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">No topics</div>
+                ) : (
+                  formTopics.map((t: any) => (
+                    <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Question text */}
@@ -933,7 +977,7 @@ function QuestionList({
         </div>
         <div className="text-center space-y-1">
           <p className="text-sm font-semibold">Context not complete</p>
-          <p className="text-xs max-w-xs">Select Class, Subject and Bank to load questions. Term is optional.</p>
+          <p className="text-xs max-w-xs">Select Class, Subject, Term and Bank to load questions.</p>
         </div>
       </div>
     );
@@ -1270,15 +1314,15 @@ export default function QuestionBankManager() {
   }, []);
 
   // ── Ready flags + params
-  // Term is optional — bank already scopes the term context
-  const browseReady = !!browseCtx.classId && !!browseCtx.subjectId && !!browseCtx.bankId;
-  const myReady     = !!myCtx.classId    && !!myCtx.subjectId;
+  // Term is now required — bank only loads after class + subject + term are all set
+  const browseReady = !!browseCtx.classId && !!browseCtx.subjectId && !!browseCtx.termId && !!browseCtx.bankId;
+  const myReady     = !!myCtx.classId    && !!myCtx.subjectId    && !!myCtx.termId;
 
   const browseParams: Record<string, string> = browseReady ? {
     bankId:   String(browseCtx.bankId),
     classId:  String(browseCtx.classId),
+    termId:   String(browseCtx.termId),   // always included — term is now required
     pageSize: String(PAGE_SIZE),
-    ...(browseCtx.termId ? { termId: String(browseCtx.termId) } : {}),
     ...(browseDiff   ? { difficulty: browseDiff }     : {}),
     ...(browseType   ? { questionType: browseType }   : {}),
     ...(browseStatus ? { status: browseStatus }       : {}),
@@ -1286,9 +1330,9 @@ export default function QuestionBankManager() {
 
   const myParams: Record<string, string> = myReady ? {
     classId:  String(myCtx.classId),
+    termId:   String(myCtx.termId),       // always included — term is now required
     myOnly:   "true",
     pageSize: String(PAGE_SIZE),
-    ...(myCtx.termId ? { termId: String(myCtx.termId) } : {}),
     ...(myStatus ? { status: myStatus } : {}),
   } : {};
 
@@ -1549,8 +1593,18 @@ export default function QuestionBankManager() {
                 <div className="text-center space-y-1.5">
                   <p className="text-sm font-semibold">Start by selecting your context above</p>
                   <p className="text-xs max-w-sm text-center">
-                    Choose Class → Subject → Bank to load questions. Term is optional — leave it as All Terms to see banks from any term.
+                    Choose Class → Subject → Term → Bank to load questions. All four fields are required.
                   </p>
+                </div>
+              </div>
+            ) : !browseCtx.termId ? (
+              <div className="flex flex-col items-center gap-4 py-20 text-muted-foreground rounded-2xl border-2 border-dashed">
+                <div className="w-14 h-14 rounded-2xl bg-muted/50 flex items-center justify-center">
+                  <BookOpen className="w-7 h-7 opacity-40" />
+                </div>
+                <div className="text-center space-y-1.5">
+                  <p className="text-sm font-semibold">Select a Term</p>
+                  <p className="text-xs max-w-xs">Term is required — select one from the filter above.</p>
                 </div>
               </div>
             ) : !browseCtx.bankId ? (
@@ -1562,7 +1616,7 @@ export default function QuestionBankManager() {
                   <p className="text-sm font-semibold">Now select a Question Bank</p>
                   <p className="text-xs max-w-xs">
                     {(browseBanks as any[]).length === 0
-                      ? "No banks exist for this class/subject yet. Create one with the \"New Bank\" button above."
+                      ? "No banks exist for this class/subject/term. Create one with the \"New Bank\" button above."
                       : `${(browseBanks as any[]).length} bank${(browseBanks as any[]).length > 1 ? "s" : ""} available — select one from the Bank dropdown.`
                     }
                   </p>
@@ -1612,7 +1666,7 @@ export default function QuestionBankManager() {
 
           {/* ══ My Questions Tab ═══════════════════════════ */}
           <TabsContent value="my" className="space-y-4 mt-0">
-            <SectionCard icon={Filter} title="Filter Context" subtitle="— Class &amp; Subject required, Term optional" contentClassName="px-5 pb-5">
+            <SectionCard icon={Filter} title="Filter Context" subtitle="— Class, Subject &amp; Term required" contentClassName="px-5 pb-5">
               <ContextFilterBar
                 value={myCtx}
                 onChange={handleMyCtxChange}
@@ -1647,7 +1701,7 @@ export default function QuestionBankManager() {
                 <div className="text-center space-y-1.5">
                   <p className="text-sm font-semibold">Select Class and Subject</p>
                   <p className="text-xs max-w-xs">
-                    Choose a class and subject to load your questions. Term is optional — leave it as All Terms to see questions from any term.
+                    Choose Class, Subject and Term to load your questions.
                   </p>
                 </div>
               </div>
@@ -1763,7 +1817,7 @@ export default function QuestionBankManager() {
               <div className="bg-primary/5 dark:bg-primary/5 border border-primary/20 dark:border-primary/30/50 rounded-lg px-3 py-2.5 flex items-start gap-2">
                 <Info className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-primary dark:text-primary/60">
-                  A bank is scoped to a specific <strong>class</strong> and <strong>subject</strong>. Optionally link it to a specific term.
+                  A bank is scoped to a specific <strong>class</strong>, <strong>subject</strong> and <strong>term</strong>. All three are required.
                 </p>
               </div>
 
@@ -1798,14 +1852,13 @@ export default function QuestionBankManager() {
 
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">
-                  Term <span className="text-muted-foreground font-normal">(optional — leave blank for all terms)</span>
+                  Term <span className="text-destructive">*</span>
                 </Label>
-                <Select value={bankTermId} onValueChange={setBankTermId}>
+                <Select value={bankTermId} onValueChange={setBankTermId} disabled={!bankClassId || !bankSubjectId}>
                   <SelectTrigger data-testid="select-bank-term" className="h-9">
-                    <SelectValue placeholder="All terms…" />
+                    <SelectValue placeholder={!bankClassId || !bankSubjectId ? "Select class & subject first" : "Select term…"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="_none">All terms (no specific term)</SelectItem>
                     {(allTerms as any[]).map((t: any) => (
                       <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
                     ))}
@@ -1838,12 +1891,12 @@ export default function QuestionBankManager() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setCreateBankOpen(false)}>Cancel</Button>
               <Button
-                disabled={!newBankName.trim() || !bankSubjectId || !bankClassId || createBankMutation.isPending}
+                disabled={!newBankName.trim() || !bankSubjectId || !bankClassId || !bankTermId || createBankMutation.isPending}
                 onClick={() => createBankMutation.mutate({
                   name:        newBankName.trim(),
                   subjectId:   Number(bankSubjectId),
                   classId:     Number(bankClassId),
-                  termId:      bankTermId && bankTermId !== "_none" ? Number(bankTermId) : null,
+                  termId:      Number(bankTermId),
                   description: newBankDesc || null,
                 })}
                 data-testid="btn-confirm-create-bank"

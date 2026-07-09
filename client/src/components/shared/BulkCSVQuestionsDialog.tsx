@@ -72,12 +72,10 @@ function buildTemplateCSV(showDifficulty: boolean): string {
   const dCol  = showDifficulty ? ',Difficulty' : '';
   const dEasy = showDifficulty ? ',easy'       : '';
   const dHard = showDifficulty ? ',hard'       : '';
-  const dMed  = showDifficulty ? ',medium'     : '';
   return (
     `QuestionText,Type,OptionA,OptionB,OptionC,OptionD,CorrectAnswer,Points,Instructions,SampleAnswer${dCol}\n` +
     `"What is 2 + 2?",multiple_choice,"2","3","4","5","C",1,"Choose the correct answer","4"${dEasy}\n` +
-    `"Explain photosynthesis.",essay,"","","","","",10,"Write a detailed explanation","Photosynthesis is..."${dHard}\n` +
-    `"The capital of Nigeria is ___.",text,"","","","","Abuja",2,"Fill in the answer","Abuja"${dMed}`
+    `"Explain photosynthesis.",essay,"","","","","",10,"Write a detailed explanation","Photosynthesis is the process by which..."${dHard}`
   );
 }
 
@@ -120,7 +118,12 @@ function useBulkCSVUpload(showDifficulty: boolean) {
           };
 
           const questionText = get('questiontext');
-          const rawType      = get('type')?.toLowerCase().replace(/[-\s]/g, '_') || 'text';
+          const rawTypeRaw   = get('type')?.toLowerCase().replace(/[-\s]/g, '_') || 'essay';
+          // Reject deprecated question types
+          const rawType = rawTypeRaw;
+          if (!['multiple_choice', 'essay'].includes(rawType)) {
+            rowErrors.push(`Row ${i + 1}: Invalid question type "${rawType}". Please use 'multiple_choice' or 'essay'.`); continue;
+          }
           const points       = parseInt(get('points')) || 1;
 
           if (!questionText || questionText.length < 5) {
@@ -234,17 +237,18 @@ function CSVUploadContent({
         <p className="text-muted-foreground">
           <span className="font-mono">QuestionText</span>,{' '}
           <span className="font-mono">Type</span>{' '}
-          <span className="opacity-60">(multiple_choice / text / essay)</span>,{' '}
-          <span className="font-mono">OptionA–D</span>,{' '}
+          <span className="opacity-60">(multiple_choice / essay)</span>,{' '}
+          <span className="font-mono">OptionA–D</span>{' '}
+          <span className="opacity-60">(MCQ only)</span>,{' '}
           <span className="font-mono">CorrectAnswer</span>{' '}
-          <span className="opacity-60">(A/B/C/D)</span>,{' '}
+          <span className="opacity-60">(A/B/C/D for MCQ)</span>,{' '}
           <span className="font-mono">Points</span>
           {showDifficulty && (
             <>, <span className="font-mono">Difficulty</span>{' '}
             <span className="opacity-60">(easy / medium / hard)</span></>
           )}
         </p>
-        <p className="text-muted-foreground">Download the template for a ready-to-fill example.</p>
+        <p className="text-muted-foreground">Only <strong>multiple_choice</strong> and <strong>essay</strong> are accepted. Download the template for a ready-to-fill example.</p>
       </div>
 
       {/* Preview */}

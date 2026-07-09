@@ -664,9 +664,9 @@ router.post('/api/question-bank/items/bulk-csv', authenticateUser, authorizeRole
                 if (!q.questionText || q.questionText.trim().length < 5) {
                     errors.push(`Row ${i + 1}: Question text must be at least 5 characters`); continue;
                 }
-                const questionType = q.questionType || 'text';
-                if (!['multiple_choice', 'text', 'essay', 'true_false', 'fill_blank'].includes(questionType)) {
-                    errors.push(`Row ${i + 1}: Invalid question type "${questionType}"`); continue;
+                const questionType = q.questionType || 'essay';
+                if (!['multiple_choice', 'essay'].includes(questionType)) {
+                    errors.push(`Row ${i + 1}: Invalid question type "${questionType}". Please use 'multiple_choice' or 'essay'.`); continue;
                 }
                 let options: any[] | undefined;
                 if (questionType === 'multiple_choice' && q.options?.length >= 2) {
@@ -727,7 +727,7 @@ router.post('/api/question-bank/auto-generate', authenticateUser, async (req: an
 
         let pool = await storage.getQuestionBankItemsFiltered(filters);
         if (questionType === 'both')
-            pool = pool.filter((q: any) => ['multiple_choice', 'text', 'essay'].includes(q.questionType));
+            pool = pool.filter((q: any) => ['multiple_choice', 'essay'].includes(q.questionType));
 
         const excludeSet = new Set((excludeIds || []).map((id: any) => parseInt(id)));
         if (excludeSet.size > 0) pool = pool.filter((q: any) => !excludeSet.has(q.id));

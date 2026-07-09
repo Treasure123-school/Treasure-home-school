@@ -3349,12 +3349,11 @@ export class DatabaseStorage implements IStorage {
       const bankItem = await this.getQuestionBankItemById(itemId);
       if (!bankItem) continue;
 
-      // Validate questionType to ensure data integrity
-      const validTypes: Array<"multiple_choice" | "text" | "essay" | "true_false" | "fill_blank"> =
-        ["multiple_choice", "text", "essay", "true_false", "fill_blank"];
-      const questionType = validTypes.includes(bankItem.questionType as any)
-        ? bankItem.questionType as "multiple_choice" | "text" | "essay" | "true_false" | "fill_blank"
-        : "text"; // Default to text if invalid
+      // Validate questionType to ensure data integrity (only two types supported)
+      const validTypes: Array<"multiple_choice" | "essay"> = ["multiple_choice", "essay"];
+      const questionType: "multiple_choice" | "essay" = validTypes.includes(bankItem.questionType as any)
+        ? bankItem.questionType as "multiple_choice" | "essay"
+        : "essay"; // Default to essay for any legacy types (text, true_false, fill_blank)
 
       // Parse expectedAnswers from JSON string or comma-separated string to array
       let expectedAnswersArray: string[] | undefined = undefined;

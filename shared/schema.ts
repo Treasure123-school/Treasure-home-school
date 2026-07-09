@@ -1327,7 +1327,7 @@ export type CsvStudentData = z.infer<typeof csvStudentSchema>;
 export const insertExamQuestionSchema = createInsertSchema(examQuestions).omit({ id: true, createdAt: true }).extend({
   examId: z.coerce.number().positive("Please select a valid exam"),
   questionText: z.string().min(1, "Question text is required"),
-  questionType: z.enum(['multiple_choice', 'text', 'essay', 'true_false', 'fill_blank'], { required_error: "Question type is required" }),
+  questionType: z.enum(['multiple_choice', 'essay'], { required_error: "Question type is required. Use 'multiple_choice' or 'essay'." }),
   points: z.preprocess((val) => val === '' ? 1 : val, z.coerce.number().int().min(0, "Points must be a non-negative number").default(1)),
   orderNumber: z.coerce.number().int().min(1, "Order number must be a positive number"),
   imageUrl: z.preprocess((val) => val === '' ? undefined : val, z.string().optional()),
