@@ -25,6 +25,9 @@ import {
   Activity, GraduationCap, Layers, RotateCcw, Loader2,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { StudentResultsToolbar } from '@/components/portal/StudentResultsToolbar';
+import { StudentResultMobileCard } from '@/components/portal/StudentResultMobileCard';
+import { StudentRowActionsMenu } from '@/components/portal/StudentRowActionsMenu';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -535,53 +538,55 @@ function StudentsTab({ analytics }: { analytics: AnalyticsData }) {
             <Users className="h-4 w-4" /> Student Results
             <Badge variant="secondary">{filtered.length}</Badge>
           </CardTitle>
-          <div className="flex flex-wrap gap-2 items-center">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-              <Input
-                data-testid="input-student-search"
-                placeholder="Search students…"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                className="pl-8 h-8 text-sm w-48"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-8 text-sm w-28" data-testid="select-status-filter">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="pass">Pass</SelectItem>
-                <SelectItem value="fail">Fail</SelectItem>
-              </SelectContent>
-            </Select>
-            {uniqueGrades.length > 0 && (
-              <Select value={gradeFilter} onValueChange={setGradeFilter}>
-                <SelectTrigger className="h-8 text-sm w-28" data-testid="select-grade-filter">
-                  <SelectValue placeholder="Grade" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Grades</SelectItem>
-                  {uniqueGrades.map(g => (
-                    <SelectItem key={g} value={g}>{g}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-            <Button
-              variant="outline" size="sm"
-              onClick={() => exportStudentsCSV(analytics)}
-              className="h-8 gap-1.5"
-              data-testid="button-export-students"
-            >
-              <Download className="h-3.5 w-3.5" /> Export CSV
-            </Button>
-          </div>
+          <StudentResultsToolbar
+            search={search}
+            onSearchChange={setSearch}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            gradeFilter={gradeFilter}
+            onGradeFilterChange={setGradeFilter}
+            gradeOptions={uniqueGrades}
+            onExport={() => exportStudentsCSV(analytics)}
+          />
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
+        {/* Mobile: card list */}
+        <div className="block sm:hidden p-3 space-y-2">
+          {filtered.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8 text-sm">
+              {search || statusFilter !== 'all' || gradeFilter !== 'all'
+                ? 'No students match your filters'
+                : 'No student results yet'}
+            </p>
+          ) : filtered.map((s, i) => (
+            <StudentResultMobileCard
+              key={s.studentId}
+              position={s.position}
+              studentName={s.studentName}
+              admissionNumber={s.admissionNumber}
+              score={s.score}
+              maxScore={s.maxScore}
+              scorePercent={s.scorePercent}
+              percentColorClass={percentColor(s.scorePercent)}
+              grade={s.grade}
+              gradeColor={s.grade ? GRADE_COLORS[s.grade] : undefined}
+              passed={s.passed}
+              testId={`card-student-${i}`}
+              actions={[
+                {
+                  label: 'Allow Retake',
+                  icon: RotateCcw,
+                  onClick: () => setRetakeDialog({ studentId: s.studentId, studentName: s.studentName }),
+                  testId: `button-allow-retake-${i}`,
+                },
+              ]}
+            />
+          ))}
+        </div>
+
+        {/* Desktop: table */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b bg-muted/40">
@@ -653,15 +658,17 @@ function StudentsTab({ analytics }: { analytics: AnalyticsData }) {
                     {s.submitted_at ? format(new Date(s.submitted_at), 'MMM dd, HH:mm') : '—'}
                   </td>
                   <td className="px-4 py-2.5 text-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 gap-1.5 text-xs"
-                      data-testid={`button-allow-retake-${i}`}
-                      onClick={() => setRetakeDialog({ studentId: s.studentId, studentName: s.studentName })}
-                    >
-                      <RotateCcw className="h-3 w-3" /> Allow Retake
-                    </Button>
+                    <StudentRowActionsMenu
+                      testId={`button-row-actions-${i}`}
+                      actions={[
+                        {
+                          label: 'Allow Retake',
+                          icon: RotateCcw,
+                          onClick: () => setRetakeDialog({ studentId: s.studentId, studentName: s.studentName }),
+                          testId: `button-allow-retake-${i}`,
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}
