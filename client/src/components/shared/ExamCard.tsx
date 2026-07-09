@@ -42,20 +42,17 @@ export function ExamCard({
   const showFooter = onView || secondaryAction;
 
   return (
-    <Card
-      className="group hover:border-green-600/40 hover:shadow-sm transition-all"
-      data-testid={testId}
-    >
+    <Card data-testid={testId}>
       <CardContent className="p-4 space-y-3">
         {/* Name + status badge */}
         <div className="flex items-start justify-between gap-2">
           <p className="font-semibold text-sm leading-snug">{exam.name}</p>
           {exam.isPublished ? (
-            <Badge className="shrink-0 bg-green-600 text-white text-[10px]">
+            <Badge className="shrink-0 bg-green-600 text-white text-[10px] hover:bg-green-600">
               <CheckCircle className="h-3 w-3 mr-1" /> Published
             </Badge>
           ) : (
-            <Badge variant="secondary" className="shrink-0 text-[10px]">
+            <Badge variant="secondary" className="shrink-0 text-[10px] hover:bg-secondary">
               <FileText className="h-3 w-3 mr-1" /> Draft
             </Badge>
           )}
@@ -91,11 +88,11 @@ export function ExamCard({
 
         {/* Footer — matches ExamManagement card pattern: outline flex-1 + optional icon btn */}
         {showFooter && (
-          <div className="pt-2 border-t border-border/50 flex gap-2">
+          <div className="pt-2 flex gap-2">
             <Button
               variant="outline"
               size="sm"
-              className="flex-1"
+              className="flex-1 hover:bg-transparent hover:text-foreground"
               onClick={onView}
             >
               <PrimaryIcon className="h-4 w-4 mr-1.5" />
