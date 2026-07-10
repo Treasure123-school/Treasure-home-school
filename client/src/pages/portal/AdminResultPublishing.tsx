@@ -22,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -89,6 +90,11 @@ export default function AdminResultPublishing() {
   const [rejectingId, setRejectingId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
+  // Score override state (admin editing)
+  const [selectedOverrideItem, setSelectedOverrideItem] = useState<any>(null);
+  const [isOverrideDialogOpen, setIsOverrideDialogOpen] = useState(false);
+  const [overrideTestScore, setOverrideTestScore] = useState('');
+  const [overrideExamScore, setOverrideExamScore] = useState('');
   const reportCardRef = useRef<HTMLDivElement>(null);
   const baileysTemplateRef = useRef<HTMLDivElement>(null);
 
@@ -216,6 +222,13 @@ export default function AdminResultPublishing() {
     queryKey: ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, statusFilter],
     enabled: true,
     fallbackPollingInterval: 30000,
+  });
+
+  // Real-time updates for score/remarks changes on the open report card preview
+  useSocketIORealtime({
+    table: 'report_card_items',
+    queryKey: ['/api/reports', viewingReportCard?.id, 'full'],
+    enabled: !!viewingReportCard?.id && isViewDialogOpen,
   });
 
   // Helper to get base stats from any available filter cache
@@ -825,6 +838,93 @@ export default function AdminResultPublishing() {
     },
   });
 
+  // ─── Admin Editing Mutations ───────────────────────────────────────────────
+
+  // Admin: update report card remarks (teacher + principal)
+  const updateRemarksMutation = useMutation({
+    mutationFn: async ({ reportCardId, teacherRemarks, principalRemarks }: { reportCardId: number; teacherRemarks?: string; principalRemarks?: string }) => {
+      const response = await apiRequest('PATCH', `/api/reports/${reportCardId}/remarks`, { teacherRemarks, principalRemarks });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to save remarks');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/reports', viewingReportCard?.id, 'full'] });
+      toast({ title: 'Saved', description: 'Remarks updated successfully' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Admin: save psychomotor/affective skills
+  const saveSkillsMutation = useMutation({
+    mutationFn: async ({ reportCardId, skills }: { reportCardId: number; skills: any }) => {
+      const response = await apiRequest('POST', `/api/reports/${reportCardId}/skills`, skills);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to save skills');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/reports', viewingReportCard?.id, 'full'] });
+      toast({ title: 'Saved', description: 'Skills updated successfully' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Admin: override subject score
+  const overrideScoreMutation = useMutation({
+    mutationFn: async ({ itemId, testScore, examScore }: { itemId: number; testScore?: string; examScore?: string }) => {
+      const payload: any = {};
+      if (testScore !== undefined && testScore !== '') payload.testScore = testScore;
+      if (examScore !== undefined && examScore !== '') payload.examScore = examScore;
+      const response = await apiRequest('PATCH', `/api/reports/items/${itemId}/override`, payload);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to update score');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/reports', viewingReportCard?.id, 'full'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
+      setIsOverrideDialogOpen(false);
+      setSelectedOverrideItem(null);
+      toast({ title: 'Saved', description: 'Score updated and totals recalculated' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Admin: generate missing report cards for students with assessment data
+  const generateMissingMutation = useMutation({
+    mutationFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedClass !== 'all') params.append('classId', selectedClass);
+      if (selectedTerm !== 'all') params.append('termId', selectedTerm);
+      const response = await apiRequest('POST', `/api/admin/report-cards/generate-missing?${params}`);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to generate report cards');
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
+      toast({ title: 'Done', description: data.message || `${data.created} report cards generated` });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
   // ─── Bulk Export helpers ───────────────────────────────────────────────────
 
   const mapToReportCardProps = (d: any) => ({
@@ -1125,7 +1225,7 @@ export default function AdminResultPublishing() {
       case 'draft':
         return <Badge variant="secondary" className={`${baseClasses} ${pendingOpacity}`}><Clock className="w-3 h-3 mr-1" /> Draft</Badge>;
       case 'finalized':
-        return <Badge className={`bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 ${baseClasses} ${pendingOpacity}`}><FileCheck className="w-3 h-3 mr-1" /> Finalized</Badge>;
+        return <Badge className={`bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 ${baseClasses} ${pendingOpacity}`}><FileCheck className="w-3 h-3 mr-1" /> In Progress</Badge>;
       case 'published':
         return <Badge className={`bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 ${baseClasses} ${pendingOpacity}`}><CheckCircle className="w-3 h-3 mr-1" /> Published</Badge>;
       default:
@@ -1162,7 +1262,7 @@ export default function AdminResultPublishing() {
             <CardContent className="p-3 sm:pt-6 sm:px-6">
               <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-2">
                 <div className="text-center sm:text-left">
-                  <p className="text-xs sm:text-sm text-muted-foreground">Awaiting</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">In Progress</p>
                   <p className="text-xl sm:text-2xl font-bold text-amber-600" data-testid="stat-finalized">{statistics.finalized}</p>
                 </div>
                 <FileCheck className="hidden sm:block w-8 h-8 text-amber-500" />
@@ -1201,11 +1301,35 @@ export default function AdminResultPublishing() {
               <div className="min-w-0">
                 <CardTitle className="text-base sm:text-lg">Report Cards</CardTitle>
                 <CardDescription className="text-xs sm:text-sm truncate">
-                  {statusFilter === 'finalized' ? 'Awaiting your approval' :
+                  {statusFilter === 'finalized' ? 'In progress — awaiting your approval' :
                     statusFilter === 'published' ? 'Published report cards' : 'All report cards'}
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                 {/* Generate Missing Report Cards */}
+                 <Button
+                   variant="outline"
+                   size="icon"
+                   onClick={() => generateMissingMutation.mutate()}
+                   disabled={generateMissingMutation.isPending}
+                   className="sm:hidden"
+                   aria-label="Generate missing report cards"
+                   title="Create report cards for students with assessment data but no report card yet"
+                 >
+                   {generateMissingMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <GraduationCap className="w-4 h-4" />}
+                 </Button>
+                 <Button
+                   variant="outline"
+                   size="sm"
+                   onClick={() => generateMissingMutation.mutate()}
+                   disabled={generateMissingMutation.isPending}
+                   className="hidden sm:flex"
+                   title="Create report cards for students with assessment data but no report card yet"
+                 >
+                   {generateMissingMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <GraduationCap className="w-4 h-4 mr-2" />}
+                   Generate Missing
+                 </Button>
+
                 <Button
                   variant="outline"
                   size="icon"
@@ -1546,6 +1670,15 @@ export default function AdminResultPublishing() {
                                 <Eye className="w-4 h-4 mr-2" />
                                 Preview
                               </DropdownMenuItem>
+                              {rc.status === 'draft' && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => finalizeMutation.mutate(rc.id)}>
+                                    <FileCheck className="w-4 h-4 mr-2" />
+                                    Mark In Progress
+                                  </DropdownMenuItem>
+                                </>
+                              )}
                               {rc.status === 'finalized' && !publishingIdsRef.current.has(rc.id) && !rejectingIdsRef.current.has(rc.id) && (
                                 <>
                                   <DropdownMenuItem
@@ -1626,6 +1759,15 @@ export default function AdminResultPublishing() {
                                   <Eye className="w-4 h-4 mr-2" />
                                   Preview
                                 </DropdownMenuItem>
+                                {rc.status === 'draft' && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => finalizeMutation.mutate(rc.id)}>
+                                      <FileCheck className="w-4 h-4 mr-2" />
+                                      Mark In Progress
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
                                 {rc.status === 'finalized' && !publishingIdsRef.current.has(rc.id) && !rejectingIdsRef.current.has(rc.id) && (
                                   <>
                                     <DropdownMenuItem
@@ -1865,9 +2007,30 @@ export default function AdminResultPublishing() {
                     }}
                     testWeight={40}
                     examWeight={60}
-                    canEditRemarks={false}
-                    canEditSkills={false}
-                    isLoading={false}
+                    canEditTeacherRemarks={true}
+                    canEditPrincipalRemarks={true}
+                    canEditSkills={true}
+                    onSaveRemarks={(teacher, principal) => {
+                      if (!fullReportCard) return;
+                      updateRemarksMutation.mutate({ reportCardId: fullReportCard.id, teacherRemarks: teacher, principalRemarks: principal });
+                    }}
+                    onSaveSkills={async (skills: any) => {
+                      if (!fullReportCard) return;
+                      await saveSkillsMutation.mutateAsync({ reportCardId: fullReportCard.id, skills });
+                    }}
+                    onEditSubject={(item) => {
+                      setSelectedOverrideItem(item);
+                      setOverrideTestScore(item.testScore != null ? String(item.testScore) : '');
+                      setOverrideExamScore(item.examScore != null ? String(item.examScore) : '');
+                      setIsOverrideDialogOpen(true);
+                    }}
+                    onGenerateDefaultComments={async () => {
+                      if (!fullReportCard) throw new Error('No report card loaded');
+                      const response = await apiRequest('GET', `/api/reports/${fullReportCard.id}/default-comments`);
+                      if (!response.ok) throw new Error('Failed to generate comments');
+                      return response.json();
+                    }}
+                    isLoading={updateRemarksMutation.isPending || saveSkillsMutation.isPending}
                     hideActionButtons={true}
                   />
                 </div>
@@ -1996,6 +2159,93 @@ export default function AdminResultPublishing() {
                 <FileCheck className="w-4 h-4 mr-2" />
               )}
               Generate Comments
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Score Override Dialog — Admin can edit any subject score directly */}
+      <Dialog open={isOverrideDialogOpen} onOpenChange={(open) => { if (!open) { setIsOverrideDialogOpen(false); setSelectedOverrideItem(null); } }}>
+        <DialogContent className="w-[95vw] max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Edit Score</DialogTitle>
+            <DialogDescription className="text-sm">
+              Adjust scores for <strong>{selectedOverrideItem?.subjectName}</strong>. Changes are saved immediately and totals recalculate automatically.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label htmlFor="admin-test-score" className="text-sm">
+                  CA / Test Score
+                  {selectedOverrideItem?.testMaxScore != null && (
+                    <span className="text-muted-foreground ml-1 text-xs">(max {selectedOverrideItem.testMaxScore})</span>
+                  )}
+                </Label>
+                <Input
+                  id="admin-test-score"
+                  type="number"
+                  min="0"
+                  max={selectedOverrideItem?.testMaxScore ?? undefined}
+                  value={overrideTestScore}
+                  onChange={(e) => setOverrideTestScore(e.target.value)}
+                  placeholder="e.g. 28"
+                  disabled={selectedOverrideItem?.canEditTest === false}
+                />
+                {selectedOverrideItem?.canEditTest === false && (
+                  <p className="text-xs text-muted-foreground">You did not create this CA exam</p>
+                )}
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="admin-exam-score" className="text-sm">
+                  Exam Score
+                  {selectedOverrideItem?.examMaxScore != null && (
+                    <span className="text-muted-foreground ml-1 text-xs">(max {selectedOverrideItem.examMaxScore})</span>
+                  )}
+                </Label>
+                <Input
+                  id="admin-exam-score"
+                  type="number"
+                  min="0"
+                  max={selectedOverrideItem?.examMaxScore ?? undefined}
+                  value={overrideExamScore}
+                  onChange={(e) => setOverrideExamScore(e.target.value)}
+                  placeholder="e.g. 52"
+                  disabled={selectedOverrideItem?.canEditExam === false}
+                />
+                {selectedOverrideItem?.canEditExam === false && (
+                  <p className="text-xs text-muted-foreground">You did not create this exam</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => { setIsOverrideDialogOpen(false); setSelectedOverrideItem(null); }}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!selectedOverrideItem) return;
+                overrideScoreMutation.mutate({
+                  itemId: selectedOverrideItem.id,
+                  testScore: overrideTestScore,
+                  examScore: overrideExamScore,
+                });
+              }}
+              disabled={overrideScoreMutation.isPending}
+              className="w-full sm:w-auto"
+            >
+              {overrideScoreMutation.isPending ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Saving…</>
+              ) : (
+                <>Save Score</>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

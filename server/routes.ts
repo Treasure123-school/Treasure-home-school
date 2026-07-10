@@ -12662,12 +12662,17 @@ School Management System Administration
         });
       }
 
-      // Check if report card is locked
+      // Check if report card is locked — published cards are locked for teachers,
+      // but admins and super-admins can always edit scores regardless of status (Priority 2)
       if (reportCard.status === 'published') {
-        return res.status(403).json({
-          message: 'This report card has been published and cannot be edited. Contact an administrator to unlock it.',
-          code: 'REPORT_LOCKED'
-        });
+        const isAdminEdit = userRoleId === ROLES.ADMIN || userRoleId === ROLES.SUPER_ADMIN;
+        if (!isAdminEdit) {
+          return res.status(403).json({
+            message: 'This report card has been published and cannot be edited. Contact an administrator to unlock it.',
+            code: 'REPORT_LOCKED'
+          });
+        }
+        // Admins fall through — proceed to permission checks below
       }
 
       // Use shared permission utility for consistent permission checks
@@ -14376,6 +14381,76 @@ School Management System Administration
     }
   });
 
+  // Generate missing report cards — creates report cards for students who have exam data
+  // but no report card yet for the selected term/class (Priority 4: auto-generation fix)
+  app.post('/api/admin/report-cards/generate-missing', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
+    try {
+      const { classId, termId } = req.query;
+      console.log('[AUTO-GEN] Generating missing report cards:', { classId, termId });
+
+      // Find all students who have exam results, filtered by class/term from the exam
+      // term and class live on the exam row, not the result row
+      const whereConditions = [
+        ...(classId ? [eq(schema.exams.classId, Number(classId))] : []),
+        ...(termId ? [eq(schema.exams.termId, Number(termId))] : []),
+      ];
+
+      // Get distinct student+term pairs from exam results so we create at most one
+      // report card per student per term (not one per exam)
+      const examResultsQuery = db.selectDistinct({
+        studentId: schema.examResults.studentId,
+        examId: schema.examResults.examId,
+        termId: schema.exams.termId,
+        score: schema.examResults.score,
+        maxScore: schema.examResults.maxScore,
+      })
+        .from(schema.examResults)
+        .innerJoin(schema.exams, eq(schema.examResults.examId, schema.exams.id))
+        .where(whereConditions.length > 0 ? and(...whereConditions) : undefined as any);
+
+      const examResults = await examResultsQuery;
+      let created = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      // Deduplicate by studentId+termId — one sync per student per term is enough
+      const processedPairs = new Set<string>();
+      for (const result of examResults) {
+        const pairKey = `${result.studentId}:${result.termId}`;
+        if (processedPairs.has(pairKey)) { skipped++; continue; }
+        processedPairs.add(pairKey);
+        try {
+          const syncResult = await storage.syncExamScoreToReportCard(
+            result.studentId,
+            result.examId,
+            result.score ?? 0,
+            result.maxScore ?? 100,
+            false
+          );
+          if (syncResult.isNewReportCard) created++;
+        } catch (err: any) {
+          errors.push(`Student ${result.studentId} term ${result.termId}: ${err.message}`);
+        }
+      }
+
+      // Invalidate caches
+      enhancedCache.invalidate(/^reportcard:/);
+      enhancedCache.invalidate(/^reportcards:/);
+      enhancedCache.invalidate(/^report-card/);
+
+      console.log(`[AUTO-GEN] Done: ${created} new report cards, ${processedPairs.size} student-term pairs checked`);
+      res.json({
+        message: `${created} missing report card(s) generated`,
+        created,
+        pairsChecked: processedPairs.size,
+        errors: errors.slice(0, 10),
+      });
+    } catch (error: any) {
+      console.error('[AUTO-GEN] Error:', error);
+      res.status(500).json({ message: error.message || 'Failed to generate missing report cards' });
+    }
+  });
+
   // ==================== REPORT COMMENT TEMPLATES (Admin-managed) ====================
 
   // ADMIN: Get all comment templates
@@ -14476,7 +14551,8 @@ School Management System Administration
   // ADMIN: Get all finalized report cards for approval/publishing
   app.get('/api/admin/report-cards/finalized', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
-      const { classId, termId, status = 'finalized' } = req.query;
+      // Admin always sees all report cards regardless of status — default to 'all'
+      const { classId, termId, status = 'all' } = req.query;
 
       // Build the query to get finalized report cards with student and class info
       const query = db
