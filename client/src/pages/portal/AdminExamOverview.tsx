@@ -163,17 +163,6 @@ export default function AdminExamOverview() {
           </p>
         </>
       )}
-
-      {/* ── Read-only notice ── */}
-      <div className="flex items-start gap-3 p-4 rounded-xl bg-primary/5 dark:bg-primary/5 border border-primary/30 dark:border-primary/30">
-        <AlertCircle className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-        <div>
-          <p className="font-semibold text-primary dark:text-primary/50 text-sm">Read-Only Access</p>
-          <p className="text-xs text-primary dark:text-primary/60 mt-0.5">
-            As an admin you can view and monitor all exams. Only teachers can create, edit, or delete exams for their assigned subjects.
-          </p>
-        </div>
-      </div>
     </div>
   );
 }

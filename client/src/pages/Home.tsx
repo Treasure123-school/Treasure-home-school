@@ -223,20 +223,22 @@ export default function Home() {
       {/* ─── About ────────────────────────────────────────────────────────── */}
       {isEnabled('about') && (
         <section className="py-16 md:py-24 bg-white">
-          <div className="container px-6 max-w-3xl mx-auto">
-            <motion.div {...fadeIn}>
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-8 h-[2px] bg-primary" />
-                <span className="font-display text-[11px] font-bold uppercase tracking-[0.2em] text-primary">{aboutLabel}</span>
+          <div className="container px-6 max-w-3xl md:max-w-6xl mx-auto">
+            <motion.div {...fadeIn} className="md:grid md:grid-cols-2 md:gap-12 md:items-center">
+              <div>
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-8 h-[2px] bg-primary" />
+                  <span className="font-display text-[11px] font-bold uppercase tracking-[0.2em] text-primary">{aboutLabel}</span>
+                </div>
+                <h2 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight mb-6">{aboutHeading}</h2>
+                {aboutBody1 && <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed mb-5 font-normal">{aboutBody1}</p>}
+                {aboutBody2 && <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed mb-8 font-normal">{aboutBody2}</p>}
+                <Link href={aboutCtaLink} className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.15em] text-primary hover:opacity-75 transition-opacity mb-10 md:mb-0">
+                  {aboutCtaText}<ArrowRight className="w-4 h-4" />
+                </Link>
               </div>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight mb-6">{aboutHeading}</h2>
-              {aboutBody1 && <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed mb-5 font-normal">{aboutBody1}</p>}
-              {aboutBody2 && <p className="text-[15px] md:text-[16px] text-gray-600 leading-relaxed mb-8 font-normal">{aboutBody2}</p>}
-              <Link href={aboutCtaLink} className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.15em] text-primary hover:opacity-75 transition-opacity mb-10">
-                {aboutCtaText}<ArrowRight className="w-4 h-4" />
-              </Link>
-              <div className="w-full">
-                <img src={aboutImgSrc} alt="School" className="rounded-xl w-full h-[280px] md:h-[380px] object-cover" />
+              <div className="mt-2 md:mt-0">
+                <img src={aboutImgSrc} alt="School" className="rounded-xl w-full h-[280px] md:h-[420px] object-cover" />
               </div>
             </motion.div>
           </div>
@@ -246,12 +248,12 @@ export default function Home() {
       {/* ─── Core Pillars ─────────────────────────────────────────────────── */}
       {isEnabled('pillars') && (
         <section className="py-16 md:py-24 bg-gray-50">
-          <div className="container px-6 max-w-3xl mx-auto">
-            <div className="text-center mb-10">
+          <div className="container px-6 max-w-3xl md:max-w-6xl mx-auto">
+            <div className="text-center mb-10 md:max-w-3xl md:mx-auto">
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">{pillarsHeading}</h2>
               <p className="text-[14px] md:text-[15px] text-gray-500 font-normal leading-relaxed">{pillarsSubheading}</p>
             </div>
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-3 gap-4">
               {pillarsItems.map((f, i) => {
                 const Icon = PILLAR_ICONS[f.title] ?? DEFAULT_PILLAR_ICONS[i % DEFAULT_PILLAR_ICONS.length];
                 return (
@@ -274,8 +276,8 @@ export default function Home() {
       {/* ─── Stats ────────────────────────────────────────────────────────── */}
       {isEnabled('stats') && statsItems.length > 0 && (
         <section className="py-14 md:py-20 bg-primary">
-          <div className="container px-6 max-w-3xl mx-auto">
-            <div className="grid grid-cols-2 gap-x-8 gap-y-10 md:gap-x-16 md:gap-y-12">
+          <div className="container px-6 max-w-3xl md:max-w-5xl mx-auto">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-x-8 gap-y-10 md:gap-x-12 md:gap-y-12">
               {statsItems.map((s, i) => (
                 <motion.div key={i} initial={{ opacity: 0, y: 16 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.08, duration: 0.4 }} className="text-center">
                   <div className="font-display text-4xl md:text-5xl font-black text-white mb-2 leading-none">{s.value}</div>
@@ -290,7 +292,7 @@ export default function Home() {
       {/* ─── Testimonials ─────────────────────────────────────────────────── */}
       {isEnabled('testimonials') && testimonialItems.length > 0 && (
         <section className="py-16 md:py-24 bg-gray-50">
-          <div className="container px-6 max-w-3xl mx-auto">
+          <div className="container px-6 max-w-3xl md:max-w-4xl mx-auto">
             <div className="mb-10">
               <span className="font-display text-[11px] font-bold uppercase tracking-[0.2em] text-primary mb-3 block">Testimonials</span>
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">{testimonialHeading}</h2>

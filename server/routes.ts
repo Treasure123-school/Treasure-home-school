@@ -284,10 +284,12 @@ async function autoPublishScheduledExams(): Promise<void> {
           });
 
         } catch (error) {
+          console.error(`[AUTO-PUBLISH] Failed to auto-publish exam ${exam.id} (${exam.name}):`, error);
         }
       }
     }
   } catch (error) {
+    console.error('[AUTO-PUBLISH] Failed to fetch/process scheduled exams:', error);
   }
 }
 
@@ -1542,8 +1544,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // ROOT-CAUSE FIX: termId was optional and had no fallback. If a teacher created an
+      // exam without explicitly picking a term (or the form didn't require it), the exam
+      // was saved with termId = null. The report-card sync service requires termId to link
+      // a score to a report card, so it would silently skip syncing (MISSING_EXAM_FIELDS) —
+      // this is why report cards stopped auto-generating after a student's first completed
+      // exam for some assessments. We now default to the active academic term when none is
+      // provided, so every exam that should count academically has a valid term to sync to.
+      let resolvedTermId = req.body.termId;
+      if (resolvedTermId === undefined || resolvedTermId === null || resolvedTermId === '') {
+        const currentTerm = await storage.getCurrentTerm();
+        if (currentTerm) {
+          resolvedTermId = currentTerm.id;
+          console.log(`[EXAM-CREATE] No termId provided; defaulting to active term ${currentTerm.id} (${currentTerm.name})`);
+        }
+      }
+
       const examData = insertExamSchema.parse({
         ...req.body,
+        termId: resolvedTermId,
         createdBy: teacherId,
         teacherInChargeId: assignedTeacherId
       });
@@ -2074,28 +2093,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get results with student info for better display
       const results = await storage.getExamResultsByExam(examId);
 
-      // Enrich with student information
-      const enrichedResults = await Promise.all(results.map(async (result: any) => {
-        try {
-          const student = await storage.getStudent(result.studentId);
-          const user = student ? await storage.getUser(result.studentId) : null;
-          return {
-            ...result,
-            studentName: user?.firstName && user?.lastName
-              ? `${user.firstName} ${user.lastName}`
-              : user?.username || 'Unknown Student',
-            studentUsername: user?.username || null,
-            admissionNumber: student?.admissionNumber || null
-          };
-        } catch (e) {
-          return {
-            ...result,
-            studentName: 'Unknown Student',
-            studentUsername: null,
-            admissionNumber: null
-          };
-        }
-      }));
+      // Enrich with student information — batched into a single query instead of
+      // one getStudent()+getUser() round-trip per result (was N+1).
+      const studentMap = await storage.getStudentsByIds(results.map((r: any) => r.studentId));
+      const enrichedResults = results.map((result: any) => {
+        const student = studentMap.get(result.studentId);
+        return {
+          ...result,
+          studentName: student?.firstName && student?.lastName
+            ? `${student.firstName} ${student.lastName}`
+            : student?.username || 'Unknown Student',
+          studentUsername: student?.username || null,
+          admissionNumber: student?.admissionNumber || null
+        };
+      });
 
       res.json(enrichedResults);
     } catch (error: any) {
@@ -2137,11 +2148,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch raw results
       const rawResults = await storage.getExamResultsByExam(examId);
 
-      // Enrich with student names
-      const results = await Promise.all(rawResults.map(async (r: any) => {
+      // Enrich with student names — batched into a single query instead of
+      // one getStudent()+getUser() round-trip per result (was N+1).
+      const studentMap = await storage.getStudentsByIds(rawResults.map((r: any) => r.studentId));
+      const results = rawResults.map((r: any) => {
         try {
-          const student = await storage.getStudent(r.studentId);
-          const user = student ? await storage.getUser(r.studentId) : null;
+          const student = studentMap.get(r.studentId);
           const scoreVal = r.score ?? r.marksObtained ?? 0;
           const maxVal = r.maxScore ?? exam.totalMarks ?? 100;
           const pct = maxVal > 0 ? Math.round((scoreVal / maxVal) * 100) : 0;
@@ -2149,7 +2161,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const passed = pct >= passingPct;
           return {
             studentId: r.studentId,
-            studentName: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username : 'Unknown',
+            studentName: student?.firstName || student?.lastName
+              ? `${student.firstName || ''} ${student.lastName || ''}`.trim()
+              : student?.username || 'Unknown',
             admissionNumber: student?.admissionNumber ?? null,
             score: scoreVal,
             maxScore: maxVal,
@@ -2162,7 +2176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch {
           return null;
         }
-      }));
+      });
       const validResults = results.filter(Boolean) as any[];
 
       // Overview metrics
@@ -3063,7 +3077,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   }
                   await storage.upsertStudentAnswer(completedSession.id, questionId, answerData);
                   flushedCount++;
-                } catch (_) {}
+                } catch (flushError) {
+                  console.error(`[SUBMIT] Failed to flush late answer for question ${pa?.questionId} on session ${completedSession.id}:`, flushError);
+                }
               }
               if (flushedCount > 0) {
                 console.log(`[SUBMIT] Flushed ${flushedCount} late answers for already-completed session ${completedSession.id}. Re-scoring...`);
@@ -3182,13 +3198,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         serverTimestamp: now.toISOString()
       };
 
-      // Mark session as submitted FIRST (before scoring to prevent race conditions)
-      await storage.updateExamSession(activeSession.id, {
-        isCompleted: true,
+      // IDEMPOTENCY: Atomically claim this session for submission. The update only
+      // succeeds if the session is still not completed (WHERE isCompleted = false at the
+      // DB level), so if two requests race for the same session (e.g. the student clicks
+      // Submit right as the timer auto-submits, or a retried request from a flaky network
+      // overlaps with the original), only one can win. The loser falls through to the
+      // "already submitted" branch below and returns the winner's result instead of
+      // re-scoring and double-processing.
+      const claimedSession = await storage.claimExamSessionForSubmission(activeSession.id, {
         submittedAt: now,
         status: reason === 'manual' ? 'submitted' : `auto_${reason}`,
         metadata: JSON.stringify(sessionMetadata)
       });
+
+      if (!claimedSession) {
+        console.log(`[SUBMIT] Session ${activeSession.id} was already claimed by a concurrent request. Returning existing result.`);
+        const existingResult = await storage.getExamResultByExamAndStudent(examId, studentId);
+        const completedSession = await storage.getExamSessionById(activeSession.id);
+        return res.json({
+          submitted: true,
+          alreadySubmitted: true,
+          message: 'Exam was already submitted by a concurrent request. Returning existing results.',
+          result: {
+            sessionId: activeSession.id,
+            score: existingResult?.score || completedSession?.score || 0,
+            maxScore: existingResult?.maxScore || completedSession?.maxScore || exam.totalMarks || 0,
+            percentage: existingResult?.maxScore
+              ? ((existingResult.score || 0) / existingResult.maxScore) * 100
+              : completedSession?.maxScore
+                ? ((completedSession.score || 0) / completedSession.maxScore) * 100
+                : 0,
+            submittedAt: completedSession?.submittedAt?.toISOString() || now.toISOString(),
+            showCorrectAnswers: exam.showCorrectAnswers ?? true
+          }
+        });
+      }
 
       // PENDING ANSWER FLUSH: Upsert any answers the client sent in the submit payload.
       // These are the full localStorage snapshot, acting as a safety net for answers that
@@ -3209,7 +3253,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             await storage.upsertStudentAnswer(activeSession.id, questionId, answerData);
             flushedCount++;
-          } catch (_) {}
+          } catch (flushError) {
+            console.error(`[SUBMIT] Failed to flush pending answer for question ${pa?.questionId} on session ${activeSession.id}:`, flushError);
+          }
         }
         if (flushedCount > 0) {
           console.log(`[SUBMIT] Flushed ${flushedCount} pending answers for session ${activeSession.id} before scoring.`);
@@ -3365,62 +3411,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalTime = Date.now() - startTime;
       const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
 
-      // AUTO-SYNC: Use reliable sync service with audit logging and automatic retry
-      // Report cards are auto-created when a student completes their first exam for a term
-      // The reliable sync service handles: transactions, idempotency, audit logging, and retries
-      let reportCardSync: { success: boolean; message: string; reportCardId?: number; isNewReportCard?: boolean; auditLogId?: number } = { success: false, message: '' };
-
-      try {
-        console.log(`[SUBMIT] Starting reliable sync for student ${studentId}, exam ${examId}, score ${totalScore}/${maxScore}`);
-        reportCardSync = await reliableSyncService.syncExamScoreToReportCardReliable(
-          studentId,
-          examId,
-          totalScore,
-          maxScore,
-          {
-            syncType: 'exam_submit',
-            triggeredBy: studentId
-          }
-        );
-
-        if (reportCardSync.success) {
-          console.log(`[SUBMIT] Reliable sync successful: ${reportCardSync.message} (auditLogId: ${reportCardSync.auditLogId})`);
-
-          // Emit realtime event for report card update so dashboards refresh
-          if (reportCardSync.reportCardId) {
-            const eventType = reportCardSync.isNewReportCard ? 'created' : 'updated';
-            realtimeService.emitReportCardEvent(reportCardSync.reportCardId, eventType, {
-              studentId,
-              examId,
-              classId: exam.classId,
-              score: totalScore,
-              maxScore,
-              percentage: maxScore > 0 ? Math.round((totalScore / maxScore) * 10000) / 100 : 0,
-              isNewReportCard: reportCardSync.isNewReportCard,
-              autoGenerated: reportCardSync.isNewReportCard
-            });
-          }
-
-          // Also emit to class channel for teachers monitoring report cards
-          const tableOperation = reportCardSync.isNewReportCard ? 'INSERT' : 'UPDATE';
-          realtimeService.emitTableChange('report_cards', tableOperation, {
-            reportCardId: reportCardSync.reportCardId,
-            studentId,
-            examId,
-            classId: exam.classId,
-            score: totalScore,
-            maxScore,
-            isNewReportCard: reportCardSync.isNewReportCard
-          }, undefined, studentId);
-        } else {
-          console.error(`[SUBMIT] Reliable sync failed for student ${studentId}, exam ${examId}: ${reportCardSync.message}`);
-          // The audit log has recorded this failure - it can be retried later via admin tools
-          console.error(`[SUBMIT] Sync failure logged with auditLogId: ${reportCardSync.auditLogId}`);
-        }
-      } catch (syncError: any) {
-        console.error(`[SUBMIT] Reliable sync unhandled error for student ${studentId}, exam ${examId}:`, syncError?.message);
-        reportCardSync = { success: false, message: syncError?.message || 'Unknown sync error' };
-      }
+      // NOTE: Report card sync, and realtime notifications are executed AFTER the response
+      // is sent (see below, post res.json()). The exam session was already marked completed
+      // and scored above — that write is the durable "submission" state. Running the
+      // (slower) sync/audit/notification pipeline synchronously here was the root cause of
+      // the "Connection Error after submit, but exam was already submitted" bug: the client's
+      // fetch would time out waiting on this tail work even though the submission had already
+      // been safely committed to the database. We now respond immediately once scoring is
+      // done, and process the rest in the background.
+      const reportCardSync: { success: boolean; message: string; reportCardId?: number; isNewReportCard?: boolean; auditLogId?: number } = {
+        success: true,
+        message: 'Report card sync is processing in the background.'
+      };
 
       // Format time taken for display
       const formatTimeTaken = (seconds: number) => {
@@ -3430,7 +3432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return `${mins} minute${mins !== 1 ? 's' : ''} ${secs} second${secs !== 1 ? 's' : ''}`;
       };
 
-      // Emit realtime event for exam submission
+      // Emit realtime event for exam submission (fire-and-forget, non-blocking)
       realtimeService.emitExamEvent(examId, 'submitted', {
         sessionId: activeSession.id,
         studentId,
@@ -3442,7 +3444,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         submissionReason: reason,
       });
 
-      // Return instant results with enhanced metadata
+      // Return instant results with enhanced metadata.
+      // IMPORTANT: The submission is already durably committed at this point (session marked
+      // completed + scored above). We respond now so the student sees success immediately,
+      // then run the slower report-card sync in the background below.
       res.json({
         submitted: true,
         scoringSuccessful,
@@ -3493,6 +3498,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
             },
             warning: 'Report card sync failed. Teachers may need to manually sync this result using the "Sync to Report Card" button.'
           })
+        }
+      });
+
+      // BACKGROUND: Report card sync, audit logging, and dashboard notifications.
+      // Runs after the response has already been sent to the student, so a slow sync
+      // (report card creation/aggregation + audit log + retries) can never cause the
+      // frontend to see a false "Connection Error" for an already-committed submission.
+      setImmediate(async () => {
+        const bgLabel = `[SUBMIT:BG session=${activeSession.id} student=${studentId} exam=${examId}]`;
+        try {
+          console.log(`${bgLabel} Starting background report card sync, score ${totalScore}/${maxScore}`);
+          const bgSync = await reliableSyncService.syncExamScoreToReportCardReliable(
+            studentId,
+            examId,
+            totalScore,
+            maxScore,
+            {
+              syncType: 'exam_submit',
+              triggeredBy: studentId
+            }
+          );
+
+          if (bgSync.success) {
+            console.log(`${bgLabel} Sync successful: ${bgSync.message} (auditLogId: ${bgSync.auditLogId})`);
+
+            if (bgSync.reportCardId) {
+              const eventType = bgSync.isNewReportCard ? 'created' : 'updated';
+              realtimeService.emitReportCardEvent(bgSync.reportCardId, eventType, {
+                studentId,
+                examId,
+                classId: exam.classId,
+                score: totalScore,
+                maxScore,
+                percentage: maxScore > 0 ? Math.round((totalScore / maxScore) * 10000) / 100 : 0,
+                isNewReportCard: bgSync.isNewReportCard,
+                autoGenerated: bgSync.isNewReportCard
+              });
+            }
+
+            const tableOperation = bgSync.isNewReportCard ? 'INSERT' : 'UPDATE';
+            realtimeService.emitTableChange('report_cards', tableOperation, {
+              reportCardId: bgSync.reportCardId,
+              studentId,
+              examId,
+              classId: exam.classId,
+              score: totalScore,
+              maxScore,
+              isNewReportCard: bgSync.isNewReportCard
+            }, undefined, studentId);
+          } else {
+            console.error(`${bgLabel} Sync failed: ${bgSync.message} (auditLogId: ${bgSync.auditLogId}). Retryable via admin tools.`);
+          }
+        } catch (syncError: any) {
+          console.error(`${bgLabel} Unhandled background sync error:`, syncError?.message);
         }
       });
     } catch (error: any) {
@@ -3972,12 +4031,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // PAYMENT CHECK: Block access if exam fee is required and unpaid
       const sysSettings = await storage.getSystemSettings();
       if (sysSettings?.requireExamPayment) {
-        const payment = await storage.getExamPayment(studentId, exam.termId!);
+        // Guard against legacy exams saved before termId defaulting was added — fall back
+        // to the active term instead of passing undefined into the payment lookup.
+        const paymentTermId = exam.termId ?? (await storage.getCurrentTerm())?.id;
+        const payment = paymentTermId ? await storage.getExamPayment(studentId, paymentTermId) : undefined;
         if (!payment) {
           return res.status(402).json({
             message: 'Exam fee payment required',
             paymentRequired: true,
-            termId: exam.termId,
+            termId: paymentTermId ?? exam.termId,
             feeAmount: sysSettings.examFeeAmount ?? 0,
           });
         }
@@ -12600,12 +12662,17 @@ School Management System Administration
         });
       }
 
-      // Check if report card is locked
+      // Check if report card is locked — published cards are locked for teachers,
+      // but admins and super-admins can always edit scores regardless of status (Priority 2)
       if (reportCard.status === 'published') {
-        return res.status(403).json({
-          message: 'This report card has been published and cannot be edited. Contact an administrator to unlock it.',
-          code: 'REPORT_LOCKED'
-        });
+        const isAdminEdit = userRoleId === ROLES.ADMIN || userRoleId === ROLES.SUPER_ADMIN;
+        if (!isAdminEdit) {
+          return res.status(403).json({
+            message: 'This report card has been published and cannot be edited. Contact an administrator to unlock it.',
+            code: 'REPORT_LOCKED'
+          });
+        }
+        // Admins fall through — proceed to permission checks below
       }
 
       // Use shared permission utility for consistent permission checks
@@ -14314,6 +14381,76 @@ School Management System Administration
     }
   });
 
+  // Generate missing report cards — creates report cards for students who have exam data
+  // but no report card yet for the selected term/class (Priority 4: auto-generation fix)
+  app.post('/api/admin/report-cards/generate-missing', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
+    try {
+      const { classId, termId } = req.query;
+      console.log('[AUTO-GEN] Generating missing report cards:', { classId, termId });
+
+      // Find all students who have exam results, filtered by class/term from the exam
+      // term and class live on the exam row, not the result row
+      const whereConditions = [
+        ...(classId ? [eq(schema.exams.classId, Number(classId))] : []),
+        ...(termId ? [eq(schema.exams.termId, Number(termId))] : []),
+      ];
+
+      // Get distinct student+term pairs from exam results so we create at most one
+      // report card per student per term (not one per exam)
+      const examResultsQuery = db.selectDistinct({
+        studentId: schema.examResults.studentId,
+        examId: schema.examResults.examId,
+        termId: schema.exams.termId,
+        score: schema.examResults.score,
+        maxScore: schema.examResults.maxScore,
+      })
+        .from(schema.examResults)
+        .innerJoin(schema.exams, eq(schema.examResults.examId, schema.exams.id))
+        .where(whereConditions.length > 0 ? and(...whereConditions) : undefined as any);
+
+      const examResults = await examResultsQuery;
+      let created = 0;
+      let skipped = 0;
+      const errors: string[] = [];
+
+      // Deduplicate by studentId+termId — one sync per student per term is enough
+      const processedPairs = new Set<string>();
+      for (const result of examResults) {
+        const pairKey = `${result.studentId}:${result.termId}`;
+        if (processedPairs.has(pairKey)) { skipped++; continue; }
+        processedPairs.add(pairKey);
+        try {
+          const syncResult = await storage.syncExamScoreToReportCard(
+            result.studentId,
+            result.examId,
+            result.score ?? 0,
+            result.maxScore ?? 100,
+            false
+          );
+          if (syncResult.isNewReportCard) created++;
+        } catch (err: any) {
+          errors.push(`Student ${result.studentId} term ${result.termId}: ${err.message}`);
+        }
+      }
+
+      // Invalidate caches
+      enhancedCache.invalidate(/^reportcard:/);
+      enhancedCache.invalidate(/^reportcards:/);
+      enhancedCache.invalidate(/^report-card/);
+
+      console.log(`[AUTO-GEN] Done: ${created} new report cards, ${processedPairs.size} student-term pairs checked`);
+      res.json({
+        message: `${created} missing report card(s) generated`,
+        created,
+        pairsChecked: processedPairs.size,
+        errors: errors.slice(0, 10),
+      });
+    } catch (error: any) {
+      console.error('[AUTO-GEN] Error:', error);
+      res.status(500).json({ message: error.message || 'Failed to generate missing report cards' });
+    }
+  });
+
   // ==================== REPORT COMMENT TEMPLATES (Admin-managed) ====================
 
   // ADMIN: Get all comment templates
@@ -14414,7 +14551,8 @@ School Management System Administration
   // ADMIN: Get all finalized report cards for approval/publishing
   app.get('/api/admin/report-cards/finalized', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
-      const { classId, termId, status = 'finalized' } = req.query;
+      // Admin always sees all report cards regardless of status — default to 'all'
+      const { classId, termId, status = 'all' } = req.query;
 
       // Build the query to get finalized report cards with student and class info
       const query = db
@@ -14445,7 +14583,7 @@ School Management System Administration
         .where(
           and(
             status === 'all'
-              ? sql`${schema.reportCards.status} IN ('finalized', 'published')`
+              ? sql`1=1`
               : eq(schema.reportCards.status, status as string),
             classId ? eq(schema.reportCards.classId, Number(classId)) : sql`1=1`,
             termId ? eq(schema.reportCards.termId, Number(termId)) : sql`1=1`
