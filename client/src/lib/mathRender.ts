@@ -3,8 +3,8 @@
  *
  * Detects LaTeX delimiters ($...$, $$...$$, \( ... \), \[ ... \]) as well as
  * common "plain text" mathematical/scientific shorthand (x^2, H2O, log10(x),
- * 3/4, x_(1), etc.) and converts everything into a list of segments that can
- * be rendered with KaTeX, without touching ordinary prose.
+ * sqrt(x), 3/4, x_(1), etc.) and converts everything into a list of segments
+ * that can be rendered with KaTeX, without touching ordinary prose.
  *
  * This module has ZERO React dependency so it can be reused by both the
  * <MathText /> component (client/src/components/shared/MathText.tsx) and by
@@ -57,8 +57,9 @@ function chemicalFormulaToLatex(formula: string, charge = ""): string {
 
 // Chemical formula with optional trailing ionic charge, e.g. SO4^2-, OH^-, H2O
 const CHEM_WITH_CHARGE_RE = /\b([A-Z][A-Za-z0-9()]*\d[A-Za-z0-9()]*)(\^\d*[+\-])?/g;
-// Superscript: x^2, x^{2+3}, 10^5, a^n, x^-1 (base = trailing alnum run before ^)
-const SUPERSCRIPT_RE = /([A-Za-zπθαβγΔΣ0-9)\]]+)\^(\{[^{}]+\}|-?[A-Za-z0-9]+)/g;
+// Superscript: x^2, x^{2+3}, 10^5, a^n, x^-1, x^(1/2) (base = trailing alnum
+// run before ^; a "(a/b)" exponent is treated as a fraction, e.g. x^(1/2))
+const SUPERSCRIPT_RE = /([A-Za-zπθαβγΔΣ0-9)\]]+)\^(\{[^{}]+\}|\(\d+\/\d+\)|-?[A-Za-z0-9]+)/g;
 // Subscript: x_1, x_(1), x_{ij}
 const SUBSCRIPT_RE = /([A-Za-z]+)_(\{[^{}]+\}|\([^()]+\)|[A-Za-z0-9]+)/g;
 // log with explicit base and a simple (non-nested) argument: log10(x), log2(n)
@@ -73,6 +74,103 @@ const FRACTION_RE = /(?<![\w.\/])(\d+)\/(\d+)(?![\w.\/])/g;
 // Matches any already-delimited LaTeX span so auto-tagging never rewrites
 // content the author/teacher already wrote as explicit LaTeX.
 const EXISTING_DELIMITER_RE = /(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\$[^$\n]+?\$|\\\([\s\S]+?\\\))/g;
+
+// Finds the next `sqrt(` call in `chunk` starting at or after `from` that is
+// a real function call (not preceded by a letter/digit/underscore, so
+// "asqrt(x)" is left alone) and whose parentheses are balanced. Returns null
+// if there is no more matchable call.
+function findSqrtCall(
+  chunk: string,
+  from: number
+): { start: number; parenStart: number; parenEnd: number } | null {
+  const OPEN = "sqrt(";
+  let searchFrom = from;
+  while (true) {
+    const idx = chunk.indexOf(OPEN, searchFrom);
+    if (idx === -1) return null;
+    // Only reject when preceded by a letter/underscore (part of a longer
+    // identifier, e.g. "asqrt("). A preceding digit is a common and valid
+    // multiplication shorthand ("2sqrt(x)" means 2*sqrt(x)), so it's allowed.
+    const prevChar = idx > 0 ? chunk[idx - 1] : "";
+    if (/[A-Za-z_]/.test(prevChar)) {
+      searchFrom = idx + 1;
+      continue;
+    }
+    const parenStart = idx + OPEN.length - 1; // index of "("
+    let depth = 0;
+    let j = parenStart;
+    for (; j < chunk.length; j++) {
+      if (chunk[j] === "(") depth++;
+      else if (chunk[j] === ")") {
+        depth--;
+        if (depth === 0) break;
+      }
+    }
+    if (j >= chunk.length) {
+      searchFrom = parenStart + 1;
+      continue;
+    }
+    return { start: idx, parenStart, parenEnd: j };
+  }
+}
+
+// Converts plain-text math shorthand inside a sqrt(...) argument (nested
+// sqrt(...) calls, superscripts, subscripts, fractions) into raw LaTeX
+// source (no dollar-sign wrapping), since the result is embedded inside an
+// already-open \sqrt{...}.
+function toRawLatex(text: string): string {
+  let out = convertSqrtToRawLatex(text);
+  out = out.replace(SUPERSCRIPT_RE, (_m, base, exp) => {
+    const fracMatch = /^\((\d+)\/(\d+)\)$/.exec(exp);
+    const cleanExp = fracMatch
+      ? `\\frac{${fracMatch[1]}}{${fracMatch[2]}}`
+      : exp.replace(/^\{|\}$/g, "");
+    return `${base}^{${cleanExp}}`;
+  });
+  out = out.replace(SUBSCRIPT_RE, (_m, base, sub) => `${base}_{${sub.replace(/^[{(]|[)}]$/g, "")}}`);
+  out = out.replace(FRACTION_RE, (_m, a, b) => `\\frac{${a}}{${b}}`);
+  return out;
+}
+
+// Same scanning logic as convertSqrtCalls below, but emits raw \sqrt{...}
+// (no $ delimiters) so it can be nested inside another math expression.
+function convertSqrtToRawLatex(chunk: string): string {
+  let result = "";
+  let i = 0;
+  while (i < chunk.length) {
+    const match = findSqrtCall(chunk, i);
+    if (!match) {
+      result += chunk.slice(i);
+      break;
+    }
+    result += chunk.slice(i, match.start);
+    const inner = chunk.slice(match.parenStart + 1, match.parenEnd);
+    result += `\\sqrt{${toRawLatex(inner)}}`;
+    i = match.parenEnd + 1;
+  }
+  return result;
+}
+
+// Converts plain-text sqrt(...) calls into $\sqrt{...}$ math spans, handling
+// arbitrarily nested parentheses (e.g. sqrt(2sqrt(x)+1)) and normalizing
+// superscripts/subscripts/fractions inside the argument, via manual scanning
+// rather than a regex (regex can't balance nested parens).
+function convertSqrtCalls(chunk: string): string {
+  let result = "";
+  let i = 0;
+  while (i < chunk.length) {
+    const match = findSqrtCall(chunk, i);
+    if (!match) {
+      result += chunk.slice(i);
+      break;
+    }
+    result += chunk.slice(i, match.start);
+    const inner = chunk.slice(match.parenStart + 1, match.parenEnd);
+    result += `$\\sqrt{${toRawLatex(inner)}}$`;
+    i = match.parenEnd + 1;
+  }
+  return result;
+}
 
 function isExistingDelimitedSpan(part: string): boolean {
   return (
@@ -117,10 +215,16 @@ export function autoTagMath(text: string): string {
     chunk.replace(LOG_BASE_RE, (_m, base, arg) => `$\\log_{${base}}(${arg})$`)
   );
 
+  // 2b. sqrt(...) -> \sqrt{...}, handling nested parentheses.
+  out = applyOutsideMath(out, convertSqrtCalls);
+
   // 3. Generic superscripts / subscripts on whatever's left.
   out = applyOutsideMath(out, (chunk) =>
     chunk.replace(SUPERSCRIPT_RE, (_m, base, exp) => {
-      const cleanExp = exp.replace(/^\{|\}$/g, "");
+      const fracMatch = /^\((\d+)\/(\d+)\)$/.exec(exp);
+      const cleanExp = fracMatch
+        ? `\\frac{${fracMatch[1]}}{${fracMatch[2]}}`
+        : exp.replace(/^\{|\}$/g, "");
       return `$${base}^{${cleanExp}}$`;
     })
   );
