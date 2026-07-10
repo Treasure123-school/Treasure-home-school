@@ -223,11 +223,15 @@ export default function AdminResultPublishing() {
     fallbackPollingInterval: 30000,
   });
 
-  // Real-time updates for score/remarks changes on the open report card preview
+  // Real-time updates for score/remarks changes on the open report card preview.
+  // skipCacheInvalidation prevents the socket from triggering a raw refetch that
+  // would race against—and potentially overwrite—the optimistic cache update
+  // applied by EditScoreDialog. Reconciliation is handled in EditScoreDialog.onSuccess.
   useSocketIORealtime({
     table: 'report_card_items',
     queryKey: ['/api/reports', viewingReportCard?.id, 'full'],
     enabled: !!viewingReportCard?.id && isViewDialogOpen,
+    skipCacheInvalidation: true,
   });
 
   // Helper to get base stats from any available filter cache

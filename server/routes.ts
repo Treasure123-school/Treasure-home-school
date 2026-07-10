@@ -12485,6 +12485,43 @@ School Management System Administration
         };
       });
 
+      // Fix stale derived values: items synced before the weighted-score recalculation
+      // step was added may have obtainedMarks=0 even when testScore/examScore are set.
+      // Recompute on-the-fly here so the display is correct without a DB migration.
+      let finalItems = enhancedItems;
+      const hasStaleItems = enhancedItems.some(
+        (item: any) =>
+          (item.testScore !== null || item.examScore !== null) &&
+          (item.obtainedMarks === 0 || item.obtainedMarks === null)
+      );
+      if (hasStaleItems) {
+        const { calculateWeightedScore: calcW, calculateGradeFromConfig: calcG } = await import('./grading-config');
+        const { getActiveGradingConfig } = await import('./grade-scale-service');
+        const activeConfig = await getActiveGradingConfig();
+        finalItems = enhancedItems.map((item: any) => {
+          const hasScores = item.testScore !== null || item.examScore !== null;
+          const isStale = hasScores && (item.obtainedMarks === 0 || item.obtainedMarks === null);
+          if (!isStale) return item;
+          const weighted = calcW(
+            item.testScore ?? null,
+            item.testMaxScore ?? null,
+            item.examScore ?? null,
+            item.examMaxScore ?? null,
+            activeConfig
+          );
+          const gradeInfo = calcG(weighted.percentage, activeConfig);
+          return {
+            ...item,
+            testWeightedScore: Math.round(weighted.testWeighted),
+            examWeightedScore: Math.round(weighted.examWeighted),
+            obtainedMarks: Math.round(weighted.weightedScore),
+            percentage: Math.round(weighted.percentage),
+            grade: gradeInfo.grade,
+            remarks: gradeInfo.remarks,
+          };
+        });
+      }
+
       // Calculate class statistics for this report card's class and term
       // This calculation matches exactly what the teacher view does in TeacherReportCards.tsx
       let classStatistics = {
@@ -12561,7 +12598,7 @@ School Management System Administration
 
       res.json({
         ...reportCard,
-        items: enhancedItems,
+        items: finalItems,
         classStatistics,
         teacherName,
         principalName,
