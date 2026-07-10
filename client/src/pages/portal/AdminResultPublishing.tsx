@@ -1229,8 +1229,8 @@ export default function AdminResultPublishing() {
       </div>
       <div className="flex flex-col gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2" data-testid="text-page-title">
-            <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
+          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2 leading-none" data-testid="text-page-title">
+            <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             Report Card
           </h1>
           <p className="text-sm text-muted-foreground">
