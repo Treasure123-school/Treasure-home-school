@@ -1259,15 +1259,14 @@ export default function AdminResultPublishing() {
                 </CardDescription>
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                {/* Mobile: Generate Missing, Generate Comments and Download/Print grouped under one "more actions" menu */}
+                {/* Generate Missing, Generate Comments and Download/Print grouped under one "more actions" menu on both mobile and desktop */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
                       size="icon"
-                      className="sm:hidden"
                       aria-label="More report card actions"
-                      data-testid="button-more-actions-mobile"
+                      data-testid="button-more-actions"
                     >
                       <MoreVertical className="w-4 h-4" />
                     </Button>
@@ -1276,14 +1275,14 @@ export default function AdminResultPublishing() {
                     <DropdownMenuItem
                       onClick={() => generateMissingMutation.mutate()}
                       disabled={generateMissingMutation.isPending}
-                      data-testid="menu-generate-missing-mobile"
+                      data-testid="menu-generate-missing"
                     >
                       {generateMissingMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <GraduationCap className="w-4 h-4 mr-2" />}
                       Generate Missing
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       onClick={() => setIsBackfillDialogOpen(true)}
-                      data-testid="menu-generate-comments-mobile"
+                      data-testid="menu-generate-comments"
                     >
                       <FileText className="w-4 h-4 mr-2" />
                       Generate Comments
@@ -1294,7 +1293,7 @@ export default function AdminResultPublishing() {
                         <DropdownMenuItem
                           onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'zip')}
                           disabled={isBulkExporting}
-                          data-testid="menu-download-all-zip-mobile"
+                          data-testid="menu-download-all-zip"
                         >
                           <Download className="w-4 h-4 mr-2" />
                           Download All as ZIP ({reportCards.length} images)
@@ -1302,7 +1301,7 @@ export default function AdminResultPublishing() {
                         <DropdownMenuItem
                           onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'pdf')}
                           disabled={isBulkExporting}
-                          data-testid="menu-download-all-pdf-mobile"
+                          data-testid="menu-download-all-pdf"
                         >
                           <FileText className="w-4 h-4 mr-2" />
                           Download All as PDF ({reportCards.length})
@@ -1310,7 +1309,7 @@ export default function AdminResultPublishing() {
                         <DropdownMenuItem
                           onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'print')}
                           disabled={isBulkExporting}
-                          data-testid="menu-print-all-mobile"
+                          data-testid="menu-print-all"
                         >
                           <Printer className="w-4 h-4 mr-2" />
                           Print All ({reportCards.length})
@@ -1319,85 +1318,6 @@ export default function AdminResultPublishing() {
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
-
-                {/* Desktop: same actions as icon buttons with tooltips */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => generateMissingMutation.mutate()}
-                      disabled={generateMissingMutation.isPending}
-                      className="hidden sm:flex"
-                      aria-label="Generate missing report cards"
-                      data-testid="button-generate-missing"
-                    >
-                      {generateMissingMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <GraduationCap className="w-4 h-4" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Generate Missing — create report cards for students with assessment data but no report card yet</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setIsBackfillDialogOpen(true)}
-                      className="hidden sm:flex"
-                      aria-label="Generate comments"
-                      data-testid="button-generate-comments"
-                    >
-                      <FileText className="w-4 h-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Generate Comments</TooltipContent>
-                </Tooltip>
-
-                {reportCards.length > 0 && (
-                  <DropdownMenu>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="icon"
-                            disabled={isBulkExporting}
-                            aria-label="Download all report cards"
-                            className="hidden sm:flex"
-                            data-testid="button-download-all"
-                          >
-                            {isBulkExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                          </Button>
-                        </DropdownMenuTrigger>
-                      </TooltipTrigger>
-                      <TooltipContent>Download All</TooltipContent>
-                    </Tooltip>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'zip')}
-                        data-testid="menu-download-all-zip"
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Download All as ZIP ({reportCards.length} images)
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'pdf')}
-                        data-testid="menu-download-all-pdf"
-                      >
-                        <FileText className="w-4 h-4 mr-2" />
-                        Download All as PDF ({reportCards.length})
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'print')}
-                        data-testid="menu-print-all"
-                      >
-                        <Printer className="w-4 h-4 mr-2" />
-                        Print All ({reportCards.length})
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
 
                 <Tooltip>
                   <TooltipTrigger asChild>
