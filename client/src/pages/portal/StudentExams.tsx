@@ -3,6 +3,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import MathText from '@/components/shared/MathText';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -2996,9 +2997,11 @@ export default function StudentExams() {
                       {currentQuestion.points} points
                     </span>
                   </div>
-                  <p className="text-base sm:text-lg md:text-xl text-gray-800 dark:text-gray-200 leading-relaxed">
-                    {currentQuestion.questionText}
-                  </p>
+                  <MathText
+                    as="p"
+                    className="text-base sm:text-lg md:text-xl text-gray-800 dark:text-gray-200 leading-relaxed"
+                    text={currentQuestion.questionText}
+                  />
                 </div>
 
                 {/* Multiple Choice Options */}
@@ -3028,7 +3031,8 @@ export default function StudentExams() {
                             htmlFor={`option-${option.id}`}
                             className="cursor-pointer flex-1 text-base sm:text-lg md:text-xl text-gray-700 dark:text-gray-300 leading-relaxed"
                           >
-                            {String.fromCharCode(65 + index)}. {option.optionText}
+                            {String.fromCharCode(65 + index)}.{" "}
+                            <MathText text={option.optionText} />
                           </Label>
                         </div>
                       </div>
