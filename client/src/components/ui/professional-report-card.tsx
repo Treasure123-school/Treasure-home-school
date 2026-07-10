@@ -454,7 +454,7 @@ export function ProfessionalReportCard({
   return (
     <div ref={printRef} className="w-full bg-background print:bg-white">
       {/* School Header - Visible on screen */}
-      <div className="mb-4 p-4 bg-gradient-to-r from-primary/5 to-primary/10 rounded-md border print:hidden">
+      <div className="mb-4 p-4 bg-white rounded-md border print:hidden">
         <div className="text-center">
           <h1 className="text-xl sm:text-2xl font-bold text-primary">{schoolName}</h1>
           <p className="text-sm font-medium">{schoolAddress}</p>

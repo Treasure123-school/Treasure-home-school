@@ -51,6 +51,8 @@ import { format } from 'date-fns';
 import { calculateAge } from '@/lib/report-card-utils';
 import { ProfessionalReportCard } from '@/components/ui/professional-report-card';
 import { EditScoreDialog } from '@/components/portal/EditScoreDialog';
+import { MiniStatCardGrid } from '@/components/ui/mini-stat-card';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface FinalizedReportCard {
   id: number;
@@ -1204,7 +1206,7 @@ export default function AdminResultPublishing() {
       case 'draft':
         return <Badge variant="secondary" className={`${baseClasses} ${pendingOpacity}`}><Clock className="w-3 h-3 mr-1" /> Draft</Badge>;
       case 'finalized':
-        return <Badge className={`bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 ${baseClasses} ${pendingOpacity}`}><FileCheck className="w-3 h-3 mr-1" /> In Progress</Badge>;
+        return <Badge className={`bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 ${baseClasses} ${pendingOpacity}`}><FileCheck className="w-3 h-3 mr-1" /> Awaiting Approval</Badge>;
       case 'published':
         return <Badge className={`bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 ${baseClasses} ${pendingOpacity}`}><CheckCircle className="w-3 h-3 mr-1" /> Published</Badge>;
       default:
@@ -1236,41 +1238,13 @@ export default function AdminResultPublishing() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
-          <Card>
-            <CardContent className="p-3 sm:pt-6 sm:px-6">
-              <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-2">
-                <div className="text-center sm:text-left">
-                  <p className="text-xs sm:text-sm text-muted-foreground">In Progress</p>
-                  <p className="text-xl sm:text-2xl font-bold text-amber-600" data-testid="stat-finalized">{statistics.finalized}</p>
-                </div>
-                <FileCheck className="hidden sm:block w-8 h-8 text-amber-500" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 sm:pt-6 sm:px-6">
-              <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-2">
-                <div className="text-center sm:text-left">
-                  <p className="text-xs sm:text-sm text-muted-foreground">Published</p>
-                  <p className="text-xl sm:text-2xl font-bold text-green-600" data-testid="stat-published">{statistics.published}</p>
-                </div>
-                <CheckCircle className="hidden sm:block w-8 h-8 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 sm:pt-6 sm:px-6">
-              <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-2">
-                <div className="text-center sm:text-left">
-                  <p className="text-xs sm:text-sm text-muted-foreground">In Draft</p>
-                  <p className="text-xl sm:text-2xl font-bold text-gray-600" data-testid="stat-draft">{statistics.draft}</p>
-                </div>
-                <Clock className="hidden sm:block w-8 h-8 text-gray-500" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <MiniStatCardGrid
+          items={[
+            { label: 'Awaiting Approval', value: statistics.finalized, icon: FileCheck, color: 'amber', testId: 'stat-finalized' },
+            { label: 'Published', value: statistics.published, icon: CheckCircle, color: 'green', testId: 'stat-published' },
+            { label: 'In Draft', value: statistics.draft, icon: Clock, color: 'gray', testId: 'stat-draft' },
+          ]}
+        />
       </div>
 
       <Card>
@@ -1280,75 +1254,46 @@ export default function AdminResultPublishing() {
               <div className="min-w-0">
                 <CardTitle className="text-base sm:text-lg">Report Cards</CardTitle>
                 <CardDescription className="text-xs sm:text-sm truncate">
-                  {statusFilter === 'finalized' ? 'In progress — awaiting your approval' :
+                  {statusFilter === 'finalized' ? 'Awaiting your approval' :
                     statusFilter === 'published' ? 'Published report cards' : 'All report cards'}
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                 {/* Generate Missing Report Cards */}
-                 <Button
-                   variant="outline"
-                   size="icon"
-                   onClick={() => generateMissingMutation.mutate()}
-                   disabled={generateMissingMutation.isPending}
-                   className="sm:hidden"
-                   aria-label="Generate missing report cards"
-                   title="Create report cards for students with assessment data but no report card yet"
-                 >
-                   {generateMissingMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <GraduationCap className="w-4 h-4" />}
-                 </Button>
-                 <Button
-                   variant="outline"
-                   size="sm"
-                   onClick={() => generateMissingMutation.mutate()}
-                   disabled={generateMissingMutation.isPending}
-                   className="hidden sm:flex"
-                   title="Create report cards for students with assessment data but no report card yet"
-                 >
-                   {generateMissingMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <GraduationCap className="w-4 h-4 mr-2" />}
-                   Generate Missing
-                 </Button>
-
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setIsBackfillDialogOpen(true)}
-                  className="sm:hidden"
-                  aria-label="Generate comments"
-                  data-testid="button-generate-comments-mobile"
-                >
-                  <FileText className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsBackfillDialogOpen(true)}
-                  className="hidden sm:flex"
-                  data-testid="button-generate-comments"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Generate Comments
-                </Button>
-
-                {/* Download All / Print All - visible when there are report cards */}
-                {reportCards.length > 0 && (
-                  <>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          disabled={isBulkExporting}
-                          aria-label="Download all report cards"
-                          className="sm:hidden"
-                          data-testid="button-download-all-mobile"
-                        >
-                          {isBulkExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                {/* Mobile: Generate Missing, Generate Comments and Download/Print grouped under one "more actions" menu */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="sm:hidden"
+                      aria-label="More report card actions"
+                      data-testid="button-more-actions-mobile"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => generateMissingMutation.mutate()}
+                      disabled={generateMissingMutation.isPending}
+                      data-testid="menu-generate-missing-mobile"
+                    >
+                      {generateMissingMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <GraduationCap className="w-4 h-4 mr-2" />}
+                      Generate Missing
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setIsBackfillDialogOpen(true)}
+                      data-testid="menu-generate-comments-mobile"
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Generate Comments
+                    </DropdownMenuItem>
+                    {reportCards.length > 0 && (
+                      <>
+                        <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'zip')}
+                          disabled={isBulkExporting}
                           data-testid="menu-download-all-zip-mobile"
                         >
                           <Download className="w-4 h-4 mr-2" />
@@ -1356,6 +1301,7 @@ export default function AdminResultPublishing() {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'pdf')}
+                          disabled={isBulkExporting}
                           data-testid="menu-download-all-pdf-mobile"
                         >
                           <FileText className="w-4 h-4 mr-2" />
@@ -1363,65 +1309,110 @@ export default function AdminResultPublishing() {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'print')}
+                          disabled={isBulkExporting}
                           data-testid="menu-print-all-mobile"
                         >
                           <Printer className="w-4 h-4 mr-2" />
                           Print All ({reportCards.length})
                         </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={isBulkExporting}
-                          className="hidden sm:flex"
-                          data-testid="button-download-all"
-                        >
-                          {isBulkExporting
-                            ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            : <Download className="w-4 h-4 mr-2" />}
-                          Download All
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'zip')}
-                          data-testid="menu-download-all-zip"
-                        >
-                          <Download className="w-4 h-4 mr-2" />
-                          Download All as ZIP ({reportCards.length} images)
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'pdf')}
-                          data-testid="menu-download-all-pdf"
-                        >
-                          <FileText className="w-4 h-4 mr-2" />
-                          Download All as PDF ({reportCards.length})
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'print')}
-                          data-testid="menu-print-all"
-                        >
-                          <Printer className="w-4 h-4 mr-2" />
-                          Print All ({reportCards.length})
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </>
+                {/* Desktop: same actions as icon buttons with tooltips */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => generateMissingMutation.mutate()}
+                      disabled={generateMissingMutation.isPending}
+                      className="hidden sm:flex"
+                      aria-label="Generate missing report cards"
+                      data-testid="button-generate-missing"
+                    >
+                      {generateMissingMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <GraduationCap className="w-4 h-4" />}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Generate Missing — create report cards for students with assessment data but no report card yet</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setIsBackfillDialogOpen(true)}
+                      className="hidden sm:flex"
+                      aria-label="Generate comments"
+                      data-testid="button-generate-comments"
+                    >
+                      <FileText className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Generate Comments</TooltipContent>
+                </Tooltip>
+
+                {reportCards.length > 0 && (
+                  <DropdownMenu>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            disabled={isBulkExporting}
+                            aria-label="Download all report cards"
+                            className="hidden sm:flex"
+                            data-testid="button-download-all"
+                          >
+                            {isBulkExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                          </Button>
+                        </DropdownMenuTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent>Download All</TooltipContent>
+                    </Tooltip>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'zip')}
+                        data-testid="menu-download-all-zip"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download All as ZIP ({reportCards.length} images)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'pdf')}
+                        data-testid="menu-download-all-pdf"
+                      >
+                        <FileText className="w-4 h-4 mr-2" />
+                        Download All as PDF ({reportCards.length})
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'print')}
+                        data-testid="menu-print-all"
+                      >
+                        <Printer className="w-4 h-4 mr-2" />
+                        Print All ({reportCards.length})
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
 
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => refetch()}
-                  aria-label="Refresh report cards"
-                  data-testid="button-refresh"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => refetch()}
+                      aria-label="Refresh report cards"
+                      data-testid="button-refresh"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Refresh</TooltipContent>
+                </Tooltip>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -1654,7 +1645,7 @@ export default function AdminResultPublishing() {
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem onClick={() => finalizeMutation.mutate(rc.id)}>
                                     <FileCheck className="w-4 h-4 mr-2" />
-                                    Mark In Progress
+                                    Finalize
                                   </DropdownMenuItem>
                                 </>
                               )}
@@ -1743,7 +1734,7 @@ export default function AdminResultPublishing() {
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onClick={() => finalizeMutation.mutate(rc.id)}>
                                       <FileCheck className="w-4 h-4 mr-2" />
-                                      Mark In Progress
+                                      Finalize
                                     </DropdownMenuItem>
                                   </>
                                 )}
