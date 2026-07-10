@@ -85,7 +85,9 @@ export function EditScoreDialog({
     mutationFn: async (payload: {
       itemId: number;
       testScore?: number;
+      testMaxScore?: number;
       examScore?: number;
+      examMaxScore?: number;
       teacherRemarks?: string;
     }) => {
       const response = await apiRequest(
@@ -126,13 +128,22 @@ export function EditScoreDialog({
             const newExamScore =
               data.examScore !== undefined ? data.examScore : it.examScore;
 
-            // Use the item's known max scores; fall back to config weights
+            // Use the item's known max scores; fall back to config weights.
+            // Also mirrors the payload's max scores when the mutation sends them
+            // (i.e. when the item previously had no persisted max score), so the
+            // optimistic value stays consistent with what the server will persist.
             const testMax =
-              it.testMaxScore != null ? it.testMaxScore : activeConfig.testWeight;
+              data.testMaxScore !== undefined
+                ? data.testMaxScore
+                : it.testMaxScore != null
+                  ? it.testMaxScore
+                  : activeConfig.testWeight;
             const examMax =
-              it.examMaxScore != null
-                ? it.examMaxScore
-                : activeConfig.examWeight;
+              data.examMaxScore !== undefined
+                ? data.examMaxScore
+                : it.examMaxScore != null
+                  ? it.examMaxScore
+                  : activeConfig.examWeight;
 
             const weighted = calculateWeightedScore(
               newTestScore,
@@ -148,6 +159,8 @@ export function EditScoreDialog({
 
             updated.testScore = newTestScore;
             updated.examScore = newExamScore;
+            updated.testMaxScore = testMax;
+            updated.examMaxScore = examMax;
             updated.testWeightedScore = Math.round(weighted.testWeighted);
             updated.examWeightedScore = Math.round(weighted.examWeighted);
             updated.obtainedMarks = Math.round(weighted.weightedScore);
@@ -229,6 +242,7 @@ export function EditScoreDialog({
 
     const canEditTest = item.canEditTest !== false;
     const canEditExam = item.canEditExam !== false;
+    const activeConfig = gradingConfig?.currentConfig ?? STANDARD_GRADING_SCALE;
 
     const payload: Parameters<typeof mutation.mutate>[0] = {
       itemId: item.id,
@@ -236,9 +250,17 @@ export function EditScoreDialog({
 
     if (canEditTest && testScore !== "") {
       payload.testScore = Number(testScore);
+      // If the item has no persisted max score yet, send the config's weight so the
+      // server's weighted calculation doesn't treat this portion as having zero weight.
+      if (item.testMaxScore == null) {
+        payload.testMaxScore = activeConfig.testWeight;
+      }
     }
     if (canEditExam && examScore !== "") {
       payload.examScore = Number(examScore);
+      if (item.examMaxScore == null) {
+        payload.examMaxScore = activeConfig.examWeight;
+      }
     }
     if (showRemarks && (canEditTest || canEditExam) && remarks) {
       payload.teacherRemarks = remarks;
