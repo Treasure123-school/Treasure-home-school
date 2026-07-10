@@ -41,7 +41,6 @@ const TeacherExamResults = lazy(() => import('@/pages/portal/TeacherExamResults'
 const ExamManagement = lazy(() => import('@/pages/portal/ExamManagement'));
 const TeacherExamAnalytics = lazy(() => import('@/pages/portal/TeacherExamAnalytics'));
 const TeacherReportCards = lazy(() => import('@/pages/portal/TeacherReportCards'));
-const TeacherRecentExamResults = lazy(() => import('@/pages/portal/TeacherRecentExamResults'));
 const ExamReports = lazy(() => import('@/pages/portal/ExamReports'));
 
 const AdminDashboard = lazy(() => import('@/pages/portal/AdminDashboard'));
@@ -184,7 +183,6 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/teacher/exams" component={ExamManagement} />
             <Route path="/portal/teacher/exam-analytics" component={TeacherExamAnalytics} />
             <Route path="/portal/teacher/report-cards" component={TeacherReportCards} />
-            <Route path="/portal/teacher/recent-exam-results" component={TeacherRecentExamResults} />
             <Route path="/portal/teacher/syllabus-topics" component={SyllabusTopicsManager} />
             <Route path="/portal/teacher/question-bank" component={QuestionBankManager} />
             <Route path="/portal/teacher/lesson-notes/create" component={LessonNoteEditorPage} />
@@ -252,7 +250,6 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/lesson-notes/preview/:id" component={LessonNotePreviewPage} />
             <Route path="/portal/admin/lesson-notes/view/:id" component={LessonNoteViewPage} />
             <Route path="/portal/admin/lesson-notes" component={AdminLessonNoteReview} />
-            <Route path="/portal/admin/recent-exam-results" component={TeacherRecentExamResults} />
             <Route path="/portal/admin/billing-items" component={BillingItems} />
             <Route path="/portal/admin/billing-payments" component={BillingPayments} />
             <Route path="/portal/admin/billing-outstanding" component={BillingOutstanding} />

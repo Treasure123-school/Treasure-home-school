@@ -55,7 +55,6 @@ function buildRouteTable(): RouteEntry[] {
     { pattern: '/portal/teacher/question-bank', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'Question Bank' }] },
     { pattern: '/portal/teacher/syllabus-topics', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'Syllabus Topics' }] },
     { pattern: '/portal/teacher/report-cards', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'Report Cards' }] },
-    { pattern: '/portal/teacher/recent-exam-results', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'Recent Exam Results' }] },
     { pattern: '/portal/teacher/timetable', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'Timetable' }] },
     { pattern: '/portal/teacher/messages', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'Messages' }] },
     { pattern: '/portal/teacher/announcements', crumbs: [{ label: 'Dashboard', href: '/portal/teacher' }, { label: 'Announcements' }] },

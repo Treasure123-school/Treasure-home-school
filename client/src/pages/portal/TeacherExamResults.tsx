@@ -398,7 +398,7 @@ export default function TeacherExamResults() {
         <h2 className="text-xl font-semibold mb-2">Exam Not Found</h2>
         <p className="text-muted-foreground mb-4">The exam you're looking for could not be found.</p>
         <Button variant="outline" asChild>
-          <Link href="/portal/teacher/recent-exam-results">
+          <Link href="/portal/teacher/exam-analytics">
             View Results
           </Link>
         </Button>
