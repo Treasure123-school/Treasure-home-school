@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useAuth } from '@/lib/auth';
 import { useLocation } from 'wouter';
+import MathText from '@/components/shared/MathText';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -542,9 +543,11 @@ export default function StudentExamResults() {
                           )}
                         </div>
                         {question.questionText && (
-                          <p className="text-sm text-gray-700 dark:text-gray-300 font-medium mb-3">
-                            {question.questionText}
-                          </p>
+                          <MathText
+                            as="p"
+                            className="text-sm text-gray-700 dark:text-gray-300 font-medium mb-3"
+                            text={question.questionText}
+                          />
                         )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
@@ -563,7 +566,7 @@ export default function StudentExamResults() {
                                 ? "text-red-700 dark:text-red-400"
                                 : "text-gray-500 dark:text-gray-400"
                             } font-semibold`}>
-                              {question.studentAnswer || "No answer provided"}
+                              <MathText text={question.studentAnswer || "No answer provided"} />
                             </p>
                           </div>
                           
@@ -571,7 +574,7 @@ export default function StudentExamResults() {
                             <div className="p-2 rounded border bg-primary/5 border-primary/20 dark:bg-primary/5 dark:border-primary/30">
                               <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-1 block">Correct Answer</span>
                               <p className="text-sm text-primary dark:text-primary/70 font-semibold">
-                                {question.correctAnswer || "Not available"}
+                                <MathText text={question.correctAnswer || "Not available"} />
                               </p>
                             </div>
                           )}

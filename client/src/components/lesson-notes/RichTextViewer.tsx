@@ -1,5 +1,7 @@
 import DOMPurify from 'dompurify';
 import { useMemo, useEffect, useRef } from 'react';
+import { applyMathToTextNodes } from '@/lib/mathRender';
+import 'katex/dist/katex.min.css';
 
 interface RichTextViewerProps {
   html: string;
@@ -84,6 +86,12 @@ export default function RichTextViewer({ html, className = '', brandColor = '#3b
         onError();
       }
     });
+
+    // ── Math/science notation rendering ─────────────────────────────────────
+    // New content (safeHtml changed) — clear the idempotency marker so
+    // applyMathToTextNodes re-scans this render's text nodes.
+    delete container.dataset.mathApplied;
+    applyMathToTextNodes(container);
   }, [safeHtml]);
 
   return (

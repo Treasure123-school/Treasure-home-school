@@ -3,6 +3,25 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useLocation } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import MathText from '@/components/shared/MathText';
+import { prewarmMathCache } from '@/lib/mathRender';
+
+// Schedule low-priority background work without blocking the render/paint
+// of the currently visible question. Falls back to setTimeout in browsers
+// without requestIdleCallback (e.g. Safari).
+function scheduleIdleWarm(fn: () => void): number {
+  if (typeof (window as any).requestIdleCallback === 'function') {
+    return (window as any).requestIdleCallback(fn, { timeout: 1000 });
+  }
+  return window.setTimeout(fn, 32) as unknown as number;
+}
+function cancelIdleWarm(handle: number): void {
+  if (typeof (window as any).cancelIdleCallback === 'function') {
+    (window as any).cancelIdleCallback(handle);
+  } else {
+    window.clearTimeout(handle);
+  }
+}
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -621,6 +640,84 @@ export default function StudentExams() {
     gcTime: Infinity,
     networkMode: 'offlineFirst',
   });
+
+  // MATH PRE-RENDERING: <MathText> already parses+renders math synchronously
+  // during its own render (never shows raw "x^2"/"H2O" — there's no
+  // mount-then-swap step), so correctness doesn't depend on anything here.
+  // What this warms is *instant navigation*: the current question's notation
+  // is prewarmed immediately (cheap, single question) so it is guaranteed to
+  // be cache-hot before paint, while the rest of the exam is warmed in small
+  // background chunks (via requestIdleCallback) so a large exam never blocks
+  // the render/paint of the question currently on screen.
+  const warmedQuestionIdsRef = useRef<Set<number>>(new Set());
+  const warmedSessionKeyRef = useRef<string | number | null>(null);
+  const backgroundWarmHandleRef = useRef<number | null>(null);
+
+  // Reset warm-tracking whenever the exam session changes (new session id or
+  // a different exam), so a fresh session never inherits stale "already
+  // warmed" state from a prior session that happened to reuse question ids.
+  useEffect(() => {
+    const sessionKey = activeSession ? `${activeSession.id}:${activeSession.examId}` : null;
+    if (sessionKey !== warmedSessionKeyRef.current) {
+      warmedSessionKeyRef.current = sessionKey;
+      warmedQuestionIdsRef.current = new Set();
+    }
+  }, [activeSession?.id, activeSession?.examId]);
+
+  useEffect(() => {
+    if (currentQuestion && !warmedQuestionIdsRef.current.has(currentQuestion.id)) {
+      const options = allQuestionOptions.filter((o: any) => o.questionId === currentQuestion.id);
+      prewarmMathCache([
+        (currentQuestion as any).questionText,
+        (currentQuestion as any).explanationText,
+        ...options.map((o: any) => o.optionText),
+      ]);
+      warmedQuestionIdsRef.current.add(currentQuestion.id);
+    }
+  }, [currentQuestion, allQuestionOptions]);
+
+  useEffect(() => {
+    if (!examQuestions.length) return;
+    if (backgroundWarmHandleRef.current !== null) {
+      cancelIdleWarm(backgroundWarmHandleRef.current);
+      backgroundWarmHandleRef.current = null;
+    }
+
+    const remaining = (examQuestions as any[]).filter((q) => !warmedQuestionIdsRef.current.has(q.id));
+    if (!remaining.length) return;
+
+    const CHUNK_SIZE = 5;
+    let index = 0;
+
+    const processChunk = () => {
+      const chunk = remaining.slice(index, index + CHUNK_SIZE);
+      index += CHUNK_SIZE;
+      const texts: Array<string | null | undefined> = [];
+      for (const q of chunk) {
+        texts.push(q.questionText, q.explanationText);
+        for (const o of allQuestionOptions as any[]) {
+          if (o.questionId === q.id) texts.push(o.optionText);
+        }
+        warmedQuestionIdsRef.current.add(q.id);
+      }
+      prewarmMathCache(texts);
+      if (index < remaining.length) {
+        backgroundWarmHandleRef.current = scheduleIdleWarm(processChunk);
+      }
+    };
+
+    backgroundWarmHandleRef.current = scheduleIdleWarm(processChunk);
+
+    return () => {
+      if (backgroundWarmHandleRef.current !== null) {
+        cancelIdleWarm(backgroundWarmHandleRef.current);
+        backgroundWarmHandleRef.current = null;
+      }
+    };
+    // Re-run when the question set or bulk options change (e.g. new exam
+    // session started); already-warmed question ids are skipped above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [examQuestions, allQuestionOptions]);
 
   // Per-question query kept only as a cache warm-up for the very first render.
   // Rendering always uses the bulk data (already in memory) so options show even offline.
@@ -2985,6 +3082,23 @@ export default function StudentExams() {
           <div className="max-w-5xl mx-auto py-4 sm:py-6 md:py-8">
 
             {/* Question Card - Responsive */}
+            {loadingQuestions && !currentQuestion && (
+              <div
+                className="bg-white dark:bg-gray-800 rounded-lg border border-primary/30 dark:border-gray-700 shadow-md p-5 sm:p-7 md:p-9 mb-6 animate-pulse"
+                data-testid="skeleton-question-loading"
+              >
+                <div className="mb-5 sm:mb-7 space-y-3">
+                  <div className="h-6 w-40 bg-gray-200 dark:bg-gray-700 rounded" />
+                  <div className="h-5 w-full bg-gray-200 dark:bg-gray-700 rounded" />
+                  <div className="h-5 w-4/5 bg-gray-200 dark:bg-gray-700 rounded" />
+                </div>
+                <div className="space-y-3">
+                  {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className="h-12 w-full bg-gray-100 dark:bg-gray-700/60 rounded-lg" />
+                  ))}
+                </div>
+              </div>
+            )}
             {currentQuestion && (
               <div className="bg-white dark:bg-gray-800 rounded-lg border border-primary/30 dark:border-gray-700 shadow-md p-5 sm:p-7 md:p-9 mb-6">
                 <div className="mb-5 sm:mb-7">
@@ -2996,9 +3110,11 @@ export default function StudentExams() {
                       {currentQuestion.points} points
                     </span>
                   </div>
-                  <p className="text-base sm:text-lg md:text-xl text-gray-800 dark:text-gray-200 leading-relaxed">
-                    {currentQuestion.questionText}
-                  </p>
+                  <MathText
+                    as="p"
+                    className="text-base sm:text-lg md:text-xl text-gray-800 dark:text-gray-200 leading-relaxed"
+                    text={currentQuestion.questionText}
+                  />
                 </div>
 
                 {/* Multiple Choice Options */}
@@ -3028,7 +3144,8 @@ export default function StudentExams() {
                             htmlFor={`option-${option.id}`}
                             className="cursor-pointer flex-1 text-base sm:text-lg md:text-xl text-gray-700 dark:text-gray-300 leading-relaxed"
                           >
-                            {String.fromCharCode(65 + index)}. {option.optionText}
+                            {String.fromCharCode(65 + index)}.{" "}
+                            <MathText text={option.optionText} />
                           </Label>
                         </div>
                       </div>
@@ -3695,7 +3812,11 @@ export default function StudentExams() {
                   <ClipboardCheck className="h-4 w-4" />
                   Teacher Instructions
                 </p>
-                <p className="text-sm text-amber-900 dark:text-amber-200 whitespace-pre-wrap leading-relaxed">{pendingExamForInstructions.instructions}</p>
+                <MathText
+                  as="p"
+                  className="text-sm text-amber-900 dark:text-amber-200 whitespace-pre-wrap leading-relaxed"
+                  text={pendingExamForInstructions.instructions}
+                />
               </div>
             )}
 
