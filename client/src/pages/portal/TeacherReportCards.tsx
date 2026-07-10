@@ -68,7 +68,6 @@ import {
   PenTool,
   Loader2,
   Undo2,
-  Lock,
   Unlock,
   MoreVertical,
   FileCheck,
@@ -94,14 +93,13 @@ import { format } from "date-fns";
 import {
   STANDARD_GRADING_SCALE,
   formatPosition,
-  calculateWeightedScore,
-  calculateGradeFromConfig,
 } from "@shared/grading-utils";
 import { calculateAge } from "@/lib/report-card-utils";
 import { ProfessionalReportCard } from "@/components/ui/professional-report-card";
 import { ContactUtils } from "@shared/contact-utils";
 import { ReportCardFilters } from "@/components/portal/ReportCardFilters";
 import { ReportCardStatsBar } from "@/components/portal/ReportCardStatsBar";
+import { EditScoreDialog } from "@/components/portal/EditScoreDialog";
 
 interface ReportCardItem {
   id: number;
@@ -205,13 +203,6 @@ export default function TeacherReportCards() {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isOverrideDialogOpen, setIsOverrideDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<ReportCardItem | null>(null);
-  const [overrideData, setOverrideData] = useState({
-    testScore: "",
-    testMaxScore: "",
-    examScore: "",
-    examMaxScore: "",
-    teacherRemarks: "",
-  });
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [activeTab, setActiveTab] = useState("students");
@@ -471,218 +462,6 @@ export default function TeacherReportCards() {
     },
   });
 
-  const overrideScoreMutation = useMutation({
-    mutationFn: async (data: {
-      itemId: number;
-      testScore?: number;
-      testMaxScore?: number;
-      examScore?: number;
-      examMaxScore?: number;
-      teacherRemarks?: string;
-      reportCardId?: number;
-    }) => {
-      const response = await apiRequest(
-        "PATCH",
-        `/api/reports/items/${data.itemId}/override`,
-        data,
-      );
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Failed to override score");
-      }
-      return response.json();
-    },
-    onMutate: async (data) => {
-      // Capture report card ID before any async operations
-      const reportCardId = data.reportCardId || selectedReportCard?.id;
-
-      // Cancel outgoing refetches to avoid overwriting optimistic update
-      await queryClient.cancelQueries({
-        queryKey: ["/api/reports", reportCardId, "full"],
-      });
-
-      // Snapshot previous data for rollback
-      const previousFullReport = queryClient.getQueryData([
-        "/api/reports",
-        reportCardId,
-        "full",
-      ]);
-
-      // Optimistically update the cache immediately with calculated derived values
-      queryClient.setQueryData(
-        ["/api/reports", reportCardId, "full"],
-        (old: any) => {
-          if (!old || !old.items) return old;
-
-          // Use the active DB config from the existing query; fall back to standard weights only
-          const activeDbConfig = gradingConfig?.currentConfig;
-          const localGradingConfig = activeDbConfig ?? STANDARD_GRADING_SCALE;
-
-          return {
-            ...old,
-            items: old.items.map((item: any) => {
-              if (item.id === data.itemId) {
-                const updatedItem = { ...item };
-
-                // Update raw scores - ONLY update what was explicitly provided
-                // Preserve existing max scores when not explicitly provided to avoid miscalculations
-                const newTestScore =
-                  data.testScore !== undefined
-                    ? data.testScore
-                    : item.testScore;
-                const newTestMaxScore =
-                  data.testMaxScore !== undefined
-                    ? data.testMaxScore
-                    : item.testMaxScore;
-                const newExamScore =
-                  data.examScore !== undefined
-                    ? data.examScore
-                    : item.examScore;
-                const newExamMaxScore =
-                  data.examMaxScore !== undefined
-                    ? data.examMaxScore
-                    : item.examMaxScore;
-
-                updatedItem.testScore = newTestScore;
-                if (data.testMaxScore !== undefined)
-                  updatedItem.testMaxScore = newTestMaxScore;
-                updatedItem.examScore = newExamScore;
-                if (data.examMaxScore !== undefined)
-                  updatedItem.examMaxScore = newExamMaxScore;
-
-                // Calculate derived values locally for instant feedback
-                // Use actual max scores from the item (fallback to config weights only for calculation)
-                const calcTestMax =
-                  newTestMaxScore ?? localGradingConfig.testWeight;
-                const calcExamMax =
-                  newExamMaxScore ?? localGradingConfig.examWeight;
-                const weighted = calculateWeightedScore(
-                  newTestScore,
-                  calcTestMax,
-                  newExamScore,
-                  calcExamMax,
-                  localGradingConfig,
-                );
-                const gradeInfo = calculateGradeFromConfig(
-                  weighted.percentage,
-                  localGradingConfig,
-                );
-
-                updatedItem.testWeightedScore = Math.round(
-                  weighted.testWeighted,
-                );
-                updatedItem.examWeightedScore = Math.round(
-                  weighted.examWeighted,
-                );
-                updatedItem.obtainedMarks = Math.round(weighted.weightedScore);
-                updatedItem.percentage = Math.round(weighted.percentage);
-                updatedItem.grade = gradeInfo.grade;
-                updatedItem.remarks = gradeInfo.remarks;
-
-                if (data.teacherRemarks !== undefined)
-                  updatedItem.teacherRemarks = data.teacherRemarks;
-                updatedItem.isOverridden = true;
-                updatedItem.overriddenAt = new Date().toISOString();
-                return updatedItem;
-              }
-              return item;
-            }),
-          };
-        },
-      );
-
-      // Close dialog immediately for instant feedback
-      setIsOverrideDialogOpen(false);
-
-      return { previousFullReport, reportCardId };
-    },
-    onSuccess: (serverData, _variables, context) => {
-      const reportCardId = context?.reportCardId || selectedReportCard?.id;
-
-      // Reconcile item with authoritative server data (includes recalculated totals)
-      // DO NOT call invalidateQueries here - it causes flicker by triggering refetch with potentially stale data
-      queryClient.setQueryData(
-        ["/api/reports", reportCardId, "full"],
-        (old: any) => {
-          if (!old || !old.items) return old;
-
-          // Also update report card level aggregates if server returned them
-          const updatedReportCard = {
-            ...old,
-            // If server returns updated report card totals, use them
-            ...(serverData.reportCardTotals
-              ? {
-                  totalScore: serverData.reportCardTotals.totalScore,
-                  averageScore: serverData.reportCardTotals.averageScore,
-                  averagePercentage:
-                    serverData.reportCardTotals.averagePercentage,
-                  overallGrade: serverData.reportCardTotals.overallGrade,
-                }
-              : {}),
-            items: old.items.map((item: any) =>
-              item.id === serverData.id
-                ? {
-                    ...item,
-                    ...serverData,
-                    // Preserve permission flags from the old item
-                    canEditTest: item.canEditTest,
-                    canEditExam: item.canEditExam,
-                    canEditRemarks: item.canEditRemarks,
-                  }
-                : item,
-            ),
-          };
-          return updatedReportCard;
-        },
-      );
-
-      // Update the class-term list cache with new position if available
-      // Use setQueryData instead of invalidate to prevent flicker
-      if (serverData.reportCardTotals?.position !== undefined) {
-        queryClient.setQueryData(
-          ["/api/reports/class-term", selectedClass, selectedTerm],
-          (old: any) => {
-            if (!old || !Array.isArray(old)) return old;
-            return old.map((rc: any) =>
-              rc.id === reportCardId
-                ? {
-                    ...rc,
-                    averagePercentage:
-                      serverData.reportCardTotals?.averagePercentage ??
-                      rc.averagePercentage,
-                    overallGrade:
-                      serverData.reportCardTotals?.overallGrade ??
-                      rc.overallGrade,
-                    position:
-                      serverData.reportCardTotals?.position ?? rc.position,
-                  }
-                : rc,
-            );
-          },
-        );
-      }
-
-      toast({
-        title: "Success",
-        description: "Score overridden successfully",
-      });
-    },
-    onError: (error: any, _variables, context: any) => {
-      // Rollback to previous data on error
-      const reportCardId = context?.reportCardId || selectedReportCard?.id;
-      if (context?.previousFullReport) {
-        queryClient.setQueryData(
-          ["/api/reports", reportCardId, "full"],
-          context.previousFullReport,
-        );
-      }
-      toast({
-        title: "Error",
-        description: error.message || "Failed to override score",
-        variant: "destructive",
-      });
-    },
-  });
 
   const updateStatusMutation = useMutation({
     mutationFn: async (data: {
@@ -990,51 +769,7 @@ export default function TeacherReportCards() {
 
   const handleOverrideScore = (item: ReportCardItem) => {
     setSelectedItem(item);
-    setOverrideData({
-      testScore: item.testScore?.toString() || "",
-      testMaxScore: item.testMaxScore?.toString() || "",
-      examScore: item.examScore?.toString() || "",
-      examMaxScore: item.examMaxScore?.toString() || "",
-      teacherRemarks: item.teacherRemarks || "",
-    });
     setIsOverrideDialogOpen(true);
-  };
-
-  const handleSaveOverride = () => {
-    if (!selectedItem) return;
-
-    // Only send fields the teacher is allowed to edit
-    const canEditTest = selectedItem.canEditTest !== false;
-    const canEditExam = selectedItem.canEditExam !== false;
-
-    // Build payload with only permitted fields - include reportCardId for cache consistency
-    const payload: any = {
-      itemId: selectedItem.id,
-      reportCardId: selectedReportCard?.id,
-    };
-
-    // Only include test scores if teacher can edit them
-    if (canEditTest && overrideData.testScore) {
-      payload.testScore = Number(overrideData.testScore);
-    }
-    if (canEditTest && overrideData.testMaxScore) {
-      payload.testMaxScore = Number(overrideData.testMaxScore);
-    }
-
-    // Only include exam scores if teacher can edit them
-    if (canEditExam && overrideData.examScore) {
-      payload.examScore = Number(overrideData.examScore);
-    }
-    if (canEditExam && overrideData.examMaxScore) {
-      payload.examMaxScore = Number(overrideData.examMaxScore);
-    }
-
-    // Teacher can add remarks if they can edit at least one score type
-    if ((canEditTest || canEditExam) && overrideData.teacherRemarks) {
-      payload.teacherRemarks = overrideData.teacherRemarks;
-    }
-
-    overrideScoreMutation.mutate(payload);
   };
 
   // Handle bulk status updates
@@ -2055,169 +1790,41 @@ export default function TeacherReportCards() {
         </DialogContent>
       </Dialog>
 
-      {/* Override Score Dialog */}
-      <Dialog
+      {/* Edit Score Dialog — shared with admin, clean UI with optimistic updates */}
+      <EditScoreDialog
         open={isOverrideDialogOpen}
         onOpenChange={setIsOverrideDialogOpen}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Override Score</DialogTitle>
-            <DialogDescription>
-              Modify scores for {selectedItem?.subjectName}. This will be
-              tracked as a teacher override.
-              {selectedItem &&
-                (selectedItem.canEditTest === false ||
-                  selectedItem.canEditExam === false) && (
-                  <span className="block mt-2 text-muted-foreground text-xs">
-                    Note: You can only edit scores for exams you created.
-                  </span>
-                )}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div
-                className={
-                  selectedItem?.canEditTest === false ? "opacity-50" : ""
-                }
-              >
-                <Label className="flex items-center gap-2">
-                  Test Score
-                  {selectedItem?.canEditTest === false && (
-                    <Lock className="w-3 h-3" />
-                  )}
-                </Label>
-                <Input
-                  type="number"
-                  value={overrideData.testScore}
-                  onChange={(e) =>
-                    setOverrideData((prev) => ({
-                      ...prev,
-                      testScore: e.target.value,
-                    }))
-                  }
-                  placeholder="Score"
-                  disabled={selectedItem?.canEditTest === false}
-                  data-testid="input-test-score"
-                />
-              </div>
-              <div
-                className={
-                  selectedItem?.canEditTest === false ? "opacity-50" : ""
-                }
-              >
-                <Label className="flex items-center gap-2">
-                  Test Max Score
-                  {selectedItem?.canEditTest === false && (
-                    <Lock className="w-3 h-3" />
-                  )}
-                </Label>
-                <Input
-                  type="number"
-                  value={overrideData.testMaxScore}
-                  onChange={(e) =>
-                    setOverrideData((prev) => ({
-                      ...prev,
-                      testMaxScore: e.target.value,
-                    }))
-                  }
-                  placeholder="Max"
-                  disabled={selectedItem?.canEditTest === false}
-                  data-testid="input-test-max"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div
-                className={
-                  selectedItem?.canEditExam === false ? "opacity-50" : ""
-                }
-              >
-                <Label className="flex items-center gap-2">
-                  Exam Score
-                  {selectedItem?.canEditExam === false && (
-                    <Lock className="w-3 h-3" />
-                  )}
-                </Label>
-                <Input
-                  type="number"
-                  value={overrideData.examScore}
-                  onChange={(e) =>
-                    setOverrideData((prev) => ({
-                      ...prev,
-                      examScore: e.target.value,
-                    }))
-                  }
-                  placeholder="Score"
-                  disabled={selectedItem?.canEditExam === false}
-                  data-testid="input-exam-score"
-                />
-              </div>
-              <div
-                className={
-                  selectedItem?.canEditExam === false ? "opacity-50" : ""
-                }
-              >
-                <Label className="flex items-center gap-2">
-                  Exam Max Score
-                  {selectedItem?.canEditExam === false && (
-                    <Lock className="w-3 h-3" />
-                  )}
-                </Label>
-                <Input
-                  type="number"
-                  value={overrideData.examMaxScore}
-                  onChange={(e) =>
-                    setOverrideData((prev) => ({
-                      ...prev,
-                      examMaxScore: e.target.value,
-                    }))
-                  }
-                  placeholder="Max"
-                  disabled={selectedItem?.canEditExam === false}
-                  data-testid="input-exam-max"
-                />
-              </div>
-            </div>
-
-            <div>
-              <Label>Teacher Remarks</Label>
-              <Textarea
-                value={overrideData.teacherRemarks}
-                onChange={(e) =>
-                  setOverrideData((prev) => ({
-                    ...prev,
-                    teacherRemarks: e.target.value,
-                  }))
-                }
-                placeholder="Reason for override..."
-                data-testid="input-override-remarks"
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsOverrideDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSaveOverride}
-              disabled={overrideScoreMutation.isPending}
-            >
-              {overrideScoreMutation.isPending && (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              )}
-              Save Override
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        item={selectedItem}
+        reportCardQueryKey={["/api/reports", selectedReportCard?.id, "full"]}
+        gradingConfig={gradingConfig}
+        showRemarks={true}
+        onSaveSuccess={(serverData) => {
+          // Keep the class-term list in sync (position, averages) after a score override
+          if (serverData.reportCardTotals?.position !== undefined) {
+            queryClient.setQueryData(
+              ["/api/reports/class-term", selectedClass, selectedTerm],
+              (old: any) => {
+                if (!old || !Array.isArray(old)) return old;
+                return old.map((rc: any) =>
+                  rc.id === selectedReportCard?.id
+                    ? {
+                        ...rc,
+                        averagePercentage:
+                          serverData.reportCardTotals?.averagePercentage ??
+                          rc.averagePercentage,
+                        overallGrade:
+                          serverData.reportCardTotals?.overallGrade ??
+                          rc.overallGrade,
+                        position:
+                          serverData.reportCardTotals?.position ?? rc.position,
+                      }
+                    : rc,
+                );
+              },
+            );
+          }
+        }}
+      />
 
       {/* Hidden Bailey's Style Template for Export/Print */}
       {fullReportCard && isViewDialogOpen && (
