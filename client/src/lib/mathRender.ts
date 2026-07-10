@@ -238,6 +238,25 @@ export function getMathSegments(rawText: string): MathSegment[] {
 }
 
 // ---------------------------------------------------------------------------
+// Bulk pre-warming: eagerly compute segments + KaTeX HTML for a batch of raw
+// strings (e.g. every question/option/explanation in an exam) so that later
+// synchronous reads via getMathSegments/renderKatexHtml are pure cache hits.
+// Safe to call repeatedly — everything here is idempotent and memoized.
+// ---------------------------------------------------------------------------
+
+export function prewarmMathCache(texts: Array<string | null | undefined>): void {
+  for (const raw of texts) {
+    if (!raw) continue;
+    const segments = getMathSegments(raw);
+    for (const seg of segments) {
+      if (seg.type === "math") {
+        renderKatexHtml(seg.content, !!seg.display);
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
 // DOM post-processing: for already-rendered HTML content (e.g. rich-text
 // lesson notes inserted via dangerouslySetInnerHTML), walk text nodes and
 // replace math-like runs with rendered KaTeX, leaving markup/attributes and
