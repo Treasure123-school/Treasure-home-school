@@ -81,7 +81,7 @@ export default function AdminResultPublishing() {
   });
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [selectedTerm, setSelectedTerm] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<string>('finalized');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedReportCards, setSelectedReportCards] = useState<number[]>([]);
   const [viewingReportCard, setViewingReportCard] = useState<FinalizedReportCard | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -255,7 +255,7 @@ export default function AdminResultPublishing() {
       await queryClient.cancelQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
 
       // Snapshot ALL filter views for complete rollback
-      const filterViews = ['finalized', 'published', 'all'];
+      const filterViews = ['draft', 'finalized', 'published', 'all'];
       const previousDataMap: Record<string, any> = {};
       filterViews.forEach(filter => {
         previousDataMap[filter] = queryClient.getQueryData(['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter]);
@@ -329,7 +329,7 @@ export default function AdminResultPublishing() {
       removeFromSet(publishingIdsRef, reportCardId);
       // Rollback ALL filter views
       if (context?.previousDataMap) {
-        const filterViews = ['finalized', 'published', 'all'];
+        const filterViews = ['draft', 'finalized', 'published', 'all'];
         filterViews.forEach(filter => {
           if (context.previousDataMap[filter]) {
             queryClient.setQueryData(
@@ -357,7 +357,7 @@ export default function AdminResultPublishing() {
       await queryClient.cancelQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
 
       // Snapshot ALL filter views for complete rollback
-      const filterViews = ['finalized', 'published', 'all'];
+      const filterViews = ['draft', 'finalized', 'published', 'all'];
       const previousDataMap: Record<string, any> = {};
       filterViews.forEach(filter => {
         previousDataMap[filter] = queryClient.getQueryData(['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter]);
@@ -427,7 +427,7 @@ export default function AdminResultPublishing() {
     onError: (error: Error, _reportCardIds, context) => {
       // Rollback ALL filter views
       if (context?.previousDataMap) {
-        const filterViews = ['finalized', 'published', 'all'];
+        const filterViews = ['draft', 'finalized', 'published', 'all'];
         filterViews.forEach(filter => {
           if (context.previousDataMap[filter]) {
             queryClient.setQueryData(
@@ -462,7 +462,7 @@ export default function AdminResultPublishing() {
       await queryClient.cancelQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
 
       // Snapshot ALL filter views for complete rollback
-      const filterViews = ['finalized', 'published', 'all'];
+      const filterViews = ['draft', 'finalized', 'published', 'all'];
       const previousDataMap: Record<string, any> = {};
       filterViews.forEach(filter => {
         previousDataMap[filter] = queryClient.getQueryData(['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter]);
@@ -536,7 +536,7 @@ export default function AdminResultPublishing() {
       removeFromSet(unpublishingIdsRef, reportCardId);
       // Rollback ALL filter views
       if (context?.previousDataMap) {
-        const filterViews = ['finalized', 'published', 'all'];
+        const filterViews = ['draft', 'finalized', 'published', 'all'];
         filterViews.forEach(filter => {
           if (context.previousDataMap[filter]) {
             queryClient.setQueryData(
@@ -569,7 +569,7 @@ export default function AdminResultPublishing() {
       await queryClient.cancelQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
 
       // Snapshot ALL filter views for complete rollback
-      const filterViews = ['finalized', 'published', 'all'];
+      const filterViews = ['draft', 'finalized', 'published', 'all'];
       const previousDataMap: Record<string, any> = {};
       filterViews.forEach(filter => {
         previousDataMap[filter] = queryClient.getQueryData(['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter]);
@@ -639,7 +639,7 @@ export default function AdminResultPublishing() {
     onError: (error: Error, _reportCardIds, context) => {
       // Rollback ALL filter views
       if (context?.previousDataMap) {
-        const filterViews = ['finalized', 'published', 'all'];
+        const filterViews = ['draft', 'finalized', 'published', 'all'];
         filterViews.forEach(filter => {
           if (context.previousDataMap[filter]) {
             queryClient.setQueryData(
@@ -674,7 +674,7 @@ export default function AdminResultPublishing() {
       await queryClient.cancelQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
 
       // Snapshot ALL filter views for complete rollback
-      const filterViews = ['finalized', 'published', 'all'];
+      const filterViews = ['draft', 'finalized', 'published', 'all'];
       const previousDataMap: Record<string, any> = {};
       filterViews.forEach(filter => {
         previousDataMap[filter] = queryClient.getQueryData(['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter]);
@@ -720,7 +720,7 @@ export default function AdminResultPublishing() {
       removeFromSet(rejectingIdsRef, id);
       // Rollback ALL filter views
       if (context?.previousDataMap) {
-        const filterViews = ['finalized', 'published', 'all'];
+        const filterViews = ['draft', 'finalized', 'published', 'all'];
         filterViews.forEach(filter => {
           if (context.previousDataMap[filter]) {
             queryClient.setQueryData(
@@ -733,6 +733,70 @@ export default function AdminResultPublishing() {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
+
+  // Finalize mutation — Admin moves a draft report card directly to finalized
+  const finalizeMutation = useMutation({
+    mutationFn: async (reportCardId: number) => {
+      const response = await apiRequest('PATCH', `/api/reports/${reportCardId}/status`, { status: 'finalized' });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to finalize');
+      }
+      return response.json();
+    },
+    onMutate: async (reportCardId: number) => {
+      await queryClient.cancelQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
+      const filterViews = ['draft', 'finalized', 'published', 'all'];
+      const previousDataMap: Record<string, any> = {};
+      filterViews.forEach(filter => {
+        previousDataMap[filter] = queryClient.getQueryData(['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter]);
+      });
+      // Optimistically update: move card from draft to finalized in all cached views
+      filterViews.forEach(filter => {
+        queryClient.setQueryData(
+          ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter],
+          (old: any) => {
+            if (!old) return old;
+            return {
+              ...old,
+              reportCards: old.reportCards.map((rc: FinalizedReportCard) =>
+                rc.id === reportCardId ? { ...rc, status: 'finalized', finalizedAt: new Date().toISOString() } : rc
+              ),
+              statistics: {
+                ...old.statistics,
+                draft: Math.max(0, (old.statistics?.draft || 0) - 1),
+                finalized: (old.statistics?.finalized || 0) + 1,
+              },
+            };
+          }
+        );
+      });
+      return { previousDataMap, reportCardId };
+    },
+    onSuccess: (_data, reportCardId) => {
+      toast({ title: 'Finalized', description: 'Report card finalized. Ready for publishing.' });
+      realtimeService_invalidate();
+    },
+    onError: (error: Error, reportCardId, context) => {
+      if (context?.previousDataMap) {
+        const filterViews = ['draft', 'finalized', 'published', 'all'];
+        filterViews.forEach(filter => {
+          if (context.previousDataMap[filter]) {
+            queryClient.setQueryData(
+              ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter],
+              context.previousDataMap[filter]
+            );
+          }
+        });
+      }
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Helper: invalidate all report-card cache keys for a fresh refetch
+  const realtimeService_invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
+  };
 
   // Backfill default comments mutation
   const [isBackfillDialogOpen, setIsBackfillDialogOpen] = useState(false);
@@ -1061,7 +1125,7 @@ export default function AdminResultPublishing() {
       case 'draft':
         return <Badge variant="secondary" className={`${baseClasses} ${pendingOpacity}`}><Clock className="w-3 h-3 mr-1" /> Draft</Badge>;
       case 'finalized':
-        return <Badge className={`bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 ${baseClasses} ${pendingOpacity}`}><FileCheck className="w-3 h-3 mr-1" /> Awaiting Approval</Badge>;
+        return <Badge className={`bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 ${baseClasses} ${pendingOpacity}`}><FileCheck className="w-3 h-3 mr-1" /> Finalized</Badge>;
       case 'published':
         return <Badge className={`bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 ${baseClasses} ${pendingOpacity}`}><CheckCircle className="w-3 h-3 mr-1" /> Published</Badge>;
       default:
@@ -1086,10 +1150,10 @@ export default function AdminResultPublishing() {
         <div>
           <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2" data-testid="text-page-title">
             <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
-            Result Publishing
+            Report Card
           </h1>
           <p className="text-sm text-muted-foreground">
-            Review and publish finalized report cards
+            View and manage all student report cards — always accessible, regardless of teacher submission status
           </p>
         </div>
 
@@ -1285,9 +1349,10 @@ export default function AdminResultPublishing() {
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="finalized">Awaiting</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
                   <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="finalized">Finalized</SelectItem>
+                  <SelectItem value="published">Published</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1395,9 +1460,13 @@ export default function AdminResultPublishing() {
             <div className="text-center py-12">
               <GraduationCap className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground text-sm">
-                {statusFilter === 'finalized'
-                  ? 'No report cards awaiting approval'
-                  : 'No report cards found'}
+                {statusFilter === 'draft'
+                  ? 'No draft report cards found'
+                  : statusFilter === 'finalized'
+                  ? 'No finalized report cards found'
+                  : statusFilter === 'published'
+                  ? 'No published report cards found'
+                  : 'No report cards found for the selected filters'}
               </p>
             </div>
           ) : (
@@ -1646,7 +1715,8 @@ export default function AdminResultPublishing() {
                   <div className="flex items-center gap-1.5 sm:gap-2">
                     {getStatusBadge(fullReportCard.status)}
                     <span className="text-xs text-muted-foreground hidden md:inline">
-                      {fullReportCard.status === 'finalized' ? 'Ready for publishing' :
+                      {fullReportCard.status === 'draft' ? 'Draft — admin can finalize and publish' :
+                        fullReportCard.status === 'finalized' ? 'Ready for publishing' :
                         fullReportCard.status === 'published' ? 'Visible to students and parents' : ''}
                     </span>
                   </div>
@@ -1684,6 +1754,21 @@ export default function AdminResultPublishing() {
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
+                    {fullReportCard.status === 'draft' && (
+                      <Button
+                        onClick={() => {
+                          finalizeMutation.mutate(fullReportCard.id);
+                          setIsViewDialogOpen(false);
+                        }}
+                        size="sm"
+                        variant="outline"
+                        className="text-xs sm:text-sm h-9 text-amber-600 hover:text-amber-700"
+                        data-testid="button-finalize-dialog"
+                      >
+                        <FileCheck className="w-4 h-4 sm:mr-1.5" />
+                        <span className="hidden sm:inline">Finalize</span>
+                      </Button>
+                    )}
                     {fullReportCard.status === 'finalized' && (
                       <>
                         <Button

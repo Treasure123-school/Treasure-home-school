@@ -425,7 +425,7 @@ function Router() {
         </Route>
         <Route path="/portal/superadmin/results/publishing">
           <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
-            <SuperAdminPlaceholder title="Result Publishing" category="Results" description="Control result publication settings" />
+            <SuperAdminPlaceholder title="Report Card" category="Results" description="View and manage student report cards" />
           </ProtectedRoute>
         </Route>
 

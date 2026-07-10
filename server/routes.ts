@@ -14507,7 +14507,7 @@ School Management System Administration
         .where(
           and(
             status === 'all'
-              ? sql`${schema.reportCards.status} IN ('finalized', 'published')`
+              ? sql`1=1`
               : eq(schema.reportCards.status, status as string),
             classId ? eq(schema.reportCards.classId, Number(classId)) : sql`1=1`,
             termId ? eq(schema.reportCards.termId, Number(termId)) : sql`1=1`

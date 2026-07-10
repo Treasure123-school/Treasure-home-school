@@ -93,7 +93,7 @@ function buildRouteTable(): RouteEntry[] {
     { pattern: /^\/portal\/admin\/exams\/analysis\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Exams', href: '/portal/admin/exams' }, { label: 'Analysis', href: '/portal/admin/exams/overview' }, { label: 'Exam Detail' }] },
     { pattern: '/portal/admin/exams/manage', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Exams', href: '/portal/admin/exams' }, { label: 'Manage' }] },
     { pattern: '/portal/admin/exams', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Exams' }] },
-    { pattern: '/portal/admin/results/publishing', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Results' }, { label: 'Publishing' }] },
+    { pattern: '/portal/admin/results/publishing', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Report Card' }] },
     { pattern: '/portal/admin/academics/timetable', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Academics' }, { label: 'Timetable' }] },
     { pattern: '/portal/admin/academics/curriculum', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Academics' }, { label: 'Curriculum' }] },
     { pattern: '/portal/admin/subject-manager/unified-assignment', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Subject Manager' }, { label: 'Unified Assignment' }] },
