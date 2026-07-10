@@ -1227,13 +1227,13 @@ export default function AdminResultPublishing() {
       <div className="sr-only" aria-live="polite" aria-atomic="true" data-testid="aria-live-status">
         {pendingCount > 0 ? `Processing ${pendingCount} report card${pendingCount > 1 ? 's' : ''}...` : ''}
       </div>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 -mt-3 sm:-mt-1">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2 leading-none" data-testid="text-page-title">
             <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             Report Card
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground mt-2">
             View and manage all student report cards — always accessible, regardless of teacher submission status
           </p>
         </div>
