@@ -89,7 +89,7 @@ function buildRouteTable(): RouteEntry[] {
     { pattern: '/portal/admin/exam-payments', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Exam Payments' }] },
     { pattern: '/portal/admin/exams/overview', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Exams', href: '/portal/admin/exams' }, { label: 'Overview' }] },
     { pattern: '/portal/admin/exams/analysis', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Exams', href: '/portal/admin/exams' }, { label: 'Analysis' }] },
-    { pattern: /^\/portal\/admin\/exams\/analysis\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Exams', href: '/portal/admin/exams' }, { label: 'Analysis', href: '/portal/admin/exams/overview' }, { label: 'Exam Detail' }] },
+    { pattern: /^\/portal\/admin\/exams\/analysis\/[^/]+$/, crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Exams', href: '/portal/admin/exams' }, { label: 'Overview', href: '/portal/admin/exams/overview' }, { label: 'Exam Detail' }] },
     { pattern: '/portal/admin/exams/manage', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Exams', href: '/portal/admin/exams' }, { label: 'Manage' }] },
     { pattern: '/portal/admin/exams', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Exams' }] },
     { pattern: '/portal/admin/results/publishing', crumbs: [{ label: 'Dashboard', href: '/portal/admin' }, { label: 'Report Card' }] },
