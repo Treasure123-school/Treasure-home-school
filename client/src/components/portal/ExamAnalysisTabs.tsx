@@ -471,21 +471,53 @@ function StudentsTab({ analytics }: { analytics: AnalyticsData }) {
       }
       return response.json();
     },
+    onMutate: async (studentId: string) => {
+      // 1. Close the dialog immediately — no spinner wait for the teacher.
+      setRetakeDialog(null);
+
+      // 2. Cancel any in-flight analytics refetches so they don't stomp our optimistic update.
+      const cacheKey = ['/api/teacher/exam-analytics', String(analytics.exam.id)];
+      await queryClient.cancelQueries({ queryKey: cacheKey });
+
+      // 3. Snapshot for rollback.
+      const previousData = queryClient.getQueryData(cacheKey);
+
+      // 4. Optimistically remove the student from the performance list immediately.
+      queryClient.setQueryData(cacheKey, (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          studentPerformance: (old.studentPerformance ?? []).filter(
+            (s: any) => s.studentId !== studentId,
+          ),
+        };
+      });
+
+      return { previousData };
+    },
     onSuccess: () => {
       toast({
         title: 'Retake Allowed',
         description: 'The student can now retake this exam. Their previous submission has been archived.',
       });
-      setRetakeDialog(null);
-      queryClient.invalidateQueries({ queryKey: ['/api/teacher/exam-analytics', String(analytics.exam.id)] });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _studentId, context: any) => {
+      // Roll back — student row reappears.
+      if (context?.previousData !== undefined) {
+        queryClient.setQueryData(
+          ['/api/teacher/exam-analytics', String(analytics.exam.id)],
+          context.previousData,
+        );
+      }
       toast({
         title: 'Failed to Allow Retake',
         description: error.message,
         variant: 'destructive',
       });
-      setRetakeDialog(null);
+    },
+    onSettled: () => {
+      // Background-sync with the server regardless of outcome.
+      queryClient.invalidateQueries({ queryKey: ['/api/teacher/exam-analytics', String(analytics.exam.id)] });
     },
   });
 
@@ -702,14 +734,7 @@ function StudentsTab({ analytics }: { analytics: AnalyticsData }) {
               onClick={() => retakeDialog && allowRetakeMutation.mutate(retakeDialog.studentId)}
               data-testid="button-confirm-retake"
             >
-              {allowRetakeMutation.isPending ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  Processing...
-                </>
-              ) : (
-                'Allow Retake'
-              )}
+              Allow Retake
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

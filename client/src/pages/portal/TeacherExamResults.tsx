@@ -68,7 +68,6 @@ export default function TeacherExamResults() {
   const examId = params?.examId ? parseInt(params.examId) : null;
   const [editingScores, setEditingScores] = useState<Map<number, EditableScore>>(new Map());
   const [syncingResults, setSyncingResults] = useState<Set<number>>(new Set());
-  const [allowingRetake, setAllowingRetake] = useState<Set<number>>(new Set());
   const [retakeConfirmDialog, setRetakeConfirmDialog] = useState<{
     isOpen: boolean;
     studentId: string;
@@ -240,31 +239,44 @@ export default function TeacherExamResults() {
       }
       return response.json();
     },
-    onSuccess: (_, variables) => {
+    onMutate: async ({ resultId }) => {
+      // 1. Close the dialog immediately — teacher sees instant feedback, no spinner wait.
+      setRetakeConfirmDialog(null);
+
+      // 2. Cancel any in-flight refetches so they don't overwrite our optimistic removal.
+      await queryClient.cancelQueries({ queryKey: ['/api/exam-results/exam', examId] });
+
+      // 3. Snapshot the current list for rollback on error.
+      const previousResults = queryClient.getQueryData<EnrichedExamResult[]>(['/api/exam-results/exam', examId]);
+
+      // 4. Optimistically remove the student's result row from the list immediately.
+      queryClient.setQueryData<EnrichedExamResult[]>(
+        ['/api/exam-results/exam', examId],
+        (old) => old?.filter((r) => r.id !== resultId) ?? [],
+      );
+
+      return { previousResults };
+    },
+    onSuccess: () => {
       toast({
         title: "Retake Allowed",
         description: "The student can now retake this exam. Their previous submission has been archived.",
       });
-      setAllowingRetake((prev) => {
-        const next = new Set(prev);
-        next.delete(variables.resultId);
-        return next;
-      });
-      setRetakeConfirmDialog(null);
-      queryClient.invalidateQueries({ queryKey: ['/api/exam-results/exam', examId] });
     },
-    onError: (error: Error, variables) => {
+    onError: (error: Error, _variables, context) => {
+      // Roll back the optimistic removal so the row reappears.
+      if (context?.previousResults !== undefined) {
+        queryClient.setQueryData(['/api/exam-results/exam', examId], context.previousResults);
+      }
       toast({
         title: "Failed to Allow Retake",
         description: error.message,
         variant: "destructive",
       });
-      setAllowingRetake((prev) => {
-        const next = new Set(prev);
-        next.delete(variables.resultId);
-        return next;
-      });
-      setRetakeConfirmDialog(null);
+    },
+    onSettled: () => {
+      // Background-sync with the server regardless of outcome.
+      queryClient.invalidateQueries({ queryKey: ['/api/exam-results/exam', examId] });
     },
   });
 
@@ -351,7 +363,7 @@ export default function TeacherExamResults() {
 
   const handleConfirmRetake = () => {
     if (retakeConfirmDialog) {
-      setAllowingRetake((prev) => new Set(prev).add(retakeConfirmDialog.resultId));
+      // Dialog closes + row disappears optimistically inside onMutate.
       allowRetakeMutation.mutate({
         studentId: retakeConfirmDialog.studentId,
         resultId: retakeConfirmDialog.resultId,
@@ -600,9 +612,9 @@ export default function TeacherExamResults() {
                                 variant="outline"
                                 size="icon"
                                 data-testid={`button-actions-mobile-${index}`}
-                                disabled={isSyncing || allowingRetake.has(result.id)}
+                                disabled={isSyncing}
                               >
-                                {(isSyncing || allowingRetake.has(result.id)) ? (
+                                {isSyncing ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
                                   <MoreVertical className="h-4 w-4" />
@@ -620,7 +632,6 @@ export default function TeacherExamResults() {
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => handleAllowRetakeClick(result)}
-                                disabled={allowingRetake.has(result.id)}
                                 data-testid={`button-retake-mobile-${index}`}
                               >
                                 <RotateCcw className="h-4 w-4 mr-2" />
@@ -752,15 +763,10 @@ export default function TeacherExamResults() {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleAllowRetakeClick(result)}
-                                  disabled={allowingRetake.has(result.id)}
                                   title="Allow Retake"
                                   data-testid={`button-retake-${index}`}
                                 >
-                                  {allowingRetake.has(result.id) ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                  ) : (
-                                    <RotateCcw className="h-3 w-3" />
-                                  )}
+                                  <RotateCcw className="h-3 w-3" />
                                 </Button>
                               </div>
                             </TableCell>
@@ -797,18 +803,11 @@ export default function TeacherExamResults() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel data-testid="button-cancel-retake">Cancel</AlertDialogCancel>
-              <AlertDialogAction 
+              <AlertDialogAction
                 onClick={handleConfirmRetake}
                 data-testid="button-confirm-retake"
               >
-                {allowRetakeMutation.isPending ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Processing...
-                  </>
-                ) : (
-                  'Allow Retake'
-                )}
+                Allow Retake
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
