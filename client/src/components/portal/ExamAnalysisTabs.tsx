@@ -454,7 +454,7 @@ function OverviewTab({ analytics }: { analytics: AnalyticsData }) {
 // ─── Tab: Student Performance ─────────────────────────────────────────────────
 
 function StudentsTab({ analytics }: { analytics: AnalyticsData }) {
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [gradeFilter, setGradeFilter] = useState<string>('all');
@@ -472,8 +472,13 @@ function StudentsTab({ analytics }: { analytics: AnalyticsData }) {
       return response.json();
     },
     onMutate: async (studentId: string) => {
-      // 1. Close the dialog immediately — no spinner wait for the teacher.
+      // 1. Close the dialog and show success feedback immediately — no waiting for the API.
       setRetakeDialog(null);
+
+      const { id: toastId } = toast({
+        title: 'Retake Allowed',
+        description: 'The student can now retake this exam. Their previous submission has been archived.',
+      });
 
       // 2. Cancel any in-flight analytics refetches so they don't stomp our optimistic update.
       const cacheKey = ['/api/teacher/exam-analytics', String(analytics.exam.id)];
@@ -493,15 +498,12 @@ function StudentsTab({ analytics }: { analytics: AnalyticsData }) {
         };
       });
 
-      return { previousData };
-    },
-    onSuccess: () => {
-      toast({
-        title: 'Retake Allowed',
-        description: 'The student can now retake this exam. Their previous submission has been archived.',
-      });
+      return { previousData, toastId };
     },
     onError: (error: Error, _studentId, context: any) => {
+      // Dismiss the premature success toast so the user isn't misled.
+      if (context?.toastId) dismiss(context.toastId);
+
       // Roll back — student row reappears.
       if (context?.previousData !== undefined) {
         queryClient.setQueryData(
@@ -516,8 +518,13 @@ function StudentsTab({ analytics }: { analytics: AnalyticsData }) {
       });
     },
     onSettled: () => {
-      // Background-sync with the server regardless of outcome.
-      queryClient.invalidateQueries({ queryKey: ['/api/teacher/exam-analytics', String(analytics.exam.id)] });
+      // Mark the query stale so the next mount/navigate fetches fresh data —
+      // but do NOT refetch the currently active view, which would undo the
+      // optimistic removal and make the student row reappear.
+      queryClient.invalidateQueries({
+        queryKey: ['/api/teacher/exam-analytics', String(analytics.exam.id)],
+        refetchType: 'none',
+      });
     },
   });
 

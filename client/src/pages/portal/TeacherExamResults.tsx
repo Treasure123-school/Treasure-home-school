@@ -62,7 +62,7 @@ interface EditableScore {
 
 export default function TeacherExamResults() {
   const { user } = useAuth();
-  const { toast } = useToast();
+  const { toast, dismiss } = useToast();
   const queryClient = useQueryClient();
   const [, params] = useRoute('/portal/teacher/results/exam/:examId');
   const examId = params?.examId ? parseInt(params.examId) : null;
@@ -240,8 +240,13 @@ export default function TeacherExamResults() {
       return response.json();
     },
     onMutate: async ({ resultId }) => {
-      // 1. Close the dialog immediately — teacher sees instant feedback, no spinner wait.
+      // 1. Close dialog + show success feedback instantly — no waiting for the API.
       setRetakeConfirmDialog(null);
+
+      const { id: toastId } = toast({
+        title: "Retake Allowed",
+        description: "The student can now retake this exam. Their previous submission has been archived.",
+      });
 
       // 2. Cancel any in-flight refetches so they don't overwrite our optimistic removal.
       await queryClient.cancelQueries({ queryKey: ['/api/exam-results/exam', examId] });
@@ -249,21 +254,18 @@ export default function TeacherExamResults() {
       // 3. Snapshot the current list for rollback on error.
       const previousResults = queryClient.getQueryData<EnrichedExamResult[]>(['/api/exam-results/exam', examId]);
 
-      // 4. Optimistically remove the student's result row from the list immediately.
+      // 4. Optimistically remove the student's result row immediately.
       queryClient.setQueryData<EnrichedExamResult[]>(
         ['/api/exam-results/exam', examId],
         (old) => old?.filter((r) => r.id !== resultId) ?? [],
       );
 
-      return { previousResults };
-    },
-    onSuccess: () => {
-      toast({
-        title: "Retake Allowed",
-        description: "The student can now retake this exam. Their previous submission has been archived.",
-      });
+      return { previousResults, toastId };
     },
     onError: (error: Error, _variables, context) => {
+      // Dismiss the premature success toast so the user isn't misled.
+      if (context?.toastId) dismiss(context.toastId);
+
       // Roll back the optimistic removal so the row reappears.
       if (context?.previousResults !== undefined) {
         queryClient.setQueryData(['/api/exam-results/exam', examId], context.previousResults);
@@ -275,8 +277,12 @@ export default function TeacherExamResults() {
       });
     },
     onSettled: () => {
-      // Background-sync with the server regardless of outcome.
-      queryClient.invalidateQueries({ queryKey: ['/api/exam-results/exam', examId] });
+      // Mark stale but do NOT refetch the active view — that would undo the
+      // optimistic removal and make the student row reappear.
+      queryClient.invalidateQueries({
+        queryKey: ['/api/exam-results/exam', examId],
+        refetchType: 'none',
+      });
     },
   });
 
