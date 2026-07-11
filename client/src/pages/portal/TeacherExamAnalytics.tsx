@@ -48,7 +48,8 @@ export default function TeacherExamAnalytics() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" data-testid="heading-exam-analytics">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2" data-testid="heading-exam-analytics">
+            <BarChart2 className="h-6 w-6 text-primary" />
             {analytics ? analytics.exam.name : 'Exam Analytics'}
           </h1>
           <p className="text-muted-foreground text-sm mt-0.5">
