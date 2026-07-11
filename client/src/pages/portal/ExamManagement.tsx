@@ -118,7 +118,7 @@ function QuestionOptions({ questionId }: { questionId: number }) {
           </span>
           <span className="text-sm">{option.optionText}</span>
           {option.isCorrect && (
-            <span className="text-xs bg-green-100 text-green-800 px-1 rounded">✓ Correct</span>
+            <Check className="w-3.5 h-3.5 text-green-600 shrink-0" />
           )}
         </div>
       ))}
@@ -139,6 +139,7 @@ export default function ExamManagement() {
   const [isSecurityExpanded, setIsSecurityExpanded] = useState(false);
   const [deletingExam, setDeletingExam] = useState<Exam | null>(null);
   const [deletingExamIds, setDeletingExamIds] = useState<Set<number>>(new Set());
+  const [questionToDelete, setQuestionToDelete] = useState<number | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
 
   const searchParams = useSearch();
@@ -652,53 +653,60 @@ export default function ExamManagement() {
     },
   });
 
-  // Delete question mutation — confirm-first (not optimistic). The question
-  // only leaves the list after the backend confirms the deletion succeeded.
+  // Delete question mutation — optimistic update for instant UI feedback.
+  // The item disappears immediately; restored automatically if the backend fails.
   const deleteQuestionMutation = useMutation({
     mutationFn: async (questionId: number) => {
-      try {
-        const response = await apiRequest('DELETE', `/api/exam-questions/${questionId}`);
-        if (!response.ok) {
-          const body = await response.json().catch(() => ({}));
-          throw new Error(body?.message || 'Failed to delete question');
-        }
-        if (response.status === 204) return null;
-        const contentLength = response.headers.get('content-length');
-        if (contentLength && parseInt(contentLength) > 0) {
-          return response.json();
-        }
-        return null;
-      } catch (error) {
-        throw error instanceof Error ? error : new Error('Failed to delete question');
+      const response = await apiRequest('DELETE', `/api/exam-questions/${questionId}`);
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.message || 'Failed to delete question');
       }
+      return null;
     },
     onMutate: async (questionId) => {
-      // Mark question as pending deletion to prevent race conditions with Realtime.
-      // The item itself is left in place until onSuccess confirms the delete.
+      // Mark as pending to shield against race conditions with Realtime events
       pendingQuestionDeletionsRef.current.add(questionId);
-    },
-    onSuccess: (_, questionId) => {
-      // Only now remove the question from the cache — after backend confirmation.
+
       const examId = selectedExam?.id;
+
       if (examId) {
+        // Cancel any in-flight refetches so they don't overwrite our optimistic removal
+        await queryClient.cancelQueries({ queryKey: ['/api/exam-questions', examId] });
+
+        // Snapshot the current list so we can roll back on error
+        const snapshot = queryClient.getQueryData<ExamQuestion[]>(['/api/exam-questions', examId]);
+
+        // Immediately remove from cache — user sees it gone right now
         queryClient.setQueryData<ExamQuestion[]>(['/api/exam-questions', examId], (old) =>
           old?.filter((q) => q.id !== questionId) ?? []
         );
-      }
-      if (editingQuestion?.id === questionId) {
-        setEditingQuestion(null);
+
+        // Immediate success feedback — no waiting for the server
+        toast({ title: "Question deleted", description: "Question removed successfully." });
+
+        return { snapshot, examId };
       }
 
+      toast({ title: "Question deleted", description: "Question removed successfully." });
+      return { snapshot: undefined, examId: undefined };
+    },
+    onSuccess: (_, questionId) => {
       pendingQuestionDeletionsRef.current.delete(questionId);
+      if (editingQuestion?.id === questionId) setEditingQuestion(null);
 
-      toast({ title: "Success", description: "Question deleted successfully" });
-
-      // Silent background invalidations
+      // Silent background sync — does not flicker the UI
       queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/question-options', questionId] });
     },
-    onError: (error: any, questionId) => {
+    onError: (error: any, questionId, context) => {
       pendingQuestionDeletionsRef.current.delete(questionId);
+
+      // Roll back optimistic removal — restore exact previous list
+      const ctx = context as { snapshot?: ExamQuestion[]; examId?: number } | undefined;
+      if (ctx?.snapshot !== undefined && ctx?.examId) {
+        queryClient.setQueryData(['/api/exam-questions', ctx.examId], ctx.snapshot);
+      }
 
       toast({
         title: "Deletion Failed",
@@ -707,6 +715,13 @@ export default function ExamManagement() {
       });
     },
   });
+
+  // Handles confirm-delete: closes the modal immediately then fires the mutation
+  // so the user gets instant feedback without waiting for the network.
+  const handleConfirmDeleteQuestion = useCallback((questionId: number) => {
+    setQuestionToDelete(null); // close confirmation dialog immediately
+    deleteQuestionMutation.mutate(questionId);
+  }, [deleteQuestionMutation]);
 
   // Create question mutation with no retries to prevent circuit breaker amplification
   const createQuestionMutation = useMutation({
@@ -2445,48 +2460,39 @@ export default function ExamManagement() {
                               </div>
                             )}
                           </div>
-                          <div className="flex space-x-1">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEditQuestion(question)}
-                              disabled={updateQuestionMutation.isPending}
-                              data-testid={`button-edit-question-${question.id}`}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  disabled={deleteQuestionMutation.isPending}
-                                  data-testid={`button-delete-question-${question.id}`}
-                                  aria-label={`Delete question ${index + 1}`}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Question</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete this question? This action cannot be undone and will permanently remove the question and all associated answer options.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel disabled={deleteQuestionMutation.isPending}>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => deleteQuestionMutation.mutate(question.id)}
-                                    disabled={deleteQuestionMutation.isPending}
-                                    className="bg-destructive hover:bg-destructive/90"
-                                  >
-                                    {deleteQuestionMutation.isPending ? 'Deleting...' : 'Delete Question'}
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                data-testid={`button-actions-question-${question.id}`}
+                                aria-label={`Actions for question ${index + 1}`}
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => handleEditQuestion(question)}
+                                disabled={updateQuestionMutation.isPending}
+                                data-testid={`button-edit-question-${question.id}`}
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => setQuestionToDelete(question.id)}
+                                disabled={deleteQuestionMutation.isPending}
+                                data-testid={`button-delete-question-${question.id}`}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </CardContent>
                     </Card>
@@ -2497,6 +2503,32 @@ export default function ExamManagement() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Controlled delete-question confirmation — lives outside the question map so
+          the AlertDialog is never nested inside a DropdownMenu, which prevents portal
+          conflicts and ensures clean focus management. */}
+      <AlertDialog
+        open={questionToDelete !== null}
+        onOpenChange={(open) => { if (!open) setQuestionToDelete(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Question</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this question? This action cannot be undone and will permanently remove the question and all associated answer options.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { if (questionToDelete !== null) handleConfirmDeleteQuestion(questionToDelete); }}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Delete Question
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Preview Exam Dialog */}
       {previewExam && (
