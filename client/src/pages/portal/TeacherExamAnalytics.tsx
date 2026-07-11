@@ -58,7 +58,7 @@ export default function TeacherExamAnalytics() {
               : 'Deep insights into student performance and question effectiveness'}
           </p>
         </div>
-        {statusBadge}
+        <div className="w-fit">{statusBadge}</div>
       </div>
 
       {/* Filters */}
