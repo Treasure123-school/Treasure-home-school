@@ -295,11 +295,15 @@ export default function ExamManagement() {
 
   // Enable real-time updates for exam questions when viewing/editing an exam
   // Note: queryKey must match exactly with the useQuery queryKey for cache invalidation to work
+  // skipCacheInvalidation=true: we manage all cache updates manually in onEvent and via
+  // optimistic mutations. Without this, the hook calls refetchQueries() on every socket
+  // event which races with optimistic updates and can restore deleted questions.
   useSocketIORealtime({
     table: 'exam_questions',
     queryKey: ['/api/exam-questions', selectedExam?.id],
     examId: selectedExam?.id,
     enabled: !!selectedExam?.id,
+    skipCacheInvalidation: true,
     onEvent: (event) => {
       // Handle question.deleted event - immediately remove from cache
       if (event.eventType === 'question.deleted' || (event.operation === 'DELETE' && event.table === 'exam_questions')) {
@@ -694,6 +698,16 @@ export default function ExamManagement() {
     onSuccess: (_, questionId) => {
       pendingQuestionDeletionsRef.current.delete(questionId);
       if (editingQuestion?.id === questionId) setEditingQuestion(null);
+
+      // Defensive: ensure the question is gone even if a socket-triggered refetch
+      // restored it between onMutate and now. This is a no-op when the optimistic
+      // update already removed it correctly.
+      const examId = selectedExam?.id;
+      if (examId) {
+        queryClient.setQueryData<ExamQuestion[]>(['/api/exam-questions', examId], (old) =>
+          old?.filter((q) => q.id !== questionId) ?? []
+        );
+      }
 
       // Silent background sync — does not flicker the UI
       queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'] });
