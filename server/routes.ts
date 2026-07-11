@@ -304,26 +304,46 @@ async function cleanupExpiredExamSessions(): Promise<void> {
     const rawResult = await storage.getExpiredExamSessions(now, 50);
     const expiredSessions = Array.isArray(rawResult) ? rawResult : []; // Ensure it's always an array
 
+    if (expiredSessions.length > 0) {
+      logExamTiming('background-sweep-found', { count: expiredSessions.length, sessionIds: expiredSessions.map((s: any) => s.id) });
+    }
 
-    // Process in smaller batches to avoid overwhelming the database
+    // Process in smaller batches to avoid overwhelming the database.
+    // IMPORTANT: Use claimExamSessionForSubmission (atomic WHERE isCompleted=false update) instead
+    // of updateExamSession — this ensures the sweep never races with the per-request auto-submit
+    // paths (answer-save, progress-update) and never double-scores a session.
     for (const session of expiredSessions) {
       try {
 
-        // Mark session as auto-submitted by server cleanup
-        await storage.updateExamSession(session.id, {
-          isCompleted: true,
+        const claimed = await storage.claimExamSessionForSubmission(session.id, {
           submittedAt: now,
-          status: 'submitted'
+          status: EXAM_SESSION_STATUS.SUBMITTED,
+          metadata: JSON.stringify({
+            submissionReason: 'timeout',
+            autoSubmittedByServer: true,
+            expiryDetectedAt: 'background-sweep',
+          }),
         });
+
+        if (!claimed) {
+          // Another request (answer-save, progress-update, or a parallel sweep) already
+          // claimed this session — nothing to do.
+          logExamTiming('background-sweep-skip-already-claimed', { sessionId: session.id });
+          continue;
+        }
+
+        logExamTiming('background-sweep-submitted', { sessionId: session.id, examId: session.examId, studentId: session.studentId });
 
         // Auto-score the session using our optimized scoring
         await autoScoreExamSession(session.id, storage);
 
       } catch (error) {
         // Continue with other sessions even if one fails
+        logExamTiming('background-sweep-error', { sessionId: session.id, error: error instanceof Error ? error.message : String(error) });
       }
     }
   } catch (error) {
+    logExamTiming('background-sweep-fatal', { error: error instanceof Error ? error.message : String(error) });
   }
 }
 

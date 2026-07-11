@@ -261,6 +261,7 @@ export default function StudentExams() {
     questionOptions: [] as QuestionOption[],
     existingAnswers: [] as StudentAnswer[],
     examQuestions: [] as ExamQuestion[],
+    isExamExpiredLocked: false,
   });
 
   // Socket.IO realtime updates for exams list.
@@ -1027,6 +1028,7 @@ export default function StudentExams() {
       questionOptions,
       existingAnswers,
       examQuestions,
+      isExamExpiredLocked,
     };
   });
 
@@ -1048,7 +1050,11 @@ export default function StudentExams() {
         questionOptions: opts,
         existingAnswers: existing,
         examQuestions: questions,
+        isExamExpiredLocked: expiredLocked,
       } = kbStateRef.current;
+
+      // Keyboard shortcuts must not work after expiry — same rule as button disabled states.
+      if (expiredLocked) return;
 
       if (!q) return;
 
@@ -1800,8 +1806,19 @@ export default function StudentExams() {
 
   // Auto-submit with safe wait time for data integrity
   const handleAutoSubmitOnTimeout = async () => {
-    const startTime = Date.now();
+    // GUARD: the timer tick fires every second — once remainingMs hits 0 the interval
+    // keeps running until React tears down the effect. Set isAutoSubmittingRef immediately
+    // so only the very first tick proceeds; every subsequent call is a no-op.
+    if (isAutoSubmittingRef.current) return;
+    isAutoSubmittingRef.current = true;
 
+    // Clear all pending debounce timers so no answer-save fires AFTER expiry.
+    // (Any save that already reached the server is kept; the backend rejects
+    // anything that arrives after the deadline anyway.)
+    Object.values(debounceTimersRef.current).forEach(t => clearTimeout(t));
+    debounceTimersRef.current = {};
+
+    const startTime = Date.now();
 
     if (hasPendingSaves()) {
       toast({
