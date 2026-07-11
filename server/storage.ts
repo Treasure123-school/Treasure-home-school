@@ -4265,9 +4265,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(schema.examSessions.isCompleted, false))
       .orderBy(desc(schema.examSessions.startedAt));
   }
-  // PERFORMANCE: Get only expired sessions directly from database
+  // PERFORMANCE: Get only expired sessions directly from database.
+  // SERVER-AUTHORITATIVE TIMER FIX: this used to fall back to a flat 2-hour window
+  // regardless of the exam's actual time limit, so this safety-net sweep (which runs
+  // every few minutes) effectively never caught most timed-out exams — students could
+  // keep the session "in progress" for up to 2 hours after the timer hit 00:00 before the
+  // background job would notice. It now joins the exam's real `timeLimit` (defaulting to
+  // 60 minutes only when the exam has no limit set) plus a small grace period, matching
+  // the same deadline every other exam-taking endpoint enforces.
   async getExpiredExamSessions(now: Date, limit = 100): Promise<ExamSession[]> {
-    // Temporarily simplified to work with existing schema - will be enhanced after schema sync
     return await db.select({
       id: schema.examSessions.id,
       examId: schema.examSessions.examId,
@@ -4281,10 +4287,10 @@ export class DatabaseStorage implements IStorage {
       status: schema.examSessions.status,
       createdAt: schema.examSessions.createdAt
     }).from(schema.examSessions)
+      .innerJoin(schema.exams, eq(schema.exams.id, schema.examSessions.examId))
       .where(and(
         eq(schema.examSessions.isCompleted, false),
-        // Fallback: Use startedAt + reasonable timeout estimate for expired sessions
-        dsql`${schema.examSessions.startedAt} + interval '2 hours' < ${now.toISOString()}`
+        dsql`${schema.examSessions.startedAt} + (COALESCE(${schema.exams.timeLimit}, 60) * interval '1 minute') + interval '5 seconds' < ${now.toISOString()}`
       ))
       .orderBy(asc(schema.examSessions.startedAt))
       .limit(limit);
