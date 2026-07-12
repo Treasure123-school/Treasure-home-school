@@ -194,7 +194,7 @@ export function ManualQuestionFields({
                   onChange={(e) => setOptionText(i, e.target.value)}
                   placeholder={`Option ${String.fromCharCode(65 + i)}`}
                   disabled={disabled}
-                  className="h-8 border-0 bg-transparent p-0 focus-visible:ring-0 text-sm"
+                  className="h-8 border-0 bg-transparent p-0 focus-visible:ring-0 focus:outline-none text-sm"
                 />
                 <button
                   type="button"

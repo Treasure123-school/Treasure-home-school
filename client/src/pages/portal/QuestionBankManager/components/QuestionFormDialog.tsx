@@ -269,7 +269,6 @@ export function QuestionFormDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={mutation.isPending}>Cancel</Button>
           <Button onClick={handleSave} disabled={mutation.isPending} data-testid="btn-save-question">
             {mutation.isPending ? "Saving…" : isEdit ? "Save Changes" : "Create Question"}
           </Button>
