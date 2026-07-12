@@ -106,17 +106,14 @@ function BrowseRefinementFilters({
         </SelectContent>
       </Select>
 
-      {/* Clear — X icon on mobile, text on desktop */}
       {hasFilters && (
         <Button
-          size="icon"
+          size="sm"
           variant="ghost"
-          className="h-8 w-8 shrink-0 sm:w-auto sm:px-2.5 text-muted-foreground"
+          className="h-8 shrink-0 text-xs text-muted-foreground px-2.5"
           onClick={onClear}
-          title="Clear filters"
         >
-          <span className="hidden sm:inline text-xs">Clear</span>
-          <span className="sm:hidden text-base leading-none">×</span>
+          Clear
         </Button>
       )}
     </div>
