@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Plus, XCircle, FileQuestion } from "lucide-react";
 import { DIFFICULTY_OPTS, TYPE_OPTS } from "../constants";
 import type { ContextFilters } from "../types";
+import { QuestionImageUpload } from "@/components/question/QuestionImageUpload";
 
 // isAdmin is read from outer scope via closure in the original; pass it as prop here
 interface QuestionFormDialogProps {
@@ -38,6 +39,8 @@ export function QuestionFormDialog({
     classId:      editItem?.classId      ?? context.classId,
     termId:       editItem?.termId       ?? context.termId,
     topicId:      editItem?.topicId      ?? null,
+    instructions: editItem?.instructions ?? "",
+    imageUrl:     editItem?.imageUrl     ?? null,
   }));
 
   const selectedBank   = banks.find((b: any) => b.id === Number(form.bankId));
@@ -135,7 +138,13 @@ export function QuestionFormDialog({
     if (!form.bankId)
       return toast({ title: "Please select a question bank", variant: "destructive" });
 
-    const payload: any = { ...form };
+    const payload: any = {
+      ...form,
+      // Normalise: send null instead of empty string for optional text fields
+      instructions: form.instructions?.trim() || null,
+      imageUrl:     form.imageUrl || null,
+    };
+
     if (form.questionType === "multiple_choice") {
       const valid = options.filter(o => o.optionText.trim());
       if (valid.length < 2)
@@ -259,6 +268,31 @@ export function QuestionFormDialog({
             />
           </div>
 
+          {/* Instructions */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold text-foreground/70">
+              Instructions{" "}
+              <span className="text-muted-foreground font-normal">
+                (optional — shown to student above the question)
+              </span>
+            </Label>
+            <Textarea
+              data-testid="form-instructions"
+              value={form.instructions}
+              onChange={(e) => setForm((p: any) => ({ ...p, instructions: e.target.value }))}
+              placeholder="e.g. Choose the correct answer. / Study the diagram below. / Simplify the expression."
+              rows={2}
+              className="resize-none"
+            />
+          </div>
+
+          {/* Question Image */}
+          <QuestionImageUpload
+            value={form.imageUrl}
+            onChange={(url) => setForm((p: any) => ({ ...p, imageUrl: url }))}
+            disabled={mutation.isPending}
+          />
+
           {/* Difficulty + Points */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -346,7 +380,7 @@ export function QuestionFormDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose} disabled={mutation.isPending}>Cancel</Button>
           <Button onClick={handleSave} disabled={mutation.isPending} data-testid="btn-save-question">
             {mutation.isPending ? "Saving…" : isEdit ? "Save Changes" : "Create Question"}
           </Button>

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, MutableRefObject } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo, MutableRefObject } from 'react';
 import { flushSync } from 'react-dom';
 import jsPDF from 'jspdf';
 import JSZip from 'jszip';
@@ -29,7 +29,11 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
+import { SearchInput } from '@/components/shared/SearchInput';
 import {
   FileText,
   CheckCircle,
@@ -45,12 +49,17 @@ import {
   MoreVertical,
   Printer,
   Download,
-  Undo2
+  Undo2,
+  Filter,
+  ArrowUpDown,
+  SearchX,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { calculateAge } from '@/lib/report-card-utils';
 import { ProfessionalReportCard } from '@/components/ui/professional-report-card';
 import { EditScoreDialog } from '@/components/portal/EditScoreDialog';
+import { MiniStatCardGrid } from '@/components/ui/mini-stat-card';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface FinalizedReportCard {
   id: number;
@@ -84,6 +93,8 @@ export default function AdminResultPublishing() {
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [selectedTerm, setSelectedTerm] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sortBy, setSortBy] = useState<string>('name-asc');
   const [selectedReportCards, setSelectedReportCards] = useState<number[]>([]);
   const [viewingReportCard, setViewingReportCard] = useState<FinalizedReportCard | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -182,6 +193,46 @@ export default function AdminResultPublishing() {
 
   const reportCards: FinalizedReportCard[] = reportCardsData?.reportCards || [];
   const statistics: Statistics = reportCardsData?.statistics || { draft: 0, finalized: 0, published: 0 };
+
+  // Client-side search + sort — safe since this endpoint returns the full unpaginated list.
+  const displayedReportCards = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const filtered = q
+      ? reportCards.filter((rc) =>
+          rc.studentName?.toLowerCase().includes(q) ||
+          rc.admissionNumber?.toLowerCase().includes(q)
+        )
+      : reportCards;
+
+    const sorted = [...filtered];
+    switch (sortBy) {
+      case 'name-asc':
+        sorted.sort((a, b) => (a.studentName || '').localeCompare(b.studentName || ''));
+        break;
+      case 'name-desc':
+        sorted.sort((a, b) => (b.studentName || '').localeCompare(a.studentName || ''));
+        break;
+      case 'average-desc':
+        sorted.sort((a, b) => (b.averagePercentage ?? -1) - (a.averagePercentage ?? -1));
+        break;
+      case 'average-asc':
+        sorted.sort((a, b) => (a.averagePercentage ?? -1) - (b.averagePercentage ?? -1));
+        break;
+      case 'class-asc':
+        sorted.sort((a, b) => (a.className || '').localeCompare(b.className || '') || (a.studentName || '').localeCompare(b.studentName || ''));
+        break;
+      case 'status-asc':
+        sorted.sort((a, b) => (a.status || '').localeCompare(b.status || '') || (a.studentName || '').localeCompare(b.studentName || ''));
+        break;
+      case 'date-desc':
+        sorted.sort((a, b) => new Date(b.finalizedAt || b.generatedAt).getTime() - new Date(a.finalizedAt || a.generatedAt).getTime());
+        break;
+      case 'date-asc':
+        sorted.sort((a, b) => new Date(a.finalizedAt || a.generatedAt).getTime() - new Date(b.finalizedAt || b.generatedAt).getTime());
+        break;
+    }
+    return sorted;
+  }, [reportCards, searchQuery, sortBy]);
 
   const { data: fullReportCard, isLoading: loadingFullReport } = useQuery({
     queryKey: ['/api/reports', viewingReportCard?.id, 'full'],
@@ -1154,11 +1205,12 @@ export default function AdminResultPublishing() {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
+      // Select from the currently visible (searched/sorted) list only — not rows hidden by search
       if (statusFilter === 'published') {
-        const publishedIds = reportCards.filter(rc => rc.status === 'published').map(rc => rc.id);
+        const publishedIds = displayedReportCards.filter(rc => rc.status === 'published').map(rc => rc.id);
         setSelectedReportCards(publishedIds);
       } else {
-        const finalizedIds = reportCards.filter(rc => rc.status === 'finalized').map(rc => rc.id);
+        const finalizedIds = displayedReportCards.filter(rc => rc.status === 'finalized').map(rc => rc.id);
         setSelectedReportCards(finalizedIds);
       }
     } else {
@@ -1204,7 +1256,7 @@ export default function AdminResultPublishing() {
       case 'draft':
         return <Badge variant="secondary" className={`${baseClasses} ${pendingOpacity}`}><Clock className="w-3 h-3 mr-1" /> Draft</Badge>;
       case 'finalized':
-        return <Badge className={`bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 ${baseClasses} ${pendingOpacity}`}><FileCheck className="w-3 h-3 mr-1" /> In Progress</Badge>;
+        return <Badge className={`bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 ${baseClasses} ${pendingOpacity}`}><FileCheck className="w-3 h-3 mr-1" /> Awaiting Approval</Badge>;
       case 'published':
         return <Badge className={`bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 ${baseClasses} ${pendingOpacity}`}><CheckCircle className="w-3 h-3 mr-1" /> Published</Badge>;
       default:
@@ -1212,8 +1264,8 @@ export default function AdminResultPublishing() {
     }
   }, []);
 
-  const finalizedCount = reportCards.filter(rc => rc.status === 'finalized').length;
-  const publishedCount = reportCards.filter(rc => rc.status === 'published').length;
+  const finalizedCount = displayedReportCards.filter(rc => rc.status === 'finalized').length;
+  const publishedCount = displayedReportCards.filter(rc => rc.status === 'published').length;
   const allFinalizedSelected = finalizedCount > 0 && selectedReportCards.length === finalizedCount;
   const allPublishedSelected = publishedCount > 0 && selectedReportCards.length === publishedCount;
   const isPublishedView = statusFilter === 'published';
@@ -1225,52 +1277,24 @@ export default function AdminResultPublishing() {
       <div className="sr-only" aria-live="polite" aria-atomic="true" data-testid="aria-live-status">
         {pendingCount > 0 ? `Processing ${pendingCount} report card${pendingCount > 1 ? 's' : ''}...` : ''}
       </div>
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4 -mt-3 sm:-mt-1">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2" data-testid="text-page-title">
-            <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
+          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2 leading-none" data-testid="text-page-title">
+            <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
             Report Card
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground mt-2">
             View and manage all student report cards — always accessible, regardless of teacher submission status
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
-          <Card>
-            <CardContent className="p-3 sm:pt-6 sm:px-6">
-              <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-2">
-                <div className="text-center sm:text-left">
-                  <p className="text-xs sm:text-sm text-muted-foreground">In Progress</p>
-                  <p className="text-xl sm:text-2xl font-bold text-amber-600" data-testid="stat-finalized">{statistics.finalized}</p>
-                </div>
-                <FileCheck className="hidden sm:block w-8 h-8 text-amber-500" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 sm:pt-6 sm:px-6">
-              <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-2">
-                <div className="text-center sm:text-left">
-                  <p className="text-xs sm:text-sm text-muted-foreground">Published</p>
-                  <p className="text-xl sm:text-2xl font-bold text-green-600" data-testid="stat-published">{statistics.published}</p>
-                </div>
-                <CheckCircle className="hidden sm:block w-8 h-8 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 sm:pt-6 sm:px-6">
-              <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-2">
-                <div className="text-center sm:text-left">
-                  <p className="text-xs sm:text-sm text-muted-foreground">In Draft</p>
-                  <p className="text-xl sm:text-2xl font-bold text-gray-600" data-testid="stat-draft">{statistics.draft}</p>
-                </div>
-                <Clock className="hidden sm:block w-8 h-8 text-gray-500" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <MiniStatCardGrid
+          items={[
+            { label: 'Awaiting Approval', value: statistics.finalized, icon: FileCheck, color: 'amber', testId: 'stat-finalized' },
+            { label: 'Published', value: statistics.published, icon: CheckCircle, color: 'green', testId: 'stat-published' },
+            { label: 'In Draft', value: statistics.draft, icon: Clock, color: 'gray', testId: 'stat-draft' },
+          ]}
+        />
       </div>
 
       <Card>
@@ -1280,153 +1304,100 @@ export default function AdminResultPublishing() {
               <div className="min-w-0">
                 <CardTitle className="text-base sm:text-lg">Report Cards</CardTitle>
                 <CardDescription className="text-xs sm:text-sm truncate">
-                  {statusFilter === 'finalized' ? 'In progress — awaiting your approval' :
+                  {statusFilter === 'finalized' ? 'Awaiting your approval' :
                     statusFilter === 'published' ? 'Published report cards' : 'All report cards'}
                 </CardDescription>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                 {/* Generate Missing Report Cards */}
-                 <Button
-                   variant="outline"
-                   size="icon"
-                   onClick={() => generateMissingMutation.mutate()}
-                   disabled={generateMissingMutation.isPending}
-                   className="sm:hidden"
-                   aria-label="Generate missing report cards"
-                   title="Create report cards for students with assessment data but no report card yet"
-                 >
-                   {generateMissingMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <GraduationCap className="w-4 h-4" />}
-                 </Button>
-                 <Button
-                   variant="outline"
-                   size="sm"
-                   onClick={() => generateMissingMutation.mutate()}
-                   disabled={generateMissingMutation.isPending}
-                   className="hidden sm:flex"
-                   title="Create report cards for students with assessment data but no report card yet"
-                 >
-                   {generateMissingMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <GraduationCap className="w-4 h-4 mr-2" />}
-                   Generate Missing
-                 </Button>
-
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setIsBackfillDialogOpen(true)}
-                  className="sm:hidden"
-                  aria-label="Generate comments"
-                  data-testid="button-generate-comments-mobile"
-                >
-                  <FileText className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsBackfillDialogOpen(true)}
-                  className="hidden sm:flex"
-                  data-testid="button-generate-comments"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Generate Comments
-                </Button>
-
-                {/* Download All / Print All - visible when there are report cards */}
-                {reportCards.length > 0 && (
-                  <>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon"
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                {/* Generate Missing, Generate Comments and Download/Print grouped under one "more actions" menu on both mobile and desktop */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label="More report card actions"
+                      data-testid="button-more-actions"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => generateMissingMutation.mutate()}
+                      disabled={generateMissingMutation.isPending}
+                      data-testid="menu-generate-missing"
+                    >
+                      {generateMissingMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <GraduationCap className="w-4 h-4 mr-2" />}
+                      Generate Missing
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => setIsBackfillDialogOpen(true)}
+                      data-testid="menu-generate-comments"
+                    >
+                      <FileText className="w-4 h-4 mr-2" />
+                      Generate Comments
+                    </DropdownMenuItem>
+                    {displayedReportCards.length > 0 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={() => handleBulkExport(displayedReportCards.map(rc => rc.id), 'zip')}
                           disabled={isBulkExporting}
-                          aria-label="Download all report cards"
-                          className="sm:hidden"
-                          data-testid="button-download-all-mobile"
-                        >
-                          {isBulkExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'zip')}
-                          data-testid="menu-download-all-zip-mobile"
-                        >
-                          <Download className="w-4 h-4 mr-2" />
-                          Download All as ZIP ({reportCards.length} images)
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'pdf')}
-                          data-testid="menu-download-all-pdf-mobile"
-                        >
-                          <FileText className="w-4 h-4 mr-2" />
-                          Download All as PDF ({reportCards.length})
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'print')}
-                          data-testid="menu-print-all-mobile"
-                        >
-                          <Printer className="w-4 h-4 mr-2" />
-                          Print All ({reportCards.length})
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={isBulkExporting}
-                          className="hidden sm:flex"
-                          data-testid="button-download-all"
-                        >
-                          {isBulkExporting
-                            ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            : <Download className="w-4 h-4 mr-2" />}
-                          Download All
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'zip')}
                           data-testid="menu-download-all-zip"
                         >
                           <Download className="w-4 h-4 mr-2" />
-                          Download All as ZIP ({reportCards.length} images)
+                          Download All as ZIP ({displayedReportCards.length} images)
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'pdf')}
+                          onClick={() => handleBulkExport(displayedReportCards.map(rc => rc.id), 'pdf')}
+                          disabled={isBulkExporting}
                           data-testid="menu-download-all-pdf"
                         >
                           <FileText className="w-4 h-4 mr-2" />
-                          Download All as PDF ({reportCards.length})
+                          Download All as PDF ({displayedReportCards.length})
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'print')}
+                          onClick={() => handleBulkExport(displayedReportCards.map(rc => rc.id), 'print')}
+                          disabled={isBulkExporting}
                           data-testid="menu-print-all"
                         >
                           <Printer className="w-4 h-4 mr-2" />
-                          Print All ({reportCards.length})
+                          Print All ({displayedReportCards.length})
                         </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </>
-                )}
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => refetch()}
-                  aria-label="Refresh report cards"
-                  data-testid="button-refresh"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => refetch()}
+                      aria-label="Refresh report cards"
+                      data-testid="button-refresh"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Refresh</TooltipContent>
+                </Tooltip>
               </div>
             </div>
+
+            {/* Search */}
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search by student name or admission number..."
+              data-testid="input-search-report-cards"
+            />
+
+            {/* Class / Term filters + Status filter icon + Sort icon */}
             <div className="flex flex-wrap items-center gap-2">
               <Select value={selectedClass} onValueChange={setSelectedClass}>
-                <SelectTrigger className="w-full sm:w-[140px]" data-testid="select-class">
+                <SelectTrigger className="w-[calc(50%-4px)] sm:w-[140px]" data-testid="select-class">
                   <SelectValue placeholder="All Classes" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1447,17 +1418,81 @@ export default function AdminResultPublishing() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[calc(50%-4px)] sm:w-[140px]" data-testid="select-status">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="finalized">Finalized</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                </SelectContent>
-              </Select>
+
+              {/* Status filter — icon button opens a dropdown of status choices */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant={statusFilter !== 'all' ? 'default' : 'outline'}
+                    size="sm"
+                    className="gap-1.5"
+                    aria-label="Filter by status"
+                    data-testid="button-filter-status"
+                  >
+                    <Filter className="w-4 h-4" />
+                    <span className="hidden sm:inline">
+                      {statusFilter === 'all' ? 'Status' :
+                        statusFilter === 'draft' ? 'Draft' :
+                        statusFilter === 'finalized' ? 'Awaiting Approval' : 'Published'}
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuLabel>Filter by status</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
+                    <DropdownMenuRadioItem value="all" data-testid="filter-status-all">All Status</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="draft" data-testid="filter-status-draft">Draft</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="finalized" data-testid="filter-status-finalized">Awaiting Approval</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="published" data-testid="filter-status-published">Published</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Sort — icon button opens a dropdown of sort choices */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant={sortBy !== 'name-asc' ? 'default' : 'outline'}
+                    size="sm"
+                    className="gap-1.5"
+                    aria-label="Sort report cards"
+                    data-testid="button-sort"
+                  >
+                    <ArrowUpDown className="w-4 h-4" />
+                    <span className="hidden sm:inline">Sort</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
+                    <DropdownMenuRadioItem value="name-asc" data-testid="sort-name-asc">Name (A → Z)</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="name-desc" data-testid="sort-name-desc">Name (Z → A)</DropdownMenuRadioItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioItem value="average-desc" data-testid="sort-average-desc">Average (High → Low)</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="average-asc" data-testid="sort-average-asc">Average (Low → High)</DropdownMenuRadioItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioItem value="class-asc" data-testid="sort-class">Class</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="status-asc" data-testid="sort-status">Status</DropdownMenuRadioItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioItem value="date-desc" data-testid="sort-date-desc">Finalized (Newest)</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="date-asc" data-testid="sort-date-asc">Finalized (Oldest)</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSearchQuery('')}
+                  className="text-xs text-muted-foreground"
+                  data-testid="button-clear-search"
+                >
+                  Clear search
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -1572,6 +1607,21 @@ export default function AdminResultPublishing() {
                   : 'No report cards found for the selected filters'}
               </p>
             </div>
+          ) : displayedReportCards.length === 0 ? (
+            <div className="text-center py-12" data-testid="empty-search-results">
+              <SearchX className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground text-sm">
+                No report cards match "{searchQuery}"
+              </p>
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => setSearchQuery('')}
+                data-testid="button-clear-search-empty"
+              >
+                Clear search
+              </Button>
+            </div>
           ) : (
             <>
               {/* Desktop Table View */}
@@ -1599,7 +1649,7 @@ export default function AdminResultPublishing() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {reportCards.map((rc) => (
+                    {displayedReportCards.map((rc) => (
                       <TableRow key={rc.id} data-testid={`row-report-${rc.id}`}>
                         {(statusFilter === 'finalized' || statusFilter === 'published') && (
                           <TableCell>
@@ -1654,7 +1704,7 @@ export default function AdminResultPublishing() {
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem onClick={() => finalizeMutation.mutate(rc.id)}>
                                     <FileCheck className="w-4 h-4 mr-2" />
-                                    Mark In Progress
+                                    Finalize
                                   </DropdownMenuItem>
                                 </>
                               )}
@@ -1709,7 +1759,7 @@ export default function AdminResultPublishing() {
                     <span className="text-xs text-muted-foreground">Select all</span>
                   </div>
                 )}
-                {reportCards.map((rc) => (
+                {displayedReportCards.map((rc) => (
                   <Card key={rc.id} className="overflow-hidden" data-testid={`card-report-${rc.id}`}>
                     <CardContent className="p-3">
                       <div className="flex items-start gap-3">
@@ -1743,7 +1793,7 @@ export default function AdminResultPublishing() {
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onClick={() => finalizeMutation.mutate(rc.id)}>
                                       <FileCheck className="w-4 h-4 mr-2" />
-                                      Mark In Progress
+                                      Finalize
                                     </DropdownMenuItem>
                                   </>
                                 )}

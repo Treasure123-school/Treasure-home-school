@@ -2270,11 +2270,11 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
   async getTerms(): Promise<AcademicTerm[]> {
-    return await db.select().from(schema.academicTerms).orderBy(desc(schema.academicTerms.startDate));
+    return await db.select().from(schema.academicTerms).orderBy(asc(schema.academicTerms.startDate));
   }
   async getAcademicTerms(): Promise<AcademicTerm[]> {
     try {
-      const terms = await db.select().from(schema.academicTerms).orderBy(desc(schema.academicTerms.startDate));
+      const terms = await db.select().from(schema.academicTerms).orderBy(asc(schema.academicTerms.startDate));
       return terms;
     } catch (error) {
       throw error;
@@ -3010,6 +3010,7 @@ export class DatabaseStorage implements IStorage {
       partialCreditRules: question.partialCreditRules,
       explanationText: question.explanationText,
       hintText: question.hintText,
+      instructions: question.instructions,
     };
     const result = await db.insert(schema.examQuestions).values(questionData).returning();
     return result[0];
@@ -3036,6 +3037,7 @@ export class DatabaseStorage implements IStorage {
         partialCreditRules: question.partialCreditRules,
         explanationText: question.explanationText,
         hintText: question.hintText,
+        instructions: question.instructions,
       };
       // Insert question first
       const questionResult = await db.insert(schema.examQuestions).values(questionData).returning();
@@ -3112,7 +3114,6 @@ export class DatabaseStorage implements IStorage {
     };
   }
   async getExamQuestions(examId: number): Promise<ExamQuestion[]> {
-    // Only select columns that actually exist in the current database
     return await db.select({
       id: schema.examQuestions.id,
       examId: schema.examQuestions.examId,
@@ -3121,6 +3122,14 @@ export class DatabaseStorage implements IStorage {
       points: schema.examQuestions.points,
       orderNumber: schema.examQuestions.orderNumber,
       imageUrl: schema.examQuestions.imageUrl,
+      autoGradable: schema.examQuestions.autoGradable,
+      expectedAnswers: schema.examQuestions.expectedAnswers,
+      caseSensitive: schema.examQuestions.caseSensitive,
+      allowPartialCredit: schema.examQuestions.allowPartialCredit,
+      partialCreditRules: schema.examQuestions.partialCreditRules,
+      explanationText: schema.examQuestions.explanationText,
+      hintText: schema.examQuestions.hintText,
+      instructions: schema.examQuestions.instructions,
       createdAt: schema.examQuestions.createdAt,
     }).from(schema.examQuestions)
       .where(eq(schema.examQuestions.examId, examId))
@@ -3135,6 +3144,14 @@ export class DatabaseStorage implements IStorage {
       points: schema.examQuestions.points,
       orderNumber: schema.examQuestions.orderNumber,
       imageUrl: schema.examQuestions.imageUrl,
+      autoGradable: schema.examQuestions.autoGradable,
+      expectedAnswers: schema.examQuestions.expectedAnswers,
+      caseSensitive: schema.examQuestions.caseSensitive,
+      allowPartialCredit: schema.examQuestions.allowPartialCredit,
+      partialCreditRules: schema.examQuestions.partialCreditRules,
+      explanationText: schema.examQuestions.explanationText,
+      hintText: schema.examQuestions.hintText,
+      instructions: schema.examQuestions.instructions,
       createdAt: schema.examQuestions.createdAt,
     }).from(schema.examQuestions)
       .where(eq(schema.examQuestions.id, id))
@@ -3411,7 +3428,8 @@ export class DatabaseStorage implements IStorage {
         expectedAnswers: expectedAnswersArray,
         caseSensitive: bankItem.caseSensitive ?? undefined,
         explanationText: bankItem.explanationText ?? undefined,
-        hintText: bankItem.hintText ?? undefined
+        hintText: bankItem.hintText ?? undefined,
+        instructions: (bankItem as any).instructions ?? undefined,
       };
 
       const question = await this.createExamQuestion(questionData);
@@ -4265,9 +4283,15 @@ export class DatabaseStorage implements IStorage {
       .where(eq(schema.examSessions.isCompleted, false))
       .orderBy(desc(schema.examSessions.startedAt));
   }
-  // PERFORMANCE: Get only expired sessions directly from database
+  // PERFORMANCE: Get only expired sessions directly from database.
+  // SERVER-AUTHORITATIVE TIMER FIX: this used to fall back to a flat 2-hour window
+  // regardless of the exam's actual time limit, so this safety-net sweep (which runs
+  // every few minutes) effectively never caught most timed-out exams — students could
+  // keep the session "in progress" for up to 2 hours after the timer hit 00:00 before the
+  // background job would notice. It now joins the exam's real `timeLimit` (defaulting to
+  // 60 minutes only when the exam has no limit set) plus a small grace period, matching
+  // the same deadline every other exam-taking endpoint enforces.
   async getExpiredExamSessions(now: Date, limit = 100): Promise<ExamSession[]> {
-    // Temporarily simplified to work with existing schema - will be enhanced after schema sync
     return await db.select({
       id: schema.examSessions.id,
       examId: schema.examSessions.examId,
@@ -4281,10 +4305,10 @@ export class DatabaseStorage implements IStorage {
       status: schema.examSessions.status,
       createdAt: schema.examSessions.createdAt
     }).from(schema.examSessions)
+      .innerJoin(schema.exams, eq(schema.exams.id, schema.examSessions.examId))
       .where(and(
         eq(schema.examSessions.isCompleted, false),
-        // Fallback: Use startedAt + reasonable timeout estimate for expired sessions
-        dsql`${schema.examSessions.startedAt} + interval '2 hours' < ${now.toISOString()}`
+        dsql`${schema.examSessions.startedAt} + (COALESCE(${schema.exams.timeLimit}, 60) * interval '1 minute') + interval '5 seconds' < ${now.toISOString()}`
       ))
       .orderBy(asc(schema.examSessions.startedAt))
       .limit(limit);

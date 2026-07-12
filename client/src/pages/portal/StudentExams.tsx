@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback, memo } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { fetchServerTimeOffset, computeRemainingMs, msToWholeSeconds } from '@/lib/examTimer';
 import { useLocation } from 'wouter';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import MathText from '@/components/shared/MathText';
@@ -35,6 +36,7 @@ import { Progress } from '@/components/ui/progress';
 import { Clock, BookOpen, Trophy, Play, Eye, CheckCircle, XCircle, Timer, Save, RotateCcw, AlertCircle, Loader, FileText, Circle, CheckCircle2, HelpCircle, ClipboardCheck, GraduationCap, Award, Calendar, Calculator, X, Lock, CreditCard, Keyboard, Shield, ChevronDown, ChevronUp } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { Exam as BaseExam, ExamSession, ExamQuestion, QuestionOption, StudentAnswer } from '@shared/schema';
+import { QuestionImageDisplay } from '@/components/question/QuestionImageDisplay';
 
 // Extend Exam with payment fields injected by the server at runtime
 type Exam = BaseExam & {
@@ -150,6 +152,18 @@ export default function StudentExams() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, any>>({});
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  // SERVER-AUTHORITATIVE TIMER: `examExpiresAt` is the absolute deadline (ISO string)
+  // returned by the server for the active session; `serverClockOffsetMs` corrects for
+  // this device's clock being wrong. `timeRemaining` above is now always *derived* from
+  // these two values on every tick rather than decremented locally, so it never drifts
+  // from what the server would compute, regardless of tab throttling or device sleep.
+  const [examExpiresAt, setExamExpiresAt] = useState<string | null>(null);
+  const [serverClockOffsetMs, setServerClockOffsetMs] = useState(0);
+  const [isExamExpiredLocked, setIsExamExpiredLocked] = useState(false);
+  const examExpiresAtRef = useRef<string | null>(null);
+  const serverClockOffsetMsRef = useRef(0);
+  useEffect(() => { examExpiresAtRef.current = examExpiresAt; }, [examExpiresAt]);
+  useEffect(() => { serverClockOffsetMsRef.current = serverClockOffsetMs; }, [serverClockOffsetMs]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [examResults, setExamResults] = useState<any>(null);
   const [showResults, setShowResults] = useState(false);
@@ -248,6 +262,7 @@ export default function StudentExams() {
     questionOptions: [] as QuestionOption[],
     existingAnswers: [] as StudentAnswer[],
     examQuestions: [] as ExamQuestion[],
+    isExamExpiredLocked: false,
   });
 
   // Socket.IO realtime updates for exams list.
@@ -593,6 +608,13 @@ export default function StudentExams() {
     enabled: !!user,
   });
 
+  // School settings — used for image watermark acronym
+  const { data: schoolSettings } = useQuery<any>({
+    queryKey: ['/api/public/settings'],
+    staleTime: Infinity,
+  });
+  const schoolAcronym = schoolSettings?.schoolShortName || schoolSettings?.schoolName?.split(' ').map((w: string) => w[0]).join('').slice(0, 4) || '';
+
   // PERFORMANCE: Memoize current question to prevent unnecessary re-renders
   const currentQuestion = useMemo(() => examQuestions[currentQuestionIndex], [examQuestions, currentQuestionIndex]);
 
@@ -923,22 +945,51 @@ export default function StudentExams() {
     }
   }, [user?.id, exams]);
 
+  // SERVER TIME SYNC: measure this device's clock offset from the server on load,
+  // periodically, and whenever the tab regains focus or the device wakes from sleep
+  // (both are classic sources of clock/timer drift across browsers and devices).
+  useEffect(() => {
+    let cancelled = false;
+    const sync = async () => {
+      try {
+        const { offsetMs } = await fetchServerTimeOffset();
+        if (!cancelled) setServerClockOffsetMs(offsetMs);
+      } catch (_) {
+        // Keep the previous offset (or 0) if a sync attempt fails; next tick retries.
+      }
+    };
+    sync();
+    const interval = setInterval(sync, 60000);
+    const onVisibility = () => { if (document.visibilityState === 'visible') sync(); };
+    window.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('focus', sync);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      window.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('focus', sync);
+    };
+  }, []);
+
   // SESSION RECOVERY: Resume active session with timer recovery (silent - no toast)
   useEffect(() => {
     if (activeSession && !activeSession.isCompleted) {
       const exam = exams.find(e => e.id === activeSession.examId);
 
-      // ALWAYS calculate remaining time from startedAt for accuracy.
-      // Using the stored timeRemaining can be up to 30s stale (save interval),
-      // which makes the timer appear to reset to the beginning on reload.
-      if (exam?.timeLimit && activeSession.startedAt) {
-        const elapsedSeconds = Math.floor((Date.now() - new Date(activeSession.startedAt).getTime()) / 1000);
-        const totalSeconds = exam.timeLimit * 60;
-        const remaining = Math.max(0, totalSeconds - elapsedSeconds);
-        setTimeRemaining(remaining);
+      // Prefer the server-computed absolute deadline (`expiresAt`) returned alongside
+      // the session — this is the single source of truth the countdown derives from.
+      // Only fall back to computing it client-side (from startedAt + timeLimit) for
+      // older cached session objects that predate this field.
+      const serverExpiresAt = (activeSession as any).expiresAt as string | undefined;
+      if (serverExpiresAt) {
+        setExamExpiresAt(serverExpiresAt);
+      } else if (exam?.timeLimit && activeSession.startedAt) {
+        const computedExpiresAt = new Date(new Date(activeSession.startedAt).getTime() + exam.timeLimit * 60 * 1000).toISOString();
+        setExamExpiresAt(computedExpiresAt);
       } else if (activeSession.timeRemaining !== null && activeSession.timeRemaining !== undefined) {
-        // Fallback: use stored value only when startedAt or timeLimit is unavailable
-        setTimeRemaining(activeSession.timeRemaining);
+        // Fallback: no time-limit info available at all — approximate a deadline from
+        // the last known remaining-seconds value so the UI still has something to show.
+        setExamExpiresAt(new Date(Date.now() + activeSession.timeRemaining * 1000).toISOString());
       }
 
       // Ensure the localStorage marker is always present while the exam is active.
@@ -949,23 +1000,32 @@ export default function StudentExams() {
     }
   }, [activeSession, exams]);
 
-  // Timer countdown with race condition protection
+  // Timer countdown — SERVER-AUTHORITATIVE: every tick recomputes remaining time from
+  // the absolute `examExpiresAt` deadline and the synced server clock, rather than
+  // decrementing a local counter. This means the displayed time is always correct even
+  // after the tab was backgrounded, the device slept, or a slow/throttled interval —
+  // there is no cumulative drift to correct for. Once expired, it fires the auto-submit
+  // exactly once (guarded by isAutoSubmittingRef inside handleAutoSubmitOnTimeout) and
+  // locks the UI so no further answers/navigation can occur after 00:00.
   useEffect(() => {
-    if (timeRemaining !== null && timeRemaining > 0 && activeSession && !activeSession.isCompleted) {
-      const timer = setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev === null || prev <= 1) {
-            // Auto-submit when time runs out, but wait for pending saves
-            handleAutoSubmitOnTimeout();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
+    if (!examExpiresAt || !activeSession || activeSession.isCompleted) return;
 
-      return () => clearInterval(timer);
-    }
-  }, [timeRemaining, activeSession]);
+    const tick = () => {
+      const remainingMs = computeRemainingMs(examExpiresAtRef.current, serverClockOffsetMsRef.current);
+      if (remainingMs === null) return;
+      const remainingSeconds = msToWholeSeconds(remainingMs);
+      setTimeRemaining(remainingSeconds);
+
+      if (remainingMs <= 0) {
+        setIsExamExpiredLocked(true);
+        handleAutoSubmitOnTimeout();
+      }
+    };
+
+    tick(); // immediate update so the UI doesn't wait a full second on mount/resync
+    const timer = setInterval(tick, 1000);
+    return () => clearInterval(timer);
+  }, [examExpiresAt, activeSession, serverClockOffsetMs]);
 
   // Keep kbStateRef in sync with latest exam state (no stale closures in keyboard handler)
   useEffect(() => {
@@ -976,6 +1036,7 @@ export default function StudentExams() {
       questionOptions,
       existingAnswers,
       examQuestions,
+      isExamExpiredLocked,
     };
   });
 
@@ -997,7 +1058,11 @@ export default function StudentExams() {
         questionOptions: opts,
         existingAnswers: existing,
         examQuestions: questions,
+        isExamExpiredLocked: expiredLocked,
       } = kbStateRef.current;
+
+      // Keyboard shortcuts must not work after expiry — same rule as button disabled states.
+      if (expiredLocked) return;
 
       if (!q) return;
 
@@ -1727,10 +1792,41 @@ export default function StudentExams() {
     return pendingSaves.size > 0;
   };
 
+  // DEFENSIVE FRONTEND HANDLING: called whenever a backend endpoint rejects a
+  // request with 409 { status: 'EXPIRED' } — meaning the server's own clock detected
+  // the deadline had passed (independently of whatever this device's timer displayed).
+  // Locks the UI immediately and forces the same auto-submit flow used when the local
+  // countdown reaches zero, so both paths converge on one outcome.
+  const handleExamExpiredResponse = () => {
+    if (isExamExpiredLocked) return;
+    setIsExamExpiredLocked(true);
+    setTimeRemaining(0);
+    toast({
+      title: "Time's Up",
+      description: "The exam server detected that your time has expired. Submitting your exam now...",
+      variant: "destructive",
+    });
+    if (!isAutoSubmittingRef.current) {
+      isAutoSubmittingRef.current = true;
+      forceSubmitExam();
+    }
+  };
+
   // Auto-submit with safe wait time for data integrity
   const handleAutoSubmitOnTimeout = async () => {
-    const startTime = Date.now();
+    // GUARD: the timer tick fires every second — once remainingMs hits 0 the interval
+    // keeps running until React tears down the effect. Set isAutoSubmittingRef immediately
+    // so only the very first tick proceeds; every subsequent call is a no-op.
+    if (isAutoSubmittingRef.current) return;
+    isAutoSubmittingRef.current = true;
 
+    // Clear all pending debounce timers so no answer-save fires AFTER expiry.
+    // (Any save that already reached the server is kept; the backend rejects
+    // anything that arrives after the deadline anyway.)
+    Object.values(debounceTimersRef.current).forEach(t => clearTimeout(t));
+    debounceTimersRef.current = {};
+
+    const startTime = Date.now();
 
     if (hasPendingSaves()) {
       toast({
@@ -1898,6 +1994,15 @@ export default function StudentExams() {
 
             try {
               const errorData = await response.json();
+              // SERVER-AUTHORITATIVE EXPIRY: the backend rejected this answer because its
+              // own clock says the exam already ended. Never retry this — retrying would
+              // just resubmit the same rejected answer after the exam has been auto-closed.
+              if (response.status === 409 && errorData?.status === 'EXPIRED') {
+                handleExamExpiredResponse();
+                const expiredError: any = new Error(errorData.message || 'Exam time has expired.');
+                expiredError.isExamExpired = true;
+                throw expiredError;
+              }
               if (errorData?.message) {
                 errorMessage = errorData.message;
               } else if (errorData?.errors) {
@@ -1960,6 +2065,9 @@ export default function StudentExams() {
             throw error;
           }
         } catch (networkError: any) {
+          if (networkError?.isExamExpired) {
+            throw networkError; // Never retry, never mask — the exam is over.
+          }
           lastError = networkError;
 
           // Check if it's a network/timeout error that should be retried
@@ -2425,6 +2533,8 @@ export default function StudentExams() {
     setAnswers({});
     setCurrentQuestionIndex(0);
     setTimeRemaining(null);
+    setExamExpiresAt(null);
+    setIsExamExpiredLocked(false);
     setTabSwitchCount(0); // Reset tab switch counter
     setViolationPenalty(0); // Reset penalty
     setQuestionSaveStatus({});
@@ -2484,6 +2594,18 @@ export default function StudentExams() {
             timeRemaining,
             tabSwitchCount, // Save tab switch count and penalty
             violationPenalty
+          }).then(async (response) => {
+            // DEFENSIVE FRONTEND HANDLING: the server rejects progress updates once its
+            // own clock says the exam has expired, regardless of what this device's timer
+            // shows. Treat that as authoritative and lock/force-submit immediately.
+            if (response.status === 409) {
+              try {
+                const body = await response.json();
+                if (body?.status === 'EXPIRED') {
+                  handleExamExpiredResponse();
+                }
+              } catch (_) { /* ignore parse errors on the error path */ }
+            }
           }).catch(error => {
           });
         }
@@ -2545,6 +2667,8 @@ export default function StudentExams() {
     setActiveSession(null);
     setAnswers({});
     setTimeRemaining(null);
+    setExamExpiresAt(null);
+    setIsExamExpiredLocked(false);
     setCurrentQuestionIndex(0);
     setSelectedExam(null);
     setTabSwitchCount(0);
@@ -2578,6 +2702,8 @@ export default function StudentExams() {
     setActiveSession(null);
     setAnswers({});
     setTimeRemaining(null);
+    setExamExpiresAt(null);
+    setIsExamExpiredLocked(false);
     setCurrentQuestionIndex(0);
     setSelectedExam(null);
     setTabSwitchCount(0);
@@ -2988,7 +3114,7 @@ export default function StudentExams() {
   // Render active exam without PortalLayout wrapper
   if (activeSession && examQuestions.length > 0) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-[120px] sm:pt-[140px] select-none">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 select-none">
         <ExamHeader
           subjectName={subjectName}
           className={studentClassName}
@@ -3110,11 +3236,28 @@ export default function StudentExams() {
                       {currentQuestion.points} points
                     </span>
                   </div>
+
+                  {/* Instructions — displayed above question text when present */}
+                  {(currentQuestion as any).instructions && (
+                    <p className="text-sm italic text-gray-500 dark:text-gray-400 mb-3 leading-relaxed border-l-2 border-primary/30 pl-3">
+                      {(currentQuestion as any).instructions}
+                    </p>
+                  )}
+
                   <MathText
                     as="p"
                     className="text-base sm:text-lg md:text-xl text-gray-800 dark:text-gray-200 leading-relaxed"
                     text={currentQuestion.questionText}
                   />
+
+                  {/* Question image — displayed below question text, before answer options */}
+                  {(currentQuestion as any).imageUrl && (
+                    <QuestionImageDisplay
+                      imageUrl={(currentQuestion as any).imageUrl}
+                      alt={`Question ${currentQuestionIndex + 1} image`}
+                      schoolAcronym={schoolAcronym}
+                    />
+                  )}
                 </div>
 
                 {/* Multiple Choice Options */}
@@ -3123,11 +3266,12 @@ export default function StudentExams() {
                     value={answers[currentQuestion.id] || ''}
                     onValueChange={(value) => handleAnswerChange(currentQuestion.id, value, 'multiple_choice')}
                     className="space-y-4"
+                    disabled={isExamExpiredLocked}
                   >
                     {questionOptions.map((option: any, index: number) => (
                       <div
                         key={option.id}
-                        className={`border rounded-lg p-4 sm:p-5 cursor-pointer transition-colors ${
+                        className={`border rounded-lg p-4 sm:p-5 transition-colors ${isExamExpiredLocked ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${
                           answers[currentQuestion.id] === String(option.id)
                             ? 'border-primary bg-primary/5 dark:bg-primary/5'
                             : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
@@ -3138,6 +3282,7 @@ export default function StudentExams() {
                             value={String(option.id)}
                             id={`option-${option.id}`}
                             className="mt-1"
+                            disabled={isExamExpiredLocked}
                             data-testid={`option-${index}`}
                           />
                           <Label
@@ -3161,8 +3306,15 @@ export default function StudentExams() {
                     onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value, currentQuestion.questionType)}
                     rows={currentQuestion.questionType === 'essay' ? 10 : 5}
                     className="text-base sm:text-lg md:text-xl"
+                    disabled={isExamExpiredLocked}
                     data-testid="text-answer"
                   />
+                )}
+                {isExamExpiredLocked && (
+                  <div className="mt-4 flex items-center gap-2 text-sm font-medium text-red-600 dark:text-red-400">
+                    <Lock className="w-4 h-4" />
+                    Time is up — your exam is being submitted and answers are locked.
+                  </div>
                 )}
 
                 {/* Save Status */}
@@ -3197,7 +3349,7 @@ export default function StudentExams() {
                   }
                   setCurrentQuestionIndex(prev => Math.max(0, prev - 1));
                 }}
-                disabled={currentQuestionIndex === 0}
+                disabled={currentQuestionIndex === 0 || isExamExpiredLocked}
                 className="px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg md:text-xl border-primary/40 hover:bg-primary/5 dark:border-primary/70 dark:hover:bg-primary/5"
                 data-testid="button-previous"
               >
@@ -3207,7 +3359,7 @@ export default function StudentExams() {
               {currentQuestionIndex === examQuestions.length - 1 ? (
                 <Button
                   onClick={() => setShowSubmitDialog(true)}
-                  disabled={isSubmitting || hasPendingSaves() || isScoring}
+                  disabled={isSubmitting || hasPendingSaves() || isScoring || isExamExpiredLocked}
                   className="px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg md:text-xl bg-green-600 hover:bg-green-700 dark:bg-green-700 dark:hover:bg-green-800"
                   data-testid="button-submit-exam"
                 >
@@ -3242,7 +3394,7 @@ export default function StudentExams() {
                     }
                     setCurrentQuestionIndex(prev => Math.min(examQuestions.length - 1, prev + 1));
                   }}
-                  disabled={currentQuestionIndex === examQuestions.length - 1}
+                  disabled={currentQuestionIndex === examQuestions.length - 1 || isExamExpiredLocked}
                   className="px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg md:text-xl bg-primary hover:bg-primary/90 dark:bg-primary/90 dark:hover:bg-primary/80"
                   data-testid="button-next"
                 >

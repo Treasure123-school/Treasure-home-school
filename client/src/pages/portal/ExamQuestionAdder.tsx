@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { BulkCSVUploadPanel } from '@/components/shared/BulkCSVQuestionsDialog';
 import type { ParsedQuestion } from '@/components/shared/BulkCSVQuestionsDialog';
+import { QuestionImageUpload } from '@/components/question/QuestionImageUpload';
 
 interface ExamQuestionAdderProps {
     open: boolean;
@@ -59,6 +60,7 @@ export default function ExamQuestionAdder({
     ]);
     const [expectedAnswer, setExpectedAnswer] = useState('');
     const [instructions, setInstructions] = useState('');
+    const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [sampleAnswer, setSampleAnswer] = useState('');
 
     // ═══ BANK IMPORT TAB STATE ═══
@@ -299,7 +301,7 @@ export default function ExamQuestionAdder({
     const resetManualForm = () => {
         setQuestionText(''); setQuestionType('multiple_choice'); setPoints('1');
         setOptions([{ text: '', isCorrect: false }, { text: '', isCorrect: false }, { text: '', isCorrect: false }, { text: '', isCorrect: false }]);
-        setExpectedAnswer(''); setInstructions(''); setSampleAnswer('');
+        setExpectedAnswer(''); setInstructions(''); setImageUrl(null); setSampleAnswer('');
     };
 
     const handleManualSubmit = () => {
@@ -310,7 +312,8 @@ export default function ExamQuestionAdder({
             examId, questionText: questionText.trim(), questionType,
             points: parseInt(points) || 1, orderNumber: 0,
         };
-        if (instructions) data.instructions = instructions;
+        if (instructions.trim()) data.instructions = instructions.trim();
+        if (imageUrl) data.imageUrl = imageUrl;
         if (sampleAnswer) data.sampleAnswer = sampleAnswer;
 
         if (questionType === 'multiple_choice') {
@@ -383,7 +386,8 @@ export default function ExamQuestionAdder({
                             <Label>Question Text *</Label>
                             <Textarea value={questionText} onChange={(e) => setQuestionText(e.target.value)} placeholder="Enter your question..." rows={3} />
                         </div>
-                        <div className="grid grid-cols-3 gap-3">
+
+                        <div className="grid grid-cols-2 gap-3">
                             <div>
                                 <Label>Type</Label>
                                 <Select value={questionType} onValueChange={setQuestionType}>
@@ -398,11 +402,27 @@ export default function ExamQuestionAdder({
                                 <Label>Points</Label>
                                 <Input type="number" value={points} onChange={(e) => setPoints(e.target.value)} min="1" />
                             </div>
-                            <div>
-                                <Label>Instructions</Label>
-                                <Input value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder="Optional" />
-                            </div>
                         </div>
+
+                        <div>
+                            <Label className="text-xs font-semibold text-foreground/70">
+                                Instructions{' '}
+                                <span className="text-muted-foreground font-normal">(optional — shown to student above this question)</span>
+                            </Label>
+                            <Textarea
+                                value={instructions}
+                                onChange={(e) => setInstructions(e.target.value)}
+                                placeholder="e.g. Choose the best answer. / Study the diagram below. / Simplify the expression."
+                                rows={2}
+                                className="resize-none mt-1.5"
+                            />
+                        </div>
+
+                        <QuestionImageUpload
+                            value={imageUrl}
+                            onChange={setImageUrl}
+                            disabled={createManualMutation.isPending}
+                        />
 
                         {questionType === 'multiple_choice' && (
                             <div className="border-t pt-3">

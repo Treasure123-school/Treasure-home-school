@@ -13,7 +13,7 @@
 
 import { storage, db } from "./storage";
 import * as schema from "@shared/schema.pg";
-import { eq, and, ne, lte, gte, isNull } from "drizzle-orm";
+import { eq, and, ne, lte, gte, isNull, asc } from "drizzle-orm";
 import type { AcademicTerm, AcademicSession } from "@shared/schema";
 import { getPgPool } from "./db";
 
@@ -81,7 +81,7 @@ export async function getCalendarCurrentState() {
 
   const [allSessions, allTerms] = await Promise.all([
     db.select().from(schema.academicSessions),
-    db.select().from(schema.academicTerms),
+    db.select().from(schema.academicTerms).orderBy(asc(schema.academicTerms.startDate)),
   ]);
 
   return {

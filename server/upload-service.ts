@@ -11,7 +11,7 @@ type MulterFile = Express.Multer.File;
  * based on environment configuration.
  */
 
-export type UploadType = 'homepage' | 'gallery' | 'profile' | 'study-resource' | 'general' | 'student' | 'teacher' | 'admin' | 'assignment' | 'result' | 'system_settings' | 'system-settings' | 'favicon' | 'logo';
+export type UploadType = 'homepage' | 'gallery' | 'profile' | 'study-resource' | 'general' | 'student' | 'teacher' | 'admin' | 'assignment' | 'result' | 'system_settings' | 'system-settings' | 'favicon' | 'logo' | 'question';
 
 export interface UploadOptions {
   uploadType: UploadType | string;
@@ -48,7 +48,8 @@ export interface UploadResponse {
       'logo': 'homepage',
       'branding': 'homepage',
       'branding_upload': 'homepage',
-      'schoolLogo': 'homepage'
+      'schoolLogo': 'homepage',
+      'question': 'general',
     };
 
 /**

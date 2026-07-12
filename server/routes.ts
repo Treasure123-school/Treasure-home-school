@@ -19,8 +19,9 @@ import { generateStudentUsername, generateParentUsername, generateTeacherUsernam
 import passport from "passport";
 import session from "express-session";
 import memorystore from "memorystore";
-import { and, eq, sql, desc, ne, isNotNull } from "drizzle-orm";
+import { and, eq, sql, desc, ne, isNotNull, inArray } from "drizzle-orm";
 import { realtimeService } from "./realtime-service";
+import { computeExamTiming, logExamTiming, EXAM_SESSION_STATUS } from "./utils/exam-timing";
 import { getProfileImagePath, getHomepageImagePath } from "./storage-path-utils";
 import { uploadFileToStorage, replaceFile, deleteFileFromStorage } from "./upload-service";
 import teacherAssignmentRoutes from "./teacher-assignment-routes";
@@ -303,26 +304,46 @@ async function cleanupExpiredExamSessions(): Promise<void> {
     const rawResult = await storage.getExpiredExamSessions(now, 50);
     const expiredSessions = Array.isArray(rawResult) ? rawResult : []; // Ensure it's always an array
 
+    if (expiredSessions.length > 0) {
+      logExamTiming('background-sweep-found', { count: expiredSessions.length, sessionIds: expiredSessions.map((s: any) => s.id) });
+    }
 
-    // Process in smaller batches to avoid overwhelming the database
+    // Process in smaller batches to avoid overwhelming the database.
+    // IMPORTANT: Use claimExamSessionForSubmission (atomic WHERE isCompleted=false update) instead
+    // of updateExamSession — this ensures the sweep never races with the per-request auto-submit
+    // paths (answer-save, progress-update) and never double-scores a session.
     for (const session of expiredSessions) {
       try {
 
-        // Mark session as auto-submitted by server cleanup
-        await storage.updateExamSession(session.id, {
-          isCompleted: true,
+        const claimed = await storage.claimExamSessionForSubmission(session.id, {
           submittedAt: now,
-          status: 'submitted'
+          status: EXAM_SESSION_STATUS.SUBMITTED,
+          metadata: JSON.stringify({
+            submissionReason: 'timeout',
+            autoSubmittedByServer: true,
+            expiryDetectedAt: 'background-sweep',
+          }),
         });
+
+        if (!claimed) {
+          // Another request (answer-save, progress-update, or a parallel sweep) already
+          // claimed this session — nothing to do.
+          logExamTiming('background-sweep-skip-already-claimed', { sessionId: session.id });
+          continue;
+        }
+
+        logExamTiming('background-sweep-submitted', { sessionId: session.id, examId: session.examId, studentId: session.studentId });
 
         // Auto-score the session using our optimized scoring
         await autoScoreExamSession(session.id, storage);
 
       } catch (error) {
         // Continue with other sessions even if one fails
+        logExamTiming('background-sweep-error', { sessionId: session.id, error: error instanceof Error ? error.message : String(error) });
       }
     }
   } catch (error) {
+    logExamTiming('background-sweep-fatal', { error: error instanceof Error ? error.message : String(error) });
   }
 }
 
@@ -717,6 +738,51 @@ async function autoScoreExamSession(sessionId: number, storage: any): Promise<vo
   } catch (error) {
     const totalErrorTime = Date.now() - startTime;
     throw error;
+  }
+}
+
+// Attach server-authoritative timing fields to a session payload before sending it to the
+// client. The client must treat `serverTime` / `expiresAt` / `remainingSeconds` as the
+// source of truth instead of counting down on its own from a value it received once.
+function withServerTiming(session: any, exam: { timeLimit?: number | null } | null | undefined) {
+  const timing = computeExamTiming(session, exam);
+  return {
+    ...session,
+    serverTime: timing.serverNowMs,
+    expiresAt: timing.expiresAtMs ? new Date(timing.expiresAtMs).toISOString() : null,
+    remainingSeconds: timing.remainingSeconds,
+    isExpired: timing.isExpired,
+  };
+}
+
+// SERVER-AUTHORITATIVE EXPIRY: Atomically claim + auto-submit + score a session whose
+// server-computed deadline has passed. Safe to call from multiple code paths (progress
+// save, answer save, submit, background sweep) concurrently — claimExamSessionForSubmission
+// only succeeds once, so only one caller actually performs the scoring.
+async function autoSubmitExpiredSession(
+  session: { id: number; examId: number; studentId: string },
+  reason: string
+): Promise<boolean> {
+  try {
+    const claimed = await storage.claimExamSessionForSubmission(session.id, {
+      submittedAt: new Date(),
+      status: EXAM_SESSION_STATUS.SUBMITTED,
+      metadata: JSON.stringify({ submissionReason: 'timeout', autoSubmittedByServer: true, expiryDetectedAt: reason }),
+    });
+
+    if (!claimed) {
+      // Another request already claimed/submitted this session — nothing to do.
+      logExamTiming('auto-submit-skip-already-claimed', { sessionId: session.id, reason });
+      return false;
+    }
+
+    logExamTiming('auto-submit-triggered', { sessionId: session.id, examId: session.examId, studentId: session.studentId, reason });
+    await autoScoreExamSession(session.id, storage);
+    realtimeService.emitTableChange('exam_sessions', 'UPDATE', { id: session.id, isCompleted: true, status: EXAM_SESSION_STATUS.SUBMITTED }, undefined, session.studentId);
+    return true;
+  } catch (error) {
+    logExamTiming('auto-submit-error', { sessionId: session.id, error: error instanceof Error ? error.message : String(error) });
+    return false;
   }
 }
 
@@ -3022,9 +3088,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const studentId = req.user!.id;
       const { forceSubmit, violationCount, clientTimeRemaining, submissionReason, pendingAnswers } = req.body;
 
-      // Validate submission reason
+      // Validate submission reason (may be overridden below once we know the server-side timing)
       const validReasons = ['manual', 'timeout', 'violation'];
-      const reason = validReasons.includes(submissionReason) ? submissionReason : 'manual';
+      let reason: 'manual' | 'timeout' | 'violation' = validReasons.includes(submissionReason) ? submissionReason : 'manual';
 
       // Validate exam ID
       if (isNaN(examId) || examId <= 0) {
@@ -3041,17 +3107,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sessions = await storage.getExamSessionsByStudent(studentId);
       const activeSession = sessions.find(s => s.examId === examId && !s.isCompleted);
 
-      // SERVER-SIDE TIMER VALIDATION: Prevent time manipulation cheating
-      if (activeSession && activeSession.startedAt && exam.timeLimit) {
-        const serverStartTime = new Date(activeSession.startedAt).getTime();
-        const allowedDurationMs = (exam.timeLimit * 60 * 1000) + (30 * 1000); // Add 30s grace period
-        const serverElapsedMs = Date.now() - serverStartTime;
-
-        // If time has exceeded, mark as timed out but still allow submission
-        const isTimedOut = serverElapsedMs > allowedDurationMs;
-        if (isTimedOut) {
-          console.log(`[SUBMIT] Session ${activeSession.id} timed out on server. Elapsed: ${Math.floor(serverElapsedMs / 1000)}s, Allowed: ${Math.floor(allowedDurationMs / 1000)}s`);
+      // SERVER-SIDE TIMER VALIDATION: Prevent time manipulation cheating.
+      // Submission is always accepted (the student is trying to end the exam), but we
+      // never trust the client-reported `submissionReason` for whether time actually
+      // ran out — that is derived from the server's own clock only.
+      let reasonOverride: 'manual' | 'timeout' | 'violation' | null = null;
+      if (activeSession) {
+        const timing = computeExamTiming(activeSession, exam);
+        if (timing.isExpired) {
+          logExamTiming('submit-detected-expired', { sessionId: activeSession.id, remainingMs: timing.remainingMs });
+          reasonOverride = 'timeout';
         }
+      }
+      // Server-detected expiry always wins over whatever the client claimed.
+      if (reasonOverride) {
+        reason = reasonOverride;
       }
 
       if (!activeSession) {
@@ -3999,6 +4069,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Exam Sessions - Student exam taking functionality
 
+  // Server time sync endpoint — the client uses this to compute its clock offset
+  // from the server so the exam countdown never depends on the device's own clock.
+  app.get('/api/server-time', authenticateUser, async (req, res) => {
+    res.json({ serverTime: Date.now() });
+  });
+
   // Start exam - Create new exam session (with re-entry prevention and time-window validation)
   app.post('/api/exam-sessions', authenticateUser, authorizeRoles(ROLES.STUDENT), logExamAccess, validateExamTimeWindow, async (req, res) => {
     try {
@@ -4145,7 +4221,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         classId: exam.classId
       });
 
-      res.status(201).json(session);
+      logExamTiming('session-started', { sessionId: session.id, examId, studentId, timeLimit: exam.timeLimit });
+      res.status(201).json(withServerTiming(session, exam));
     } catch (error: any) {
       res.status(500).json({ message: error.message || 'Failed to start exam' });
     }
@@ -4167,7 +4244,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!session) {
         return res.json(null);
       }
-      res.json(session);
+      const exam = await storage.getExamById(session.examId);
+      res.json(withServerTiming(session, exam));
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch active session' });
     }
@@ -4204,7 +4282,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.user!.id !== session.studentId && req.user!.roleId !== ROLES.ADMIN && req.user!.roleId !== ROLES.TEACHER) {
         return res.status(403).json({ message: 'Unauthorized' });
       }
-      res.json(session);
+      const exam = await storage.getExamById(session.examId);
+      res.json(withServerTiming(session, exam));
     } catch (error) {
       res.status(500).json({ message: 'Failed to fetch exam session' });
     }
@@ -4259,10 +4338,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update exam session progress (current question, time remaining)
+  // DEFENSIVE BACKEND CHECK: every progress write is preceded by a server-side
+  // expiry check. A client whose timer has stalled, drifted, or been tampered
+  // with can never keep updating progress past the real deadline.
   app.patch('/api/exam-sessions/:id/progress', authenticateUser, async (req, res) => {
     try {
       const sessionId = parseInt(req.params.id);
       const { currentQuestionIndex, timeRemaining, tabSwitchCount, violationPenalty } = req.body;
+
+      const existing = await storage.getExamSessionById(sessionId);
+      if (!existing) {
+        return res.status(404).json({ message: 'Session not found' });
+      }
+      if (req.user!.id !== existing.studentId) {
+        return res.status(403).json({ message: 'Unauthorized access to this exam session' });
+      }
+
+      if (existing.isCompleted) {
+        return res.status(409).json({ status: EXAM_SESSION_STATUS.SUBMITTED, message: 'Exam already submitted' });
+      }
+
+      const exam = await storage.getExamById(existing.examId);
+      const timing = computeExamTiming(existing, exam);
+
+      if (timing.isExpired) {
+        logExamTiming('late-progress-rejected', { sessionId, studentId: existing.studentId });
+        await autoSubmitExpiredSession(existing, 'progress-update');
+        return res.status(409).json({
+          status: EXAM_SESSION_STATUS.EXPIRED,
+          message: 'Exam time has expired. Your exam has been automatically submitted.',
+        });
+      }
 
       const updates: any = {};
 
@@ -4276,7 +4382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!session) {
         return res.status(404).json({ message: 'Session not found' });
       }
-      res.json(session);
+      res.json(withServerTiming(session, exam));
     } catch (error) {
       res.status(500).json({ message: 'Failed to update session progress' });
     }
@@ -4301,7 +4407,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: 'Unauthorized access to this exam session' });
       }
       if (session.isCompleted) {
-        return res.status(409).json({ message: 'Cannot save answer - exam is already completed' });
+        return res.status(409).json({ status: EXAM_SESSION_STATUS.SUBMITTED, message: 'Cannot save answer - exam is already completed' });
+      }
+
+      // DEFENSIVE BACKEND CHECK: reject late answer edits/autosaves after the
+      // server-computed deadline, even if the client's own timer hasn't caught up yet.
+      const examForTiming = await storage.getExamById(session.examId);
+      const timing = computeExamTiming(session, examForTiming);
+      if (timing.isExpired) {
+        logExamTiming('late-answer-rejected', { sessionId, questionId, studentId: session.studentId });
+        await autoSubmitExpiredSession(session, 'answer-save');
+        return res.status(409).json({
+          status: EXAM_SESSION_STATUS.EXPIRED,
+          message: 'Exam time has expired. Your exam has been automatically submitted and this answer was not saved.',
+        });
       }
       // Get the question to validate
       const question = await storage.getExamQuestionById(questionId);
@@ -14418,8 +14537,10 @@ School Management System Administration
     }
   });
 
-  // Generate missing report cards — creates report cards for students who have exam data
-  // but no report card yet for the selected term/class (Priority 4: auto-generation fix)
+  // Generate missing report cards — creates report cards ONLY for students who have
+  // exam data but no report card yet for the selected term/class (Priority 4:
+  // auto-generation fix). Students who already have a report card for that term are
+  // never touched by this route — it must be a strict no-op when nothing is missing.
   app.post('/api/admin/report-cards/generate-missing', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { classId, termId } = req.query;
@@ -14432,12 +14553,14 @@ School Management System Administration
         ...(termId ? [eq(schema.exams.termId, Number(termId))] : []),
       ];
 
-      // Get distinct student+term pairs from exam results so we create at most one
-      // report card per student per term (not one per exam)
+      // Get every distinct student+exam result in scope — we need ALL of a missing
+      // student's exams (not just the first one) so every subject on their newly
+      // created report card gets its real score, not just the first exam encountered.
       const examResultsQuery = db.selectDistinct({
         studentId: schema.examResults.studentId,
         examId: schema.examResults.examId,
         termId: schema.exams.termId,
+        classId: schema.exams.classId,
         score: schema.examResults.score,
         maxScore: schema.examResults.maxScore,
       })
@@ -14446,16 +14569,51 @@ School Management System Administration
         .where(whereConditions.length > 0 ? and(...whereConditions) : undefined as any);
 
       const examResults = await examResultsQuery;
-      let created = 0;
-      let skipped = 0;
-      const errors: string[] = [];
 
-      // Deduplicate by studentId+termId — one sync per student per term is enough
-      const processedPairs = new Set<string>();
-      for (const result of examResults) {
-        const pairKey = `${result.studentId}:${result.termId}`;
-        if (processedPairs.has(pairKey)) { skipped++; continue; }
-        processedPairs.add(pairKey);
+      if (examResults.length === 0) {
+        console.log('[AUTO-GEN] No exam data found for this selection — nothing to generate.');
+        return res.json({
+          message: 'No exam data found for this selection — nothing to generate.',
+          created: 0,
+          pairsChecked: 0,
+          errors: [],
+        });
+      }
+
+      // A student is only "missing" a report card if no report card row exists for
+      // their student+term pair yet. Look this up up front so students who already
+      // have one are skipped entirely — never resynced, never recalculated.
+      const distinctTermIds: number[] = Array.from(new Set(examResults.map((r: { termId: number | null }) => r.termId).filter((id: number | null): id is number => id != null)));
+      const existingReportCards = distinctTermIds.length > 0
+        ? await db.select({
+            studentId: schema.reportCards.studentId,
+            termId: schema.reportCards.termId,
+          })
+            .from(schema.reportCards)
+            .where(inArray(schema.reportCards.termId, distinctTermIds))
+        : [];
+
+      const existingPairs = new Set(existingReportCards.map((rc: { studentId: string; termId: number }) => `${rc.studentId}:${rc.termId}`));
+      const missingResults = examResults.filter((r: { studentId: string; termId: number | null }) => !existingPairs.has(`${r.studentId}:${r.termId}`));
+
+      if (missingResults.length === 0) {
+        console.log('[AUTO-GEN] Every student in scope already has a report card for this term — doing nothing.');
+        return res.json({
+          message: 'No missing report cards — every student already has one for this selection.',
+          created: 0,
+          pairsChecked: 0,
+          errors: [],
+        });
+      }
+
+      let created = 0;
+      const errors: string[] = [];
+      const affectedStudentTermPairs = new Set<string>();
+
+      // Sync every exam result belonging to a truly-missing student so their new
+      // report card is populated with ALL of their subject scores, not just one.
+      for (const result of missingResults) {
+        affectedStudentTermPairs.add(`${result.studentId}:${result.termId}`);
         try {
           const syncResult = await storage.syncExamScoreToReportCard(
             result.studentId,
@@ -14466,20 +14624,20 @@ School Management System Administration
           );
           if (syncResult.isNewReportCard) created++;
         } catch (err: any) {
-          errors.push(`Student ${result.studentId} term ${result.termId}: ${err.message}`);
+          errors.push(`Student ${result.studentId} exam ${result.examId}: ${err.message}`);
         }
       }
 
-      // Invalidate caches
+      // Invalidate caches — only reached when something was actually generated
       enhancedCache.invalidate(/^reportcard:/);
       enhancedCache.invalidate(/^reportcards:/);
       enhancedCache.invalidate(/^report-card/);
 
-      console.log(`[AUTO-GEN] Done: ${created} new report cards, ${processedPairs.size} student-term pairs checked`);
+      console.log(`[AUTO-GEN] Done: ${created} new report card(s) for ${affectedStudentTermPairs.size} student-term pair(s)`);
       res.json({
-        message: `${created} missing report card(s) generated`,
+        message: `${created} missing report card(s) generated for ${affectedStudentTermPairs.size} student(s).`,
         created,
-        pairsChecked: processedPairs.size,
+        pairsChecked: affectedStudentTermPairs.size,
         errors: errors.slice(0, 10),
       });
     } catch (error: any) {

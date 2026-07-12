@@ -2,7 +2,7 @@ import { useLocation } from 'wouter';
 import {
   GraduationCap, Home, Users, Calendar, BookOpen, MessageSquare, User, Settings,
   Bell, LogOut, ImageIcon, FileText, Menu, ChevronLeft, ChevronRight, ClipboardCheck,
-  ClipboardList, ChevronDown, History, UserCheck, Eye, Briefcase, Shield, Activity,
+  ClipboardList, ChevronDown, UserCheck, Briefcase, Shield, Activity,
   Clock, PenTool, CheckSquare, Award, Star, Library, DollarSign, Trophy, HelpCircle,
   Inbox, Megaphone, MessagesSquare, ClipboardPen, BarChart3, FolderOpen, RotateCcw,
   Layers, Database, CreditCard, Receipt, ListChecks, PanelLeftClose, PanelLeftOpen,
@@ -121,7 +121,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
       const academicRoutes = ['/classes', '/subjects', '/subject-manager', '/academic-terms', '/syllabus-topics', '/academics/curriculum', '/lesson-notes', '/lesson-note-library', '/academics/timetable'];
       const studentRoutes = ['/students', '/parents', '/attendance'];
       const staffRoutes = ['/teachers', '/users', '/job-vacancies', '/recovery-tools'];
-      const examRoutes = ['/exams', '/grading-queue', '/exam-analytics', '/question-bank', '/results', '/recent-exam-results'];
+      const examRoutes = ['/exams', '/grading-queue', '/exam-analytics', '/question-bank', '/results'];
       const financeRoutes = ['/billing-items', '/billing-payments', '/billing-outstanding', '/billing-reports'];
       if (academicRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-academics'); return; }
       if (studentRoutes.some(p => location.includes(p))) { setOpenMenuKey('admin-students'); return; }
@@ -206,7 +206,6 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: '/portal/teacher/exams', icon: PenTool, label: 'Assessments' },
               { href: '/portal/teacher/grading-queue', icon: CheckSquare, label: 'Assessment Review' },
               { href: '/portal/teacher/exam-analytics', icon: Award, label: 'Assessment Analytics' },
-              { href: '/portal/teacher/recent-exam-results', icon: History, label: 'Assessment History' },
               { href: '/portal/teacher/question-bank', icon: Database, label: 'Question Bank' },
             ],
           },
@@ -267,8 +266,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: '/portal/admin/exams/manage', icon: PenTool, label: 'Assessment Management' },
               { href: '/portal/admin/exams/overview', icon: BarChart3, label: 'Assessment Analytics' },
               { href: '/portal/admin/question-bank', icon: Database, label: 'Question Bank' },
-              { href: '/portal/admin/results/publishing', icon: Eye, label: 'Report Card' },
-              { href: '/portal/admin/recent-exam-results', icon: History, label: 'Assessment History' },
+              { href: '/portal/admin/results/publishing', icon: FileText, label: 'Report Card' },
             ],
           },
           {

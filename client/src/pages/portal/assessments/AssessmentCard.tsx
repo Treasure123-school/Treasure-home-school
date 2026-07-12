@@ -115,7 +115,7 @@ export function AssessmentCard({
 
         <ScheduleBadge exam={exam} />
 
-        <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
+        <div className="flex items-center justify-between gap-2 pt-2">
           <Button
             variant="outline"
             size="sm"

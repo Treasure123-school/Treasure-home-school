@@ -30,6 +30,7 @@ import { Plus, Edit, BookOpen, Trash2, Clock, Users, FileText, Eye, Play, Upload
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { PageHeader, SearchInput, EmptyState, MiniStatCard, MiniStatGrid } from "@/components/shared";
+import { QuestionImageUpload } from '@/components/question/QuestionImageUpload';
 
 // Form schemas - Use the shared insertExamSchema which has proper preprocessing
 const examFormSchema = insertExamSchema.omit({ 
@@ -118,7 +119,7 @@ function QuestionOptions({ questionId }: { questionId: number }) {
           </span>
           <span className="text-sm">{option.optionText}</span>
           {option.isCorrect && (
-            <span className="text-xs bg-green-100 text-green-800 px-1 rounded">✓ Correct</span>
+            <Check className="w-3.5 h-3.5 text-green-600 shrink-0" />
           )}
         </div>
       ))}
@@ -135,10 +136,12 @@ export default function ExamManagement() {
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<ExamQuestion | null>(null);
+  const [editingImageUrl, setEditingImageUrl] = useState<string | null>(null);
   const [previewExam, setPreviewExam] = useState<Exam | null>(null);
   const [isSecurityExpanded, setIsSecurityExpanded] = useState(false);
   const [deletingExam, setDeletingExam] = useState<Exam | null>(null);
   const [deletingExamIds, setDeletingExamIds] = useState<Set<number>>(new Set());
+  const [questionToDelete, setQuestionToDelete] = useState<number | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
 
   const searchParams = useSearch();
@@ -294,11 +297,15 @@ export default function ExamManagement() {
 
   // Enable real-time updates for exam questions when viewing/editing an exam
   // Note: queryKey must match exactly with the useQuery queryKey for cache invalidation to work
+  // skipCacheInvalidation=true: we manage all cache updates manually in onEvent and via
+  // optimistic mutations. Without this, the hook calls refetchQueries() on every socket
+  // event which races with optimistic updates and can restore deleted questions.
   useSocketIORealtime({
     table: 'exam_questions',
     queryKey: ['/api/exam-questions', selectedExam?.id],
     examId: selectedExam?.id,
     enabled: !!selectedExam?.id,
+    skipCacheInvalidation: true,
     onEvent: (event) => {
       // Handle question.deleted event - immediately remove from cache
       if (event.eventType === 'question.deleted' || (event.operation === 'DELETE' && event.table === 'exam_questions')) {
@@ -434,6 +441,24 @@ export default function ExamManagement() {
       return response.json();
     },
   });
+
+  // Optimistically bump a single exam's question-count badge in every cached
+  // copy of the question-counts map (the cache key includes the exam-id list,
+  // so multiple variants of the query can be cached at once). This is what
+  // makes the "X questions" badge on each exam card/row update the instant a
+  // question is added/deleted, instead of waiting for the background
+  // invalidation + refetch below to complete. Negative deltas are clamped at 0.
+  const adjustQuestionCountCache = useCallback((examId: number | undefined, delta: number) => {
+    if (!examId || !delta) return;
+    queryClient.setQueriesData<Record<number, number>>(
+      { queryKey: ['/api/exams/question-counts'], exact: false },
+      (old) => {
+        if (!old) return old;
+        const current = old[examId] ?? 0;
+        return { ...old, [examId]: Math.max(0, current + delta) };
+      }
+    );
+  }, []);
 
   // Create exam mutation
   const createExamMutation = useMutation({
@@ -652,53 +677,78 @@ export default function ExamManagement() {
     },
   });
 
-  // Delete question mutation — confirm-first (not optimistic). The question
-  // only leaves the list after the backend confirms the deletion succeeded.
+  // Delete question mutation — optimistic update for instant UI feedback.
+  // The item disappears immediately; restored automatically if the backend fails.
   const deleteQuestionMutation = useMutation({
     mutationFn: async (questionId: number) => {
-      try {
-        const response = await apiRequest('DELETE', `/api/exam-questions/${questionId}`);
-        if (!response.ok) {
-          const body = await response.json().catch(() => ({}));
-          throw new Error(body?.message || 'Failed to delete question');
-        }
-        if (response.status === 204) return null;
-        const contentLength = response.headers.get('content-length');
-        if (contentLength && parseInt(contentLength) > 0) {
-          return response.json();
-        }
-        return null;
-      } catch (error) {
-        throw error instanceof Error ? error : new Error('Failed to delete question');
+      const response = await apiRequest('DELETE', `/api/exam-questions/${questionId}`);
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.message || 'Failed to delete question');
       }
+      return null;
     },
     onMutate: async (questionId) => {
-      // Mark question as pending deletion to prevent race conditions with Realtime.
-      // The item itself is left in place until onSuccess confirms the delete.
+      // Mark as pending to shield against race conditions with Realtime events
       pendingQuestionDeletionsRef.current.add(questionId);
+
+      const examId = selectedExam?.id;
+
+      if (examId) {
+        // Cancel any in-flight refetches so they don't overwrite our optimistic removal
+        await queryClient.cancelQueries({ queryKey: ['/api/exam-questions', examId] });
+
+        // Snapshot the current list so we can roll back on error
+        const snapshot = queryClient.getQueryData<ExamQuestion[]>(['/api/exam-questions', examId]);
+
+        // Immediately remove from cache — user sees it gone right now
+        queryClient.setQueryData<ExamQuestion[]>(['/api/exam-questions', examId], (old) =>
+          old?.filter((q) => q.id !== questionId) ?? []
+        );
+
+        // Immediately decrement the "X questions" badge for this exam — don't
+        // wait for the background invalidation to refetch it.
+        adjustQuestionCountCache(examId, -1);
+
+        // Immediate success feedback — no waiting for the server
+        toast({ title: "Question deleted", description: "Question removed successfully." });
+
+        return { snapshot, examId };
+      }
+
+      toast({ title: "Question deleted", description: "Question removed successfully." });
+      return { snapshot: undefined, examId: undefined };
     },
     onSuccess: (_, questionId) => {
-      // Only now remove the question from the cache — after backend confirmation.
+      pendingQuestionDeletionsRef.current.delete(questionId);
+      if (editingQuestion?.id === questionId) setEditingQuestion(null);
+
+      // Defensive: ensure the question is gone even if a socket-triggered refetch
+      // restored it between onMutate and now. This is a no-op when the optimistic
+      // update already removed it correctly.
       const examId = selectedExam?.id;
       if (examId) {
         queryClient.setQueryData<ExamQuestion[]>(['/api/exam-questions', examId], (old) =>
           old?.filter((q) => q.id !== questionId) ?? []
         );
       }
-      if (editingQuestion?.id === questionId) {
-        setEditingQuestion(null);
-      }
 
-      pendingQuestionDeletionsRef.current.delete(questionId);
-
-      toast({ title: "Success", description: "Question deleted successfully" });
-
-      // Silent background invalidations
+      // Silent background sync — does not flicker the UI
       queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/question-options', questionId] });
     },
-    onError: (error: any, questionId) => {
+    onError: (error: any, questionId, context) => {
       pendingQuestionDeletionsRef.current.delete(questionId);
+
+      // Roll back optimistic removal — restore exact previous list
+      const ctx = context as { snapshot?: ExamQuestion[]; examId?: number } | undefined;
+      if (ctx?.snapshot !== undefined && ctx?.examId) {
+        queryClient.setQueryData(['/api/exam-questions', ctx.examId], ctx.snapshot);
+      }
+      // Roll back the optimistic question-count decrement too
+      if (ctx?.examId) {
+        adjustQuestionCountCache(ctx.examId, 1);
+      }
 
       toast({
         title: "Deletion Failed",
@@ -707,6 +757,13 @@ export default function ExamManagement() {
       });
     },
   });
+
+  // Handles confirm-delete: closes the modal immediately then fires the mutation
+  // so the user gets instant feedback without waiting for the network.
+  const handleConfirmDeleteQuestion = useCallback((questionId: number) => {
+    setQuestionToDelete(null); // close confirmation dialog immediately
+    deleteQuestionMutation.mutate(questionId);
+  }, [deleteQuestionMutation]);
 
   // Create question mutation with no retries to prevent circuit breaker amplification
   const createQuestionMutation = useMutation({
@@ -718,18 +775,25 @@ export default function ExamManagement() {
       const result = await response.json();
       return result;
     },
+    onMutate: async (questionData) => {
+      // Immediately bump the "X questions" badge — don't wait for the
+      // background invalidation below to refetch it.
+      adjustQuestionCountCache(questionData.examId, 1);
+      return { examId: questionData.examId };
+    },
     onSuccess: (createdQuestion) => {
       toast({
         title: "Success",
         description: "Question added successfully",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/exam-questions', selectedExam?.id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts', exams.map((exam: Exam) => exam.id)] });
+      queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'], exact: false });
       // Invalidate question options for the newly created question to ensure fresh data
       if (createdQuestion?.id) {
         queryClient.invalidateQueries({ queryKey: ['/api/question-options', createdQuestion.id] });
       }
       setIsQuestionDialogOpen(false);
+      setEditingImageUrl(null);
       // Reset form with default values
       resetQuestion({
         questionType: 'multiple_choice',
@@ -745,7 +809,11 @@ export default function ExamManagement() {
         ]
       });
     },
-    onError: (error: any) => {
+    onError: (error: any, _variables, context) => {
+      // Roll back the optimistic question-count increment
+      if (context?.examId) {
+        adjustQuestionCountCache(context.examId, -1);
+      }
 
       // Use classified error types for better error handling
       if (error?.message?.includes('Circuit breaker is OPEN')) {
@@ -855,6 +923,7 @@ export default function ExamManagement() {
       }
       setIsQuestionDialogOpen(false);
       setEditingQuestion(null);
+      setEditingImageUrl(null);
       // Reset form with default values
       resetQuestion({
         questionType: 'multiple_choice',
@@ -920,6 +989,7 @@ export default function ExamManagement() {
         ],
     });
 
+    setEditingImageUrl((question as any).imageUrl || null);
     setIsQuestionDialogOpen(true);
   };
 
@@ -1090,6 +1160,7 @@ export default function ExamManagement() {
       ...data,
       questionText: data.questionText.trim(),
       points: data.points || 1,
+      imageUrl: editingImageUrl || null,
     };
 
     // For multiple choice questions, filter out empty options and validate
@@ -1212,8 +1283,12 @@ export default function ExamManagement() {
       // Immediately update UI with optimistic data
       queryClient.setQueryData<ExamQuestion[]>(queryKey, (old: ExamQuestion[] | undefined = []) => [...(old || []), ...optimisticQuestions]);
 
+      // Immediately bump the "X questions" badge by the full batch size —
+      // corrected down in onSuccess if some rows fail validation server-side.
+      const examId = selectedExam?.id;
+      adjustQuestionCountCache(examId, newQuestions.length);
 
-      return { previousQuestions, queryKey };
+      return { previousQuestions, queryKey, examId, optimisticDelta: newQuestions.length };
     },
     onSuccess: async (data, variables, context) => {
       const successMessage = data.errors && data.errors.length > 0
@@ -1238,7 +1313,16 @@ export default function ExamManagement() {
         });
 
       }
-      // Invalidate question counts
+
+      // Reconcile the optimistic badge count with what the server actually
+      // created — if some rows failed validation, `data.created` is lower
+      // than the batch size we optimistically added above.
+      const actualCreated = typeof data.created === 'number' ? data.created : variables.length;
+      const correction = actualCreated - variables.length;
+      if (correction !== 0) {
+        adjustQuestionCountCache(selectedExam?.id, correction);
+      }
+      // Background reconciliation with the server's authoritative count
       queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'], exact: false });
 
       if (data.errors && data.errors.length > 0) {
@@ -1259,6 +1343,10 @@ export default function ExamManagement() {
       // Rollback optimistic update on error
       if (context?.previousQuestions) {
         queryClient.setQueryData(context.queryKey, context.previousQuestions);
+      }
+      // Roll back the optimistic question-count bump for the whole batch
+      if (context?.examId && context?.optimisticDelta) {
+        adjustQuestionCountCache(context.examId, -context.optimisticDelta);
       }
       // Enhanced error handling for CSV uploads using classified error types
       if (error?.message?.includes('Circuit breaker is OPEN')) {
@@ -2226,6 +2314,7 @@ export default function ExamManagement() {
                     onOpenChange={(open) => {
                       if (!open) {
                         setEditingQuestion(null);
+                        setEditingImageUrl(null);
                         resetQuestion({
                           questionType: 'multiple_choice',
                           points: 1,
@@ -2260,36 +2349,44 @@ export default function ExamManagement() {
                           {questionErrors.questionText && <p className="text-sm text-red-500">{questionErrors.questionText.message}</p>}
                         </div>
 
-                        {questionType === 'essay' && (
-                          <>
-                            <div>
-                              <Label htmlFor="instructions">Instructions (Optional)</Label>
-                              <Textarea
-                                id="instructions"
-                                {...registerQuestion('instructions')}
-                                data-testid="textarea-question-instructions"
-                                placeholder="e.g., Write a detailed explanation (minimum 200 words), Show your working..."
-                                rows={2}
-                              />
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Provide specific guidance for students on how to answer this question
-                              </p>
-                            </div>
+                        {/* Instructions — shown for ALL question types */}
+                        <div>
+                          <Label htmlFor="instructions" className="text-xs font-semibold text-foreground/70">
+                            Instructions{' '}
+                            <span className="text-muted-foreground font-normal">(optional — shown to student above this question)</span>
+                          </Label>
+                          <Textarea
+                            id="instructions"
+                            {...registerQuestion('instructions')}
+                            data-testid="textarea-question-instructions"
+                            placeholder="e.g. Choose the best answer. / Study the diagram below. / Simplify the expression."
+                            rows={2}
+                            className="resize-none mt-1.5"
+                          />
+                        </div>
 
-                            <div>
-                              <Label htmlFor="sampleAnswer">Sample Answer (Optional)</Label>
-                              <Textarea
-                                id="sampleAnswer"
-                                {...registerQuestion('sampleAnswer')}
-                                data-testid="textarea-question-sample"
-                                placeholder="Provide a sample or model answer for grading reference..."
-                                rows={3}
-                              />
-                              <p className="text-xs text-muted-foreground mt-1">
-                                This will help with consistent grading and is not shown to students
-                              </p>
-                            </div>
-                          </>
+                        {/* Image upload — shown for ALL question types */}
+                        <QuestionImageUpload
+                          value={editingImageUrl}
+                          onChange={setEditingImageUrl}
+                          disabled={createQuestionMutation.isPending || updateQuestionMutation.isPending}
+                        />
+
+                        {/* Sample answer — essay only */}
+                        {questionType === 'essay' && (
+                          <div>
+                            <Label htmlFor="sampleAnswer">Sample Answer (Optional)</Label>
+                            <Textarea
+                              id="sampleAnswer"
+                              {...registerQuestion('sampleAnswer')}
+                              data-testid="textarea-question-sample"
+                              placeholder="Provide a sample or model answer for grading reference..."
+                              rows={3}
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              This will help with consistent grading and is not shown to students
+                            </p>
+                          </div>
                         )}
 
                         <div className="grid grid-cols-2 gap-4">
@@ -2445,48 +2542,39 @@ export default function ExamManagement() {
                               </div>
                             )}
                           </div>
-                          <div className="flex space-x-1">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEditQuestion(question)}
-                              disabled={updateQuestionMutation.isPending}
-                              data-testid={`button-edit-question-${question.id}`}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  disabled={deleteQuestionMutation.isPending}
-                                  data-testid={`button-delete-question-${question.id}`}
-                                  aria-label={`Delete question ${index + 1}`}
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Delete Question</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to delete this question? This action cannot be undone and will permanently remove the question and all associated answer options.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel disabled={deleteQuestionMutation.isPending}>Cancel</AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => deleteQuestionMutation.mutate(question.id)}
-                                    disabled={deleteQuestionMutation.isPending}
-                                    className="bg-destructive hover:bg-destructive/90"
-                                  >
-                                    {deleteQuestionMutation.isPending ? 'Deleting...' : 'Delete Question'}
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0"
+                                data-testid={`button-actions-question-${question.id}`}
+                                aria-label={`Actions for question ${index + 1}`}
+                              >
+                                <MoreVertical className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => handleEditQuestion(question)}
+                                disabled={updateQuestionMutation.isPending}
+                                data-testid={`button-edit-question-${question.id}`}
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => setQuestionToDelete(question.id)}
+                                disabled={deleteQuestionMutation.isPending}
+                                data-testid={`button-delete-question-${question.id}`}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </CardContent>
                     </Card>
@@ -2497,6 +2585,32 @@ export default function ExamManagement() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Controlled delete-question confirmation — lives outside the question map so
+          the AlertDialog is never nested inside a DropdownMenu, which prevents portal
+          conflicts and ensures clean focus management. */}
+      <AlertDialog
+        open={questionToDelete !== null}
+        onOpenChange={(open) => { if (!open) setQuestionToDelete(null); }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Question</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this question? This action cannot be undone and will permanently remove the question and all associated answer options.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { if (questionToDelete !== null) handleConfirmDeleteQuestion(questionToDelete); }}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Delete Question
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Preview Exam Dialog */}
       {previewExam && (
