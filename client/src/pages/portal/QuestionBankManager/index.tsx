@@ -88,16 +88,14 @@ function BrowseRefinementFilters({
         </SelectContent>
       </Select>
 
-      {/* Type — shows filter icon only on mobile, full label on desktop */}
+      {/* Type — shows "Type" on mobile, "All types" on desktop */}
       <Select value={type || "_all"} onValueChange={(v) => onType(v === "_all" ? "" : v)}>
         <SelectTrigger data-testid="filter-browse-type" className="flex-1 min-w-0 h-8 text-xs">
           <SelectValue>
             {type
               ? <span className="truncate">{TYPE_OPTS.find(t => t.value === type)?.label ?? type}</span>
-              : <>
-                  <Filter className="w-3.5 h-3.5 shrink-0 sm:hidden" />
-                  <span className="truncate hidden sm:inline">All types</span>
-                </>}
+              : <span className="truncate hidden sm:inline">All types</span>}
+            {!type && <span className="truncate sm:hidden">Type</span>}
           </SelectValue>
         </SelectTrigger>
         <SelectContent>
