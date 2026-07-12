@@ -49,11 +49,18 @@ const TYPE_OPTS = [
 function BrowseRefinementFilters({
   status, diff, type, onStatus, onDiff, onType, onClear,
 }: RefinementFiltersProps) {
+  const hasFilters = !!(status || diff || type);
   return (
-    <div className="flex flex-wrap gap-2 items-center">
+    <div className="flex gap-2 items-center">
+      {/* Status — shows full label on desktop, abbreviated on mobile */}
       <Select value={status || "_all"} onValueChange={(v) => onStatus(v === "_all" ? "" : v)}>
-        <SelectTrigger data-testid="filter-browse-status" className="h-8 text-xs w-36">
-          <SelectValue placeholder="All statuses" />
+        <SelectTrigger data-testid="filter-browse-status" className="flex-1 min-w-0 h-8 text-xs">
+          <SelectValue>
+            {status
+              ? <span className="truncate">{STATUS_META[status as keyof typeof STATUS_META]?.label ?? status}</span>
+              : <span className="truncate hidden sm:inline">All statuses</span>}
+            {!status && <span className="truncate sm:hidden">Status</span>}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="_all">All statuses</SelectItem>
@@ -63,9 +70,15 @@ function BrowseRefinementFilters({
         </SelectContent>
       </Select>
 
+      {/* Difficulty — shows "All levels" on desktop, "Level" on mobile */}
       <Select value={diff || "_all"} onValueChange={(v) => onDiff(v === "_all" ? "" : v)}>
-        <SelectTrigger data-testid="filter-browse-diff" className="h-8 text-xs w-28">
-          <SelectValue placeholder="Difficulty" />
+        <SelectTrigger data-testid="filter-browse-diff" className="flex-1 min-w-0 h-8 text-xs">
+          <SelectValue>
+            {diff
+              ? <span className="truncate capitalize">{diff}</span>
+              : <span className="truncate hidden sm:inline">All levels</span>}
+            {!diff && <span className="truncate sm:hidden">Level</span>}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="_all">All levels</SelectItem>
@@ -75,9 +88,17 @@ function BrowseRefinementFilters({
         </SelectContent>
       </Select>
 
+      {/* Type — shows filter icon only on mobile, full label on desktop */}
       <Select value={type || "_all"} onValueChange={(v) => onType(v === "_all" ? "" : v)}>
-        <SelectTrigger data-testid="filter-browse-type" className="h-8 text-xs w-36">
-          <SelectValue placeholder="All types" />
+        <SelectTrigger data-testid="filter-browse-type" className="flex-1 min-w-0 h-8 text-xs">
+          <SelectValue>
+            {type
+              ? <span className="truncate">{TYPE_OPTS.find(t => t.value === type)?.label ?? type}</span>
+              : <>
+                  <Filter className="w-3.5 h-3.5 shrink-0 sm:hidden" />
+                  <span className="truncate hidden sm:inline">All types</span>
+                </>}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="_all">All types</SelectItem>
@@ -87,12 +108,17 @@ function BrowseRefinementFilters({
         </SelectContent>
       </Select>
 
-      {(status || diff || type) && (
+      {/* Clear — X icon on mobile, text on desktop */}
+      {hasFilters && (
         <Button
-          size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground"
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8 shrink-0 sm:w-auto sm:px-2.5 text-muted-foreground"
           onClick={onClear}
+          title="Clear filters"
         >
-          Clear filters
+          <span className="hidden sm:inline text-xs">Clear</span>
+          <span className="sm:hidden text-base leading-none">×</span>
         </Button>
       )}
     </div>
