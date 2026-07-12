@@ -335,11 +335,12 @@ export function QuestionFormDialog({
                     opt.isCorrect ? "border-emerald-300 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/30" : "border-border"
                   }`}>
                     <input
-                      type="checkbox"
+                      type="radio"
+                      name="correct-option"
                       checked={opt.isCorrect}
-                      onChange={(e) =>
+                      onChange={() =>
                         setOptions(prev => prev.map((o, j) =>
-                          j === i ? { ...o, isCorrect: e.target.checked } : o
+                          ({ ...o, isCorrect: j === i })
                         ))
                       }
                       data-testid={`form-opt-correct-${i}`}

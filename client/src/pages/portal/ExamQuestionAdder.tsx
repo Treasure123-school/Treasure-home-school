@@ -426,12 +426,12 @@ export default function ExamQuestionAdder({
 
                         {questionType === 'multiple_choice' && (
                             <div className="border-t pt-3">
-                                <Label>Options (check correct answer)</Label>
+                                <Label>Options (select the correct answer)</Label>
                                 <div className="space-y-2 mt-2">
                                     {options.map((opt, i) => (
                                         <div key={i} className="flex items-center gap-2">
-                                            <input type="checkbox" checked={opt.isCorrect} onChange={(e) => {
-                                                const n = [...options]; n[i].isCorrect = e.target.checked; setOptions(n);
+                                            <input type="radio" name="correct-option" checked={opt.isCorrect} onChange={() => {
+                                                setOptions(options.map((o, j) => ({ ...o, isCorrect: j === i })));
                                             }} className="w-4 h-4" />
                                             <Input value={opt.text} onChange={(e) => {
                                                 const n = [...options]; n[i].text = e.target.value; setOptions(n);
