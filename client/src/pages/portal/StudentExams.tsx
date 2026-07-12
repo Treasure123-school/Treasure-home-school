@@ -3114,7 +3114,7 @@ export default function StudentExams() {
   // Render active exam without PortalLayout wrapper
   if (activeSession && examQuestions.length > 0) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pt-[120px] sm:pt-[140px] select-none">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 select-none">
         <ExamHeader
           subjectName={subjectName}
           className={studentClassName}
