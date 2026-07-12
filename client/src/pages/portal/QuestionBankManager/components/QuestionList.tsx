@@ -70,15 +70,54 @@ export function QuestionList({
     placeholderData: (prev: any) => prev,
   });
 
-  // ── Delete question ─────────────────────────────────────────
+  // ── Delete question (optimistic) ────────────────────────────
   const deleteMutation = useMutation({
     mutationFn: (id: number) => apiRequest("DELETE", `/api/question-bank/items/${id}`),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
-      toast({ title: "Success", description: "Question deleted." });
+
+    onMutate: async (id: number) => {
+      // Cancel any in-flight refetches so they don't overwrite the optimistic state
+      await qc.cancelQueries({ queryKey: ["/api/question-bank/items"] });
+
+      // Snapshot everything we might need to roll back
+      const snapshot      = qc.getQueriesData({ queryKey: ["/api/question-bank/items"] });
+      const statsSnapshot = qc.getQueryData(["/api/question-bank/stats"]);
+
+      // Optimistically remove the item from every cached page variant
+      qc.setQueriesData({ queryKey: ["/api/question-bank/items"] }, (old: any) => {
+        if (!old?.items) return old;
+        return {
+          ...old,
+          items: old.items.filter((it: any) => it.id !== id),
+          total: Math.max(0, (old.total ?? 0) - 1),
+        };
+      });
+
+      // Optimistically decrement the stats counter
+      qc.setQueryData(["/api/question-bank/stats"], (old: any) =>
+        old ? { ...old, totalQuestions: Math.max(0, (old.totalQuestions ?? 0) - 1) } : old
+      );
+
+      // Close the modal and show success toast immediately — before the request completes
       setDeleteTarget(null);
+      toast({ title: "Deleted successfully.", description: "The question has been removed." });
+
+      return { snapshot, statsSnapshot };
     },
-    onError: (e: any) => toast({ title: "Delete failed", description: e.message, variant: "destructive" }),
+
+    onError: (e: any, _id, ctx: any) => {
+      // Restore all cache pages to their pre-delete state
+      ctx?.snapshot?.forEach(([key, data]: [any, any]) => qc.setQueryData(key, data));
+      if (ctx?.statsSnapshot !== undefined) {
+        qc.setQueryData(["/api/question-bank/stats"], ctx.statsSnapshot);
+      }
+      toast({ title: "Delete failed", description: e.message ?? "Please try again.", variant: "destructive" });
+    },
+
+    onSettled: () => {
+      // Background sync — keeps the cache consistent with the server
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
+    },
   });
 
   // ── Bulk CSV upload ─────────────────────────────────────────
@@ -423,7 +462,7 @@ export function QuestionList({
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
             >
-              {deleteMutation.isPending ? "Deleting…" : "Delete Question"}
+              Delete Question
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
