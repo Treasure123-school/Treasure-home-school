@@ -107,6 +107,9 @@ export function QuestionFormDialog({
       return { snapshot };
     },
     onSuccess: (savedItem: any) => {
+      // Replace the optimistic placeholder with the server-confirmed item.
+      // Do NOT call invalidateQueries for items here — a background GET races
+      // the DB write and returns the old row, overwriting the correct data.
       qc.setQueriesData({ queryKey: ["/api/question-bank/items"] }, (old: any) => {
         if (!old?.items) return old;
         if (isEdit) {
@@ -118,15 +121,18 @@ export function QuestionFormDialog({
           it._optimistic ? savedItem : it
         )};
       });
+      // Stats counter may have changed (create adds one) — safe to refetch.
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
       toast({ title: "Success", description: isEdit ? "Question updated." : "Question created." });
       onClose();
-      qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
-      qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
     },
     onError: (e: any, _vars, ctx: any) => {
+      // Restore optimistic state, then hard-refetch to get server truth.
       if (ctx?.snapshot) {
         ctx.snapshot.forEach(([key, data]: [any, any]) => qc.setQueryData(key, data));
       }
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
       toast({ title: "Error", description: e.message, variant: "destructive" });
     },
   });
