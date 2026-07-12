@@ -67,6 +67,11 @@ const LOG_BASE_RE = /\blog(\d+)\(([^()]*)\)/g;
 // Standalone simple fraction, e.g. "3/4" (not part of a date or URL)
 const FRACTION_RE = /(?<![\w.\/])(\d+)\/(\d+)(?![\w.\/])/g;
 
+// A "bare" fraction operand: a single algebraic term with no operators of its
+// own, e.g. "A", "x", "2x", "x2", "12" — deliberately NOT multi-letter words
+// like "and" or "km", so "and/or" and "km/h" are never mistaken for fractions.
+const BARE_TOKEN_RE = /^(?:\d+[A-Za-z]?|[A-Za-z]\d*)$/;
+
 /**
  * Runs `replacer` only on the portions of `text` that are NOT already inside
  * a $...$ math span, so earlier passes never get double-processed.
@@ -114,6 +119,128 @@ function findSqrtCall(
   }
 }
 
+// Finds the index of the "(" that matches the ")" at str[closeIdx], scanning
+// backward and tracking paren depth. Returns -1 if unbalanced.
+function matchParenStart(str: string, closeIdx: number): number {
+  let depth = 0;
+  for (let j = closeIdx; j >= 0; j--) {
+    if (str[j] === ")") depth++;
+    else if (str[j] === "(") {
+      depth--;
+      if (depth === 0) return j;
+    }
+  }
+  return -1;
+}
+
+// Finds the index of the ")" that matches the "(" at str[openIdx], scanning
+// forward and tracking paren depth. Returns -1 if unbalanced.
+function matchParenEnd(str: string, openIdx: number): number {
+  let depth = 0;
+  for (let j = openIdx; j < str.length; j++) {
+    if (str[j] === "(") depth++;
+    else if (str[j] === ")") {
+      depth--;
+      if (depth === 0) return j;
+    }
+  }
+  return -1;
+}
+
+interface FractionOperand {
+  start: number;
+  end: number;
+  text: string;
+  hasParen: boolean;
+}
+
+// Looks at chunk immediately to the LEFT of slashIdx (skipping surrounding
+// spaces) for either a balanced "(...)" group or a bare single-term token
+// (see BARE_TOKEN_RE). Returns null if neither is found.
+function matchLeftOperand(chunk: string, slashIdx: number): FractionOperand | null {
+  let j = slashIdx - 1;
+  while (j >= 0 && chunk[j] === " ") j--;
+  if (j < 0) return null;
+  if (chunk[j] === ")") {
+    const start = matchParenStart(chunk, j);
+    if (start === -1) return null;
+    return { start, end: slashIdx, text: chunk.slice(start + 1, j), hasParen: true };
+  }
+  let i = j;
+  while (i >= 0 && /[A-Za-z0-9]/.test(chunk[i])) i--;
+  const start = i + 1;
+  if (start > j) return null;
+  const text = chunk.slice(start, j + 1);
+  if (!BARE_TOKEN_RE.test(text)) return null;
+  return { start, end: slashIdx, text, hasParen: false };
+}
+
+// Mirror of matchLeftOperand, looking to the RIGHT of slashIdx.
+function matchRightOperand(chunk: string, slashIdx: number): FractionOperand | null {
+  let j = slashIdx + 1;
+  while (j < chunk.length && chunk[j] === " ") j++;
+  if (j >= chunk.length) return null;
+  if (chunk[j] === "(") {
+    const end = matchParenEnd(chunk, j);
+    if (end === -1) return null;
+    return { start: slashIdx, end: end + 1, text: chunk.slice(j + 1, end), hasParen: true };
+  }
+  let i = j;
+  while (i < chunk.length && /[A-Za-z0-9]/.test(chunk[i])) i++;
+  if (i === j) return null;
+  const text = chunk.slice(j, i);
+  if (!BARE_TOKEN_RE.test(text)) return null;
+  return { start: slashIdx, end: i, text, hasParen: false };
+}
+
+// Scans `chunk` for "a/b" fractions where at least one side is a
+// parenthesized expression (e.g. "(2x-1)/((x-1)(x-2))", "A/(x-1)") or, with
+// no parens at all, both sides are simple algebraic terms containing a
+// letter (e.g. "2x/3y"). Pure digit/digit fractions ("3/4") and anything
+// that looks like a date ("12/25/2024") are deliberately left alone here —
+// they're handled by the plain-digit FRACTION_RE pass, which already guards
+// against dates. `makeReplacement` controls whether the match is wrapped in
+// $...$ (top-level text) or emitted as raw LaTeX (nested inside \sqrt{}/^{}).
+function replaceComplexFractionsIn(
+  chunk: string,
+  makeReplacement: (numeratorLatex: string, denominatorLatex: string) => string
+): string {
+  let result = "";
+  let i = 0;
+  while (i < chunk.length) {
+    const slashIdx = chunk.indexOf("/", i);
+    if (slashIdx === -1) {
+      result += chunk.slice(i);
+      break;
+    }
+    const left = matchLeftOperand(chunk, slashIdx);
+    const right = left ? matchRightOperand(chunk, slashIdx) : null;
+    const eligible =
+      !!left &&
+      !!right &&
+      (left.hasParen || right.hasParen || /[A-Za-z]/.test(left.text) || /[A-Za-z]/.test(right.text));
+    if (left && right && eligible) {
+      result += chunk.slice(i, left.start);
+      const numerator = toRawLatex(left.text);
+      const denominator = toRawLatex(right.text);
+      result += makeReplacement(numerator, denominator);
+      i = right.end;
+    } else {
+      result += chunk.slice(i, slashIdx + 1);
+      i = slashIdx + 1;
+    }
+  }
+  return result;
+}
+
+function convertComplexFractions(chunk: string): string {
+  return replaceComplexFractionsIn(chunk, (num, den) => `$\\frac{${num}}{${den}}$`);
+}
+
+function convertComplexFractionsRaw(chunk: string): string {
+  return replaceComplexFractionsIn(chunk, (num, den) => `\\frac{${num}}{${den}}`);
+}
+
 // Converts plain-text math shorthand inside a sqrt(...) argument (nested
 // sqrt(...) calls, superscripts, subscripts, fractions) into raw LaTeX
 // source (no dollar-sign wrapping), since the result is embedded inside an
@@ -128,6 +255,7 @@ function toRawLatex(text: string): string {
     return `${base}^{${cleanExp}}`;
   });
   out = out.replace(SUBSCRIPT_RE, (_m, base, sub) => `${base}_{${sub.replace(/^[{(]|[)}]$/g, "")}}`);
+  out = convertComplexFractionsRaw(out);
   out = out.replace(FRACTION_RE, (_m, a, b) => `\\frac{${a}}{${b}}`);
   return out;
 }
@@ -217,6 +345,11 @@ export function autoTagMath(text: string): string {
 
   // 2b. sqrt(...) -> \sqrt{...}, handling nested parentheses.
   out = applyOutsideMath(out, convertSqrtCalls);
+
+  // 2c. Complex fractions: parenthesized numerator/denominator expressions,
+  // e.g. "(2x-1)/((x-1)(x-2))" or "A/(x-1)", plus bare algebraic terms on
+  // both sides like "2x/3y" -> proper \frac{...}{...} instead of a raw "/".
+  out = applyOutsideMath(out, convertComplexFractions);
 
   // 3. Generic superscripts / subscripts on whatever's left.
   out = applyOutsideMath(out, (chunk) =>
