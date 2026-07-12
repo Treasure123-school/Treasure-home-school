@@ -30,6 +30,7 @@ import { Plus, Edit, BookOpen, Trash2, Clock, Users, FileText, Eye, Play, Upload
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { PageHeader, SearchInput, EmptyState, MiniStatCard, MiniStatGrid } from "@/components/shared";
+import { QuestionImageUpload } from '@/components/question/QuestionImageUpload';
 
 // Form schemas - Use the shared insertExamSchema which has proper preprocessing
 const examFormSchema = insertExamSchema.omit({ 
@@ -135,6 +136,7 @@ export default function ExamManagement() {
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<ExamQuestion | null>(null);
+  const [editingImageUrl, setEditingImageUrl] = useState<string | null>(null);
   const [previewExam, setPreviewExam] = useState<Exam | null>(null);
   const [isSecurityExpanded, setIsSecurityExpanded] = useState(false);
   const [deletingExam, setDeletingExam] = useState<Exam | null>(null);
@@ -791,6 +793,7 @@ export default function ExamManagement() {
         queryClient.invalidateQueries({ queryKey: ['/api/question-options', createdQuestion.id] });
       }
       setIsQuestionDialogOpen(false);
+      setEditingImageUrl(null);
       // Reset form with default values
       resetQuestion({
         questionType: 'multiple_choice',
@@ -920,6 +923,7 @@ export default function ExamManagement() {
       }
       setIsQuestionDialogOpen(false);
       setEditingQuestion(null);
+      setEditingImageUrl(null);
       // Reset form with default values
       resetQuestion({
         questionType: 'multiple_choice',
@@ -985,6 +989,7 @@ export default function ExamManagement() {
         ],
     });
 
+    setEditingImageUrl((question as any).imageUrl || null);
     setIsQuestionDialogOpen(true);
   };
 
@@ -1155,6 +1160,7 @@ export default function ExamManagement() {
       ...data,
       questionText: data.questionText.trim(),
       points: data.points || 1,
+      imageUrl: editingImageUrl || null,
     };
 
     // For multiple choice questions, filter out empty options and validate
@@ -2308,6 +2314,7 @@ export default function ExamManagement() {
                     onOpenChange={(open) => {
                       if (!open) {
                         setEditingQuestion(null);
+                        setEditingImageUrl(null);
                         resetQuestion({
                           questionType: 'multiple_choice',
                           points: 1,
@@ -2342,36 +2349,44 @@ export default function ExamManagement() {
                           {questionErrors.questionText && <p className="text-sm text-red-500">{questionErrors.questionText.message}</p>}
                         </div>
 
-                        {questionType === 'essay' && (
-                          <>
-                            <div>
-                              <Label htmlFor="instructions">Instructions (Optional)</Label>
-                              <Textarea
-                                id="instructions"
-                                {...registerQuestion('instructions')}
-                                data-testid="textarea-question-instructions"
-                                placeholder="e.g., Write a detailed explanation (minimum 200 words), Show your working..."
-                                rows={2}
-                              />
-                              <p className="text-xs text-muted-foreground mt-1">
-                                Provide specific guidance for students on how to answer this question
-                              </p>
-                            </div>
+                        {/* Instructions — shown for ALL question types */}
+                        <div>
+                          <Label htmlFor="instructions" className="text-xs font-semibold text-foreground/70">
+                            Instructions{' '}
+                            <span className="text-muted-foreground font-normal">(optional — shown to student above this question)</span>
+                          </Label>
+                          <Textarea
+                            id="instructions"
+                            {...registerQuestion('instructions')}
+                            data-testid="textarea-question-instructions"
+                            placeholder="e.g. Choose the best answer. / Study the diagram below. / Simplify the expression."
+                            rows={2}
+                            className="resize-none mt-1.5"
+                          />
+                        </div>
 
-                            <div>
-                              <Label htmlFor="sampleAnswer">Sample Answer (Optional)</Label>
-                              <Textarea
-                                id="sampleAnswer"
-                                {...registerQuestion('sampleAnswer')}
-                                data-testid="textarea-question-sample"
-                                placeholder="Provide a sample or model answer for grading reference..."
-                                rows={3}
-                              />
-                              <p className="text-xs text-muted-foreground mt-1">
-                                This will help with consistent grading and is not shown to students
-                              </p>
-                            </div>
-                          </>
+                        {/* Image upload — shown for ALL question types */}
+                        <QuestionImageUpload
+                          value={editingImageUrl}
+                          onChange={setEditingImageUrl}
+                          disabled={createQuestionMutation.isPending || updateQuestionMutation.isPending}
+                        />
+
+                        {/* Sample answer — essay only */}
+                        {questionType === 'essay' && (
+                          <div>
+                            <Label htmlFor="sampleAnswer">Sample Answer (Optional)</Label>
+                            <Textarea
+                              id="sampleAnswer"
+                              {...registerQuestion('sampleAnswer')}
+                              data-testid="textarea-question-sample"
+                              placeholder="Provide a sample or model answer for grading reference..."
+                              rows={3}
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              This will help with consistent grading and is not shown to students
+                            </p>
+                          </div>
                         )}
 
                         <div className="grid grid-cols-2 gap-4">
