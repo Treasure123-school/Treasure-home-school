@@ -531,6 +531,18 @@ export default function TeacherReportCards() {
         prev?.id === reportCardId ? { ...prev, status, locked } : prev,
       );
 
+      // Immediate toast — fires before server responds for instant user feedback
+      const statusLabel =
+        status === "published"
+          ? "Published"
+          : status === "finalized"
+            ? "Finalized"
+            : "Reverted to Draft";
+      toast({
+        title: "Success",
+        description: `Report card ${statusLabel.toLowerCase()} successfully`,
+      });
+
       return {
         previousFullReport,
         previousReportCards,
@@ -539,14 +551,11 @@ export default function TeacherReportCards() {
         termId,
       };
     },
-    onSuccess: (data, { reportCardId, status, classId, termId }) => {
-      // Extract the server response data
-      const reportCard = data.reportCard;
-      const message = data.message;
-
-      // Reconcile caches with authoritative server data (updates timestamps like finalizedAt, publishedAt)
+    onSuccess: (data, { reportCardId, classId, termId }) => {
+      // Silent cache reconciliation — merge authoritative server data (timestamps, etc.)
+      // without triggering a refetch that would cause badge flickering
+      const reportCard = data?.reportCard;
       if (reportCard && typeof reportCard === "object") {
-        // Update full report cache with server data
         queryClient.setQueryData(
           ["/api/reports", reportCardId, "full"],
           (old: any) => {
@@ -554,8 +563,6 @@ export default function TeacherReportCards() {
             return { ...old, ...reportCard };
           },
         );
-
-        // Update the list cache with server data
         queryClient.setQueryData(
           ["/api/reports/class-term", classId, termId],
           (old: any) => {
@@ -565,24 +572,10 @@ export default function TeacherReportCards() {
             );
           },
         );
-
-        // Update selected report card state with server data
         setSelectedReportCard((prev) =>
           prev?.id === reportCardId ? { ...prev, ...reportCard } : prev,
         );
       }
-
-      const statusLabel =
-        status === "published"
-          ? "Published"
-          : status === "finalized"
-            ? "Finalized"
-            : "Reverted to Draft";
-      toast({
-        title: "Success",
-        description:
-          message || `Report card ${statusLabel.toLowerCase()} successfully`,
-      });
     },
     onError: (error: any, { reportCardId }, context: any) => {
       // Rollback to previous values on error (restore full objects)

@@ -250,6 +250,7 @@ export default function AdminResultPublishing() {
   const publishingIdsRef = useRef<Set<number>>(new Set());
   const unpublishingIdsRef = useRef<Set<number>>(new Set());
   const rejectingIdsRef = useRef<Set<number>>(new Set());
+  const finalizingIdsRef = useRef<Set<number>>(new Set());
   const [, forceUpdate] = useState(0);
 
   // Helper to update the ref and trigger re-render
@@ -384,11 +385,33 @@ export default function AdminResultPublishing() {
         );
       });
 
+      // Immediate toast — fires before server responds for instant feedback
+      toast({ title: "Approved & Published", description: "Report card published and visible to students." });
+
       return { previousDataMap, reportCardId };
     },
-    onSuccess: (_data, reportCardId) => {
+    onSuccess: (data, reportCardId) => {
       removeFromSet(publishingIdsRef, reportCardId);
-      toast({ title: "Success", description: "Report card published successfully" });
+      // Silent cache reconciliation — merge authoritative server data (e.g. publishedAt timestamp)
+      // without triggering a refetch or badge flicker
+      const reportCard = data?.reportCard;
+      if (reportCard && typeof reportCard === 'object') {
+        const filterViews = ['draft', 'finalized', 'published', 'all'];
+        filterViews.forEach(filter => {
+          queryClient.setQueryData(
+            ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter],
+            (old: any) => {
+              if (!old) return old;
+              return {
+                ...old,
+                reportCards: old.reportCards.map((rc: FinalizedReportCard) =>
+                  rc.id === reportCardId ? { ...rc, ...reportCard } : rc
+                ),
+              };
+            }
+          );
+        });
+      }
     },
     onError: (error: Error, reportCardId, context) => {
       // Silently ignore duplicate blocked errors (no toast, no cleanup needed)
@@ -812,12 +835,22 @@ export default function AdminResultPublishing() {
       return response.json();
     },
     onMutate: async (reportCardId: number) => {
+      // Prevent duplicate clicks — silently block without re-toasting
+      if (finalizingIdsRef.current.has(reportCardId)) {
+        throw new Error('DUPLICATE_BLOCKED');
+      }
+      addToSet(finalizingIdsRef, reportCardId);
+
+      // Cancel outgoing refetches to prevent race conditions
       await queryClient.cancelQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
+
+      // Snapshot ALL filter views for complete rollback
       const filterViews = ['draft', 'finalized', 'published', 'all'];
       const previousDataMap: Record<string, any> = {};
       filterViews.forEach(filter => {
         previousDataMap[filter] = queryClient.getQueryData(['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter]);
       });
+
       // Optimistically update: move card from draft to finalized in all cached views
       filterViews.forEach(filter => {
         queryClient.setQueryData(
@@ -838,13 +871,40 @@ export default function AdminResultPublishing() {
           }
         );
       });
+
+      // Immediate toast — fires before server responds for instant feedback
+      toast({ title: 'Finalized', description: 'Report card finalized. Ready for publishing.' });
+
       return { previousDataMap, reportCardId };
     },
-    onSuccess: (_data, reportCardId) => {
-      toast({ title: 'Finalized', description: 'Report card finalized. Ready for publishing.' });
-      realtimeService_invalidate();
+    onSuccess: (data, reportCardId) => {
+      removeFromSet(finalizingIdsRef, reportCardId);
+      // Silent cache reconciliation — merge authoritative server data (e.g. finalizedAt timestamp)
+      // without triggering a refetch that would cause badge flickering
+      const reportCard = data?.reportCard;
+      if (reportCard && typeof reportCard === 'object') {
+        const filterViews = ['draft', 'finalized', 'published', 'all'];
+        filterViews.forEach(filter => {
+          queryClient.setQueryData(
+            ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter],
+            (old: any) => {
+              if (!old) return old;
+              return {
+                ...old,
+                reportCards: old.reportCards.map((rc: FinalizedReportCard) =>
+                  rc.id === reportCardId ? { ...rc, ...reportCard } : rc
+                ),
+              };
+            }
+          );
+        });
+      }
     },
     onError: (error: Error, reportCardId, context) => {
+      // Silently ignore duplicate blocked errors — no toast, no cleanup
+      if (error.message === 'DUPLICATE_BLOCKED') return;
+      removeFromSet(finalizingIdsRef, reportCardId);
+      // Rollback ALL filter views to previous state
       if (context?.previousDataMap) {
         const filterViews = ['draft', 'finalized', 'published', 'all'];
         filterViews.forEach(filter => {
