@@ -810,16 +810,60 @@ export default function AdminResultPublishing() {
         draft: baseStats.draft + 1
       };
 
-      // Optimistically update ALL filter views - remove from all since it goes to draft
+      // Find the card data from any available snapshot so we can re-insert it into draft
+      const rejectedCard: FinalizedReportCard | undefined =
+        previousDataMap['finalized']?.reportCards?.find((rc: FinalizedReportCard) => rc.id === id) ||
+        previousDataMap['all']?.reportCards?.find((rc: FinalizedReportCard) => rc.id === id) ||
+        previousDataMap['published']?.reportCards?.find((rc: FinalizedReportCard) => rc.id === id);
+
+      const rejectedAsDraft = rejectedCard
+        ? { ...rejectedCard, status: 'draft' as const, finalizedAt: null, publishedAt: null }
+        : null;
+
+      // Optimistically update each filter view correctly:
+      //   finalized / published — remove the card (it left these states)
+      //   draft                 — insert it at the top (it is now draft)
+      //   all                   — update its status in-place (keep it visible)
       filterViews.forEach(filter => {
         queryClient.setQueryData(
           ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter],
           (old: any) => {
             if (!old) return old;
+
+            if (filter === 'finalized' || filter === 'published') {
+              // Remove — no longer belongs to either of these states
+              return {
+                ...old,
+                reportCards: old.reportCards.filter((rc: FinalizedReportCard) => rc.id !== id),
+                statistics: newStats,
+              };
+            }
+
+            if (filter === 'draft') {
+              // Insert at top — card is now draft; avoid duplicates
+              const alreadyPresent = old.reportCards.some((rc: FinalizedReportCard) => rc.id === id);
+              return {
+                ...old,
+                reportCards: alreadyPresent
+                  ? old.reportCards.map((rc: FinalizedReportCard) =>
+                      rc.id === id ? { ...rc, status: 'draft', finalizedAt: null, publishedAt: null } : rc
+                    )
+                  : rejectedAsDraft
+                    ? [rejectedAsDraft, ...old.reportCards]
+                    : old.reportCards,
+                statistics: newStats,
+              };
+            }
+
+            // 'all' — update status in-place so the card stays visible with the new badge
             return {
               ...old,
-              reportCards: old.reportCards.filter((rc: FinalizedReportCard) => rc.id !== id),
-              statistics: newStats
+              reportCards: old.reportCards.map((rc: FinalizedReportCard) =>
+                rc.id === id
+                  ? { ...rc, status: 'draft', finalizedAt: null, publishedAt: null }
+                  : rc
+              ),
+              statistics: newStats,
             };
           }
         );
@@ -835,10 +879,27 @@ export default function AdminResultPublishing() {
 
       return { previousDataMap, id };
     },
-    onSuccess: (_data, { id }) => {
+    onSuccess: (data, { id }) => {
       removeFromSet(rejectingIdsRef, id);
-      // Toast already fired in onMutate — item already removed from finalized views in cache
-      // No reconciliation needed: rejected card left these views entirely
+      // Silent reconciliation — merge authoritative server data into draft and all views
+      const reportCard = data?.reportCard;
+      if (reportCard && typeof reportCard === 'object') {
+        const reconcileFilters = ['draft', 'all'];
+        reconcileFilters.forEach(filter => {
+          queryClient.setQueryData(
+            ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter],
+            (old: any) => {
+              if (!old) return old;
+              return {
+                ...old,
+                reportCards: old.reportCards.map((rc: FinalizedReportCard) =>
+                  rc.id === id ? { ...rc, ...reportCard } : rc
+                ),
+              };
+            }
+          );
+        });
+      }
     },
     onError: (error: Error, { id }, context) => {
       // Silently ignore duplicate blocked errors (no toast, no cleanup needed)
