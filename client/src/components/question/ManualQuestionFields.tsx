@@ -195,7 +195,8 @@ export function ManualQuestionFields({
                   onChange={(e) => setOptionText(i, e.target.value)}
                   placeholder={`Option ${String.fromCharCode(65 + i)}`}
                   disabled={disabled}
-                  className="flex-1 min-w-0 bg-transparent text-sm placeholder:text-muted-foreground outline-none border-none focus:outline-none focus:ring-0 focus:border-none disabled:opacity-50"
+                  className="flex-1 min-w-0 bg-transparent text-sm placeholder:text-muted-foreground disabled:opacity-50"
+                  style={{ outline: 'none', border: 'none', boxShadow: 'none' }}
                 />
                 <button
                   type="button"
