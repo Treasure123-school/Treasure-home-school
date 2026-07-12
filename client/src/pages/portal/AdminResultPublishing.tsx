@@ -266,13 +266,17 @@ export default function AdminResultPublishing() {
   };
 
   // Real-time updates for report card status changes (publish/unpublish/reject)
-  // This ensures the UI updates instantly when any admin changes a report card status
-  // Real-time stays enabled - optimistic state takes precedence via query cache
+  // skipCacheInvalidation: true prevents the socket from calling refetchQueries after any
+  // report_cards table event. Without this, the server-emitted socket event (triggered by
+  // our own mutation) races against onSuccess: the hard refetch may fetch stale data and
+  // overwrite the optimistic cache, causing the item to momentarily reappear.
+  // Cache reconciliation is handled explicitly in each mutation's onSuccess instead.
   useSocketIORealtime({
     table: 'report_cards',
     queryKey: ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, statusFilter],
     enabled: true,
     fallbackPollingInterval: 30000,
+    skipCacheInvalidation: true,
   });
 
   // Real-time updates for score/remarks changes on the open report card preview.
@@ -509,10 +513,13 @@ export default function AdminResultPublishing() {
       // Clear selection immediately for instant feedback
       setSelectedReportCards([]);
 
+      // Immediate toast — fires before server responds for instant feedback
+      toast({ title: "Published", description: `${reportCardIds.length} report card${reportCardIds.length !== 1 ? 's' : ''} approved & published.` });
+
       return { previousDataMap };
     },
-    onSuccess: (data) => {
-      toast({ title: "Success", description: data.message });
+    onSuccess: () => {
+      // Toast already fired in onMutate — no additional action needed
     },
     onError: (error: Error, _reportCardIds, context) => {
       // Rollback ALL filter views
@@ -614,11 +621,33 @@ export default function AdminResultPublishing() {
         );
       });
 
+      // Immediate toast — fires before server responds for instant feedback
+      toast({ title: "Unpublished", description: "Report card unpublished. Students can no longer view it." });
+
       return { previousDataMap, reportCardId };
     },
-    onSuccess: (_data, reportCardId) => {
+    onSuccess: (data, reportCardId) => {
       removeFromSet(unpublishingIdsRef, reportCardId);
-      toast({ title: "Success", description: "Report card unpublished successfully. Students can no longer view it." });
+      // Silent cache reconciliation — merge authoritative server data (timestamps, etc.)
+      // without triggering a refetch that would cause badge flickering
+      const reportCard = data?.reportCard;
+      if (reportCard && typeof reportCard === 'object') {
+        const filterViews = ['draft', 'finalized', 'published', 'all'];
+        filterViews.forEach(filter => {
+          queryClient.setQueryData(
+            ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter],
+            (old: any) => {
+              if (!old) return old;
+              return {
+                ...old,
+                reportCards: old.reportCards.map((rc: FinalizedReportCard) =>
+                  rc.id === reportCardId ? { ...rc, ...reportCard } : rc
+                ),
+              };
+            }
+          );
+        });
+      }
     },
     onError: (error: Error, reportCardId, context) => {
       // Silently ignore duplicate blocked errors (no toast, no cleanup needed)
@@ -721,10 +750,13 @@ export default function AdminResultPublishing() {
       // Clear selection immediately for instant feedback
       setSelectedReportCards([]);
 
+      // Immediate toast — fires before server responds for instant feedback
+      toast({ title: "Unpublished", description: `${reportCardIds.length} report card${reportCardIds.length !== 1 ? 's' : ''} unpublished successfully.` });
+
       return { previousDataMap };
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Selected report cards unpublished successfully" });
+      // Toast already fired in onMutate — no additional action needed
     },
     onError: (error: Error, _reportCardIds, context) => {
       // Rollback ALL filter views
@@ -798,11 +830,15 @@ export default function AdminResultPublishing() {
       setRejectingId(null);
       setRejectReason('');
 
+      // Immediate toast — fires before server responds for instant feedback
+      toast({ title: "Rejected", description: "Report card reverted to draft for teacher revision." });
+
       return { previousDataMap, id };
     },
     onSuccess: (_data, { id }) => {
       removeFromSet(rejectingIdsRef, id);
-      toast({ title: "Success", description: "Report card rejected — reverted to draft for teacher revision" });
+      // Toast already fired in onMutate — item already removed from finalized views in cache
+      // No reconciliation needed: rejected card left these views entirely
     },
     onError: (error: Error, { id }, context) => {
       // Silently ignore duplicate blocked errors (no toast, no cleanup needed)
