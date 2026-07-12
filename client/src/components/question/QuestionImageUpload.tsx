@@ -51,10 +51,12 @@ export function QuestionImageUpload({ value, onChange, disabled }: QuestionImage
       formData.append("file", file);
       formData.append("uploadType", "question");
 
+      const token = localStorage.getItem("token");
       const res = await fetch("/api/upload", {
         method: "POST",
         body: formData,
         credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
 
       if (!res.ok) {
