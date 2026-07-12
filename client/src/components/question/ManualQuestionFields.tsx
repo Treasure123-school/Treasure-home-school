@@ -196,7 +196,13 @@ export function ManualQuestionFields({
                   placeholder={`Option ${String.fromCharCode(65 + i)}`}
                   disabled={disabled}
                   className="flex-1 min-w-0 bg-transparent text-sm placeholder:text-muted-foreground disabled:opacity-50"
-                  style={{ outline: 'none', border: 'none', boxShadow: 'none' }}
+                  style={{
+                    outline: 'none',
+                    border: 'none',
+                    boxShadow: 'none',
+                    WebkitTapHighlightColor: 'transparent',
+                    outlineColor: 'transparent',
+                  }}
                 />
                 <button
                   type="button"
