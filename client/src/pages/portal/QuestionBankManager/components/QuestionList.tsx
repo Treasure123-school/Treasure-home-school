@@ -104,19 +104,23 @@ export function QuestionList({
       return { snapshot, statsSnapshot };
     },
 
+    onSuccess: () => {
+      // Deletion confirmed by the server. The optimistic cache is already correct —
+      // do NOT refetch items here; a background GET races the DB commit and would
+      // restore the just-deleted row. Only sync the stats counter.
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
+    },
+
     onError: (e: any, _id, ctx: any) => {
       // Restore all cache pages to their pre-delete state
       ctx?.snapshot?.forEach(([key, data]: [any, any]) => qc.setQueryData(key, data));
       if (ctx?.statsSnapshot !== undefined) {
         qc.setQueryData(["/api/question-bank/stats"], ctx.statsSnapshot);
       }
-      toast({ title: "Delete failed", description: e.message ?? "Please try again.", variant: "destructive" });
-    },
-
-    onSettled: () => {
-      // Background sync — keeps the cache consistent with the server
+      // Hard-refetch so the list reflects server truth after the rollback
       qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
       qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
+      toast({ title: "Delete failed", description: e.message ?? "Please try again.", variant: "destructive" });
     },
   });
 
