@@ -2270,11 +2270,11 @@ export class DatabaseStorage implements IStorage {
     return result[0];
   }
   async getTerms(): Promise<AcademicTerm[]> {
-    return await db.select().from(schema.academicTerms).orderBy(desc(schema.academicTerms.startDate));
+    return await db.select().from(schema.academicTerms).orderBy(asc(schema.academicTerms.startDate));
   }
   async getAcademicTerms(): Promise<AcademicTerm[]> {
     try {
-      const terms = await db.select().from(schema.academicTerms).orderBy(desc(schema.academicTerms.startDate));
+      const terms = await db.select().from(schema.academicTerms).orderBy(asc(schema.academicTerms.startDate));
       return terms;
     } catch (error) {
       throw error;

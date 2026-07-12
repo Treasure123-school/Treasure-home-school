@@ -58,7 +58,11 @@ export function useAcademicCalendar() {
   });
 
   const allSessions = data?.allSessions ?? [];
-  const allTerms = data?.allTerms ?? [];
+  // Sort terms chronologically (First Term → Second Term → Third Term) as a safety net
+  // in case the server returns them in a different order.
+  const allTerms = [...(data?.allTerms ?? [])].sort((a, b) =>
+    a.startDate.localeCompare(b.startDate)
+  );
 
   const termsBySession: Record<number | string, CalendarTerm[]> = {};
   for (const term of allTerms) {
