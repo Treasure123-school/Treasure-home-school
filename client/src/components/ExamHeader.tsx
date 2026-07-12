@@ -71,26 +71,26 @@ export function ExamHeader({
         ref={headerRef}
         className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 shadow-sm transition-all duration-300"
       >
-        <div className="max-w-[1600px] mx-auto px-3 sm:px-6">
-          <div className="flex items-center justify-between gap-2 py-1.5 sm:py-2.5">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-8">
+          <div className="flex items-center justify-between gap-3 py-3 sm:py-4">
             {/* Left Side: Logo and Info */}
-            <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+            <div className="flex items-center gap-3 sm:gap-5 min-w-0 flex-1">
               <img
                 src={displayLogo}
                 alt="School Logo"
-                className="h-9 w-9 sm:h-12 sm:w-12 md:h-14 md:w-14 object-contain shrink-0"
+                className="h-12 w-12 sm:h-16 sm:w-16 md:h-[4.5rem] md:w-[4.5rem] object-contain shrink-0"
               />
 
-              <div className="flex flex-col min-w-0 gap-0.5">
-                <h1 className="text-sm sm:text-base md:text-lg font-bold text-primary tracking-tight leading-tight truncate">
+              <div className="flex flex-col min-w-0 gap-1">
+                <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-primary tracking-tight leading-tight truncate">
                   {schoolName}
                 </h1>
-                <div className="flex flex-col xs:flex-row xs:items-baseline xs:gap-3 gap-0 text-[11px] sm:text-xs font-medium leading-tight">
-                  <div className="flex items-baseline gap-1 min-w-0">
+                <div className="flex flex-col xs:flex-row xs:items-baseline xs:gap-4 gap-0.5 text-xs sm:text-sm font-medium leading-tight">
+                  <div className="flex items-baseline gap-1.5 min-w-0">
                     <span className="text-slate-400 dark:text-slate-500 shrink-0">Subject:</span>
                     <span className="text-slate-900 dark:text-slate-100 font-bold break-words">{subjectName || "—"}</span>
                   </div>
-                  <div className="flex items-baseline gap-1 min-w-0">
+                  <div className="flex items-baseline gap-1.5 min-w-0">
                     <span className="text-slate-400 dark:text-slate-500 shrink-0">Student:</span>
                     <span className="text-slate-900 dark:text-slate-100 font-bold break-words">{studentName || "—"}</span>
                   </div>
@@ -99,17 +99,17 @@ export function ExamHeader({
             </div>
 
             {/* Right Side: Merged Avatar + Timer */}
-            <div className="relative shrink-0 mr-0.5 sm:mr-1">
+            <div className="relative shrink-0 mr-1 sm:mr-2 mb-2">
               <Avatar
                 className={cn(
-                  "h-10 w-10 sm:h-12 sm:w-12 shadow-md transition-all duration-500",
+                  "h-14 w-14 sm:h-16 sm:w-16 shadow-md transition-all duration-500",
                   isLowTime
                     ? "border-[3px] border-red-400 dark:border-red-500 animate-pulse ring-2 ring-red-200/60 dark:ring-red-900/40"
                     : "border-[3px] border-white dark:border-slate-800 ring-1 ring-slate-100 dark:ring-slate-700"
                 )}
               >
                 <AvatarImage src={profileImageUrl || undefined} alt={studentName} className="object-cover" />
-                <AvatarFallback className="bg-primary text-primary-foreground text-sm font-bold">
+                <AvatarFallback className="bg-primary text-primary-foreground text-lg font-bold">
                   {studentInitials}
                 </AvatarFallback>
               </Avatar>
@@ -117,14 +117,14 @@ export function ExamHeader({
               {timeRemaining !== null && (
                 <div
                   className={cn(
-                    "absolute -bottom-1.5 left-1/2 -translate-x-1/2 flex items-center gap-0.5 px-1.5 py-[1px] rounded-full border-2 border-white dark:border-slate-900 shadow-sm whitespace-nowrap transition-all duration-500",
+                    "absolute -bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-1 rounded-full border-2 border-white dark:border-slate-900 shadow-md whitespace-nowrap transition-all duration-500",
                     isLowTime
                       ? "bg-red-500 text-white animate-pulse"
                       : "bg-primary text-primary-foreground"
                   )}
                 >
-                  <Timer className="w-2.5 h-2.5" />
-                  <span className="text-[10px] font-bold font-mono tabular-nums leading-none tracking-tighter">
+                  <Timer className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  <span className="text-xs sm:text-sm font-bold font-mono tabular-nums leading-none tracking-tighter">
                     {formatTime(timeRemaining)}
                   </span>
                 </div>
