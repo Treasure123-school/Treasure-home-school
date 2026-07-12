@@ -6,7 +6,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Edit, Eye, MoreVertical, Play, Settings, Trash2 } from 'lucide-react';
+import { Edit, Eye, MoreVertical, Play, Trash2 } from 'lucide-react';
 import type { Exam } from '@shared/schema';
 
 /**
@@ -70,7 +70,7 @@ export function AssessmentActionsMenu({
             className="cursor-pointer"
             data-testid={`menu-manage-questions-${exam.id}`}
           >
-            <Edit className="w-4 h-4 mr-2 text-primary" />
+            <Edit className="w-4 h-4 mr-2" />
             Manage Questions
           </DropdownMenuItem>
         )}
@@ -81,7 +81,7 @@ export function AssessmentActionsMenu({
           className="cursor-pointer"
           data-testid={variant === 'mobile' ? `dropdown-toggle-publish-${exam.id}` : `menu-toggle-publish-${exam.id}`}
         >
-          <Play className={variant === 'desktop' ? `w-4 h-4 mr-2 ${exam.isPublished ? 'text-amber-500' : 'text-green-500'}` : 'w-4 h-4 mr-2'} />
+          <Play className="w-4 h-4 mr-2" />
           {isPublishToggling
             ? (togglingAction === 'publish' ? 'Publishing...' : 'Unpublishing...')
             : (exam.isPublished ? 'Unpublish' : 'Publish')}
@@ -92,8 +92,8 @@ export function AssessmentActionsMenu({
           className="cursor-pointer"
           data-testid={variant === 'mobile' ? `dropdown-preview-exam-${exam.id}` : `menu-preview-exam-${exam.id}`}
         >
-          <Eye className={variant === 'desktop' ? 'w-4 h-4 mr-2 text-purple-500' : 'w-4 h-4 mr-2'} />
-          {variant === 'desktop' ? 'Preview Exam' : 'Preview'}
+          <Eye className="w-4 h-4 mr-2" />
+          Preview
         </DropdownMenuItem>
 
         <DropdownMenuItem
@@ -101,8 +101,8 @@ export function AssessmentActionsMenu({
           className="cursor-pointer"
           data-testid={variant === 'mobile' ? `dropdown-edit-exam-${exam.id}` : `menu-edit-exam-${exam.id}`}
         >
-          {variant === 'desktop' ? <Settings className="w-4 h-4 mr-2 text-gray-500" /> : <Edit className="w-4 h-4 mr-2" />}
-          {variant === 'desktop' ? 'Exam Settings' : 'Edit Exam'}
+          <Edit className="w-4 h-4 mr-2" />
+          Edit Exam
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />

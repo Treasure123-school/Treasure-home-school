@@ -440,6 +440,24 @@ export default function ExamManagement() {
     },
   });
 
+  // Optimistically bump a single exam's question-count badge in every cached
+  // copy of the question-counts map (the cache key includes the exam-id list,
+  // so multiple variants of the query can be cached at once). This is what
+  // makes the "X questions" badge on each exam card/row update the instant a
+  // question is added/deleted, instead of waiting for the background
+  // invalidation + refetch below to complete. Negative deltas are clamped at 0.
+  const adjustQuestionCountCache = useCallback((examId: number | undefined, delta: number) => {
+    if (!examId || !delta) return;
+    queryClient.setQueriesData<Record<number, number>>(
+      { queryKey: ['/api/exams/question-counts'], exact: false },
+      (old) => {
+        if (!old) return old;
+        const current = old[examId] ?? 0;
+        return { ...old, [examId]: Math.max(0, current + delta) };
+      }
+    );
+  }, []);
+
   // Create exam mutation
   const createExamMutation = useMutation({
     mutationFn: async (examData: ExamForm) => {
@@ -686,6 +704,10 @@ export default function ExamManagement() {
           old?.filter((q) => q.id !== questionId) ?? []
         );
 
+        // Immediately decrement the "X questions" badge for this exam — don't
+        // wait for the background invalidation to refetch it.
+        adjustQuestionCountCache(examId, -1);
+
         // Immediate success feedback — no waiting for the server
         toast({ title: "Question deleted", description: "Question removed successfully." });
 
@@ -721,6 +743,10 @@ export default function ExamManagement() {
       if (ctx?.snapshot !== undefined && ctx?.examId) {
         queryClient.setQueryData(['/api/exam-questions', ctx.examId], ctx.snapshot);
       }
+      // Roll back the optimistic question-count decrement too
+      if (ctx?.examId) {
+        adjustQuestionCountCache(ctx.examId, 1);
+      }
 
       toast({
         title: "Deletion Failed",
@@ -747,13 +773,19 @@ export default function ExamManagement() {
       const result = await response.json();
       return result;
     },
+    onMutate: async (questionData) => {
+      // Immediately bump the "X questions" badge — don't wait for the
+      // background invalidation below to refetch it.
+      adjustQuestionCountCache(questionData.examId, 1);
+      return { examId: questionData.examId };
+    },
     onSuccess: (createdQuestion) => {
       toast({
         title: "Success",
         description: "Question added successfully",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/exam-questions', selectedExam?.id] });
-      queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts', exams.map((exam: Exam) => exam.id)] });
+      queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'], exact: false });
       // Invalidate question options for the newly created question to ensure fresh data
       if (createdQuestion?.id) {
         queryClient.invalidateQueries({ queryKey: ['/api/question-options', createdQuestion.id] });
@@ -774,7 +806,11 @@ export default function ExamManagement() {
         ]
       });
     },
-    onError: (error: any) => {
+    onError: (error: any, _variables, context) => {
+      // Roll back the optimistic question-count increment
+      if (context?.examId) {
+        adjustQuestionCountCache(context.examId, -1);
+      }
 
       // Use classified error types for better error handling
       if (error?.message?.includes('Circuit breaker is OPEN')) {
@@ -1241,8 +1277,12 @@ export default function ExamManagement() {
       // Immediately update UI with optimistic data
       queryClient.setQueryData<ExamQuestion[]>(queryKey, (old: ExamQuestion[] | undefined = []) => [...(old || []), ...optimisticQuestions]);
 
+      // Immediately bump the "X questions" badge by the full batch size —
+      // corrected down in onSuccess if some rows fail validation server-side.
+      const examId = selectedExam?.id;
+      adjustQuestionCountCache(examId, newQuestions.length);
 
-      return { previousQuestions, queryKey };
+      return { previousQuestions, queryKey, examId, optimisticDelta: newQuestions.length };
     },
     onSuccess: async (data, variables, context) => {
       const successMessage = data.errors && data.errors.length > 0
@@ -1267,7 +1307,16 @@ export default function ExamManagement() {
         });
 
       }
-      // Invalidate question counts
+
+      // Reconcile the optimistic badge count with what the server actually
+      // created — if some rows failed validation, `data.created` is lower
+      // than the batch size we optimistically added above.
+      const actualCreated = typeof data.created === 'number' ? data.created : variables.length;
+      const correction = actualCreated - variables.length;
+      if (correction !== 0) {
+        adjustQuestionCountCache(selectedExam?.id, correction);
+      }
+      // Background reconciliation with the server's authoritative count
       queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'], exact: false });
 
       if (data.errors && data.errors.length > 0) {
@@ -1288,6 +1337,10 @@ export default function ExamManagement() {
       // Rollback optimistic update on error
       if (context?.previousQuestions) {
         queryClient.setQueryData(context.queryKey, context.previousQuestions);
+      }
+      // Roll back the optimistic question-count bump for the whole batch
+      if (context?.examId && context?.optimisticDelta) {
+        adjustQuestionCountCache(context.examId, -context.optimisticDelta);
       }
       // Enhanced error handling for CSV uploads using classified error types
       if (error?.message?.includes('Circuit breaker is OPEN')) {
