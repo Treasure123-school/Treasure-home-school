@@ -3114,7 +3114,6 @@ export class DatabaseStorage implements IStorage {
     };
   }
   async getExamQuestions(examId: number): Promise<ExamQuestion[]> {
-    // Only select columns that actually exist in the current database
     return await db.select({
       id: schema.examQuestions.id,
       examId: schema.examQuestions.examId,
@@ -3123,6 +3122,14 @@ export class DatabaseStorage implements IStorage {
       points: schema.examQuestions.points,
       orderNumber: schema.examQuestions.orderNumber,
       imageUrl: schema.examQuestions.imageUrl,
+      autoGradable: schema.examQuestions.autoGradable,
+      expectedAnswers: schema.examQuestions.expectedAnswers,
+      caseSensitive: schema.examQuestions.caseSensitive,
+      allowPartialCredit: schema.examQuestions.allowPartialCredit,
+      partialCreditRules: schema.examQuestions.partialCreditRules,
+      explanationText: schema.examQuestions.explanationText,
+      hintText: schema.examQuestions.hintText,
+      instructions: schema.examQuestions.instructions,
       createdAt: schema.examQuestions.createdAt,
     }).from(schema.examQuestions)
       .where(eq(schema.examQuestions.examId, examId))
@@ -3137,6 +3144,14 @@ export class DatabaseStorage implements IStorage {
       points: schema.examQuestions.points,
       orderNumber: schema.examQuestions.orderNumber,
       imageUrl: schema.examQuestions.imageUrl,
+      autoGradable: schema.examQuestions.autoGradable,
+      expectedAnswers: schema.examQuestions.expectedAnswers,
+      caseSensitive: schema.examQuestions.caseSensitive,
+      allowPartialCredit: schema.examQuestions.allowPartialCredit,
+      partialCreditRules: schema.examQuestions.partialCreditRules,
+      explanationText: schema.examQuestions.explanationText,
+      hintText: schema.examQuestions.hintText,
+      instructions: schema.examQuestions.instructions,
       createdAt: schema.examQuestions.createdAt,
     }).from(schema.examQuestions)
       .where(eq(schema.examQuestions.id, id))
