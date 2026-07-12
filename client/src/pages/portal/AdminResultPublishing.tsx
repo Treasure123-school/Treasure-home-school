@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, MutableRefObject } from 'react';
+import { useState, useRef, useCallback, useEffect, useMemo, MutableRefObject } from 'react';
 import { flushSync } from 'react-dom';
 import jsPDF from 'jspdf';
 import JSZip from 'jszip';
@@ -29,7 +29,11 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from '@/components/ui/dropdown-menu';
+import { SearchInput } from '@/components/shared/SearchInput';
 import {
   FileText,
   CheckCircle,
@@ -45,7 +49,10 @@ import {
   MoreVertical,
   Printer,
   Download,
-  Undo2
+  Undo2,
+  Filter,
+  ArrowUpDown,
+  SearchX,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { calculateAge } from '@/lib/report-card-utils';
@@ -86,6 +93,8 @@ export default function AdminResultPublishing() {
   const [selectedClass, setSelectedClass] = useState<string>('all');
   const [selectedTerm, setSelectedTerm] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sortBy, setSortBy] = useState<string>('name-asc');
   const [selectedReportCards, setSelectedReportCards] = useState<number[]>([]);
   const [viewingReportCard, setViewingReportCard] = useState<FinalizedReportCard | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
@@ -184,6 +193,46 @@ export default function AdminResultPublishing() {
 
   const reportCards: FinalizedReportCard[] = reportCardsData?.reportCards || [];
   const statistics: Statistics = reportCardsData?.statistics || { draft: 0, finalized: 0, published: 0 };
+
+  // Client-side search + sort — safe since this endpoint returns the full unpaginated list.
+  const displayedReportCards = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    const filtered = q
+      ? reportCards.filter((rc) =>
+          rc.studentName?.toLowerCase().includes(q) ||
+          rc.admissionNumber?.toLowerCase().includes(q)
+        )
+      : reportCards;
+
+    const sorted = [...filtered];
+    switch (sortBy) {
+      case 'name-asc':
+        sorted.sort((a, b) => (a.studentName || '').localeCompare(b.studentName || ''));
+        break;
+      case 'name-desc':
+        sorted.sort((a, b) => (b.studentName || '').localeCompare(a.studentName || ''));
+        break;
+      case 'average-desc':
+        sorted.sort((a, b) => (b.averagePercentage ?? -1) - (a.averagePercentage ?? -1));
+        break;
+      case 'average-asc':
+        sorted.sort((a, b) => (a.averagePercentage ?? -1) - (b.averagePercentage ?? -1));
+        break;
+      case 'class-asc':
+        sorted.sort((a, b) => (a.className || '').localeCompare(b.className || '') || (a.studentName || '').localeCompare(b.studentName || ''));
+        break;
+      case 'status-asc':
+        sorted.sort((a, b) => (a.status || '').localeCompare(b.status || '') || (a.studentName || '').localeCompare(b.studentName || ''));
+        break;
+      case 'date-desc':
+        sorted.sort((a, b) => new Date(b.finalizedAt || b.generatedAt).getTime() - new Date(a.finalizedAt || a.generatedAt).getTime());
+        break;
+      case 'date-asc':
+        sorted.sort((a, b) => new Date(a.finalizedAt || a.generatedAt).getTime() - new Date(b.finalizedAt || b.generatedAt).getTime());
+        break;
+    }
+    return sorted;
+  }, [reportCards, searchQuery, sortBy]);
 
   const { data: fullReportCard, isLoading: loadingFullReport } = useQuery({
     queryKey: ['/api/reports', viewingReportCard?.id, 'full'],
@@ -1156,11 +1205,12 @@ export default function AdminResultPublishing() {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
+      // Select from the currently visible (searched/sorted) list only — not rows hidden by search
       if (statusFilter === 'published') {
-        const publishedIds = reportCards.filter(rc => rc.status === 'published').map(rc => rc.id);
+        const publishedIds = displayedReportCards.filter(rc => rc.status === 'published').map(rc => rc.id);
         setSelectedReportCards(publishedIds);
       } else {
-        const finalizedIds = reportCards.filter(rc => rc.status === 'finalized').map(rc => rc.id);
+        const finalizedIds = displayedReportCards.filter(rc => rc.status === 'finalized').map(rc => rc.id);
         setSelectedReportCards(finalizedIds);
       }
     } else {
@@ -1214,8 +1264,8 @@ export default function AdminResultPublishing() {
     }
   }, []);
 
-  const finalizedCount = reportCards.filter(rc => rc.status === 'finalized').length;
-  const publishedCount = reportCards.filter(rc => rc.status === 'published').length;
+  const finalizedCount = displayedReportCards.filter(rc => rc.status === 'finalized').length;
+  const publishedCount = displayedReportCards.filter(rc => rc.status === 'published').length;
   const allFinalizedSelected = finalizedCount > 0 && selectedReportCards.length === finalizedCount;
   const allPublishedSelected = publishedCount > 0 && selectedReportCards.length === publishedCount;
   const isPublishedView = statusFilter === 'published';
@@ -1287,32 +1337,32 @@ export default function AdminResultPublishing() {
                       <FileText className="w-4 h-4 mr-2" />
                       Generate Comments
                     </DropdownMenuItem>
-                    {reportCards.length > 0 && (
+                    {displayedReportCards.length > 0 && (
                       <>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
-                          onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'zip')}
+                          onClick={() => handleBulkExport(displayedReportCards.map(rc => rc.id), 'zip')}
                           disabled={isBulkExporting}
                           data-testid="menu-download-all-zip"
                         >
                           <Download className="w-4 h-4 mr-2" />
-                          Download All as ZIP ({reportCards.length} images)
+                          Download All as ZIP ({displayedReportCards.length} images)
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'pdf')}
+                          onClick={() => handleBulkExport(displayedReportCards.map(rc => rc.id), 'pdf')}
                           disabled={isBulkExporting}
                           data-testid="menu-download-all-pdf"
                         >
                           <FileText className="w-4 h-4 mr-2" />
-                          Download All as PDF ({reportCards.length})
+                          Download All as PDF ({displayedReportCards.length})
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => handleBulkExport(reportCards.map(rc => rc.id), 'print')}
+                          onClick={() => handleBulkExport(displayedReportCards.map(rc => rc.id), 'print')}
                           disabled={isBulkExporting}
                           data-testid="menu-print-all"
                         >
                           <Printer className="w-4 h-4 mr-2" />
-                          Print All ({reportCards.length})
+                          Print All ({displayedReportCards.length})
                         </DropdownMenuItem>
                       </>
                     )}
@@ -1335,9 +1385,19 @@ export default function AdminResultPublishing() {
                 </Tooltip>
               </div>
             </div>
+
+            {/* Search */}
+            <SearchInput
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search by student name or admission number..."
+              data-testid="input-search-report-cards"
+            />
+
+            {/* Class / Term filters + Status filter icon + Sort icon */}
             <div className="flex flex-wrap items-center gap-2">
               <Select value={selectedClass} onValueChange={setSelectedClass}>
-                <SelectTrigger className="w-full sm:w-[140px]" data-testid="select-class">
+                <SelectTrigger className="w-[calc(50%-4px)] sm:w-[140px]" data-testid="select-class">
                   <SelectValue placeholder="All Classes" />
                 </SelectTrigger>
                 <SelectContent>
@@ -1358,17 +1418,81 @@ export default function AdminResultPublishing() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[calc(50%-4px)] sm:w-[140px]" data-testid="select-status">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="draft">Draft</SelectItem>
-                  <SelectItem value="finalized">Finalized</SelectItem>
-                  <SelectItem value="published">Published</SelectItem>
-                </SelectContent>
-              </Select>
+
+              {/* Status filter — icon button opens a dropdown of status choices */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant={statusFilter !== 'all' ? 'default' : 'outline'}
+                    size="sm"
+                    className="gap-1.5"
+                    aria-label="Filter by status"
+                    data-testid="button-filter-status"
+                  >
+                    <Filter className="w-4 h-4" />
+                    <span className="hidden sm:inline">
+                      {statusFilter === 'all' ? 'Status' :
+                        statusFilter === 'draft' ? 'Draft' :
+                        statusFilter === 'finalized' ? 'Awaiting Approval' : 'Published'}
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuLabel>Filter by status</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
+                    <DropdownMenuRadioItem value="all" data-testid="filter-status-all">All Status</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="draft" data-testid="filter-status-draft">Draft</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="finalized" data-testid="filter-status-finalized">Awaiting Approval</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="published" data-testid="filter-status-published">Published</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Sort — icon button opens a dropdown of sort choices */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant={sortBy !== 'name-asc' ? 'default' : 'outline'}
+                    size="sm"
+                    className="gap-1.5"
+                    aria-label="Sort report cards"
+                    data-testid="button-sort"
+                  >
+                    <ArrowUpDown className="w-4 h-4" />
+                    <span className="hidden sm:inline">Sort</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
+                    <DropdownMenuRadioItem value="name-asc" data-testid="sort-name-asc">Name (A → Z)</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="name-desc" data-testid="sort-name-desc">Name (Z → A)</DropdownMenuRadioItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioItem value="average-desc" data-testid="sort-average-desc">Average (High → Low)</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="average-asc" data-testid="sort-average-asc">Average (Low → High)</DropdownMenuRadioItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioItem value="class-asc" data-testid="sort-class">Class</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="status-asc" data-testid="sort-status">Status</DropdownMenuRadioItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioItem value="date-desc" data-testid="sort-date-desc">Finalized (Newest)</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="date-asc" data-testid="sort-date-asc">Finalized (Oldest)</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSearchQuery('')}
+                  className="text-xs text-muted-foreground"
+                  data-testid="button-clear-search"
+                >
+                  Clear search
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -1483,6 +1607,21 @@ export default function AdminResultPublishing() {
                   : 'No report cards found for the selected filters'}
               </p>
             </div>
+          ) : displayedReportCards.length === 0 ? (
+            <div className="text-center py-12" data-testid="empty-search-results">
+              <SearchX className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground text-sm">
+                No report cards match "{searchQuery}"
+              </p>
+              <Button
+                variant="link"
+                size="sm"
+                onClick={() => setSearchQuery('')}
+                data-testid="button-clear-search-empty"
+              >
+                Clear search
+              </Button>
+            </div>
           ) : (
             <>
               {/* Desktop Table View */}
@@ -1510,7 +1649,7 @@ export default function AdminResultPublishing() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {reportCards.map((rc) => (
+                    {displayedReportCards.map((rc) => (
                       <TableRow key={rc.id} data-testid={`row-report-${rc.id}`}>
                         {(statusFilter === 'finalized' || statusFilter === 'published') && (
                           <TableCell>
@@ -1620,7 +1759,7 @@ export default function AdminResultPublishing() {
                     <span className="text-xs text-muted-foreground">Select all</span>
                   </div>
                 )}
-                {reportCards.map((rc) => (
+                {displayedReportCards.map((rc) => (
                   <Card key={rc.id} className="overflow-hidden" data-testid={`card-report-${rc.id}`}>
                     <CardContent className="p-3">
                       <div className="flex items-start gap-3">
