@@ -36,6 +36,7 @@ import { Progress } from '@/components/ui/progress';
 import { Clock, BookOpen, Trophy, Play, Eye, CheckCircle, XCircle, Timer, Save, RotateCcw, AlertCircle, Loader, FileText, Circle, CheckCircle2, HelpCircle, ClipboardCheck, GraduationCap, Award, Calendar, Calculator, X, Lock, CreditCard, Keyboard, Shield, ChevronDown, ChevronUp } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { Exam as BaseExam, ExamSession, ExamQuestion, QuestionOption, StudentAnswer } from '@shared/schema';
+import { QuestionImageDisplay } from '@/components/question/QuestionImageDisplay';
 
 // Extend Exam with payment fields injected by the server at runtime
 type Exam = BaseExam & {
@@ -606,6 +607,13 @@ export default function StudentExams() {
     queryKey: ['/api/classes'],
     enabled: !!user,
   });
+
+  // School settings — used for image watermark acronym
+  const { data: schoolSettings } = useQuery<any>({
+    queryKey: ['/api/public/settings'],
+    staleTime: Infinity,
+  });
+  const schoolAcronym = schoolSettings?.schoolShortName || schoolSettings?.schoolName?.split(' ').map((w: string) => w[0]).join('').slice(0, 4) || '';
 
   // PERFORMANCE: Memoize current question to prevent unnecessary re-renders
   const currentQuestion = useMemo(() => examQuestions[currentQuestionIndex], [examQuestions, currentQuestionIndex]);
@@ -3228,11 +3236,28 @@ export default function StudentExams() {
                       {currentQuestion.points} points
                     </span>
                   </div>
+
+                  {/* Instructions — displayed above question text when present */}
+                  {(currentQuestion as any).instructions && (
+                    <p className="text-sm italic text-gray-500 dark:text-gray-400 mb-3 leading-relaxed border-l-2 border-primary/30 pl-3">
+                      {(currentQuestion as any).instructions}
+                    </p>
+                  )}
+
                   <MathText
                     as="p"
                     className="text-base sm:text-lg md:text-xl text-gray-800 dark:text-gray-200 leading-relaxed"
                     text={currentQuestion.questionText}
                   />
+
+                  {/* Question image — displayed below question text, before answer options */}
+                  {(currentQuestion as any).imageUrl && (
+                    <QuestionImageDisplay
+                      imageUrl={(currentQuestion as any).imageUrl}
+                      alt={`Question ${currentQuestionIndex + 1} image`}
+                      schoolAcronym={schoolAcronym}
+                    />
+                  )}
                 </div>
 
                 {/* Multiple Choice Options */}

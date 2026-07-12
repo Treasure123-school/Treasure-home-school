@@ -3411,7 +3411,8 @@ export class DatabaseStorage implements IStorage {
         expectedAnswers: expectedAnswersArray,
         caseSensitive: bankItem.caseSensitive ?? undefined,
         explanationText: bankItem.explanationText ?? undefined,
-        hintText: bankItem.hintText ?? undefined
+        hintText: bankItem.hintText ?? undefined,
+        instructions: (bankItem as any).instructions ?? undefined,
       };
 
       const question = await this.createExamQuestion(questionData);

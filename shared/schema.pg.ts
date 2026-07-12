@@ -398,6 +398,7 @@ export const examQuestions = pgTable("exam_questions", {
   partialCreditRules: text("partial_credit_rules"),
   explanationText: text("explanation_text"),
   hintText: text("hint_text"),
+  instructions: text("instructions"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => ({
   examQuestionsExamIdIdx: index("exam_questions_exam_id_idx").on(table.examId),
@@ -541,6 +542,7 @@ export const questionBankItems = pgTable("question_bank_items", {
   caseSensitive: boolean("case_sensitive").notNull().default(false),
   explanationText: text("explanation_text"),
   hintText: text("hint_text"),
+  instructions: text("instructions"),
   practicalInstructions: text("practical_instructions"),
   practicalFileUrl: text("practical_file_url"),
   // ── Syllabus hierarchy (enhanced) ──

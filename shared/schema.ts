@@ -423,6 +423,7 @@ export const examQuestions = sqliteTable("exam_questions", {
   partialCreditRules: text("partial_credit_rules"),
   explanationText: text("explanation_text"),
   hintText: text("hint_text"),
+  instructions: text("instructions"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 }, (table) => ({
   examQuestionsExamIdIdx: index("exam_questions_exam_id_idx").on(table.examId),
@@ -559,6 +560,7 @@ export const questionBankItems = sqliteTable("question_bank_items", {
   caseSensitive: integer("case_sensitive", { mode: "boolean" }).notNull().default(false),
   explanationText: text("explanation_text"),
   hintText: text("hint_text"),
+  instructions: text("instructions"),
   practicalInstructions: text("practical_instructions"),
   practicalFileUrl: text("practical_file_url"),
   // ── Syllabus hierarchy (NEW) ──
