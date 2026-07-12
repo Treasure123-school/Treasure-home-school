@@ -49,7 +49,6 @@ const TYPE_OPTS = [
 function BrowseRefinementFilters({
   status, diff, type, onStatus, onDiff, onType, onClear,
 }: RefinementFiltersProps) {
-  const hasFilters = !!(status || diff || type);
   return (
     <div className="flex gap-2 items-center">
       {/* Status — shows full label on desktop, abbreviated on mobile */}
@@ -106,16 +105,6 @@ function BrowseRefinementFilters({
         </SelectContent>
       </Select>
 
-      {hasFilters && (
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-8 shrink-0 text-xs text-muted-foreground px-2.5"
-          onClick={onClear}
-        >
-          Clear
-        </Button>
-      )}
     </div>
   );
 }
