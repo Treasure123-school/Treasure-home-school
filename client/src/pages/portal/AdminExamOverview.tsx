@@ -2,35 +2,47 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import {
   Search, BookOpen, CheckCircle, FileText,
-  AlertCircle, Play,
+  AlertCircle, Play, Filter,
 } from 'lucide-react';
 import { MiniStatCard, MiniStatGrid, ExamCard } from '@/components/shared';
-import type { Exam, Class, Subject } from '@shared/schema';
+import type { Exam, Class, Subject, AcademicTerm } from '@shared/schema';
 
 export default function AdminExamOverview() {
   const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterClass, setFilterClass] = useState<string>('all');
   const [filterSubject, setFilterSubject] = useState<string>('all');
+  const [filterTerm, setFilterTerm] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
 
   const { data: exams = [], isLoading: examsLoading } = useQuery<Exam[]>({ queryKey: ['/api/exams'] });
   const { data: classes = [] } = useQuery<Class[]>({ queryKey: ['/api/classes'] });
   const { data: subjects = [] } = useQuery<Subject[]>({ queryKey: ['/api/subjects'] });
+  const { data: terms = [] } = useQuery<AcademicTerm[]>({ queryKey: ['/api/terms'] });
   const { data: users = [] } = useQuery<any[]>({ queryKey: ['/api/users'] });
 
   const filteredExams = exams.filter(exam => {
     const matchSearch = exam.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchClass = filterClass === 'all' || exam.classId === parseInt(filterClass);
     const matchSubject = filterSubject === 'all' || exam.subjectId === parseInt(filterSubject);
+    const matchTerm = filterTerm === 'all' || exam.termId === parseInt(filterTerm);
     const matchStatus = filterStatus === 'all' ||
       (filterStatus === 'published' && exam.isPublished) ||
       (filterStatus === 'draft' && !exam.isPublished);
-    return matchSearch && matchClass && matchSubject && matchStatus;
+    return matchSearch && matchClass && matchSubject && matchTerm && matchStatus;
   });
 
   const getClassName = (id: number | null | undefined) => (classes as any[]).find(c => c.id === id)?.name ?? 'Unknown';
@@ -95,8 +107,8 @@ export default function AdminExamOverview() {
       </MiniStatGrid>
 
       {/* ── Filters ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="relative sm:col-span-2 lg:col-span-1">
+      <div className="space-y-3">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search exams…"
@@ -106,28 +118,63 @@ export default function AdminExamOverview() {
             data-testid="input-search-exams"
           />
         </div>
-        <Select value={filterClass} onValueChange={setFilterClass}>
-          <SelectTrigger data-testid="select-filter-class"><SelectValue placeholder="All Classes" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Classes</SelectItem>
-            {(classes as any[]).map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filterSubject} onValueChange={setFilterSubject}>
-          <SelectTrigger data-testid="select-filter-subject"><SelectValue placeholder="All Subjects" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Subjects</SelectItem>
-            {(subjects as any[]).map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={filterStatus} onValueChange={setFilterStatus}>
-          <SelectTrigger data-testid="select-filter-status"><SelectValue placeholder="All Status" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="published">Published</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={filterClass} onValueChange={setFilterClass}>
+            <SelectTrigger className="w-[calc(50%-4px)] sm:w-[150px]" data-testid="select-filter-class">
+              <SelectValue placeholder="All Classes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Classes</SelectItem>
+              {(classes as any[]).map(c => <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filterSubject} onValueChange={setFilterSubject}>
+            <SelectTrigger className="w-[calc(50%-4px)] sm:w-[150px]" data-testid="select-filter-subject">
+              <SelectValue placeholder="All Subjects" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Subjects</SelectItem>
+              {(subjects as any[]).map(s => <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Select value={filterTerm} onValueChange={setFilterTerm}>
+            <SelectTrigger className="w-[calc(50%-4px)] sm:w-[140px]" data-testid="select-filter-term">
+              <SelectValue placeholder="All Term" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Term</SelectItem>
+              {(terms as any[]).map(t => <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+
+          {/* Status filter — icon button opens a dropdown of status choices */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant={filterStatus !== 'all' ? 'default' : 'outline'}
+                size="sm"
+                className="w-[calc(50%-4px)] sm:w-auto h-9 justify-center sm:justify-start gap-1.5"
+                aria-label="Filter by status"
+                data-testid="button-filter-status"
+              >
+                <Filter className="h-4 w-4" />
+                <span>
+                  {filterStatus === 'all' ? 'All Status' :
+                    filterStatus === 'published' ? 'Published' : 'Draft'}
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuLabel>Filter by status</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioGroup value={filterStatus} onValueChange={setFilterStatus}>
+                <DropdownMenuRadioItem value="all" data-testid="filter-status-all">All Status</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="published" data-testid="filter-status-published">Published</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="draft" data-testid="filter-status-draft">Draft</DropdownMenuRadioItem>
+              </DropdownMenuRadioGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {/* ── Exam list ── */}
