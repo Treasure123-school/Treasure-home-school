@@ -246,10 +246,16 @@ export default function ExamManagement() {
   // deletions for "Deleting..." button/menu labels, it no longer hides items.
   const exams = rawExams;
 
-  // Enable real-time updates for exams with specific event handlers
+  // Enable real-time updates for exams with specific event handlers.
+  // skipCacheInvalidation: true prevents the socket from calling refetchQueries after
+  // any exams table event. Without this, the server-emitted socket event (triggered by
+  // our own togglePublishMutation) races against onSuccess: the hard refetch may fetch
+  // stale data and overwrite the optimistic badge flip, causing it to flicker.
+  // All cache reconciliation is handled explicitly in onEvent and in onSuccess instead.
   useSocketIORealtime({
     table: 'exams',
     queryKey: ['/api/exams'],
+    skipCacheInvalidation: true,
     onEvent: (event) => {
       // Handle exam.deleted event - immediately remove from cache
       if (event.eventType === 'exam.deleted' || (event.operation === 'DELETE' && event.table === 'exams')) {
@@ -566,21 +572,24 @@ export default function ExamManagement() {
         );
       });
 
+      // Immediate toast — fires before server responds for instant user feedback
+      toast({
+        title: isPublished ? "Published" : "Unpublished",
+        description: isPublished
+          ? "Exam published. Students can now access it."
+          : "Exam unpublished. Students can no longer access it.",
+      });
+
       return { previousExams };
     },
-    onSuccess: (data, { isPublished }) => {
-      // Reconcile with confirmed backend data (covers any other fields the
-      // server may have changed alongside isPublished, e.g. publishedAt).
+    onSuccess: (data) => {
+      // Silent cache reconciliation — merge authoritative server data (publishedAt, etc.)
+      // without triggering a refetch. Toast already fired in onMutate.
       queryClient.setQueryData(['/api/exams'], (old: any) => {
         if (!old) return old;
         return old.map((exam: any) =>
-          exam.id === data.id ? data : exam
+          exam.id === data.id ? { ...exam, ...data } : exam
         );
-      });
-
-      toast({
-        title: "Success",
-        description: `Exam ${isPublished ? 'published' : 'unpublished'} successfully`,
       });
     },
     onError: (error: any, variables, context: any) => {
@@ -894,32 +903,55 @@ export default function ExamManagement() {
       return response.json();
     },
     onMutate: async ({ questionId, questionData }) => {
-      // Cancel outgoing refetches
+      // Cancel outgoing refetches for both the question list and its options
       await queryClient.cancelQueries({ queryKey: ['/api/exam-questions', selectedExam?.id] });
+      await queryClient.cancelQueries({ queryKey: ['/api/question-options', questionId] });
 
-      // Snapshot previous value
+      // Snapshot both caches for complete rollback on error
       const previousQuestions = queryClient.getQueryData<ExamQuestion[]>(['/api/exam-questions', selectedExam?.id]);
+      const previousOptions = queryClient.getQueryData<QuestionOption[]>(['/api/question-options', questionId]);
 
-      // Optimistically update the question with only compatible fields
+      // Optimistically update the question's own fields (text, type, points, etc.)
+      // options are stored in a separate cache and handled below
       const { options, ...safeData } = questionData as any;
       queryClient.setQueryData<ExamQuestion[]>(['/api/exam-questions', selectedExam?.id], (old = []) =>
         old.map(q => q.id === questionId ? { ...q, ...safeData } : q)
       );
 
-      return { previousQuestions };
-    },
-    onSuccess: (updatedQuestion) => {
+      // Optimistically update the question options cache using positional mapping.
+      // This makes the correct-answer checkmark update instantly — without this,
+      // the QuestionOptions component keeps showing the old isCorrect value until
+      // the server refetch completes (which was the visible bug).
+      if (options && Array.isArray(options)) {
+        const currentOptions = queryClient.getQueryData<QuestionOption[]>(['/api/question-options', questionId]) || [];
+        const updatedOptions = currentOptions.map((opt, i) => {
+          const formOpt = options[i];
+          return formOpt
+            ? { ...opt, optionText: formOpt.optionText.trim(), isCorrect: Boolean(formOpt.isCorrect) }
+            : opt;
+        });
+        queryClient.setQueryData(['/api/question-options', questionId], updatedOptions);
+      }
+
+      // Immediate toast — fires before server responds for instant feedback
       toast({
         title: "Success",
         description: "Question updated successfully",
       });
-      // Update cache with confirmed backend data
+
+      return { previousQuestions, previousOptions, questionId };
+    },
+    onSuccess: (updatedQuestion) => {
+      // Silent reconciliation — merge authoritative server data (IDs, timestamps, etc.)
+      // Toast already fired in onMutate.
       queryClient.setQueryData<ExamQuestion[]>(['/api/exam-questions', selectedExam?.id], (old = []) =>
-        old.map(q => q.id === updatedQuestion.id ? updatedQuestion : q)
+        old.map(q => q.id === updatedQuestion.id ? { ...q, ...updatedQuestion } : q)
       );
-      // Invalidate question options in case they changed
-      if (updatedQuestion?.id) {
-        queryClient.invalidateQueries({ queryKey: ['/api/question-options', updatedQuestion.id] });
+      // If the server returns updated options, reconcile them in the options cache.
+      // Intentionally NOT using invalidateQueries here — that triggers a background
+      // refetch that can race the DB commit and restore the old isCorrect values.
+      if (updatedQuestion?.options && Array.isArray(updatedQuestion.options) && updatedQuestion.options.length > 0) {
+        queryClient.setQueryData(['/api/question-options', updatedQuestion.id], updatedQuestion.options);
       }
       setIsQuestionDialogOpen(false);
       setEditingQuestion(null);
@@ -939,10 +971,14 @@ export default function ExamManagement() {
         ]
       });
     },
-    onError: (error: any, variables, context) => {
-      // Rollback on error
+    onError: (error: any, _variables, context) => {
+      // Rollback the question list cache
       if (context?.previousQuestions) {
         queryClient.setQueryData(['/api/exam-questions', selectedExam?.id], context.previousQuestions);
+      }
+      // Rollback the options cache so the checkmark reverts too
+      if (context?.previousOptions !== undefined && context?.questionId) {
+        queryClient.setQueryData(['/api/question-options', context.questionId], context.previousOptions);
       }
       toast({
         title: "Failed to Update Question",

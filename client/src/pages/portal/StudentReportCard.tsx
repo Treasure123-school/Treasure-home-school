@@ -382,7 +382,7 @@ export default function StudentReportCard() {
       ) : (
         <>
           {/* School Header - Visible on screen */}
-          <Card className="mb-4 print:shadow-none print:border-2 bg-gradient-to-r from-primary/5 to-primary/10">
+          <Card className="mb-4 print:shadow-none print:border-2">
             <CardContent className="p-4">
               <div className="text-center">
                 <h1 className="text-xl sm:text-2xl font-bold text-primary">{schoolName || ""}</h1>

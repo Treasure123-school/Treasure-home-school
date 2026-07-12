@@ -27,6 +27,8 @@ import {
 import { BulkCSVUploadPanel } from '@/components/shared/BulkCSVQuestionsDialog';
 import type { ParsedQuestion } from '@/components/shared/BulkCSVQuestionsDialog';
 import { QuestionImageUpload } from '@/components/question/QuestionImageUpload';
+import { ManualQuestionFields, DEFAULT_OPTIONS } from '@/components/question/ManualQuestionFields';
+import type { QuestionOption } from '@/components/question/ManualQuestionFields';
 
 interface ExamQuestionAdderProps {
     open: boolean;
@@ -52,12 +54,7 @@ export default function ExamQuestionAdder({
     const [questionText, setQuestionText] = useState('');
     const [questionType, setQuestionType] = useState('multiple_choice');
     const [points, setPoints] = useState('1');
-    const [options, setOptions] = useState([
-        { text: '', isCorrect: false },
-        { text: '', isCorrect: false },
-        { text: '', isCorrect: false },
-        { text: '', isCorrect: false },
-    ]);
+    const [options, setOptions] = useState<QuestionOption[]>(DEFAULT_OPTIONS.map(o => ({ ...o })));
     const [expectedAnswer, setExpectedAnswer] = useState('');
     const [instructions, setInstructions] = useState('');
     const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -300,7 +297,7 @@ export default function ExamQuestionAdder({
     // ═══ HELPERS ═══
     const resetManualForm = () => {
         setQuestionText(''); setQuestionType('multiple_choice'); setPoints('1');
-        setOptions([{ text: '', isCorrect: false }, { text: '', isCorrect: false }, { text: '', isCorrect: false }, { text: '', isCorrect: false }]);
+        setOptions(DEFAULT_OPTIONS.map(o => ({ ...o })));
         setExpectedAnswer(''); setInstructions(''); setImageUrl(null); setSampleAnswer('');
     };
 
@@ -317,10 +314,10 @@ export default function ExamQuestionAdder({
         if (sampleAnswer) data.sampleAnswer = sampleAnswer;
 
         if (questionType === 'multiple_choice') {
-            const valid = options.filter(o => o.text.trim());
+            const valid = options.filter(o => o.optionText.trim());
             if (valid.length < 2) return toast({ title: 'Error', description: 'At least 2 options required', variant: 'destructive' });
-            if (!valid.some(o => o.isCorrect)) return toast({ title: 'Error', description: 'Mark at least one correct option', variant: 'destructive' });
-            data.options = valid.map((o, i) => ({ optionText: o.text.trim(), isCorrect: o.isCorrect }));
+            if (!valid.some(o => o.isCorrect)) return toast({ title: 'Error', description: 'Select the correct answer', variant: 'destructive' });
+            data.options = valid.map(o => ({ optionText: o.optionText.trim(), isCorrect: o.isCorrect }));
         } else if (expectedAnswer) {
             data.expectedAnswers = JSON.stringify([expectedAnswer]);
         }
@@ -382,84 +379,24 @@ export default function ExamQuestionAdder({
 
                     {/* ═══ TAB 1: MANUAL ═══ */}
                     <TabsContent value="manual" className="space-y-4 mt-4">
-                        <div>
-                            <Label>Question Text *</Label>
-                            <Textarea value={questionText} onChange={(e) => setQuestionText(e.target.value)} placeholder="Enter your question..." rows={3} />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <Label>Type</Label>
-                                <Select value={questionType} onValueChange={setQuestionType}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
-                                        <SelectItem value="essay">Essay</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <Label>Points</Label>
-                                <Input type="number" value={points} onChange={(e) => setPoints(e.target.value)} min="1" />
-                            </div>
-                        </div>
-
-                        <div>
-                            <Label className="text-xs font-semibold text-foreground/70">
-                                Instructions{' '}
-                                <span className="text-muted-foreground font-normal">(optional — shown to student above this question)</span>
-                            </Label>
-                            <Textarea
-                                value={instructions}
-                                onChange={(e) => setInstructions(e.target.value)}
-                                placeholder="e.g. Choose the best answer. / Study the diagram below. / Simplify the expression."
-                                rows={2}
-                                className="resize-none mt-1.5"
-                            />
-                        </div>
-
-                        <QuestionImageUpload
-                            value={imageUrl}
-                            onChange={setImageUrl}
+                        <ManualQuestionFields
+                            questionText={questionText}
+                            onQuestionTextChange={setQuestionText}
+                            questionType={questionType}
+                            onQuestionTypeChange={setQuestionType}
+                            points={points}
+                            onPointsChange={(v) => setPoints(String(v))}
+                            instructions={instructions}
+                            onInstructionsChange={setInstructions}
+                            imageUrl={imageUrl}
+                            onImageUrlChange={setImageUrl}
+                            options={options}
+                            onOptionsChange={setOptions}
+                            sampleAnswer={sampleAnswer}
+                            onSampleAnswerChange={setSampleAnswer}
+                            showSampleAnswer
                             disabled={createManualMutation.isPending}
                         />
-
-                        {questionType === 'multiple_choice' && (
-                            <div className="border-t pt-3">
-                                <Label>Options (check correct answer)</Label>
-                                <div className="space-y-2 mt-2">
-                                    {options.map((opt, i) => (
-                                        <div key={i} className="flex items-center gap-2">
-                                            <input type="checkbox" checked={opt.isCorrect} onChange={(e) => {
-                                                const n = [...options]; n[i].isCorrect = e.target.checked; setOptions(n);
-                                            }} className="w-4 h-4" />
-                                            <Input value={opt.text} onChange={(e) => {
-                                                const n = [...options]; n[i].text = e.target.value; setOptions(n);
-                                            }} placeholder={`Option ${String.fromCharCode(65 + i)}`} className="h-9" />
-                                            {options.length > 2 && (
-                                                <Button variant="ghost" size="sm" onClick={() => setOptions(options.filter((_, j) => j !== i))}>
-                                                    <Trash2 className="w-3 h-3" />
-                                                </Button>
-                                            )}
-                                        </div>
-                                    ))}
-                                    {options.length < 6 && (
-                                        <Button variant="ghost" size="sm" onClick={() => setOptions([...options, { text: '', isCorrect: false }])}>
-                                            <Plus className="w-3 h-3 mr-1" /> Add Option
-                                        </Button>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {questionType === 'essay' && (
-                            <div>
-                                <Label>Sample Answer</Label>
-                                <Textarea value={sampleAnswer} onChange={(e) => setSampleAnswer(e.target.value)}
-                                    placeholder="Reference answer for grading" rows={3} />
-                            </div>
-                        )}
-
                         <div className="flex justify-end gap-2 pt-2">
                             <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                             <Button onClick={handleManualSubmit} disabled={createManualMutation.isPending}>

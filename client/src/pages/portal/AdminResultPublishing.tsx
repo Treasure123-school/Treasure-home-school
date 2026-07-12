@@ -250,6 +250,7 @@ export default function AdminResultPublishing() {
   const publishingIdsRef = useRef<Set<number>>(new Set());
   const unpublishingIdsRef = useRef<Set<number>>(new Set());
   const rejectingIdsRef = useRef<Set<number>>(new Set());
+  const finalizingIdsRef = useRef<Set<number>>(new Set());
   const [, forceUpdate] = useState(0);
 
   // Helper to update the ref and trigger re-render
@@ -265,13 +266,17 @@ export default function AdminResultPublishing() {
   };
 
   // Real-time updates for report card status changes (publish/unpublish/reject)
-  // This ensures the UI updates instantly when any admin changes a report card status
-  // Real-time stays enabled - optimistic state takes precedence via query cache
+  // skipCacheInvalidation: true prevents the socket from calling refetchQueries after any
+  // report_cards table event. Without this, the server-emitted socket event (triggered by
+  // our own mutation) races against onSuccess: the hard refetch may fetch stale data and
+  // overwrite the optimistic cache, causing the item to momentarily reappear.
+  // Cache reconciliation is handled explicitly in each mutation's onSuccess instead.
   useSocketIORealtime({
     table: 'report_cards',
     queryKey: ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, statusFilter],
     enabled: true,
     fallbackPollingInterval: 30000,
+    skipCacheInvalidation: true,
   });
 
   // Real-time updates for score/remarks changes on the open report card preview.
@@ -384,11 +389,33 @@ export default function AdminResultPublishing() {
         );
       });
 
+      // Immediate toast — fires before server responds for instant feedback
+      toast({ title: "Approved & Published", description: "Report card published and visible to students." });
+
       return { previousDataMap, reportCardId };
     },
-    onSuccess: (_data, reportCardId) => {
+    onSuccess: (data, reportCardId) => {
       removeFromSet(publishingIdsRef, reportCardId);
-      toast({ title: "Success", description: "Report card published successfully" });
+      // Silent cache reconciliation — merge authoritative server data (e.g. publishedAt timestamp)
+      // without triggering a refetch or badge flicker
+      const reportCard = data?.reportCard;
+      if (reportCard && typeof reportCard === 'object') {
+        const filterViews = ['draft', 'finalized', 'published', 'all'];
+        filterViews.forEach(filter => {
+          queryClient.setQueryData(
+            ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter],
+            (old: any) => {
+              if (!old) return old;
+              return {
+                ...old,
+                reportCards: old.reportCards.map((rc: FinalizedReportCard) =>
+                  rc.id === reportCardId ? { ...rc, ...reportCard } : rc
+                ),
+              };
+            }
+          );
+        });
+      }
     },
     onError: (error: Error, reportCardId, context) => {
       // Silently ignore duplicate blocked errors (no toast, no cleanup needed)
@@ -486,10 +513,13 @@ export default function AdminResultPublishing() {
       // Clear selection immediately for instant feedback
       setSelectedReportCards([]);
 
+      // Immediate toast — fires before server responds for instant feedback
+      toast({ title: "Published", description: `${reportCardIds.length} report card${reportCardIds.length !== 1 ? 's' : ''} approved & published.` });
+
       return { previousDataMap };
     },
-    onSuccess: (data) => {
-      toast({ title: "Success", description: data.message });
+    onSuccess: () => {
+      // Toast already fired in onMutate — no additional action needed
     },
     onError: (error: Error, _reportCardIds, context) => {
       // Rollback ALL filter views
@@ -591,11 +621,33 @@ export default function AdminResultPublishing() {
         );
       });
 
+      // Immediate toast — fires before server responds for instant feedback
+      toast({ title: "Unpublished", description: "Report card unpublished. Students can no longer view it." });
+
       return { previousDataMap, reportCardId };
     },
-    onSuccess: (_data, reportCardId) => {
+    onSuccess: (data, reportCardId) => {
       removeFromSet(unpublishingIdsRef, reportCardId);
-      toast({ title: "Success", description: "Report card unpublished successfully. Students can no longer view it." });
+      // Silent cache reconciliation — merge authoritative server data (timestamps, etc.)
+      // without triggering a refetch that would cause badge flickering
+      const reportCard = data?.reportCard;
+      if (reportCard && typeof reportCard === 'object') {
+        const filterViews = ['draft', 'finalized', 'published', 'all'];
+        filterViews.forEach(filter => {
+          queryClient.setQueryData(
+            ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter],
+            (old: any) => {
+              if (!old) return old;
+              return {
+                ...old,
+                reportCards: old.reportCards.map((rc: FinalizedReportCard) =>
+                  rc.id === reportCardId ? { ...rc, ...reportCard } : rc
+                ),
+              };
+            }
+          );
+        });
+      }
     },
     onError: (error: Error, reportCardId, context) => {
       // Silently ignore duplicate blocked errors (no toast, no cleanup needed)
@@ -698,10 +750,13 @@ export default function AdminResultPublishing() {
       // Clear selection immediately for instant feedback
       setSelectedReportCards([]);
 
+      // Immediate toast — fires before server responds for instant feedback
+      toast({ title: "Unpublished", description: `${reportCardIds.length} report card${reportCardIds.length !== 1 ? 's' : ''} unpublished successfully.` });
+
       return { previousDataMap };
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Selected report cards unpublished successfully" });
+      // Toast already fired in onMutate — no additional action needed
     },
     onError: (error: Error, _reportCardIds, context) => {
       // Rollback ALL filter views
@@ -755,16 +810,60 @@ export default function AdminResultPublishing() {
         draft: baseStats.draft + 1
       };
 
-      // Optimistically update ALL filter views - remove from all since it goes to draft
+      // Find the card data from any available snapshot so we can re-insert it into draft
+      const rejectedCard: FinalizedReportCard | undefined =
+        previousDataMap['finalized']?.reportCards?.find((rc: FinalizedReportCard) => rc.id === id) ||
+        previousDataMap['all']?.reportCards?.find((rc: FinalizedReportCard) => rc.id === id) ||
+        previousDataMap['published']?.reportCards?.find((rc: FinalizedReportCard) => rc.id === id);
+
+      const rejectedAsDraft = rejectedCard
+        ? { ...rejectedCard, status: 'draft' as const, finalizedAt: null, publishedAt: null }
+        : null;
+
+      // Optimistically update each filter view correctly:
+      //   finalized / published — remove the card (it left these states)
+      //   draft                 — insert it at the top (it is now draft)
+      //   all                   — update its status in-place (keep it visible)
       filterViews.forEach(filter => {
         queryClient.setQueryData(
           ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter],
           (old: any) => {
             if (!old) return old;
+
+            if (filter === 'finalized' || filter === 'published') {
+              // Remove — no longer belongs to either of these states
+              return {
+                ...old,
+                reportCards: old.reportCards.filter((rc: FinalizedReportCard) => rc.id !== id),
+                statistics: newStats,
+              };
+            }
+
+            if (filter === 'draft') {
+              // Insert at top — card is now draft; avoid duplicates
+              const alreadyPresent = old.reportCards.some((rc: FinalizedReportCard) => rc.id === id);
+              return {
+                ...old,
+                reportCards: alreadyPresent
+                  ? old.reportCards.map((rc: FinalizedReportCard) =>
+                      rc.id === id ? { ...rc, status: 'draft', finalizedAt: null, publishedAt: null } : rc
+                    )
+                  : rejectedAsDraft
+                    ? [rejectedAsDraft, ...old.reportCards]
+                    : old.reportCards,
+                statistics: newStats,
+              };
+            }
+
+            // 'all' — update status in-place so the card stays visible with the new badge
             return {
               ...old,
-              reportCards: old.reportCards.filter((rc: FinalizedReportCard) => rc.id !== id),
-              statistics: newStats
+              reportCards: old.reportCards.map((rc: FinalizedReportCard) =>
+                rc.id === id
+                  ? { ...rc, status: 'draft', finalizedAt: null, publishedAt: null }
+                  : rc
+              ),
+              statistics: newStats,
             };
           }
         );
@@ -775,11 +874,32 @@ export default function AdminResultPublishing() {
       setRejectingId(null);
       setRejectReason('');
 
+      // Immediate toast — fires before server responds for instant feedback
+      toast({ title: "Rejected", description: "Report card reverted to draft for teacher revision." });
+
       return { previousDataMap, id };
     },
-    onSuccess: (_data, { id }) => {
+    onSuccess: (data, { id }) => {
       removeFromSet(rejectingIdsRef, id);
-      toast({ title: "Success", description: "Report card rejected — reverted to draft for teacher revision" });
+      // Silent reconciliation — merge authoritative server data into draft and all views
+      const reportCard = data?.reportCard;
+      if (reportCard && typeof reportCard === 'object') {
+        const reconcileFilters = ['draft', 'all'];
+        reconcileFilters.forEach(filter => {
+          queryClient.setQueryData(
+            ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter],
+            (old: any) => {
+              if (!old) return old;
+              return {
+                ...old,
+                reportCards: old.reportCards.map((rc: FinalizedReportCard) =>
+                  rc.id === id ? { ...rc, ...reportCard } : rc
+                ),
+              };
+            }
+          );
+        });
+      }
     },
     onError: (error: Error, { id }, context) => {
       // Silently ignore duplicate blocked errors (no toast, no cleanup needed)
@@ -812,12 +932,22 @@ export default function AdminResultPublishing() {
       return response.json();
     },
     onMutate: async (reportCardId: number) => {
+      // Prevent duplicate clicks — silently block without re-toasting
+      if (finalizingIdsRef.current.has(reportCardId)) {
+        throw new Error('DUPLICATE_BLOCKED');
+      }
+      addToSet(finalizingIdsRef, reportCardId);
+
+      // Cancel outgoing refetches to prevent race conditions
       await queryClient.cancelQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
+
+      // Snapshot ALL filter views for complete rollback
       const filterViews = ['draft', 'finalized', 'published', 'all'];
       const previousDataMap: Record<string, any> = {};
       filterViews.forEach(filter => {
         previousDataMap[filter] = queryClient.getQueryData(['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter]);
       });
+
       // Optimistically update: move card from draft to finalized in all cached views
       filterViews.forEach(filter => {
         queryClient.setQueryData(
@@ -838,13 +968,40 @@ export default function AdminResultPublishing() {
           }
         );
       });
+
+      // Immediate toast — fires before server responds for instant feedback
+      toast({ title: 'Finalized', description: 'Report card finalized. Ready for publishing.' });
+
       return { previousDataMap, reportCardId };
     },
-    onSuccess: (_data, reportCardId) => {
-      toast({ title: 'Finalized', description: 'Report card finalized. Ready for publishing.' });
-      realtimeService_invalidate();
+    onSuccess: (data, reportCardId) => {
+      removeFromSet(finalizingIdsRef, reportCardId);
+      // Silent cache reconciliation — merge authoritative server data (e.g. finalizedAt timestamp)
+      // without triggering a refetch that would cause badge flickering
+      const reportCard = data?.reportCard;
+      if (reportCard && typeof reportCard === 'object') {
+        const filterViews = ['draft', 'finalized', 'published', 'all'];
+        filterViews.forEach(filter => {
+          queryClient.setQueryData(
+            ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter],
+            (old: any) => {
+              if (!old) return old;
+              return {
+                ...old,
+                reportCards: old.reportCards.map((rc: FinalizedReportCard) =>
+                  rc.id === reportCardId ? { ...rc, ...reportCard } : rc
+                ),
+              };
+            }
+          );
+        });
+      }
     },
     onError: (error: Error, reportCardId, context) => {
+      // Silently ignore duplicate blocked errors — no toast, no cleanup
+      if (error.message === 'DUPLICATE_BLOCKED') return;
+      removeFromSet(finalizingIdsRef, reportCardId);
+      // Rollback ALL filter views to previous state
       if (context?.previousDataMap) {
         const filterViews = ['draft', 'finalized', 'published', 'all'];
         filterViews.forEach(filter => {
