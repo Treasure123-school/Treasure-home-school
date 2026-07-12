@@ -3010,6 +3010,7 @@ export class DatabaseStorage implements IStorage {
       partialCreditRules: question.partialCreditRules,
       explanationText: question.explanationText,
       hintText: question.hintText,
+      instructions: question.instructions,
     };
     const result = await db.insert(schema.examQuestions).values(questionData).returning();
     return result[0];
@@ -3036,6 +3037,7 @@ export class DatabaseStorage implements IStorage {
         partialCreditRules: question.partialCreditRules,
         explanationText: question.explanationText,
         hintText: question.hintText,
+        instructions: question.instructions,
       };
       // Insert question first
       const questionResult = await db.insert(schema.examQuestions).values(questionData).returning();
