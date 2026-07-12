@@ -92,11 +92,20 @@ export function useClassSubjects(classId: number | undefined | null) {
       // Build options directly from the mapping payload — it already carries
       // subjectName and subjectCode, so we never depend on myAssignments.subjects
       // being a complete catalog (it may be partial for large tenants).
-      return mappings.map((m) => ({
-        id: m.subjectId,
-        name: m.subjectName,
-        code: m.subjectCode,
-      }));
+      //
+      // A subject can legitimately have multiple mapping rows for the same
+      // class (e.g. one per department for elective/compulsory splits), so
+      // de-duplicate by subjectId here — otherwise the same subject renders
+      // more than once (and, because Radix Select groups options by value,
+      // its label text gets visually concatenated with itself).
+      const seen = new Set<number>();
+      const deduped: SubjectOption[] = [];
+      for (const m of mappings) {
+        if (seen.has(m.subjectId)) continue;
+        seen.add(m.subjectId);
+        deduped.push({ id: m.subjectId, name: m.subjectName, code: m.subjectCode });
+      }
+      return deduped;
     }
 
     if (!myAssignments) return [];
