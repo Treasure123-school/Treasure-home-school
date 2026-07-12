@@ -246,10 +246,16 @@ export default function ExamManagement() {
   // deletions for "Deleting..." button/menu labels, it no longer hides items.
   const exams = rawExams;
 
-  // Enable real-time updates for exams with specific event handlers
+  // Enable real-time updates for exams with specific event handlers.
+  // skipCacheInvalidation: true prevents the socket from calling refetchQueries after
+  // any exams table event. Without this, the server-emitted socket event (triggered by
+  // our own togglePublishMutation) races against onSuccess: the hard refetch may fetch
+  // stale data and overwrite the optimistic badge flip, causing it to flicker.
+  // All cache reconciliation is handled explicitly in onEvent and in onSuccess instead.
   useSocketIORealtime({
     table: 'exams',
     queryKey: ['/api/exams'],
+    skipCacheInvalidation: true,
     onEvent: (event) => {
       // Handle exam.deleted event - immediately remove from cache
       if (event.eventType === 'exam.deleted' || (event.operation === 'DELETE' && event.table === 'exams')) {
@@ -566,21 +572,24 @@ export default function ExamManagement() {
         );
       });
 
+      // Immediate toast — fires before server responds for instant user feedback
+      toast({
+        title: isPublished ? "Published" : "Unpublished",
+        description: isPublished
+          ? "Exam published. Students can now access it."
+          : "Exam unpublished. Students can no longer access it.",
+      });
+
       return { previousExams };
     },
-    onSuccess: (data, { isPublished }) => {
-      // Reconcile with confirmed backend data (covers any other fields the
-      // server may have changed alongside isPublished, e.g. publishedAt).
+    onSuccess: (data) => {
+      // Silent cache reconciliation — merge authoritative server data (publishedAt, etc.)
+      // without triggering a refetch. Toast already fired in onMutate.
       queryClient.setQueryData(['/api/exams'], (old: any) => {
         if (!old) return old;
         return old.map((exam: any) =>
-          exam.id === data.id ? data : exam
+          exam.id === data.id ? { ...exam, ...data } : exam
         );
-      });
-
-      toast({
-        title: "Success",
-        description: `Exam ${isPublished ? 'published' : 'unpublished'} successfully`,
       });
     },
     onError: (error: any, variables, context: any) => {
