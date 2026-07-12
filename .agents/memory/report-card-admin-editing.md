@@ -54,4 +54,10 @@ In `AdminResultPublishing.tsx`, the `ProfessionalReportCard` inside the preview 
 
 ## Generate Missing Report Cards Endpoint
 
-`POST /api/admin/report-cards/generate-missing` — creates report cards for students with exam results but no report card. Uses `selectDistinct` + deduplicates by `studentId:termId` key. Accepts optional `classId` and `termId` query params.
+`POST /api/admin/report-cards/generate-missing` — creates report cards for students with exam results but no report card yet. Accepts optional `classId` and `termId` query params.
+
+**Must pre-filter to truly-missing student+term pairs before calling any per-item sync function.** The endpoint used to loop over *every* exam result and call `storage.syncExamScoreToReportCard` unconditionally (deduped only by `studentId:termId`, keeping just the first exam per student). Two bugs resulted: (1) it resynced/recalculated scores and class positions for students who already had a complete report card — never a true no-op even when nothing was missing; (2) newly-created report cards only got the *first* exam's subject populated since dedup stopped after one exam per student, leaving every other subject at 0. Fixed by first querying existing `report_cards` for the term(s) in scope, building a `studentId:termId` set, filtering exam results down to pairs NOT in that set, and — critically — no longer deduping across a missing student's exams, so every one of their exams gets synced (populating all subjects). If the filtered "missing" set is empty, return early without touching the DB or invalidating caches.
+
+**Why:** `syncExamScoreToReportCard` has real side effects (overwrites `reportCardItems` scores, recalculates class positions) — it's safe to call once per real exam submission, but calling it for already-complete report cards during a bulk "generate missing" sweep is wasteful and semantically wrong: the feature name promises "missing only."
+
+**How to apply:** Any future bulk backfill/repair endpoint that reuses a per-item sync/upsert function must pre-compute the true "missing" set first and only invoke the sync function for those — never rely on the sync function's own idempotency checks as the sole safety net when the endpoint's contract says "only affects missing items."

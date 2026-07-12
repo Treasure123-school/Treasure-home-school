@@ -2,7 +2,7 @@ import { useLocation } from 'wouter';
 import {
   GraduationCap, Home, Users, Calendar, BookOpen, MessageSquare, User, Settings,
   Bell, LogOut, ImageIcon, FileText, Menu, ChevronLeft, ChevronRight, ClipboardCheck,
-  ClipboardList, ChevronDown, UserCheck, Eye, Briefcase, Shield, Activity,
+  ClipboardList, ChevronDown, UserCheck, Briefcase, Shield, Activity,
   Clock, PenTool, CheckSquare, Award, Star, Library, DollarSign, Trophy, HelpCircle,
   Inbox, Megaphone, MessagesSquare, ClipboardPen, BarChart3, FolderOpen, RotateCcw,
   Layers, Database, CreditCard, Receipt, ListChecks, PanelLeftClose, PanelLeftOpen,
@@ -266,7 +266,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: '/portal/admin/exams/manage', icon: PenTool, label: 'Assessment Management' },
               { href: '/portal/admin/exams/overview', icon: BarChart3, label: 'Assessment Analytics' },
               { href: '/portal/admin/question-bank', icon: Database, label: 'Question Bank' },
-              { href: '/portal/admin/results/publishing', icon: Eye, label: 'Report Card' },
+              { href: '/portal/admin/results/publishing', icon: FileText, label: 'Report Card' },
             ],
           },
           {

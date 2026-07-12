@@ -19,7 +19,7 @@ import { generateStudentUsername, generateParentUsername, generateTeacherUsernam
 import passport from "passport";
 import session from "express-session";
 import memorystore from "memorystore";
-import { and, eq, sql, desc, ne, isNotNull } from "drizzle-orm";
+import { and, eq, sql, desc, ne, isNotNull, inArray } from "drizzle-orm";
 import { realtimeService } from "./realtime-service";
 import { computeExamTiming, logExamTiming, EXAM_SESSION_STATUS } from "./utils/exam-timing";
 import { getProfileImagePath, getHomepageImagePath } from "./storage-path-utils";
@@ -14537,8 +14537,10 @@ School Management System Administration
     }
   });
 
-  // Generate missing report cards — creates report cards for students who have exam data
-  // but no report card yet for the selected term/class (Priority 4: auto-generation fix)
+  // Generate missing report cards — creates report cards ONLY for students who have
+  // exam data but no report card yet for the selected term/class (Priority 4:
+  // auto-generation fix). Students who already have a report card for that term are
+  // never touched by this route — it must be a strict no-op when nothing is missing.
   app.post('/api/admin/report-cards/generate-missing', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { classId, termId } = req.query;
@@ -14551,12 +14553,14 @@ School Management System Administration
         ...(termId ? [eq(schema.exams.termId, Number(termId))] : []),
       ];
 
-      // Get distinct student+term pairs from exam results so we create at most one
-      // report card per student per term (not one per exam)
+      // Get every distinct student+exam result in scope — we need ALL of a missing
+      // student's exams (not just the first one) so every subject on their newly
+      // created report card gets its real score, not just the first exam encountered.
       const examResultsQuery = db.selectDistinct({
         studentId: schema.examResults.studentId,
         examId: schema.examResults.examId,
         termId: schema.exams.termId,
+        classId: schema.exams.classId,
         score: schema.examResults.score,
         maxScore: schema.examResults.maxScore,
       })
@@ -14565,16 +14569,51 @@ School Management System Administration
         .where(whereConditions.length > 0 ? and(...whereConditions) : undefined as any);
 
       const examResults = await examResultsQuery;
-      let created = 0;
-      let skipped = 0;
-      const errors: string[] = [];
 
-      // Deduplicate by studentId+termId — one sync per student per term is enough
-      const processedPairs = new Set<string>();
-      for (const result of examResults) {
-        const pairKey = `${result.studentId}:${result.termId}`;
-        if (processedPairs.has(pairKey)) { skipped++; continue; }
-        processedPairs.add(pairKey);
+      if (examResults.length === 0) {
+        console.log('[AUTO-GEN] No exam data found for this selection — nothing to generate.');
+        return res.json({
+          message: 'No exam data found for this selection — nothing to generate.',
+          created: 0,
+          pairsChecked: 0,
+          errors: [],
+        });
+      }
+
+      // A student is only "missing" a report card if no report card row exists for
+      // their student+term pair yet. Look this up up front so students who already
+      // have one are skipped entirely — never resynced, never recalculated.
+      const distinctTermIds: number[] = Array.from(new Set(examResults.map((r: { termId: number | null }) => r.termId).filter((id: number | null): id is number => id != null)));
+      const existingReportCards = distinctTermIds.length > 0
+        ? await db.select({
+            studentId: schema.reportCards.studentId,
+            termId: schema.reportCards.termId,
+          })
+            .from(schema.reportCards)
+            .where(inArray(schema.reportCards.termId, distinctTermIds))
+        : [];
+
+      const existingPairs = new Set(existingReportCards.map((rc: { studentId: string; termId: number }) => `${rc.studentId}:${rc.termId}`));
+      const missingResults = examResults.filter((r: { studentId: string; termId: number | null }) => !existingPairs.has(`${r.studentId}:${r.termId}`));
+
+      if (missingResults.length === 0) {
+        console.log('[AUTO-GEN] Every student in scope already has a report card for this term — doing nothing.');
+        return res.json({
+          message: 'No missing report cards — every student already has one for this selection.',
+          created: 0,
+          pairsChecked: 0,
+          errors: [],
+        });
+      }
+
+      let created = 0;
+      const errors: string[] = [];
+      const affectedStudentTermPairs = new Set<string>();
+
+      // Sync every exam result belonging to a truly-missing student so their new
+      // report card is populated with ALL of their subject scores, not just one.
+      for (const result of missingResults) {
+        affectedStudentTermPairs.add(`${result.studentId}:${result.termId}`);
         try {
           const syncResult = await storage.syncExamScoreToReportCard(
             result.studentId,
@@ -14585,20 +14624,20 @@ School Management System Administration
           );
           if (syncResult.isNewReportCard) created++;
         } catch (err: any) {
-          errors.push(`Student ${result.studentId} term ${result.termId}: ${err.message}`);
+          errors.push(`Student ${result.studentId} exam ${result.examId}: ${err.message}`);
         }
       }
 
-      // Invalidate caches
+      // Invalidate caches — only reached when something was actually generated
       enhancedCache.invalidate(/^reportcard:/);
       enhancedCache.invalidate(/^reportcards:/);
       enhancedCache.invalidate(/^report-card/);
 
-      console.log(`[AUTO-GEN] Done: ${created} new report cards, ${processedPairs.size} student-term pairs checked`);
+      console.log(`[AUTO-GEN] Done: ${created} new report card(s) for ${affectedStudentTermPairs.size} student-term pair(s)`);
       res.json({
-        message: `${created} missing report card(s) generated`,
+        message: `${created} missing report card(s) generated for ${affectedStudentTermPairs.size} student(s).`,
         created,
-        pairsChecked: processedPairs.size,
+        pairsChecked: affectedStudentTermPairs.size,
         errors: errors.slice(0, 10),
       });
     } catch (error: any) {
