@@ -619,6 +619,15 @@ export default function StudentExams() {
     enabled: !!user,
   });
 
+  // Student's own class name (users table has no classId — it lives on the
+  // students table, so it must be fetched via /api/students/me).
+  const { data: studentProfile } = useQuery<{ classId?: number; className?: string }>({
+    queryKey: ['/api/students/me'],
+    queryFn: async () => { const r = await apiRequest('GET', '/api/students/me'); return r.json(); },
+    enabled: !!user,
+    staleTime: 5 * 60 * 1000,
+  });
+
   // School settings — used for image watermark acronym
   const { data: schoolSettings } = useQuery<any>({
     queryKey: ['/api/public/settings'],
@@ -629,13 +638,15 @@ export default function StudentExams() {
   // PERFORMANCE: Memoize current question to prevent unnecessary re-renders
   const currentQuestion = useMemo(() => examQuestions[currentQuestionIndex], [examQuestions, currentQuestionIndex]);
 
-  // Find school class name for header
+  // Find school class name for header (classId lives on the students table,
+  // not on the auth `user` object — see /api/students/me query above)
   const studentClassName = useMemo(() => {
-    const classId = (user as any)?.classId;
+    if (studentProfile?.className) return studentProfile.className;
+    const classId = studentProfile?.classId;
     if (!classId) return "";
     const studentClass = classes.find((c: any) => c.id === classId);
     return studentClass?.name || "";
-  }, [user, classes]);
+  }, [studentProfile, classes]);
 
   // Find subject name for header
   const subjectName = useMemo(() => {
