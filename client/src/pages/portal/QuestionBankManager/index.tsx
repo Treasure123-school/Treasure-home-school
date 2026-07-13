@@ -287,13 +287,10 @@ export default function QuestionBankManager() {
       });
       return { snapshot };
     },
-    onError: (e: any, _vars, ctx: any) => {
-      if (ctx?.snapshot) {
-        ctx.snapshot.forEach(([key, data]: [any, any]) => qc.setQueryData(key, data));
-      }
-      toast({ title: "Action failed", description: e.message, variant: "destructive" });
-    },
     onSuccess: (serverItem: any, vars) => {
+      // Write the server-confirmed item directly into cache — this IS the truth.
+      // Do NOT invalidate items: a background GET races the DB write and would
+      // restore the old status, overwriting the correct optimistic state.
       if (serverItem?.id) {
         qc.setQueriesData({ queryKey: ["/api/question-bank/items"] }, (old: any) => {
           if (!old?.items) return old;
@@ -304,8 +301,17 @@ export default function QuestionBankManager() {
       }
       toast({ title: "Success", description: ACTION_LABEL[vars.action] ?? "Action completed." });
     },
-    onSettled: () => {
+    onError: (e: any, _vars, ctx: any) => {
+      if (ctx?.snapshot) {
+        ctx.snapshot.forEach(([key, data]: [any, any]) => qc.setQueryData(key, data));
+      }
+      // Hard-refetch after rollback so the list reflects server truth.
       qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
+      toast({ title: "Action failed", description: e.message, variant: "destructive" });
+    },
+    onSettled: () => {
+      // Pending and stats are counters / separate lists — safe to sync.
+      // Never invalidate items here: it races the DB commit.
       qc.invalidateQueries({ queryKey: ["/api/question-bank/pending"] });
       qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
     },
