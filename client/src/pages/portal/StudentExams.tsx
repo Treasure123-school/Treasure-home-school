@@ -48,6 +48,7 @@ import schoolLogo from '@assets/1000025432-removebg-preview (1)_1757796555126.pn
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { ExamHeader } from '@/components/ExamHeader';
 import RequireCompleteProfile from '@/components/RequireCompleteProfile';
+import { useSetExamActive } from '@/lib/examActiveContext';
 
 // ENHANCED EXAM SECURITY CONSTANTS
 // Students receive 3 numbered warnings (Warning 1/3, 2/3, 3/3).
@@ -602,6 +603,16 @@ export default function StudentExams() {
     // Otherwise return in original order
     return examQuestionsRaw;
   }, [examQuestionsRaw, activeSession?.examId, activeSession?.isCompleted, activeSession?.id, exams]);
+
+  // Tell the enclosing PortalLayout whether we're in the full-screen exam-taking
+  // view (own header, no sidebar) or the "My Exams" list (normal portal chrome).
+  // Mirrors the condition used below to decide which UI to render.
+  const setExamActive = useSetExamActive();
+  const isTakingExam = !!activeSession && examQuestions.length > 0;
+  useEffect(() => {
+    setExamActive?.(isTakingExam);
+    return () => setExamActive?.(false);
+  }, [isTakingExam, setExamActive]);
 
   const { data: classes = [] } = useQuery<any[]>({
     queryKey: ['/api/classes'],

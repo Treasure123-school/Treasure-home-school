@@ -60,13 +60,15 @@ interface PortalLayoutProps {
   userRole: 'student' | 'teacher' | 'admin' | 'parent';
   userName: string;
   userInitials: string;
+  /** When true, hide the portal header + sidebar (used for the full-screen exam-taking view). */
+  examActive?: boolean;
 }
 
 const SIDEBAR_EXPANDED_WIDTH = 220;
 const SIDEBAR_COLLAPSED_WIDTH = 60;
 const HEADER_HEIGHT = 52;
 
-export default function PortalLayout({ children, userRole, userName, userInitials }: PortalLayoutProps) {
+export default function PortalLayout({ children, userRole, userName, userInitials, examActive = false }: PortalLayoutProps) {
   const [location, navigate] = useLocation();
   const { logout } = useAuth();
   const isMobile = useIsMobile();
@@ -362,7 +364,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
     window.location.href = '/';
   };
 
-  const isExamPage = userRole === 'student' && location.startsWith('/portal/student/exams');
+  const isExamPage = userRole === 'student' && examActive;
 
   // ── Navigation helper (plain function, NOT a React component) ──────────────
   // This is called directly in JSX — React sees the same element tree on every
