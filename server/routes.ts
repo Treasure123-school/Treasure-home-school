@@ -7,6 +7,7 @@ import { insertUserSchema, insertStudentSchema, insertAttendanceSchema, insertAn
 import { users, students } from "@shared/schema.pg";
 import { z, ZodError } from "zod";
 import multer from "multer";
+import { parse as parseCSVSync } from "csv-parse/sync";
 import path from "path";
 import fs from "fs/promises";
 import sharp from "sharp";
@@ -3889,74 +3890,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Read and parse CSV file
+      // Read and parse CSV file.
+      // IMPORTANT: use a real RFC-4180 parser (csv-parse) instead of naively
+      // splitting on '\n' — a naive split shreds any quoted field that
+      // contains embedded line breaks (e.g. a reading passage or poem pasted
+      // into "QuestionText") into multiple broken rows, which then fail to
+      // map to columns correctly and get miscounted as junk/essay entries.
       const csvContent = await fs.readFile(req.file.path, 'utf-8');
-      const lines = csvContent.trim().split('\n');
 
-      if (lines.length < 2) {
+      let records: Record<string, string>[];
+      try {
+        records = parseCSVSync(csvContent, {
+          columns: (headerRow: string[]) => headerRow.map(h => h.trim().toLowerCase().replace(/\s+/g, '')),
+          skip_empty_lines: true,
+          trim: true,
+          relax_column_count: true,
+          bom: true,
+        });
+      } catch (parseErr: any) {
+        await fs.unlink(req.file.path); // Clean up
+        return res.status(400).json({ message: `Failed to parse CSV: ${parseErr.message}` });
+      }
+
+      if (records.length === 0) {
         await fs.unlink(req.file.path); // Clean up
         return res.status(400).json({ message: 'CSV file must contain header and at least one question row' });
       }
 
-      // Parse header
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, ''));
-
       // Expected columns for exam questions CSV
+      const headers = Object.keys(records[0]);
       const requiredColumns = ['questiontext', 'questiontype'];
       const hasRequiredColumns = requiredColumns.every(col => headers.includes(col));
 
       if (!hasRequiredColumns) {
         await fs.unlink(req.file.path); // Clean up
         return res.status(400).json({
-          message: 'CSV must contain columns: questionText, questionType. Optional: points, optionA, optionB, optionC, optionD, correctAnswer, expectedAnswers'
+          message: 'CSV must contain columns: questionText, questionType. Optional: points, instructions, optionA, optionB, optionC, optionD, correctAnswer, expectedAnswers'
         });
       }
 
       const questionsData: any[] = [];
       const errors: string[] = [];
 
-      // Parse each row
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue; // Skip empty lines
-
-        // Handle CSV with quoted fields containing commas
-        const values: string[] = [];
-        let current = '';
-        let inQuotes = false;
-
-        for (let j = 0; j < line.length; j++) {
-          const char = line[j];
-          if (char === '"') {
-            inQuotes = !inQuotes;
-          } else if (char === ',' && !inQuotes) {
-            values.push(current.trim());
-            current = '';
-          } else {
-            current += char;
-          }
-        }
-        values.push(current.trim());
-
-        const row: Record<string, string> = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
+      // Parse each row (row indices are +2: +1 for the header row, +1 for 1-based display)
+      for (let i = 0; i < records.length; i++) {
+        const row = records[i];
+        const rowNum = i + 2;
 
         try {
           const questionText = row['questiontext'];
           const questionType = row['questiontype']?.toLowerCase() || 'multiple_choice';
           const points = parseInt(row['points']) || 1;
+          const instructions = row['instructions']?.trim() || null;
 
           if (!questionText) {
-            errors.push(`Row ${i + 1}: Missing question text`);
+            errors.push(`Row ${rowNum}: Missing question text`);
             continue;
           }
 
           // Validate question type
           const validTypes = ['multiple_choice', 'true_false', 'short_answer', 'essay', 'fill_blank'];
           if (!validTypes.includes(questionType)) {
-            errors.push(`Row ${i + 1}: Invalid question type '${questionType}'. Valid types: ${validTypes.join(', ')}`);
+            errors.push(`Row ${rowNum}: Invalid question type '${questionType}'. Valid types: ${validTypes.join(', ')}`);
             continue;
           }
 
@@ -3970,6 +3965,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               orderNumber: questionsData.length + 1,
               autoGradable: ['multiple_choice', 'true_false', 'fill_blank'].includes(questionType),
               expectedAnswers: '[]',
+              instructions,
             },
             options: []
           };
@@ -3997,6 +3993,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 { optionText: 'False', isCorrect: correctAnswer === 'false' || correctAnswer === 'b', orderNumber: 2 }
               ];
             }
+
+            if (questionType === 'multiple_choice' && questionData.options.length < 2) {
+              errors.push(`Row ${rowNum}: Multiple choice questions need at least 2 non-empty options`);
+              continue;
+            }
+            if (questionData.options.length > 0 && !questionData.options.some((o: any) => o.isCorrect)) {
+              errors.push(`Row ${rowNum}: correctAnswer "${row['correctanswer'] || ''}" doesn't match any option (use A, B, C, D... or the exact option text)`);
+              continue;
+            }
           }
 
           // Handle expected answers for short answer/fill blank
@@ -4011,7 +4016,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           questionsData.push(questionData);
         } catch (err: any) {
-          errors.push(`Row ${i + 1}: ${err.message}`);
+          errors.push(`Row ${rowNum}: ${err.message}`);
         }
       }
 

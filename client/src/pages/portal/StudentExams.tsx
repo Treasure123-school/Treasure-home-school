@@ -3262,14 +3262,14 @@ export default function StudentExams() {
 
                   {/* Instructions — displayed above question text when present */}
                   {(currentQuestion as any).instructions && (
-                    <p className="text-sm italic text-gray-500 dark:text-gray-400 mb-3 leading-relaxed border-l-2 border-primary/30 pl-3">
+                    <p className="text-sm italic text-gray-500 dark:text-gray-400 mb-3 leading-relaxed border-l-2 border-primary/30 pl-3 whitespace-pre-wrap">
                       {(currentQuestion as any).instructions}
                     </p>
                   )}
 
                   <MathText
                     as="p"
-                    className="text-base sm:text-lg md:text-xl text-gray-800 dark:text-gray-200 leading-relaxed"
+                    className="text-base sm:text-lg md:text-xl text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap"
                     text={currentQuestion.questionText}
                   />
 
