@@ -48,15 +48,49 @@ export function CreateBankDialog({ open, onOpenChange }: CreateBankDialogProps) 
   };
 
   const createBankMutation = useMutation({
-    mutationFn: (data: any) => apiRequest("POST", `/api/question-banks`, data),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["/api/question-banks"] });
+    mutationFn: async (data: any) => {
+      const res = await apiRequest("POST", `/api/question-banks`, data);
+      if (!res.ok) {
+        let msg = "Failed to create bank";
+        try { const b = await res.json(); msg = b.message || msg; } catch { /* ignore */ }
+        throw new Error(msg);
+      }
+      return res.json();
+    },
+    onMutate: async () => {
+      // Cancel any in-flight bank queries so they don't overwrite the upcoming write.
+      await qc.cancelQueries({ queryKey: ["/api/question-banks"] });
+      const snapshot = qc.getQueriesData({ queryKey: ["/api/question-banks"] });
+      return { snapshot };
+    },
+    onSuccess: (savedBank: any) => {
+      // The server returns the created bank. Insert it directly into the cache
+      // entry that the dropdown (ContextFilterBar) is watching — keyed by the
+      // bank's own classId / subjectId / termId.
+      // Do NOT invalidateQueries here: a background GET races the DB write and
+      // would return the old list (without the new bank), so the dropdown would
+      // appear empty or miss the new entry.
+      const cid = savedBank.classId;
+      const sid = savedBank.subjectId;
+      const tid = savedBank.termId ?? null;
+      qc.setQueryData(
+        ["/api/question-banks", "filtered", cid, sid, tid],
+        (old: any) => (Array.isArray(old) ? [...old, savedBank] : [savedBank])
+      );
+
+      // Stats counter changed — safe to sync independently.
       qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
+
       toast({ title: "Success", description: "Question bank created." });
       onOpenChange(false);
       reset();
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: any, _vars, ctx: any) => {
+      // Restore the bank list cache, then hard-refetch to get server truth.
+      if (ctx?.snapshot) ctx.snapshot.forEach(([k, d]: [any, any]) => qc.setQueryData(k, d));
+      qc.invalidateQueries({ queryKey: ["/api/question-banks"] });
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    },
   });
 
   const handleCreate = () => {
