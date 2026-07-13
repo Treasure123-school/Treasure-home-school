@@ -33,10 +33,14 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { Clock, BookOpen, Trophy, Play, Eye, CheckCircle, XCircle, Timer, Save, RotateCcw, AlertCircle, Loader, FileText, Circle, CheckCircle2, HelpCircle, ClipboardCheck, GraduationCap, Award, Calendar, Calculator, X, Lock, CreditCard, Keyboard, Shield, ChevronDown, ChevronUp } from 'lucide-react';
+import { Clock, BookOpen, Trophy, Play, Eye, CheckCircle, XCircle, Timer, Save, RotateCcw, AlertCircle, Loader, FileText, Circle, CheckCircle2, HelpCircle, ClipboardCheck, GraduationCap, Award, Calendar, Calculator, X, Lock, CreditCard, Keyboard, Shield, ChevronDown, ChevronUp, Filter, ArrowUpDown, ListChecks, Percent } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { Exam as BaseExam, ExamSession, ExamQuestion, QuestionOption, StudentAnswer } from '@shared/schema';
 import { QuestionImageDisplay } from '@/components/question/QuestionImageDisplay';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { MiniStatCard, MiniStatGrid, SearchInput } from '@/components/shared';
+import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 
 // Extend Exam with payment fields injected by the server at runtime
 type Exam = BaseExam & {
@@ -149,6 +153,11 @@ export default function StudentExams() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
+  const [examSearchTerm, setExamSearchTerm] = useState('');
+  const [examSubjectFilter, setExamSubjectFilter] = useState('all');
+  const [examTermFilter, setExamTermFilter] = useState('all');
+  const [examStatusFilter, setExamStatusFilter] = useState('all');
+  const [examSortBy, setExamSortBy] = useState('date-desc');
   const [activeSession, setActiveSession] = useState<ExamSession | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, any>>({});
@@ -618,6 +627,76 @@ export default function StudentExams() {
     queryKey: ['/api/classes'],
     enabled: !!user,
   });
+
+  const { allTerms: examTerms } = useAcademicCalendar();
+
+  // Filtered + sorted view of the student's exams for the "My Exams" list.
+  // Status buckets mirror the badges shown on each card: available (not yet
+  // taken and not fee-locked), completed (has a finished session), locked
+  // (fee required and unpaid).
+  const filteredExams = useMemo(() => {
+    const filtered = (exams as Exam[]).filter((exam) => {
+      if (examSearchTerm && !exam.name.toLowerCase().includes(examSearchTerm.toLowerCase())) return false;
+      if (examSubjectFilter !== 'all' && String(exam.subjectId ?? '') !== examSubjectFilter) return false;
+      if (examTermFilter !== 'all' && String((exam as any).termId ?? '') !== examTermFilter) return false;
+
+      if (examStatusFilter !== 'all') {
+        const status = getExamStatus(exam.id);
+        const isLocked = !!exam.paymentRequired && !exam.hasPaid && !status.isCompleted;
+        if (examStatusFilter === 'completed' && !status.isCompleted) return false;
+        if (examStatusFilter === 'available' && (status.isCompleted || isLocked)) return false;
+        if (examStatusFilter === 'locked' && !isLocked) return false;
+      }
+      return true;
+    });
+
+    return [...filtered].sort((a, b) => {
+      switch (examSortBy) {
+        case 'name-asc':
+          return a.name.localeCompare(b.name);
+        case 'name-desc':
+          return b.name.localeCompare(a.name);
+        case 'date-asc':
+          return new Date(a.date).getTime() - new Date(b.date).getTime();
+        case 'date-desc':
+        default:
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+      }
+    });
+  }, [exams, examSearchTerm, examSubjectFilter, examTermFilter, examStatusFilter, examSortBy, studentExamSessions]);
+
+  const hasActiveExamFilters = examSubjectFilter !== 'all' || examTermFilter !== 'all' || examStatusFilter !== 'all';
+
+  const clearExamFilters = () => {
+    setExamSubjectFilter('all');
+    setExamTermFilter('all');
+    setExamStatusFilter('all');
+    setExamSortBy('date-desc');
+  };
+
+  // Stat cards summarizing the student's exam list at a glance.
+  const examStats = useMemo(() => {
+    const total = exams.length;
+    let completed = 0;
+    let available = 0;
+    let locked = 0;
+    for (const exam of exams as Exam[]) {
+      const status = getExamStatus(exam.id);
+      const isLocked = !!exam.paymentRequired && !exam.hasPaid && !status.isCompleted;
+      if (status.isCompleted) completed++;
+      else if (isLocked) locked++;
+      else available++;
+    }
+    const completedSessions = studentExamSessions.filter(
+      (s) => s.isCompleted && typeof s.score === 'number' && typeof s.maxScore === 'number' && s.maxScore! > 0
+    );
+    const averageScore = completedSessions.length
+      ? Math.round(
+          (completedSessions.reduce((sum, s) => sum + (s.score! / s.maxScore!) * 100, 0) / completedSessions.length)
+        )
+      : null;
+    return { total, completed, available, locked, averageScore };
+  }, [exams, studentExamSessions]);
 
   // Student's own class name (users table has no classId — it lives on the
   // students table, so it must be fetched via /api/students/me).
@@ -3786,6 +3865,142 @@ export default function StudentExams() {
           </p>
         </div>
 
+        {!loadingExams && exams.length > 0 && (
+          <>
+            <MiniStatGrid cols={4}>
+              <MiniStatCard
+                label="Total Exams"
+                value={examStats.total}
+                icon={ListChecks}
+                color="text-blue-600"
+              />
+              <MiniStatCard
+                label="Available"
+                value={examStats.available}
+                icon={Play}
+                color="text-green-600"
+              />
+              <MiniStatCard
+                label="Completed"
+                value={examStats.completed}
+                icon={CheckCircle2}
+                color="text-purple-600"
+              />
+              <MiniStatCard
+                label="Average Score"
+                value={examStats.averageScore !== null ? `${examStats.averageScore}%` : '—'}
+                icon={Percent}
+                color="text-amber-600"
+              />
+            </MiniStatGrid>
+
+            <div className="space-y-3">
+              <SearchInput
+                placeholder="Search exams..."
+                value={examSearchTerm}
+                onChange={setExamSearchTerm}
+                className="w-full sm:max-w-sm"
+                data-testid="input-search-exams"
+              />
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={examSubjectFilter} onValueChange={setExamSubjectFilter}>
+                  <SelectTrigger className="w-[calc(50%-4px)] sm:w-[150px]" data-testid="select-filter-subject">
+                    <SelectValue placeholder="All Subjects" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Subjects</SelectItem>
+                    {subjects.map((s) => (
+                      <SelectItem key={s.id} value={s.id.toString()}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={examTermFilter} onValueChange={setExamTermFilter}>
+                  <SelectTrigger className="w-[calc(50%-4px)] sm:w-[130px]" data-testid="select-filter-term">
+                    <SelectValue placeholder="All Terms" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Terms</SelectItem>
+                    {examTerms.map((t) => (
+                      <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {/* Status filter — icon button opens a dropdown of status choices */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant={examStatusFilter !== 'all' ? 'default' : 'outline'}
+                      size="sm"
+                      className="gap-1.5"
+                      aria-label="Filter by status"
+                      data-testid="button-filter-status"
+                    >
+                      <Filter className="w-4 h-4" />
+                      <span className="hidden sm:inline">
+                        {examStatusFilter === 'all' ? 'Status'
+                          : examStatusFilter === 'available' ? 'Available'
+                          : examStatusFilter === 'completed' ? 'Completed' : 'Locked'}
+                      </span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuLabel>Filter by status</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioGroup value={examStatusFilter} onValueChange={setExamStatusFilter}>
+                      <DropdownMenuRadioItem value="all" data-testid="filter-status-all">All Status</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="available" data-testid="filter-status-available">Available</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="completed" data-testid="filter-status-completed">Completed</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="locked" data-testid="filter-status-locked">Fee Locked</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {/* Sort — icon button opens a dropdown of sort choices */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant={examSortBy !== 'date-desc' ? 'default' : 'outline'}
+                      size="sm"
+                      className="gap-1.5"
+                      aria-label="Sort exams"
+                      data-testid="button-sort-exams"
+                    >
+                      <ArrowUpDown className="w-4 h-4" />
+                      <span className="hidden sm:inline">Sort</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuRadioGroup value={examSortBy} onValueChange={setExamSortBy}>
+                      <DropdownMenuRadioItem value="date-desc" data-testid="sort-date-desc">Date (Newest)</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="date-asc" data-testid="sort-date-asc">Date (Oldest)</DropdownMenuRadioItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuRadioItem value="name-asc" data-testid="sort-name-asc">Name (A → Z)</DropdownMenuRadioItem>
+                      <DropdownMenuRadioItem value="name-desc" data-testid="sort-name-desc">Name (Z → A)</DropdownMenuRadioItem>
+                    </DropdownMenuRadioGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
+                {(hasActiveExamFilters || examSearchTerm) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => { clearExamFilters(); setExamSearchTerm(''); }}
+                    className="text-xs text-muted-foreground"
+                    data-testid="button-clear-filters"
+                  >
+                    Clear filters
+                  </Button>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+
         {loadingExams ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
             {[1, 2, 3, 4].map((i) => (
@@ -3806,9 +4021,24 @@ export default function StudentExams() {
               </p>
             </CardContent>
           </Card>
+        ) : filteredExams.length === 0 ? (
+          <Card className="border-dashed border-2 bg-muted/30">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <div className="bg-background p-4 rounded-full shadow-sm mb-4">
+                <Filter className="h-10 w-10 text-muted-foreground" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">No exams match your filters</h3>
+              <p className="text-muted-foreground max-w-sm">
+                Try adjusting or clearing your search and filters.
+              </p>
+              <Button variant="outline" className="mt-4" onClick={() => { clearExamFilters(); setExamSearchTerm(''); }} data-testid="button-clear-filters-empty">
+                Clear filters
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
           <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3 w-full">
-            {exams.map((exam) => {
+            {filteredExams.map((exam) => {
               const status = getExamStatus(exam.id);
               const subject = subjects.find(s => s.id === exam.subjectId);
               const isLocked = exam.paymentRequired && !exam.hasPaid && !status.isCompleted;
