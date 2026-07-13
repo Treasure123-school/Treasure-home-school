@@ -3891,12 +3891,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Read and parse CSV file.
+      // NOTE: uploadCSV uses multer memoryStorage, so the file arrives as an
+      // in-memory buffer (req.file.buffer) — there is no req.file.path and no
+      // temp file on disk to unlink. (A prior version of this handler assumed
+      // disk storage and called fs.readFile(req.file.path)/fs.unlink(req.file.path),
+      // which always threw "path must be a string" and made every CSV upload fail.)
+      //
       // IMPORTANT: use a real RFC-4180 parser (csv-parse) instead of naively
       // splitting on '\n' — a naive split shreds any quoted field that
       // contains embedded line breaks (e.g. a reading passage or poem pasted
       // into "QuestionText") into multiple broken rows, which then fail to
       // map to columns correctly and get miscounted as junk/essay entries.
-      const csvContent = await fs.readFile(req.file.path, 'utf-8');
+      const csvContent = req.file.buffer.toString('utf-8');
 
       let records: Record<string, string>[];
       try {
@@ -3908,12 +3914,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           bom: true,
         });
       } catch (parseErr: any) {
-        await fs.unlink(req.file.path); // Clean up
         return res.status(400).json({ message: `Failed to parse CSV: ${parseErr.message}` });
       }
 
       if (records.length === 0) {
-        await fs.unlink(req.file.path); // Clean up
         return res.status(400).json({ message: 'CSV file must contain header and at least one question row' });
       }
 
@@ -3923,7 +3927,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const hasRequiredColumns = requiredColumns.every(col => headers.includes(col));
 
       if (!hasRequiredColumns) {
-        await fs.unlink(req.file.path); // Clean up
         return res.status(400).json({
           message: 'CSV must contain columns: questionText, questionType. Optional: points, instructions, optionA, optionB, optionC, optionD, correctAnswer, expectedAnswers'
         });
@@ -4020,9 +4023,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Clean up uploaded file
-      await fs.unlink(req.file.path);
-
       if (questionsData.length === 0) {
         return res.status(400).json({
           message: 'No valid questions found in CSV',
@@ -4060,10 +4060,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalPointsAdded: totalPoints
       });
     } catch (error: any) {
-      // Clean up file if it exists
-      if (req.file?.path) {
-        await fs.unlink(req.file.path).catch(() => { });
-      }
       console.error('CSV question upload error:', error);
       res.status(500).json({
         message: error.message || 'Failed to import questions from CSV',
@@ -9636,8 +9632,9 @@ School Management System Administration
       if (!req.file) {
         return res.status(400).json({ message: "CSV file is required" });
       }
-      // Read and parse CSV file
-      const csvContent = await fs.readFile(req.file.path, 'utf-8');
+      // Read and parse CSV file (uploadCSV uses multer memoryStorage, so the
+      // file is an in-memory buffer — there is no req.file.path on disk)
+      const csvContent = req.file.buffer.toString('utf-8');
       const lines = csvContent.trim().split('\n');
 
       if (lines.length < 2) {
@@ -9796,9 +9793,6 @@ School Management System Administration
         }
       }
 
-      // Clean up uploaded file
-      await fs.unlink(req.file.path);
-
       res.json({
         message: `Successfully created ${createdUsers.length} users`,
         users: createdUsers,
@@ -9806,12 +9800,6 @@ School Management System Administration
       });
 
     } catch (error) {
-      // Clean up file if it exists
-      if (req.file?.path) {
-        try {
-          await fs.unlink(req.file.path);
-        } catch { }
-      }
       res.status(500).json({ message: "Failed to process CSV file" });
     }
   });
@@ -9822,13 +9810,11 @@ School Management System Administration
       if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded' });
       }
-      const csvContent = await fs.readFile(req.file.path, 'utf-8');
+      // uploadCSV uses multer memoryStorage — read from the in-memory buffer
+      const csvContent = req.file.buffer.toString('utf-8');
       const { previewCSVImport } = await import('./csv-import-service');
 
       const preview = await previewCSVImport(csvContent);
-
-      // Clean up uploaded file
-      await fs.unlink(req.file.path);
 
       res.json(preview);
     } catch (error: any) {
@@ -9842,13 +9828,11 @@ School Management System Administration
       if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded' });
       }
-      const csvContent = await fs.readFile(req.file.path, 'utf-8');
+      // uploadCSV uses multer memoryStorage — read from the in-memory buffer
+      const csvContent = req.file.buffer.toString('utf-8');
       const { previewCSVImport } = await import('./csv-import-service');
 
       const preview = await previewCSVImport(csvContent);
-
-      // Clean up uploaded file
-      await fs.unlink(req.file.path);
 
       res.json(preview);
     } catch (error: any) {

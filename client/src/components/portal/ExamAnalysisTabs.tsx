@@ -824,7 +824,7 @@ function QuestionsTab({ analytics }: { analytics: AnalyticsData }) {
               <CardContent className="pt-4">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium leading-snug">
+                    <p className="text-sm font-medium leading-snug whitespace-pre-wrap">
                       <span className="text-muted-foreground mr-1.5 font-mono">Q{q.orderNumber}.</span>
                       {q.questionText}
                     </p>

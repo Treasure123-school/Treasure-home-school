@@ -2524,7 +2524,7 @@ According to the passage, when did the sun rise?",multiple_choice,"At noon","Slo
                               </Badge>
                               <span className="text-sm text-muted-foreground">{question.points} points</span>
                             </div>
-                            <p className="mb-2 font-medium">{question.questionText}</p>
+                            <p className="mb-2 font-medium whitespace-pre-wrap">{question.questionText}</p>
 
                             {question.instructions && (
                               <div className="mb-2 p-2 bg-primary/5 rounded text-sm">
@@ -2672,7 +2672,7 @@ According to the passage, when did the sun rise?",multiple_choice,"At noon","Slo
                         <div className="flex items-start gap-4">
                           <Badge variant="outline">Q{index + 1}</Badge>
                           <div className="flex-1">
-                            <p className="font-medium mb-2">{question.questionText}</p>
+                            <p className="font-medium mb-2 whitespace-pre-wrap">{question.questionText}</p>
                             <p className="text-xs text-muted-foreground mb-3">
                               {question.points} {question.points === 1 ? 'point' : 'points'}
                             </p>

@@ -7,3 +7,4 @@
 - [Student profile completion system](student-profile-completion.md) — canonical 7-field set, where logic must stay in sync, stale-value anti-pattern, cache invalidation, production repair endpoint
 - [Report Card admin editing rules](report-card-admin-editing.md) — admin bypasses published-lock on score override; 'finalized' displays as 'In Progress'; skills use POST not PUT; admin always sees all statuses
 - [KaTeX pre-render/prewarm pattern](math-katex-prewarm.md) — sync-during-render math components never flash raw text; don't gate on blocking flags; reset warm-cache per session; escape KaTeX fallback
+- [Multer memoryStorage + req.file.path bug](multer-memorystorage-file-path.md) — memoryStorage has no req.file.path; fs.readFile(req.file.path) always 500s; use req.file.buffer instead
