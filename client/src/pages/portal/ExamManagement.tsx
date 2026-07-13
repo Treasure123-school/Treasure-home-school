@@ -26,8 +26,8 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { insertExamSchema, insertExamQuestionSchema, insertQuestionOptionSchema, type Exam, type ExamQuestion, type QuestionOption, type Class, type Subject } from '@shared/schema';
 import { z } from 'zod';
-import { Plus, Edit, BookOpen, Trash2, Clock, Users, FileText, Eye, Play, Upload, Save, Shield, MoreVertical, ChevronDown, ChevronUp, Settings, ChevronLeft, ChevronRight, Check, Calendar, Layers, Target, MapPin, DollarSign, UserCheck, Ticket, Trophy as TrophyIcon, Award as AwardIcon, Clipboard } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Plus, Edit, BookOpen, Trash2, Clock, Users, FileText, Eye, Play, Upload, Save, Shield, MoreVertical, ChevronDown, ChevronUp, Settings, ChevronLeft, ChevronRight, Check, Calendar, Layers, Target, MapPin, DollarSign, UserCheck, Ticket, Trophy as TrophyIcon, Award as AwardIcon, Clipboard, Filter, ArrowUpDown } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { PageHeader, SearchInput, EmptyState, MiniStatCard, MiniStatGrid } from "@/components/shared";
 import { QuestionImageUpload } from '@/components/question/QuestionImageUpload';
@@ -133,6 +133,11 @@ export default function ExamManagement() {
   const [isQuestionDialogOpen, setIsQuestionDialogOpen] = useState(false);
   const [isQuestionAdderOpen, setIsQuestionAdderOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [classFilter, setClassFilter] = useState('all');
+  const [termFilter, setTermFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('date-desc');
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const [editingQuestion, setEditingQuestion] = useState<ExamQuestion | null>(null);
@@ -1701,12 +1706,48 @@ export default function ExamManagement() {
     return result;
   };
 
-  const filteredExams = useMemo(
-    () => exams.filter((exam: Exam) =>
-      exam.name.toLowerCase().includes(searchTerm.toLowerCase())
-    ),
-    [exams, searchTerm]
-  );
+  const filteredExams = useMemo(() => {
+    const filtered = exams.filter((exam: Exam) => {
+      if (searchTerm && !exam.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      if (classFilter !== 'all' && String(exam.classId ?? '') !== classFilter) return false;
+      if (termFilter !== 'all' && String(exam.termId ?? '') !== termFilter) return false;
+      if (categoryFilter !== 'all' && exam.assessmentCategory !== categoryFilter) return false;
+      if (statusFilter === 'published' && !exam.isPublished) return false;
+      if (statusFilter === 'draft' && exam.isPublished) return false;
+      return true;
+    });
+
+    const sorted = [...filtered].sort((a: Exam, b: Exam) => {
+      switch (sortBy) {
+        case 'name-asc':
+          return a.name.localeCompare(b.name);
+        case 'name-desc':
+          return b.name.localeCompare(a.name);
+        case 'date-asc':
+          return new Date(a.date).getTime() - new Date(b.date).getTime();
+        case 'date-desc':
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        case 'duration-asc':
+          return (a.timeLimit ?? 0) - (b.timeLimit ?? 0);
+        case 'duration-desc':
+          return (b.timeLimit ?? 0) - (a.timeLimit ?? 0);
+        default:
+          return 0;
+      }
+    });
+
+    return sorted;
+  }, [exams, searchTerm, classFilter, termFilter, categoryFilter, statusFilter, sortBy]);
+
+  const hasActiveFilters = classFilter !== 'all' || termFilter !== 'all' || categoryFilter !== 'all' || statusFilter !== 'all';
+
+  const clearAllFilters = () => {
+    setClassFilter('all');
+    setTermFilter('all');
+    setCategoryFilter('all');
+    setStatusFilter('all');
+    setSortBy('date-desc');
+  };
 
   const getClassNameById = (classId: number) => {
     // Use allClasses for display (contains all classes, not just assigned ones)
@@ -2278,14 +2319,137 @@ export default function ExamManagement() {
       />
     </MiniStatGrid>
 
-    <div className="flex items-center space-x-2">
+    <div className="space-y-3">
       <SearchInput
         placeholder="Search assessments..."
         value={searchTerm}
         onChange={setSearchTerm}
-        className="max-w-sm"
+        className="w-full sm:max-w-sm"
         data-testid="input-search-exams"
       />
+
+      {/* Class / Term / Category filters + Status filter icon + Sort icon */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Select value={classFilter} onValueChange={setClassFilter}>
+          <SelectTrigger className="w-[calc(50%-4px)] sm:w-[140px]" data-testid="select-filter-class">
+            <SelectValue placeholder="All Classes" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Classes</SelectItem>
+            {allClasses.map((c: Class) => (
+              <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select value={termFilter} onValueChange={setTermFilter}>
+          <SelectTrigger className="w-[calc(50%-4px)] sm:w-[130px]" data-testid="select-filter-term">
+            <SelectValue placeholder="All Terms" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Terms</SelectItem>
+            {terms.map((t: any) => (
+              <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* Category filter — icon button opens a dropdown of category choices */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={categoryFilter !== 'all' ? 'default' : 'outline'}
+              size="sm"
+              className="gap-1.5"
+              aria-label="Filter by category"
+              data-testid="button-filter-category"
+            >
+              <Layers className="w-4 h-4" />
+              <span className="hidden sm:inline">
+                {categoryFilter === 'all' ? 'Category' : categoryFilter === 'academic' ? 'Academic' : 'Standalone'}
+              </span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuLabel>Filter by category</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuRadioGroup value={categoryFilter} onValueChange={setCategoryFilter}>
+              <DropdownMenuRadioItem value="all" data-testid="filter-category-all">All Categories</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="academic" data-testid="filter-category-academic">Academic</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="standalone" data-testid="filter-category-standalone">Standalone</DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Status filter — icon button opens a dropdown of status choices */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={statusFilter !== 'all' ? 'default' : 'outline'}
+              size="sm"
+              className="gap-1.5"
+              aria-label="Filter by status"
+              data-testid="button-filter-status"
+            >
+              <Filter className="w-4 h-4" />
+              <span className="hidden sm:inline">
+                {statusFilter === 'all' ? 'Status' : statusFilter === 'published' ? 'Published' : 'Drafts'}
+              </span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuLabel>Filter by status</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuRadioGroup value={statusFilter} onValueChange={setStatusFilter}>
+              <DropdownMenuRadioItem value="all" data-testid="filter-status-all">All Status</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="published" data-testid="filter-status-published">Published</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="draft" data-testid="filter-status-draft">Drafts</DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Sort — icon button opens a dropdown of sort choices */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant={sortBy !== 'date-desc' ? 'default' : 'outline'}
+              size="sm"
+              className="gap-1.5"
+              aria-label="Sort assessments"
+              data-testid="button-sort-exams"
+            >
+              <ArrowUpDown className="w-4 h-4" />
+              <span className="hidden sm:inline">Sort</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuRadioGroup value={sortBy} onValueChange={setSortBy}>
+              <DropdownMenuRadioItem value="date-desc" data-testid="sort-date-desc">Date (Newest)</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="date-asc" data-testid="sort-date-asc">Date (Oldest)</DropdownMenuRadioItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioItem value="name-asc" data-testid="sort-name-asc">Name (A → Z)</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="name-desc" data-testid="sort-name-desc">Name (Z → A)</DropdownMenuRadioItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuRadioItem value="duration-desc" data-testid="sort-duration-desc">Duration (Longest)</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="duration-asc" data-testid="sort-duration-asc">Duration (Shortest)</DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearAllFilters}
+            className="text-xs text-muted-foreground"
+            data-testid="button-clear-filters"
+          >
+            Clear filters
+          </Button>
+        )}
+      </div>
     </div>
 
       {/* Assessments Table/Cards */}
