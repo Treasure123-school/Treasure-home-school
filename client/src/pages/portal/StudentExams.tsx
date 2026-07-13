@@ -3137,7 +3137,7 @@ export default function StudentExams() {
           profileImageUrl={user?.profileImageUrl}
         />
 
-        <div className="container mx-auto px-4 pb-12 max-w-4xl">
+        <div className="container mx-auto px-4 pb-12 max-w-4xl lg:max-w-6xl">
           {/* Back / Forward Navigation Warning (not a violation) */}
           {showBackNavWarning && (
             <div className="mb-4 border-l-4 border-primary bg-primary/5 dark:bg-primary/5 rounded-r-lg p-3 flex items-start gap-3 shadow-sm">
@@ -3216,8 +3216,9 @@ export default function StudentExams() {
           )}
 
           {/* Exam Content - Responsive */}
-          <div className="max-w-5xl mx-auto py-4 sm:py-6 md:py-8">
+          <div className="mx-auto py-4 sm:py-6 md:py-8 max-w-5xl lg:max-w-none lg:grid lg:grid-cols-[minmax(0,1fr)_280px] lg:gap-6 lg:items-start">
 
+          <div className="lg:min-w-0">
             {/* Question Card - Responsive */}
             {loadingQuestions && !currentQuestion && (
               <div
@@ -3445,10 +3446,12 @@ export default function StudentExams() {
               )}
             </div>
 
-            {/* Question Grid - Small and at bottom */}
-            <div className="mt-8 pt-6 border-t border-gray-200 dark:border-gray-700">
+          </div>
+
+            {/* Question Grid - Quick Navigation (side column on desktop) */}
+            <div className="mt-8 lg:mt-0 pt-6 lg:pt-4 border-t lg:border-t-0 border-gray-200 dark:border-gray-700 lg:border lg:border-primary/30 lg:dark:border-gray-700 lg:rounded-lg lg:bg-white lg:dark:bg-gray-800 lg:shadow-md lg:p-4 lg:sticky lg:top-6">
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Quick Navigation</p>
-              <div className="grid grid-cols-10 sm:grid-cols-15 md:grid-cols-20 gap-2">
+              <div className="grid grid-cols-10 sm:grid-cols-15 md:grid-cols-20 lg:grid-cols-6 gap-2 lg:max-h-[65vh] lg:overflow-y-auto lg:pr-1">
                 {examQuestions.map((q, idx) => {
                   const isAnswered = answers[q.id];
                   const isCurrent = idx === currentQuestionIndex;
