@@ -182,15 +182,20 @@ export function QuestionList({
       });
       return { snapshot };
     },
-    onError: (e: any, _vars, ctx: any) => {
-      if (ctx?.snapshot) ctx.snapshot.forEach(([k, d]: [any, any]) => qc.setQueryData(k, d));
-      toast({ title: "Publish failed", description: e.message, variant: "destructive" });
-    },
     onSuccess: (data: any) => {
+      // Optimistic state is already correct — all eligible items flipped to "published".
+      // Do NOT invalidate items: a background GET races the DB write and restores old statuses.
       toast({ title: "Published", description: data.message ?? "All questions published." });
     },
-    onSettled: () => {
+    onError: (e: any, _vars, ctx: any) => {
+      if (ctx?.snapshot) ctx.snapshot.forEach(([k, d]: [any, any]) => qc.setQueryData(k, d));
+      // Hard-refetch after rollback so the list reflects server truth.
       qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
+      toast({ title: "Publish failed", description: e.message, variant: "destructive" });
+    },
+    onSettled: () => {
+      // Stats counter only — never invalidate items here.
       qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
     },
   });
@@ -217,15 +222,20 @@ export function QuestionList({
       });
       return { snapshot };
     },
-    onError: (e: any, _vars, ctx: any) => {
-      if (ctx?.snapshot) ctx.snapshot.forEach(([k, d]: [any, any]) => qc.setQueryData(k, d));
-      toast({ title: "Unpublish failed", description: e.message, variant: "destructive" });
-    },
     onSuccess: (data: any) => {
+      // Optimistic state is already correct — all published items flipped to "active".
+      // Do NOT invalidate items: a background GET races the DB write and restores old statuses.
       toast({ title: "Unpublished", description: data.message ?? "All questions unpublished." });
     },
-    onSettled: () => {
+    onError: (e: any, _vars, ctx: any) => {
+      if (ctx?.snapshot) ctx.snapshot.forEach(([k, d]: [any, any]) => qc.setQueryData(k, d));
+      // Hard-refetch after rollback so the list reflects server truth.
       qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
+      toast({ title: "Unpublish failed", description: e.message, variant: "destructive" });
+    },
+    onSettled: () => {
+      // Stats counter only — never invalidate items here.
       qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
     },
   });
