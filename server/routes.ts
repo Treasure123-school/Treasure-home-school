@@ -10176,6 +10176,46 @@ School Management System Administration
     }
   });
 
+  // Get current student's info (for student portal)
+  // NOTE: must be registered BEFORE '/api/students/:id' below — otherwise
+  // Express matches "me" as the :id param and this handler is never reached.
+  app.get('/api/students/me', authenticateUser, authorizeRoles(ROLES.STUDENT), async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+
+      // Find student by user ID
+      const student = await storage.getStudentByUserId(userId);
+      if (!student) {
+        return res.status(404).json({ message: 'Student profile not found' });
+      }
+
+      // Get user info for firstName, lastName, dateOfBirth
+      const user = await storage.getUser(userId);
+
+      // Get class info if assigned
+      let className = null;
+      if (student.classId) {
+        const classInfo = await storage.getClass(student.classId);
+        className = classInfo?.name;
+      }
+
+      res.json({
+        id: student.id,
+        firstName: user?.firstName || '',
+        lastName: user?.lastName || '',
+        studentId: student.admissionNumber,
+        classId: student.classId,
+        className,
+        department: student.department,
+        dateOfBirth: user?.dateOfBirth || null,
+        enrollmentDate: student.admissionDate,
+      });
+    } catch (error: any) {
+      console.error('Error fetching student info:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch student info' });
+    }
+  });
+
   // Get student profile by ID
   app.get('/api/students/:id', authenticateUser, async (req, res) => {
     try {
@@ -15375,44 +15415,6 @@ School Management System Administration
   });
 
   // ==================== STUDENT PORTAL SUBJECT ROUTES ====================
-
-  // Get current student's info (for student portal)
-  app.get('/api/students/me', authenticateUser, authorizeRoles(ROLES.STUDENT), async (req: Request, res: Response) => {
-    try {
-      const userId = req.user!.id;
-
-      // Find student by user ID
-      const student = await storage.getStudentByUserId(userId);
-      if (!student) {
-        return res.status(404).json({ message: 'Student profile not found' });
-      }
-
-      // Get user info for firstName, lastName, dateOfBirth
-      const user = await storage.getUser(userId);
-
-      // Get class info if assigned
-      let className = null;
-      if (student.classId) {
-        const classInfo = await storage.getClass(student.classId);
-        className = classInfo?.name;
-      }
-
-      res.json({
-        id: student.id,
-        firstName: user?.firstName || '',
-        lastName: user?.lastName || '',
-        studentId: student.admissionNumber,
-        classId: student.classId,
-        className,
-        department: student.department,
-        dateOfBirth: user?.dateOfBirth || null,
-        enrollmentDate: student.admissionDate,
-      });
-    } catch (error: any) {
-      console.error('Error fetching student info:', error);
-      res.status(500).json({ message: error.message || 'Failed to fetch student info' });
-    }
-  });
 
   // Get current student's assigned subjects (for student portal)
   // Uses class_subject_mappings as the single source of truth
