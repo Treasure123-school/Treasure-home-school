@@ -139,16 +139,40 @@ export function QuestionList({
       if (!r.ok) { const err = await r.json(); throw new Error(err.error || err.message || "Upload failed"); }
       return r.json();
     },
-    onSuccess: (result) => {
-      const serverErrs: string[] = result.errors ?? [];
+    onMutate: async () => {
+      // Cancel in-flight queries so they don't overwrite the upcoming cache write.
+      await qc.cancelQueries({ queryKey: ["/api/question-bank/items"] });
+      const snapshot = qc.getQueriesData({ queryKey: ["/api/question-bank/items"] });
+      return { snapshot };
+    },
+    onSuccess: (result, _vars, _ctx) => {
+      const serverErrs: string[] = result.errors   ?? [];
+      const createdItems: any[]  = result.questions ?? [];
+
+      // The server returns the full created items in result.questions — use them
+      // to write directly into the cache. Do NOT call invalidateQueries for items:
+      // a background GET races the DB write and returns stale data, which is why
+      // the list showed "0 questions found" immediately after upload.
+      if (createdItems.length > 0) {
+        qc.setQueriesData({ queryKey: ["/api/question-bank/items"] }, (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            items: [...createdItems, ...(old.items ?? [])],
+            total: (old.total ?? 0) + createdItems.length,
+          };
+        });
+      }
+
+      // Stats counter changed — safe to sync independently.
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
+
       toast({
         title: "Bulk upload complete",
         description: `${result.created} question${result.created !== 1 ? "s" : ""} added.${
           serverErrs.length ? ` ${serverErrs.length} row(s) skipped — see details below.` : ""
         }`,
       });
-      qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
-      qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
       if (serverErrs.length) {
         setCsvServerErrors(serverErrs);
       } else {
@@ -156,7 +180,13 @@ export function QuestionList({
         setCsvUploadOpen(false);
       }
     },
-    onError: (e: any) => toast({ title: "Upload failed", description: e.message, variant: "destructive" }),
+    onError: (e: any, _vars, ctx: any) => {
+      // Restore cache to pre-upload snapshot, then hard-refetch for server truth.
+      if (ctx?.snapshot) ctx.snapshot.forEach(([k, d]: [any, any]) => qc.setQueryData(k, d));
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
+      toast({ title: "Upload failed", description: e.message, variant: "destructive" });
+    },
   });
 
   // ── Bulk publish (optimistic) ───────────────────────────────
