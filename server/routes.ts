@@ -7,6 +7,7 @@ import { insertUserSchema, insertStudentSchema, insertAttendanceSchema, insertAn
 import { users, students } from "@shared/schema.pg";
 import { z, ZodError } from "zod";
 import multer from "multer";
+import { parse as parseCSVSync } from "csv-parse/sync";
 import path from "path";
 import fs from "fs/promises";
 import sharp from "sharp";
@@ -3889,74 +3890,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Read and parse CSV file
-      const csvContent = await fs.readFile(req.file.path, 'utf-8');
-      const lines = csvContent.trim().split('\n');
+      // Read and parse CSV file.
+      // NOTE: uploadCSV uses multer memoryStorage, so the file arrives as an
+      // in-memory buffer (req.file.buffer) — there is no req.file.path and no
+      // temp file on disk to unlink. (A prior version of this handler assumed
+      // disk storage and called fs.readFile(req.file.path)/fs.unlink(req.file.path),
+      // which always threw "path must be a string" and made every CSV upload fail.)
+      //
+      // IMPORTANT: use a real RFC-4180 parser (csv-parse) instead of naively
+      // splitting on '\n' — a naive split shreds any quoted field that
+      // contains embedded line breaks (e.g. a reading passage or poem pasted
+      // into "QuestionText") into multiple broken rows, which then fail to
+      // map to columns correctly and get miscounted as junk/essay entries.
+      const csvContent = req.file.buffer.toString('utf-8');
 
-      if (lines.length < 2) {
-        await fs.unlink(req.file.path); // Clean up
+      let records: Record<string, string>[];
+      try {
+        records = parseCSVSync(csvContent, {
+          columns: (headerRow: string[]) => headerRow.map(h => h.trim().toLowerCase().replace(/\s+/g, '')),
+          skip_empty_lines: true,
+          trim: true,
+          relax_column_count: true,
+          bom: true,
+        });
+      } catch (parseErr: any) {
+        return res.status(400).json({ message: `Failed to parse CSV: ${parseErr.message}` });
+      }
+
+      if (records.length === 0) {
         return res.status(400).json({ message: 'CSV file must contain header and at least one question row' });
       }
 
-      // Parse header
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, ''));
-
       // Expected columns for exam questions CSV
+      const headers = Object.keys(records[0]);
       const requiredColumns = ['questiontext', 'questiontype'];
       const hasRequiredColumns = requiredColumns.every(col => headers.includes(col));
 
       if (!hasRequiredColumns) {
-        await fs.unlink(req.file.path); // Clean up
         return res.status(400).json({
-          message: 'CSV must contain columns: questionText, questionType. Optional: points, optionA, optionB, optionC, optionD, correctAnswer, expectedAnswers'
+          message: 'CSV must contain columns: questionText, questionType. Optional: points, instructions, optionA, optionB, optionC, optionD, correctAnswer, expectedAnswers'
         });
       }
 
       const questionsData: any[] = [];
       const errors: string[] = [];
 
-      // Parse each row
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i].trim();
-        if (!line) continue; // Skip empty lines
-
-        // Handle CSV with quoted fields containing commas
-        const values: string[] = [];
-        let current = '';
-        let inQuotes = false;
-
-        for (let j = 0; j < line.length; j++) {
-          const char = line[j];
-          if (char === '"') {
-            inQuotes = !inQuotes;
-          } else if (char === ',' && !inQuotes) {
-            values.push(current.trim());
-            current = '';
-          } else {
-            current += char;
-          }
-        }
-        values.push(current.trim());
-
-        const row: Record<string, string> = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
+      // Parse each row (row indices are +2: +1 for the header row, +1 for 1-based display)
+      for (let i = 0; i < records.length; i++) {
+        const row = records[i];
+        const rowNum = i + 2;
 
         try {
           const questionText = row['questiontext'];
           const questionType = row['questiontype']?.toLowerCase() || 'multiple_choice';
           const points = parseInt(row['points']) || 1;
+          const instructions = row['instructions']?.trim() || null;
 
           if (!questionText) {
-            errors.push(`Row ${i + 1}: Missing question text`);
+            errors.push(`Row ${rowNum}: Missing question text`);
             continue;
           }
 
           // Validate question type
           const validTypes = ['multiple_choice', 'true_false', 'short_answer', 'essay', 'fill_blank'];
           if (!validTypes.includes(questionType)) {
-            errors.push(`Row ${i + 1}: Invalid question type '${questionType}'. Valid types: ${validTypes.join(', ')}`);
+            errors.push(`Row ${rowNum}: Invalid question type '${questionType}'. Valid types: ${validTypes.join(', ')}`);
             continue;
           }
 
@@ -3970,6 +3968,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               orderNumber: questionsData.length + 1,
               autoGradable: ['multiple_choice', 'true_false', 'fill_blank'].includes(questionType),
               expectedAnswers: '[]',
+              instructions,
             },
             options: []
           };
@@ -3997,6 +3996,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 { optionText: 'False', isCorrect: correctAnswer === 'false' || correctAnswer === 'b', orderNumber: 2 }
               ];
             }
+
+            if (questionType === 'multiple_choice' && questionData.options.length < 2) {
+              errors.push(`Row ${rowNum}: Multiple choice questions need at least 2 non-empty options`);
+              continue;
+            }
+            if (questionData.options.length > 0 && !questionData.options.some((o: any) => o.isCorrect)) {
+              errors.push(`Row ${rowNum}: correctAnswer "${row['correctanswer'] || ''}" doesn't match any option (use A, B, C, D... or the exact option text)`);
+              continue;
+            }
           }
 
           // Handle expected answers for short answer/fill blank
@@ -4011,12 +4019,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           questionsData.push(questionData);
         } catch (err: any) {
-          errors.push(`Row ${i + 1}: ${err.message}`);
+          errors.push(`Row ${rowNum}: ${err.message}`);
         }
       }
-
-      // Clean up uploaded file
-      await fs.unlink(req.file.path);
 
       if (questionsData.length === 0) {
         return res.status(400).json({
@@ -4055,10 +4060,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalPointsAdded: totalPoints
       });
     } catch (error: any) {
-      // Clean up file if it exists
-      if (req.file?.path) {
-        await fs.unlink(req.file.path).catch(() => { });
-      }
       console.error('CSV question upload error:', error);
       res.status(500).json({
         message: error.message || 'Failed to import questions from CSV',
@@ -9631,8 +9632,9 @@ School Management System Administration
       if (!req.file) {
         return res.status(400).json({ message: "CSV file is required" });
       }
-      // Read and parse CSV file
-      const csvContent = await fs.readFile(req.file.path, 'utf-8');
+      // Read and parse CSV file (uploadCSV uses multer memoryStorage, so the
+      // file is an in-memory buffer — there is no req.file.path on disk)
+      const csvContent = req.file.buffer.toString('utf-8');
       const lines = csvContent.trim().split('\n');
 
       if (lines.length < 2) {
@@ -9791,9 +9793,6 @@ School Management System Administration
         }
       }
 
-      // Clean up uploaded file
-      await fs.unlink(req.file.path);
-
       res.json({
         message: `Successfully created ${createdUsers.length} users`,
         users: createdUsers,
@@ -9801,12 +9800,6 @@ School Management System Administration
       });
 
     } catch (error) {
-      // Clean up file if it exists
-      if (req.file?.path) {
-        try {
-          await fs.unlink(req.file.path);
-        } catch { }
-      }
       res.status(500).json({ message: "Failed to process CSV file" });
     }
   });
@@ -9817,13 +9810,11 @@ School Management System Administration
       if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded' });
       }
-      const csvContent = await fs.readFile(req.file.path, 'utf-8');
+      // uploadCSV uses multer memoryStorage — read from the in-memory buffer
+      const csvContent = req.file.buffer.toString('utf-8');
       const { previewCSVImport } = await import('./csv-import-service');
 
       const preview = await previewCSVImport(csvContent);
-
-      // Clean up uploaded file
-      await fs.unlink(req.file.path);
 
       res.json(preview);
     } catch (error: any) {
@@ -9837,13 +9828,11 @@ School Management System Administration
       if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded' });
       }
-      const csvContent = await fs.readFile(req.file.path, 'utf-8');
+      // uploadCSV uses multer memoryStorage — read from the in-memory buffer
+      const csvContent = req.file.buffer.toString('utf-8');
       const { previewCSVImport } = await import('./csv-import-service');
 
       const preview = await previewCSVImport(csvContent);
-
-      // Clean up uploaded file
-      await fs.unlink(req.file.path);
 
       res.json(preview);
     } catch (error: any) {
@@ -10173,6 +10162,46 @@ School Management System Administration
       res.status(500).json({
         message: error.message || 'Failed to create student'
       });
+    }
+  });
+
+  // Get current student's info (for student portal)
+  // NOTE: must be registered BEFORE '/api/students/:id' below — otherwise
+  // Express matches "me" as the :id param and this handler is never reached.
+  app.get('/api/students/me', authenticateUser, authorizeRoles(ROLES.STUDENT), async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+
+      // Find student by user ID
+      const student = await storage.getStudentByUserId(userId);
+      if (!student) {
+        return res.status(404).json({ message: 'Student profile not found' });
+      }
+
+      // Get user info for firstName, lastName, dateOfBirth
+      const user = await storage.getUser(userId);
+
+      // Get class info if assigned
+      let className = null;
+      if (student.classId) {
+        const classInfo = await storage.getClass(student.classId);
+        className = classInfo?.name;
+      }
+
+      res.json({
+        id: student.id,
+        firstName: user?.firstName || '',
+        lastName: user?.lastName || '',
+        studentId: student.admissionNumber,
+        classId: student.classId,
+        className,
+        department: student.department,
+        dateOfBirth: user?.dateOfBirth || null,
+        enrollmentDate: student.admissionDate,
+      });
+    } catch (error: any) {
+      console.error('Error fetching student info:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch student info' });
     }
   });
 
@@ -15375,44 +15404,6 @@ School Management System Administration
   });
 
   // ==================== STUDENT PORTAL SUBJECT ROUTES ====================
-
-  // Get current student's info (for student portal)
-  app.get('/api/students/me', authenticateUser, authorizeRoles(ROLES.STUDENT), async (req: Request, res: Response) => {
-    try {
-      const userId = req.user!.id;
-
-      // Find student by user ID
-      const student = await storage.getStudentByUserId(userId);
-      if (!student) {
-        return res.status(404).json({ message: 'Student profile not found' });
-      }
-
-      // Get user info for firstName, lastName, dateOfBirth
-      const user = await storage.getUser(userId);
-
-      // Get class info if assigned
-      let className = null;
-      if (student.classId) {
-        const classInfo = await storage.getClass(student.classId);
-        className = classInfo?.name;
-      }
-
-      res.json({
-        id: student.id,
-        firstName: user?.firstName || '',
-        lastName: user?.lastName || '',
-        studentId: student.admissionNumber,
-        classId: student.classId,
-        className,
-        department: student.department,
-        dateOfBirth: user?.dateOfBirth || null,
-        enrollmentDate: student.admissionDate,
-      });
-    } catch (error: any) {
-      console.error('Error fetching student info:', error);
-      res.status(500).json({ message: error.message || 'Failed to fetch student info' });
-    }
-  });
 
   // Get current student's assigned subjects (for student portal)
   // Uses class_subject_mappings as the single source of truth

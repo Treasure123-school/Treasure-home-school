@@ -177,7 +177,7 @@ export default function AdminResultPublishing() {
     }
   }, [currentTerm]);
 
-  const { data: reportCardsData, isLoading, refetch } = useQuery({
+  const { data: reportCardsData, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, statusFilter],
     queryFn: async () => {
       const params = new URLSearchParams();
@@ -1532,10 +1532,11 @@ export default function AdminResultPublishing() {
                       variant="outline"
                       size="icon"
                       onClick={() => refetch()}
+                      disabled={isFetching}
                       aria-label="Refresh report cards"
                       data-testid="button-refresh"
                     >
-                      <RefreshCw className="w-4 h-4" />
+                      <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>Refresh</TooltipContent>

@@ -115,10 +115,10 @@ export default function StudentDashboard() {
     }
   });
 
-  const { currentTerm } = useAcademicCalendar();
+  const { currentTerm, isLoading: isLoadingCalendar } = useAcademicCalendar();
 
   // Fetch published report card stats (authoritative source for position + academic average)
-  const { data: reportCardStats } = useQuery({
+  const { data: reportCardStats, isLoading: isLoadingReportCard, isFetching: isFetchingReportCard } = useQuery({
     queryKey: ['/api/reports/student-report-card', user?.id, currentTerm?.id, 'stats'],
     queryFn: async () => {
       if (!user?.id || !currentTerm?.id) return null;
@@ -138,7 +138,7 @@ export default function StudentDashboard() {
   });
 
   // Live class-rank fallback (calculated from exam scores when no report card exists yet)
-  const { data: classRankData } = useQuery({
+  const { data: classRankData, isLoading: isLoadingClassRank } = useQuery({
     queryKey: ['/api/student/class-rank'],
     queryFn: async () => {
       const response = await apiRequest('GET', '/api/student/class-rank');
@@ -275,9 +275,11 @@ export default function StudentDashboard() {
     return stats;
   }, { total: 0, present: 0 }) || { total: 0, present: 0 };
 
-  const attendancePercentage = attendanceStats.total > 0 
+  // No arbitrary guess when there are simply no attendance records yet — 0% is the
+  // honest value (the "No records yet" copy below the number explains why).
+  const attendancePercentage = attendanceStats.total > 0
     ? Math.round((attendanceStats.present / attendanceStats.total) * 100)
-    : 95;
+    : 0;
 
   // Live average from exam results (fallback when no published report card)
   const liveAverageScore = formattedGrades.length > 0
@@ -313,13 +315,19 @@ export default function StudentDashboard() {
 
   const classPositionLabel = resolvedPosition != null
     ? `${resolvedPosition}${getOrdinalSuffix(resolvedPosition)}`
-    : '—';
+    : 'Not ranked';
 
   // Source label so the UI can hint whether data is from report card or live
   const usingPublishedData = reportCardStats != null;
 
   // Streak calculation (simple version based on attendance)
   const attendanceImprovement = attendancePercentage >= 90;
+
+  // Per-card loading flags — each stat card shows its own skeleton until its
+  // underlying data has actually resolved, rather than a placeholder value
+  // (dash / hardcoded guess) that looks like real data.
+  const isLoadingPosition = isLoadingCalendar || isLoadingReportCard || isLoadingClassRank;
+  const isLoadingAcademicAverage = isLoadingCalendar || isLoadingReportCard || isLoadingGrades;
 
   // Show contextual skeleton during initial data loading
   const isInitialLoading = isLoadingGrades && isLoadingAnnouncements && isLoadingAttendance && isLoadingExams;
@@ -357,17 +365,25 @@ export default function StudentDashboard() {
           <div className="flex items-start justify-between">
             <div className="min-w-0">
               <p className="text-xs sm:text-sm text-muted-foreground mb-1">Class Position</p>
-              <div className="flex items-baseline gap-1 sm:gap-2">
-                <span className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent" data-testid="text-class-position">
-                  {classPositionLabel}
-                </span>
-                <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600" />
-              </div>
-              <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 sm:mt-2" data-testid="text-class-rank-detail">
-                {resolvedPosition != null && resolvedTotal != null
-                  ? `of ${resolvedTotal} students`
-                  : 'No class data yet'}
-              </p>
+              {isLoadingPosition ? (
+                <Skeleton className="h-8 sm:h-10 w-16 sm:w-20" data-testid="skeleton-class-position" />
+              ) : (
+                <div className="flex items-baseline gap-1 sm:gap-2">
+                  <span className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent" data-testid="text-class-position">
+                    {classPositionLabel}
+                  </span>
+                  <Trophy className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-600" />
+                </div>
+              )}
+              {isLoadingPosition ? (
+                <Skeleton className="h-3 w-20 mt-1 sm:mt-2" />
+              ) : (
+                <p className="text-[10px] sm:text-xs text-muted-foreground mt-1 sm:mt-2" data-testid="text-class-rank-detail">
+                  {resolvedPosition != null && resolvedTotal != null
+                    ? `of ${resolvedTotal} students`
+                    : 'No class data yet'}
+                </p>
+              )}
             </div>
             <StatCardIcon icon={Trophy} gradient="from-yellow-500 to-orange-500" className="animate-bounce" />
           </div>
@@ -415,28 +431,36 @@ export default function StudentDashboard() {
                   </span>
                 )}
               </div>
-              <div className="flex items-baseline gap-1 sm:gap-2">
-                <AnimatedCounter
-                  value={displayScore}
-                  suffix="%"
-                  className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-primary/90 bg-clip-text text-transparent"
-                />
-                <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-600" />
-              </div>
-              <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
-                Grade:{' '}
-                <span className={`font-semibold ${
-                  averageGrade.startsWith('A') ? 'text-green-600' :
-                  averageGrade.startsWith('B') ? 'text-primary' :
-                  averageGrade === 'C' ? 'text-yellow-600' : 'text-red-500'
-                }`}>
-                  {averageGrade}
-                </span>
-              </p>
+              {isLoadingAcademicAverage ? (
+                <Skeleton className="h-8 sm:h-10 w-16 sm:w-20" data-testid="skeleton-academic-average" />
+              ) : (
+                <div className="flex items-baseline gap-1 sm:gap-2">
+                  <AnimatedCounter
+                    value={displayScore}
+                    suffix="%"
+                    className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-primary/90 bg-clip-text text-transparent"
+                  />
+                  <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-600" />
+                </div>
+              )}
+              {isLoadingAcademicAverage ? (
+                <Skeleton className="h-3 w-16 mt-1" />
+              ) : (
+                <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
+                  Grade:{' '}
+                  <span className={`font-semibold ${
+                    averageGrade.startsWith('A') ? 'text-green-600' :
+                    averageGrade.startsWith('B') ? 'text-primary' :
+                    averageGrade === 'C' ? 'text-yellow-600' : 'text-red-500'
+                  }`}>
+                    {averageGrade}
+                  </span>
+                </p>
+              )}
             </div>
             <StatCardIcon icon={TrendingUp} gradient="from-primary/85 to-primary" />
           </div>
-          {hasScoreData && <MiniLineChart data={scoreTrendData} color="#6C63FF" height={40} />}
+          {!isLoadingAcademicAverage && hasScoreData && <MiniLineChart data={scoreTrendData} color="#6C63FF" height={40} />}
         </StatCardShell>
 
         {/* 4 — Attendance */}
@@ -444,17 +468,23 @@ export default function StudentDashboard() {
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
               <p className="text-xs sm:text-sm text-muted-foreground mb-1">Attendance</p>
-              <div className="flex items-center gap-1.5">
-                <AnimatedCounter
-                  value={attendancePercentage}
-                  suffix="%"
-                  className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent"
-                />
-                {attendanceImprovement && (
-                  <Award className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
-                )}
-              </div>
-              {attendanceStats.total > 0 ? (
+              {isLoadingAttendance ? (
+                <Skeleton className="h-8 sm:h-10 w-16 sm:w-20" data-testid="skeleton-attendance" />
+              ) : (
+                <div className="flex items-center gap-1.5">
+                  <AnimatedCounter
+                    value={attendancePercentage}
+                    suffix="%"
+                    className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent"
+                  />
+                  {attendanceImprovement && (
+                    <Award className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+                  )}
+                </div>
+              )}
+              {isLoadingAttendance ? (
+                <Skeleton className="h-3 w-20 mt-1" />
+              ) : attendanceStats.total > 0 ? (
                 <div className="flex flex-col sm:flex-row sm:gap-3 mt-1 gap-0.5">
                   <span className="text-[10px] sm:text-xs text-emerald-700 dark:text-emerald-400 font-medium">
                     P: {attendanceStats.present}

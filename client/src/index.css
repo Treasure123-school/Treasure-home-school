@@ -368,3 +368,29 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }
 }
+
+/* Thin scrollbar with breathing room from content (e.g. exam Quick Navigation panel) */
+.scrollbar-thin-spaced {
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.4) transparent;
+}
+
+.scrollbar-thin-spaced::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollbar-thin-spaced::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin-spaced::-webkit-scrollbar-thumb {
+  background-color: hsl(var(--muted-foreground) / 0.35);
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.scrollbar-thin-spaced::-webkit-scrollbar-thumb:hover {
+  background-color: hsl(var(--muted-foreground) / 0.55);
+}

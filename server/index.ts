@@ -134,6 +134,13 @@ app.use((req, res, next) => {
     if (path.includes('/homepage-content') || path.includes('/announcements')) {
       res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=120'); // 1-2 minutes
     }
+    // Admin management endpoints must always reflect the latest state — a manual
+    // refresh (or a refetch triggered right after a mutation, e.g. approving/
+    // publishing a report card) should never be served a stale browser-cached
+    // response. Never let the HTTP cache mask fresh server data here.
+    else if (path.startsWith('/api/admin/')) {
+      res.setHeader('Cache-Control', 'no-store');
+    }
     // User-specific data should not be cached by proxies
     else if (!path.includes('/auth')) {
       res.setHeader('Cache-Control', 'private, max-age=30'); // 30 seconds client cache

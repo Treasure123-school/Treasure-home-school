@@ -226,7 +226,6 @@ const AboutPageManagement = lazy(() => import("@/pages/portal/website/AboutPageM
 const ContactInbox = lazy(() => import("@/pages/portal/website/ContactInbox"));
 const AdmissionsManagement = lazy(() => import("@/pages/portal/website/AdmissionsManagement"));
 
-import StudentExams from "@/pages/portal/StudentExams";
 const ExamFeePayment = lazy(() => import("@/pages/portal/ExamFeePayment"));
 const ChangePasswordPage = lazy(() => import("@/pages/portal/ChangePasswordPage"));
 const NotificationsPage = lazy(() => import("@/pages/portal/NotificationsPage"));
@@ -732,16 +731,6 @@ function Router() {
         </Route>
 
         {/* Student Portal - Persistent Layout Shell */}
-        <Route path="/portal/student/exams/:rest*">
-          <ProtectedRoute allowedRoleIds={[ROLE_IDS.STUDENT]}>
-            <StudentExams />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/portal/student/exams">
-          <ProtectedRoute allowedRoleIds={[ROLE_IDS.STUDENT]}>
-            <StudentExams />
-          </ProtectedRoute>
-        </Route>
         <Route path="/portal/student/*">
           <ProtectedRoute allowedRoleIds={[ROLE_IDS.STUDENT]}>
             <StudentPortalShell />

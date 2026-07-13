@@ -32,6 +32,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge }  from '@/components/ui/badge';
 import { AlertTriangle, Download, FileUp, Upload } from 'lucide-react';
+import { parseCSVWithHeaders, makeColumnGetter } from '@/lib/csvParser';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -48,26 +49,6 @@ export interface ParsedQuestion {
 
 // ─── Internal CSV helpers ─────────────────────────────────────────────────────
 
-/** RFC-4180-compliant CSV line parser — handles quoted fields & escaped quotes. */
-function parseCSVLine(line: string): string[] {
-  const result: string[] = [];
-  let current = '';
-  let inQuotes = false;
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') {
-      if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
-      else { inQuotes = !inQuotes; }
-    } else if (ch === ',' && !inQuotes) {
-      result.push(current.trim()); current = '';
-    } else {
-      current += ch;
-    }
-  }
-  result.push(current.trim());
-  return result;
-}
-
 function buildTemplateCSV(showDifficulty: boolean): string {
   const dCol  = showDifficulty ? ',Difficulty' : '';
   const dEasy = showDifficulty ? ',easy'       : '';
@@ -75,6 +56,11 @@ function buildTemplateCSV(showDifficulty: boolean): string {
   return (
     `QuestionText,Type,OptionA,OptionB,OptionC,OptionD,CorrectAnswer,Points,Instructions,SampleAnswer${dCol}\n` +
     `"What is 2 + 2?",multiple_choice,"2","3","4","5","C",1,"Choose the correct answer","4"${dEasy}\n` +
+    `"Read the passage below and answer the question that follows.
+
+The sun rose slowly over the quiet village, casting long shadows across the dusty road.
+
+According to the passage, when did the sun rise?",multiple_choice,"At noon","Slowly, over the village","At midnight","During a storm","B",2,"Multi-line passages are supported — just keep the whole cell quoted",""${dEasy}\n` +
     `"Explain photosynthesis.",essay,"","","","","",10,"Write a detailed explanation","Photosynthesis is the process by which..."${dHard}`
   );
 }
@@ -101,33 +87,32 @@ function useBulkCSVUpload(showDifficulty: boolean) {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const csv   = e.target?.result as string;
-        const lines = csv.trim().split('\n').filter(l => l.trim());
-        if (lines.length < 2)
-          throw new Error('CSV needs a header row + at least one data row');
-
-        const headers   = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
+        const csv = e.target?.result as string;
+        // Parse the whole file as one RFC-4180 document (not line-by-line) so
+        // quoted fields containing embedded line breaks (reading passages,
+        // poems, multi-paragraph instructions) stay intact as a single field
+        // instead of being shredded into extra broken rows.
+        const { headers: rawHeaders, rows } = parseCSVWithHeaders(csv);
+        const headers = rawHeaders.map(h => h.toLowerCase());
         const questions: ParsedQuestion[] = [];
         const rowErrors: string[]         = [];
 
-        for (let i = 1; i < lines.length; i++) {
-          const row = parseCSVLine(lines[i]);
-          const get = (name: string) => {
-            const idx = headers.indexOf(name.toLowerCase());
-            return idx >= 0 ? (row[idx]?.trim() ?? '') : '';
-          };
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          const get = makeColumnGetter(headers, row);
+          const rowNum = i + 2; // +1 for header row, +1 for 1-based display
 
           const questionText = get('questiontext');
           const rawTypeRaw   = get('type')?.toLowerCase().replace(/[-\s]/g, '_') || 'essay';
           // Reject deprecated question types
           const rawType = rawTypeRaw;
           if (!['multiple_choice', 'essay'].includes(rawType)) {
-            rowErrors.push(`Row ${i + 1}: Invalid question type "${rawType}". Please use 'multiple_choice' or 'essay'.`); continue;
+            rowErrors.push(`Row ${rowNum}: Invalid question type "${rawType}". Please use 'multiple_choice' or 'essay'.`); continue;
           }
           const points       = parseInt(get('points')) || 1;
 
           if (!questionText || questionText.length < 5) {
-            rowErrors.push(`Row ${i + 1}: Question text too short (min 5 chars)`); continue;
+            rowErrors.push(`Row ${rowNum}: Question text too short (min 5 chars)`); continue;
           }
 
           const q: ParsedQuestion = { questionText, questionType: rawType, points };
@@ -142,13 +127,13 @@ function useBulkCSVUpload(showDifficulty: boolean) {
           if (rawType === 'multiple_choice') {
             const opts    = ['optiona', 'optionb', 'optionc', 'optiond'].map(get).filter(Boolean);
             const correct = get('correctanswer')?.toUpperCase();
-            if (opts.length < 2) { rowErrors.push(`Row ${i + 1}: MCQ needs at least 2 options`); continue; }
+            if (opts.length < 2) { rowErrors.push(`Row ${rowNum}: MCQ needs at least 2 options`); continue; }
             q.options = opts.map((text, idx) => ({
               optionText: text,
               isCorrect:  String.fromCharCode(65 + idx) === correct,
             }));
             if (!q.options.some(o => o.isCorrect)) {
-              rowErrors.push(`Row ${i + 1}: No correct answer marked (use A, B, C, or D)`); continue;
+              rowErrors.push(`Row ${rowNum}: No correct answer marked (use A, B, C, or D)`); continue;
             }
           } else {
             // For non-MCQ, treat CorrectAnswer as the expected answer

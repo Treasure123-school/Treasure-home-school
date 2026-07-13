@@ -1,9 +1,10 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Switch, Route, useLocation } from 'wouter';
 import PortalLayout from './PortalLayout';
 import { useAuth } from '@/lib/auth';
 import { PortalLayoutSkeleton } from '@/components/ui/skeletons';
 import { MinimalLoadingFallback } from '@/components/ui/page-skeletons';
+import { SetExamActiveContext } from '@/lib/examActiveContext';
 
 const StudentDashboard = lazy(() => import('@/pages/portal/StudentDashboard'));
 const StudentGrades = lazy(() => import('@/pages/portal/StudentGrades'));
@@ -130,6 +131,7 @@ export function ParentPortalShell() {
 
 function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent' }) {
   const { user, isLoading } = useAuth();
+  const [examActive, setExamActive] = useState(false);
 
   if (isLoading || !user) return <PortalLayoutSkeleton />;
 
@@ -137,11 +139,14 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
   const userInitials = `${user.firstName[0]}${user.lastName[0]}`;
 
   return (
-    <PortalLayout userRole={role} userName={userName} userInitials={userInitials}>
+    <SetExamActiveContext.Provider value={setExamActive}>
+      <PortalLayout userRole={role} userName={userName} userInitials={userInitials} examActive={examActive}>
       <Suspense fallback={<MinimalLoadingFallback />}>
         {role === 'student' && (
           <Switch>
             <Route path="/portal/student" component={StudentDashboard} />
+            <Route path="/portal/student/exams/:rest*" component={StudentExams} />
+            <Route path="/portal/student/exams" component={StudentExams} />
             <Route path="/portal/student/exam-results" component={StudentExamResults} />
             <Route path="/portal/student/grades" component={StudentGrades} />
             <Route path="/portal/student/announcements" component={StudentAnnouncements} />
@@ -288,6 +293,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
           </Switch>
         )}
       </Suspense>
-    </PortalLayout>
+      </PortalLayout>
+    </SetExamActiveContext.Provider>
   );
 }

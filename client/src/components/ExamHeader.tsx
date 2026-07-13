@@ -95,6 +95,12 @@ export function ExamHeader({
                     <span className="text-slate-900 dark:text-slate-100 font-bold break-words">{studentName || "—"}</span>
                   </div>
                 </div>
+                {studentClassName && (
+                  <div className="flex items-baseline gap-1.5 min-w-0 text-xs sm:text-sm font-medium leading-tight mt-0.5">
+                    <span className="text-slate-400 dark:text-slate-500 shrink-0">Class:</span>
+                    <span className="text-slate-900 dark:text-slate-100 font-bold break-words">{studentClassName}</span>
+                  </div>
+                )}
               </div>
             </div>
 

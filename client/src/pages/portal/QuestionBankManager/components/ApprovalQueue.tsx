@@ -61,7 +61,7 @@ export function ApprovalQueue({ onWorkflow }: ApprovalQueueProps) {
             >
               <div className="p-4 space-y-3">
                 <div className="flex items-start gap-3 justify-between">
-                  <p className="text-sm font-medium leading-snug flex-1">{item.questionText}</p>
+                  <p className="text-sm font-medium leading-snug flex-1 whitespace-pre-wrap">{item.questionText}</p>
                   <StatusBadge status={item.status} />
                 </div>
                 <div className="flex flex-wrap items-center gap-2">

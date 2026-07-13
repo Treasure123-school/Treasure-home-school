@@ -5,6 +5,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { useClassSubjects } from '@/hooks/useClassSubjects';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { parseCSVWithHeaders } from '@/lib/csvParser';
 import { AssessmentList } from './assessments/AssessmentList';
 import { DeleteAssessmentDialog } from './assessments/DeleteAssessmentDialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -1444,6 +1445,11 @@ export default function ExamManagement() {
     const csvContent = `QuestionText,Type,OptionA,OptionB,OptionC,OptionD,CorrectAnswer,Points,Instructions,SampleAnswer
 "What is 2 + 2?",multiple_choice,"2","3","4","5","C",1,"Choose the correct answer","4"
 "What is the capital of France?",multiple_choice,"London","Paris","Berlin","Madrid","B",1,"Select the correct capital city","Paris"
+"Read the passage below and answer the question that follows.
+
+The sun rose slowly over the quiet village, casting long shadows across the dusty road.
+
+According to the passage, when did the sun rise?",multiple_choice,"At noon","Slowly, over the village","At midnight","During a storm","B",2,"This shows a multi-line reading passage can be pasted directly into one quoted cell",""
 "Explain what a Control Account is and state five advantages.",essay,"","","","","",15,"Write a detailed explanation showing your understanding of control accounts and their benefits in accounting","A Control Account is a summary account that shows the total balance of a subsidiary ledger. Advantages include: 1) Error detection 2) Time saving 3) Fraud prevention 4) Quick trial balance 5) Management control"
 "Define Partnership Deed and explain its importance.",essay,"","","","","",10,"Provide definition and explain why it's important in partnerships","A Partnership Deed is a legal document that outlines the terms and conditions of a partnership business..."`;
 
@@ -1539,13 +1545,11 @@ export default function ExamManagement() {
     if (!csvContent || csvContent.trim().length === 0) {
       throw new Error('CSV file is empty. Please provide a valid CSV file with question data.');
     }
-    const lines = csvContent.trim().split('\n').filter(line => line.trim() !== '');
-
-    if (lines.length < 2) {
-      throw new Error(`CSV must have at least a header row and one question row. Found only ${lines.length} line(s). Please download the template for the correct format.`);
-    }
-    // Parse headers more carefully to handle quoted content
-    const headers = parseCSVLine(lines[0]);
+    // Parse the whole file as one RFC-4180 document (not line-by-line) so that
+    // quoted fields containing embedded line breaks (reading passages, poems,
+    // multi-paragraph instructions) are treated as a single field instead of
+    // being shredded into extra broken rows.
+    const { headers, rows } = parseCSVWithHeaders(csvContent);
     const requiredHeaders = ['QuestionText', 'Type', 'Points'];
     const optionalHeaders = ['OptionA', 'OptionB', 'OptionC', 'OptionD', 'CorrectAnswer', 'Instructions', 'SampleAnswer'];
 
@@ -1568,12 +1572,12 @@ export default function ExamManagement() {
     const questions = [];
     const errors = [];
 
-    for (let i = 1; i < lines.length; i++) {
+    for (let i = 0; i < rows.length; i++) {
       try {
-        const row = parseCSVLine(lines[i]);
+        const row = rows[i];
 
         if (row.length < headers.length) {
-          errors.push(`Row ${i + 1}: Incomplete row (expected ${headers.length} columns, found ${row.length})`);
+          errors.push(`Row ${i + 2}: Incomplete row (expected ${headers.length} columns, found ${row.length})`);
           continue;
         }
         // Use case-insensitive header matching for robustness
@@ -1590,22 +1594,22 @@ export default function ExamManagement() {
 
         // Validate required fields
         if (!questionText || questionText.length < 5) {
-          errors.push(`Row ${i + 1}: Question text is required and must be at least 5 characters`);
+          errors.push(`Row ${i + 2}: Question text is required and must be at least 5 characters`);
           continue;
         }
         if (!['multiple_choice', 'essay'].includes(questionType)) {
-          errors.push(`Row ${i + 1}: Invalid question type "${questionType}". Please use 'multiple_choice' or 'essay'.`);
+          errors.push(`Row ${i + 2}: Invalid question type "${questionType}". Please use 'multiple_choice' or 'essay'.`);
           continue;
         }
         const points = parseInt(pointsText) || 1;
         if (points < 1 || points > 100) {
-          errors.push(`Row ${i + 1}: Points must be between 1 and 100 (found: ${pointsText})`);
+          errors.push(`Row ${i + 2}: Points must be between 1 and 100 (found: ${pointsText})`);
           continue;
         }
         // Validation for essay questions
         if (questionType === 'essay') {
           if (questionText.length < 20) {
-            errors.push(`Row ${i + 1}: Essay questions should have detailed question text (at least 20 characters)`);
+            errors.push(`Row ${i + 2}: Essay questions should have detailed question text (at least 20 characters)`);
             continue;
           }
         }
@@ -1614,7 +1618,7 @@ export default function ExamManagement() {
           questionText: questionText.trim(),
           questionType,
           points,
-          orderNumber: i,
+          orderNumber: i + 1,
           instructions: instructions?.trim() || null,
           sampleAnswer: sampleAnswer?.trim() || null
         };
@@ -1625,7 +1629,7 @@ export default function ExamManagement() {
           const optionLetters = ['A', 'B', 'C', 'D'];
 
           if (!optionLetters.includes(correctAnswer)) {
-            errors.push(`Row ${i + 1}: Multiple choice questions require correct answer A, B, C, or D (found: "${correctAnswer}")`);
+            errors.push(`Row ${i + 2}: Multiple choice questions require correct answer A, B, C, or D (found: "${correctAnswer}")`);
             continue;
           }
           const options = optionLetters.map(letter => ({
@@ -1634,12 +1638,12 @@ export default function ExamManagement() {
           })).filter(opt => opt.optionText && opt.optionText.trim() !== '');
 
           if (options.length < 2) {
-            errors.push(`Row ${i + 1}: Multiple choice questions need at least 2 non-empty options`);
+            errors.push(`Row ${i + 2}: Multiple choice questions need at least 2 non-empty options`);
             continue;
           }
           const hasCorrectOption = options.some(opt => opt.isCorrect);
           if (!hasCorrectOption) {
-            errors.push(`Row ${i + 1}: The correct answer "${correctAnswer}" doesn't match any provided options`);
+            errors.push(`Row ${i + 2}: The correct answer "${correctAnswer}" doesn't match any provided options`);
             continue;
           }
           question.options = options.map((opt, index) => ({
@@ -1660,7 +1664,7 @@ export default function ExamManagement() {
 
         questions.push(question);
       } catch (rowError: any) {
-        errors.push(`Row ${i + 1}: ${rowError.message}`);
+        errors.push(`Row ${i + 2}: ${rowError.message}`);
       }
     }
 
@@ -1673,6 +1677,7 @@ export default function ExamManagement() {
     }
     return questions;
   };
+
 
   // Helper function to parse CSV line handling quoted content
   const parseCSVLine = (line: string): string[] => {
@@ -1748,6 +1753,7 @@ export default function ExamManagement() {
     setStatusFilter('all');
     setSortBy('date-desc');
   };
+
 
   const getClassNameById = (classId: number) => {
     // Use allClasses for display (contains all classes, not just assigned ones)
@@ -2716,7 +2722,7 @@ export default function ExamManagement() {
                               </Badge>
                               <span className="text-sm text-muted-foreground">{question.points} points</span>
                             </div>
-                            <p className="mb-2 font-medium">{question.questionText}</p>
+                            <p className="mb-2 font-medium whitespace-pre-wrap">{question.questionText}</p>
 
                             {question.instructions && (
                               <div className="mb-2 p-2 bg-primary/5 rounded text-sm">
@@ -2864,7 +2870,7 @@ export default function ExamManagement() {
                         <div className="flex items-start gap-4">
                           <Badge variant="outline">Q{index + 1}</Badge>
                           <div className="flex-1">
-                            <p className="font-medium mb-2">{question.questionText}</p>
+                            <p className="font-medium mb-2 whitespace-pre-wrap">{question.questionText}</p>
                             <p className="text-xs text-muted-foreground mb-3">
                               {question.points} {question.points === 1 ? 'point' : 'points'}
                             </p>
