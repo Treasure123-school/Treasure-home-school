@@ -3451,7 +3451,7 @@ export default function StudentExams() {
             {/* Question Grid - Quick Navigation (side column on desktop) */}
             <div className="mt-8 lg:mt-0 pt-6 lg:pt-4 border-t lg:border-t-0 border-gray-200 dark:border-gray-700 lg:border lg:border-primary/30 lg:dark:border-gray-700 lg:rounded-lg lg:bg-white lg:dark:bg-gray-800 lg:shadow-md lg:p-4 lg:sticky lg:top-6">
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Quick Navigation</p>
-              <div className="grid grid-cols-10 sm:grid-cols-15 md:grid-cols-20 lg:grid-cols-6 gap-2 lg:max-h-[65vh] lg:overflow-y-auto lg:pr-1">
+              <div className="grid grid-cols-10 sm:grid-cols-15 md:grid-cols-20 lg:grid-cols-6 gap-2 lg:max-h-[65vh] lg:overflow-y-auto lg:pr-3 scrollbar-thin-spaced">
                 {examQuestions.map((q, idx) => {
                   const isAnswered = answers[q.id];
                   const isCurrent = idx === currentQuestionIndex;

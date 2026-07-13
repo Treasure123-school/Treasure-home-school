@@ -90,10 +90,24 @@ export function ExamHeader({
                     <span className="text-slate-400 dark:text-slate-500 shrink-0">Subject:</span>
                     <span className="text-slate-900 dark:text-slate-100 font-bold break-words">{subjectName || "—"}</span>
                   </div>
+                  {studentClassName && (
+                    <div className="flex items-baseline gap-1.5 min-w-0">
+                      <span className="text-slate-400 dark:text-slate-500 shrink-0">Class:</span>
+                      <span className="text-slate-900 dark:text-slate-100 font-bold break-words">{studentClassName}</span>
+                    </div>
+                  )}
                   <div className="flex items-baseline gap-1.5 min-w-0">
                     <span className="text-slate-400 dark:text-slate-500 shrink-0">Student:</span>
                     <span className="text-slate-900 dark:text-slate-100 font-bold break-words">{studentName || "—"}</span>
                   </div>
+                </div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-[11px] sm:text-xs font-semibold text-primary">
+                    Question {currentQuestion} of {totalQuestions}
+                  </span>
+                  <span className="text-[11px] sm:text-xs text-slate-400 dark:text-slate-500">
+                    ({Math.round((currentQuestion / totalQuestions) * 100)}% complete)
+                  </span>
                 </div>
               </div>
             </div>
