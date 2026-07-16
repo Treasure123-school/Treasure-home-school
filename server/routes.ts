@@ -44,6 +44,7 @@ import messagesRoutes from "./routes/messages.routes";
 import lessonNotesRoutes from "./routes/lesson-notes.routes";
 import aiConfigRoutes from "./routes/ai-config.routes";
 import websiteManagementRoutes from "./routes/website-management.routes";
+import maintenanceRoutes from "./routes/maintenance.routes";
 import { validateTeacherCanCreateExam, validateTeacherCanEnterScores, validateTeacherCanViewResults, getTeacherAssignments, validateExamTimeWindow, logExamAccess } from "./teacher-auth-middleware";
 import { getVisibleExamsForStudent, getVisibleExamsForParent, invalidateVisibilityCache, warmVisibilityCache } from "./exam-visibility";
 import { calculateClassTeacherPermissions, getClassTeacherPermissionDeniedMessage } from "@shared/class-teacher-permissions";
@@ -1276,6 +1277,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/payments/monnify", monnifyPaymentRouter);
   app.use("/api/billing", billingRouter);
   app.use(websiteManagementRoutes);
+  app.use(maintenanceRoutes); // admin repair/sync operations (extended 8-min timeout)
 
   // ==================== END FILE UPLOAD ROUTES ====================
 
@@ -14486,194 +14488,10 @@ School Management System Administration
     }
   });
 
-  // ADMIN: Repair report cards - add missing subjects and sync exam scores
-  // Repair profile completion percentages for all students.
-  // Recalculates the canonical 7-field completion for every student and persists the
-  // corrected profileCompletionPercentage and profileCompleted values.
-  app.post('/api/admin/repair-profile-completion', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
-    try {
-      const { db: drizzleDb } = await import('./db');
-      const { users, students } = await import('../shared/schema.pg');
-      const { eq } = await import('drizzle-orm');
-
-      const allStudentRows = await drizzleDb
-        .select({
-          userId: students.id,
-          phone: users.phone,
-          address: users.address,
-          dateOfBirth: users.dateOfBirth,
-          gender: users.gender,
-          profileImageUrl: users.profileImageUrl,
-          profileCompleted: users.profileCompleted,
-          profileCompletionPercentage: users.profileCompletionPercentage,
-          emergencyContact: students.emergencyContact,
-          medicalInfo: students.medicalInfo,
-        })
-        .from(students)
-        .leftJoin(users, eq(students.id, users.id));
-
-      let repaired = 0;
-      for (const row of allStudentRows) {
-        const fields = [row.phone, row.address, row.dateOfBirth, row.gender, row.emergencyContact, row.medicalInfo, row.profileImageUrl];
-        const filled = fields.filter(f => f !== null && f !== undefined && f !== '').length;
-        const pct = Math.round((filled / 7) * 100);
-        const complete = pct === 100;
-        if (row.profileCompletionPercentage !== pct || !!row.profileCompleted !== complete) {
-          await drizzleDb.update(users)
-            .set({ profileCompletionPercentage: pct, profileCompleted: complete })
-            .where(eq(users.id, row.userId));
-          repaired++;
-        }
-      }
-
-      res.json({
-        message: `Profile completion repair done. ${repaired} of ${allStudentRows.length} student(s) updated.`,
-        total: allStudentRows.length,
-        repaired,
-      });
-    } catch (error) {
-      res.status(500).json({ message: 'Repair failed', error: error instanceof Error ? error.message : 'Unknown' });
-    }
-  });
-
-  // FIX: This addresses the bug where report cards created before a subject mapping was added
-  // don't include that subject. This function adds missing subjects and syncs any existing exam results.
-  app.post('/api/admin/repair-report-cards', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
-    try {
-      console.log('[ADMIN-REPAIR] Starting report card repair (add missing subjects and sync exam scores)...');
-
-      const result = await storage.repairAllReportCards();
-
-      console.log(`[ADMIN-REPAIR] Completed: ${result.itemsAdded} items added, ${result.examScoresSynced} exam scores synced for ${result.studentsProcessed} students`);
-
-      // Invalidate report card caches after repair
-      enhancedCache.invalidate(/^reportcard:/);
-      enhancedCache.invalidate(/^reportcards:/);
-      enhancedCache.invalidate(/^report-card/);
-      enhancedCache.invalidate(/^student-report/);
-
-      res.json({
-        message: 'Report card repair completed',
-        studentsProcessed: result.studentsProcessed,
-        itemsAdded: result.itemsAdded,
-        examScoresSynced: result.examScoresSynced,
-        errors: result.errors.length > 0 ? result.errors.slice(0, 20) : undefined,
-        totalErrors: result.errors.length
-      });
-    } catch (error: any) {
-      console.error('[ADMIN-REPAIR] Error:', error);
-      res.status(500).json({ message: error.message || 'Failed to repair report cards' });
-    }
-  });
-
-  // Generate missing report cards — creates report cards ONLY for students who have
-  // exam data but no report card yet for the selected term/class (Priority 4:
-  // auto-generation fix). Students who already have a report card for that term are
-  // never touched by this route — it must be a strict no-op when nothing is missing.
-  app.post('/api/admin/report-cards/generate-missing', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
-    try {
-      const { classId, termId } = req.query;
-      console.log('[AUTO-GEN] Generating missing report cards:', { classId, termId });
-
-      // Find all students who have exam results, filtered by class/term from the exam
-      // term and class live on the exam row, not the result row
-      const whereConditions = [
-        ...(classId ? [eq(schema.exams.classId, Number(classId))] : []),
-        ...(termId ? [eq(schema.exams.termId, Number(termId))] : []),
-      ];
-
-      // Get every distinct student+exam result in scope — we need ALL of a missing
-      // student's exams (not just the first one) so every subject on their newly
-      // created report card gets its real score, not just the first exam encountered.
-      const examResultsQuery = db.selectDistinct({
-        studentId: schema.examResults.studentId,
-        examId: schema.examResults.examId,
-        termId: schema.exams.termId,
-        classId: schema.exams.classId,
-        score: schema.examResults.score,
-        maxScore: schema.examResults.maxScore,
-      })
-        .from(schema.examResults)
-        .innerJoin(schema.exams, eq(schema.examResults.examId, schema.exams.id))
-        .where(whereConditions.length > 0 ? and(...whereConditions) : undefined as any);
-
-      const examResults = await examResultsQuery;
-
-      if (examResults.length === 0) {
-        console.log('[AUTO-GEN] No exam data found for this selection — nothing to generate.');
-        return res.json({
-          message: 'No exam data found for this selection — nothing to generate.',
-          created: 0,
-          pairsChecked: 0,
-          errors: [],
-        });
-      }
-
-      // A student is only "missing" a report card if no report card row exists for
-      // their student+term pair yet. Look this up up front so students who already
-      // have one are skipped entirely — never resynced, never recalculated.
-      const distinctTermIds: number[] = Array.from(new Set(examResults.map((r: { termId: number | null }) => r.termId).filter((id: number | null): id is number => id != null)));
-      const existingReportCards = distinctTermIds.length > 0
-        ? await db.select({
-            studentId: schema.reportCards.studentId,
-            termId: schema.reportCards.termId,
-          })
-            .from(schema.reportCards)
-            .where(inArray(schema.reportCards.termId, distinctTermIds))
-        : [];
-
-      const existingPairs = new Set(existingReportCards.map((rc: { studentId: string; termId: number }) => `${rc.studentId}:${rc.termId}`));
-      const missingResults = examResults.filter((r: { studentId: string; termId: number | null }) => !existingPairs.has(`${r.studentId}:${r.termId}`));
-
-      if (missingResults.length === 0) {
-        console.log('[AUTO-GEN] Every student in scope already has a report card for this term — doing nothing.');
-        return res.json({
-          message: 'No missing report cards — every student already has one for this selection.',
-          created: 0,
-          pairsChecked: 0,
-          errors: [],
-        });
-      }
-
-      let created = 0;
-      const errors: string[] = [];
-      const affectedStudentTermPairs = new Set<string>();
-
-      // Sync every exam result belonging to a truly-missing student so their new
-      // report card is populated with ALL of their subject scores, not just one.
-      for (const result of missingResults) {
-        affectedStudentTermPairs.add(`${result.studentId}:${result.termId}`);
-        try {
-          const syncResult = await storage.syncExamScoreToReportCard(
-            result.studentId,
-            result.examId,
-            result.score ?? 0,
-            result.maxScore ?? 100,
-            false
-          );
-          if (syncResult.isNewReportCard) created++;
-        } catch (err: any) {
-          errors.push(`Student ${result.studentId} exam ${result.examId}: ${err.message}`);
-        }
-      }
-
-      // Invalidate caches — only reached when something was actually generated
-      enhancedCache.invalidate(/^reportcard:/);
-      enhancedCache.invalidate(/^reportcards:/);
-      enhancedCache.invalidate(/^report-card/);
-
-      console.log(`[AUTO-GEN] Done: ${created} new report card(s) for ${affectedStudentTermPairs.size} student-term pair(s)`);
-      res.json({
-        message: `${created} missing report card(s) generated for ${affectedStudentTermPairs.size} student(s).`,
-        created,
-        pairsChecked: affectedStudentTermPairs.size,
-        errors: errors.slice(0, 10),
-      });
-    } catch (error: any) {
-      console.error('[AUTO-GEN] Error:', error);
-      res.status(500).json({ message: error.message || 'Failed to generate missing report cards' });
-    }
-  });
+  // NOTE: repair-profile-completion, repair-report-cards, report-cards/generate-missing,
+  // sync-all-missing-exam-scores, and force-resync-all-exams are now in
+  // server/routes/maintenance.routes.ts (mounted above). They have an 8-minute
+  // per-route timeout and the force-resync uses bulk SQL instead of a serial N+1 loop.
 
   // ==================== REPORT COMMENT TEMPLATES (Admin-managed) ====================
 
@@ -15084,103 +14902,6 @@ School Management System Administration
     } catch (error: any) {
       console.error('[ADMIN-RESYNC-SUBJECTS] Error:', error);
       res.status(500).json({ message: error.message || 'Failed to resync report card subjects' });
-    }
-  });
-
-  // ADMIN: Comprehensive sync of ALL missing exam scores to report cards
-  // This is a powerful data repair tool that finds all exam results not reflected in report cards
-  app.post('/api/admin/sync-all-missing-exam-scores', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
-    try {
-      const { termId } = req.body;
-
-      console.log(`[ADMIN-SYNC-MISSING] User ${req.user!.id} triggered comprehensive exam score sync`);
-
-      const result = await storage.syncAllMissingExamScores(termId ? Number(termId) : undefined);
-
-      // Invalidate caches
-      enhancedCache.invalidate(/^reportcard:/);
-
-      console.log(`[ADMIN-SYNC-MISSING] Completed: ${result.synced} synced, ${result.failed} failed`);
-
-      res.json({
-        message: `Comprehensive exam score sync completed`,
-        synced: result.synced,
-        failed: result.failed,
-        errors: result.errors.length > 0 ? result.errors.slice(0, 20) : undefined,
-        totalErrors: result.errors.length
-      });
-    } catch (error: any) {
-      console.error('[ADMIN-SYNC-MISSING] Error:', error);
-      res.status(500).json({ message: error.message || 'Failed to sync missing exam scores' });
-    }
-  });
-
-  // ADMIN: Force re-sync ALL exam results for a term to report cards, clearing any override flags
-  // This is the recovery tool for fixing historical data where scores were blocked by isOverridden
-  app.post('/api/admin/force-resync-all-exams', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
-    try {
-      const { termId } = req.body;
-      const adminId = req.user!.id;
-
-      console.log(`[ADMIN-FORCE-RESYNC] User ${adminId} triggered force re-sync for term ${termId || 'all'}`);
-
-      // Get all exam results (with scores) for the given term
-      const conditions: any[] = [sql`${schema.examResults.score} IS NOT NULL`];
-      if (termId) {
-        conditions.push(eq(schema.exams.termId, Number(termId)));
-      }
-
-      const examResults = await db.select({
-        id: schema.examResults.id,
-        studentId: schema.examResults.studentId,
-        examId: schema.examResults.examId,
-        score: schema.examResults.score,
-        maxScore: schema.examResults.maxScore,
-        totalMarks: schema.exams.totalMarks
-      })
-        .from(schema.examResults)
-        .innerJoin(schema.exams, eq(schema.examResults.examId, schema.exams.id))
-        .where(and(...conditions));
-
-      console.log(`[ADMIN-FORCE-RESYNC] Found ${examResults.length} exam results to force-sync`);
-
-      let synced = 0;
-      let failed = 0;
-      const errors: string[] = [];
-
-      for (const result of examResults) {
-        try {
-          const syncResult = await storage.syncExamScoreToReportCard(
-            result.studentId,
-            result.examId,
-            result.score || 0,
-            result.maxScore || result.totalMarks || 100,
-            true  // forceSync = true: clears overrides and forces update
-          );
-          if (syncResult.success) {
-            synced++;
-          } else {
-            failed++;
-            if (errors.length < 20) errors.push(`Student ${result.studentId} / Exam ${result.examId}: ${syncResult.message}`);
-          }
-        } catch (err: any) {
-          failed++;
-          if (errors.length < 20) errors.push(`Student ${result.studentId} / Exam ${result.examId}: ${err.message}`);
-        }
-      }
-
-      console.log(`[ADMIN-FORCE-RESYNC] Done: ${synced} synced, ${failed} failed`);
-
-      res.json({
-        message: `Force re-sync complete: ${synced} scores synced, ${failed} failed`,
-        total: examResults.length,
-        synced,
-        failed,
-        errors: errors.length > 0 ? errors : undefined
-      });
-    } catch (error: any) {
-      console.error('[ADMIN-FORCE-RESYNC] Error:', error);
-      res.status(500).json({ message: error.message || 'Force re-sync failed' });
     }
   });
 

@@ -6,7 +6,7 @@ import {
   Clock, PenTool, CheckSquare, Award, Star, Library, DollarSign, Trophy, HelpCircle,
   Inbox, Megaphone, MessagesSquare, ClipboardPen, BarChart3, FolderOpen, RotateCcw,
   Layers, Database, CreditCard, Receipt, ListChecks, PanelLeftClose, PanelLeftOpen,
-  Globe, Newspaper, Images, BookMarked,
+  Globe, Newspaper, Images, BookMarked, Wrench,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';

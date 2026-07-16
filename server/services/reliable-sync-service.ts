@@ -1,6 +1,6 @@
 import { db } from '../db';
 import * as schema from '../../shared/schema.pg';
-import { eq, and, inArray, isNull, lte, desc, sql } from 'drizzle-orm';
+import { eq, and, or, inArray, isNull, lte, desc, sql } from 'drizzle-orm';
 import { calculateGradeFromConfig } from '../grading-config';
 import { calculateWeightedScore } from '../../shared/grading-utils';
 import { getActiveGradingConfig } from '../grade-scale-service';
@@ -484,7 +484,8 @@ export class ReliableSyncService {
           totalMarks: 100,
           obtainedMarks: 0,
           percentage: 0
-        });
+        })
+        .onConflictDoNothing();
     }
   }
 
@@ -535,7 +536,8 @@ export class ReliableSyncService {
             totalMarks: 100,
             obtainedMarks: 0,
             percentage: 0
-          });
+          })
+          .onConflictDoNothing();
       }
     }
   }
@@ -546,7 +548,17 @@ export class ReliableSyncService {
       subjectId: schema.classSubjectMappings.subjectId
     })
       .from(schema.classSubjectMappings)
-      .where(eq(schema.classSubjectMappings.classId, classId));
+      .where(
+        department
+          ? and(
+              eq(schema.classSubjectMappings.classId, classId),
+              or(
+                eq(schema.classSubjectMappings.department, department),
+                isNull(schema.classSubjectMappings.department)
+              )
+            )
+          : eq(schema.classSubjectMappings.classId, classId)
+      );
 
     if (mappings.length === 0) {
       return [];
@@ -645,7 +657,8 @@ export class ReliableSyncService {
           totalMarks: 100,
           obtainedMarks: 0,
           percentage: 0
-        });
+        })
+        .onConflictDoNothing();
     }
   }
 
@@ -694,7 +707,8 @@ export class ReliableSyncService {
             totalMarks: 100,
             obtainedMarks: 0,
             percentage: 0
-          });
+          })
+          .onConflictDoNothing();
       }
     }
   }
@@ -704,7 +718,17 @@ export class ReliableSyncService {
       subjectId: schema.classSubjectMappings.subjectId
     })
       .from(schema.classSubjectMappings)
-      .where(eq(schema.classSubjectMappings.classId, classId));
+      .where(
+        department
+          ? and(
+              eq(schema.classSubjectMappings.classId, classId),
+              or(
+                eq(schema.classSubjectMappings.department, department),
+                isNull(schema.classSubjectMappings.department)
+              )
+            )
+          : eq(schema.classSubjectMappings.classId, classId)
+      );
 
     if (mappings.length === 0) {
       return [];
