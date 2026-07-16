@@ -220,24 +220,29 @@ export function ReportCardMaintenanceDialog({ open, onOpenChange, selectedClass,
   // 8-minute AbortController — maintenance ops can take several minutes on large schools
   const MAINTENANCE_TIMEOUT_MS = 8 * 60 * 1000;
 
-  function maintenanceFetch(url: string, init: RequestInit = {}): Promise<Response> {
+  async function postMaintenance(path: string, body?: object): Promise<any> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), MAINTENANCE_TIMEOUT_MS);
-    return fetch(url, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
-  }
-
-  async function postMaintenance(path: string, body?: object): Promise<any> {
-    const res = await maintenanceFetch(path, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined,
-      credentials: 'include',
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data.message || `Request failed (${res.status})`);
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    try {
+      const res = await fetch(path, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: body ? JSON.stringify(body) : undefined,
+        credentials: 'include',
+        signal: controller.signal,
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || `Request failed (${res.status})`);
+      }
+      return res.json();
+    } finally {
+      clearTimeout(timer);
     }
-    return res.json();
   }
 
   // ── Repair All ──────────────────────────────────────────────────────────────
