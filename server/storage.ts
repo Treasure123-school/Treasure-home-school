@@ -9600,84 +9600,80 @@ export class DatabaseStorage implements IStorage {
       // Group by report card to batch recalculations
       const reportCardIdsToRecalculate = new Set<number>();
 
-      for (const record of missingExamScores) {
-        try {
-          const isTest = ['test', 'quiz', 'assignment'].includes(record.examType);
-          const isMainExam = ['exam', 'final', 'midterm'].includes(record.examType);
+      // Helper: process one missing-score record
+      const processRecord = async (record: typeof missingExamScores[number]): Promise<void> => {
+        const isTest     = ['test', 'quiz', 'assignment'].includes(record.examType);
+        const isMainExam = ['exam', 'final', 'midterm'].includes(record.examType);
 
-          // Skip if the score already exists for this type
-          if (isMainExam && record.currentExamScore !== null) continue;
-          if (isTest && record.currentTestScore !== null) continue;
+        // Skip if the score already exists for this type
+        if (isMainExam && record.currentExamScore !== null) return;
+        if (isTest     && record.currentTestScore  !== null) return;
 
-          const safeScore = typeof record.score === 'number' ? record.score : parseInt(String(record.score), 10) || 0;
-          const safeMaxScore = typeof record.maxScore === 'number' ? record.maxScore : parseInt(String(record.maxScore), 10) || 0;
+        const safeScore    = typeof record.score    === 'number' ? record.score    : parseInt(String(record.score),    10) || 0;
+        const safeMaxScore = typeof record.maxScore === 'number' ? record.maxScore : parseInt(String(record.maxScore), 10) || 0;
 
-          if (record.reportCardItemId) {
-            // Update existing report card item
-            const updateData: any = { updatedAt: new Date() };
-
-            if (isTest) {
-              updateData.testExamId = record.examId;
-              updateData.testExamCreatedBy = record.createdBy;
-              updateData.testScore = safeScore;
-              updateData.testMaxScore = safeMaxScore;
-            } else if (isMainExam) {
-              updateData.examExamId = record.examId;
-              updateData.examExamCreatedBy = record.createdBy;
-              updateData.examScore = safeScore;
-              updateData.examMaxScore = safeMaxScore;
-            }
-
-            await db.update(schema.reportCardItems)
-              .set(updateData)
-              .where(eq(schema.reportCardItems.id, record.reportCardItemId));
-
+        if (record.reportCardItemId) {
+          const updateData: any = { updatedAt: new Date() };
+          if (isTest) {
+            updateData.testExamId = record.examId; updateData.testExamCreatedBy = record.createdBy;
+            updateData.testScore  = safeScore;     updateData.testMaxScore      = safeMaxScore;
+          } else if (isMainExam) {
+            updateData.examExamId = record.examId; updateData.examExamCreatedBy = record.createdBy;
+            updateData.examScore  = safeScore;     updateData.examMaxScore      = safeMaxScore;
+          }
+          await db.update(schema.reportCardItems).set(updateData).where(eq(schema.reportCardItems.id, record.reportCardItemId));
+          reportCardIdsToRecalculate.add(record.reportCardId);
+          synced++;
+        } else if (record.reportCardId && record.subjectId) {
+          const newItem = await db.insert(schema.reportCardItems)
+            .values({
+              reportCardId:    record.reportCardId,
+              subjectId:       record.subjectId,
+              totalMarks:      100,
+              obtainedMarks:   0,
+              percentage:      0,
+              testExamId:          isTest     ? record.examId    : null,
+              testExamCreatedBy:   isTest     ? record.createdBy : null,
+              testScore:           isTest     ? safeScore        : null,
+              testMaxScore:        isTest     ? safeMaxScore     : null,
+              examExamId:          isMainExam ? record.examId    : null,
+              examExamCreatedBy:   isMainExam ? record.createdBy : null,
+              examScore:           isMainExam ? safeScore        : null,
+              examMaxScore:        isMainExam ? safeMaxScore     : null,
+            })
+            .onConflictDoNothing()
+            .returning();
+          if (newItem.length > 0) {
             reportCardIdsToRecalculate.add(record.reportCardId);
             synced++;
-            console.log(`[SYNC-ALL-MISSING] Updated item ${record.reportCardItemId}: ${isTest ? 'test' : 'exam'} score ${safeScore}/${safeMaxScore}`);
-          } else if (record.reportCardId && record.subjectId) {
-            // Create new report card item (ignore conflict — unique guard)
-            const newItem = await db.insert(schema.reportCardItems)
-              .values({
-                reportCardId: record.reportCardId,
-                subjectId: record.subjectId,
-                totalMarks: 100,
-                obtainedMarks: 0,
-                percentage: 0,
-                testExamId: isTest ? record.examId : null,
-                testExamCreatedBy: isTest ? record.createdBy : null,
-                testScore: isTest ? safeScore : null,
-                testMaxScore: isTest ? safeMaxScore : null,
-                examExamId: isMainExam ? record.examId : null,
-                examExamCreatedBy: isMainExam ? record.createdBy : null,
-                examScore: isMainExam ? safeScore : null,
-                examMaxScore: isMainExam ? safeMaxScore : null
-              })
-              .onConflictDoNothing()
-              .returning();
-
-            if (newItem.length > 0) {
-              reportCardIdsToRecalculate.add(record.reportCardId);
-              synced++;
-              console.log(`[SYNC-ALL-MISSING] Created new item for report card ${record.reportCardId}, subject ${record.subjectId}`);
-            } else {
-              console.log(`[SYNC-ALL-MISSING] Skipped duplicate for report card ${record.reportCardId}, subject ${record.subjectId}`);
-            }
           }
-        } catch (recordError: any) {
-          failed++;
-          errors.push(`Failed to sync exam result ${record.examResultId}: ${recordError.message}`);
+        }
+      };
+
+      // Process records in concurrent batches of 40 — much faster than serial await
+      const RECORD_BATCH = 40;
+      for (let i = 0; i < missingExamScores.length; i += RECORD_BATCH) {
+        const batch = missingExamScores.slice(i, i + RECORD_BATCH);
+        const batchResults = await Promise.allSettled(batch.map(r => processRecord(r)));
+        for (const result of batchResults) {
+          if (result.status === 'rejected') {
+            failed++;
+            errors.push(String(result.reason?.message ?? result.reason));
+          }
         }
       }
 
-      // Recalculate all affected report cards
+      // Recalculate all affected report cards in concurrent batches of 40
       console.log(`[SYNC-ALL-MISSING] Recalculating ${reportCardIdsToRecalculate.size} report cards...`);
-      for (const reportCardId of reportCardIdsToRecalculate) {
-        try {
-          await this.recalculateReportCard(reportCardId, 'standard');
-        } catch (calcError: any) {
-          errors.push(`Failed to recalculate report card ${reportCardId}: ${calcError.message}`);
-        }
+      const rcIds = [...reportCardIdsToRecalculate];
+      const RECALC_BATCH = 40;
+      for (let i = 0; i < rcIds.length; i += RECALC_BATCH) {
+        const batch = rcIds.slice(i, i + RECALC_BATCH);
+        await Promise.allSettled(batch.map(rcId =>
+          this.recalculateReportCard(rcId, 'standard').catch((e: any) => {
+            errors.push(`Failed to recalculate report card ${rcId}: ${e.message}`);
+          })
+        ));
       }
 
       console.log(`[SYNC-ALL-MISSING] Completed: ${synced} synced, ${failed} failed`);

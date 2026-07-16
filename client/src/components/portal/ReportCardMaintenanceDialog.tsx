@@ -217,52 +217,57 @@ export function ReportCardMaintenanceDialog({ open, onOpenChange, selectedClass,
 
   const invalidate = () => queryClient.invalidateQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
 
+  // 8-minute AbortController — maintenance ops can take several minutes on large schools
+  const MAINTENANCE_TIMEOUT_MS = 8 * 60 * 1000;
+
+  function maintenanceFetch(url: string, init: RequestInit = {}): Promise<Response> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), MAINTENANCE_TIMEOUT_MS);
+    return fetch(url, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+  }
+
+  async function postMaintenance(path: string, body?: object): Promise<any> {
+    const res = await maintenanceFetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined,
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.message || `Request failed (${res.status})`);
+    }
+    return res.json();
+  }
+
   // ── Repair All ──────────────────────────────────────────────────────────────
   const repairMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest('POST', '/api/admin/repair-report-cards');
-      if (!res.ok) throw new Error((await res.json()).message || 'Repair failed');
-      return res.json();
-    },
+    mutationFn: () => postMaintenance('/api/admin/repair-report-cards'),
     onSuccess: (data) => { setRepairResult(data); invalidate(); toast({ title: 'Repair complete', description: `${data.itemsAdded ?? 0} subjects added, ${data.examScoresSynced ?? 0} scores synced.` }); },
     onError: (e: any) => toast({ title: 'Repair failed', description: e.message, variant: 'destructive' }),
   });
 
   // ── Sync Missing Scores ─────────────────────────────────────────────────────
   const syncMutation = useMutation({
-    mutationFn: async () => {
-      const body: any = {};
-      if (termId) body.termId = termId;
-      const res = await apiRequest('POST', '/api/admin/sync-all-missing-exam-scores', body);
-      if (!res.ok) throw new Error((await res.json()).message || 'Sync failed');
-      return res.json();
-    },
+    mutationFn: () => postMaintenance('/api/admin/sync-all-missing-exam-scores', termId ? { termId } : {}),
     onSuccess: (data) => { setSyncResult(data); invalidate(); toast({ title: 'Sync complete', description: `${data.synced ?? 0} scores synced.` }); },
     onError: (e: any) => toast({ title: 'Sync failed', description: e.message, variant: 'destructive' }),
   });
 
   // ── Force Re-Sync ───────────────────────────────────────────────────────────
   const forceMutation = useMutation({
-    mutationFn: async () => {
-      const body: any = {};
-      if (termId) body.termId = termId;
-      const res = await apiRequest('POST', '/api/admin/force-resync-all-exams', body);
-      if (!res.ok) throw new Error((await res.json()).message || 'Force re-sync failed');
-      return res.json();
-    },
-    onSuccess: (data) => { setForceResult(data); invalidate(); toast({ title: 'Force re-sync complete', description: `${data.synced ?? 0} of ${data.total ?? 0} scores synced.` }); },
+    mutationFn: () => postMaintenance('/api/admin/force-resync-all-exams', termId ? { termId } : {}),
+    onSuccess: (data) => { setForceResult(data); invalidate(); toast({ title: 'Force re-sync complete', description: `${data.synced ?? 0} of ${data.total ?? 0} scores resynced.` }); },
     onError: (e: any) => toast({ title: 'Force re-sync failed', description: e.message, variant: 'destructive' }),
   });
 
   // ── Generate Missing ────────────────────────────────────────────────────────
   const genMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: () => {
       const params = new URLSearchParams();
       if (classId) params.append('classId', String(classId));
-      if (termId) params.append('termId', String(termId));
-      const res = await apiRequest('POST', `/api/admin/report-cards/generate-missing?${params}`);
-      if (!res.ok) throw new Error((await res.json()).message || 'Generation failed');
-      return res.json();
+      if (termId)  params.append('termId',  String(termId));
+      return postMaintenance(`/api/admin/report-cards/generate-missing?${params}`);
     },
     onSuccess: (data) => { setGenResult(data); invalidate(); toast({ title: 'Generation complete', description: data.message || `${data.created ?? 0} report cards created.` }); },
     onError: (e: any) => toast({ title: 'Generation failed', description: e.message, variant: 'destructive' }),
