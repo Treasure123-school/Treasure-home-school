@@ -153,8 +153,8 @@ function ConfirmDialog({
 export default function AdminReportCardMaintenance() {
   const { toast } = useToast();
   const { currentTerm, allTerms: terms } = useAcademicCalendar();
-  const [selectedTermId, setSelectedTermId] = useState<string>('');
-  const [selectedClassId, setSelectedClassId] = useState<string>('');
+  const [selectedTermId, setSelectedTermId] = useState<string>('all');
+  const [selectedClassId, setSelectedClassId] = useState<string>('all');
 
   // Confirm dialogs
   const [confirmRepair, setConfirmRepair] = useState(false);
@@ -174,7 +174,9 @@ export default function AdminReportCardMaintenance() {
   });
 
   // ── helper: effective term ID ──────────────────────────────────────────────
-  const effectiveTermId = selectedTermId || (currentTerm ? String(currentTerm.id) : '');
+  const effectiveTermId = (selectedTermId && selectedTermId !== 'all')
+    ? selectedTermId
+    : (currentTerm ? String(currentTerm.id) : '');
 
   // ── Mutation 1: Repair All Report Cards ───────────────────────────────────
   const repairMutation = useMutation({
@@ -201,7 +203,8 @@ export default function AdminReportCardMaintenance() {
   const syncMissingMutation = useMutation({
     mutationFn: async () => {
       const body: any = {};
-      if (effectiveTermId) body.termId = Number(effectiveTermId);
+      const termIdForSync = (selectedTermId && selectedTermId !== 'all') ? selectedTermId : '';
+      if (termIdForSync) body.termId = Number(termIdForSync);
       const res = await apiRequest('POST', '/api/admin/sync-all-missing-exam-scores', body);
       if (!res.ok) throw new Error((await res.json()).message || 'Sync failed');
       return res.json();
@@ -224,7 +227,8 @@ export default function AdminReportCardMaintenance() {
   const forceResyncMutation = useMutation({
     mutationFn: async () => {
       const body: any = {};
-      if (effectiveTermId) body.termId = Number(effectiveTermId);
+      const termIdForResync = (selectedTermId && selectedTermId !== 'all') ? selectedTermId : '';
+      if (termIdForResync) body.termId = Number(termIdForResync);
       const res = await apiRequest('POST', '/api/admin/force-resync-all-exams', body);
       if (!res.ok) throw new Error((await res.json()).message || 'Force re-sync failed');
       return res.json();
@@ -247,8 +251,10 @@ export default function AdminReportCardMaintenance() {
   const genMissingMutation = useMutation({
     mutationFn: async () => {
       const params = new URLSearchParams();
-      if (selectedClassId) params.append('classId', selectedClassId);
-      if (effectiveTermId) params.append('termId', effectiveTermId);
+      const classIdForGen = (selectedClassId && selectedClassId !== 'all') ? selectedClassId : '';
+      const termIdForGen = (selectedTermId && selectedTermId !== 'all') ? selectedTermId : '';
+      if (classIdForGen) params.append('classId', classIdForGen);
+      if (termIdForGen) params.append('termId', termIdForGen);
       const res = await apiRequest('POST', `/api/admin/report-cards/generate-missing?${params}`);
       if (!res.ok) throw new Error((await res.json()).message || 'Generation failed');
       return res.json();
@@ -318,7 +324,7 @@ export default function AdminReportCardMaintenance() {
                   <SelectValue placeholder={currentTerm ? `${currentTerm.name} (current)` : 'All terms'} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All terms</SelectItem>
+                  <SelectItem value="all">All terms</SelectItem>
                   {(terms ?? []).map((t: any) => (
                     <SelectItem key={t.id} value={String(t.id)}>
                       {t.name} {t.id === currentTerm?.id ? '(current)' : ''}
@@ -334,7 +340,7 @@ export default function AdminReportCardMaintenance() {
                   <SelectValue placeholder="All classes" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All classes</SelectItem>
+                  <SelectItem value="all">All classes</SelectItem>
                   {classes.map((c: any) => (
                     <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
                   ))}
