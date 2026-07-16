@@ -5930,8 +5930,8 @@ export class DatabaseStorage implements IStorage {
             updated++;
           }
 
-          // Get student's department for SS students
-          const studentDepartment = (student as any).department;
+          // Get student's department for SS students — normalize to lowercase to match class_subject_mappings
+          const studentDepartment = (student as any).department?.trim().toLowerCase() || undefined;
 
           // SINGLE SOURCE OF TRUTH: Use class_subject_mappings
           // For SS students with department, get department-specific subjects
@@ -6110,8 +6110,10 @@ export class DatabaseStorage implements IStorage {
       const examResults = await db.select({
         id: schema.examResults.id,
         examId: schema.examResults.examId,
-        score: schema.examResults.marksObtained,
-        maxScore: schema.exams.totalMarks,
+        // Use COALESCE so both the `score` column (auto-scored) and `marksObtained` column
+        // (manually recorded) are captured — whichever is populated wins
+        score: sql<number>`COALESCE(${schema.examResults.score}, ${schema.examResults.marksObtained}, 0)`,
+        maxScore: sql<number>`COALESCE(${schema.exams.totalMarks}, ${schema.examResults.maxScore}, 100)`,
         examType: schema.exams.examType,
         examDate: schema.exams.examDate,
         createdAt: schema.examResults.createdAt
@@ -6121,7 +6123,9 @@ export class DatabaseStorage implements IStorage {
         .where(and(
           eq(schema.examResults.studentId, studentId),
           eq(schema.exams.subjectId, subjectId),
-          eq(schema.exams.termId, termId)
+          eq(schema.exams.termId, termId),
+          // Only include results that actually have a score in at least one column
+          sql`COALESCE(${schema.examResults.score}, ${schema.examResults.marksObtained}) IS NOT NULL`
         ))
         .orderBy(schema.examResults.createdAt);
 
@@ -9237,8 +9241,9 @@ export class DatabaseStorage implements IStorage {
                 if (examTermId && newItem.length > 0) {
                   const examResults = await db.select({
                     examId: schema.examResults.examId,
-                    score: schema.examResults.score,
-                    maxScore: schema.examResults.maxScore,
+                    // COALESCE both score columns so whichever is populated is used
+                    score: sql<number>`COALESCE(${schema.examResults.score}, ${schema.examResults.marksObtained}, 0)`,
+                    maxScore: sql<number>`COALESCE(${schema.exams.totalMarks}, ${schema.examResults.maxScore}, 100)`,
                     examType: schema.exams.examType,
                     gradingScale: schema.exams.gradingScale,
                     createdBy: schema.exams.createdBy
@@ -9248,7 +9253,8 @@ export class DatabaseStorage implements IStorage {
                     .where(and(
                       eq(schema.examResults.studentId, student.id),
                       eq(schema.exams.subjectId, subjectId),
-                      eq(schema.exams.termId, examTermId)
+                      eq(schema.exams.termId, examTermId),
+                      sql`COALESCE(${schema.examResults.score}, ${schema.examResults.marksObtained}) IS NOT NULL`
                     ));
 
                   for (const examResult of examResults) {
@@ -9479,8 +9485,9 @@ export class DatabaseStorage implements IStorage {
         examResultId: schema.examResults.id,
         studentId: schema.examResults.studentId,
         examId: schema.examResults.examId,
-        score: schema.examResults.score,
-        maxScore: schema.examResults.maxScore,
+        // COALESCE both score columns so whichever is populated wins
+        score: sql<number>`COALESCE(${schema.examResults.score}, ${schema.examResults.marksObtained}, 0)`,
+        maxScore: sql<number>`COALESCE(${schema.exams.totalMarks}, ${schema.examResults.maxScore}, 100)`,
         examType: schema.exams.examType,
         subjectId: schema.exams.subjectId,
         classId: schema.exams.classId,
@@ -9503,7 +9510,8 @@ export class DatabaseStorage implements IStorage {
           eq(schema.reportCardItems.subjectId, schema.exams.subjectId)
         ))
         .where(and(
-          sql`${schema.examResults.score} IS NOT NULL`,
+          // Accept records where either score column has a value
+          sql`COALESCE(${schema.examResults.score}, ${schema.examResults.marksObtained}) IS NOT NULL`,
           targetTermId ? eq(schema.exams.termId, targetTermId) : sql`1=1`,
           or(
             // Exam type results missing in report card
@@ -9630,17 +9638,19 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log(`[SYNC-EXAM-RESULTS] Starting bulk sync for exam ${examId}...`);
 
-      // Get all results for this exam
+      // Get all results for this exam — COALESCE both score columns so whichever is populated wins
       const examResults = await db.select({
         id: schema.examResults.id,
         studentId: schema.examResults.studentId,
-        score: schema.examResults.score,
-        maxScore: schema.examResults.maxScore
+        score: sql<number>`COALESCE(${schema.examResults.score}, ${schema.examResults.marksObtained}, 0)`,
+        maxScore: sql<number>`COALESCE(${schema.exams.totalMarks}, ${schema.examResults.maxScore}, 100)`
       })
         .from(schema.examResults)
+        .innerJoin(schema.exams, eq(schema.examResults.examId, schema.exams.id))
         .where(and(
           eq(schema.examResults.examId, examId),
-          sql`${schema.examResults.score} IS NOT NULL`
+          // Accept records where either score column has a value
+          sql`COALESCE(${schema.examResults.score}, ${schema.examResults.marksObtained}) IS NOT NULL`
         ));
 
       console.log(`[SYNC-EXAM-RESULTS] Found ${examResults.length} results to sync for exam ${examId}`);
