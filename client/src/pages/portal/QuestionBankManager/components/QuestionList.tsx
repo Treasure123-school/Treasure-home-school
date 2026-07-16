@@ -149,19 +149,34 @@ export function QuestionList({
       const serverErrs: string[] = result.errors   ?? [];
       const createdItems: any[]  = result.questions ?? [];
 
-      // The server returns the full created items in result.questions — use them
-      // to write directly into the cache. Do NOT call invalidateQueries for items:
-      // a background GET races the DB write and returns stale data, which is why
-      // the list showed "0 questions found" immediately after upload.
       if (createdItems.length > 0) {
-        qc.setQueriesData({ queryKey: ["/api/question-bank/items"] }, (old: any) => {
+        // Target ONLY the page-1 cache entry. Prepend the new items (sliced to pageSize
+        // so the list stays one page long), and recompute totalPages from the updated total.
+        // Updating every cached page via setQueriesData would corrupt per-page slices and
+        // leave totalPages stale (making pagination appear broken until a hard refresh).
+        const page1Key = ["/api/question-bank/items", { ...paramObj, page: "1" }];
+        qc.setQueryData(page1Key, (old: any) => {
           if (!old) return old;
-          return {
-            ...old,
-            items: [...createdItems, ...(old.items ?? [])],
-            total: (old.total ?? 0) + createdItems.length,
-          };
+          const newTotal      = (old.total ?? 0) + createdItems.length;
+          const ps            = old.pageSize ?? PAGE_SIZE;
+          const newTotalPages = Math.ceil(newTotal / ps);
+          // Prepend newest items; truncate so page 1 stays at pageSize entries
+          const merged = [...createdItems, ...(old.items ?? [])].slice(0, ps);
+          return { ...old, items: merged, total: newTotal, totalPages: newTotalPages };
         });
+
+        // Invalidate every other cached page so they refetch with correct server data.
+        // DB writes are fully committed before onSuccess fires — no race risk here.
+        qc.invalidateQueries({
+          queryKey: ["/api/question-bank/items"],
+          predicate: (query) => {
+            const params = query.queryKey[1] as Record<string, string> | undefined;
+            return params?.page !== "1";
+          },
+        });
+
+        // Navigate to page 1 so the user immediately sees the uploaded questions.
+        if (page !== 1) onPageChange(1);
       }
 
       // Stats counter changed — safe to sync independently.
@@ -477,6 +492,9 @@ export function QuestionList({
           context={context}
           editItem={editItem}
           isAdmin={isAdmin}
+          page={page}
+          paramObj={paramObj}
+          onPageChange={onPageChange}
         />
       )}
 

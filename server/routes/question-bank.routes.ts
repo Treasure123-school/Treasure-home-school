@@ -743,7 +743,11 @@ router.post('/api/question-bank/items/bulk-csv', authenticateUser, authorizeRole
                     expectedAnswers: q.expectedAnswer ? JSON.stringify([q.expectedAnswer]) : '[]',
                     explanationText: q.explanationText || null,
                 } as any, options);
-                created.push(item);
+                // Fetch saved options so the response includes them — without this,
+                // the frontend cache write has no options array and MCQ options are
+                // invisible until a manual page refresh.
+                const savedOptions = await storage.getQuestionBankItemOptions(item.id);
+                created.push({ ...item, options: savedOptions || [] });
             } catch (err) {
                 errors.push(`Row ${i + 1}: ${err instanceof Error ? err.message : 'Unknown error'}`);
             }

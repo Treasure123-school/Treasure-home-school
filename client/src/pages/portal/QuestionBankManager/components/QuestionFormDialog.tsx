@@ -7,23 +7,30 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { FileQuestion } from "lucide-react";
-import { DIFFICULTY_OPTS } from "../constants";
+import { DIFFICULTY_OPTS, PAGE_SIZE } from "../constants";
 import type { ContextFilters } from "../types";
 import { ManualQuestionFields } from "@/components/question/ManualQuestionFields";
 import type { QuestionOption } from "@/components/question/ManualQuestionFields";
 
 // isAdmin is read from outer scope via closure in the original; pass it as prop here
 interface QuestionFormDialogProps {
-  open:     boolean;
-  onClose:  () => void;
-  banks:    any[];
-  context:  ContextFilters;
+  open:      boolean;
+  onClose:   () => void;
+  banks:     any[];
+  context:   ContextFilters;
   editItem?: any;
-  isAdmin:  boolean;
+  isAdmin:   boolean;
+  /** Current page number — used for targeted cache updates to keep pagination correct. */
+  page?:     number;
+  /** Current filter params (without page) — used to build the exact query key. */
+  paramObj?: Record<string, string>;
+  /** Navigate to a page — called after a new question is created so the user sees it. */
+  onPageChange?: (p: number) => void;
 }
 
 export function QuestionFormDialog({
   open, onClose, banks, context, editItem, isAdmin,
+  page = 1, paramObj = {}, onPageChange,
 }: QuestionFormDialogProps) {
   const qc    = useQueryClient();
   const { toast } = useToast();
@@ -84,7 +91,9 @@ export function QuestionFormDialog({
     onMutate: async (data: any) => {
       await qc.cancelQueries({ queryKey: ["/api/question-bank/items"] });
       const snapshot = qc.getQueriesData({ queryKey: ["/api/question-bank/items"] });
+
       if (isEdit) {
+        // Edit: update the item in every cached page (count unchanged, no pagination impact).
         qc.setQueriesData({ queryKey: ["/api/question-bank/items"] }, (old: any) => {
           if (!old?.items) return old;
           return { ...old, items: old.items.map((it: any) =>
@@ -92,6 +101,9 @@ export function QuestionFormDialog({
           )};
         });
       } else {
+        // Create: add a temp placeholder to the current page only.
+        // Using setQueriesData (all pages) would prepend the item to every cached
+        // page and leave totalPages stale — so pagination breaks.
         const tempItem = {
           id: `_temp_${Date.now()}`,
           ...data,
@@ -99,28 +111,52 @@ export function QuestionFormDialog({
           createdAt: new Date().toISOString(),
           _optimistic: true,
         };
-        qc.setQueriesData({ queryKey: ["/api/question-bank/items"] }, (old: any) => {
+        const currentKey = ["/api/question-bank/items", { ...paramObj, page: String(page) }];
+        qc.setQueryData(currentKey, (old: any) => {
           if (!old) return old;
-          return { ...old, items: [tempItem, ...(old.items ?? [])], total: (old.total ?? 0) + 1 };
+          const newTotal      = (old.total ?? 0) + 1;
+          const ps            = old.pageSize ?? PAGE_SIZE;
+          const newTotalPages = Math.ceil(newTotal / ps);
+          return {
+            ...old,
+            items: [tempItem, ...(old.items ?? [])],
+            total: newTotal,
+            totalPages: newTotalPages,
+          };
         });
       }
       return { snapshot };
     },
     onSuccess: (savedItem: any) => {
-      // Replace the optimistic placeholder with the server-confirmed item.
-      // Do NOT call invalidateQueries for items here — a background GET races
-      // the DB write and returns the old row, overwriting the correct data.
-      qc.setQueriesData({ queryKey: ["/api/question-bank/items"] }, (old: any) => {
-        if (!old?.items) return old;
-        if (isEdit) {
+      if (isEdit) {
+        // Edit: replace the updated item across all page caches (count unchanged).
+        qc.setQueriesData({ queryKey: ["/api/question-bank/items"] }, (old: any) => {
+          if (!old?.items) return old;
           return { ...old, items: old.items.map((it: any) =>
             it.id === editItem.id ? { ...it, ...savedItem } : it
           )};
-        }
-        return { ...old, items: old.items.map((it: any) =>
-          it._optimistic ? savedItem : it
-        )};
-      });
+        });
+      } else {
+        // Create: replace the temp placeholder with the server-confirmed item on
+        // the current page, then invalidate all other pages so they refetch with
+        // correct server data. DB writes are committed before onSuccess fires.
+        const currentKey = ["/api/question-bank/items", { ...paramObj, page: String(page) }];
+        qc.setQueryData(currentKey, (old: any) => {
+          if (!old?.items) return old;
+          return { ...old, items: old.items.map((it: any) =>
+            it._optimistic ? savedItem : it
+          )};
+        });
+        qc.invalidateQueries({
+          queryKey: ["/api/question-bank/items"],
+          predicate: (query) => {
+            const params = query.queryKey[1] as Record<string, string> | undefined;
+            return params?.page !== String(page);
+          },
+        });
+        // If user was on a later page, navigate to current page so they see the new item.
+        if (page > 1 && onPageChange) onPageChange(1);
+      }
       // Stats counter may have changed (create adds one) — safe to refetch.
       qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
       toast({ title: "Success", description: isEdit ? "Question updated." : "Question created." });
