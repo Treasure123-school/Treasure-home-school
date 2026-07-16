@@ -676,6 +676,18 @@ router.post('/api/question-banks/:bankId/bulk-publish', authenticateUser, author
     } catch (error) { handleRouteError(res, error, 'questionBank.banks.bulkPublish'); }
 });
 
+// ─── Delete all questions in a bank (keeps the bank record) ──────────────────
+router.delete('/api/question-banks/:bankId/questions', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
+    try {
+        const bankId = parseInt(req.params.bankId);
+        if (isNaN(bankId)) return sendBadRequest(res, 'Invalid bank ID');
+        const existing = await storage.getQuestionBankById(bankId);
+        if (!existing) return sendNotFound(res, 'Question bank not found');
+        const count = await storage.deleteAllQuestionBankItems(bankId);
+        sendSuccess(res, { deleted: count, message: `${count} question${count !== 1 ? 's' : ''} deleted.` });
+    } catch (error) { handleRouteError(res, error, 'questionBank.banks.deleteAllQuestions'); }
+});
+
 // ─── Bulk unpublish all questions in a bank ────────────────────────────────────
 router.post('/api/question-banks/:bankId/bulk-unpublish', authenticateUser, authorizeRoles(...ADMIN_ROLES), async (req: any, res: Response) => {
     try {
@@ -743,7 +755,11 @@ router.post('/api/question-bank/items/bulk-csv', authenticateUser, authorizeRole
                     expectedAnswers: q.expectedAnswer ? JSON.stringify([q.expectedAnswer]) : '[]',
                     explanationText: q.explanationText || null,
                 } as any, options);
-                created.push(item);
+                // Fetch saved options so the response includes them — without this,
+                // the frontend cache write has no options array and MCQ options are
+                // invisible until a manual page refresh.
+                const savedOptions = await storage.getQuestionBankItemOptions(item.id);
+                created.push({ ...item, options: savedOptions || [] });
             } catch (err) {
                 errors.push(`Row ${i + 1}: ${err instanceof Error ? err.message : 'Unknown error'}`);
             }

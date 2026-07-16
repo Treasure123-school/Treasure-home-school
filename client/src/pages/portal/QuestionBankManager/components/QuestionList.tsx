@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import {
   Plus, AlertTriangle, BookOpen, Layers,
-  Globe, EyeOff, MoreVertical, Upload, Database, Trash2,
+  Globe, EyeOff, MoreVertical, Upload, Database, Trash2, Eraser,
 } from "lucide-react";
 import { BulkCSVQuestionsDialog } from "@/components/shared/BulkCSVQuestionsDialog";
 import type { ParsedQuestion } from "@/components/shared/BulkCSVQuestionsDialog";
@@ -50,11 +50,12 @@ export function QuestionList({
   const qc = useQueryClient();
   const { toast } = useToast();
 
-  const [editItem,       setEditItem]       = useState<any>(null);
-  const [deleteTarget,   setDeleteTarget]   = useState<any>(null);
-  const [formOpen,       setFormOpen]       = useState(false);
-  const [csvUploadOpen,  setCsvUploadOpen]  = useState(false);
-  const [csvServerErrors, setCsvServerErrors] = useState<string[]>([]);
+  const [editItem,              setEditItem]              = useState<any>(null);
+  const [deleteTarget,          setDeleteTarget]          = useState<any>(null);
+  const [formOpen,              setFormOpen]              = useState(false);
+  const [csvUploadOpen,         setCsvUploadOpen]         = useState(false);
+  const [csvServerErrors,       setCsvServerErrors]       = useState<string[]>([]);
+  const [deleteAllQuestionsOpen, setDeleteAllQuestionsOpen] = useState(false);
 
   // ── Fetch question page ─────────────────────────────────────
   const qs = new URLSearchParams({ ...paramObj, page: String(page) }).toString();
@@ -149,19 +150,34 @@ export function QuestionList({
       const serverErrs: string[] = result.errors   ?? [];
       const createdItems: any[]  = result.questions ?? [];
 
-      // The server returns the full created items in result.questions — use them
-      // to write directly into the cache. Do NOT call invalidateQueries for items:
-      // a background GET races the DB write and returns stale data, which is why
-      // the list showed "0 questions found" immediately after upload.
       if (createdItems.length > 0) {
-        qc.setQueriesData({ queryKey: ["/api/question-bank/items"] }, (old: any) => {
+        // Target ONLY the page-1 cache entry. Prepend the new items (sliced to pageSize
+        // so the list stays one page long), and recompute totalPages from the updated total.
+        // Updating every cached page via setQueriesData would corrupt per-page slices and
+        // leave totalPages stale (making pagination appear broken until a hard refresh).
+        const page1Key = ["/api/question-bank/items", { ...paramObj, page: "1" }];
+        qc.setQueryData(page1Key, (old: any) => {
           if (!old) return old;
-          return {
-            ...old,
-            items: [...createdItems, ...(old.items ?? [])],
-            total: (old.total ?? 0) + createdItems.length,
-          };
+          const newTotal      = (old.total ?? 0) + createdItems.length;
+          const ps            = old.pageSize ?? PAGE_SIZE;
+          const newTotalPages = Math.ceil(newTotal / ps);
+          // Prepend newest items; truncate so page 1 stays at pageSize entries
+          const merged = [...createdItems, ...(old.items ?? [])].slice(0, ps);
+          return { ...old, items: merged, total: newTotal, totalPages: newTotalPages };
         });
+
+        // Invalidate every other cached page so they refetch with correct server data.
+        // DB writes are fully committed before onSuccess fires — no race risk here.
+        qc.invalidateQueries({
+          queryKey: ["/api/question-bank/items"],
+          predicate: (query) => {
+            const params = query.queryKey[1] as Record<string, string> | undefined;
+            return params?.page !== "1";
+          },
+        });
+
+        // Navigate to page 1 so the user immediately sees the uploaded questions.
+        if (page !== 1) onPageChange(1);
       }
 
       // Stats counter changed — safe to sync independently.
@@ -267,6 +283,34 @@ export function QuestionList({
     onSettled: () => {
       // Stats counter only — never invalidate items here.
       qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
+    },
+  });
+
+  // ── Delete all questions in bank (keeps the bank record) ────
+  const deleteAllMutation = useMutation({
+    mutationFn: async (bankId: number) => {
+      const res = await apiRequest("DELETE", `/api/question-banks/${bankId}/questions`);
+      if (!res.ok) {
+        let msg = "Failed to delete questions";
+        try { const b = await res.json(); msg = b.message || msg; } catch { /* ignore */ }
+        throw new Error(msg);
+      }
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      // Wipe all cached pages for this bank so the list shows empty state immediately.
+      qc.setQueriesData({ queryKey: ["/api/question-bank/items"] }, (old: any) => {
+        if (!old) return old;
+        return { ...old, items: [], total: 0, totalPages: 1 };
+      });
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/items"] });
+      qc.invalidateQueries({ queryKey: ["/api/question-bank/stats"] });
+      onPageChange(1);
+      setDeleteAllQuestionsOpen(false);
+      toast({ title: "Questions deleted", description: data.message ?? "All questions removed from this bank." });
+    },
+    onError: (e: any) => {
+      toast({ title: "Delete failed", description: e.message ?? "Please try again.", variant: "destructive" });
     },
   });
 
@@ -446,6 +490,21 @@ export function QuestionList({
                   </>
                 )}
 
+                {isAdmin && context.bankId && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => setDeleteAllQuestionsOpen(true)}
+                      disabled={deleteAllMutation.isPending}
+                      className="text-destructive focus:text-destructive"
+                      data-testid="btn-delete-all-questions"
+                    >
+                      <Eraser className="w-4 h-4 mr-2" />
+                      {deleteAllMutation.isPending ? "Deleting…" : "Delete All Questions"}
+                    </DropdownMenuItem>
+                  </>
+                )}
+
                 {isAdmin && onDeleteBank && (
                   <>
                     <DropdownMenuSeparator />
@@ -477,6 +536,9 @@ export function QuestionList({
           context={context}
           editItem={editItem}
           isAdmin={isAdmin}
+          page={page}
+          paramObj={paramObj}
+          onPageChange={onPageChange}
         />
       )}
 
@@ -490,6 +552,36 @@ export function QuestionList({
         title="Bulk Upload to Question Bank"
         serverErrors={csvServerErrors}
       />
+
+      {/* ── Delete all questions confirm ───────────────── */}
+      <AlertDialog open={deleteAllQuestionsOpen} onOpenChange={(v) => !v && !deleteAllMutation.isPending && setDeleteAllQuestionsOpen(false)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <Eraser className="w-4 h-4" /> Delete All Questions
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                This will permanently remove <strong>every question</strong> from{" "}
+                <strong>"{bankName}"</strong>. The bank itself will remain.
+              </span>
+              <span className="block text-destructive font-medium">
+                This cannot be undone.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteAllMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90"
+              disabled={deleteAllMutation.isPending}
+              onClick={() => context.bankId && deleteAllMutation.mutate(context.bankId)}
+            >
+              {deleteAllMutation.isPending ? "Deleting…" : "Delete All Questions"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* ── Delete question confirm ────────────────────── */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>

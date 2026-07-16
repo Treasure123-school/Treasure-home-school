@@ -299,6 +299,7 @@ export interface IStorage {
   unpublishQuestionBankItem(id: number): Promise<QuestionBankItem | undefined>;
   bulkPublishQuestionBankItems(bankId: number): Promise<number>;
   bulkUnpublishQuestionBankItems(bankId: number): Promise<number>;
+  deleteAllQuestionBankItems(bankId: number): Promise<number>;
   getPendingQuestionBankItems(filters?: { subjectId?: number; classId?: number; createdBy?: string; page?: number; pageSize?: number }): Promise<{ items: QuestionBankItem[]; total: number; totalPages: number }>;
 
   // Exam-Question Bank Links
@@ -3376,6 +3377,12 @@ export class DatabaseStorage implements IStorage {
   async deleteQuestionBankItem(id: number): Promise<boolean> {
     await db.delete(schema.questionBankItems).where(eq(schema.questionBankItems.id, id));
     return true;
+  }
+  async deleteAllQuestionBankItems(bankId: number): Promise<number> {
+    const rows = await db.delete(schema.questionBankItems)
+      .where(eq(schema.questionBankItems.bankId, bankId))
+      .returning({ id: schema.questionBankItems.id });
+    return rows.length;
   }
   async getQuestionBankItemOptions(questionItemId: number): Promise<QuestionBankOption[]> {
     return await db.select().from(schema.questionBankOptions)
