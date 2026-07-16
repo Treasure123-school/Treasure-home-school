@@ -53,11 +53,13 @@ import {
   Filter,
   ArrowUpDown,
   SearchX,
+  Wrench,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { calculateAge } from '@/lib/report-card-utils';
 import { ProfessionalReportCard } from '@/components/ui/professional-report-card';
 import { EditScoreDialog } from '@/components/portal/EditScoreDialog';
+import { ReportCardMaintenanceDialog } from '@/components/portal/ReportCardMaintenanceDialog';
 import { MiniStatCardGrid } from '@/components/ui/mini-stat-card';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -1024,6 +1026,7 @@ export default function AdminResultPublishing() {
 
   // Backfill default comments mutation
   const [isBackfillDialogOpen, setIsBackfillDialogOpen] = useState(false);
+  const [isMaintenanceOpen, setIsMaintenanceOpen] = useState(false);
   const [backfillOverwrite, setBackfillOverwrite] = useState(false);
 
   const backfillCommentsMutation = useMutation({
@@ -1493,6 +1496,14 @@ export default function AdminResultPublishing() {
                     >
                       <FileText className="w-4 h-4 mr-2" />
                       Generate Comments
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => setIsMaintenanceOpen(true)}
+                      data-testid="menu-maintenance"
+                    >
+                      <Wrench className="w-4 h-4 mr-2" />
+                      Repair / Maintenance
                     </DropdownMenuItem>
                     {displayedReportCards.length > 0 && (
                       <>
@@ -2431,6 +2442,12 @@ export default function AdminResultPublishing() {
           />
         </div>
       )}
+      <ReportCardMaintenanceDialog
+        open={isMaintenanceOpen}
+        onOpenChange={setIsMaintenanceOpen}
+        selectedClass={selectedClass}
+        selectedTerm={selectedTerm}
+      />
     </div>
   );
 }

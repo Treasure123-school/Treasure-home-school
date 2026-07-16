@@ -67,7 +67,6 @@ const ExamSessions = lazy(() => import('@/pages/portal/ExamSessions'));
 const UnifiedSubjectAssignment = lazy(() => import('@/pages/portal/SubjectSetup'));
 const AssignSubjectTeachers = lazy(() => import('@/pages/portal/AssignSubjectTeachers'));
 const AdminResultPublishing = lazy(() => import('@/pages/portal/AdminResultPublishing'));
-const AdminReportCardMaintenance = lazy(() => import('@/pages/portal/AdminReportCardMaintenance'));
 const AdminRecoveryTools = lazy(() => import('@/pages/portal/AdminRecoveryTools'));
 const AdminProfile = lazy(() => import('@/pages/portal/AdminProfile'));
 const ReportCommentTemplates = lazy(() => import('@/pages/portal/ReportCommentTemplates'));
@@ -242,7 +241,6 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/results/grades" component={PortalComingSoon} />
             <Route path="/portal/admin/results/processing" component={PortalComingSoon} />
             <Route path="/portal/admin/results/publishing" component={AdminResultPublishing} />
-            <Route path="/portal/admin/results/maintenance" component={AdminReportCardMaintenance} />
             <Route path="/portal/admin/academics/timetable" component={AdminTimetable} />
             <Route path="/portal/admin/academics/curriculum" component={AdminCurriculumLibrary} />
             <Route path="/portal/admin/curriculum-library" component={AdminCurriculumLibrary} />

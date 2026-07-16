@@ -269,7 +269,6 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: '/portal/admin/exams/overview', icon: BarChart3, label: 'Assessment Analytics' },
               { href: '/portal/admin/question-bank', icon: Database, label: 'Question Bank' },
               { href: '/portal/admin/results/publishing', icon: FileText, label: 'Report Card' },
-              { href: '/portal/admin/results/maintenance', icon: Wrench, label: 'RC Maintenance' },
             ],
           },
           {
