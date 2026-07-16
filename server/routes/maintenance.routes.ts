@@ -306,77 +306,116 @@ router.post(
         return res.json({ message: 'No exam results with scores found for this selection.', total: 0, synced: 0, failed: 0 });
       }
 
-      // ── Step 2: Bulk UPDATE exam-type scores in report_card_items ─────────
+      // ── Step 2: UPSERT exam-type scores ──────────────────────────────────
+      // INSERT creates rows that don't exist yet; ON CONFLICT updates existing rows.
+      // Only exam_* columns are touched — test_* columns are left intact.
+      // DISTINCT ON ensures one row per (report_card_id, subject_id) when a
+      // student has multiple exam results for the same subject.
       await db.execute(sql`
-        UPDATE report_card_items rci
-        SET
-          exam_exam_id         = e.id,
-          exam_score           = COALESCE(er.score, er.marks_obtained, 0)::integer,
-          exam_max_score       = COALESCE(e.total_marks, er.max_score, 100)::integer,
-          exam_exam_created_by = e.created_by,
-          is_overridden        = false,
-          updated_at           = NOW()
+        INSERT INTO report_card_items
+          (report_card_id, subject_id, total_marks, obtained_marks, percentage,
+           exam_exam_id, exam_score, exam_max_score, exam_exam_created_by,
+           is_overridden, updated_at)
+        SELECT DISTINCT ON (rc.id, e.subject_id)
+          rc.id,
+          e.subject_id,
+          COALESCE(e.total_marks, er.max_score, 100)::integer,
+          COALESCE(er.score, er.marks_obtained, 0)::integer,
+          0,
+          e.id,
+          COALESCE(er.score, er.marks_obtained, 0)::integer,
+          COALESCE(e.total_marks, er.max_score, 100)::integer,
+          e.created_by,
+          false,
+          NOW()
         FROM exam_results er
         JOIN exams e  ON e.id = er.exam_id
         JOIN report_cards rc
           ON  rc.student_id = er.student_id
           AND rc.term_id    = e.term_id
-        WHERE rci.report_card_id = rc.id
-          AND rci.subject_id     = e.subject_id
-          AND COALESCE(er.score, er.marks_obtained) IS NOT NULL
+        WHERE COALESCE(er.score, er.marks_obtained) IS NOT NULL
           AND e.exam_type IN ('exam', 'final', 'midterm')
           ${termFilter}
-      `);
-
-      // ── Step 3: Bulk UPDATE test-type scores in report_card_items ─────────
-      await db.execute(sql`
-        UPDATE report_card_items rci
-        SET
-          test_exam_id         = e.id,
-          test_score           = COALESCE(er.score, er.marks_obtained, 0)::integer,
-          test_max_score       = COALESCE(e.total_marks, er.max_score, 100)::integer,
-          test_exam_created_by = e.created_by,
+        ORDER BY rc.id, e.subject_id, er.id DESC
+        ON CONFLICT (report_card_id, subject_id) DO UPDATE SET
+          exam_exam_id         = EXCLUDED.exam_exam_id,
+          exam_score           = EXCLUDED.exam_score,
+          exam_max_score       = EXCLUDED.exam_max_score,
+          exam_exam_created_by = EXCLUDED.exam_exam_created_by,
           is_overridden        = false,
           updated_at           = NOW()
+      `);
+
+      // ── Step 3: UPSERT test-type scores ──────────────────────────────────
+      // Same UPSERT pattern; only test_* columns are touched.
+      await db.execute(sql`
+        INSERT INTO report_card_items
+          (report_card_id, subject_id, total_marks, obtained_marks, percentage,
+           test_exam_id, test_score, test_max_score, test_exam_created_by,
+           is_overridden, updated_at)
+        SELECT DISTINCT ON (rc.id, e.subject_id)
+          rc.id,
+          e.subject_id,
+          COALESCE(e.total_marks, er.max_score, 100)::integer,
+          0,
+          0,
+          e.id,
+          COALESCE(er.score, er.marks_obtained, 0)::integer,
+          COALESCE(e.total_marks, er.max_score, 100)::integer,
+          e.created_by,
+          false,
+          NOW()
         FROM exam_results er
         JOIN exams e  ON e.id = er.exam_id
         JOIN report_cards rc
           ON  rc.student_id = er.student_id
           AND rc.term_id    = e.term_id
-        WHERE rci.report_card_id = rc.id
-          AND rci.subject_id     = e.subject_id
-          AND COALESCE(er.score, er.marks_obtained) IS NOT NULL
+        WHERE COALESCE(er.score, er.marks_obtained) IS NOT NULL
           AND e.exam_type IN ('test', 'quiz', 'assignment')
           ${termFilter}
+        ORDER BY rc.id, e.subject_id, er.id DESC
+        ON CONFLICT (report_card_id, subject_id) DO UPDATE SET
+          test_exam_id         = EXCLUDED.test_exam_id,
+          test_score           = EXCLUDED.test_score,
+          test_max_score       = EXCLUDED.test_max_score,
+          test_exam_created_by = EXCLUDED.test_exam_created_by,
+          is_overridden        = false,
+          updated_at           = NOW()
       `);
 
-      // ── Step 4: Recalculate obtained_marks + percentage on affected items ──
+      // ── Step 4: Recalculate obtained_marks + percentage on ALL affected items
+      // Recalculate every item in any report card that has exam results in scope.
+      // Uses exam_score + test_score combined; handles partial (only exam, only test).
       await db.execute(sql`
         UPDATE report_card_items rci
         SET
-          obtained_marks = COALESCE(rci.test_score, 0) + COALESCE(rci.exam_score, 0),
+          obtained_marks = COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0),
           percentage     = CASE
-            WHEN COALESCE(rci.test_max_score, 0) + COALESCE(rci.exam_max_score, 0) > 0
-            THEN ROUND(
-              ( COALESCE(rci.test_score, 0) + COALESCE(rci.exam_score, 0) )::numeric
-              / ( COALESCE(rci.test_max_score, 0) + COALESCE(rci.exam_max_score, 0) )
+            WHEN COALESCE(rci.exam_max_score, 0) + COALESCE(rci.test_max_score, 0) > 0
+            THEN LEAST(100, ROUND(
+              ( COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0) )::numeric
+              / NULLIF(COALESCE(rci.exam_max_score, 0) + COALESCE(rci.test_max_score, 0), 0)
               * 100
-            )
+            ))
+            WHEN rci.total_marks > 0
+            THEN LEAST(100, ROUND(
+              ( COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0) )::numeric
+              / rci.total_marks * 100
+            ))
             ELSE 0
           END,
-          updated_at     = NOW()
-        FROM report_cards rc
-        JOIN exam_results er ON er.student_id = rc.student_id
-        JOIN exams e
-          ON  e.id      = er.exam_id
-          AND e.term_id = rc.term_id
-        WHERE rci.report_card_id = rc.id
-          AND rci.subject_id     = e.subject_id
-          AND COALESCE(er.score, er.marks_obtained) IS NOT NULL
+          updated_at = NOW()
+        WHERE rci.report_card_id IN (
+          SELECT DISTINCT rc.id
+          FROM report_cards rc
+          JOIN exam_results er ON er.student_id = rc.student_id
+          JOIN exams e ON e.id = er.exam_id AND e.term_id = rc.term_id
+          WHERE COALESCE(er.score, er.marks_obtained) IS NOT NULL
           ${termFilter}
+        )
       `);
 
-      // ── Step 5: Recalculate report_cards totals (total_score, average) ────
+      // ── Step 5: Recalculate report_cards header totals ────────────────────
       await db.execute(sql`
         UPDATE report_cards rc
         SET
@@ -394,9 +433,7 @@ router.post(
             SELECT DISTINCT rc2.id
             FROM report_cards rc2
             JOIN exam_results er ON er.student_id = rc2.student_id
-            JOIN exams e
-              ON  e.id      = er.exam_id
-              AND e.term_id = rc2.term_id
+            JOIN exams e ON e.id = er.exam_id AND e.term_id = rc2.term_id
             WHERE COALESCE(er.score, er.marks_obtained) IS NOT NULL
             ${termFilter}
           )

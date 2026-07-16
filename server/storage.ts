@@ -9372,12 +9372,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   /**
-   * FIX: Repair all report cards by adding missing subjects and syncing exam scores
-   * This is a comprehensive data repair function for existing affected students
+   * FIX: Repair all report cards by adding missing subjects AND syncing exam scores.
+   *
+   * Two-phase repair:
+   * Phase 1 — addMissingSubjectsToReportCards:
+   *   Inserts subject rows that are completely absent, then fills scores for
+   *   those NEW rows only (existing rows are not touched in that helper).
+   *
+   * Phase 2 — Bulk SQL NULL-score fill:
+   *   After phase 1, run UPDATE statements to fill NULL exam_score / test_score
+   *   on ALL existing rows that still have no score (is_overridden = false).
+   *   This covers the common case where report_card_items rows were created
+   *   earlier but the exam scores were never synced into them.
+   *   Finally, recalculate obtained_marks / percentage / report_card totals for
+   *   every row that was just updated.
    */
   async repairAllReportCards(): Promise<{ studentsProcessed: number; itemsAdded: number; examScoresSynced: number; errors: string[] }> {
+    const errors: string[] = [];
     try {
-      // Get all active classes
+      // ── Phase 1: Add missing subject rows + fill scores for new rows ──────
       const classes = await db.select({ id: schema.classes.id })
         .from(schema.classes)
         .where(eq(schema.classes.isActive, true));
@@ -9385,7 +9398,133 @@ export class DatabaseStorage implements IStorage {
       const classIds = classes.map((c: { id: number }) => c.id);
       console.log(`[REPAIR-REPORT-CARDS] Starting repair for ${classIds.length} classes`);
 
-      return await this.addMissingSubjectsToReportCards(classIds);
+      const phase1 = await this.addMissingSubjectsToReportCards(classIds);
+      errors.push(...phase1.errors);
+
+      // ── Phase 2: Bulk-fill NULL scores on ALL existing items ──────────────
+      // Fills exam_score where it is currently NULL and is_overridden = false.
+      // Uses DISTINCT ON (rc.id, subject_id) so one result per student/subject.
+      console.log('[REPAIR-REPORT-CARDS] Phase 2 — bulk-filling NULL exam scores on existing items...');
+
+      await db.execute(sql`
+        UPDATE report_card_items rci
+        SET
+          exam_exam_id         = subq.exam_id,
+          exam_score           = subq.score,
+          exam_max_score       = subq.max_score,
+          exam_exam_created_by = subq.created_by,
+          updated_at           = NOW()
+        FROM (
+          SELECT DISTINCT ON (rc.id, e.subject_id)
+            rc.id                                                    AS rc_id,
+            e.subject_id,
+            e.id                                                     AS exam_id,
+            COALESCE(er.score, er.marks_obtained, 0)::integer        AS score,
+            COALESCE(e.total_marks, er.max_score, 100)::integer      AS max_score,
+            e.created_by
+          FROM exam_results er
+          JOIN exams e       ON e.id  = er.exam_id
+          JOIN report_cards rc
+            ON  rc.student_id = er.student_id
+            AND rc.term_id    = e.term_id
+          WHERE COALESCE(er.score, er.marks_obtained) IS NOT NULL
+            AND e.exam_type IN ('exam', 'final', 'midterm')
+          ORDER BY rc.id, e.subject_id, er.id DESC
+        ) subq
+        WHERE rci.report_card_id = subq.rc_id
+          AND rci.subject_id     = subq.subject_id
+          AND rci.exam_score     IS NULL
+          AND rci.is_overridden  = false
+      `);
+
+      // Same for test-type (CA / quiz / assignment) scores
+      await db.execute(sql`
+        UPDATE report_card_items rci
+        SET
+          test_exam_id         = subq.exam_id,
+          test_score           = subq.score,
+          test_max_score       = subq.max_score,
+          test_exam_created_by = subq.created_by,
+          updated_at           = NOW()
+        FROM (
+          SELECT DISTINCT ON (rc.id, e.subject_id)
+            rc.id                                                    AS rc_id,
+            e.subject_id,
+            e.id                                                     AS exam_id,
+            COALESCE(er.score, er.marks_obtained, 0)::integer        AS score,
+            COALESCE(e.total_marks, er.max_score, 100)::integer      AS max_score,
+            e.created_by
+          FROM exam_results er
+          JOIN exams e       ON e.id  = er.exam_id
+          JOIN report_cards rc
+            ON  rc.student_id = er.student_id
+            AND rc.term_id    = e.term_id
+          WHERE COALESCE(er.score, er.marks_obtained) IS NOT NULL
+            AND e.exam_type IN ('test', 'quiz', 'assignment')
+          ORDER BY rc.id, e.subject_id, er.id DESC
+        ) subq
+        WHERE rci.report_card_id = subq.rc_id
+          AND rci.subject_id     = subq.subject_id
+          AND rci.test_score     IS NULL
+          AND rci.is_overridden  = false
+      `);
+
+      // ── Phase 3: Recalculate obtained_marks / percentage on updated items ─
+      await db.execute(sql`
+        UPDATE report_card_items rci
+        SET
+          obtained_marks = COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0),
+          percentage     = CASE
+            WHEN COALESCE(rci.exam_max_score, 0) + COALESCE(rci.test_max_score, 0) > 0
+            THEN LEAST(100, ROUND(
+              ( COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0) )::numeric
+              / NULLIF(COALESCE(rci.exam_max_score, 0) + COALESCE(rci.test_max_score, 0), 0)
+              * 100
+            ))
+            WHEN rci.total_marks > 0
+            THEN LEAST(100, ROUND(
+              ( COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0) )::numeric
+              / rci.total_marks * 100
+            ))
+            ELSE 0
+          END,
+          updated_at = NOW()
+        WHERE
+          (rci.exam_score IS NOT NULL OR rci.test_score IS NOT NULL)
+          AND (
+            rci.obtained_marks != COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0)
+            OR rci.percentage = 0
+          )
+      `);
+
+      // ── Phase 4: Recalculate report_cards header totals ───────────────────
+      await db.execute(sql`
+        UPDATE report_cards rc
+        SET
+          total_score        = agg.total_obtained,
+          average_score      = agg.avg_pct::integer,
+          average_percentage = agg.avg_pct::integer,
+          updated_at         = NOW()
+        FROM (
+          SELECT
+            rci.report_card_id,
+            COALESCE(SUM(rci.obtained_marks), 0)    AS total_obtained,
+            COALESCE(ROUND(AVG(rci.percentage)), 0) AS avg_pct
+          FROM report_card_items rci
+          WHERE (rci.exam_score IS NOT NULL OR rci.test_score IS NOT NULL)
+          GROUP BY rci.report_card_id
+        ) agg
+        WHERE rc.id = agg.report_card_id
+      `);
+
+      console.log(`[REPAIR-REPORT-CARDS] Done — phase1: ${phase1.itemsAdded} items added, ${phase1.examScoresSynced} new scores; phase2: bulk NULL-score fill + recalculate complete`);
+
+      return {
+        studentsProcessed: phase1.studentsProcessed,
+        itemsAdded:        phase1.itemsAdded,
+        examScoresSynced:  phase1.examScoresSynced,
+        errors,
+      };
     } catch (error: any) {
       console.error('[REPAIR-REPORT-CARDS] Error:', error);
       return { studentsProcessed: 0, itemsAdded: 0, examScoresSynced: 0, errors: [error.message] };
@@ -9574,22 +9713,22 @@ export class DatabaseStorage implements IStorage {
         .where(and(
           // Accept records where either score column has a value
           sql`COALESCE(${schema.examResults.score}, ${schema.examResults.marksObtained}) IS NOT NULL`,
-          targetTermId ? eq(schema.exams.termId, targetTermId) : sql`1=1`,
+          targetTermId ? eq(schema.exams.termId, targetTermId) : undefined,
           or(
             // Exam type results missing in report card
             and(
               inArray(schema.exams.examType, ['exam', 'final', 'midterm']),
               or(
-                sql`${schema.reportCardItems.id} IS NULL`,
-                sql`${schema.reportCardItems.exam_score} IS NULL`
+                isNull(schema.reportCardItems.id),         // item row missing entirely
+                isNull(schema.reportCardItems.examScore)   // item exists but exam score is null
               )
             ),
             // Test type results missing in report card
             and(
               inArray(schema.exams.examType, ['test', 'quiz', 'assignment']),
               or(
-                sql`${schema.reportCardItems.id} IS NULL`,
-                sql`${schema.reportCardItems.test_score} IS NULL`
+                isNull(schema.reportCardItems.id),         // item row missing entirely
+                isNull(schema.reportCardItems.testScore)   // item exists but test score is null
               )
             )
           )
