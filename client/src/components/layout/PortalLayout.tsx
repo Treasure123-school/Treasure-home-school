@@ -6,7 +6,7 @@ import {
   Clock, PenTool, CheckSquare, Award, Star, Library, DollarSign, Trophy, HelpCircle,
   Inbox, Megaphone, MessagesSquare, ClipboardPen, BarChart3, FolderOpen, RotateCcw,
   Layers, Database, CreditCard, Receipt, ListChecks, PanelLeftClose, PanelLeftOpen,
-  Globe, Newspaper, Images, BookMarked,
+  Globe, Newspaper, Images, BookMarked, Wrench,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
@@ -269,6 +269,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
               { href: '/portal/admin/exams/overview', icon: BarChart3, label: 'Assessment Analytics' },
               { href: '/portal/admin/question-bank', icon: Database, label: 'Question Bank' },
               { href: '/portal/admin/results/publishing', icon: FileText, label: 'Report Card' },
+              { href: '/portal/admin/results/maintenance', icon: Wrench, label: 'RC Maintenance' },
             ],
           },
           {

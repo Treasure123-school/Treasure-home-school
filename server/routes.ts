@@ -15124,8 +15124,10 @@ School Management System Administration
 
       console.log(`[ADMIN-FORCE-RESYNC] User ${adminId} triggered force re-sync for term ${termId || 'all'}`);
 
-      // Get all exam results (with scores) for the given term
-      const conditions: any[] = [sql`${schema.examResults.score} IS NOT NULL`];
+      // Get all exam results (with scores) for the given term — COALESCE both score columns
+      const conditions: any[] = [
+        sql`COALESCE(${schema.examResults.score}, ${schema.examResults.marksObtained}) IS NOT NULL`,
+      ];
       if (termId) {
         conditions.push(eq(schema.exams.termId, Number(termId)));
       }
@@ -15134,8 +15136,8 @@ School Management System Administration
         id: schema.examResults.id,
         studentId: schema.examResults.studentId,
         examId: schema.examResults.examId,
-        score: schema.examResults.score,
-        maxScore: schema.examResults.maxScore,
+        score: sql<number>`COALESCE(${schema.examResults.score}, ${schema.examResults.marksObtained}, 0)`,
+        maxScore: sql<number>`COALESCE(${schema.exams.totalMarks}, ${schema.examResults.maxScore}, 100)`,
         totalMarks: schema.exams.totalMarks
       })
         .from(schema.examResults)
