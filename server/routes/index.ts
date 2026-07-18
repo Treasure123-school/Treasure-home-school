@@ -36,3 +36,5 @@ export { default as questionBankRoutes } from './question-bank.routes';
 export { default as uploadRoutes } from './upload.routes';
 export { default as messagesRoutes } from './messages.routes';
 export { default as aiConfigRoutes } from './ai-config.routes';
+export { default as attendanceRoutes } from './attendance.routes';
+export { default as gradingRoutes } from './grading.routes';

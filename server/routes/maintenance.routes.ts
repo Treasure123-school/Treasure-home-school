@@ -25,6 +25,7 @@ import { storage, db } from '../storage';
 import * as schema from '@shared/schema.pg';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { enhancedCache } from '../enhanced-cache';
+import { reliableSyncService } from '../services/reliable-sync-service';
 
 const router = Router();
 
@@ -200,14 +201,14 @@ router.post(
         await Promise.all(batch.map(async (result: any) => {
           affectedPairs.add(`${result.studentId}:${result.termId}`);
           try {
-            const syncResult = await storage.syncExamScoreToReportCard(
+            const syncResult = await reliableSyncService.syncExamScoreToReportCardReliable(
               result.studentId,
               result.examId,
               result.score   ?? 0,
               result.maxScore ?? 100,
-              false,
+              { syncType: 'admin_repair', triggeredBy: 'system' }
             );
-            if (syncResult.isNewReportCard) created++;
+            if (syncResult.success) created++;
           } catch (err: any) {
             errors.push(`Student ${result.studentId} exam ${result.examId}: ${err.message}`);
           }
