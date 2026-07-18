@@ -847,6 +847,20 @@ async function mergeExamScores(answerId: number, storage: any): Promise<void> {
         marksObtained: totalScore,
         autoScored: false, // Now includes manual scores
       });
+
+      // ── BUG-FIX: sync merged score to report card (fire-and-forget) ──────
+      // Previously: essay grading completed and score was saved but report_card_items
+      // exam_score was never updated, leaving the report card showing blank.
+      reliableSyncService.syncExamScoreToReportCardReliable(
+        session.studentId,
+        session.examId,
+        totalScore,
+        maxScore,
+        { syncType: 'exam_submit', triggeredBy: session.studentId }
+      ).catch((e: any) =>
+        console.error('[MERGE-SCORES] Background report-card sync failed:', e.message)
+      );
+
       let timeTaken = 0;
       if (session.metadata) {
         try {
@@ -2681,6 +2695,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       realtimeService.emitTableChange('exam_results', 'UPDATE', updatedResult, result, teacherId);
 
       res.json(updatedResult);
+
+      // ── BUG-FIX: auto-sync updated score to report card (fire-and-forget) ──
+      // Previously: score was saved in DB but never propagated to report_card_items.
+      if (testScore !== undefined && testScore !== null) {
+        const scoreVal = typeof testScore === 'number' ? testScore : Number(testScore) || 0;
+        const maxVal = result.maxScore || exam.totalMarks || 100;
+        reliableSyncService.syncExamScoreToReportCardReliable(
+          result.studentId,
+          result.examId,
+          scoreVal,
+          maxVal,
+          { syncType: 'manual_sync', triggeredBy: teacherId }
+        ).catch((e: any) =>
+          console.error('[EXAM-RESULTS-PATCH] Background report-card sync failed:', e.message)
+        );
+      }
     } catch (error: any) {
       console.error('[EXAM-RESULTS] Error updating exam result:', error?.message);
       res.status(500).json({ message: 'Failed to update exam result' });

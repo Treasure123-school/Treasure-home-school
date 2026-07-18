@@ -9178,7 +9178,8 @@ export class DatabaseStorage implements IStorage {
       const classRows = await db.select({ id: schema.classes.id, name: schema.classes.name, level: schema.classes.level })
         .from(schema.classes)
         .where(inArray(schema.classes.id, classIds));
-      const classMap = new Map(classRows.map(c => [c.id, c]));
+      const classMap = new Map<number, { id: number; name: string | null; level: string | null }>();
+      for (const row of classRows) classMap.set(row.id, row);
 
       // ── 3. All class-subject mappings for affected classes (1 query) ───────
       const allMappings = await db.select({
@@ -9203,7 +9204,8 @@ export class DatabaseStorage implements IStorage {
       };
 
       // ── 4. All report cards for all students (1 query) ────────────────────
-      const studentIds = students.map(s => s.id);
+      const studentIds: string[] = [];
+      for (const s of students) studentIds.push(s.id);
       const allReportCards = await db.select({
         id: schema.reportCards.id,
         studentId: schema.reportCards.studentId,
@@ -9221,7 +9223,8 @@ export class DatabaseStorage implements IStorage {
       }
 
       // ── 5. All existing items for all report cards (1 query) ──────────────
-      const rcIds = allReportCards.map(rc => rc.id);
+      const rcIds: number[] = [];
+      for (const rc of allReportCards) rcIds.push(rc.id);
       const allExistingItems = await db.select({
         reportCardId: schema.reportCardItems.reportCardId,
         subjectId: schema.reportCardItems.subjectId,
@@ -9361,6 +9364,106 @@ export class DatabaseStorage implements IStorage {
           });
         }
       }
+
+      // ── Phase 2: Fill NULL scores on EXISTING items (bulk, 1 JOIN query) ──
+      // The previous phases only wrote scores for NEWLY inserted rows.
+      // Students who already had a report_card_items row (created when the report
+      // card was first generated) but exam_score = NULL were never touched.
+      // This phase fixes all such rows that aren't manually overridden.
+      console.log(`[ADD-MISSING-SUBJECTS] Phase 2: scanning existing items with NULL scores…`);
+
+      const phase2RcIds = new Set<number>();
+
+      // Build a rc→gradingScale lookup for phase 2 recalculations
+      const rcGradingMap = new Map<number, string | null>();
+      for (const rc of allReportCards) rcGradingMap.set(rc.id, rc.gradingScale);
+
+      // Single query: existing items with NULL exam_score or NULL test_score,
+      // joined to matching exam results for the same student+subject+term.
+      const nullScoreItems = await db.select({
+        itemId: schema.reportCardItems.id,
+        reportCardId: schema.reportCardItems.reportCardId,
+        subjectId: schema.reportCardItems.subjectId,
+        examId: schema.exams.id,
+        examType: schema.exams.examType,
+        createdBy: schema.exams.createdBy,
+        score: sql<number>`COALESCE(${schema.examResults.score}, ${schema.examResults.marksObtained}, 0)`,
+        maxScore: sql<number>`COALESCE(${schema.exams.totalMarks}, ${schema.examResults.maxScore}, 100)`,
+        currentExamScore: schema.reportCardItems.examScore,
+        currentTestScore: schema.reportCardItems.testScore,
+      })
+        .from(schema.reportCardItems)
+        .innerJoin(schema.reportCards, eq(schema.reportCardItems.reportCardId, schema.reportCards.id))
+        .innerJoin(schema.examResults, and(
+          eq(schema.examResults.studentId, schema.reportCards.studentId),
+          sql`COALESCE(${schema.examResults.score}, ${schema.examResults.marksObtained}) IS NOT NULL`
+        ))
+        .innerJoin(schema.exams, and(
+          eq(schema.exams.id, schema.examResults.examId),
+          eq(schema.exams.subjectId, schema.reportCardItems.subjectId),
+          eq(schema.exams.termId, schema.reportCards.termId)
+        ))
+        .where(and(
+          inArray(schema.reportCards.studentId, studentIds),
+          // Only touch rows that are not manually overridden
+          or(
+            eq(schema.reportCardItems.isOverridden, false),
+            isNull(schema.reportCardItems.isOverridden)
+          ),
+          // Only rows where the relevant score slot is still NULL
+          or(
+            and(
+              inArray(schema.exams.examType, ['exam', 'final', 'midterm']),
+              isNull(schema.reportCardItems.examScore)
+            ),
+            and(
+              inArray(schema.exams.examType, ['test', 'quiz', 'assignment']),
+              isNull(schema.reportCardItems.testScore)
+            )
+          )
+        ));
+
+      console.log(`[ADD-MISSING-SUBJECTS] Phase 2: ${nullScoreItems.length} existing items to backfill`);
+
+      for (const row of nullScoreItems) {
+        try {
+          const isTest = ['test', 'quiz', 'assignment'].includes(row.examType);
+          const isMainExam = ['exam', 'final', 'midterm'].includes(row.examType);
+          if (!isTest && !isMainExam) continue;
+
+          // Double-check: skip if score already present (race condition safety)
+          if (isMainExam && row.currentExamScore !== null) continue;
+          if (isTest && row.currentTestScore !== null) continue;
+
+          const safeScore = Number(row.score) || 0;
+          const safeMaxScore = Number(row.maxScore) || 100;
+          const updateData: any = { updatedAt: new Date() };
+          if (isTest) {
+            updateData.testExamId = row.examId;
+            updateData.testExamCreatedBy = row.createdBy;
+            updateData.testScore = safeScore;
+            updateData.testMaxScore = safeMaxScore;
+          } else {
+            updateData.examExamId = row.examId;
+            updateData.examExamCreatedBy = row.createdBy;
+            updateData.examScore = safeScore;
+            updateData.examMaxScore = safeMaxScore;
+          }
+          await db.update(schema.reportCardItems).set(updateData).where(eq(schema.reportCardItems.id, row.itemId));
+          phase2RcIds.add(row.reportCardId);
+          examScoresSynced++;
+        } catch (e: any) {
+          errors.push(`Phase2 item ${row.itemId}: ${e.message}`);
+        }
+      }
+
+      // Phase 3+4: Recalculate all report cards changed in phase 2
+      for (const rcId of phase2RcIds) {
+        await this.recalculateReportCard(rcId, rcGradingMap.get(rcId) || 'standard').catch((e: any) => {
+          errors.push(`Phase2 recalculate RC ${rcId}: ${e.message}`);
+        });
+      }
+      console.log(`[ADD-MISSING-SUBJECTS] Phase 2 done: ${examScoresSynced} total scores synced, ${phase2RcIds.size} report cards recalculated`);
 
       console.log(`[ADD-MISSING-SUBJECTS] Done: ${students.length} students, ${totalItemsAdded} items added, ${examScoresSynced} scores synced`);
       return { studentsProcessed: students.length, itemsAdded: totalItemsAdded, examScoresSynced, errors };
@@ -9793,7 +9896,7 @@ export class DatabaseStorage implements IStorage {
       const RECORD_BATCH = 40;
       for (let i = 0; i < missingExamScores.length; i += RECORD_BATCH) {
         const batch = missingExamScores.slice(i, i + RECORD_BATCH);
-        const batchResults = await Promise.allSettled(batch.map(r => processRecord(r)));
+        const batchResults = await Promise.allSettled(batch.map((r: typeof missingExamScores[number]) => processRecord(r)));
         for (const result of batchResults) {
           if (result.status === 'rejected') {
             failed++;
