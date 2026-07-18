@@ -25,6 +25,7 @@ import { storage, db } from '../storage';
 import * as schema from '@shared/schema.pg';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { enhancedCache } from '../enhanced-cache';
+import { reliableSyncService } from '../services/reliable-sync-service';
 
 const router = Router();
 
@@ -167,18 +168,18 @@ router.post(
       }
 
       // Find student+term pairs that have no report card yet
-      const distinctTermIds = Array.from(
-        new Set(examResults.map(r => r.termId).filter((id): id is number => id != null))
+      const distinctTermIds: number[] = Array.from(
+        new Set(examResults.map((r: any) => r.termId).filter((id: any): id is number => id != null))
       );
-      const existingReportCards = distinctTermIds.length > 0
+      const existingReportCards: { studentId: string; termId: number }[] = distinctTermIds.length > 0
         ? await db
             .select({ studentId: schema.reportCards.studentId, termId: schema.reportCards.termId })
             .from(schema.reportCards)
             .where(inArray(schema.reportCards.termId, distinctTermIds))
         : [];
 
-      const existingPairs  = new Set(existingReportCards.map(rc => `${rc.studentId}:${rc.termId}`));
-      const missingResults = examResults.filter(r => !existingPairs.has(`${r.studentId}:${r.termId}`));
+      const existingPairs  = new Set(existingReportCards.map((rc: { studentId: string; termId: number }) => `${rc.studentId}:${rc.termId}`));
+      const missingResults = examResults.filter((r: any) => !existingPairs.has(`${r.studentId}:${r.termId}`));
 
       if (missingResults.length === 0) {
         return res.json({
@@ -197,17 +198,17 @@ router.post(
       const BATCH = 20;
       for (let i = 0; i < missingResults.length; i += BATCH) {
         const batch = missingResults.slice(i, i + BATCH);
-        await Promise.all(batch.map(async result => {
+        await Promise.all(batch.map(async (result: any) => {
           affectedPairs.add(`${result.studentId}:${result.termId}`);
           try {
-            const syncResult = await storage.syncExamScoreToReportCard(
+            const syncResult = await reliableSyncService.syncExamScoreToReportCardReliable(
               result.studentId,
               result.examId,
               result.score   ?? 0,
               result.maxScore ?? 100,
-              false,
+              { syncType: 'admin_repair', triggeredBy: 'system' }
             );
-            if (syncResult.isNewReportCard) created++;
+            if (syncResult.success) created++;
           } catch (err: any) {
             errors.push(`Student ${result.studentId} exam ${result.examId}: ${err.message}`);
           }

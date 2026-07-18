@@ -667,6 +667,24 @@ async function autoScoreExamSession(sessionId: number, storage: any): Promise<vo
         savedResultId = newResult.id;
       }
 
+      // Fire-and-forget sync to report card — all callers of autoScoreExamSession
+      // (normal submit, timeout auto-submit, late-answer re-score) get this automatically.
+      // The reliable sync service's idempotency window prevents double-processing when the
+      // main submit handler fires its own setImmediate sync within 5 seconds.
+      if (breakdown.pendingManualReview === 0) {
+        // Only sync when fully auto-scored; essay exams still pending teacher review
+        // will be synced by mergeExamScores() once all essays are graded.
+        reliableSyncService.syncExamScoreToReportCardReliable(
+          session.studentId,
+          session.examId,
+          totalAutoScore,
+          maxPossibleScore,
+          { syncType: 'exam_submit', triggeredBy: session.studentId }
+        ).catch((e: any) =>
+          console.error('[AUTO-SCORE] Background report-card sync failed:', e.message)
+        );
+      }
+
       // CRITICAL: Update the exam session with the calculated scores
       try {
         await storage.updateExamSession(sessionId, {
@@ -839,25 +857,38 @@ async function mergeExamScores(answerId: number, storage: any): Promise<void> {
     // Update or create the exam result with merged score
     const existingResult = await storage.getExamResultByExamAndStudent(session.examId, session.studentId);
 
+    // Extract timeTaken before branching (needed in both paths)
+    let timeTaken = 0;
+    if (session.metadata) {
+      try {
+        const metadata = typeof session.metadata === 'string' ? JSON.parse(session.metadata) : session.metadata;
+        timeTaken = metadata.timeTakenSeconds || 0;
+      } catch (e) {
+        console.warn('[MERGE-SCORES] Failed to parse session metadata for timeTaken', e);
+      }
+    }
+
     if (existingResult) {
-      // Update existing result
+      // Update existing result with merged score
       await storage.updateExamResult(existingResult.id, {
         score: totalScore,
         maxScore: maxScore,
         marksObtained: totalScore,
         autoScored: false, // Now includes manual scores
       });
-      let timeTaken = 0;
-      if (session.metadata) {
-        try {
-          const metadata = typeof session.metadata === 'string' ? JSON.parse(session.metadata) : session.metadata;
-          timeTaken = metadata.timeTakenSeconds || 0;
-        } catch (e) {
-          console.warn('[MERGE-SCORES] Failed to parse session metadata for timeTaken', e);
-        }
-      }
 
-      // Create new result (shouldn't happen, but handle it)
+      // Sync merged score to report card (fire-and-forget)
+      reliableSyncService.syncExamScoreToReportCardReliable(
+        session.studentId,
+        session.examId,
+        totalScore,
+        maxScore,
+        { syncType: 'exam_submit', triggeredBy: session.studentId }
+      ).catch((e: any) =>
+        console.error('[MERGE-SCORES] Background report-card sync failed:', e.message)
+      );
+    } else {
+      // No existing result — create one now (rare: session scored before result row exists)
       await storage.recordExamResult({
         examId: session.examId,
         studentId: session.studentId,
@@ -866,8 +897,19 @@ async function mergeExamScores(answerId: number, storage: any): Promise<void> {
         marksObtained: totalScore,
         timeTaken: timeTaken,
         autoScored: false,
-        recordedBy: session.studentId, // System recorded
+        recordedBy: session.studentId,
       });
+
+      // Sync newly-created result to report card
+      reliableSyncService.syncExamScoreToReportCardReliable(
+        session.studentId,
+        session.examId,
+        totalScore,
+        maxScore,
+        { syncType: 'exam_submit', triggeredBy: session.studentId }
+      ).catch((e: any) =>
+        console.error('[MERGE-SCORES] Background report-card sync (new result) failed:', e.message)
+      );
     }
 
   } catch (error) {
@@ -1474,22 +1516,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ message: 'Failed to sync realtime data' });
-    }
-  });
-
-  // AI-assisted grading routes
-  // Get AI-suggested grading tasks for teacher review
-  app.get('/api/grading/tasks/ai-suggested', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.TEACHER), async (req, res) => {
-    try {
-      const teacherId = req.user!.id;
-      const status = req.query.status as string;
-
-      // Get all AI-suggested grading tasks for the teacher
-      const tasks = await storage.getAISuggestedGradingTasks(teacherId, status);
-
-      res.json(tasks);
-    } catch (error) {
-      res.status(500).json({ message: 'Failed to fetch AI-suggested tasks' });
     }
   });
 
@@ -2681,6 +2707,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       realtimeService.emitTableChange('exam_results', 'UPDATE', updatedResult, result, teacherId);
 
       res.json(updatedResult);
+
+      // ── BUG-FIX: auto-sync updated score to report card (fire-and-forget) ──
+      // Previously: score was saved in DB but never propagated to report_card_items.
+      if (testScore !== undefined && testScore !== null) {
+        const scoreVal = typeof testScore === 'number' ? testScore : Number(testScore) || 0;
+        const maxVal = result.maxScore || exam.totalMarks || 100;
+        reliableSyncService.syncExamScoreToReportCardReliable(
+          result.studentId,
+          result.examId,
+          scoreVal,
+          maxVal,
+          { syncType: 'manual_sync', triggeredBy: teacherId }
+        ).catch((e: any) =>
+          console.error('[EXAM-RESULTS-PATCH] Background report-card sync failed:', e.message)
+        );
+      }
     } catch (error: any) {
       console.error('[EXAM-RESULTS] Error updating exam result:', error?.message);
       res.status(500).json({ message: 'Failed to update exam result' });
@@ -5232,44 +5274,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Teacher approves or overrides AI-suggested score
-  app.post('/api/grading/ai-suggested/:answerId/review', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.TEACHER), async (req, res) => {
-    try {
-      const answerId = parseInt(req.params.answerId);
-      const { approved, overrideScore, comment } = req.body;
-
-      const answer = await storage.getStudentAnswerById(answerId);
-      if (!answer) {
-        return res.status(404).json({ message: 'Answer not found' });
-      }
-      // If approved, mark as auto-scored and keep the score
-      if (approved) {
-        await storage.updateStudentAnswer(answerId, {
-          autoScored: true,
-          manualOverride: false,
-          feedbackText: comment || answer.feedbackText
-        });
-      } else {
-        // Teacher override - use their score
-        await storage.updateStudentAnswer(answerId, {
-          pointsEarned: overrideScore,
-          autoScored: false,
-          manualOverride: true,
-          feedbackText: comment
-        });
-      }
-      // Trigger score merge
-      await mergeExamScores(answerId, storage);
-
-      res.json({
-        message: approved ? 'AI score approved' : 'Score overridden successfully',
-        answer: await storage.getStudentAnswerById(answerId)
-      });
-    } catch (error) {
-      res.status(500).json({ message: 'Failed to review AI-suggested score' });
-    }
-  });
-
   // Initialize session middleware (required for Passport OAuth)
   // CRITICAL: Session must support cross-domain for Render (backend) + Vercel (frontend)
   const isProduction = process.env.NODE_ENV === 'production';
@@ -6960,270 +6964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ==================== ATTENDANCE MANAGEMENT ROUTES ====================
-
-  // Record attendance - Teacher or Admin only
-  app.post('/api/attendance', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
-    try {
-      const { studentId, classId, date, status, notes } = req.body;
-
-      if (!studentId || !classId || !date || !status) {
-        return res.status(400).json({ message: 'studentId, classId, date, and status are required' });
-      }
-
-      const attendanceData = {
-        studentId,
-        classId,
-        date,
-        status,
-        recordedBy: req.user!.id,
-        notes: notes || null
-      };
-
-      const newAttendance = await storage.recordAttendance(attendanceData);
-
-      // Emit realtime event for attendance record
-      realtimeService.emitAttendanceEvent(classId.toString(), 'marked', { ...newAttendance, recordedBy: req.user!.id });
-
-      res.status(201).json(newAttendance);
-    } catch (error: any) {
-      res.status(500).json({ message: error.message || 'Failed to record attendance' });
-    }
-  });
-
-  // Bulk record attendance for a class - Teacher or Admin only
-  app.post('/api/attendance/bulk', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
-    try {
-      const { classId, date, records } = req.body;
-
-      if (!classId || !date || !Array.isArray(records) || records.length === 0) {
-        return res.status(400).json({ message: 'classId, date, and records array are required' });
-      }
-
-      // Single batch operation: 1 SELECT + 1 UPDATE + 1 INSERT max (3 round-trips total)
-      // vs the old sequential loop which did 2 × N round-trips (44 for a 22-student class).
-      await storage.batchUpsertAttendance(classId, date, req.user!.id, records);
-
-      // Emit one realtime event for the whole batch
-      realtimeService.emitAttendanceEvent(classId.toString(), 'marked', {
-        classId, date, count: records.length, recordedBy: req.user!.id,
-      });
-
-      res.status(201).json({
-        message: `Successfully recorded ${records.length} attendance records`,
-        records: [],
-      });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message || 'Failed to record bulk attendance' });
-    }
-  });
-
-  // Get attendance by student - Student, Teacher, Parent, Admin
-  app.get('/api/attendance/student/:studentId', authenticateUser, async (req, res) => {
-    try {
-      const { studentId } = req.params;
-      const { date } = req.query;
-
-      const attendance = await storage.getAttendanceByStudent(studentId, date as string);
-      res.json(attendance);
-    } catch (error) {
-      res.status(500).json({ message: 'Failed to fetch student attendance' });
-    }
-  });
-
-  // Get attendance by class and date - Teacher or Admin
-  app.get('/api/attendance/class/:classId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
-    try {
-      const classId = parseInt(req.params.classId);
-      const { date } = req.query;
-
-      if (isNaN(classId)) {
-        return res.status(400).json({ message: 'Invalid class ID' });
-      }
-
-      if (!date) {
-        return res.status(400).json({ message: 'Date is required' });
-      }
-
-      const attendance = await storage.getAttendanceByClass(classId, date as string);
-      res.json(attendance);
-    } catch (error) {
-      res.status(500).json({ message: 'Failed to fetch class attendance' });
-    }
-  });
-
-  // Get attendance history by class and date range - Teacher or Admin
-  app.get('/api/attendance/class/:classId/history', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
-    try {
-      const classId = parseInt(req.params.classId);
-      const { startDate, endDate } = req.query;
-
-      if (isNaN(classId)) return res.status(400).json({ message: 'Invalid class ID' });
-      if (!startDate || !endDate) return res.status(400).json({ message: 'startDate and endDate are required' });
-
-      const records = await storage.getAttendanceByClassDateRange(classId, startDate as string, endDate as string);
-      res.json(records);
-    } catch (error) {
-      res.status(500).json({ message: 'Failed to fetch attendance history' });
-    }
-  });
-
-  // Update a single attendance record - Teacher or Admin
-  app.put('/api/attendance/:id', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
-    try {
-      const id = parseInt(req.params.id);
-      if (isNaN(id)) return res.status(400).json({ message: 'Invalid attendance ID' });
-
-      const { status, notes } = req.body;
-      if (!status) return res.status(400).json({ message: 'status is required' });
-
-      const updated = await storage.updateAttendance(id, { status, notes: notes || null });
-      if (!updated) return res.status(404).json({ message: 'Attendance record not found' });
-
-      res.json(updated);
-    } catch (error: any) {
-      res.status(500).json({ message: 'Failed to update attendance record' });
-    }
-  });
-
-  // School-wide attendance overview - Admin only
-  app.get('/api/attendance/overview', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
-    try {
-      const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
-
-      const [allStudents, allClasses, allUsers] = await Promise.all([
-        storage.getAllStudents(),
-        storage.getAllClasses(),
-        storage.getAllUsers(),
-      ]);
-
-      const userMap: Record<string, any> = {};
-      allUsers.forEach((u: any) => { userMap[u.id] = u; });
-
-      let totalPresent = 0, totalAbsent = 0, totalLate = 0, totalExcused = 0;
-
-      const classBreakdown = await Promise.all(
-        allClasses.map(async (cls: any) => {
-          const clsStudents = allStudents.filter((s: any) => s.classId === cls.id);
-          const attendance = await storage.getAttendanceByClass(cls.id, date);
-
-          const present = attendance.filter((a: any) => a.status === 'Present').length;
-          const absent = attendance.filter((a: any) => a.status === 'Absent').length;
-          const late = attendance.filter((a: any) => a.status === 'Late').length;
-          const excused = attendance.filter((a: any) => a.status === 'Excused').length;
-
-          totalPresent += present;
-          totalAbsent += absent;
-          totalLate += late;
-          totalExcused += excused;
-
-          const firstRecord = attendance[0] as any;
-          const recorder = firstRecord?.recordedBy ? userMap[firstRecord.recordedBy] : null;
-
-          return {
-            classId: cls.id,
-            className: cls.name,
-            level: cls.level,
-            totalStudents: clsStudents.length,
-            present, absent, late, excused,
-            attendancePercentage: clsStudents.length > 0
-              ? Math.round(((present + late) / clsStudents.length) * 100)
-              : 0,
-            hasAttendance: attendance.length > 0,
-            recordedBy: recorder ? `${recorder.firstName} ${recorder.lastName}` : null,
-            recordedAt: firstRecord?.createdAt || null,
-          };
-        })
-      );
-
-      const totalStudents = allStudents.length;
-      const attendancePercentage = totalStudents > 0
-        ? Math.round(((totalPresent + totalLate) / totalStudents) * 100)
-        : 0;
-
-      res.json({
-        date,
-        totalStudents,
-        totalPresent,
-        totalAbsent,
-        totalLate,
-        totalExcused,
-        attendancePercentage,
-        classBreakdown: classBreakdown.sort((a, b) => a.className.localeCompare(b.className)),
-      });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message || 'Failed to fetch attendance overview' });
-    }
-  });
-
-  // Attendance trends - Admin or Teacher
-  app.get('/api/attendance/trends', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.TEACHER), async (req, res) => {
-    try {
-      const { classId, view = 'daily' } = req.query;
-      const now = new Date();
-      let startDate: string, endDate: string;
-
-      endDate = now.toISOString().split('T')[0];
-      if (view === 'monthly') {
-        startDate = new Date(now.getFullYear(), now.getMonth() - 5, 1).toISOString().split('T')[0];
-      } else if (view === 'weekly') {
-        startDate = new Date(now.getTime() - 55 * 86400000).toISOString().split('T')[0];
-      } else {
-        startDate = new Date(now.getTime() - 13 * 86400000).toISOString().split('T')[0];
-      }
-
-      let allRecords: any[] = [];
-      if (classId) {
-        allRecords = await storage.getAttendanceByClassDateRange(parseInt(classId as string), startDate, endDate);
-      } else {
-        const allClasses = await storage.getAllClasses();
-        const results = await Promise.all(
-          allClasses.map((cls: any) => storage.getAttendanceByClassDateRange(cls.id, startDate, endDate))
-        );
-        allRecords = results.flat();
-      }
-
-      const grouped: Record<string, { present: number; absent: number; late: number; excused: number; total: number }> = {};
-
-      allRecords.forEach((record: any) => {
-        const d = new Date(record.date);
-        let key: string;
-        if (view === 'monthly') {
-          key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        } else if (view === 'weekly') {
-          const ws = new Date(d);
-          ws.setDate(d.getDate() - d.getDay());
-          key = ws.toISOString().split('T')[0];
-        } else {
-          key = record.date;
-        }
-        if (!grouped[key]) grouped[key] = { present: 0, absent: 0, late: 0, excused: 0, total: 0 };
-        const g = grouped[key];
-        if (record.status === 'Present') g.present++;
-        else if (record.status === 'Absent') g.absent++;
-        else if (record.status === 'Late') g.late++;
-        else if (record.status === 'Excused') g.excused++;
-        g.total++;
-      });
-
-      const data = Object.entries(grouped)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([period, counts]) => ({
-          period,
-          label: view === 'monthly'
-            ? new Date(period + '-01').toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })
-            : view === 'weekly'
-              ? `Wk ${new Date(period).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
-              : new Date(period).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
-          ...counts,
-          percentage: counts.total > 0 ? Math.round(((counts.present + counts.late) / counts.total) * 100) : 0,
-        }));
-
-      res.json({ view, startDate, endDate, data });
-    } catch (error: any) {
-      res.status(500).json({ message: error.message || 'Failed to fetch attendance trends' });
-    }
-  });
+  // Attendance routes are mounted above via attendanceRoutes router
 
   // Public file serving for homepage uploads (no auth required)
   app.get('/uploads/homepage/:filename', (req, res) => {
@@ -14809,25 +14550,28 @@ School Management System Administration
     }
   });
 
-  // ADMIN DEBUG: Force resync exam score to report card
-  // This is a temporary debug endpoint to test the fix for pg_strtoint32_safe error
+  // ADMIN: Force resync a single exam score to report card (uses reliable sync with full audit trail)
   app.post('/api/admin/resync-exam-score', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { studentId, examId, score, maxScore } = req.body;
 
-      console.log('[DEBUG-RESYNC] Received request:', { studentId, examId, score, maxScore });
+      if (!studentId || !examId) {
+        return res.status(400).json({ message: 'studentId and examId are required' });
+      }
 
-      // Call the sync function with explicit type conversion
-      const result = await storage.syncExamScoreToReportCard(
+      console.log('[ADMIN-RESYNC] Received request:', { studentId, examId, score, maxScore });
+
+      const result = await reliableSyncService.syncExamScoreToReportCardReliable(
         String(studentId),
         Number(examId),
-        Number(score),
-        Number(maxScore)
+        Number(score ?? 0),
+        Number(maxScore ?? 100),
+        { syncType: 'admin_repair', triggeredBy: req.user!.id }
       );
 
       res.json(result);
     } catch (error: any) {
-      console.error('[DEBUG-RESYNC] Error:', error);
+      console.error('[ADMIN-RESYNC] Error:', error);
       res.status(500).json({ message: error.message || 'Sync failed' });
     }
   });
