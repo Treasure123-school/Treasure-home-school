@@ -297,16 +297,6 @@ export function ReportCardMaintenanceDialog({ open, onOpenChange, selectedClass,
             </DialogDescription>
           </DialogHeader>
 
-          <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-950/30">
-            <Info className="h-4 w-4 text-blue-600" />
-            <AlertDescription className="text-xs text-blue-700 dark:text-blue-400 space-y-0.5">
-              <p><strong>Repair All</strong> — run first: adds missing subjects + syncs scores (safe to repeat).</p>
-              <p><strong>Sync Missing</strong> — fills only blank score slots, never overwrites existing scores.</p>
-              <p><strong>Force Re-Sync</strong> — overwrites every score from raw exam data, clears overrides.</p>
-              <p><strong>Generate Missing</strong> — creates new report cards for students with no card yet.</p>
-            </AlertDescription>
-          </Alert>
-
           <div className="space-y-3">
             {/* ── Repair All ────────────────────────────────────────────── */}
             <ToolCard
@@ -328,8 +318,6 @@ export function ReportCardMaintenanceDialog({ open, onOpenChange, selectedClass,
               ]}
               onRun={() => setConfirmRepair(true)}
             />
-
-            <Separator />
 
             {/* ── Sync Missing Scores ───────────────────────────────────── */}
             <ToolCard
@@ -369,9 +357,7 @@ export function ReportCardMaintenanceDialog({ open, onOpenChange, selectedClass,
                 { label: 'Failed', value: forceResult?.failed ?? 0, warn: (forceResult?.failed ?? 0) > 0 },
               ]}
               onRun={() => setConfirmForce(true)}
-            />
-
-            <Separator />
+            />  
 
             {/* ── Generate Missing ─────────────────────────────────────── */}
             <ToolCard
