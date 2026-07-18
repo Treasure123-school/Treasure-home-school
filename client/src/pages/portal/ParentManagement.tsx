@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/config/api';
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
@@ -106,7 +107,7 @@ function StudentSearch({
     queryFn: async () => {
       if (!q.trim() || q.trim().length < 1) return [];
       const token = localStorage.getItem('token');
-      const res = await fetch(`/api/students/search?q=${encodeURIComponent(q)}`, {
+      const res = await fetch(getApiUrl(`/api/students/search?q=${encodeURIComponent(q)}`), {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         credentials: 'include',
       });

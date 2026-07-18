@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { getApiUrl } from '@/config/api';
 import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -225,7 +226,7 @@ export function ReportCardMaintenanceDialog({ open, onOpenChange, selectedClass,
     const timer = setTimeout(() => controller.abort(), MAINTENANCE_TIMEOUT_MS);
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     try {
-      const res = await fetch(path, {
+      const res = await fetch(getApiUrl(path), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

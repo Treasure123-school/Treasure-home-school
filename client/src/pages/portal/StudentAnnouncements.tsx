@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/config/api';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -46,7 +47,7 @@ export default function StudentAnnouncements() {
   const { data: announcements, isLoading } = useQuery({
     queryKey: ['announcements', 'Student'],
     queryFn: async () => {
-      const response = await fetch('/api/announcements?role=Student', { credentials: 'include' });
+      const response = await fetch(getApiUrl('/api/announcements?role=Student'), { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch announcements');
       return response.json();
     }

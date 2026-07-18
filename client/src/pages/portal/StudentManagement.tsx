@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { getApiUrl } from '@/config/api';
 import { optimisticUpdateItem, optimisticDelete, rollbackOnError } from '@/lib/optimisticUpdates';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -324,7 +325,7 @@ export default function StudentManagement() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/students/bulk-upload', {
+      const response = await fetch(getApiUrl('/api/students/bulk-upload'), {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -369,7 +370,7 @@ export default function StudentManagement() {
           password: passwords?.[s.id] || 'Contact Admin',
         }));
 
-      const response = await fetch('/api/users/generate-login-slips', {
+      const response = await fetch(getApiUrl('/api/users/generate-login-slips'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -462,7 +463,7 @@ export default function StudentManagement() {
       formData.append('file', file);
 
       try {
-        const response = await fetch('/api/students/csv-preview', {
+        const response = await fetch(getApiUrl('/api/students/csv-preview'), {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -491,7 +492,7 @@ export default function StudentManagement() {
     if (csvPreview?.valid.length > 0) {
       try {
         // Commit the import
-        const response = await fetch('/api/students/csv-commit', {
+        const response = await fetch(getApiUrl('/api/students/csv-commit'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

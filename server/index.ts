@@ -100,9 +100,22 @@ app.use(compression({
 }));
 
 // Request timeout middleware (10 mins for dev/replit, 60s for production)
+// Admin maintenance endpoints (/api/admin/repair-*, /api/admin/sync-*, /api/admin/force-resync-*)
+// get 8 minutes via their own per-router req.setTimeout call in maintenance.routes.ts.
+// We carve them out here so the 60 s callback never fires for those routes even if the
+// per-router override is applied after this middleware runs.
+const ADMIN_MAINTENANCE_PATHS = [
+  '/api/admin/repair-profile-completion',
+  '/api/admin/repair-report-cards',
+  '/api/admin/report-cards/generate-missing',
+  '/api/admin/sync-all-missing-exam-scores',
+  '/api/admin/force-resync-all-exams',
+];
 app.use((req, res, next) => {
   const isDev = process.env.NODE_ENV !== 'production';
-  const timeout = isDev ? 600000 : 60000; // 10 mins in dev (covers AI generation polling), 60s in prod
+  const isMaintenanceRoute = ADMIN_MAINTENANCE_PATHS.some(p => req.path.startsWith(p));
+  // Maintenance routes get 8 min; everything else gets 10 min (dev) or 60 s (prod)
+  const timeout = isMaintenanceRoute ? 8 * 60 * 1000 : (isDev ? 600000 : 60000);
   req.setTimeout(timeout, () => {
     if (!res.headersSent) res.status(408).json({ message: 'Request timeout' });
   });

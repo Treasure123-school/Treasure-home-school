@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/config/api';
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -137,7 +138,7 @@ export default function ProfileOnboarding() {
         }
       };
 
-      const response = await fetch("/api/profile/me", {
+      const response = await fetch(getApiUrl("/api/profile/me"), {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

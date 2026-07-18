@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/config/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
@@ -29,7 +30,7 @@ export default function Gallery() {
   const { data: galleryImages, isLoading } = useQuery({
     queryKey: ['gallery-images'],
     queryFn: async () => {
-      const response = await fetch('/api/gallery', {
+      const response = await fetch(getApiUrl('/api/gallery'), {
         credentials: 'include'
       });
       if (!response.ok) throw new Error('Failed to fetch gallery images');
@@ -47,7 +48,7 @@ export default function Gallery() {
 
   const handleDeleteImage = async (imageId: number) => {
     try {
-      const response = await fetch(`/api/gallery/${imageId}`, {
+      const response = await fetch(getApiUrl(`/api/gallery/${imageId}`), {
         method: 'DELETE',
         credentials: 'include'
       });

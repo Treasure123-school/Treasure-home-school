@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/config/api';
 import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth';
@@ -201,7 +202,7 @@ export default function AttendanceManagement() {
   const updateMutation = useMutation({
     mutationFn: async ({ id, status, notes }: { id: number; status: string; notes: string }) => {
       const token = localStorage.getItem('token');
-      const res = await fetch(`/api/attendance/${id}`, {
+      const res = await fetch(getApiUrl(`/api/attendance/${id}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

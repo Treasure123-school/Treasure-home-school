@@ -9,3 +9,4 @@
 - [KaTeX pre-render/prewarm pattern](math-katex-prewarm.md) — sync-during-render math components never flash raw text; don't gate on blocking flags; reset warm-cache per session; escape KaTeX fallback
 - [Multer memoryStorage + req.file.path bug](multer-memorystorage-file-path.md) — memoryStorage has no req.file.path; fs.readFile(req.file.path) always 500s; use req.file.buffer instead
 - [Exam score → report card sync architecture](exam-score-sync-architecture.md) — all sync paths use reliableSyncService; helpers extracted to server/helpers/exam-scoring.ts; attendance + grading routes modularised
+- [Split deployment getApiUrl rule](split-deployment-getApiUrl.md) — every raw fetch('/api/...) must use getApiUrl(); missing it → 405 on POST via Vercel in production

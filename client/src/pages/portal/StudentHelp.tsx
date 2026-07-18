@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/config/api';
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth';
@@ -129,7 +130,7 @@ export default function StudentHelp() {
 
   const submitMutation = useMutation({
     mutationFn: async () => {
-      const res = await fetch('/api/contact', {
+      const res = await fetch(getApiUrl('/api/contact'), {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

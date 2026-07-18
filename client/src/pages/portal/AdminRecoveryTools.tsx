@@ -13,6 +13,7 @@ import { Shield, Key, Mail, AlertCircle, CheckCircle, UserCog, Trash2, RotateCcw
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
+import { getApiUrl } from '@/config/api';
 import { format, formatDistanceToNow } from 'date-fns';
 
 interface DeletedUser {
@@ -95,7 +96,7 @@ export default function AdminRecoveryTools() {
   // Password reset mutation
   const resetPasswordMutation = useMutation({
     mutationFn: async (data: { userId: string; newPassword: string; forceChange: boolean }) => {
-      const response = await fetch('/api/admin/reset-user-password', {
+      const response = await fetch(getApiUrl('/api/admin/reset-user-password'), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -127,7 +128,7 @@ export default function AdminRecoveryTools() {
   // Recovery email update mutation
   const updateRecoveryEmailMutation = useMutation({
     mutationFn: async (data: { userId: string; recoveryEmail: string }) => {
-      const response = await fetch('/api/admin/update-recovery-email', {
+      const response = await fetch(getApiUrl('/api/admin/update-recovery-email'), {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/config/api';
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -49,7 +50,7 @@ export default function BillingOutstanding() {
   const { data: outstanding = [], isLoading } = useQuery<OutstandingStudent[]>({
     queryKey: ['/api/billing/outstanding', filterItem, filterTerm],
     queryFn: async () => {
-      const res = await fetch(`/api/billing/outstanding?${params}`, { credentials: 'include' });
+      const res = await fetch(getApiUrl(`/api/billing/outstanding?${params}`), { credentials: 'include' });
       return res.json();
     },
     enabled: filterItem !== 'all',

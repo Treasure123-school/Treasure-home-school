@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/config/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -55,7 +56,7 @@ function StudentGradesContent({ user }: { user: any }) {
   const { data: examResults = [], isLoading, error } = useQuery({
     queryKey: ['examResults', user.id],
     queryFn: async () => {
-      const response = await fetch(`/api/exam-results/${user.id}`, {
+      const response = await fetch(getApiUrl(`/api/exam-results/${user.id}`), {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       if (!response.ok) throw new Error('Failed to fetch exam results');

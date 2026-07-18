@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/config/api';
 import { useState, useRef, useEffect } from 'react';
 import { Search, X, Users, BookOpen, Calendar, FileText, GraduationCap } from 'lucide-react';
 import { useLocation } from 'wouter';
@@ -40,7 +41,7 @@ export function HeaderSearch({ userRole }: HeaderSearchProps) {
       if (query.length >= 2) {
         setIsLoading(true);
         try {
-          const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&role=${userRole}`);
+          const response = await fetch(getApiUrl(`/api/search?q=${encodeURIComponent(query)}&role=${userRole}`));
           if (response.ok) {
             const data = await response.json();
             setResults(data.results || []);

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import SuperAdminLayout from "@/components/SuperAdminLayout";
+import { getApiUrl } from "@/config/api";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,7 +54,7 @@ export default function SuperAdminBrandingTheme() {
       fd.append("uploadType", "logo");
       fd.append("file", file);
       const token = localStorage.getItem('token');
-      const res = await fetch("/api/upload", {
+      const res = await fetch(getApiUrl("/api/upload"), {
         method: "POST",
         body: fd,
         headers: {
@@ -86,7 +87,7 @@ export default function SuperAdminBrandingTheme() {
       fd.append("uploadType", "favicon");
       fd.append("file", file);
       const token = localStorage.getItem('token');
-      const res = await fetch("/api/upload", {
+      const res = await fetch(getApiUrl("/api/upload"), {
         method: "POST",
         body: fd,
         headers: {

@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/config/api';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -106,7 +107,7 @@ export default function WebsiteOverview() {
   const { data: enquiries = [] } = useQuery<any[]>({
     queryKey: ['/api/admin/admissions-enquiries'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/admissions-enquiries', {
+      const res = await fetch(getApiUrl('/api/admin/admissions-enquiries'), {
         headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
         credentials: 'include',
       });
