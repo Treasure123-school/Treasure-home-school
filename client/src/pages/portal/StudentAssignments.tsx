@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/config/api';
 import { useState, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/lib/auth';
@@ -301,7 +302,7 @@ function AssignmentDetailDialog({
       if (textAnswer.trim()) form.append('textAnswer', textAnswer.trim());
       if (selectedFile) form.append('file', selectedFile);
 
-      const res = await fetch(`/api/student/assignments/${row.id}/submit`, {
+      const res = await fetch(getApiUrl(`/api/student/assignments/${row.id}/submit`), {
         method: 'POST',
         credentials: 'include',
         body: form,

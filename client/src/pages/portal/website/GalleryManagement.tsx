@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
+import { getApiUrl } from '@/config/api';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,7 +69,7 @@ export default function GalleryManagement() {
       const url = selectedCategory !== 'all'
         ? `/api/admin/gallery?categoryId=${selectedCategory}`
         : '/api/admin/gallery';
-      const res = await fetch(url, { headers: { Authorization: `Bearer ${token()}` }, credentials: 'include' });
+      const res = await fetch(getApiUrl(url), { headers: { Authorization: `Bearer ${token()}` }, credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch');
       return res.json();
     },
@@ -84,7 +85,7 @@ export default function GalleryManagement() {
       const formData = new FormData();
       formData.append('image', uploadFile);
       Object.entries(uploadForm).forEach(([k, v]) => { if (v && v !== 'none') formData.append(k, v); });
-      const res = await fetch('/api/admin/gallery', {
+      const res = await fetch(getApiUrl('/api/admin/gallery'), {
         method: 'POST',
         headers: { Authorization: `Bearer ${token()}` },
         credentials: 'include',

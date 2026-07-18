@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { getSharedSocket } from '@/hooks/useSocketIORealtime';
+import { getApiUrl } from '@/config/api';
 
 const HEARTBEAT_INTERVAL_MS = 25000;      // socket heartbeat every 25 s
 const REST_HEARTBEAT_INTERVAL_MS = 60000; // REST fallback every 60 s
@@ -13,7 +14,7 @@ async function pingRestHeartbeat() {
   const token = getToken();
   if (!token) return;
   try {
-    await fetch('/api/user/heartbeat', {
+    await fetch(getApiUrl('/api/user/heartbeat'), {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
     });

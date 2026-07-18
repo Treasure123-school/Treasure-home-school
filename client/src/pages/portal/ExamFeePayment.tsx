@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/config/api';
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -145,7 +146,7 @@ export default function ExamFeePayment() {
       // Poll status — include auth token so the request is authenticated
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch("/api/exam-payments/status", {
+        const res = await fetch(getApiUrl("/api/exam-payments/status"), {
           headers: {
             "Cache-Control": "no-cache",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),

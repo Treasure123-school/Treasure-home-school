@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/config/api';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -49,7 +50,7 @@ export default function BillingReports() {
   const { data: report, isLoading } = useQuery<ReportData>({
     queryKey: ['/api/billing/reports', filterTerm],
     queryFn: async () => {
-      const res = await fetch(`/api/billing/reports${params}`, { credentials: 'include' });
+      const res = await fetch(getApiUrl(`/api/billing/reports${params}`), { credentials: 'include' });
       return res.json();
     },
   });

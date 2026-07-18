@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/config/api';
 import { useLocation } from 'wouter';
 import {
   GraduationCap, Home, Users, Calendar, BookOpen, MessageSquare, User, Settings,
@@ -101,7 +102,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
   const { data: unreadMessagesCount = 0 } = useQuery<number>({
     queryKey: ['messages', 'unread', user?.id],
     queryFn: async () => {
-      const response = await fetch(`/api/messages/user/${user?.id}`, { credentials: 'include' });
+      const response = await fetch(getApiUrl(`/api/messages/user/${user?.id}`), { credentials: 'include' });
       if (!response.ok) return 0;
       const messages = await response.json();
       return messages.filter((m: any) => !m.isRead).length;

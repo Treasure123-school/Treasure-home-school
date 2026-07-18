@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/config/api';
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -118,7 +119,7 @@ export default function TeacherProfileVerification() {
   });
 
   const handleViewDetails = async (teacherId: string) => {
-    const response = await fetch(`/api/admin/teacher-profiles/${teacherId}`, {
+    const response = await fetch(getApiUrl(`/api/admin/teacher-profiles/${teacherId}`), {
       credentials: 'include'
     });
     const data = await response.json();

@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/config/api';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
@@ -34,7 +35,7 @@ function NewsDetail({ slug }: { slug: string }) {
   const { data: post, isLoading } = useQuery<NewsPost>({
     queryKey: ['/api/public/news', slug],
     queryFn: async () => {
-      const res = await fetch(`/api/public/news/${slug}`);
+      const res = await fetch(getApiUrl(`/api/public/news/${slug}`));
       if (!res.ok) throw new Error('Not found');
       return res.json();
     },

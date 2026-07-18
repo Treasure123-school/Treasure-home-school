@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/config/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
@@ -81,7 +82,7 @@ export default function StudentDashboard() {
   const { data: examResults, isLoading: isLoadingGrades } = useQuery({
     queryKey: ['examResults', user.id],
     queryFn: async () => {
-      const response = await fetch(`/api/exam-results/${user.id}`, {
+      const response = await fetch(getApiUrl(`/api/exam-results/${user.id}`), {
         credentials: 'include'
       });
       if (!response.ok) throw new Error('Failed to fetch exam results');
@@ -92,7 +93,7 @@ export default function StudentDashboard() {
   const { data: announcements, isLoading: isLoadingAnnouncements } = useQuery({
     queryKey: ['announcements', 'Student'],
     queryFn: async () => {
-      const response = await fetch('/api/announcements?role=Student', {
+      const response = await fetch(getApiUrl('/api/announcements?role=Student'), {
         credentials: 'include'
       });
       if (!response.ok) throw new Error('Failed to fetch announcements');
@@ -104,7 +105,7 @@ export default function StudentDashboard() {
     queryKey: ['/api/student/attendance'],
     queryFn: async () => {
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/student/attendance', {
+      const response = await fetch(getApiUrl('/api/student/attendance'), {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -151,7 +152,7 @@ export default function StudentDashboard() {
   const { data: messagesData = [] } = useQuery({
     queryKey: ['messages', user?.id],
     queryFn: async () => {
-      const response = await fetch(`/api/messages/user/${user!.id}`, {
+      const response = await fetch(getApiUrl(`/api/messages/user/${user!.id}`), {
         credentials: 'include'
       });
       if (!response.ok) throw new Error('Failed to fetch messages');
@@ -163,7 +164,7 @@ export default function StudentDashboard() {
   const { data: exams = [], isLoading: isLoadingExams } = useQuery<Exam[]>({
     queryKey: ['exams'],
     queryFn: async () => {
-      const response = await fetch('/api/exams', {
+      const response = await fetch(getApiUrl('/api/exams'), {
         credentials: 'include'
       });
       if (!response.ok) throw new Error('Failed to fetch exams');
@@ -174,7 +175,7 @@ export default function StudentDashboard() {
   const { data: assignmentsData = [] } = useQuery({
     queryKey: ['/api/student/assignments'],
     queryFn: async () => {
-      const response = await fetch('/api/student/assignments', {
+      const response = await fetch(getApiUrl('/api/student/assignments'), {
         credentials: 'include'
       });
       if (!response.ok) throw new Error('Failed to fetch assignments');

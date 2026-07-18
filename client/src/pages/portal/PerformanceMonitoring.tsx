@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/config/api';
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -61,7 +62,7 @@ export default function PerformanceMonitoring() {
   const { data: metrics, isLoading: metricsLoading, refetch: refetchMetrics } = useQuery<PerformanceMetrics>({
     queryKey: ['/api/admin/performance-metrics', timeRange],
     queryFn: async () => {
-      const response = await fetch(`/api/admin/performance-metrics?hours=${timeRange}`, {
+      const response = await fetch(getApiUrl(`/api/admin/performance-metrics?hours=${timeRange}`), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },
@@ -78,7 +79,7 @@ export default function PerformanceMonitoring() {
   const { data: alerts, isLoading: alertsLoading, refetch: refetchAlerts } = useQuery<PerformanceAlert[]>({
     queryKey: ['/api/admin/performance-alerts', timeRange],
     queryFn: async () => {
-      const response = await fetch(`/api/admin/performance-alerts?hours=${timeRange}`, {
+      const response = await fetch(getApiUrl(`/api/admin/performance-alerts?hours=${timeRange}`), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
         },

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
+import { getApiUrl } from '@/config/api';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -51,7 +52,7 @@ export default function AdmissionsManagement() {
   const { data: enquiries = [], isLoading } = useQuery<AdmissionsEnquiry[]>({
     queryKey: ['/api/admin/admissions-enquiries'],
     queryFn: async () => {
-      const res = await fetch('/api/admin/admissions-enquiries', {
+      const res = await fetch(getApiUrl('/api/admin/admissions-enquiries'), {
         headers: { Authorization: `Bearer ${localStorage.getItem('token') || ''}` },
         credentials: 'include',
       });

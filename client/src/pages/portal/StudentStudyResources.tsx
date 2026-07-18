@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/config/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +24,7 @@ function StudentStudyResourcesContent({ user }: { user: any }) {
   const { data: resources = [], isLoading, error } = useQuery({
     queryKey: ['study-resources'],
     queryFn: async () => {
-      const response = await fetch('/api/study-resources', {
+      const response = await fetch(getApiUrl('/api/study-resources'), {
         credentials: 'include'
       });
       if (!response.ok) throw new Error('Failed to fetch study resources');
@@ -34,7 +35,7 @@ function StudentStudyResourcesContent({ user }: { user: any }) {
   const { data: subjects = [] } = useQuery({
     queryKey: ['subjects'],
     queryFn: async () => {
-      const response = await fetch('/api/subjects', {
+      const response = await fetch(getApiUrl('/api/subjects'), {
         credentials: 'include'
       });
       if (!response.ok) throw new Error('Failed to fetch subjects');
@@ -90,7 +91,7 @@ function StudentStudyResourcesContent({ user }: { user: any }) {
 
   const handleDownload = async (resource: any) => {
     try {
-      const response = await fetch(`/api/study-resources/${resource.id}/download`, {
+      const response = await fetch(getApiUrl(`/api/study-resources/${resource.id}/download`), {
         credentials: 'include'
       });
       

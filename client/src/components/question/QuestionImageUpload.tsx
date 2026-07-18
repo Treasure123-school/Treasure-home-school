@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { getApiUrl } from "@/config/api";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -52,7 +53,7 @@ export function QuestionImageUpload({ value, onChange, disabled }: QuestionImage
       formData.append("uploadType", "question");
 
       const token = localStorage.getItem("token");
-      const res = await fetch("/api/upload", {
+      const res = await fetch(getApiUrl("/api/upload"), {
         method: "POST",
         body: formData,
         credentials: "include",

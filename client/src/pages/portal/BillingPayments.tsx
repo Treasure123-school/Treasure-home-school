@@ -1,3 +1,4 @@
+import { getApiUrl } from '@/config/api';
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -71,7 +72,7 @@ export default function BillingPayments() {
     queryKey: ['/api/billing/payments', filters],
     queryFn: async () => {
       const params = new URLSearchParams(filters);
-      const res = await fetch(`/api/billing/payments?${params}`, { credentials: 'include' });
+      const res = await fetch(getApiUrl(`/api/billing/payments?${params}`), { credentials: 'include' });
       return res.json();
     },
   });
