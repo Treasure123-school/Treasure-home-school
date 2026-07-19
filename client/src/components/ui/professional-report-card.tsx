@@ -1124,12 +1124,12 @@ export function ProfessionalReportCard({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {/* Teacher's Signature */}
             <div className="text-center">
-              <div className="border-b-2 border-dashed border-muted-foreground/30 mb-2 h-12 flex items-end justify-center pb-1">
+              <div className="border-b-2 border-dashed border-muted-foreground/30 mb-2 h-16 flex items-end justify-center pb-1">
                 {teacherSigSrc ? (
                   <img 
                     src={teacherSigSrc} 
                     alt="Class Teacher's Signature" 
-                    className="h-8 max-w-[110px] object-contain"
+                    className="h-14 max-w-full object-contain"
                     data-testid="img-teacher-signature"
                   />
                 ) : (
@@ -1149,12 +1149,12 @@ export function ProfessionalReportCard({
             
             {/* Principal's Signature */}
             <div className="text-center">
-              <div className="border-b-2 border-dashed border-muted-foreground/30 mb-2 h-12 flex items-end justify-center pb-1">
+              <div className="border-b-2 border-dashed border-muted-foreground/30 mb-2 h-16 flex items-end justify-center pb-1">
                 {principalSigSrc ? (
                   <img 
                     src={principalSigSrc} 
                     alt="Principal's Signature" 
-                    className="h-8 max-w-[110px] object-contain"
+                    className="h-14 max-w-full object-contain"
                     data-testid="img-principal-signature"
                   />
                 ) : (

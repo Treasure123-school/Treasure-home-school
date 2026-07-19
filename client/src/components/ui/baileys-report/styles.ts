@@ -8,7 +8,7 @@ export const MIN_ROWS = 20;
 export const GAP = 5;
 
 // ─── Signature size — increase this value to make signatures bigger ───
-export const SIG_HEIGHT = 80;
+export const SIG_HEIGHT = 28;
 
 // ─── Shared inline styles (no flexbox — html2canvas compatible) ───
 export const sectionHeader: React.CSSProperties = {
