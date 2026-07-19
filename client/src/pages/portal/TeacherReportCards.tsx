@@ -1870,6 +1870,7 @@ export default function TeacherReportCards() {
                 month: "short",
                 year: "numeric",
               }),
+              nextTermBegins: (fullReportCard as any).nextTermBegins || 'To be announced',
               affectiveTraits: fullReportCard.affectiveTraits || {
                 punctuality: 0,
                 neatness: 0,

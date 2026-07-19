@@ -1207,6 +1207,7 @@ export default function AdminResultPublishing() {
     dateOfBirth: d.dateOfBirth ? format(new Date(d.dateOfBirth), 'dd-MMM-yyyy') : '',
     age: calculateAge(d.dateOfBirth),
     dateIssued: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+    nextTermBegins: d.nextTermBegins || 'To be announced',
     affectiveTraits: d.affectiveTraits,
     psychomotorSkills: d.psychomotorSkills,
   });
@@ -2487,6 +2488,7 @@ export default function AdminResultPublishing() {
                 : '',
               age: calculateAge(fullReportCard.dateOfBirth),
               dateIssued: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+              nextTermBegins: (fullReportCard as any).nextTermBegins || 'To be announced',
               affectiveTraits: fullReportCard.affectiveTraits,
               psychomotorSkills: fullReportCard.psychomotorSkills
             }}

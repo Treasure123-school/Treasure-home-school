@@ -94,7 +94,7 @@ const BottomSection: React.FC<BottomSectionProps> = ({
       </colgroup>
       <tbody><tr>
         <td style={labelCell}>Next Term Begins:</td>
-        <td style={valueCell}>{reportCard.nextTermBegins || ''}</td>
+        <td style={valueCell}>{reportCard.nextTermBegins || 'To be announced'}</td>
         <td style={labelCell}>Date:</td>
         <td style={valueCell}>{reportCard.dateIssued || new Date().toLocaleDateString()}</td>
       </tr></tbody>
