@@ -907,11 +907,24 @@ export const reportCardSkills = pgTable("report_card_skills", {
   leadership: integer("leadership"),
   assignments: integer("assignments"),
   classParticipation: integer("class_participation"),
+  // Additional affective traits (1-5 scale)
+  honesty: integer("honesty"),
+  politeness: integer("politeness"),
+  selfControl: integer("self_control"),
+  obedience: integer("obedience"),
+  reliability: integer("reliability"),
+  senseOfResponsibility: integer("sense_of_responsibility"),
+  relationshipWithOthers: integer("relationship_with_others"),
   // Psychomotor skills (1-5 scale)
   sports: integer("sports"),
   handwriting: integer("handwriting"),
   musicalSkills: integer("musical_skills"),
   creativity: integer("creativity"),
+  // Additional psychomotor skills (1-5 scale)
+  handlingOfTools: integer("handling_of_tools"),
+  drawingPainting: integer("drawing_painting"),
+  publicSpeaking: integer("public_speaking"),
+  speechFluency: integer("speech_fluency"),
   // Metadata
   recordedBy: varchar("recorded_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp("created_at").notNull().defaultNow(),

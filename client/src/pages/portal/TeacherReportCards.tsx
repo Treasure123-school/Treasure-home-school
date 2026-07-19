@@ -138,6 +138,13 @@ interface AffectiveTraits {
   leadership: number;
   assignments: number;
   classParticipation: number;
+  honesty?: number;
+  politeness?: number;
+  selfControl?: number;
+  obedience?: number;
+  reliability?: number;
+  senseOfResponsibility?: number;
+  relationshipWithOthers?: number;
 }
 
 interface PsychomotorSkills {
@@ -145,6 +152,10 @@ interface PsychomotorSkills {
   handwriting: number;
   musicalSkills: number;
   creativity: number;
+  handlingOfTools?: number;
+  drawingPainting?: number;
+  publicSpeaking?: number;
+  speechFluency?: number;
 }
 
 interface ReportCard {
@@ -681,43 +692,30 @@ export default function TeacherReportCards() {
           return {
             ...old,
             affectiveTraits: {
-              punctuality: mergeSkill(
-                "punctuality",
-                existingAffective.punctuality,
-              ),
+              punctuality: mergeSkill("punctuality", existingAffective.punctuality),
               neatness: mergeSkill("neatness", existingAffective.neatness),
-              attentiveness: mergeSkill(
-                "attentiveness",
-                existingAffective.attentiveness,
-              ),
+              attentiveness: mergeSkill("attentiveness", existingAffective.attentiveness),
               teamwork: mergeSkill("teamwork", existingAffective.teamwork),
-              leadership: mergeSkill(
-                "leadership",
-                existingAffective.leadership,
-              ),
-              assignments: mergeSkill(
-                "assignments",
-                existingAffective.assignments,
-              ),
-              classParticipation: mergeSkill(
-                "classParticipation",
-                existingAffective.classParticipation,
-              ),
+              leadership: mergeSkill("leadership", existingAffective.leadership),
+              assignments: mergeSkill("assignments", existingAffective.assignments),
+              classParticipation: mergeSkill("classParticipation", existingAffective.classParticipation),
+              honesty: mergeSkill("honesty", existingAffective.honesty ?? 0),
+              politeness: mergeSkill("politeness", existingAffective.politeness ?? 0),
+              selfControl: mergeSkill("selfControl", existingAffective.selfControl ?? 0),
+              obedience: mergeSkill("obedience", existingAffective.obedience ?? 0),
+              reliability: mergeSkill("reliability", existingAffective.reliability ?? 0),
+              senseOfResponsibility: mergeSkill("senseOfResponsibility", existingAffective.senseOfResponsibility ?? 0),
+              relationshipWithOthers: mergeSkill("relationshipWithOthers", existingAffective.relationshipWithOthers ?? 0),
             },
             psychomotorSkills: {
               sports: mergeSkill("sports", existingPsychomotor.sports),
-              handwriting: mergeSkill(
-                "handwriting",
-                existingPsychomotor.handwriting,
-              ),
-              musicalSkills: mergeSkill(
-                "musicalSkills",
-                existingPsychomotor.musicalSkills,
-              ),
-              creativity: mergeSkill(
-                "creativity",
-                existingPsychomotor.creativity,
-              ),
+              handwriting: mergeSkill("handwriting", existingPsychomotor.handwriting),
+              musicalSkills: mergeSkill("musicalSkills", existingPsychomotor.musicalSkills),
+              creativity: mergeSkill("creativity", existingPsychomotor.creativity),
+              handlingOfTools: mergeSkill("handlingOfTools", existingPsychomotor.handlingOfTools ?? 0),
+              drawingPainting: mergeSkill("drawingPainting", existingPsychomotor.drawingPainting ?? 0),
+              publicSpeaking: mergeSkill("publicSpeaking", existingPsychomotor.publicSpeaking ?? 0),
+              speechFluency: mergeSkill("speechFluency", existingPsychomotor.speechFluency ?? 0),
             },
           };
         },

@@ -1073,7 +1073,7 @@ export default function AdminResultPublishing() {
     },
   });
 
-  // Admin: save psychomotor/affective skills
+  // Admin: save psychomotor/affective skills (with optimistic updates)
   const saveSkillsMutation = useMutation({
     mutationFn: async ({ reportCardId, skills }: { reportCardId: number; skills: any }) => {
       const response = await apiRequest('POST', `/api/reports/${reportCardId}/skills`, skills);
@@ -1083,11 +1083,60 @@ export default function AdminResultPublishing() {
       }
       return response.json();
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/reports', viewingReportCard?.id, 'full'] });
+    onMutate: async ({ reportCardId, skills }) => {
+      await queryClient.cancelQueries({ queryKey: ['/api/reports', reportCardId, 'full'] });
+      const previousFullReport = queryClient.getQueryData<any>(['/api/reports', reportCardId, 'full']);
+
+      const mergeSkill = (key: string, existingVal: number) => {
+        const newVal = skills[key];
+        return newVal !== undefined ? newVal : (existingVal ?? 0);
+      };
+
+      queryClient.setQueryData(['/api/reports', reportCardId, 'full'], (old: any) => {
+        if (!old) return old;
+        const existingAffective = old.affectiveTraits || {};
+        const existingPsychomotor = old.psychomotorSkills || {};
+        return {
+          ...old,
+          affectiveTraits: {
+            punctuality: mergeSkill('punctuality', existingAffective.punctuality),
+            neatness: mergeSkill('neatness', existingAffective.neatness),
+            attentiveness: mergeSkill('attentiveness', existingAffective.attentiveness),
+            teamwork: mergeSkill('teamwork', existingAffective.teamwork),
+            leadership: mergeSkill('leadership', existingAffective.leadership),
+            assignments: mergeSkill('assignments', existingAffective.assignments),
+            classParticipation: mergeSkill('classParticipation', existingAffective.classParticipation),
+            honesty: mergeSkill('honesty', existingAffective.honesty ?? 0),
+            politeness: mergeSkill('politeness', existingAffective.politeness ?? 0),
+            selfControl: mergeSkill('selfControl', existingAffective.selfControl ?? 0),
+            obedience: mergeSkill('obedience', existingAffective.obedience ?? 0),
+            reliability: mergeSkill('reliability', existingAffective.reliability ?? 0),
+            senseOfResponsibility: mergeSkill('senseOfResponsibility', existingAffective.senseOfResponsibility ?? 0),
+            relationshipWithOthers: mergeSkill('relationshipWithOthers', existingAffective.relationshipWithOthers ?? 0),
+          },
+          psychomotorSkills: {
+            sports: mergeSkill('sports', existingPsychomotor.sports),
+            handwriting: mergeSkill('handwriting', existingPsychomotor.handwriting),
+            musicalSkills: mergeSkill('musicalSkills', existingPsychomotor.musicalSkills),
+            creativity: mergeSkill('creativity', existingPsychomotor.creativity),
+            handlingOfTools: mergeSkill('handlingOfTools', existingPsychomotor.handlingOfTools ?? 0),
+            drawingPainting: mergeSkill('drawingPainting', existingPsychomotor.drawingPainting ?? 0),
+            publicSpeaking: mergeSkill('publicSpeaking', existingPsychomotor.publicSpeaking ?? 0),
+            speechFluency: mergeSkill('speechFluency', existingPsychomotor.speechFluency ?? 0),
+          },
+        };
+      });
+
+      return { previousFullReport, reportCardId };
+    },
+    onSuccess: (_data, { reportCardId }) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/reports', reportCardId, 'full'] });
       toast({ title: 'Saved', description: 'Skills updated successfully' });
     },
-    onError: (error: Error) => {
+    onError: (error: Error, _variables, context: any) => {
+      if (context?.previousFullReport && context?.reportCardId) {
+        queryClient.setQueryData(['/api/reports', context.reportCardId, 'full'], context.previousFullReport);
+      }
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     },
   });
@@ -2227,6 +2276,7 @@ export default function AdminResultPublishing() {
                       return response.json();
                     }}
                     isLoading={updateRemarksMutation.isPending || saveSkillsMutation.isPending}
+                    isFullReportReady={!loadingFullReport && !!fullReportCard}
                     hideActionButtons={true}
                   />
                 </div>

@@ -5847,13 +5847,24 @@ export class DatabaseStorage implements IStorage {
           teamwork: skills?.teamwork || 0,
           leadership: skills?.leadership || 0,
           assignments: skills?.assignments || 0,
-          classParticipation: skills?.classParticipation || 0
+          classParticipation: skills?.classParticipation || 0,
+          honesty: skills?.honesty || 0,
+          politeness: skills?.politeness || 0,
+          selfControl: skills?.selfControl || 0,
+          obedience: skills?.obedience || 0,
+          reliability: skills?.reliability || 0,
+          senseOfResponsibility: skills?.senseOfResponsibility || 0,
+          relationshipWithOthers: skills?.relationshipWithOthers || 0
         },
         psychomotorSkills: {
           sports: skills?.sports || 0,
           handwriting: skills?.handwriting || 0,
           musicalSkills: skills?.musicalSkills || 0,
-          creativity: skills?.creativity || 0
+          creativity: skills?.creativity || 0,
+          handlingOfTools: skills?.handlingOfTools || 0,
+          drawingPainting: skills?.drawingPainting || 0,
+          publicSpeaking: skills?.publicSpeaking || 0,
+          speechFluency: skills?.speechFluency || 0
         }
       };
     } catch (error) {
@@ -10027,10 +10038,21 @@ export class DatabaseStorage implements IStorage {
             leadership: mergeSkill('leadership', existing.leadership),
             assignments: mergeSkill('assignments', existing.assignments),
             classParticipation: mergeSkill('classParticipation', existing.classParticipation),
+            honesty: mergeSkill('honesty', existing.honesty ?? 0),
+            politeness: mergeSkill('politeness', existing.politeness ?? 0),
+            selfControl: mergeSkill('selfControl', existing.selfControl ?? 0),
+            obedience: mergeSkill('obedience', existing.obedience ?? 0),
+            reliability: mergeSkill('reliability', existing.reliability ?? 0),
+            senseOfResponsibility: mergeSkill('senseOfResponsibility', existing.senseOfResponsibility ?? 0),
+            relationshipWithOthers: mergeSkill('relationshipWithOthers', existing.relationshipWithOthers ?? 0),
             sports: mergeSkill('sports', existing.sports),
             handwriting: mergeSkill('handwriting', existing.handwriting),
             musicalSkills: mergeSkill('musicalSkills', existing.musicalSkills),
             creativity: mergeSkill('creativity', existing.creativity),
+            handlingOfTools: mergeSkill('handlingOfTools', existing.handlingOfTools ?? 0),
+            drawingPainting: mergeSkill('drawingPainting', existing.drawingPainting ?? 0),
+            publicSpeaking: mergeSkill('publicSpeaking', existing.publicSpeaking ?? 0),
+            speechFluency: mergeSkill('speechFluency', existing.speechFluency ?? 0),
             recordedBy: skills.recordedBy,
             updatedAt: new Date()
           })
@@ -10048,10 +10070,21 @@ export class DatabaseStorage implements IStorage {
             leadership: skills.leadership || 0,
             assignments: skills.assignments || 0,
             classParticipation: skills.classParticipation || 0,
+            honesty: skills.honesty || 0,
+            politeness: skills.politeness || 0,
+            selfControl: skills.selfControl || 0,
+            obedience: skills.obedience || 0,
+            reliability: skills.reliability || 0,
+            senseOfResponsibility: skills.senseOfResponsibility || 0,
+            relationshipWithOthers: skills.relationshipWithOthers || 0,
             sports: skills.sports || 0,
             handwriting: skills.handwriting || 0,
             musicalSkills: skills.musicalSkills || 0,
             creativity: skills.creativity || 0,
+            handlingOfTools: skills.handlingOfTools || 0,
+            drawingPainting: skills.drawingPainting || 0,
+            publicSpeaking: skills.publicSpeaking || 0,
+            speechFluency: skills.speechFluency || 0,
             recordedBy: skills.recordedBy
           })
           .returning();

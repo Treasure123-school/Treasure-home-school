@@ -91,6 +91,13 @@ interface AffectiveTraits {
   leadership: number;
   assignments: number;
   classParticipation: number;
+  honesty?: number;
+  politeness?: number;
+  selfControl?: number;
+  obedience?: number;
+  reliability?: number;
+  senseOfResponsibility?: number;
+  relationshipWithOthers?: number;
 }
 
 interface PsychomotorSkills {
@@ -98,6 +105,10 @@ interface PsychomotorSkills {
   handwriting: number;
   musicalSkills: number;
   creativity: number;
+  handlingOfTools?: number;
+  drawingPainting?: number;
+  publicSpeaking?: number;
+  speechFluency?: number;
 }
 
 interface ReportCardData {
@@ -209,10 +220,21 @@ export function ProfessionalReportCard({
     leadership: reportCard.affectiveTraits?.leadership || 0,
     assignments: reportCard.affectiveTraits?.assignments || 0,
     classParticipation: reportCard.affectiveTraits?.classParticipation || 0,
+    honesty: reportCard.affectiveTraits?.honesty || 0,
+    politeness: reportCard.affectiveTraits?.politeness || 0,
+    selfControl: reportCard.affectiveTraits?.selfControl || 0,
+    obedience: reportCard.affectiveTraits?.obedience || 0,
+    reliability: reportCard.affectiveTraits?.reliability || 0,
+    senseOfResponsibility: reportCard.affectiveTraits?.senseOfResponsibility || 0,
+    relationshipWithOthers: reportCard.affectiveTraits?.relationshipWithOthers || 0,
     sports: reportCard.psychomotorSkills?.sports || 0,
     handwriting: reportCard.psychomotorSkills?.handwriting || 0,
     musicalSkills: reportCard.psychomotorSkills?.musicalSkills || 0,
-    creativity: reportCard.psychomotorSkills?.creativity || 0
+    creativity: reportCard.psychomotorSkills?.creativity || 0,
+    handlingOfTools: reportCard.psychomotorSkills?.handlingOfTools || 0,
+    drawingPainting: reportCard.psychomotorSkills?.drawingPainting || 0,
+    publicSpeaking: reportCard.psychomotorSkills?.publicSpeaking || 0,
+    speechFluency: reportCard.psychomotorSkills?.speechFluency || 0,
   });
   
   // Baseline snapshot of loaded skills - used to compute diff for save payload
@@ -280,10 +302,21 @@ export function ProfessionalReportCard({
       leadership: reportCard.affectiveTraits?.leadership || 0,
       assignments: reportCard.affectiveTraits?.assignments || 0,
       classParticipation: reportCard.affectiveTraits?.classParticipation || 0,
+      honesty: reportCard.affectiveTraits?.honesty || 0,
+      politeness: reportCard.affectiveTraits?.politeness || 0,
+      selfControl: reportCard.affectiveTraits?.selfControl || 0,
+      obedience: reportCard.affectiveTraits?.obedience || 0,
+      reliability: reportCard.affectiveTraits?.reliability || 0,
+      senseOfResponsibility: reportCard.affectiveTraits?.senseOfResponsibility || 0,
+      relationshipWithOthers: reportCard.affectiveTraits?.relationshipWithOthers || 0,
       sports: reportCard.psychomotorSkills?.sports || 0,
       handwriting: reportCard.psychomotorSkills?.handwriting || 0,
       musicalSkills: reportCard.psychomotorSkills?.musicalSkills || 0,
-      creativity: reportCard.psychomotorSkills?.creativity || 0
+      creativity: reportCard.psychomotorSkills?.creativity || 0,
+      handlingOfTools: reportCard.psychomotorSkills?.handlingOfTools || 0,
+      drawingPainting: reportCard.psychomotorSkills?.drawingPainting || 0,
+      publicSpeaking: reportCard.psychomotorSkills?.publicSpeaking || 0,
+      speechFluency: reportCard.psychomotorSkills?.speechFluency || 0,
     };
     
     setLocalSkills(loadedSkills);
@@ -420,14 +453,25 @@ export function ProfessionalReportCard({
     teamwork: 0,
     leadership: 0,
     assignments: 0,
-    classParticipation: 0
+    classParticipation: 0,
+    honesty: 0,
+    politeness: 0,
+    selfControl: 0,
+    obedience: 0,
+    reliability: 0,
+    senseOfResponsibility: 0,
+    relationshipWithOthers: 0
   };
 
   const psychomotorSkills = reportCard.psychomotorSkills || {
     sports: 0,
     handwriting: 0,
     musicalSkills: 0,
-    creativity: 0
+    creativity: 0,
+    handlingOfTools: 0,
+    drawingPainting: 0,
+    publicSpeaking: 0,
+    speechFluency: 0
   };
 
   const totalSubjects = reportCard.items?.length || 0;
@@ -441,14 +485,25 @@ export function ProfessionalReportCard({
     { key: 'teamwork', label: 'Teamwork' },
     { key: 'leadership', label: 'Leadership' },
     { key: 'assignments', label: 'Assignments/Homework' },
-    { key: 'classParticipation', label: 'Class Participation' }
+    { key: 'classParticipation', label: 'Class Participation' },
+    { key: 'honesty', label: 'Honesty' },
+    { key: 'politeness', label: 'Politeness' },
+    { key: 'selfControl', label: 'Self Control' },
+    { key: 'obedience', label: 'Obedience' },
+    { key: 'reliability', label: 'Reliability' },
+    { key: 'senseOfResponsibility', label: 'Sense of Responsibility' },
+    { key: 'relationshipWithOthers', label: 'Relationship with Others' },
   ];
 
   const psychomotorLabels: { key: keyof PsychomotorSkills; label: string }[] = [
     { key: 'sports', label: 'Sports' },
     { key: 'handwriting', label: 'Handwriting' },
     { key: 'musicalSkills', label: 'Musical Skills' },
-    { key: 'creativity', label: 'Creativity / Craft' }
+    { key: 'creativity', label: 'Creativity / Craft' },
+    { key: 'handlingOfTools', label: 'Handling of Tools' },
+    { key: 'drawingPainting', label: 'Drawing & Painting' },
+    { key: 'publicSpeaking', label: 'Public Speaking' },
+    { key: 'speechFluency', label: 'Speech Fluency' },
   ];
 
   return (
