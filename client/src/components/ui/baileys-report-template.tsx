@@ -702,9 +702,9 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
               {reportCard.teacherName || ''}
             </td>
             <td style={labelCell}>Sign:</td>
-            <td style={{ ...valueCell, minHeight: 20 }}>
+            <td style={{ ...valueCell, minHeight: 56 }}>
               {teacherSigSrc ? (
-                <img src={teacherSigSrc} alt="" style={{ height: 20, objectFit: 'contain' }} />
+                <img src={teacherSigSrc} alt="" style={{ height: 56, objectFit: 'contain' }} />
               ) : ''}
             </td>
           </tr></tbody>
@@ -735,9 +735,9 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
               {reportCard.principalName || ''}
             </td>
             <td style={labelCell}>Sign:</td>
-            <td style={{ ...valueCell, minHeight: 20 }}>
+            <td style={{ ...valueCell, minHeight: 56 }}>
               {principalSigSrc ? (
-                <img src={principalSigSrc} alt="" style={{ height: 20, objectFit: 'contain' }} />
+                <img src={principalSigSrc} alt="" style={{ height: 56, objectFit: 'contain' }} />
               ) : ''}
             </td>
           </tr></tbody>
