@@ -1,3 +1,5 @@
+import React from 'react';
+
 // ─── Layout constants ───
 export const B = '1px solid #000';
 export const BL = '1px solid #555';

@@ -7,7 +7,7 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { toCanvas, toPng } from 'html-to-image';
-import { BaileysReportTemplate } from '@/components/ui/baileys-report-template';
+import { BaileysReportTemplate } from '@/components/ui/report-card-template';
 import { exportToPDF, exportToImage, printElement } from '@/lib/report-export-utils';
 
 const STATUS_BADGE_TRANSITION = "transition-all duration-300 ease-in-out";

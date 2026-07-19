@@ -6,7 +6,7 @@ import { getRemarkFromGrade } from '../utils';
 interface CognitiveDomainProps {
   subjects: SubjectScore[];
   testWeight: number;
-  emptyRows: unknown[];
+  emptyRows: null[];
 }
 
 const CognitiveDomain: React.FC<CognitiveDomainProps> = ({ subjects, testWeight, emptyRows }) => (

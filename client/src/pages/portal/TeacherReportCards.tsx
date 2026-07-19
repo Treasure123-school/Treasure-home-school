@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { toCanvas } from "html-to-image";
 import { useSocketIORealtime } from "@/hooks/useSocketIORealtime";
-import { BaileysReportTemplate } from "@/components/ui/baileys-report-template";
+import { BaileysReportTemplate } from "@/components/ui/report-card-template";
 import {
   exportToPDF,
   exportToImage,

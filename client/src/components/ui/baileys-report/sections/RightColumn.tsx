@@ -1,5 +1,5 @@
 import React from 'react';
-import type { AffectiveTraits, PsychomotorSkills, SubjectScore } from '../types';
+import type { AffectiveTraits, PsychomotorSkills } from '../types';
 import { B, BL, GAP, sectionHeader } from '../styles';
 
 interface RightColumnProps {

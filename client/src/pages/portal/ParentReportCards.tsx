@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { apiRequest } from '@/lib/queryClient';
-import { BaileysReportTemplate } from '@/components/ui/baileys-report-template';
+import { BaileysReportTemplate } from '@/components/ui/report-card-template';
 import { exportToPDF } from '@/lib/report-export-utils';
 import { calculateAge, getGradeColor } from '@/lib/report-card-utils';
 

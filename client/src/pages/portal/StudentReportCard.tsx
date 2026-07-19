@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
-import { BaileysReportTemplate } from '@/components/ui/baileys-report-template';
+import { BaileysReportTemplate } from '@/components/ui/report-card-template';
 import { exportToPDF, exportToImage, printElement } from '@/lib/report-export-utils';
 import { ContactUtils } from '@shared/contact-utils';
 import { 
