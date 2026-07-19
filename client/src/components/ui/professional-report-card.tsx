@@ -277,6 +277,10 @@ export function ProfessionalReportCard({
   // Track if we're in the middle of a save operation to prevent prop sync from overwriting local state
   const isSavingRef = useRef(false);
 
+  // Debounce helpers: accumulate rapid clicks into a single request
+  const pendingSkillsRef = useRef<Record<string, number>>({});
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Sync localSkills when switching to a different report card OR when initial data loads
   // Skip sync during active save operations to prevent flicker
   useEffect(() => {
@@ -333,40 +337,57 @@ export function ProfessionalReportCard({
   const canEditPrincipal = canEditPrincipalRemarks !== undefined ? canEditPrincipalRemarks : canEditRemarks;
   
   const handleSkillChange = (key: string, value: number) => {
-    // Update local state immediately for responsive UI
+    // 1. Update local state IMMEDIATELY — instant UI, no flicker, no guards
     setLocalSkills(prev => ({ ...prev, [key]: value }));
-    
-    // Auto-save to server
-    if (onSaveSkills && initialSkillsRef.current && skillsLoaded && !isLoading) {
-      const baseline = initialSkillsRef.current[key] ?? 0;
-      
-      // Only save if value actually changed from baseline
-      if (value !== baseline) {
-        // Set saving flag to prevent useEffect from overwriting local state
-        isSavingRef.current = true;
-        setIsSavingSkills(true);
-        
-        onSaveSkills({ [key]: value })
-          .then(() => {
-            // Update baseline after successful save
-            if (initialSkillsRef.current) {
-              initialSkillsRef.current[key] = value;
-            }
-          })
-          .catch((error) => {
-            console.error('Failed to save skill:', error);
-            // Revert local state on error
-            setLocalSkills(prev => ({ ...prev, [key]: baseline }));
-          })
-          .finally(() => {
-            // Clear saving flag after a short delay to allow React to settle
-            setTimeout(() => {
-              isSavingRef.current = false;
-            }, 100);
-            setIsSavingSkills(false);
+
+    if (!onSaveSkills || !initialSkillsRef.current || !skillsLoaded) return;
+
+    // 2. Accumulate latest value for this key (last click always wins)
+    pendingSkillsRef.current[key] = value;
+
+    // 3. Reset the debounce timer — only fires 350 ms after the last click
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+
+    debounceTimerRef.current = setTimeout(() => {
+      debounceTimerRef.current = null;
+
+      // Compute diff against baseline; skip fields that didn't actually change
+      const changedSkills: Record<string, number> = {};
+      Object.entries(pendingSkillsRef.current).forEach(([k, v]) => {
+        if (v !== (initialSkillsRef.current![k] ?? 0)) {
+          changedSkills[k] = v;
+        }
+      });
+      pendingSkillsRef.current = {};
+
+      if (Object.keys(changedSkills).length === 0) return;
+
+      isSavingRef.current = true;
+      setIsSavingSkills(true);
+
+      onSaveSkills(changedSkills)
+        .then(() => {
+          // Advance baseline so future diffs are computed correctly
+          if (initialSkillsRef.current) {
+            Object.assign(initialSkillsRef.current, changedSkills);
+          }
+        })
+        .catch(() => {
+          // Revert every changed field to its last-known baseline on error
+          setLocalSkills(prev => {
+            const reverted = { ...prev };
+            Object.entries(changedSkills).forEach(([k]) => {
+              (reverted as any)[k] = initialSkillsRef.current![k] ?? 0;
+            });
+            return reverted;
           });
-      }
-    }
+        })
+        .finally(() => {
+          // Keep the save-guard up briefly so the sync effect can't fire
+          setTimeout(() => { isSavingRef.current = false; }, 300);
+          setIsSavingSkills(false);
+        });
+    }, 350);
   };
   
   const handleSaveSkills = async () => {

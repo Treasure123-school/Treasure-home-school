@@ -1127,11 +1127,14 @@ export default function AdminResultPublishing() {
         };
       });
 
+      // Toast fires here — instant, no waiting for server
+      toast({ title: 'Saved', description: 'Skills updated' });
+
       return { previousFullReport, reportCardId };
     },
-    onSuccess: (_data, { reportCardId }) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/reports', reportCardId, 'full'] });
-      toast({ title: 'Saved', description: 'Skills updated successfully' });
+    onSuccess: () => {
+      // Cache is already correct from onMutate optimistic update.
+      // Do NOT invalidate — that triggers a refetch which overwrites localSkills and causes flicker.
     },
     onError: (error: Error, _variables, context: any) => {
       if (context?.previousFullReport && context?.reportCardId) {
@@ -2275,7 +2278,7 @@ export default function AdminResultPublishing() {
                       if (!response.ok) throw new Error('Failed to generate comments');
                       return response.json();
                     }}
-                    isLoading={updateRemarksMutation.isPending || saveSkillsMutation.isPending}
+                    isLoading={updateRemarksMutation.isPending}
                     isFullReportReady={!loadingFullReport && !!fullReportCard}
                     hideActionButtons={true}
                   />

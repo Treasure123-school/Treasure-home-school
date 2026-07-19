@@ -721,20 +721,17 @@ export default function TeacherReportCards() {
         },
       );
 
+      // Toast fires here — instant, no waiting for server
+      toast({ title: "Saved", description: "Skills updated" });
+
       return { previousFullReport, reportCardId };
     },
-    onSuccess: (_data, { reportCardId }) => {
-      toast({
-        title: "Success",
-        description: "Skills saved successfully",
-      });
-      // Refetch to ensure server data is synced
-      queryClient.invalidateQueries({
-        queryKey: ["/api/reports", reportCardId, "full"],
-      });
+    onSuccess: () => {
+      // Cache is already correct from onMutate optimistic update.
+      // Do NOT invalidate — that triggers a refetch which overwrites localSkills and causes flicker.
     },
     onError: (error: any, _variables, context) => {
-      // Rollback on error
+      // Rollback cache to snapshot taken before the mutation
       if (context?.previousFullReport && context?.reportCardId) {
         queryClient.setQueryData(
           ["/api/reports", context.reportCardId, "full"],
