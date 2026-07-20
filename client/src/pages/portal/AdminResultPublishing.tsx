@@ -104,6 +104,7 @@ export default function AdminResultPublishing() {
   const [rejectingId, setRejectingId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isRecalculating, setIsRecalculating] = useState(false);
   // Score override state (admin editing)
   const [selectedOverrideItem, setSelectedOverrideItem] = useState<any>(null);
   const [isOverrideDialogOpen, setIsOverrideDialogOpen] = useState(false);
@@ -1051,6 +1052,29 @@ export default function AdminResultPublishing() {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
+
+  // ─── Recalculate Mutation ─────────────────────────────────────────────────
+
+  const handleRecalculate = async () => {
+    if (!viewingReportCard?.id || isRecalculating) return;
+    setIsRecalculating(true);
+    try {
+      const response = await apiRequest('POST', `/api/reports/${viewingReportCard.id}/recalculate`);
+      if (!response.ok) {
+        const err = await response.json();
+        toast({ title: 'Recalculate Failed', description: err.message || 'Could not recalculate scores.', variant: 'destructive' });
+        return;
+      }
+      // Invalidate the full report cache so the dialog re-fetches fresh data
+      queryClient.invalidateQueries({ queryKey: ['/api/reports', viewingReportCard.id, 'full'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
+      toast({ title: 'Recalculated', description: 'Scores, grades and positions have been recalculated.' });
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message || 'Recalculate failed.', variant: 'destructive' });
+    } finally {
+      setIsRecalculating(false);
+    }
+  };
 
   // ─── Admin Editing Mutations ───────────────────────────────────────────────
 
@@ -2061,6 +2085,18 @@ export default function AdminResultPublishing() {
                     </span>
                   </div>
                   <div className="flex items-center gap-1 sm:gap-1.5">
+                    {/* Recalculate — re-syncs scores, grades & positions from source exams */}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleRecalculate}
+                      disabled={isRecalculating}
+                      aria-label="Recalculate scores and grades"
+                      title="Recalculate scores, grades & positions"
+                      data-testid="button-recalculate"
+                    >
+                      {isRecalculating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    </Button>
                     {/* Print/Download icons */}
                     <Button
                       variant="outline"

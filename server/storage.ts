@@ -6552,12 +6552,13 @@ export class DatabaseStorage implements IStorage {
       // Re-apply the active grading scale to every non-overridden item.
       // This keeps individual subject grades in sync with the current admin-configured
       // grade boundaries whenever recalculate is triggered (e.g. after a scale change).
+      // Always derive percentage from obtainedMarks/totalMarks — the stored `percentage`
+      // column may be stale (e.g., calculated with wrong denominator).
       for (const item of items) {
         if (item.isOverridden) continue;
-        // Prefer the stored weighted percentage; fall back to obtainedMarks proportion.
-        const itemPerc = (item.percentage != null && item.percentage > 0)
-          ? item.percentage
-          : (item.totalMarks > 0 ? Math.round((item.obtainedMarks / item.totalMarks) * 100) : 0);
+        const itemPerc = item.totalMarks > 0
+          ? Math.round((item.obtainedMarks / item.totalMarks) * 100)
+          : (item.percentage ?? 0);
         const itemGradeInfo = calculateGradeFromConfig(itemPerc, activeConfig);
         await db.update(schema.reportCardItems)
           .set({ grade: itemGradeInfo.grade, remarks: itemGradeInfo.remarks, updatedAt: new Date() })

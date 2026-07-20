@@ -13520,6 +13520,47 @@ School Management System Administration
     }
   });
 
+  // Bulk-recalculate all report cards for a class+term (admin only)
+  // Fixes stale obtained_marks / percentage / grade data caused by old sync code.
+  app.post('/api/reports/recalculate-all', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: Request, res: Response) => {
+    try {
+      const { classId, termId } = req.body;
+      if (!classId || !termId) {
+        return res.status(400).json({ message: 'classId and termId are required' });
+      }
+
+      // Find all report cards for this class + term
+      const reportCards = await db.select({ id: schema.reportCards.id })
+        .from(schema.reportCards)
+        .where(and(
+          eq(schema.reportCards.classId, Number(classId)),
+          eq(schema.reportCards.termId, Number(termId))
+        ));
+
+      let recalculated = 0;
+      const errors: string[] = [];
+
+      for (const rc of reportCards) {
+        try {
+          await storage.autoPopulateReportCardScores(rc.id);
+          recalculated++;
+        } catch (err: any) {
+          errors.push(`Report card ${rc.id}: ${err.message}`);
+        }
+      }
+
+      // Recalculate class positions once after all scores are updated
+      if (reportCards.length > 0) {
+        await storage.recalculateClassPositions(Number(classId), Number(termId));
+      }
+
+      res.json({ recalculated, total: reportCards.length, errors });
+    } catch (error: any) {
+      console.error('Error bulk-recalculating report cards:', error);
+      res.status(500).json({ message: error.message || 'Failed to bulk-recalculate' });
+    }
+  });
+
   // ==================== END REPORT CARD ROUTES ====================
 
   // ==================== TEACHER ASSIGNMENT ROUTES ====================

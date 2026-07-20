@@ -120,7 +120,11 @@ export function calculateWeightedScore(
   }
   
   const weightedScore = testWeighted + examWeighted;
-  const percentage = totalWeight > 0 ? (weightedScore / totalWeight) * 100 : 0;
+  // Always divide by the FULL weight scale (testWeight + examWeight = 100).
+  // Using only the present-score weights as denominator inflates percentages when
+  // one component is missing — e.g. testWeighted=40 with no exam → 40/40=100% wrong.
+  const maxWeight = config.testWeight + config.examWeight;
+  const percentage = maxWeight > 0 ? (weightedScore / maxWeight) * 100 : 0;
   const gradeInfo = calculateGradeFromConfig(percentage, config);
   
   return {
