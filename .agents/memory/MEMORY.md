@@ -11,3 +11,5 @@
 - [Multer memoryStorage + req.file.path bug](multer-memorystorage-file-path.md) — memoryStorage has no req.file.path; fs.readFile(req.file.path) always 500s; use req.file.buffer instead
 - [Exam score → report card sync architecture](exam-score-sync-architecture.md) — all sync paths use reliableSyncService; helpers extracted to server/helpers/exam-scoring.ts; attendance + grading routes modularised
 - [Split deployment getApiUrl rule](split-deployment-getApiUrl.md) — every raw fetch('/api/...) must use getApiUrl(); missing it → 405 on POST via Vercel in production
+- [Report card display — weighted vs raw scores](report-card-display-vs-weighted.md) — Test/Exam columns must show testWeightedScore/examWeightedScore not raw scores; precompute gradedItems once for desktop+mobile
+- [Recalculate zero-score filter bug](recalculate-zero-score-filter.md) — all 3 recalculate paths must filter by score nullability not > 0; affects storage.ts, reliable-sync-service.ts, maintenance bulk SQL

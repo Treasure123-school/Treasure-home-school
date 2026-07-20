@@ -967,8 +967,14 @@ router.post(
         FROM (
           SELECT
             rci.report_card_id,
-            COALESCE(SUM(rci.obtained_marks), 0)    AS total_obtained,
-            COALESCE(ROUND(AVG(rci.percentage)), 0) AS avg_pct
+            COALESCE(SUM(rci.obtained_marks), 0) AS total_obtained,
+            -- Only average items that have actual raw scores recorded.
+            -- Rows where both test_score and exam_score are NULL are placeholder
+            -- (unscored) rows and must not drag the class average down.
+            COALESCE(ROUND(AVG(
+              CASE WHEN rci.test_score IS NOT NULL OR rci.exam_score IS NOT NULL
+                   THEN rci.percentage ELSE NULL END
+            )), 0) AS avg_pct
           FROM report_card_items rci
           WHERE rci.report_card_id IN (
             SELECT id FROM report_cards rc WHERE 1=1 ${rcFilters}

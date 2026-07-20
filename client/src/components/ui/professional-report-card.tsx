@@ -500,6 +500,15 @@ export function ProfessionalReportCard({
   const totalObtained = reportCard.items?.reduce((sum, item) => sum + (item.obtainedMarks || 0), 0) || 0;
   const totalMax = reportCard.items?.reduce((sum, item) => sum + (item.totalMarks || 100), 0) || 0;
 
+  // Pre-compute grade info once per item — shared by desktop table and mobile card views.
+  // Uses obtainedMarks (the server-side weighted total) as the source of truth for percentage.
+  const gradeCfg = { ...STANDARD_GRADING_SCALE, testWeight, examWeight };
+  const gradedItems = (reportCard.items ?? []).map(item => {
+    const pct = Math.round((item.obtainedMarks || 0) / (item.totalMarks || 100) * 100);
+    const gi  = calculateGradeFromConfig(pct, gradeCfg);
+    return { item, pct, gi };
+  });
+
   const affectiveTraitLabels: { key: keyof AffectiveTraits; label: string }[] = [
     { key: 'punctuality', label: 'Punctuality' },
     { key: 'neatness', label: 'Neatness' },
@@ -794,35 +803,27 @@ export function ProfessionalReportCard({
                     </tr>
                   </thead>
                   <tbody>
-                    {reportCard.items?.map((item, index) => {
-                      // Compute grade inline from obtainedMarks/totalMarks — never read
-                      // the stale item.grade / item.percentage columns which may hold
-                      // values from an old formula that divided by available weight only
-                      // (e.g. test=31/40 → 77.5% → A instead of correct 31/100 → E).
-                      const _gradeCfg = { ...STANDARD_GRADING_SCALE, testWeight, examWeight };
-                      const _pct = Math.round((item.obtainedMarks || 0) / (item.totalMarks || 100) * 100);
-                      const _gi  = calculateGradeFromConfig(_pct, _gradeCfg);
-                      return (
+                    {gradedItems.map(({ item, gi, pct }, index) => (
                       <tr key={item.id} className={index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}>
                         <td className="p-2 font-medium border-b">{item.subjectName}</td>
                         <td className="text-center p-2 border-b">
-                          {item.testScore !== null ? item.testScore : '-'}/{testWeight}
+                          {item.testWeightedScore != null ? item.testWeightedScore : (item.testScore != null ? item.testScore : '-')}/{testWeight}
                         </td>
                         <td className="text-center p-2 border-b">
-                          {item.examScore !== null ? item.examScore : '-'}/{examWeight}
+                          {item.examWeightedScore != null ? item.examWeightedScore : (item.examScore != null ? item.examScore : '-')}/{examWeight}
                         </td>
                         <td className="text-center p-2 font-semibold border-b">
                           {item.obtainedMarks || 0}/100
                         </td>
                         <td className="text-center p-2 border-b">
-                          <Badge className={`${getGradeColor(_gi.grade)}`}>{_gi.grade || '-'}</Badge>
+                          <Badge className={`${getGradeColor(gi.grade)}`}>{gi.grade || '-'}</Badge>
                         </td>
                         <td className="text-center p-2 border-b text-muted-foreground">
                           {item.subjectPosition ? formatPosition(item.subjectPosition) : '-'}
                         </td>
                         <td className="p-2 text-xs border-b max-w-[120px]">
-                          <span className={getGradeColor(_gi.grade).replace('bg-', 'text-').replace('-100', '-700')}>
-                            {_gi.remarks || item.teacherRemarks}
+                          <span className={getGradeColor(gi.grade).replace('bg-', 'text-').replace('-100', '-700')}>
+                            {gi.remarks || item.teacherRemarks}
                           </span>
                         </td>
                         <td className="text-center p-2 border-b print:hidden">
@@ -838,26 +839,21 @@ export function ProfessionalReportCard({
                           )}
                         </td>
                       </tr>
-                      );
-                    })}
+                    ))}
                   </tbody>
                 </table>
               </div>
 
               {/* Mobile Card View */}
               <div className="block sm:hidden space-y-2 p-3 print:hidden">
-                {reportCard.items?.map((item) => {
-                  const _gradeCfg2 = { ...STANDARD_GRADING_SCALE, testWeight, examWeight };
-                  const _pct2 = Math.round((item.obtainedMarks || 0) / (item.totalMarks || 100) * 100);
-                  const _gi2  = calculateGradeFromConfig(_pct2, _gradeCfg2);
-                  return (
+                {gradedItems.map(({ item, gi, pct }) => (
                   <div key={item.id} className="bg-muted/30 rounded-md p-3" data-testid={`card-subject-${item.id}`}>
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div>
                         <h4 className="font-medium text-sm">{item.subjectName}</h4>
                         <div className="flex items-center gap-2 mt-1">
-                          <Badge className={`${getGradeColor(_gi2.grade)} text-xs`}>{_gi2.grade || '-'}</Badge>
-                          <span className="text-xs text-muted-foreground">{_pct2}%</span>
+                          <Badge className={`${getGradeColor(gi.grade)} text-xs`}>{gi.grade || '-'}</Badge>
+                          <span className="text-xs text-muted-foreground">{pct}%</span>
                           {item.subjectPosition && (
                             <span className="text-xs text-muted-foreground">Pos: {formatPosition(item.subjectPosition)}</span>
                           )}
@@ -877,11 +873,11 @@ export function ProfessionalReportCard({
                     <div className="grid grid-cols-3 gap-2 text-center text-xs">
                       <div className="bg-background p-2 rounded">
                         <p className="text-muted-foreground">Test</p>
-                        <p className="font-medium">{item.testScore !== null ? item.testScore : '-'}/{testWeight}</p>
+                        <p className="font-medium">{item.testWeightedScore != null ? item.testWeightedScore : (item.testScore != null ? item.testScore : '-')}/{testWeight}</p>
                       </div>
                       <div className="bg-background p-2 rounded">
                         <p className="text-muted-foreground">Exam</p>
-                        <p className="font-medium">{item.examScore !== null ? item.examScore : '-'}/{examWeight}</p>
+                        <p className="font-medium">{item.examWeightedScore != null ? item.examWeightedScore : (item.examScore != null ? item.examScore : '-')}/{examWeight}</p>
                       </div>
                       <div className="bg-background p-2 rounded">
                         <p className="text-muted-foreground">Total</p>
@@ -889,11 +885,10 @@ export function ProfessionalReportCard({
                       </div>
                     </div>
                     <p className="text-xs mt-2 text-muted-foreground">
-                      <span className="font-medium">Remarks:</span> {_gi2.remarks || item.teacherRemarks}
+                      <span className="font-medium">Remarks:</span> {gi.remarks || item.teacherRemarks}
                     </p>
                   </div>
-                  );
-                })}
+                ))}
               </div>
             </CardContent>
           </CollapsibleContent>

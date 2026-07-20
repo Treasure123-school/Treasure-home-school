@@ -6612,14 +6612,15 @@ export class DatabaseStorage implements IStorage {
       // component weight (e.g. 40 for test-only), making the ratio misleadingly low.
       const activeConfig = await getActiveGradingConfig();
 
-      // Use the stored per-item percentage (already correctly weighted) to compute
-      // the average.  Only count items that have been scored (percentage OR obtainedMarks > 0)
-      // so uncalculated zero-items don't drag the average down unfairly.
+      // Count only items that have actual recorded raw scores — avoids excluding
+      // students who legitimately scored 0 (which percentage > 0 would wrongly skip).
       const itemsWithScores = items.filter(
-        (item: any) => (item.percentage ?? 0) > 0 || (item.obtainedMarks ?? 0) > 0
+        (item: any) => item.testScore !== null || item.examScore !== null
       );
       const countForAvg = itemsWithScores.length > 0 ? itemsWithScores.length : items.length;
-      const sumPercentage = items.reduce(
+      // Sum only scored items (unscored rows have percentage=0 and should not contribute
+      // to the sum OR to the count, so keeping them out of both is consistent).
+      const sumPercentage = itemsWithScores.reduce(
         (sum: number, item: any) => sum + (item.percentage || 0), 0
       );
       const averagePercentage = countForAvg > 0 ? sumPercentage / countForAvg : 0;
