@@ -13485,13 +13485,19 @@ School Management System Administration
       const { reportCardId } = req.params;
       const { gradingScale = 'standard' } = req.body;
 
-      // 1. Re-apply weighted scores to every item from stored raw scores
-      //    (honours the active grading config's testWeight / examWeight so
-      //    the fixed full-weight normalisation is applied to existing data).
-      //    This also skips items the teacher manually overrode (isOverridden=true).
-      await storage.autoPopulateReportCardScores(Number(reportCardId));
+      // 1. Re-apply the weighted formula to scores ALREADY ON THE ITEMS.
+      //    Does NOT re-fetch from exam_results so manually-entered raw scores
+      //    are preserved.  Only re-derives obtainedMarks / percentage / grade /
+      //    remarks from the stored testScore + examScore columns.
+      //    Items where isOverridden=true are skipped.
+      const reapplyResult = await storage.reapplyWeightedScoresToItems(Number(reportCardId));
+      if (reapplyResult.errors.length > 0) {
+        console.warn('[RECALC] Some items had errors:', reapplyResult.errors);
+      }
 
       // 2. Recompute header totals + overall grade from the freshly recalculated items
+      //    (reapplyWeightedScoresToItems already calls recalculateReportCard internally,
+      //     but we call it again here so we always get back the latest row to return)
       const updatedReportCard = await storage.recalculateReportCard(
         Number(reportCardId),
         gradingScale

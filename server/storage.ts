@@ -474,6 +474,7 @@ export interface IStorage {
   getReportCardWithItems(reportCardId: number): Promise<any>;
   generateReportCardsForClass(classId: number, termId: number, gradingScale: string, generatedBy: string): Promise<{ created: number; updated: number; errors: string[] }>;
   autoPopulateReportCardScores(reportCardId: number): Promise<{ populated: number; errors: string[] }>;
+  reapplyWeightedScoresToItems(reportCardId: number): Promise<{ updated: number; errors: string[] }>;
   overrideReportCardItemScore(itemId: number, data: {
     testScore?: number | null;
     testMaxScore?: number | null;
@@ -6113,6 +6114,79 @@ export class DatabaseStorage implements IStorage {
       console.error('Error auto-populating report card scores:', error);
       return { populated: 0, errors: [error.message] };
     }
+  }
+
+  /**
+   * Re-apply the active weighted formula to scores ALREADY STORED on each item.
+   * Does NOT re-fetch from exam_results — preserves manually-entered scores.
+   * Skips items where isOverridden = true.
+   * Use this for the individual "Recalculate" button so only the grade/percentage
+   * math is corrected, not the raw scores.
+   */
+  async reapplyWeightedScoresToItems(reportCardId: number): Promise<{ updated: number; errors: string[] }> {
+    const errors: string[] = [];
+    let updated = 0;
+    try {
+      // Get system weights (testWeight/examWeight); fall back to grading config defaults
+      let config = await getActiveGradingConfig();
+      const systemSettingsRows = await db
+        .select({ testWeight: schema.systemSettings.testWeight, examWeight: schema.systemSettings.examWeight })
+        .from(schema.systemSettings)
+        .limit(1);
+      if (systemSettingsRows[0]) {
+        config = {
+          ...config,
+          testWeight:  systemSettingsRows[0].testWeight  ?? config.testWeight,
+          examWeight:  systemSettingsRows[0].examWeight  ?? config.examWeight,
+        };
+      }
+
+      const items = await db
+        .select()
+        .from(schema.reportCardItems)
+        .where(eq(schema.reportCardItems.reportCardId, reportCardId));
+
+      for (const item of items) {
+        try {
+          // Never touch manually-overridden items
+          if (item.isOverridden) continue;
+
+          // Use the raw scores already stored on the item (no exam_results re-fetch)
+          const testScore    = item.testScore    ?? null;
+          const testMaxScore = item.testMaxScore ?? null;
+          const examScore    = item.examScore    ?? null;
+          const examMaxScore = item.examMaxScore ?? null;
+
+          // If the item has no scores at all yet, leave it alone
+          if (testScore === null && examScore === null) continue;
+
+          const weighted  = calculateWeightedScore(testScore, testMaxScore, examScore, examMaxScore, config);
+          const gradeInfo = calculateGradeFromConfig(weighted.percentage, config);
+
+          await db.update(schema.reportCardItems)
+            .set({
+              testWeightedScore: Math.round(weighted.testWeighted),
+              examWeightedScore: Math.round(weighted.examWeighted),
+              obtainedMarks:     Math.round(weighted.weightedScore),
+              percentage:        Math.round(weighted.percentage),
+              grade:             gradeInfo.grade,
+              remarks:           gradeInfo.remarks,
+              updatedAt:         new Date(),
+            })
+            .where(eq(schema.reportCardItems.id, item.id));
+
+          updated++;
+        } catch (itemErr: any) {
+          errors.push(`Item ${item.id}: ${itemErr.message}`);
+        }
+      }
+
+      // Re-aggregate header (averagePercentage, overallGrade, totalScore, positions)
+      await this.recalculateReportCard(reportCardId, 'standard');
+    } catch (err: any) {
+      errors.push(err.message);
+    }
+    return { updated, errors };
   }
 
   async getExamScoresForReportCard(studentId: string, subjectId: number, termId: number): Promise<{ testExams: any[]; mainExams: any[] }> {
