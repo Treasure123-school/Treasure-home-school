@@ -6313,7 +6313,9 @@ export class DatabaseStorage implements IStorage {
         // Use COALESCE so both the `score` column (auto-scored) and `marksObtained` column
         // (manually recorded) are captured — whichever is populated wins
         score: sql<number>`COALESCE(${schema.examResults.score}, ${schema.examResults.marksObtained}, 0)`,
-        maxScore: sql<number>`COALESCE(${schema.exams.totalMarks}, ${schema.examResults.maxScore}, 100)`,
+        // exam_results.maxScore is the ACTUAL max the exam was marked out of (e.g. 60).
+        // exams.totalMarks is the template default (often 100) and must only be a fallback.
+        maxScore: sql<number>`COALESCE(${schema.examResults.maxScore}, ${schema.exams.totalMarks}, 100)`,
         examType: schema.exams.examType,
         examDate: schema.exams.examDate,
         createdAt: schema.examResults.createdAt
@@ -9550,7 +9552,9 @@ export class DatabaseStorage implements IStorage {
           examType: schema.exams.examType,
           createdBy: schema.exams.createdBy,
           score: sql<number>`COALESCE(${schema.examResults.score}, ${schema.examResults.marksObtained}, 0)`,
-          maxScore: sql<number>`COALESCE(${schema.exams.totalMarks}, ${schema.examResults.maxScore}, 100)`,
+          // exam_results.maxScore is the ACTUAL max the exam was marked out of (e.g. 60).
+        // exams.totalMarks is the template default (often 100) and must only be a fallback.
+        maxScore: sql<number>`COALESCE(${schema.examResults.maxScore}, ${schema.exams.totalMarks}, 100)`,
         })
           .from(schema.examResults)
           .innerJoin(schema.exams, eq(schema.examResults.examId, schema.exams.id))
@@ -9623,7 +9627,9 @@ export class DatabaseStorage implements IStorage {
         examType: schema.exams.examType,
         createdBy: schema.exams.createdBy,
         score: sql<number>`COALESCE(${schema.examResults.score}, ${schema.examResults.marksObtained}, 0)`,
-        maxScore: sql<number>`COALESCE(${schema.exams.totalMarks}, ${schema.examResults.maxScore}, 100)`,
+        // exam_results.maxScore is the ACTUAL max the exam was marked out of (e.g. 60).
+        // exams.totalMarks is the template default (often 100) and must only be a fallback.
+        maxScore: sql<number>`COALESCE(${schema.examResults.maxScore}, ${schema.exams.totalMarks}, 100)`,
         currentExamScore: schema.reportCardItems.examScore,
         currentTestScore: schema.reportCardItems.testScore,
       })
@@ -9758,7 +9764,7 @@ export class DatabaseStorage implements IStorage {
             e.subject_id,
             e.id                                                     AS exam_id,
             COALESCE(er.score, er.marks_obtained, 0)::integer        AS score,
-            COALESCE(e.total_marks, er.max_score, 100)::integer      AS max_score,
+            COALESCE(er.max_score, e.total_marks, 100)::integer      AS max_score,
             e.created_by
           FROM exam_results er
           JOIN exams e       ON e.id  = er.exam_id
@@ -9790,7 +9796,7 @@ export class DatabaseStorage implements IStorage {
             e.subject_id,
             e.id                                                     AS exam_id,
             COALESCE(er.score, er.marks_obtained, 0)::integer        AS score,
-            COALESCE(e.total_marks, er.max_score, 100)::integer      AS max_score,
+            COALESCE(er.max_score, e.total_marks, 100)::integer      AS max_score,
             e.created_by
           FROM exam_results er
           JOIN exams e       ON e.id  = er.exam_id
@@ -10026,7 +10032,9 @@ export class DatabaseStorage implements IStorage {
         examId: schema.examResults.examId,
         // COALESCE both score columns so whichever is populated wins
         score: sql<number>`COALESCE(${schema.examResults.score}, ${schema.examResults.marksObtained}, 0)`,
-        maxScore: sql<number>`COALESCE(${schema.exams.totalMarks}, ${schema.examResults.maxScore}, 100)`,
+        // exam_results.maxScore is the ACTUAL max the exam was marked out of (e.g. 60).
+        // exams.totalMarks is the template default (often 100) and must only be a fallback.
+        maxScore: sql<number>`COALESCE(${schema.examResults.maxScore}, ${schema.exams.totalMarks}, 100)`,
         examType: schema.exams.examType,
         subjectId: schema.exams.subjectId,
         classId: schema.exams.classId,
@@ -10169,7 +10177,7 @@ export class DatabaseStorage implements IStorage {
         id: schema.examResults.id,
         studentId: schema.examResults.studentId,
         score: sql<number>`COALESCE(${schema.examResults.score}, ${schema.examResults.marksObtained}, 0)`,
-        maxScore: sql<number>`COALESCE(${schema.exams.totalMarks}, ${schema.examResults.maxScore}, 100)`
+        maxScore: sql<number>`COALESCE(${schema.examResults.maxScore}, ${schema.exams.totalMarks}, 100)`
       })
         .from(schema.examResults)
         .innerJoin(schema.exams, eq(schema.examResults.examId, schema.exams.id))

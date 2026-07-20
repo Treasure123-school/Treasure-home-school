@@ -383,7 +383,7 @@ router.post(
             e.subject_id,
             e.id                                                     AS exam_id,
             COALESCE(er.score, er.marks_obtained, 0)::integer        AS score,
-            COALESCE(e.total_marks, er.max_score, 100)::integer      AS max_score,
+            COALESCE(er.max_score, e.total_marks, 100)::integer      AS max_score,
             e.created_by
           FROM exam_results er
           JOIN exams e       ON e.id  = er.exam_id
@@ -529,12 +529,12 @@ router.post(
         SELECT DISTINCT ON (rc.id, e.subject_id)
           rc.id,
           e.subject_id,
-          COALESCE(e.total_marks, er.max_score, 100)::integer,
+          COALESCE(er.max_score, e.total_marks, 100)::integer,
           0,
           0,
           e.id,
           COALESCE(er.score, er.marks_obtained, 0)::integer,
-          COALESCE(e.total_marks, er.max_score, 100)::integer,
+          COALESCE(er.max_score, e.total_marks, 100)::integer,
           e.created_by,
           false,
           NOW()
@@ -690,12 +690,12 @@ router.post(
         SELECT DISTINCT ON (rc.id, e.subject_id)
           rc.id,
           e.subject_id,
-          COALESCE(e.total_marks, er.max_score, 100)::integer,
+          COALESCE(er.max_score, e.total_marks, 100)::integer,
           COALESCE(er.score, er.marks_obtained, 0)::integer,
           0,
           e.id,
           COALESCE(er.score, er.marks_obtained, 0)::integer,
-          COALESCE(e.total_marks, er.max_score, 100)::integer,
+          COALESCE(er.max_score, e.total_marks, 100)::integer,
           e.created_by,
           false,
           NOW()
@@ -727,12 +727,12 @@ router.post(
         SELECT DISTINCT ON (rc.id, e.subject_id)
           rc.id,
           e.subject_id,
-          COALESCE(e.total_marks, er.max_score, 100)::integer,
+          COALESCE(er.max_score, e.total_marks, 100)::integer,
           0,
           0,
           e.id,
           COALESCE(er.score, er.marks_obtained, 0)::integer,
-          COALESCE(e.total_marks, er.max_score, 100)::integer,
+          COALESCE(er.max_score, e.total_marks, 100)::integer,
           e.created_by,
           false,
           NOW()

@@ -39,6 +39,23 @@ Every path that writes a score to report_card_items MUST end with either:
 **Why:** The raw scores (testScore, examScore) and the weighted/grade columns are separate.
 Writing raw scores without re-running the weight formula leaves grade/remarks/weighted cols stale.
 
+## COALESCE maxScore priority bug (root cause of wrong weighted scores)
+Every sync/query used `COALESCE(exams.totalMarks, examResults.maxScore, 100)`.
+`exams.total_marks` is a template default (often 100); `exam_results.max_score` is the
+actual value used when the exam was administered (e.g. 60 for a 60-mark main exam).
+The wrong priority made `(30/100)×60 = 18` instead of the correct `(30/60)×60 = 30`.
+
+**Fix:** Reversed to `COALESCE(examResults.maxScore, exams.totalMarks, 100)` in all 14
+occurrences: server/storage.ts lines ~6318, ~9557, ~9632, ~9767, ~9799, ~10037, ~10180 and
+server/routes/maintenance.routes.ts lines ~386, ~532/537, ~693/698, ~730/735.
+
+**Data repair:** After the code fix, a one-time SQL repair corrected the already-stored values:
+- 614 `exam_max_score` rows corrected (from 100 → 60 etc.)
+- 1313 weighted-score / obtained_marks / percentage rows recalculated
+- 1313 grade / remarks rows updated using Standard A–F (scale_id = 2)
+
+**Always**: `exam_results.max_score` wins over `exams.total_marks` for per-result maxScore.
+
 ## schema.ts warning
 Added a prominent banner comment at the top of `shared/schema.ts` explaining it is a
 SQLite stub, NOT the production schema. The real schema is `shared/schema.pg.ts`.
