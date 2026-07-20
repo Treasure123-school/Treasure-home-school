@@ -120,7 +120,12 @@ export function calculateWeightedScore(
   }
   
   const weightedScore = testWeighted + examWeighted;
-  const percentage = totalWeight > 0 ? (weightedScore / totalWeight) * 100 : 0;
+  // Always normalise by the FULL configured weight (testWeight + examWeight),
+  // NOT just the available weight.  This prevents grade inflation when only
+  // one component (test OR exam) has been recorded: a student who scored 100%
+  // on the test (worth 40%) should earn 40%, not 100%.
+  const fullWeight = config.testWeight + config.examWeight;
+  const percentage = fullWeight > 0 ? (weightedScore / fullWeight) * 100 : 0;
   const gradeInfo = calculateGradeFromPercentage(percentage, config.name);
   
   return {

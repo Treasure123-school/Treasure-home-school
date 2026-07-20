@@ -870,29 +870,90 @@ router.post(
       }
 
       // ── Step 2: Recalculate obtained_marks + percentage on all items ──────
+      // Fetch system-configured weights (default 40/60) so the formula matches
+      // calculateWeightedScore() exactly.  Both components are normalised against
+      // the FULL weight (testWeight + examWeight = 100) so a test-only result
+      // cannot exceed testWeight%, preventing the "A-for-test-only" inflation bug.
+      const systemSettingsRows = await db
+        .select({ testWeight: schema.systemSettings.testWeight, examWeight: schema.systemSettings.examWeight })
+        .from(schema.systemSettings)
+        .limit(1);
+      const testWeight  = systemSettingsRows[0]?.testWeight  ?? 40;
+      const examWeight  = systemSettingsRows[0]?.examWeight  ?? 60;
+      const fullWeight  = testWeight + examWeight; // typically 100
+
       await db.execute(sql`
         UPDATE report_card_items rci
         SET
-          obtained_marks = COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0),
-          percentage     = CASE
-            WHEN COALESCE(rci.exam_max_score, 0) + COALESCE(rci.test_max_score, 0) > 0
-            THEN LEAST(100, ROUND(
-              ( COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0) )::numeric
-              / NULLIF(COALESCE(rci.exam_max_score, 0) + COALESCE(rci.test_max_score, 0), 0)
-              * 100
-            ))
-            WHEN rci.total_marks > 0
-            THEN LEAST(100, ROUND(
-              ( COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0) )::numeric
-              / rci.total_marks * 100
-            ))
-            ELSE 0
-          END,
+          -- Weighted score = (test%)*testWeight + (exam%)*examWeight, capped at fullWeight
+          obtained_marks = LEAST(${fullWeight}, ROUND(
+            (
+              CASE
+                WHEN rci.test_score IS NOT NULL AND rci.test_max_score IS NOT NULL AND rci.test_max_score > 0
+                THEN (rci.test_score::numeric / rci.test_max_score) * ${testWeight}
+                ELSE 0
+              END
+              +
+              CASE
+                WHEN rci.exam_score IS NOT NULL AND rci.exam_max_score IS NOT NULL AND rci.exam_max_score > 0
+                THEN (rci.exam_score::numeric / rci.exam_max_score) * ${examWeight}
+                ELSE 0
+              END
+            )::numeric
+          )),
+          -- Percentage = weightedScore / fullWeight * 100 (same as above when fullWeight=100)
+          percentage     = LEAST(100, ROUND(
+            (
+              CASE
+                WHEN rci.test_score IS NOT NULL AND rci.test_max_score IS NOT NULL AND rci.test_max_score > 0
+                THEN (rci.test_score::numeric / rci.test_max_score) * ${testWeight}
+                ELSE 0
+              END
+              +
+              CASE
+                WHEN rci.exam_score IS NOT NULL AND rci.exam_max_score IS NOT NULL AND rci.exam_max_score > 0
+                THEN (rci.exam_score::numeric / rci.exam_max_score) * ${examWeight}
+                ELSE 0
+              END
+            )::numeric / NULLIF(${fullWeight}, 0) * 100
+          )),
           updated_at = NOW()
         WHERE rci.report_card_id IN (
           SELECT id FROM report_cards rc WHERE 1=1 ${rcFilters}
         )
       `);
+
+      // ── Step 2b: Update per-item grade + remarks using active grading config ─
+      // Fetch all affected items' new percentages and re-grade in JS batches
+      // (grade boundaries live in the grading config, not the DB schema).
+      {
+        const gradingConfigForItems = await getActiveGradingConfig();
+        const affectedItems = await db.execute(sql`
+          SELECT rci.id, rci.percentage
+          FROM report_card_items rci
+          WHERE rci.report_card_id IN (
+            SELECT id FROM report_cards rc WHERE 1=1 ${rcFilters}
+          )
+        `);
+        const itemRows: Array<{ id: number; percentage: number }> = (affectedItems.rows ?? []).map((r: any) => ({
+          id:         Number(r.id),
+          percentage: Number(r.percentage ?? 0),
+        }));
+
+        const ITEM_BATCH = 100;
+        for (let i = 0; i < itemRows.length; i += ITEM_BATCH) {
+          const batch = itemRows.slice(i, i + ITEM_BATCH);
+          await Promise.all(
+            batch.map(({ id, percentage }) => {
+              const gradeInfo = calculateGradeFromConfig(percentage, gradingConfigForItems);
+              return db.update(schema.reportCardItems)
+                .set({ grade: gradeInfo.grade, remarks: gradeInfo.remarks, updatedAt: new Date() })
+                .where(eq(schema.reportCardItems.id, id));
+            }),
+          );
+        }
+        console.log(`[ADMIN-RECALC] Updated grades on ${itemRows.length} report card item(s)`);
+      }
 
       // ── Step 3: Update report_cards header totals + grade ─────────────────
       const gradingConfig = await getActiveGradingConfig();

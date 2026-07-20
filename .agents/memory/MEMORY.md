@@ -4,6 +4,7 @@
 - [Gemini model deprecation](gemini-model-migration.md) — gemini-1.5-pro removed from v1beta API; auto-migrate to gemini-2.0-flash
 - [AI test endpoint fix](ai-test-endpoint.md) — OpenAI test must use chat/completions not /v1/models; project-scoped keys can't list models
 - [Brand color CSS variable format](brand-color-css-format.md) — primary/accent/ring/sidebar-primary use raw H S% L% channels; tailwind config uses hsl(var(--primary) / <alpha-value>) for opacity support
+- [Report card grading fixes](report-card-grading-fixes.md) — full audit: weight normalisation bug, bulk SQL formula, recalculate enhancements, stats filtering, bulk three-dot menu
 - [Student profile completion system](student-profile-completion.md) — canonical 7-field set, where logic must stay in sync, stale-value anti-pattern, cache invalidation, production repair endpoint
 - [Report Card admin editing rules](report-card-admin-editing.md) — admin bypasses published-lock on score override; 'finalized' displays as 'In Progress'; skills use POST not PUT; admin always sees all statuses
 - [KaTeX pre-render/prewarm pattern](math-katex-prewarm.md) — sync-during-render math components never flash raw text; don't gate on blocking flags; reset warm-cache per session; escape KaTeX fallback

@@ -13485,7 +13485,13 @@ School Management System Administration
       const { reportCardId } = req.params;
       const { gradingScale = 'standard' } = req.body;
 
-      // 1. Recalculate item scores → totals → grade for this card
+      // 1. Re-apply weighted scores to every item from stored raw scores
+      //    (honours the active grading config's testWeight / examWeight so
+      //    the fixed full-weight normalisation is applied to existing data).
+      //    This also skips items the teacher manually overrode (isOverridden=true).
+      await storage.autoPopulateReportCardScores(Number(reportCardId));
+
+      // 2. Recompute header totals + overall grade from the freshly recalculated items
       const updatedReportCard = await storage.recalculateReportCard(
         Number(reportCardId),
         gradingScale

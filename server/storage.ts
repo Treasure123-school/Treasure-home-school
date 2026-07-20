@@ -6532,19 +6532,29 @@ export class DatabaseStorage implements IStorage {
 
       if (items.length === 0) return undefined;
 
-      // Calculate totals
-      let totalObtained = 0;
-      let totalPossible = 0;
-      const grades: string[] = [];
-
-      for (const item of items) {
-        totalObtained += item.obtainedMarks || 0;
-        totalPossible += item.totalMarks || 100;
-        if (item.grade) grades.push(item.grade);
-      }
-
-      const averagePercentage = totalPossible > 0 ? (totalObtained / totalPossible) * 100 : 0;
+      // Use the stored per-item percentage (already correctly weighted) to compute
+      // the average.  Summing obtainedMarks/totalMarks is unreliable when only one
+      // component (test OR exam) is present because obtainedMarks caps at the
+      // component weight (e.g. 40 for test-only), making the ratio misleadingly low.
       const activeConfig = await getActiveGradingConfig();
+
+      // Use the stored per-item percentage (already correctly weighted) to compute
+      // the average.  Only count items that have been scored (percentage OR obtainedMarks > 0)
+      // so uncalculated zero-items don't drag the average down unfairly.
+      const itemsWithScores = items.filter(
+        (item: any) => (item.percentage ?? 0) > 0 || (item.obtainedMarks ?? 0) > 0
+      );
+      const countForAvg = itemsWithScores.length > 0 ? itemsWithScores.length : items.length;
+      const sumPercentage = items.reduce(
+        (sum: number, item: any) => sum + (item.percentage || 0), 0
+      );
+      const averagePercentage = countForAvg > 0 ? sumPercentage / countForAvg : 0;
+
+      // Also track the raw weighted total (sum of obtainedMarks) for the totalScore column
+      const totalObtained = items.reduce(
+        (sum: number, item: any) => sum + (item.obtainedMarks || 0), 0
+      );
+
       const overallGrade = calculateGradeFromConfig(averagePercentage, activeConfig).grade;
 
       const result = await db.update(schema.reportCards)
