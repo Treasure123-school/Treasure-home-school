@@ -1,3 +1,19 @@
+// ╔══════════════════════════════════════════════════════════════════════════════╗
+// ║  ⚠  LEGACY SQLite STUB — DO NOT USE FOR BUSINESS LOGIC OR DATABASE OPS  ⚠  ║
+// ║                                                                              ║
+// ║  This file is a SQLite-based mirror kept ONLY because a handful of older     ║
+// ║  files (routes.ts validation schemas, seed scripts, csv-import-service)      ║
+// ║  still import TypeScript types or Zod insert-schemas from here.              ║
+// ║                                                                              ║
+// ║  THE REAL PRODUCTION SCHEMA IS:  shared/schema.pg.ts  (PostgreSQL)          ║
+// ║                                                                              ║
+// ║  • server/db.ts  calls  getSchema()  which returns the pg schema.            ║
+// ║  • All runtime queries use the pg schema via  const schema = getSchema().    ║
+// ║  • When auditing tables, columns, indexes, or constraints, read              ║
+// ║    shared/schema.pg.ts — never this file.                                   ║
+// ║  • Do NOT add new tables or columns here.  Add them to schema.pg.ts.        ║
+// ╚══════════════════════════════════════════════════════════════════════════════╝
+
 import { sql } from "drizzle-orm";
 import { sqliteTable, text, integer, index, uniqueIndex } from "drizzle-orm/sqlite-core";
 import { createInsertSchema } from "drizzle-zod";

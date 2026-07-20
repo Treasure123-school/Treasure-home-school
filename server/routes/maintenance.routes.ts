@@ -754,64 +754,49 @@ router.post(
           updated_at           = NOW()
       `);
 
-      // ── Step 4: Recalculate obtained_marks + percentage on ALL affected items
-      // Recalculate every item in any report card that has exam results in scope.
-      // Uses exam_score + test_score combined; handles partial (only exam, only test).
-      await db.execute(sql`
-        UPDATE report_card_items rci
-        SET
-          obtained_marks = COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0),
-          percentage     = CASE
-            WHEN COALESCE(rci.exam_max_score, 0) + COALESCE(rci.test_max_score, 0) > 0
-            THEN LEAST(100, ROUND(
-              ( COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0) )::numeric
-              / NULLIF(COALESCE(rci.exam_max_score, 0) + COALESCE(rci.test_max_score, 0), 0)
-              * 100
-            ))
-            WHEN rci.total_marks > 0
-            THEN LEAST(100, ROUND(
-              ( COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0) )::numeric
-              / rci.total_marks * 100
-            ))
-            ELSE 0
-          END,
-          updated_at = NOW()
-        WHERE rci.report_card_id IN (
-          SELECT DISTINCT rc.id
-          FROM report_cards rc
-          JOIN exam_results er ON er.student_id = rc.student_id
-          JOIN exams e ON e.id = er.exam_id AND e.term_id = rc.term_id
-          WHERE COALESCE(er.score, er.marks_obtained) IS NOT NULL
-          ${termFilter}
-        )
-      `);
+      // ── Step 4: Re-apply weighted scores + recalculate grades ────────────────
+      // The previous raw-arithmetic approach (exam_score + test_score / max) ignored
+      // the school's testWeight/examWeight system and left grade/remarks/
+      // testWeightedScore/examWeightedScore columns stale.
+      //
+      // We now call reapplyWeightedScoresToItems() for every affected report card.
+      // That function:
+      //   • reads system-settings testWeight/examWeight
+      //   • applies the weighted formula to the scores just upserted above
+      //   • looks up the correct grade from grading boundaries
+      //   • updates testWeightedScore, examWeightedScore, obtainedMarks,
+      //     percentage, grade, and remarks on each item
+      //   • skips items where isOverridden = true
+      //   • calls recalculateReportCard() to refresh the header totals
+      //
+      // This is exactly what the per-card "Recalculate" button calls.
 
-      // ── Step 5: Recalculate report_cards header totals ────────────────────
-      await db.execute(sql`
-        UPDATE report_cards rc
-        SET
-          total_score        = agg.total_obtained,
-          average_score      = agg.avg_pct::integer,
-          average_percentage = agg.avg_pct::integer,
-          updated_at         = NOW()
-        FROM (
-          SELECT
-            rci.report_card_id,
-            COALESCE(SUM(rci.obtained_marks), 0)    AS total_obtained,
-            COALESCE(ROUND(AVG(rci.percentage)), 0) AS avg_pct
-          FROM report_card_items rci
-          WHERE rci.report_card_id IN (
-            SELECT DISTINCT rc2.id
-            FROM report_cards rc2
-            JOIN exam_results er ON er.student_id = rc2.student_id
-            JOIN exams e ON e.id = er.exam_id AND e.term_id = rc2.term_id
-            WHERE COALESCE(er.score, er.marks_obtained) IS NOT NULL
-            ${termFilter}
-          )
-          GROUP BY rci.report_card_id
-        ) agg
-        WHERE rc.id = agg.report_card_id
+      // Collect the distinct report card IDs affected by the upserts above
+      const affectedRcRows = await db.execute(sql`
+        SELECT DISTINCT rc.id
+        FROM report_cards rc
+        JOIN exam_results er ON er.student_id = rc.student_id
+        JOIN exams e ON e.id = er.exam_id AND e.term_id = rc.term_id
+        WHERE COALESCE(er.score, er.marks_obtained) IS NOT NULL
+        ${termFilter}
       `);
+      const affectedRcIds: number[] = (affectedRcRows.rows ?? []).map((r: any) => Number(r.id));
+
+      console.log(`[ADMIN-FORCE-RESYNC] Recalculating weighted scores for ${affectedRcIds.length} report cards...`);
+      const RESYNC_CONCURRENCY = 5;
+      let resyncFailed = 0;
+      for (let i = 0; i < affectedRcIds.length; i += RESYNC_CONCURRENCY) {
+        const batch = affectedRcIds.slice(i, i + RESYNC_CONCURRENCY);
+        const batchResults = await Promise.allSettled(
+          batch.map((id: number) => storage.reapplyWeightedScoresToItems(id))
+        );
+        for (const r of batchResults) {
+          if (r.status === 'rejected') resyncFailed++;
+        }
+      }
+      if (resyncFailed > 0) {
+        console.warn(`[ADMIN-FORCE-RESYNC] ${resyncFailed} report card(s) failed weighted recalculation`);
+      }
 
       invalidateReportCardCaches();
       console.log(`[ADMIN-FORCE-RESYNC] Bulk re-sync complete — ${totalCount} exam results across all report cards`);

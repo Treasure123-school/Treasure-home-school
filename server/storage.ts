@@ -7172,8 +7172,20 @@ export class DatabaseStorage implements IStorage {
       const finalExamScore = isMainExam ? safeScore : (existingItem.examScore ?? null);
       const finalExamMaxScore = isMainExam ? safeMaxScore : (existingItem.examMaxScore ?? null);
 
-      // Use the active DB grade scale (cached)
-      const gradingConfig = await getActiveGradingConfig();
+      // Use the active DB grade scale, then overlay system-settings weights so this
+      // function is consistent with autoPopulateReportCardScores and reapplyWeightedScoresToItems.
+      let gradingConfig = await getActiveGradingConfig();
+      const syncSysRows = await db
+        .select({ testWeight: schema.systemSettings.testWeight, examWeight: schema.systemSettings.examWeight })
+        .from(schema.systemSettings)
+        .limit(1);
+      if (syncSysRows[0]) {
+        gradingConfig = {
+          ...gradingConfig,
+          testWeight: syncSysRows[0].testWeight ?? gradingConfig.testWeight,
+          examWeight: syncSysRows[0].examWeight ?? gradingConfig.examWeight,
+        };
+      }
       const weighted = calculateWeightedScore(finalTestScore, finalTestMaxScore, finalExamScore, finalExamMaxScore, gradingConfig);
       const gradeInfo = calculateGradeFromConfig(weighted.percentage, gradingConfig);
 
@@ -10037,42 +10049,30 @@ export class DatabaseStorage implements IStorage {
           eq(schema.reportCardItems.subjectId, schema.exams.subjectId)
         ))
         .where(and(
-          // Accept records where either score column has a value
+          // Only process results that actually have a score in at least one column
           sql`COALESCE(${schema.examResults.score}, ${schema.examResults.marksObtained}) IS NOT NULL`,
           targetTermId ? eq(schema.exams.termId, targetTermId) : undefined,
+          // Only touch items that have NOT been manually overridden by a teacher/admin.
+          // isNull covers brand-new items (no row yet); eq(...false) covers existing non-overridden rows.
           or(
-            // Exam type results missing in report card
-            and(
-              inArray(schema.exams.examType, ['exam', 'final', 'midterm']),
-              or(
-                isNull(schema.reportCardItems.id),         // item row missing entirely
-                isNull(schema.reportCardItems.examScore)   // item exists but exam score is null
-              )
-            ),
-            // Test type results missing in report card
-            and(
-              inArray(schema.exams.examType, ['test', 'quiz', 'assignment']),
-              or(
-                isNull(schema.reportCardItems.id),         // item row missing entirely
-                isNull(schema.reportCardItems.testScore)   // item exists but test score is null
-              )
-            )
+            isNull(schema.reportCardItems.isOverridden),
+            eq(schema.reportCardItems.isOverridden, false)
           )
+          // NOTE: we intentionally do NOT filter on examScore IS NULL / testScore IS NULL.
+          // This function must UPDATE stale/wrong scores, not only fill in blanks.
         ));
 
-      console.log(`[SYNC-ALL-MISSING] Found ${missingExamScores.length} exam results to sync`);
+      console.log(`[SYNC-ALL-MISSING] Found ${missingExamScores.length} exam results to sync (including stale scores)`);
 
       // Group by report card to batch recalculations
       const reportCardIdsToRecalculate = new Set<number>();
 
-      // Helper: process one missing-score record
+      // Helper: process one score record — writes the score from exam_results into the report card item.
+      // Runs for every graded result regardless of whether the item already has a score,
+      // so stale/wrong scores are always corrected.
       const processRecord = async (record: typeof missingExamScores[number]): Promise<void> => {
         const isTest     = ['test', 'quiz', 'assignment'].includes(record.examType);
         const isMainExam = ['exam', 'final', 'midterm'].includes(record.examType);
-
-        // Skip if the score already exists for this type
-        if (isMainExam && record.currentExamScore !== null) return;
-        if (isTest     && record.currentTestScore  !== null) return;
 
         const safeScore    = typeof record.score    === 'number' ? record.score    : parseInt(String(record.score),    10) || 0;
         const safeMaxScore = typeof record.maxScore === 'number' ? record.maxScore : parseInt(String(record.maxScore), 10) || 0;
@@ -10128,14 +10128,17 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
-      // Recalculate all affected report cards in concurrent batches of 40
-      console.log(`[SYNC-ALL-MISSING] Recalculating ${reportCardIdsToRecalculate.size} report cards...`);
+      // Re-apply weighted scores (testWeight/examWeight) and recalculate grades for all
+      // affected report cards.  reapplyWeightedScoresToItems reads each card's own
+      // gradingScale and the current system-settings weights, so this is consistent
+      // with the individual "Recalculate" button.
+      console.log(`[SYNC-ALL-MISSING] Recalculating weighted scores for ${reportCardIdsToRecalculate.size} report cards...`);
       const rcIds = [...reportCardIdsToRecalculate];
       const RECALC_BATCH = 40;
       for (let i = 0; i < rcIds.length; i += RECALC_BATCH) {
         const batch = rcIds.slice(i, i + RECALC_BATCH);
         await Promise.allSettled(batch.map(rcId =>
-          this.recalculateReportCard(rcId, 'standard').catch((e: any) => {
+          this.reapplyWeightedScoresToItems(rcId).catch((e: any) => {
             errors.push(`Failed to recalculate report card ${rcId}: ${e.message}`);
           })
         ));
