@@ -465,14 +465,14 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
                 </tr>
                 <tr style={{ backgroundColor: '#eee' }}>
                   <th style={{ border: B, padding: '1px', textAlign: 'center', fontWeight: 600, fontSize: 7, borderTop: 'none' }}>{testWeight}</th>
-                  <th style={{ border: B, padding: '1px', textAlign: 'center', fontWeight: 600, fontSize: 7, borderTop: 'none' }}>100</th>
+                  <th style={{ border: B, padding: '1px', textAlign: 'center', fontWeight: 600, fontSize: 7, borderTop: 'none' }}>{examWeight}</th>
                   <th style={{ border: B, padding: '1px', textAlign: 'center', fontWeight: 600, fontSize: 7, borderTop: 'none' }}>100</th>
                 </tr>
               </thead>
               <tbody>
                 {subjects.map((s, i) => {
-                  const t = s.testScore ?? s.testWeightedScore ?? null;
-                  const e = s.examScore ?? s.examWeightedScore ?? null;
+                  const t = s.testWeightedScore ?? s.testScore ?? null;
+                  const e = s.examWeightedScore ?? s.examScore ?? null;
                   const tot = s.obtainedMarks || ((Number(t) || 0) + (Number(e) || 0));
                   return (
                     <tr key={i}>

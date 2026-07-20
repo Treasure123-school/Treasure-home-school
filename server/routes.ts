@@ -12487,6 +12487,27 @@ School Management System Administration
         if (!principalSignatureUrl) principalSignatureUrl = resolved.principalSignatureUrl;
       }
 
+      // Compute subject-level positions (competition ranking within class + term)
+      if (reportCard.classId && reportCard.termId && finalItems.length > 0) {
+        try {
+          const itemsForPos = finalItems.map((item: any) => ({
+            subjectId: item.subjectId,
+            obtainedMarks: item.obtainedMarks ?? 0
+          }));
+          const positionMap = await storage.getSubjectPositionsForItems(
+            itemsForPos,
+            reportCard.classId,
+            reportCard.termId
+          );
+          finalItems = finalItems.map((item: any) => ({
+            ...item,
+            subjectPosition: positionMap.get(item.subjectId) ?? null
+          }));
+        } catch (posErr) {
+          console.error('Error computing subject positions:', posErr);
+        }
+      }
+
       res.json({
         ...reportCard,
         items: finalItems,
@@ -13472,18 +13493,27 @@ School Management System Administration
   app.post('/api/reports/:reportCardId/recalculate', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { reportCardId } = req.params;
-      const { gradingScale = 'standard' } = req.body;
 
-      const updatedReportCard = await storage.recalculateReportCard(
-        Number(reportCardId),
-        gradingScale
-      );
+      // Full recalculation: re-fetch exam scores, recompute weighted totals and
+      // reapply the active grading scale to every item, then refresh class positions.
+      const result = await storage.autoPopulateReportCardScores(Number(reportCardId));
 
-      if (!updatedReportCard) {
-        return res.status(404).json({ message: 'Report card not found or has no items' });
+      if (result.populated === 0 && result.errors.length > 0) {
+        return res.status(404).json({ message: 'Report card not found or has no items', errors: result.errors });
       }
 
-      res.json(updatedReportCard);
+      // Refresh class positions now that scores/grades have been updated
+      const reportCardData = await storage.getReportCard(Number(reportCardId));
+      if (reportCardData?.classId && reportCardData?.termId) {
+        await storage.recalculateClassPositions(reportCardData.classId, reportCardData.termId);
+      }
+
+      const updatedReportCard = await storage.getReportCard(Number(reportCardId));
+      if (!updatedReportCard) {
+        return res.status(404).json({ message: 'Report card not found' });
+      }
+
+      res.json({ ...updatedReportCard, populated: result.populated, errors: result.errors });
     } catch (error: any) {
       console.error('Error recalculating report card:', error);
       res.status(500).json({ message: error.message || 'Failed to recalculate report card' });

@@ -721,10 +721,14 @@ export function ProfessionalReportCard({
                       <tr key={item.id} className={index % 2 === 0 ? 'bg-background' : 'bg-muted/30'}>
                         <td className="p-2 font-medium border-b">{item.subjectName}</td>
                         <td className="text-center p-2 border-b">
-                          {item.testScore !== null ? item.testScore : '-'}/{item.testMaxScore || testWeight}
+                          {item.testWeightedScore !== null && item.testWeightedScore !== undefined
+                            ? item.testWeightedScore
+                            : (item.testScore !== null ? item.testScore : '-')}/{testWeight}
                         </td>
                         <td className="text-center p-2 border-b">
-                          {item.examScore !== null ? item.examScore : '-'}/{item.examMaxScore || examWeight}
+                          {item.examWeightedScore !== null && item.examWeightedScore !== undefined
+                            ? item.examWeightedScore
+                            : (item.examScore !== null ? item.examScore : '-')}/{examWeight}
                         </td>
                         <td className="text-center p-2 font-semibold border-b">
                           {item.obtainedMarks || 0}/100
@@ -787,11 +791,11 @@ export function ProfessionalReportCard({
                     <div className="grid grid-cols-3 gap-2 text-center text-xs">
                       <div className="bg-background p-2 rounded">
                         <p className="text-muted-foreground">Test</p>
-                        <p className="font-medium">{item.testScore !== null ? item.testScore : '-'}/{item.testMaxScore || testWeight}</p>
+                        <p className="font-medium">{item.testWeightedScore !== null && item.testWeightedScore !== undefined ? item.testWeightedScore : (item.testScore !== null ? item.testScore : '-')}/{testWeight}</p>
                       </div>
                       <div className="bg-background p-2 rounded">
                         <p className="text-muted-foreground">Exam</p>
-                        <p className="font-medium">{item.examScore !== null ? item.examScore : '-'}/{item.examMaxScore || examWeight}</p>
+                        <p className="font-medium">{item.examWeightedScore !== null && item.examWeightedScore !== undefined ? item.examWeightedScore : (item.examScore !== null ? item.examScore : '-')}/{examWeight}</p>
                       </div>
                       <div className="bg-background p-2 rounded">
                         <p className="text-muted-foreground">Total</p>

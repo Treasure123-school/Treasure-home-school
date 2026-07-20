@@ -121,7 +121,7 @@ export function calculateWeightedScore(
   
   const weightedScore = testWeighted + examWeighted;
   const percentage = totalWeight > 0 ? (weightedScore / totalWeight) * 100 : 0;
-  const gradeInfo = calculateGradeFromPercentage(percentage, config.name);
+  const gradeInfo = calculateGradeFromConfig(percentage, config);
   
   return {
     weightedScore: Math.round(weightedScore * 10) / 10,

@@ -490,6 +490,8 @@ export interface IStorage {
   getExamsWithSubjectsByClassAndTerm(classId: number, termId?: number): Promise<any[]>;
   getExamScoresForReportCard(studentId: string, subjectId: number, termId: number): Promise<{ testExams: any[]; mainExams: any[] }>;
   recalculateReportCard(reportCardId: number, gradingScale: string): Promise<ReportCard | undefined>;
+  recalculateClassPositions(classId: number, termId: number): Promise<void>;
+  getSubjectPositionsForItems(items: { subjectId: number; obtainedMarks: number }[], classId: number, termId: number): Promise<Map<number, number>>;
 
   // Auto-sync exam score to report card (called after exam submission)
   syncExamScoreToReportCard(studentId: string, examId: number, score: number, maxScore: number, forceSync?: boolean): Promise<{ success: boolean; reportCardId?: number; message: string; isNewReportCard?: boolean }>;
@@ -6547,6 +6549,21 @@ export class DatabaseStorage implements IStorage {
         .where(eq(schema.reportCards.id, reportCardId))
         .returning();
 
+      // Re-apply the active grading scale to every non-overridden item.
+      // This keeps individual subject grades in sync with the current admin-configured
+      // grade boundaries whenever recalculate is triggered (e.g. after a scale change).
+      for (const item of items) {
+        if (item.isOverridden) continue;
+        // Prefer the stored weighted percentage; fall back to obtainedMarks proportion.
+        const itemPerc = (item.percentage != null && item.percentage > 0)
+          ? item.percentage
+          : (item.totalMarks > 0 ? Math.round((item.obtainedMarks / item.totalMarks) * 100) : 0);
+        const itemGradeInfo = calculateGradeFromConfig(itemPerc, activeConfig);
+        await db.update(schema.reportCardItems)
+          .set({ grade: itemGradeInfo.grade, remarks: itemGradeInfo.remarks, updatedAt: new Date() })
+          .where(eq(schema.reportCardItems.id, item.id));
+      }
+
       return result[0];
     } catch (error) {
       console.error('Error recalculating report card:', error);
@@ -6554,7 +6571,53 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  private async recalculateClassPositions(classId: number, termId: number): Promise<void> {
+  /**
+   * For each subject item provided, compute competition-ranked position within the
+   * same class + term.  Returns a Map<subjectId, position>.
+   */
+  async getSubjectPositionsForItems(
+    items: { subjectId: number; obtainedMarks: number }[],
+    classId: number,
+    termId: number
+  ): Promise<Map<number, number>> {
+    if (items.length === 0) return new Map();
+
+    const subjectIds = items.map(i => i.subjectId);
+
+    // Fetch all students' obtained marks for these subjects in this class/term
+    const allScores = await db.select({
+      subjectId: schema.reportCardItems.subjectId,
+      obtainedMarks: schema.reportCardItems.obtainedMarks
+    })
+      .from(schema.reportCardItems)
+      .innerJoin(schema.reportCards, eq(schema.reportCardItems.reportCardId, schema.reportCards.id))
+      .where(and(
+        eq(schema.reportCards.classId, classId),
+        eq(schema.reportCards.termId, termId),
+        inArray(schema.reportCardItems.subjectId, subjectIds)
+      ));
+
+    // Group scores by subjectId
+    const scoresBySubject = new Map<number, number[]>();
+    for (const row of allScores) {
+      const list = scoresBySubject.get(row.subjectId) ?? [];
+      list.push(row.obtainedMarks ?? 0);
+      scoresBySubject.set(row.subjectId, list);
+    }
+
+    // Competition ranking: position = number of students with a STRICTLY higher score + 1
+    const positionMap = new Map<number, number>();
+    for (const item of items) {
+      const scores = scoresBySubject.get(item.subjectId) ?? [];
+      const studentScore = item.obtainedMarks ?? 0;
+      const studentsAhead = scores.filter(s => s > studentScore).length;
+      positionMap.set(item.subjectId, studentsAhead + 1);
+    }
+
+    return positionMap;
+  }
+
+  async recalculateClassPositions(classId: number, termId: number): Promise<void> {
     try {
       console.log(`[REPORT-CARD] Calculating class positions for class ${classId}, term ${termId}`);
 
