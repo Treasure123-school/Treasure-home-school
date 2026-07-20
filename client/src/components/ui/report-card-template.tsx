@@ -125,7 +125,7 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
         <tbody><tr>
           {/* Left column */}
           <td style={{ verticalAlign: 'top', paddingRight: 5 }}>
-            <CognitiveDomain subjects={subjects} testWeight={testWeight} emptyRows={emptyRows} />
+            <CognitiveDomain subjects={subjects} testWeight={testWeight} examWeight={examWeight} emptyRows={emptyRows} />
             <PerformanceSummary
               totalObtained={totalObtained}
               totalMax={totalMax}
