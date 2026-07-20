@@ -379,7 +379,20 @@ export class ReliableSyncService {
         const finalExamScore = isMainExam ? safeScore : (existingItem.examScore ?? null);
         const finalExamMaxScore = isMainExam ? safeMaxScore : (existingItem.examMaxScore ?? null);
 
-        const gradingConfig = await getActiveGradingConfig();
+        // Overlay system-settings weights so exam submissions use the same
+        // test/exam weight split as Recalculate and auto-populate.
+        let gradingConfig = await getActiveGradingConfig();
+        const sysWeightRows = await tx
+          .select({ testWeight: schema.systemSettings.testWeight, examWeight: schema.systemSettings.examWeight })
+          .from(schema.systemSettings)
+          .limit(1);
+        if (sysWeightRows[0]) {
+          gradingConfig = {
+            ...gradingConfig,
+            testWeight: sysWeightRows[0].testWeight ?? gradingConfig.testWeight,
+            examWeight: sysWeightRows[0].examWeight ?? gradingConfig.examWeight,
+          };
+        }
         const weighted = calculateWeightedScore(finalTestScore, finalTestMaxScore, finalExamScore, finalExamMaxScore, gradingConfig);
         const gradeInfo = calculateGradeFromConfig(weighted.percentage, gradingConfig);
 

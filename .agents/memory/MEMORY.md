@@ -13,3 +13,4 @@
 - [Split deployment getApiUrl rule](split-deployment-getApiUrl.md) — every raw fetch('/api/...) must use getApiUrl(); missing it → 405 on POST via Vercel in production
 - [Report card display — weighted vs raw scores](report-card-display-vs-weighted.md) — Test/Exam columns must show testWeightedScore/examWeightedScore not raw scores; precompute gradedItems once for desktop+mobile
 - [Recalculate zero-score filter bug](recalculate-zero-score-filter.md) — all 3 recalculate paths must filter by score nullability not > 0; affects storage.ts, reliable-sync-service.ts, maintenance bulk SQL
+- [Recalculate stale-cache root causes](recalculate-stale-cache-bugs.md) — 5 bugs fixed: allowExamRetake cache clear, gradingScale hardcode, weight overlay in sync/override, bulk count response

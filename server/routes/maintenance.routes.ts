@@ -916,11 +916,11 @@ router.post(
       console.log(`[ADMIN-RECALC] Done — ${totalCount} report cards, ${pairs.length} class/term position group(s) recalculated`);
 
       res.json({
-        message:       `Recalculation complete: ${totalCount} report card(s) updated, positions recalculated for ${pairs.length} class/term group(s).`,
+        message:       `Recalculation complete: ${succeeded} of ${totalCount} report card(s) updated, positions recalculated for ${pairs.length} class/term group(s).`,
         total:         totalCount,
-        succeeded:     totalCount,
+        succeeded,
         positionPairs: pairs.length,
-        failed:        0,
+        failed,
       });
     } catch (error: any) {
       console.error('[ADMIN-RECALC] Error:', error);

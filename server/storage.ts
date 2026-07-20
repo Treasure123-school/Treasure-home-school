@@ -4455,6 +4455,112 @@ export class DatabaseStorage implements IStorage {
         return { archivedSubmissionId: archivedSubmission[0]?.id };
       });
 
+      // ── Clear stale report-card-item cache ─────────────────────────────────
+      // The transaction above deleted the exam_results row, but report_card_items
+      // still holds the cached testScore/examScore from that submission.
+      // If left in place, reapplyWeightedScoresToItems() will read the stale cache
+      // and write the old score back — making "Recalculate" a no-op after a retake.
+      try {
+        const examRows = await db
+          .select({
+            subjectId: schema.exams.subjectId,
+            termId:    schema.exams.termId,
+            examType:  schema.exams.examType,
+          })
+          .from(schema.exams)
+          .where(eq(schema.exams.id, examId))
+          .limit(1);
+
+        if (examRows.length > 0) {
+          const { subjectId, termId, examType } = examRows[0];
+          const isTestType = ['test', 'quiz', 'assignment'].includes(examType || '');
+
+          if (subjectId && termId) {
+            const rcRows = await db
+              .select({ id: schema.reportCards.id, gradingScale: schema.reportCards.gradingScale })
+              .from(schema.reportCards)
+              .where(and(
+                eq(schema.reportCards.studentId, studentId),
+                eq(schema.reportCards.termId, termId)
+              ))
+              .limit(1);
+
+            if (rcRows.length > 0) {
+              const rc = rcRows[0];
+              const itemRows = await db
+                .select()
+                .from(schema.reportCardItems)
+                .where(and(
+                  eq(schema.reportCardItems.reportCardId, rc.id),
+                  eq(schema.reportCardItems.subjectId, subjectId)
+                ))
+                .limit(1);
+
+              if (itemRows.length > 0 && !itemRows[0].isOverridden) {
+                const item = itemRows[0];
+
+                // Build the clear payload — null the component that belonged to this exam
+                const clearData: Record<string, any> = { updatedAt: new Date() };
+                if (isTestType) {
+                  clearData.testScore         = null;
+                  clearData.testMaxScore      = null;
+                  clearData.testWeightedScore = null;
+                  clearData.testExamId        = null;
+                  clearData.testExamCreatedBy = null;
+                } else {
+                  clearData.examScore         = null;
+                  clearData.examMaxScore      = null;
+                  clearData.examWeightedScore = null;
+                  clearData.examExamId        = null;
+                  clearData.examExamCreatedBy = null;
+                }
+
+                // Recompute totals from whatever score component still remains
+                const remainingTest    = isTestType ? null : (item.testScore    ?? null);
+                const remainingTestMax = isTestType ? null : (item.testMaxScore ?? null);
+                const remainingExam    = isTestType ? (item.examScore    ?? null) : null;
+                const remainingExamMax = isTestType ? (item.examMaxScore ?? null) : null;
+
+                if (remainingTest === null && remainingExam === null) {
+                  clearData.obtainedMarks = 0;
+                  clearData.percentage    = 0;
+                  clearData.grade         = null;
+                  clearData.remarks       = null;
+                } else {
+                  let cfg = await getActiveGradingConfig();
+                  const sysRows = await db
+                    .select({ testWeight: schema.systemSettings.testWeight, examWeight: schema.systemSettings.examWeight })
+                    .from(schema.systemSettings)
+                    .limit(1);
+                  if (sysRows[0]) {
+                    cfg = { ...cfg, testWeight: sysRows[0].testWeight ?? cfg.testWeight, examWeight: sysRows[0].examWeight ?? cfg.examWeight };
+                  }
+                  const w = calculateWeightedScore(remainingTest, remainingTestMax, remainingExam, remainingExamMax, cfg);
+                  const g = calculateGradeFromConfig(w.percentage, cfg);
+                  clearData.obtainedMarks          = Math.round(w.weightedScore);
+                  clearData.percentage             = Math.round(w.percentage);
+                  clearData.grade                  = g.grade;
+                  clearData.remarks                = g.remarks;
+                  clearData[isTestType ? 'testWeightedScore' : 'examWeightedScore'] = 0;
+                }
+
+                await db.update(schema.reportCardItems)
+                  .set(clearData)
+                  .where(eq(schema.reportCardItems.id, item.id));
+
+                await this.recalculateReportCard(rc.id, rc.gradingScale || 'standard');
+
+                console.log(`[allowExamRetake] Cleared stale ${isTestType ? 'test' : 'exam'} score cache on report card item ${item.id} (RC ${rc.id})`);
+              }
+            }
+          }
+        }
+      } catch (cacheErr: any) {
+        // Non-fatal — retake itself succeeded; score will correct on next sync
+        console.warn('[allowExamRetake] Failed to clear stale report card cache (non-fatal):', cacheErr.message);
+      }
+      // ────────────────────────────────────────────────────────────────────────
+
       return {
         success: true,
         message: 'Student can now retake the exam. Previous submission has been archived.',
@@ -6127,6 +6233,15 @@ export class DatabaseStorage implements IStorage {
     const errors: string[] = [];
     let updated = 0;
     try {
+      // Fetch the report card's own gradingScale so recalculateReportCard uses the
+      // correct scale instead of a hardcoded 'standard' fallback.
+      const rcRows = await db
+        .select({ gradingScale: schema.reportCards.gradingScale })
+        .from(schema.reportCards)
+        .where(eq(schema.reportCards.id, reportCardId))
+        .limit(1);
+      const gradingScale = rcRows[0]?.gradingScale || 'standard';
+
       // Get system weights (testWeight/examWeight); fall back to grading config defaults
       let config = await getActiveGradingConfig();
       const systemSettingsRows = await db
@@ -6182,7 +6297,7 @@ export class DatabaseStorage implements IStorage {
       }
 
       // Re-aggregate header (averagePercentage, overallGrade, totalScore, positions)
-      await this.recalculateReportCard(reportCardId, 'standard');
+      await this.recalculateReportCard(reportCardId, gradingScale);
     } catch (err: any) {
       errors.push(err.message);
     }
@@ -6245,8 +6360,20 @@ export class DatabaseStorage implements IStorage {
       const reportCard = await this.getReportCard(item[0].reportCardId);
       if (!reportCard) return undefined;
 
-      // Use the active DB grade scale (cached)
-      const gradingConfig = await getActiveGradingConfig();
+      // Use the active DB grade scale, then overlay system-settings weights so this
+      // function is consistent with autoPopulateReportCardScores and reapplyWeightedScoresToItems.
+      let gradingConfig = await getActiveGradingConfig();
+      const overrideSysRows = await db
+        .select({ testWeight: schema.systemSettings.testWeight, examWeight: schema.systemSettings.examWeight })
+        .from(schema.systemSettings)
+        .limit(1);
+      if (overrideSysRows[0]) {
+        gradingConfig = {
+          ...gradingConfig,
+          testWeight: overrideSysRows[0].testWeight ?? gradingConfig.testWeight,
+          examWeight: overrideSysRows[0].examWeight ?? gradingConfig.examWeight,
+        };
+      }
 
       // Calculate new weighted score
       const testScore = data.testScore !== undefined ? data.testScore : item[0].testScore;
