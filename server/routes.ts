@@ -13479,12 +13479,25 @@ School Management System Administration
     }
   });
 
-  // Recalculate a report card
+  // Recalculate a report card (totals, grade) and update class positions
   app.post('/api/reports/:reportCardId/recalculate', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req: Request, res: Response) => {
     try {
       const { reportCardId } = req.params;
       const { gradingScale = 'standard' } = req.body;
 
+      // 1. Re-apply the weighted formula to scores ALREADY ON THE ITEMS.
+      //    Does NOT re-fetch from exam_results so manually-entered raw scores
+      //    are preserved.  Only re-derives obtainedMarks / percentage / grade /
+      //    remarks from the stored testScore + examScore columns.
+      //    Items where isOverridden=true are skipped.
+      const reapplyResult = await storage.reapplyWeightedScoresToItems(Number(reportCardId));
+      if (reapplyResult.errors.length > 0) {
+        console.warn('[RECALC] Some items had errors:', reapplyResult.errors);
+      }
+
+      // 2. Recompute header totals + overall grade from the freshly recalculated items
+      //    (reapplyWeightedScoresToItems already calls recalculateReportCard internally,
+      //     but we call it again here so we always get back the latest row to return)
       const updatedReportCard = await storage.recalculateReportCard(
         Number(reportCardId),
         gradingScale
@@ -13494,7 +13507,48 @@ School Management System Administration
         return res.status(404).json({ message: 'Report card not found or has no items' });
       }
 
-      res.json(updatedReportCard);
+      // 2. Re-rank everyone in the same class+term so positions stay accurate
+      if (updatedReportCard.classId && updatedReportCard.termId) {
+        try {
+          const settingsRows = await db.select({ positioningMethod: schema.systemSettings.positioningMethod }).from(schema.systemSettings).limit(1);
+          const positioningMethod = settingsRows[0]?.positioningMethod || 'average';
+
+          const allCards = await db.select({
+            id:           schema.reportCards.id,
+            totalScore:   schema.reportCards.totalScore,
+            averageScore: schema.reportCards.averageScore,
+          })
+            .from(schema.reportCards)
+            .where(and(
+              eq(schema.reportCards.classId, updatedReportCard.classId),
+              eq(schema.reportCards.termId,  updatedReportCard.termId),
+            ));
+
+          const totalInClass = allCards.length;
+          const sorted = [...allCards].sort((a, b) => {
+            const sa = positioningMethod === 'average' ? (a.averageScore ?? 0) : (a.totalScore ?? a.averageScore ?? 0);
+            const sb = positioningMethod === 'average' ? (b.averageScore ?? 0) : (b.totalScore ?? b.averageScore ?? 0);
+            return sb - sa;
+          });
+
+          let lastPos = 1;
+          let prevScore: number | null = null;
+          for (let i = 0; i < sorted.length; i++) {
+            const card = sorted[i];
+            const score = positioningMethod === 'average' ? (card.averageScore ?? 0) : (card.totalScore ?? card.averageScore ?? 0);
+            if (i === 0) { lastPos = 1; }
+            else if (score !== prevScore) { lastPos = i + 1; }
+            prevScore = score;
+            await db.update(schema.reportCards)
+              .set({ position: lastPos, totalStudentsInClass: totalInClass, updatedAt: new Date() })
+              .where(eq(schema.reportCards.id, card.id));
+          }
+        } catch (posErr: any) {
+          console.warn('[RECALC] Position update failed (non-fatal):', posErr.message);
+        }
+      }
+
+      res.json({ ...updatedReportCard, recalculated: true });
     } catch (error: any) {
       console.error('Error recalculating report card:', error);
       res.status(500).json({ message: error.message || 'Failed to recalculate report card' });

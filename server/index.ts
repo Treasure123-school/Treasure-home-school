@@ -109,7 +109,10 @@ const ADMIN_MAINTENANCE_PATHS = [
   '/api/admin/repair-report-cards',
   '/api/admin/report-cards/generate-missing',
   '/api/admin/sync-all-missing-exam-scores',
+  '/api/admin/sync-missing-test-scores',
   '/api/admin/force-resync-all-exams',
+  '/api/admin/force-resync-test-scores',
+  '/api/admin/recalculate-all-report-cards',
 ];
 app.use((req, res, next) => {
   const isDev = process.env.NODE_ENV !== 'production';

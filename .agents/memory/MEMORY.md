@@ -4,9 +4,14 @@
 - [Gemini model deprecation](gemini-model-migration.md) — gemini-1.5-pro removed from v1beta API; auto-migrate to gemini-2.0-flash
 - [AI test endpoint fix](ai-test-endpoint.md) — OpenAI test must use chat/completions not /v1/models; project-scoped keys can't list models
 - [Brand color CSS variable format](brand-color-css-format.md) — primary/accent/ring/sidebar-primary use raw H S% L% channels; tailwind config uses hsl(var(--primary) / <alpha-value>) for opacity support
+- [Report card grading fixes](report-card-grading-fixes.md) — full audit: weight normalisation bug, bulk SQL formula, recalculate enhancements, stats filtering, bulk three-dot menu
 - [Student profile completion system](student-profile-completion.md) — canonical 7-field set, where logic must stay in sync, stale-value anti-pattern, cache invalidation, production repair endpoint
 - [Report Card admin editing rules](report-card-admin-editing.md) — admin bypasses published-lock on score override; 'finalized' displays as 'In Progress'; skills use POST not PUT; admin always sees all statuses
 - [KaTeX pre-render/prewarm pattern](math-katex-prewarm.md) — sync-during-render math components never flash raw text; don't gate on blocking flags; reset warm-cache per session; escape KaTeX fallback
 - [Multer memoryStorage + req.file.path bug](multer-memorystorage-file-path.md) — memoryStorage has no req.file.path; fs.readFile(req.file.path) always 500s; use req.file.buffer instead
 - [Exam score → report card sync architecture](exam-score-sync-architecture.md) — all sync paths use reliableSyncService; helpers extracted to server/helpers/exam-scoring.ts; attendance + grading routes modularised
 - [Split deployment getApiUrl rule](split-deployment-getApiUrl.md) — every raw fetch('/api/...) must use getApiUrl(); missing it → 405 on POST via Vercel in production
+- [Report card display — weighted vs raw scores](report-card-display-vs-weighted.md) — Test/Exam columns must show testWeightedScore/examWeightedScore not raw scores; precompute gradedItems once for desktop+mobile
+- [Recalculate zero-score filter bug](recalculate-zero-score-filter.md) — all 3 recalculate paths must filter by score nullability not > 0; affects storage.ts, reliable-sync-service.ts, maintenance bulk SQL
+- [Recalculate stale-cache root causes](recalculate-stale-cache-bugs.md) — 5 bugs fixed: allowExamRetake cache clear, gradingScale hardcode, weight overlay in sync/override, bulk count response
+- [Score sync bugs](score-sync-bugs.md) — syncAllMissingExamScores only synced NULL scores; force-resync used wrong arithmetic; both now use reapplyWeightedScoresToItems

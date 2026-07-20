@@ -473,6 +473,40 @@ export default function TeacherReportCards() {
     },
   });
 
+  // Bulk recalculate all report cards for the current class/term filter
+  const bulkRecalculateMutation = useMutation({
+    mutationFn: async () => {
+      const body: Record<string, number> = {};
+      if (selectedClass) body.classId = Number(selectedClass);
+      if (selectedTerm)  body.termId  = Number(selectedTerm);
+      const response = await apiRequest(
+        "POST",
+        "/api/admin/recalculate-all-report-cards",
+        body,
+      );
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Bulk recalculation failed");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      toast({
+        title: "Recalculation complete",
+        description: data.message || "All report cards have been recalculated",
+      });
+      refetchReportCards();
+      if (selectedReportCard) refetchFullReport();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Recalculation failed",
+        description: error.message || "Failed to recalculate report cards",
+        variant: "destructive",
+      });
+    },
+  });
+
 
   const updateStatusMutation = useMutation({
     mutationFn: async (data: {
@@ -923,6 +957,12 @@ export default function TeacherReportCards() {
     setCurrentPage(1);
   };
 
+  // Cards that have been scored (exclude cards with no scores yet so that
+  // highest/lowest/average are not skewed by uncalculated zeroes).
+  const scoredCards = reportCards.filter(
+    (rc: any) => rc.averagePercentage !== null && rc.averagePercentage !== undefined,
+  );
+
   const statistics =
     reportCards.length > 0
       ? {
@@ -934,20 +974,24 @@ export default function TeacherReportCards() {
             (rc: any) => (rc.averagePercentage || 0) < 50,
           ).length,
           classAverage:
-            Math.round(
-              (reportCards.reduce(
-                (sum: number, rc: any) => sum + (rc.averagePercentage || 0),
-                0,
-              ) /
-                reportCards.length) *
-                10,
-            ) / 10,
-          classHighest: Math.max(
-            ...reportCards.map((rc: any) => rc.averagePercentage || 0),
-          ),
-          classLowest: Math.min(
-            ...reportCards.map((rc: any) => rc.averagePercentage || 0),
-          ),
+            scoredCards.length > 0
+              ? Math.round(
+                  (scoredCards.reduce(
+                    (sum: number, rc: any) => sum + (rc.averagePercentage || 0),
+                    0,
+                  ) /
+                    scoredCards.length) *
+                    10,
+                ) / 10
+              : 0,
+          classHighest:
+            scoredCards.length > 0
+              ? Math.max(...scoredCards.map((rc: any) => rc.averagePercentage || 0))
+              : 0,
+          classLowest:
+            scoredCards.length > 0
+              ? Math.min(...scoredCards.map((rc: any) => rc.averagePercentage || 0))
+              : 0,
           draftCount: reportCards.filter((rc: any) => rc.status === "draft")
             .length,
           finalizedCount: reportCards.filter(
@@ -1045,20 +1089,59 @@ export default function TeacherReportCards() {
                       <GraduationCap className="w-4 h-4" />
                       Class Report Cards
                     </CardTitle>
-                    {/* Mobile status indicators */}
-                    <div className="flex sm:hidden items-center gap-2 text-xs">
-                      <span className="flex items-center gap-1 text-yellow-600">
-                        <Clock className="w-3 h-3" />
-                        {statistics?.draftCount || 0}
-                      </span>
-                      <span className="flex items-center gap-1 text-primary">
-                        <FileCheck className="w-3 h-3" />
-                        {statistics?.finalizedCount || 0}
-                      </span>
-                      <span className="flex items-center gap-1 text-green-600">
-                        <Send className="w-3 h-3" />
-                        {statistics?.publishedCount || 0}
-                      </span>
+                    <div className="flex items-center gap-2">
+                      {/* Mobile status indicators */}
+                      <div className="flex sm:hidden items-center gap-2 text-xs">
+                        <span className="flex items-center gap-1 text-yellow-600">
+                          <Clock className="w-3 h-3" />
+                          {statistics?.draftCount || 0}
+                        </span>
+                        <span className="flex items-center gap-1 text-primary">
+                          <FileCheck className="w-3 h-3" />
+                          {statistics?.finalizedCount || 0}
+                        </span>
+                        <span className="flex items-center gap-1 text-green-600">
+                          <Send className="w-3 h-3" />
+                          {statistics?.publishedCount || 0}
+                        </span>
+                      </div>
+                      {/* Three-dot menu — admin only */}
+                      {isAdmin && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              aria-label="Report card options"
+                              data-testid="btn-report-card-options"
+                            >
+                              {bulkRecalculateMutation.isPending ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <MoreVertical className="w-4 h-4" />
+                              )}
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem
+                              onClick={() => bulkRecalculateMutation.mutate()}
+                              disabled={
+                                bulkRecalculateMutation.isPending ||
+                                !selectedClass ||
+                                !selectedTerm
+                              }
+                              data-testid="menu-bulk-recalculate"
+                            >
+                              <RefreshCw className="w-4 h-4 mr-2" />
+                              Recalculate All
+                              {selectedClass && selectedTerm
+                                ? " (this class & term)"
+                                : ""}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
                   </div>
                 </CardHeader>

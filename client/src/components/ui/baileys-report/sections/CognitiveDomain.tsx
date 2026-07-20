@@ -6,10 +6,11 @@ import { getRemarkFromGrade } from '../utils';
 interface CognitiveDomainProps {
   subjects: SubjectScore[];
   testWeight: number;
+  examWeight: number;
   emptyRows: null[];
 }
 
-const CognitiveDomain: React.FC<CognitiveDomainProps> = ({ subjects, testWeight, emptyRows }) => (
+const CognitiveDomain: React.FC<CognitiveDomainProps> = ({ subjects, testWeight, examWeight, emptyRows }) => (
   <table style={{ width: '100%', borderCollapse: 'collapse', border: B, tableLayout: 'fixed' }}>
     <colgroup>
       <col style={{ width: '27%' }} />
@@ -37,7 +38,7 @@ const CognitiveDomain: React.FC<CognitiveDomainProps> = ({ subjects, testWeight,
       </tr>
       <tr style={{ backgroundColor: '#eee' }}>
         <th style={{ border: B, padding: '1px', textAlign: 'center', fontWeight: 600, fontSize: 7, borderTop: 'none' }}>{testWeight}</th>
-        <th style={{ border: B, padding: '1px', textAlign: 'center', fontWeight: 600, fontSize: 7, borderTop: 'none' }}>100</th>
+        <th style={{ border: B, padding: '1px', textAlign: 'center', fontWeight: 600, fontSize: 7, borderTop: 'none' }}>{examWeight}</th>
         <th style={{ border: B, padding: '1px', textAlign: 'center', fontWeight: 600, fontSize: 7, borderTop: 'none' }}>100</th>
       </tr>
     </thead>

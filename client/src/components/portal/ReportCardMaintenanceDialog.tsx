@@ -32,8 +32,8 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import {
-  Wrench, RefreshCw, Zap, FilePlus,
-  Loader2, AlertTriangle, Info, ChevronDown, ChevronUp,
+  Wrench, RefreshCw, Zap, FilePlus, FlaskConical, Calculator,
+  Loader2, AlertTriangle, ChevronDown, ChevronUp,
 } from 'lucide-react';
 
 // ─── Result panel ─────────────────────────────────────────────────────────────
@@ -204,13 +204,19 @@ export function ReportCardMaintenanceDialog({ open, onOpenChange, selectedClass,
   // Confirm gates
   const [confirmRepair, setConfirmRepair] = useState(false);
   const [confirmSync, setConfirmSync] = useState(false);
+  const [confirmSyncTest, setConfirmSyncTest] = useState(false);
   const [confirmForce, setConfirmForce] = useState(false);
+  const [confirmForceTest, setConfirmForceTest] = useState(false);
+  const [confirmRecalc, setConfirmRecalc] = useState(false);
   const [confirmGen, setConfirmGen] = useState(false);
 
   // Per-tool results
+  const [recalcResult, setRecalcResult] = useState<any>(null);
   const [repairResult, setRepairResult] = useState<any>(null);
   const [syncResult, setSyncResult] = useState<any>(null);
+  const [syncTestResult, setSyncTestResult] = useState<any>(null);
   const [forceResult, setForceResult] = useState<any>(null);
+  const [forceTestResult, setForceTestResult] = useState<any>(null);
   const [genResult, setGenResult] = useState<any>(null);
 
   const termId = selectedTerm !== 'all' ? Number(selectedTerm) : (currentTerm?.id ?? undefined);
@@ -246,6 +252,19 @@ export function ReportCardMaintenanceDialog({ open, onOpenChange, selectedClass,
     }
   }
 
+  // ── Recalculate All ─────────────────────────────────────────────────────────
+  const recalcMutation = useMutation({
+    mutationFn: () => postMaintenance('/api/admin/recalculate-all-report-cards',
+      { ...(termId ? { termId } : {}), ...(classId ? { classId } : {}) }
+    ),
+    onSuccess: (data) => {
+      setRecalcResult(data);
+      invalidate();
+      toast({ title: 'Recalculation complete', description: `${data.total ?? 0} report card(s) recalculated, ${data.positionPairs ?? 0} class position group(s) updated.` });
+    },
+    onError: (e: any) => toast({ title: 'Recalculation failed', description: e.message, variant: 'destructive' }),
+  });
+
   // ── Repair All ──────────────────────────────────────────────────────────────
   const repairMutation = useMutation({
     mutationFn: () => postMaintenance('/api/admin/repair-report-cards'),
@@ -253,18 +272,32 @@ export function ReportCardMaintenanceDialog({ open, onOpenChange, selectedClass,
     onError: (e: any) => toast({ title: 'Repair failed', description: e.message, variant: 'destructive' }),
   });
 
-  // ── Sync Missing Scores ─────────────────────────────────────────────────────
+  // ── Sync Missing Exam Scores ────────────────────────────────────────────────
   const syncMutation = useMutation({
     mutationFn: () => postMaintenance('/api/admin/sync-all-missing-exam-scores', termId ? { termId } : {}),
-    onSuccess: (data) => { setSyncResult(data); invalidate(); toast({ title: 'Sync complete', description: `${data.synced ?? 0} scores synced.` }); },
+    onSuccess: (data) => { setSyncResult(data); invalidate(); toast({ title: 'Sync complete', description: `${data.synced ?? 0} exam scores synced.` }); },
     onError: (e: any) => toast({ title: 'Sync failed', description: e.message, variant: 'destructive' }),
   });
 
-  // ── Force Re-Sync ───────────────────────────────────────────────────────────
+  // ── Sync Missing Test Scores ────────────────────────────────────────────────
+  const syncTestMutation = useMutation({
+    mutationFn: () => postMaintenance('/api/admin/sync-missing-test-scores', termId ? { termId } : {}),
+    onSuccess: (data) => { setSyncTestResult(data); invalidate(); toast({ title: 'Test score sync complete', description: `${data.synced ?? 0} test/CA scores synced.` }); },
+    onError: (e: any) => toast({ title: 'Test score sync failed', description: e.message, variant: 'destructive' }),
+  });
+
+  // ── Force Re-Sync All Exams ─────────────────────────────────────────────────
   const forceMutation = useMutation({
     mutationFn: () => postMaintenance('/api/admin/force-resync-all-exams', termId ? { termId } : {}),
-    onSuccess: (data) => { setForceResult(data); invalidate(); toast({ title: 'Force re-sync complete', description: `${data.synced ?? 0} of ${data.total ?? 0} scores resynced.` }); },
+    onSuccess: (data) => { setForceResult(data); invalidate(); toast({ title: 'Force re-sync complete', description: `${data.synced ?? 0} of ${data.total ?? 0} exam scores resynced.` }); },
     onError: (e: any) => toast({ title: 'Force re-sync failed', description: e.message, variant: 'destructive' }),
+  });
+
+  // ── Force Re-Sync Test Scores ───────────────────────────────────────────────
+  const forceTestMutation = useMutation({
+    mutationFn: () => postMaintenance('/api/admin/force-resync-test-scores', termId ? { termId } : {}),
+    onSuccess: (data) => { setForceTestResult(data); invalidate(); toast({ title: 'Force test re-sync complete', description: `${data.synced ?? 0} of ${data.total ?? 0} test scores resynced.` }); },
+    onError: (e: any) => toast({ title: 'Force test re-sync failed', description: e.message, variant: 'destructive' }),
   });
 
   // ── Generate Missing ────────────────────────────────────────────────────────
@@ -279,7 +312,7 @@ export function ReportCardMaintenanceDialog({ open, onOpenChange, selectedClass,
     onError: (e: any) => toast({ title: 'Generation failed', description: e.message, variant: 'destructive' }),
   });
 
-  const anyRunning = repairMutation.isPending || syncMutation.isPending || forceMutation.isPending || genMutation.isPending;
+  const anyRunning = recalcMutation.isPending || repairMutation.isPending || syncMutation.isPending || syncTestMutation.isPending || forceMutation.isPending || forceTestMutation.isPending || genMutation.isPending;
 
   const scopeLabel = termId ? 'Current term scope' : 'All terms';
 
@@ -293,7 +326,7 @@ export function ReportCardMaintenanceDialog({ open, onOpenChange, selectedClass,
               Report Card Maintenance
             </DialogTitle>
             <DialogDescription>
-              Run these tools to fix missing subjects and exam scores on existing report cards.
+              Run these tools to fix missing subjects, exam scores, and test/CA scores on existing report cards.
             </DialogDescription>
           </DialogHeader>
 
@@ -319,13 +352,13 @@ export function ReportCardMaintenanceDialog({ open, onOpenChange, selectedClass,
               onRun={() => setConfirmRepair(true)}
             />
 
-            {/* ── Sync Missing Scores ───────────────────────────────────── */}
+            {/* ── Sync Missing Exam Scores ──────────────────────────────── */}
             <ToolCard
               icon={<RefreshCw className="h-3.5 w-3.5 text-blue-600" />}
               title="Sync Missing Exam Scores"
-              description="Fills only blank exam/test score slots. Never overwrites existing scores or manual overrides."
+              description="Fills only blank exam-score slots (exam/final/midterm). Never overwrites existing scores or manual overrides."
               badge={scopeLabel}
-              buttonLabel="Sync Missing Scores"
+              buttonLabel="Sync Missing Exam Scores"
               buttonClass="border-blue-300 text-blue-700 hover:bg-blue-50"
               isPending={syncMutation.isPending}
               pendingLabel="Syncing…"
@@ -338,14 +371,33 @@ export function ReportCardMaintenanceDialog({ open, onOpenChange, selectedClass,
               onRun={() => setConfirmSync(true)}
             />
 
-            {/* ── Force Re-Sync ─────────────────────────────────────────── */}
+            {/* ── Sync Missing Test Scores ──────────────────────────────── */}
+            <ToolCard
+              icon={<FlaskConical className="h-3.5 w-3.5 text-purple-600" />}
+              title="Sync Missing Test / CA Scores"
+              description="Fills only blank test/CA-score slots (test/quiz/assignment). Pulls from saved test exam results. Never overwrites existing scores."
+              badge={scopeLabel}
+              buttonLabel="Sync Missing Test Scores"
+              buttonClass="border-purple-300 text-purple-700 hover:bg-purple-50"
+              isPending={syncTestMutation.isPending}
+              pendingLabel="Syncing test scores…"
+              disabled={anyRunning}
+              result={syncTestResult}
+              resultChips={[
+                { label: 'Slots filled', value: syncTestResult?.synced ?? 0 },
+                { label: 'Failed', value: syncTestResult?.failed ?? 0, warn: (syncTestResult?.failed ?? 0) > 0 },
+              ]}
+              onRun={() => setConfirmSyncTest(true)}
+            />
+
+            {/* ── Force Re-Sync Exam Scores ─────────────────────────────── */}
             <ToolCard
               icon={<Zap className="h-3.5 w-3.5 text-orange-500" />}
-              title="Force Re-Sync All Exams"
-              description="Overwrites ALL exam scores from raw exam data, clearing any manual overrides. Use only when Repair All isn't enough."
-              badge="Overwrites"
+              title="Force Re-Sync All Exam Scores"
+              description="Overwrites ALL exam scores (exam/final/midterm) from raw exam data, clearing any manual overrides. Use when Repair All isn't enough."
+              badge="Overwrites exams"
               badgeDestructive
-              buttonLabel="Force Re-Sync"
+              buttonLabel="Force Re-Sync Exam Scores"
               buttonClass="border-orange-300 text-orange-700 hover:bg-orange-50"
               isPending={forceMutation.isPending}
               pendingLabel="Re-syncing…"
@@ -357,7 +409,28 @@ export function ReportCardMaintenanceDialog({ open, onOpenChange, selectedClass,
                 { label: 'Failed', value: forceResult?.failed ?? 0, warn: (forceResult?.failed ?? 0) > 0 },
               ]}
               onRun={() => setConfirmForce(true)}
-            />  
+            />
+
+            {/* ── Force Re-Sync Test Scores ─────────────────────────────── */}
+            <ToolCard
+              icon={<Zap className="h-3.5 w-3.5 text-red-500" />}
+              title="Force Re-Sync All Test / CA Scores"
+              description="Overwrites ALL test/CA scores (test/quiz/assignment) from raw exam data, clearing any manual overrides. Use when test scores are wrong or missing after re-entry."
+              badge="Overwrites tests"
+              badgeDestructive
+              buttonLabel="Force Re-Sync Test Scores"
+              buttonClass="border-red-300 text-red-700 hover:bg-red-50"
+              isPending={forceTestMutation.isPending}
+              pendingLabel="Re-syncing test scores…"
+              disabled={anyRunning}
+              result={forceTestResult}
+              resultChips={[
+                { label: 'Processed', value: forceTestResult?.total ?? 0 },
+                { label: 'Synced', value: forceTestResult?.synced ?? 0 },
+                { label: 'Failed', value: forceTestResult?.failed ?? 0, warn: (forceTestResult?.failed ?? 0) > 0 },
+              ]}
+              onRun={() => setConfirmForceTest(true)}
+            />
 
             {/* ── Generate Missing ─────────────────────────────────────── */}
             <ToolCard
@@ -396,6 +469,13 @@ export function ReportCardMaintenanceDialog({ open, onOpenChange, selectedClass,
 
       {/* ── Confirmation gates ─────────────────────────────────────────────── */}
       <Confirm
+        open={confirmRecalc} onOpenChange={setConfirmRecalc}
+        title="Recalculate All Report Cards?"
+        description={`Recomputes obtained marks, percentages, grades, and class positions from existing scores. Nothing is deleted or overwritten — only derived totals are refreshed. ${classId ? 'Filtered to selected class.' : ''} ${termId ? 'Scoped to the current term.' : 'Runs across all terms.'}`}
+        label="Recalculate"
+        onConfirm={() => recalcMutation.mutate()}
+      />
+      <Confirm
         open={confirmRepair} onOpenChange={setConfirmRepair}
         title="Repair All Report Cards?"
         description="Scans every report card across all terms, adds missing subjects, and syncs exam scores. Safe to run multiple times — never deletes data. May take a minute for large schools."
@@ -405,17 +485,32 @@ export function ReportCardMaintenanceDialog({ open, onOpenChange, selectedClass,
       <Confirm
         open={confirmSync} onOpenChange={setConfirmSync}
         title="Sync Missing Exam Scores?"
-        description={`Fills blank exam/test score slots from raw exam results. Existing scores and manual overrides are preserved. ${termId ? 'Scoped to the current term.' : 'Runs across all terms.'}`}
-        label="Sync Scores"
+        description={`Fills blank exam-score slots (exam/final/midterm) from raw exam results. Existing scores and manual overrides are preserved. ${termId ? 'Scoped to the current term.' : 'Runs across all terms.'}`}
+        label="Sync Exam Scores"
         onConfirm={() => syncMutation.mutate()}
       />
       <Confirm
+        open={confirmSyncTest} onOpenChange={setConfirmSyncTest}
+        title="Sync Missing Test / CA Scores?"
+        description={`Fills blank test/CA-score slots (test/quiz/assignment) from saved test exam results. Existing scores and manual overrides are never overwritten. ${termId ? 'Scoped to the current term.' : 'Runs across all terms.'}`}
+        label="Sync Test Scores"
+        onConfirm={() => syncTestMutation.mutate()}
+      />
+      <Confirm
         open={confirmForce} onOpenChange={setConfirmForce}
-        title="Force Re-Sync All Exams?"
-        description={`Overwrites ALL exam scores in report cards from raw exam data, clearing manual overrides. ${termId ? 'Scoped to the current term.' : 'Runs across all terms.'} This cannot be undone.`}
-        label="Force Re-Sync"
+        title="Force Re-Sync All Exam Scores?"
+        description={`Overwrites ALL exam scores (exam/final/midterm) in report cards from raw exam data, clearing manual overrides. ${termId ? 'Scoped to the current term.' : 'Runs across all terms.'} This cannot be undone.`}
+        label="Force Re-Sync Exam Scores"
         destructive
         onConfirm={() => forceMutation.mutate()}
+      />
+      <Confirm
+        open={confirmForceTest} onOpenChange={setConfirmForceTest}
+        title="Force Re-Sync All Test / CA Scores?"
+        description={`Overwrites ALL test/CA scores (test/quiz/assignment) in report cards from raw exam data, clearing any manual overrides. Use this after teachers re-enter test scores to push them back to report cards. ${termId ? 'Scoped to the current term.' : 'Runs across all terms.'} This cannot be undone.`}
+        label="Force Re-Sync Test Scores"
+        destructive
+        onConfirm={() => forceTestMutation.mutate()}
       />
       <Confirm
         open={confirmGen} onOpenChange={setConfirmGen}

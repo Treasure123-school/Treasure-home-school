@@ -14,6 +14,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { BaileysReportTemplate } from '@/components/ui/report-card-template';
 import { exportToPDF } from '@/lib/report-export-utils';
 import { calculateAge, getGradeColor } from '@/lib/report-card-utils';
+import { calculateGradeFromConfig, STANDARD_GRADING_SCALE } from '@shared/grading-utils';
 
 interface Child {
   id: string;
@@ -292,7 +293,11 @@ export default function ParentReportCards() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
-                        {report.items.map((item, index) => (
+                        {report.items.map((item, index) => {
+                          // Compute grade inline — never trust stale item.grade / item.percentage
+                          const _pct = Math.round((item.obtainedMarks || 0) / 100 * 100); // totalMarks is always 100
+                          const _gi  = calculateGradeFromConfig(_pct, STANDARD_GRADING_SCALE);
+                          return (
                           <tr key={index} className="hover:bg-muted/20 transition-colors">
                             <td className="py-3 px-4 font-medium">{item.subjectName}</td>
                             <td className="text-center py-3 px-3">
@@ -305,15 +310,15 @@ export default function ParentReportCards() {
                             </td>
                             <td className="text-center py-3 px-3">
                               <div className="font-bold text-base">{item.obtainedMarks}/100</div>
-                              <div className="text-xs text-muted-foreground">{item.percentage}%</div>
                             </td>
                             <td className="text-center py-3 px-3">
-                              <Badge className={`${getGradeColor(item.grade)} border-0 font-semibold text-xs`}>
-                                {item.grade}
+                              <Badge className={`${getGradeColor(_gi.grade)} border-0 font-semibold text-xs`}>
+                                {_gi.grade}
                               </Badge>
                             </td>
                           </tr>
-                        ))}
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

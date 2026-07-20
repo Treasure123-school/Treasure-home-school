@@ -379,7 +379,20 @@ export class ReliableSyncService {
         const finalExamScore = isMainExam ? safeScore : (existingItem.examScore ?? null);
         const finalExamMaxScore = isMainExam ? safeMaxScore : (existingItem.examMaxScore ?? null);
 
-        const gradingConfig = await getActiveGradingConfig();
+        // Overlay system-settings weights so exam submissions use the same
+        // test/exam weight split as Recalculate and auto-populate.
+        let gradingConfig = await getActiveGradingConfig();
+        const sysWeightRows = await tx
+          .select({ testWeight: schema.systemSettings.testWeight, examWeight: schema.systemSettings.examWeight })
+          .from(schema.systemSettings)
+          .limit(1);
+        if (sysWeightRows[0]) {
+          gradingConfig = {
+            ...gradingConfig,
+            testWeight: sysWeightRows[0].testWeight ?? gradingConfig.testWeight,
+            examWeight: sysWeightRows[0].examWeight ?? gradingConfig.examWeight,
+          };
+        }
         const weighted = calculateWeightedScore(finalTestScore, finalTestMaxScore, finalExamScore, finalExamMaxScore, gradingConfig);
         const gradeInfo = calculateGradeFromConfig(weighted.percentage, gradingConfig);
 
@@ -583,16 +596,19 @@ export class ReliableSyncService {
 
     if (items.length === 0) return;
 
-    const itemsWithScores = items.filter((item: any) => 
-      (item.testScore !== null && item.testScore > 0) || 
-      (item.examScore !== null && item.examScore > 0)
+    // Filter by raw score nullability — correctly includes students who scored 0.
+    const itemsWithScores = items.filter((item: any) =>
+      item.testScore !== null || item.examScore !== null
     );
 
     if (itemsWithScores.length === 0) return;
 
     const totalObtained = itemsWithScores.reduce((sum: number, item: any) => sum + (item.obtainedMarks || 0), 0);
     const averageScore = Math.round(totalObtained / itemsWithScores.length);
-    const averagePercentage = Math.round((totalObtained / (itemsWithScores.length * 100)) * 100);
+    // averagePercentage = average of per-item percentages (equivalent since percentage=obtainedMarks when fullWeight=100)
+    const averagePercentage = Math.round(
+      itemsWithScores.reduce((sum: number, item: any) => sum + (item.percentage || 0), 0) / itemsWithScores.length
+    );
 
     const activeConfig = await getActiveGradingConfig();
     const gradeInfo = calculateGradeFromConfig(averagePercentage, activeConfig);
@@ -752,16 +768,18 @@ export class ReliableSyncService {
 
     if (items.length === 0) return;
 
-    const itemsWithScores = items.filter(item => 
-      (item.testScore !== null && item.testScore > 0) || 
-      (item.examScore !== null && item.examScore > 0)
+    // Filter by raw score nullability — correctly includes students who scored 0.
+    const itemsWithScores = items.filter(item =>
+      item.testScore !== null || item.examScore !== null
     );
 
     if (itemsWithScores.length === 0) return;
 
     const totalObtained = itemsWithScores.reduce((sum, item) => sum + (item.obtainedMarks || 0), 0);
-    const totalMarks = itemsWithScores.length * 100;
-    const averagePercentage = totalMarks > 0 ? Math.round((totalObtained / totalMarks) * 100) : 0;
+    // Average the per-item percentages directly (reliable when fullWeight may vary per item).
+    const averagePercentage = Math.round(
+      itemsWithScores.reduce((sum, item) => sum + (item.percentage || 0), 0) / itemsWithScores.length
+    );
 
     const activeConfig = await getActiveGradingConfig();
     const gradeInfo = calculateGradeFromConfig(averagePercentage, activeConfig);

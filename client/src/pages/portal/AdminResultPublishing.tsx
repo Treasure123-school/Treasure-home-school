@@ -54,6 +54,7 @@ import {
   ArrowUpDown,
   SearchX,
   Wrench,
+  Calculator,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { calculateAge } from '@/lib/report-card-utils';
@@ -249,10 +250,11 @@ export default function AdminResultPublishing() {
 
   // Track mutation in progress to prevent double-clicks without showing spinners
   // Using refs to track in-progress IDs to avoid race conditions with setState
-  const publishingIdsRef = useRef<Set<number>>(new Set());
-  const unpublishingIdsRef = useRef<Set<number>>(new Set());
-  const rejectingIdsRef = useRef<Set<number>>(new Set());
-  const finalizingIdsRef = useRef<Set<number>>(new Set());
+  const publishingIdsRef    = useRef<Set<number>>(new Set());
+  const unpublishingIdsRef  = useRef<Set<number>>(new Set());
+  const rejectingIdsRef     = useRef<Set<number>>(new Set());
+  const finalizingIdsRef    = useRef<Set<number>>(new Set());
+  const recalculatingIdsRef = useRef<Set<number>>(new Set());
   const [, forceUpdate] = useState(0);
 
   // Helper to update the ref and trigger re-render
@@ -1024,6 +1026,48 @@ export default function AdminResultPublishing() {
     queryClient.invalidateQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
   };
 
+  // ── Individual report card recalculate ─────────────────────────────────────
+  const recalculateMutation = useMutation({
+    mutationFn: async (reportCardId: number) => {
+      const response = await apiRequest('POST', `/api/reports/${reportCardId}/recalculate`);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || 'Failed to recalculate');
+      }
+      return { reportCardId, data: await response.json() };
+    },
+    onMutate: (reportCardId: number) => {
+      addToSet(recalculatingIdsRef, reportCardId);
+    },
+    onSuccess: ({ reportCardId, data }) => {
+      removeFromSet(recalculatingIdsRef, reportCardId);
+      // Patch the list entry in all cached filter views
+      const filterViews = ['draft', 'finalized', 'published', 'all'];
+      filterViews.forEach(filter => {
+        const prev = queryClient.getQueryData<any>(['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter]);
+        if (prev?.reportCards) {
+          queryClient.setQueryData(['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter], {
+            ...prev,
+            reportCards: prev.reportCards.map((rc: any) =>
+              rc.id === reportCardId
+                ? { ...rc, averagePercentage: data.averagePercentage ?? rc.averagePercentage, overallGrade: data.overallGrade ?? rc.overallGrade, position: data.position ?? rc.position }
+                : rc
+            ),
+          });
+        }
+      });
+      // Also refresh the open preview if this card is being viewed
+      if (viewingReportCard?.id === reportCardId) {
+        queryClient.invalidateQueries({ queryKey: ['/api/reports', reportCardId, 'full'] });
+      }
+      toast({ title: 'Recalculated', description: `Report card updated — ${data.averagePercentage ?? 0}% average, grade ${data.overallGrade ?? '-'}.` });
+    },
+    onError: (error: Error, reportCardId: number) => {
+      removeFromSet(recalculatingIdsRef, reportCardId);
+      toast({ title: 'Recalculation failed', description: error.message, variant: 'destructive' });
+    },
+  });
+
   // Backfill default comments mutation
   const [isBackfillDialogOpen, setIsBackfillDialogOpen] = useState(false);
   const [isMaintenanceOpen, setIsMaintenanceOpen] = useState(false);
@@ -1164,6 +1208,29 @@ export default function AdminResultPublishing() {
     },
     onError: (error: Error) => {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    },
+  });
+
+  // Bulk recalculate — re-applies weighted scoring to all items then recalculates
+  // header totals, grades, and class positions for the current class/term filter.
+  const bulkRecalculateMutation = useMutation({
+    mutationFn: async () => {
+      const body: Record<string, number> = {};
+      if (selectedClass !== 'all') body.classId = Number(selectedClass);
+      if (selectedTerm  !== 'all') body.termId  = Number(selectedTerm);
+      const response = await apiRequest('POST', '/api/admin/recalculate-all-report-cards', body);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Bulk recalculation failed');
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
+      toast({ title: 'Recalculation complete', description: data.message || 'All report cards recalculated' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Recalculation failed', description: error.message, variant: 'destructive' });
     },
   });
 
@@ -1558,6 +1625,17 @@ export default function AdminResultPublishing() {
                       <Wrench className="w-4 h-4 mr-2" />
                       Repair / Maintenance
                     </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => bulkRecalculateMutation.mutate()}
+                      disabled={bulkRecalculateMutation.isPending}
+                      data-testid="menu-bulk-recalculate"
+                    >
+                      {bulkRecalculateMutation.isPending
+                        ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        : <Calculator className="w-4 h-4 mr-2" />}
+                      Recalculate All
+                      {selectedClass !== 'all' || selectedTerm !== 'all' ? ' (filtered)' : ''}
+                    </DropdownMenuItem>
                     {displayedReportCards.length > 0 && (
                       <>
                         <DropdownMenuSeparator />
@@ -1921,6 +1999,16 @@ export default function AdminResultPublishing() {
                                 <Eye className="w-4 h-4 mr-2" />
                                 Preview
                               </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() => recalculateMutation.mutate(rc.id)}
+                                disabled={recalculatingIdsRef.current.has(rc.id)}
+                              >
+                                {recalculatingIdsRef.current.has(rc.id)
+                                  ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  : <Calculator className="w-4 h-4 mr-2" />}
+                                Recalculate
+                              </DropdownMenuItem>
                               {rc.status === 'draft' && (
                                 <>
                                   <DropdownMenuSeparator />
@@ -2009,6 +2097,16 @@ export default function AdminResultPublishing() {
                                 <DropdownMenuItem onClick={() => handleViewReportCard(rc)}>
                                   <Eye className="w-4 h-4 mr-2" />
                                   Preview
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  onClick={() => recalculateMutation.mutate(rc.id)}
+                                  disabled={recalculatingIdsRef.current.has(rc.id)}
+                                >
+                                  {recalculatingIdsRef.current.has(rc.id)
+                                    ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    : <Calculator className="w-4 h-4 mr-2" />}
+                                  Recalculate
                                 </DropdownMenuItem>
                                 {rc.status === 'draft' && (
                                   <>

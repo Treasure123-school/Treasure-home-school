@@ -1,7 +1,7 @@
 /**
  * Admin Report-Card Maintenance Routes
  *
- * Long-running admin operations: repair, sync, and generate report cards.
+ * Long-running admin operations: repair, sync, recalculate, and generate report cards.
  * Extracted from routes.ts for modularity.
  *
  * KEY FIX: A per-router 8-minute timeout overrides the global 60 s production
@@ -16,16 +16,79 @@
  *   POST /api/admin/repair-report-cards
  *   POST /api/admin/report-cards/generate-missing
  *   POST /api/admin/sync-all-missing-exam-scores
+ *   POST /api/admin/sync-missing-test-scores
  *   POST /api/admin/force-resync-all-exams
+ *   POST /api/admin/force-resync-test-scores
+ *   POST /api/admin/recalculate-all-report-cards
  */
 
 import { Router, Request, Response } from 'express';
 import { authenticateUser, authorizeRoles, ROLES } from './middleware';
 import { storage, db } from '../storage';
 import * as schema from '@shared/schema.pg';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { enhancedCache } from '../enhanced-cache';
 import { reliableSyncService } from '../services/reliable-sync-service';
+import { getActiveGradingConfig } from '../grade-scale-service';
+import { calculateGradeFromConfig } from '../grading-config';
+
+// ─── Shared position recalculation helper ─────────────────────────────────────
+// Mirrors the private storage.recalculateClassPositions logic so maintenance
+// routes can trigger position updates without accessing private methods.
+async function recalculatePositionsForPairs(
+  pairs: Array<{ classId: number; termId: number }>,
+): Promise<void> {
+  if (pairs.length === 0) return;
+
+  const settingsRows = await db
+    .select({ positioningMethod: schema.systemSettings.positioningMethod })
+    .from(schema.systemSettings)
+    .limit(1);
+  const positioningMethod = settingsRows[0]?.positioningMethod || 'average';
+
+  for (const { classId, termId } of pairs) {
+    const cards = await db
+      .select({
+        id:           schema.reportCards.id,
+        totalScore:   schema.reportCards.totalScore,
+        averageScore: schema.reportCards.averageScore,
+      })
+      .from(schema.reportCards)
+      .where(
+        and(
+          eq(schema.reportCards.classId, classId),
+          eq(schema.reportCards.termId,  termId),
+        ),
+      );
+
+    if (!cards.length) continue;
+    const totalInClass = cards.length;
+
+    const sorted = [...cards].sort((a, b) => {
+      const sa = positioningMethod === 'average' ? (a.averageScore ?? 0) : (a.totalScore ?? a.averageScore ?? 0);
+      const sb = positioningMethod === 'average' ? (b.averageScore ?? 0) : (b.totalScore ?? b.averageScore ?? 0);
+      return sb - sa;
+    });
+
+    let lastPosition = 1;
+    let prevScore: number | null = null;
+    for (let i = 0; i < sorted.length; i++) {
+      const card: { id: number; totalScore: number | null; averageScore: number | null } = sorted[i];
+      const score = positioningMethod === 'average'
+        ? (card.averageScore ?? 0)
+        : (card.totalScore ?? card.averageScore ?? 0);
+      if (i === 0) {
+        lastPosition = 1;
+      } else if (score !== prevScore) {
+        lastPosition = i + 1;
+      }
+      prevScore = score;
+      await db.update(schema.reportCards)
+        .set({ position: lastPosition, totalStudentsInClass: totalInClass, updatedAt: new Date() })
+        .where(eq(schema.reportCards.id, card.id));
+    }
+  }
+}
 
 const router = Router();
 
@@ -261,7 +324,314 @@ router.post(
   },
 );
 
-// ─── 5. Force Re-Sync All Exams ────────────────────────────────────────────────
+// ─── 5. Sync Missing Test Scores ─────────────────────────────────────────────
+// Fills NULL test_score slots from test-type (test/quiz/assignment) exam results.
+// Never overwrites an existing test score or a manually-overridden row.
+router.post(
+  '/api/admin/sync-missing-test-scores',
+  authenticateUser,
+  authorizeRoles(ROLES.ADMIN),
+  async (req: Request, res: Response) => {
+    try {
+      const termId    = req.body?.termId ? Number(req.body.termId) : null;
+      const adminId   = (req as any).user!.id;
+      const termLabel = termId ? `term ${termId}` : 'all terms';
+
+      console.log(`[ADMIN-SYNC-TEST] User ${adminId} triggered missing test-score sync for ${termLabel}`);
+
+      const termFilter = termId ? sql`AND e.term_id = ${termId}` : sql``;
+
+      // ── Step 1: Count fillable test slots ────────────────────────────────
+      const countRows = await db.execute(sql`
+        SELECT COUNT(*)::int AS total
+        FROM report_card_items rci
+        JOIN report_cards rc ON rc.id = rci.report_card_id
+        JOIN exam_results er ON er.student_id = rc.student_id
+        JOIN exams e ON e.id = er.exam_id
+          AND e.subject_id = rci.subject_id
+          AND e.term_id    = rc.term_id
+        WHERE COALESCE(er.score, er.marks_obtained) IS NOT NULL
+          AND e.exam_type IN ('test', 'quiz', 'assignment')
+          AND rci.test_score IS NULL
+          AND COALESCE(rci.is_overridden, false) = false
+          ${termFilter}
+      `);
+      const totalCount: number = (countRows.rows?.[0] as any)?.total ?? 0;
+      console.log(`[ADMIN-SYNC-TEST] ${totalCount} NULL test-score slots to fill`);
+
+      if (totalCount === 0) {
+        return res.json({
+          message: `No missing test scores found for ${termLabel}. All test-score slots are already filled.`,
+          total: 0,
+          synced: 0,
+          failed: 0,
+        });
+      }
+
+      // ── Step 2: Fill NULL test scores (DISTINCT ON keeps latest result) ──
+      await db.execute(sql`
+        UPDATE report_card_items rci
+        SET
+          test_exam_id         = subq.exam_id,
+          test_score           = subq.score,
+          test_max_score       = subq.max_score,
+          test_exam_created_by = subq.created_by,
+          updated_at           = NOW()
+        FROM (
+          SELECT DISTINCT ON (rc.id, e.subject_id)
+            rc.id                                                    AS rc_id,
+            e.subject_id,
+            e.id                                                     AS exam_id,
+            COALESCE(er.score, er.marks_obtained, 0)::integer        AS score,
+            COALESCE(er.max_score, e.total_marks, 100)::integer      AS max_score,
+            e.created_by
+          FROM exam_results er
+          JOIN exams e       ON e.id  = er.exam_id
+          JOIN report_cards rc
+            ON  rc.student_id = er.student_id
+            AND rc.term_id    = e.term_id
+          WHERE COALESCE(er.score, er.marks_obtained) IS NOT NULL
+            AND e.exam_type IN ('test', 'quiz', 'assignment')
+            ${termFilter}
+          ORDER BY rc.id, e.subject_id, er.id DESC
+        ) subq
+        WHERE rci.report_card_id = subq.rc_id
+          AND rci.subject_id     = subq.subject_id
+          AND rci.test_score     IS NULL
+          AND COALESCE(rci.is_overridden, false) = false
+      `);
+
+      // ── Step 3: Recalculate obtained_marks + percentage ──────────────────
+      await db.execute(sql`
+        UPDATE report_card_items rci
+        SET
+          obtained_marks = COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0),
+          percentage     = CASE
+            WHEN COALESCE(rci.exam_max_score, 0) + COALESCE(rci.test_max_score, 0) > 0
+            THEN LEAST(100, ROUND(
+              ( COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0) )::numeric
+              / NULLIF(COALESCE(rci.exam_max_score, 0) + COALESCE(rci.test_max_score, 0), 0)
+              * 100
+            ))
+            WHEN rci.total_marks > 0
+            THEN LEAST(100, ROUND(
+              ( COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0) )::numeric
+              / rci.total_marks * 100
+            ))
+            ELSE 0
+          END,
+          updated_at = NOW()
+        WHERE rci.test_score IS NOT NULL
+          AND rci.report_card_id IN (
+            SELECT DISTINCT rc2.id
+            FROM report_cards rc2
+            JOIN exam_results er ON er.student_id = rc2.student_id
+            JOIN exams e ON e.id = er.exam_id
+              AND e.term_id = rc2.term_id
+              AND e.exam_type IN ('test', 'quiz', 'assignment')
+            WHERE COALESCE(er.score, er.marks_obtained) IS NOT NULL
+            ${termFilter}
+          )
+      `);
+
+      // ── Step 4: Recalculate report_cards header totals ───────────────────
+      await db.execute(sql`
+        UPDATE report_cards rc
+        SET
+          total_score        = agg.total_obtained,
+          average_score      = agg.avg_pct::integer,
+          average_percentage = agg.avg_pct::integer,
+          updated_at         = NOW()
+        FROM (
+          SELECT
+            rci.report_card_id,
+            COALESCE(SUM(rci.obtained_marks), 0)    AS total_obtained,
+            COALESCE(ROUND(AVG(rci.percentage)), 0) AS avg_pct
+          FROM report_card_items rci
+          WHERE rci.report_card_id IN (
+            SELECT DISTINCT rc2.id
+            FROM report_cards rc2
+            JOIN exam_results er ON er.student_id = rc2.student_id
+            JOIN exams e ON e.id = er.exam_id
+              AND e.term_id = rc2.term_id
+              AND e.exam_type IN ('test', 'quiz', 'assignment')
+            WHERE COALESCE(er.score, er.marks_obtained) IS NOT NULL
+            ${termFilter}
+          )
+          GROUP BY rci.report_card_id
+        ) agg
+        WHERE rc.id = agg.report_card_id
+      `);
+
+      invalidateReportCardCaches();
+      console.log(`[ADMIN-SYNC-TEST] Done — ${totalCount} test-score slot(s) filled for ${termLabel}`);
+
+      res.json({
+        message: `Test score sync complete: ${totalCount} slot(s) filled for ${termLabel}`,
+        total:   totalCount,
+        synced:  totalCount,
+        failed:  0,
+      });
+    } catch (error: any) {
+      console.error('[ADMIN-SYNC-TEST] Error:', error);
+      res.status(500).json({ message: error.message ?? 'Test score sync failed' });
+    }
+  },
+);
+
+// ─── 6. Force Re-Sync Test Scores ────────────────────────────────────────────
+// OVERWRITES all test_score values from test-type exam results.
+// Use when "Sync Missing Test Scores" isn't enough (e.g. wrong values need reset).
+router.post(
+  '/api/admin/force-resync-test-scores',
+  authenticateUser,
+  authorizeRoles(ROLES.ADMIN),
+  async (req: Request, res: Response) => {
+    try {
+      const termId    = req.body?.termId ? Number(req.body.termId) : null;
+      const adminId   = (req as any).user!.id;
+      const termLabel = termId ? `term ${termId}` : 'all terms';
+
+      console.log(`[ADMIN-FORCE-TEST] User ${adminId} triggered force test-score re-sync for ${termLabel}`);
+
+      const termFilter = termId ? sql`AND e.term_id = ${termId}` : sql``;
+
+      // ── Step 1: Count affected test results ──────────────────────────────
+      const countRows = await db
+        .select({ total: sql<number>`COUNT(*)::int` })
+        .from(schema.examResults)
+        .innerJoin(schema.exams, eq(schema.examResults.examId, schema.exams.id))
+        .where(
+          and(
+            sql`COALESCE(${schema.examResults.score}, ${schema.examResults.marksObtained}) IS NOT NULL`,
+            inArray(schema.exams.examType, ['test', 'quiz', 'assignment']),
+            ...(termId ? [eq(schema.exams.termId, termId)] : []),
+          ),
+        );
+      const totalCount = countRows[0]?.total ?? 0;
+      console.log(`[ADMIN-FORCE-TEST] ${totalCount} test results to process`);
+
+      if (totalCount === 0) {
+        return res.json({
+          message: `No test/quiz/assignment results found for ${termLabel}. Nothing to re-sync.`,
+          total: 0,
+          synced: 0,
+          failed: 0,
+        });
+      }
+
+      // ── Step 2: UPSERT test-type scores (overwrites existing) ────────────
+      await db.execute(sql`
+        INSERT INTO report_card_items
+          (report_card_id, subject_id, total_marks, obtained_marks, percentage,
+           test_exam_id, test_score, test_max_score, test_exam_created_by,
+           is_overridden, updated_at)
+        SELECT DISTINCT ON (rc.id, e.subject_id)
+          rc.id,
+          e.subject_id,
+          COALESCE(er.max_score, e.total_marks, 100)::integer,
+          0,
+          0,
+          e.id,
+          COALESCE(er.score, er.marks_obtained, 0)::integer,
+          COALESCE(er.max_score, e.total_marks, 100)::integer,
+          e.created_by,
+          false,
+          NOW()
+        FROM exam_results er
+        JOIN exams e  ON e.id = er.exam_id
+        JOIN report_cards rc
+          ON  rc.student_id = er.student_id
+          AND rc.term_id    = e.term_id
+        WHERE COALESCE(er.score, er.marks_obtained) IS NOT NULL
+          AND e.exam_type IN ('test', 'quiz', 'assignment')
+          ${termFilter}
+        ORDER BY rc.id, e.subject_id, er.id DESC
+        ON CONFLICT (report_card_id, subject_id) DO UPDATE SET
+          test_exam_id         = EXCLUDED.test_exam_id,
+          test_score           = EXCLUDED.test_score,
+          test_max_score       = EXCLUDED.test_max_score,
+          test_exam_created_by = EXCLUDED.test_exam_created_by,
+          is_overridden        = false,
+          updated_at           = NOW()
+      `);
+
+      // ── Step 3: Recalculate obtained_marks + percentage ──────────────────
+      await db.execute(sql`
+        UPDATE report_card_items rci
+        SET
+          obtained_marks = COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0),
+          percentage     = CASE
+            WHEN COALESCE(rci.exam_max_score, 0) + COALESCE(rci.test_max_score, 0) > 0
+            THEN LEAST(100, ROUND(
+              ( COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0) )::numeric
+              / NULLIF(COALESCE(rci.exam_max_score, 0) + COALESCE(rci.test_max_score, 0), 0)
+              * 100
+            ))
+            WHEN rci.total_marks > 0
+            THEN LEAST(100, ROUND(
+              ( COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0) )::numeric
+              / rci.total_marks * 100
+            ))
+            ELSE 0
+          END,
+          updated_at = NOW()
+        WHERE rci.report_card_id IN (
+          SELECT DISTINCT rc.id
+          FROM report_cards rc
+          JOIN exam_results er ON er.student_id = rc.student_id
+          JOIN exams e ON e.id = er.exam_id AND e.term_id = rc.term_id
+          WHERE COALESCE(er.score, er.marks_obtained) IS NOT NULL
+            AND e.exam_type IN ('test', 'quiz', 'assignment')
+          ${termFilter}
+        )
+      `);
+
+      // ── Step 4: Recalculate report_cards header totals ───────────────────
+      await db.execute(sql`
+        UPDATE report_cards rc
+        SET
+          total_score        = agg.total_obtained,
+          average_score      = agg.avg_pct::integer,
+          average_percentage = agg.avg_pct::integer,
+          updated_at         = NOW()
+        FROM (
+          SELECT
+            rci.report_card_id,
+            COALESCE(SUM(rci.obtained_marks), 0)    AS total_obtained,
+            COALESCE(ROUND(AVG(rci.percentage)), 0) AS avg_pct
+          FROM report_card_items rci
+          WHERE rci.report_card_id IN (
+            SELECT DISTINCT rc2.id
+            FROM report_cards rc2
+            JOIN exam_results er ON er.student_id = rc2.student_id
+            JOIN exams e ON e.id = er.exam_id AND e.term_id = rc2.term_id
+            WHERE COALESCE(er.score, er.marks_obtained) IS NOT NULL
+              AND e.exam_type IN ('test', 'quiz', 'assignment')
+            ${termFilter}
+          )
+          GROUP BY rci.report_card_id
+        ) agg
+        WHERE rc.id = agg.report_card_id
+      `);
+
+      invalidateReportCardCaches();
+      console.log(`[ADMIN-FORCE-TEST] Force test re-sync complete — ${totalCount} results across all report cards`);
+
+      res.json({
+        message: `Force test re-sync complete: ${totalCount} test/quiz/assignment results resynced`,
+        total:   totalCount,
+        synced:  totalCount,
+        failed:  0,
+      });
+    } catch (error: any) {
+      console.error('[ADMIN-FORCE-TEST] Error:', error);
+      res.status(500).json({ message: error.message ?? 'Force test re-sync failed' });
+    }
+  },
+);
+
+// ─── 7. Force Re-Sync All Exams ────────────────────────────────────────────────
 // OPTIMISED: replaces the old serial for-loop (one syncExamScoreToReportCard()
 // per result, 6–8 DB queries each) with 4 bulk SQL statements.
 //
@@ -320,12 +690,12 @@ router.post(
         SELECT DISTINCT ON (rc.id, e.subject_id)
           rc.id,
           e.subject_id,
-          COALESCE(e.total_marks, er.max_score, 100)::integer,
+          COALESCE(er.max_score, e.total_marks, 100)::integer,
           COALESCE(er.score, er.marks_obtained, 0)::integer,
           0,
           e.id,
           COALESCE(er.score, er.marks_obtained, 0)::integer,
-          COALESCE(e.total_marks, er.max_score, 100)::integer,
+          COALESCE(er.max_score, e.total_marks, 100)::integer,
           e.created_by,
           false,
           NOW()
@@ -357,12 +727,12 @@ router.post(
         SELECT DISTINCT ON (rc.id, e.subject_id)
           rc.id,
           e.subject_id,
-          COALESCE(e.total_marks, er.max_score, 100)::integer,
+          COALESCE(er.max_score, e.total_marks, 100)::integer,
           0,
           0,
           e.id,
           COALESCE(er.score, er.marks_obtained, 0)::integer,
-          COALESCE(e.total_marks, er.max_score, 100)::integer,
+          COALESCE(er.max_score, e.total_marks, 100)::integer,
           e.created_by,
           false,
           NOW()
@@ -384,64 +754,49 @@ router.post(
           updated_at           = NOW()
       `);
 
-      // ── Step 4: Recalculate obtained_marks + percentage on ALL affected items
-      // Recalculate every item in any report card that has exam results in scope.
-      // Uses exam_score + test_score combined; handles partial (only exam, only test).
-      await db.execute(sql`
-        UPDATE report_card_items rci
-        SET
-          obtained_marks = COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0),
-          percentage     = CASE
-            WHEN COALESCE(rci.exam_max_score, 0) + COALESCE(rci.test_max_score, 0) > 0
-            THEN LEAST(100, ROUND(
-              ( COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0) )::numeric
-              / NULLIF(COALESCE(rci.exam_max_score, 0) + COALESCE(rci.test_max_score, 0), 0)
-              * 100
-            ))
-            WHEN rci.total_marks > 0
-            THEN LEAST(100, ROUND(
-              ( COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0) )::numeric
-              / rci.total_marks * 100
-            ))
-            ELSE 0
-          END,
-          updated_at = NOW()
-        WHERE rci.report_card_id IN (
-          SELECT DISTINCT rc.id
-          FROM report_cards rc
-          JOIN exam_results er ON er.student_id = rc.student_id
-          JOIN exams e ON e.id = er.exam_id AND e.term_id = rc.term_id
-          WHERE COALESCE(er.score, er.marks_obtained) IS NOT NULL
-          ${termFilter}
-        )
-      `);
+      // ── Step 4: Re-apply weighted scores + recalculate grades ────────────────
+      // The previous raw-arithmetic approach (exam_score + test_score / max) ignored
+      // the school's testWeight/examWeight system and left grade/remarks/
+      // testWeightedScore/examWeightedScore columns stale.
+      //
+      // We now call reapplyWeightedScoresToItems() for every affected report card.
+      // That function:
+      //   • reads system-settings testWeight/examWeight
+      //   • applies the weighted formula to the scores just upserted above
+      //   • looks up the correct grade from grading boundaries
+      //   • updates testWeightedScore, examWeightedScore, obtainedMarks,
+      //     percentage, grade, and remarks on each item
+      //   • skips items where isOverridden = true
+      //   • calls recalculateReportCard() to refresh the header totals
+      //
+      // This is exactly what the per-card "Recalculate" button calls.
 
-      // ── Step 5: Recalculate report_cards header totals ────────────────────
-      await db.execute(sql`
-        UPDATE report_cards rc
-        SET
-          total_score        = agg.total_obtained,
-          average_score      = agg.avg_pct::integer,
-          average_percentage = agg.avg_pct::integer,
-          updated_at         = NOW()
-        FROM (
-          SELECT
-            rci.report_card_id,
-            COALESCE(SUM(rci.obtained_marks), 0)    AS total_obtained,
-            COALESCE(ROUND(AVG(rci.percentage)), 0) AS avg_pct
-          FROM report_card_items rci
-          WHERE rci.report_card_id IN (
-            SELECT DISTINCT rc2.id
-            FROM report_cards rc2
-            JOIN exam_results er ON er.student_id = rc2.student_id
-            JOIN exams e ON e.id = er.exam_id AND e.term_id = rc2.term_id
-            WHERE COALESCE(er.score, er.marks_obtained) IS NOT NULL
-            ${termFilter}
-          )
-          GROUP BY rci.report_card_id
-        ) agg
-        WHERE rc.id = agg.report_card_id
+      // Collect the distinct report card IDs affected by the upserts above
+      const affectedRcRows = await db.execute(sql`
+        SELECT DISTINCT rc.id
+        FROM report_cards rc
+        JOIN exam_results er ON er.student_id = rc.student_id
+        JOIN exams e ON e.id = er.exam_id AND e.term_id = rc.term_id
+        WHERE COALESCE(er.score, er.marks_obtained) IS NOT NULL
+        ${termFilter}
       `);
+      const affectedRcIds: number[] = (affectedRcRows.rows ?? []).map((r: any) => Number(r.id));
+
+      console.log(`[ADMIN-FORCE-RESYNC] Recalculating weighted scores for ${affectedRcIds.length} report cards...`);
+      const RESYNC_CONCURRENCY = 5;
+      let resyncFailed = 0;
+      for (let i = 0; i < affectedRcIds.length; i += RESYNC_CONCURRENCY) {
+        const batch = affectedRcIds.slice(i, i + RESYNC_CONCURRENCY);
+        const batchResults = await Promise.allSettled(
+          batch.map((id: number) => storage.reapplyWeightedScoresToItems(id))
+        );
+        for (const r of batchResults) {
+          if (r.status === 'rejected') resyncFailed++;
+        }
+      }
+      if (resyncFailed > 0) {
+        console.warn(`[ADMIN-FORCE-RESYNC] ${resyncFailed} report card(s) failed weighted recalculation`);
+      }
 
       invalidateReportCardCaches();
       console.log(`[ADMIN-FORCE-RESYNC] Bulk re-sync complete — ${totalCount} exam results across all report cards`);
@@ -455,6 +810,106 @@ router.post(
     } catch (error: any) {
       console.error('[ADMIN-FORCE-RESYNC] Error:', error);
       res.status(500).json({ message: error.message ?? 'Force re-sync failed' });
+    }
+  },
+);
+
+// ─── 8. Recalculate All Report Cards ─────────────────────────────────────────
+// Recomputes obtained_marks, percentage, grades, totals, AND class positions
+// for every report card (optionally scoped to one term / one class).
+// Safe to run multiple times — purely derived from existing scores.
+router.post(
+  '/api/admin/recalculate-all-report-cards',
+  authenticateUser,
+  authorizeRoles(ROLES.ADMIN),
+  async (req: Request, res: Response) => {
+    try {
+      const termId    = req.body?.termId  ? Number(req.body.termId)  : null;
+      const classId   = req.body?.classId ? Number(req.body.classId) : null;
+      const adminId   = (req as any).user!.id;
+      const scopeLabel =
+        termId && classId ? `class ${classId}, term ${termId}` :
+        termId            ? `term ${termId}`                    :
+        classId           ? `class ${classId}`                  : 'all';
+
+      console.log(`[ADMIN-RECALC] User ${adminId} triggered bulk recalculate for ${scopeLabel}`);
+
+      // ── Build scope filters ───────────────────────────────────────────────
+      const rcTermFilter  = termId  ? sql`AND rc.term_id  = ${termId}`  : sql``;
+      const rcClassFilter = classId ? sql`AND rc.class_id = ${classId}` : sql``;
+      const rcFilters     = sql`${rcTermFilter} ${rcClassFilter}`;
+
+      // ── Step 1: Count report cards in scope ───────────────────────────────
+      const countRows = await db.execute(sql`
+        SELECT COUNT(*)::int AS total FROM report_cards rc
+        WHERE 1=1 ${rcFilters}
+      `);
+      const totalCount: number = (countRows.rows?.[0] as any)?.total ?? 0;
+      console.log(`[ADMIN-RECALC] ${totalCount} report card(s) in scope`);
+
+      if (totalCount === 0) {
+        return res.json({
+          message: `No report cards found for ${scopeLabel}.`,
+          total: 0, succeeded: 0, positionPairs: 0, failed: 0,
+        });
+      }
+
+      // ── Step 2: Collect all report card IDs in scope ─────────────────────
+      const rcIdRows = await db.execute(sql`
+        SELECT id FROM report_cards rc WHERE 1=1 ${rcFilters}
+      `);
+      const reportCardIds: number[] = (rcIdRows.rows ?? []).map((r: any) => Number(r.id));
+
+      // ── Step 3: Reapply weighted scores — identical to the per-card button ─
+      // storage.reapplyWeightedScoresToItems() updates ALL item columns:
+      //   testWeightedScore, examWeightedScore, obtainedMarks, percentage, grade, remarks
+      // It correctly skips items where isOverridden=true, and calls
+      // recalculateReportCard() to refresh the header (totalScore, averagePercentage,
+      // overallGrade).  Processing in small concurrent batches keeps memory low
+      // while still being faster than pure serial execution.
+      const CONCURRENCY = 5;
+      let succeeded = 0, failed = 0;
+      for (let i = 0; i < reportCardIds.length; i += CONCURRENCY) {
+        const batch = reportCardIds.slice(i, i + CONCURRENCY);
+        const results = await Promise.allSettled(
+          batch.map(id => storage.reapplyWeightedScoresToItems(id))
+        );
+        for (let j = 0; j < results.length; j++) {
+          if (results[j].status === 'fulfilled') {
+            succeeded++;
+          } else {
+            failed++;
+            const reason = (results[j] as PromiseRejectedResult).reason;
+            console.error(`[ADMIN-RECALC] Error on report card ${batch[j]}:`, reason);
+          }
+        }
+      }
+      console.log(`[ADMIN-RECALC] Items + headers recalculated: ${succeeded} succeeded, ${failed} failed`);
+
+      // ── Step 4: Recalculate class positions ───────────────────────────────
+      const pairRows = await db.execute(sql`
+        SELECT DISTINCT class_id, term_id FROM report_cards rc WHERE 1=1 ${rcFilters}
+      `);
+      const pairs: Array<{ classId: number; termId: number }> = (pairRows.rows ?? []).map((r: any) => ({
+        classId: Number(r.class_id),
+        termId:  Number(r.term_id),
+      }));
+
+      await recalculatePositionsForPairs(pairs);
+
+      invalidateReportCardCaches();
+      console.log(`[ADMIN-RECALC] Done — ${totalCount} report cards, ${pairs.length} class/term position group(s) recalculated`);
+
+      res.json({
+        message:       `Recalculation complete: ${succeeded} of ${totalCount} report card(s) updated, positions recalculated for ${pairs.length} class/term group(s).`,
+        total:         totalCount,
+        succeeded,
+        positionPairs: pairs.length,
+        failed,
+      });
+    } catch (error: any) {
+      console.error('[ADMIN-RECALC] Error:', error);
+      res.status(500).json({ message: error.message ?? 'Recalculation failed' });
     }
   },
 );
