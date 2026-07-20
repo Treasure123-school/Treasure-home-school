@@ -1,7 +1,7 @@
 /**
  * Admin Report-Card Maintenance Routes
  *
- * Long-running admin operations: repair, sync, and generate report cards.
+ * Long-running admin operations: repair, sync, recalculate, and generate report cards.
  * Extracted from routes.ts for modularity.
  *
  * KEY FIX: A per-router 8-minute timeout overrides the global 60 s production
@@ -16,16 +16,79 @@
  *   POST /api/admin/repair-report-cards
  *   POST /api/admin/report-cards/generate-missing
  *   POST /api/admin/sync-all-missing-exam-scores
+ *   POST /api/admin/sync-missing-test-scores
  *   POST /api/admin/force-resync-all-exams
+ *   POST /api/admin/force-resync-test-scores
+ *   POST /api/admin/recalculate-all-report-cards
  */
 
 import { Router, Request, Response } from 'express';
 import { authenticateUser, authorizeRoles, ROLES } from './middleware';
 import { storage, db } from '../storage';
 import * as schema from '@shared/schema.pg';
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { enhancedCache } from '../enhanced-cache';
 import { reliableSyncService } from '../services/reliable-sync-service';
+import { getActiveGradingConfig } from '../grade-scale-service';
+import { calculateGradeFromConfig } from '../grading-config';
+
+// ─── Shared position recalculation helper ─────────────────────────────────────
+// Mirrors the private storage.recalculateClassPositions logic so maintenance
+// routes can trigger position updates without accessing private methods.
+async function recalculatePositionsForPairs(
+  pairs: Array<{ classId: number; termId: number }>,
+): Promise<void> {
+  if (pairs.length === 0) return;
+
+  const settingsRows = await db
+    .select({ positioningMethod: schema.systemSettings.positioningMethod })
+    .from(schema.systemSettings)
+    .limit(1);
+  const positioningMethod = settingsRows[0]?.positioningMethod || 'average';
+
+  for (const { classId, termId } of pairs) {
+    const cards = await db
+      .select({
+        id:           schema.reportCards.id,
+        totalScore:   schema.reportCards.totalScore,
+        averageScore: schema.reportCards.averageScore,
+      })
+      .from(schema.reportCards)
+      .where(
+        and(
+          eq(schema.reportCards.classId, classId),
+          eq(schema.reportCards.termId,  termId),
+        ),
+      );
+
+    if (!cards.length) continue;
+    const totalInClass = cards.length;
+
+    const sorted = [...cards].sort((a, b) => {
+      const sa = positioningMethod === 'average' ? (a.averageScore ?? 0) : (a.totalScore ?? a.averageScore ?? 0);
+      const sb = positioningMethod === 'average' ? (b.averageScore ?? 0) : (b.totalScore ?? b.averageScore ?? 0);
+      return sb - sa;
+    });
+
+    let lastPosition = 1;
+    let prevScore: number | null = null;
+    for (let i = 0; i < sorted.length; i++) {
+      const card: { id: number; totalScore: number | null; averageScore: number | null } = sorted[i];
+      const score = positioningMethod === 'average'
+        ? (card.averageScore ?? 0)
+        : (card.totalScore ?? card.averageScore ?? 0);
+      if (i === 0) {
+        lastPosition = 1;
+      } else if (score !== prevScore) {
+        lastPosition = i + 1;
+      }
+      prevScore = score;
+      await db.update(schema.reportCards)
+        .set({ position: lastPosition, totalStudentsInClass: totalInClass, updatedAt: new Date() })
+        .where(eq(schema.reportCards.id, card.id));
+    }
+  }
+}
 
 const router = Router();
 
@@ -762,6 +825,153 @@ router.post(
     } catch (error: any) {
       console.error('[ADMIN-FORCE-RESYNC] Error:', error);
       res.status(500).json({ message: error.message ?? 'Force re-sync failed' });
+    }
+  },
+);
+
+// ─── 8. Recalculate All Report Cards ─────────────────────────────────────────
+// Recomputes obtained_marks, percentage, grades, totals, AND class positions
+// for every report card (optionally scoped to one term / one class).
+// Safe to run multiple times — purely derived from existing scores.
+router.post(
+  '/api/admin/recalculate-all-report-cards',
+  authenticateUser,
+  authorizeRoles(ROLES.ADMIN),
+  async (req: Request, res: Response) => {
+    try {
+      const termId    = req.body?.termId  ? Number(req.body.termId)  : null;
+      const classId   = req.body?.classId ? Number(req.body.classId) : null;
+      const adminId   = (req as any).user!.id;
+      const scopeLabel =
+        termId && classId ? `class ${classId}, term ${termId}` :
+        termId            ? `term ${termId}`                    :
+        classId           ? `class ${classId}`                  : 'all';
+
+      console.log(`[ADMIN-RECALC] User ${adminId} triggered bulk recalculate for ${scopeLabel}`);
+
+      // ── Build scope filters ───────────────────────────────────────────────
+      const rcTermFilter  = termId  ? sql`AND rc.term_id  = ${termId}`  : sql``;
+      const rcClassFilter = classId ? sql`AND rc.class_id = ${classId}` : sql``;
+      const rcFilters     = sql`${rcTermFilter} ${rcClassFilter}`;
+
+      // ── Step 1: Count report cards in scope ───────────────────────────────
+      const countRows = await db.execute(sql`
+        SELECT COUNT(*)::int AS total FROM report_cards rc
+        WHERE 1=1 ${rcFilters}
+      `);
+      const totalCount: number = (countRows.rows?.[0] as any)?.total ?? 0;
+      console.log(`[ADMIN-RECALC] ${totalCount} report card(s) in scope`);
+
+      if (totalCount === 0) {
+        return res.json({
+          message: `No report cards found for ${scopeLabel}.`,
+          total: 0, succeeded: 0, positionPairs: 0, failed: 0,
+        });
+      }
+
+      // ── Step 2: Recalculate obtained_marks + percentage on all items ──────
+      await db.execute(sql`
+        UPDATE report_card_items rci
+        SET
+          obtained_marks = COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0),
+          percentage     = CASE
+            WHEN COALESCE(rci.exam_max_score, 0) + COALESCE(rci.test_max_score, 0) > 0
+            THEN LEAST(100, ROUND(
+              ( COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0) )::numeric
+              / NULLIF(COALESCE(rci.exam_max_score, 0) + COALESCE(rci.test_max_score, 0), 0)
+              * 100
+            ))
+            WHEN rci.total_marks > 0
+            THEN LEAST(100, ROUND(
+              ( COALESCE(rci.exam_score, 0) + COALESCE(rci.test_score, 0) )::numeric
+              / rci.total_marks * 100
+            ))
+            ELSE 0
+          END,
+          updated_at = NOW()
+        WHERE rci.report_card_id IN (
+          SELECT id FROM report_cards rc WHERE 1=1 ${rcFilters}
+        )
+      `);
+
+      // ── Step 3: Update report_cards header totals + grade ─────────────────
+      const gradingConfig = await getActiveGradingConfig();
+      await db.execute(sql`
+        UPDATE report_cards rc
+        SET
+          total_score        = agg.total_obtained,
+          average_score      = agg.avg_pct::integer,
+          average_percentage = agg.avg_pct::integer,
+          updated_at         = NOW()
+        FROM (
+          SELECT
+            rci.report_card_id,
+            COALESCE(SUM(rci.obtained_marks), 0)    AS total_obtained,
+            COALESCE(ROUND(AVG(rci.percentage)), 0) AS avg_pct
+          FROM report_card_items rci
+          WHERE rci.report_card_id IN (
+            SELECT id FROM report_cards rc WHERE 1=1 ${rcFilters}
+          )
+          GROUP BY rci.report_card_id
+        ) agg
+        WHERE rc.id = agg.report_card_id
+      `);
+
+      // Update overall_grade in JS since grade boundaries live in the grading config
+      const updatedCards = await db
+        .select({
+          id:                schema.reportCards.id,
+          averagePercentage: schema.reportCards.averagePercentage,
+        })
+        .from(schema.reportCards)
+        .where(
+          termId && classId
+            ? and(eq(schema.reportCards.termId, termId), eq(schema.reportCards.classId, classId))
+            : termId
+              ? eq(schema.reportCards.termId, termId)
+              : classId
+                ? eq(schema.reportCards.classId, classId)
+                : undefined as any,
+        );
+
+      // Batch grade updates — 50 at a time to avoid overwhelming the DB
+      const GRADE_BATCH = 50;
+      for (let i = 0; i < updatedCards.length; i += GRADE_BATCH) {
+        const batch = updatedCards.slice(i, i + GRADE_BATCH);
+        await Promise.all(
+          batch.map((card: { id: number; averagePercentage: number | null }) => {
+            const grade = calculateGradeFromConfig(card.averagePercentage ?? 0, gradingConfig).grade;
+            return db.update(schema.reportCards)
+              .set({ overallGrade: grade, updatedAt: new Date() })
+              .where(eq(schema.reportCards.id, card.id));
+          }),
+        );
+      }
+
+      // ── Step 4: Recalculate class positions ───────────────────────────────
+      const pairRows = await db.execute(sql`
+        SELECT DISTINCT class_id, term_id FROM report_cards rc WHERE 1=1 ${rcFilters}
+      `);
+      const pairs: Array<{ classId: number; termId: number }> = (pairRows.rows ?? []).map((r: any) => ({
+        classId: Number(r.class_id),
+        termId:  Number(r.term_id),
+      }));
+
+      await recalculatePositionsForPairs(pairs);
+
+      invalidateReportCardCaches();
+      console.log(`[ADMIN-RECALC] Done — ${totalCount} report cards, ${pairs.length} class/term position group(s) recalculated`);
+
+      res.json({
+        message:       `Recalculation complete: ${totalCount} report card(s) updated, positions recalculated for ${pairs.length} class/term group(s).`,
+        total:         totalCount,
+        succeeded:     totalCount,
+        positionPairs: pairs.length,
+        failed:        0,
+      });
+    } catch (error: any) {
+      console.error('[ADMIN-RECALC] Error:', error);
+      res.status(500).json({ message: error.message ?? 'Recalculation failed' });
     }
   },
 );

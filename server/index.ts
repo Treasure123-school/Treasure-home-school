@@ -112,6 +112,7 @@ const ADMIN_MAINTENANCE_PATHS = [
   '/api/admin/sync-missing-test-scores',
   '/api/admin/force-resync-all-exams',
   '/api/admin/force-resync-test-scores',
+  '/api/admin/recalculate-all-report-cards',
 ];
 app.use((req, res, next) => {
   const isDev = process.env.NODE_ENV !== 'production';

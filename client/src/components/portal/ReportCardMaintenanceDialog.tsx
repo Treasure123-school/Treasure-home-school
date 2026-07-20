@@ -32,7 +32,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import {
-  Wrench, RefreshCw, Zap, FilePlus, FlaskConical,
+  Wrench, RefreshCw, Zap, FilePlus, FlaskConical, Calculator,
   Loader2, AlertTriangle, ChevronDown, ChevronUp,
 } from 'lucide-react';
 
@@ -207,9 +207,11 @@ export function ReportCardMaintenanceDialog({ open, onOpenChange, selectedClass,
   const [confirmSyncTest, setConfirmSyncTest] = useState(false);
   const [confirmForce, setConfirmForce] = useState(false);
   const [confirmForceTest, setConfirmForceTest] = useState(false);
+  const [confirmRecalc, setConfirmRecalc] = useState(false);
   const [confirmGen, setConfirmGen] = useState(false);
 
   // Per-tool results
+  const [recalcResult, setRecalcResult] = useState<any>(null);
   const [repairResult, setRepairResult] = useState<any>(null);
   const [syncResult, setSyncResult] = useState<any>(null);
   const [syncTestResult, setSyncTestResult] = useState<any>(null);
@@ -249,6 +251,19 @@ export function ReportCardMaintenanceDialog({ open, onOpenChange, selectedClass,
       clearTimeout(timer);
     }
   }
+
+  // ── Recalculate All ─────────────────────────────────────────────────────────
+  const recalcMutation = useMutation({
+    mutationFn: () => postMaintenance('/api/admin/recalculate-all-report-cards',
+      { ...(termId ? { termId } : {}), ...(classId ? { classId } : {}) }
+    ),
+    onSuccess: (data) => {
+      setRecalcResult(data);
+      invalidate();
+      toast({ title: 'Recalculation complete', description: `${data.total ?? 0} report card(s) recalculated, ${data.positionPairs ?? 0} class position group(s) updated.` });
+    },
+    onError: (e: any) => toast({ title: 'Recalculation failed', description: e.message, variant: 'destructive' }),
+  });
 
   // ── Repair All ──────────────────────────────────────────────────────────────
   const repairMutation = useMutation({
@@ -297,7 +312,7 @@ export function ReportCardMaintenanceDialog({ open, onOpenChange, selectedClass,
     onError: (e: any) => toast({ title: 'Generation failed', description: e.message, variant: 'destructive' }),
   });
 
-  const anyRunning = repairMutation.isPending || syncMutation.isPending || syncTestMutation.isPending || forceMutation.isPending || forceTestMutation.isPending || genMutation.isPending;
+  const anyRunning = recalcMutation.isPending || repairMutation.isPending || syncMutation.isPending || syncTestMutation.isPending || forceMutation.isPending || forceTestMutation.isPending || genMutation.isPending;
 
   const scopeLabel = termId ? 'Current term scope' : 'All terms';
 
@@ -453,6 +468,13 @@ export function ReportCardMaintenanceDialog({ open, onOpenChange, selectedClass,
       </Dialog>
 
       {/* ── Confirmation gates ─────────────────────────────────────────────── */}
+      <Confirm
+        open={confirmRecalc} onOpenChange={setConfirmRecalc}
+        title="Recalculate All Report Cards?"
+        description={`Recomputes obtained marks, percentages, grades, and class positions from existing scores. Nothing is deleted or overwritten — only derived totals are refreshed. ${classId ? 'Filtered to selected class.' : ''} ${termId ? 'Scoped to the current term.' : 'Runs across all terms.'}`}
+        label="Recalculate"
+        onConfirm={() => recalcMutation.mutate()}
+      />
       <Confirm
         open={confirmRepair} onOpenChange={setConfirmRepair}
         title="Repair All Report Cards?"
