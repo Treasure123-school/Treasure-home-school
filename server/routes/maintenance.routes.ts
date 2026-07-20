@@ -869,151 +869,37 @@ router.post(
         });
       }
 
-      // ── Step 2: Recalculate obtained_marks + percentage on all items ──────
-      // Fetch system-configured weights (default 40/60) so the formula matches
-      // calculateWeightedScore() exactly.  Both components are normalised against
-      // the FULL weight (testWeight + examWeight = 100) so a test-only result
-      // cannot exceed testWeight%, preventing the "A-for-test-only" inflation bug.
-      const systemSettingsRows = await db
-        .select({ testWeight: schema.systemSettings.testWeight, examWeight: schema.systemSettings.examWeight })
-        .from(schema.systemSettings)
-        .limit(1);
-      const testWeight  = systemSettingsRows[0]?.testWeight  ?? 40;
-      const examWeight  = systemSettingsRows[0]?.examWeight  ?? 60;
-      const fullWeight  = testWeight + examWeight; // typically 100
-
-      await db.execute(sql`
-        UPDATE report_card_items rci
-        SET
-          -- Weighted score = (test%)*testWeight + (exam%)*examWeight, capped at fullWeight
-          obtained_marks = LEAST(${fullWeight}, ROUND(
-            (
-              CASE
-                WHEN rci.test_score IS NOT NULL AND rci.test_max_score IS NOT NULL AND rci.test_max_score > 0
-                THEN (rci.test_score::numeric / rci.test_max_score) * ${testWeight}
-                ELSE 0
-              END
-              +
-              CASE
-                WHEN rci.exam_score IS NOT NULL AND rci.exam_max_score IS NOT NULL AND rci.exam_max_score > 0
-                THEN (rci.exam_score::numeric / rci.exam_max_score) * ${examWeight}
-                ELSE 0
-              END
-            )::numeric
-          )),
-          -- Percentage = weightedScore / fullWeight * 100 (same as above when fullWeight=100)
-          percentage     = LEAST(100, ROUND(
-            (
-              CASE
-                WHEN rci.test_score IS NOT NULL AND rci.test_max_score IS NOT NULL AND rci.test_max_score > 0
-                THEN (rci.test_score::numeric / rci.test_max_score) * ${testWeight}
-                ELSE 0
-              END
-              +
-              CASE
-                WHEN rci.exam_score IS NOT NULL AND rci.exam_max_score IS NOT NULL AND rci.exam_max_score > 0
-                THEN (rci.exam_score::numeric / rci.exam_max_score) * ${examWeight}
-                ELSE 0
-              END
-            )::numeric / NULLIF(${fullWeight}, 0) * 100
-          )),
-          updated_at = NOW()
-        WHERE rci.report_card_id IN (
-          SELECT id FROM report_cards rc WHERE 1=1 ${rcFilters}
-        )
+      // ── Step 2: Collect all report card IDs in scope ─────────────────────
+      const rcIdRows = await db.execute(sql`
+        SELECT id FROM report_cards rc WHERE 1=1 ${rcFilters}
       `);
+      const reportCardIds: number[] = (rcIdRows.rows ?? []).map((r: any) => Number(r.id));
 
-      // ── Step 2b: Update per-item grade + remarks using active grading config ─
-      // Fetch all affected items' new percentages and re-grade in JS batches
-      // (grade boundaries live in the grading config, not the DB schema).
-      {
-        const gradingConfigForItems = await getActiveGradingConfig();
-        const affectedItems = await db.execute(sql`
-          SELECT rci.id, rci.percentage
-          FROM report_card_items rci
-          WHERE rci.report_card_id IN (
-            SELECT id FROM report_cards rc WHERE 1=1 ${rcFilters}
-          )
-        `);
-        const itemRows: Array<{ id: number; percentage: number }> = (affectedItems.rows ?? []).map((r: any) => ({
-          id:         Number(r.id),
-          percentage: Number(r.percentage ?? 0),
-        }));
-
-        const ITEM_BATCH = 100;
-        for (let i = 0; i < itemRows.length; i += ITEM_BATCH) {
-          const batch = itemRows.slice(i, i + ITEM_BATCH);
-          await Promise.all(
-            batch.map(({ id, percentage }) => {
-              const gradeInfo = calculateGradeFromConfig(percentage, gradingConfigForItems);
-              return db.update(schema.reportCardItems)
-                .set({ grade: gradeInfo.grade, remarks: gradeInfo.remarks, updatedAt: new Date() })
-                .where(eq(schema.reportCardItems.id, id));
-            }),
-          );
+      // ── Step 3: Reapply weighted scores — identical to the per-card button ─
+      // storage.reapplyWeightedScoresToItems() updates ALL item columns:
+      //   testWeightedScore, examWeightedScore, obtainedMarks, percentage, grade, remarks
+      // It correctly skips items where isOverridden=true, and calls
+      // recalculateReportCard() to refresh the header (totalScore, averagePercentage,
+      // overallGrade).  Processing in small concurrent batches keeps memory low
+      // while still being faster than pure serial execution.
+      const CONCURRENCY = 5;
+      let succeeded = 0, failed = 0;
+      for (let i = 0; i < reportCardIds.length; i += CONCURRENCY) {
+        const batch = reportCardIds.slice(i, i + CONCURRENCY);
+        const results = await Promise.allSettled(
+          batch.map(id => storage.reapplyWeightedScoresToItems(id))
+        );
+        for (let j = 0; j < results.length; j++) {
+          if (results[j].status === 'fulfilled') {
+            succeeded++;
+          } else {
+            failed++;
+            const reason = (results[j] as PromiseRejectedResult).reason;
+            console.error(`[ADMIN-RECALC] Error on report card ${batch[j]}:`, reason);
+          }
         }
-        console.log(`[ADMIN-RECALC] Updated grades on ${itemRows.length} report card item(s)`);
       }
-
-      // ── Step 3: Update report_cards header totals + grade ─────────────────
-      const gradingConfig = await getActiveGradingConfig();
-      await db.execute(sql`
-        UPDATE report_cards rc
-        SET
-          total_score        = agg.total_obtained,
-          average_score      = agg.avg_pct::integer,
-          average_percentage = agg.avg_pct::integer,
-          updated_at         = NOW()
-        FROM (
-          SELECT
-            rci.report_card_id,
-            COALESCE(SUM(rci.obtained_marks), 0) AS total_obtained,
-            -- Only average items that have actual raw scores recorded.
-            -- Rows where both test_score and exam_score are NULL are placeholder
-            -- (unscored) rows and must not drag the class average down.
-            COALESCE(ROUND(AVG(
-              CASE WHEN rci.test_score IS NOT NULL OR rci.exam_score IS NOT NULL
-                   THEN rci.percentage ELSE NULL END
-            )), 0) AS avg_pct
-          FROM report_card_items rci
-          WHERE rci.report_card_id IN (
-            SELECT id FROM report_cards rc WHERE 1=1 ${rcFilters}
-          )
-          GROUP BY rci.report_card_id
-        ) agg
-        WHERE rc.id = agg.report_card_id
-      `);
-
-      // Update overall_grade in JS since grade boundaries live in the grading config
-      const updatedCards = await db
-        .select({
-          id:                schema.reportCards.id,
-          averagePercentage: schema.reportCards.averagePercentage,
-        })
-        .from(schema.reportCards)
-        .where(
-          termId && classId
-            ? and(eq(schema.reportCards.termId, termId), eq(schema.reportCards.classId, classId))
-            : termId
-              ? eq(schema.reportCards.termId, termId)
-              : classId
-                ? eq(schema.reportCards.classId, classId)
-                : undefined as any,
-        );
-
-      // Batch grade updates — 50 at a time to avoid overwhelming the DB
-      const GRADE_BATCH = 50;
-      for (let i = 0; i < updatedCards.length; i += GRADE_BATCH) {
-        const batch = updatedCards.slice(i, i + GRADE_BATCH);
-        await Promise.all(
-          batch.map((card: { id: number; averagePercentage: number | null }) => {
-            const grade = calculateGradeFromConfig(card.averagePercentage ?? 0, gradingConfig).grade;
-            return db.update(schema.reportCards)
-              .set({ overallGrade: grade, updatedAt: new Date() })
-              .where(eq(schema.reportCards.id, card.id));
-          }),
-        );
-      }
+      console.log(`[ADMIN-RECALC] Items + headers recalculated: ${succeeded} succeeded, ${failed} failed`);
 
       // ── Step 4: Recalculate class positions ───────────────────────────────
       const pairRows = await db.execute(sql`
