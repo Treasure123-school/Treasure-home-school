@@ -1211,6 +1211,29 @@ export default function AdminResultPublishing() {
     },
   });
 
+  // Bulk recalculate — re-applies weighted scoring to all items then recalculates
+  // header totals, grades, and class positions for the current class/term filter.
+  const bulkRecalculateMutation = useMutation({
+    mutationFn: async () => {
+      const body: Record<string, number> = {};
+      if (selectedClass !== 'all') body.classId = Number(selectedClass);
+      if (selectedTerm  !== 'all') body.termId  = Number(selectedTerm);
+      const response = await apiRequest('POST', '/api/admin/recalculate-all-report-cards', body);
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Bulk recalculation failed');
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/report-cards/finalized'] });
+      toast({ title: 'Recalculation complete', description: data.message || 'All report cards recalculated' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Recalculation failed', description: error.message, variant: 'destructive' });
+    },
+  });
+
   // ─── Bulk Export helpers ───────────────────────────────────────────────────
 
   const mapToReportCardProps = (d: any) => ({
@@ -1601,6 +1624,17 @@ export default function AdminResultPublishing() {
                     >
                       <Wrench className="w-4 h-4 mr-2" />
                       Repair / Maintenance
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => bulkRecalculateMutation.mutate()}
+                      disabled={bulkRecalculateMutation.isPending}
+                      data-testid="menu-bulk-recalculate"
+                    >
+                      {bulkRecalculateMutation.isPending
+                        ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        : <Calculator className="w-4 h-4 mr-2" />}
+                      Recalculate All
+                      {selectedClass !== 'all' || selectedTerm !== 'all' ? ' (filtered)' : ''}
                     </DropdownMenuItem>
                     {displayedReportCards.length > 0 && (
                       <>
