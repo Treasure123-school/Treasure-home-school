@@ -11337,6 +11337,30 @@ School Management System Administration
         const classLowest = validScores.length > 0 ? Math.min(...validScores) : 0;
         const classAverage = validScores.length > 0 ? validScores.reduce((a: number, b: number) => a + b, 0) / validScores.length : 0;
 
+        // Compute per-subject class averages in one batch query.
+        // This populates the CLASS AVG column in the print template (CognitiveDomain).
+        const classRcIds = classReportCards.map((r: any) => r.id as number);
+        const subjectAvgMap = new Map<number, number>();
+        if (classRcIds.length > 0) {
+          const allClassSubjectItems = await db.select({
+            subjectId: schema.reportCardItems.subjectId,
+            obtainedMarks: schema.reportCardItems.obtainedMarks,
+          })
+            .from(schema.reportCardItems)
+            .where(inArray(schema.reportCardItems.reportCardId, classRcIds));
+
+          const subjectGroups = new Map<number, number[]>();
+          for (const si of allClassSubjectItems) {
+            if (si.subjectId && si.obtainedMarks && si.obtainedMarks > 0) {
+              if (!subjectGroups.has(si.subjectId)) subjectGroups.set(si.subjectId, []);
+              subjectGroups.get(si.subjectId)!.push(si.obtainedMarks);
+            }
+          }
+          for (const [sid, scores] of subjectGroups) {
+            subjectAvgMap.set(sid, Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10);
+          }
+        }
+
         // Map items to the expected format
         const items = reportCardItems.map((item: any) => ({
           id: item.id,
@@ -11353,7 +11377,8 @@ School Management System Administration
           percentage: item.percentage ?? 0,
           grade: item.grade || '-',
           remarks: item.remarks || item.teacherRemarks || '-',
-          hasData: (item.obtainedMarks ?? 0) > 0 || (item.testScore ?? 0) > 0 || (item.testWeightedScore ?? 0) > 0 || (item.examScore ?? 0) > 0 || (item.examWeightedScore ?? 0) > 0
+          hasData: (item.obtainedMarks ?? 0) > 0 || (item.testScore ?? 0) > 0 || (item.testWeightedScore ?? 0) > 0 || (item.examScore ?? 0) > 0 || (item.examWeightedScore ?? 0) > 0,
+          classAverage: subjectAvgMap.get(item.subjectId) ?? null,
         }));
 
         // Calculate total score from items
@@ -11593,6 +11618,7 @@ School Management System Administration
       // IMPORTANT: Always include the current student's freshly computed percentage
       // This ensures draft previews match what the final published view will show
       const allClassReportCards = await db.select({
+        id: schema.reportCards.id,
         studentId: schema.reportCards.studentId,
         totalScore: schema.reportCards.totalScore,
         averagePercentage: schema.reportCards.averagePercentage
@@ -11639,6 +11665,47 @@ School Management System Administration
         ? validDraftScores.reduce((a: number, b: number) => a + b, 0) / validDraftScores.length
         : currentStudentScore;
 
+      // Compute per-subject class averages for draft view.
+      // Combines current student's freshly-computed scores with stored scores of other students.
+      // Powers the CLASS AVG column in the print template (CognitiveDomain).
+      const draftSubjectAvgMap = new Map<number, number>();
+      {
+        const subjectGroups = new Map<number, number[]>();
+        // Seed with current student's fresh subject scores
+        for (const s of subjects) {
+          if (s.subjectId && s.obtainedMarks && s.obtainedMarks > 0) {
+            if (!subjectGroups.has(s.subjectId)) subjectGroups.set(s.subjectId, []);
+            subjectGroups.get(s.subjectId)!.push(s.obtainedMarks);
+          }
+        }
+        // Add stored items for other students in the class
+        const otherRcIds = allClassReportCards
+          .filter((r: any) => r.studentId !== studentId && r.id)
+          .map((r: any) => r.id as number);
+        if (otherRcIds.length > 0) {
+          const otherItems = await db.select({
+            subjectId: schema.reportCardItems.subjectId,
+            obtainedMarks: schema.reportCardItems.obtainedMarks,
+          })
+            .from(schema.reportCardItems)
+            .where(inArray(schema.reportCardItems.reportCardId, otherRcIds));
+          for (const si of otherItems) {
+            if (si.subjectId && si.obtainedMarks && si.obtainedMarks > 0) {
+              if (!subjectGroups.has(si.subjectId)) subjectGroups.set(si.subjectId, []);
+              subjectGroups.get(si.subjectId)!.push(si.obtainedMarks);
+            }
+          }
+        }
+        for (const [sid, scores] of subjectGroups) {
+          draftSubjectAvgMap.set(sid, Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10);
+        }
+      }
+      // Inject classAverage into each subject item
+      const subjectsWithClassAvg = subjects.map((s: any) => ({
+        ...s,
+        classAverage: draftSubjectAvgMap.get(s.subjectId) ?? null,
+      }));
+
       const reportCard = {
         status: 'draft',
         // Flat fields for easy frontend access
@@ -11668,8 +11735,8 @@ School Management System Administration
           startDate: term.startDate,
           endDate: term.endDate
         } : null,
-        items: subjects,
-        subjects,
+        items: subjectsWithClassAvg,
+        subjects: subjectsWithClassAvg,
         totalScore: totalObtained,
         averageScore: Math.round(totalObtained / (subjects.length || 1)),
         averagePercentage: Math.round(overallPercentage),
@@ -12464,6 +12531,34 @@ School Management System Administration
                 ) / 10,
                 totalStudents: allClassReportCards.length
               };
+            }
+
+            // Compute per-subject class averages and inject into finalItems.
+            // Powers the CLASS AVG column in the print template (CognitiveDomain).
+            const fullRcIds = allClassReportCards.map((r: any) => r.id as number);
+            if (fullRcIds.length > 0) {
+              const allClassSubjectItems = await db.select({
+                subjectId: schema.reportCardItems.subjectId,
+                obtainedMarks: schema.reportCardItems.obtainedMarks,
+              })
+                .from(schema.reportCardItems)
+                .where(inArray(schema.reportCardItems.reportCardId, fullRcIds));
+
+              const subjectGroups = new Map<number, number[]>();
+              for (const si of allClassSubjectItems) {
+                if (si.subjectId && si.obtainedMarks && si.obtainedMarks > 0) {
+                  if (!subjectGroups.has(si.subjectId)) subjectGroups.set(si.subjectId, []);
+                  subjectGroups.get(si.subjectId)!.push(si.obtainedMarks);
+                }
+              }
+              const subjectAvgMapFull = new Map<number, number>();
+              for (const [sid, scores] of subjectGroups) {
+                subjectAvgMapFull.set(sid, Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10);
+              }
+              finalItems = finalItems.map((item: any) => ({
+                ...item,
+                classAverage: subjectAvgMapFull.get(item.subjectId) ?? item.classAverage ?? null,
+              }));
             }
           }
         } catch (statsError) {
