@@ -11621,8 +11621,11 @@ School Management System Administration
       const currentStudentScore = Math.round(overallPercentage);
       scoreMap.set(studentId, currentStudentScore);
 
-      // Convert to array for statistics calculation
-      const validDraftScores = Array.from(scoreMap.values());
+      // Convert to array for statistics calculation.
+      // Filter out 0-scores (students with no exams) to keep highest/lowest/average
+      // consistent with the stored-report-card endpoint and the admin full-report
+      // endpoint — all three paths exclude unscored students from class statistics.
+      const validDraftScores = Array.from(scoreMap.values()).filter(s => s > 0);
       const totalStudentsInClassDraft = Math.max(allClassReportCards.length, scoreMap.size);
 
       // Calculate statistics - use current student's score as fallback if no other data
