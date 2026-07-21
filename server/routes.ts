@@ -12881,8 +12881,9 @@ School Management System Administration
         });
       }
 
-      // Fetch the updated report card with recalculated totals for the response
-      // This allows the frontend to update its cache without a separate refetch
+      // Fetch the updated report card with recalculated totals for the response.
+      // overrideReportCardItemScore already called recalculateReportCard + recalculateClassPositions
+      // internally, so these DB reads return the freshly-computed values.
       let reportCardTotals: { totalScore: number; averageScore: number; averagePercentage: number; overallGrade: string; position?: number } | undefined;
       if (updatedItem.reportCardId) {
         const updatedReportCard = await storage.getReportCard(updatedItem.reportCardId) as any;
@@ -12894,6 +12895,36 @@ School Management System Administration
             overallGrade: updatedReportCard.overallGrade ?? '',
             position: updatedReportCard.position ?? undefined
           };
+        }
+      }
+
+      // Compute fresh class stats (highest / lowest / average) so the client can
+      // update those summary cards immediately without a separate refetch.
+      // Uses the same formula as the GET report-card endpoints.
+      let classStats: { highestScore: number; lowestScore: number; classAverage: number } | undefined;
+      if (reportCard.classId && reportCard.termId) {
+        try {
+          const allClassCards = await db
+            .select({ averagePercentage: schema.reportCards.averagePercentage })
+            .from(schema.reportCards)
+            .where(and(
+              eq(schema.reportCards.classId, reportCard.classId),
+              eq(schema.reportCards.termId,  reportCard.termId),
+            ));
+          const validScores = allClassCards
+            .filter((r: any) => r.averagePercentage !== null && r.averagePercentage > 0)
+            .map((r: any) => r.averagePercentage as number);
+          if (validScores.length > 0) {
+            classStats = {
+              highestScore: Math.round(Math.max(...validScores)),
+              lowestScore:  Math.round(Math.min(...validScores)),
+              classAverage: Math.round(
+                (validScores.reduce((a: number, b: number) => a + b, 0) / validScores.length) * 10
+              ) / 10,
+            };
+          }
+        } catch (statsErr: any) {
+          console.warn('[OVERRIDE] Class stats refresh failed (non-fatal):', statsErr.message);
         }
       }
 
@@ -12910,7 +12941,8 @@ School Management System Administration
           grade: updatedItem.grade,
           percentage: updatedItem.percentage,
           overriddenBy: userId,
-          reportCardTotals
+          reportCardTotals,
+          classStats,
         }, userId);
       }
 
@@ -12919,7 +12951,8 @@ School Management System Administration
         message: 'Score updated successfully',
         canEditTest,
         canEditExam,
-        reportCardTotals
+        reportCardTotals,
+        classStats,
       });
     } catch (error: any) {
       console.error('Error overriding score:', error);

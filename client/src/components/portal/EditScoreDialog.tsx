@@ -184,20 +184,29 @@ export function EditScoreDialog({
     },
 
     onSuccess: (serverData) => {
-      // Reconcile with authoritative server data (includes recalculated totals).
-      // Using setQueryData avoids a flicker-causing refetch.
+      // Reconcile with authoritative server data (includes recalculated totals
+      // and fresh class stats).  Using setQueryData avoids a flicker-causing refetch.
       queryClient.setQueryData(reportCardQueryKey as any[], (old: any) => {
         if (!old || !old.items) return old;
         return {
           ...old,
-          // Merge report-card-level aggregates when the server returns them
+          // Merge student-level aggregates (total, average, grade, position)
           ...(serverData.reportCardTotals
             ? {
-                totalScore: serverData.reportCardTotals.totalScore,
-                averageScore: serverData.reportCardTotals.averageScore,
-                averagePercentage:
-                  serverData.reportCardTotals.averagePercentage,
-                overallGrade: serverData.reportCardTotals.overallGrade,
+                totalScore:        serverData.reportCardTotals.totalScore,
+                averageScore:      serverData.reportCardTotals.averageScore,
+                averagePercentage: serverData.reportCardTotals.averagePercentage,
+                overallGrade:      serverData.reportCardTotals.overallGrade,
+                position:          serverData.reportCardTotals.position,
+              }
+            : {}),
+          // Merge fresh class-wide stats (highest / lowest / average) so the
+          // summary cards update immediately without a separate network round-trip.
+          ...(serverData.classStats
+            ? {
+                highestScore: serverData.classStats.highestScore,
+                lowestScore:  serverData.classStats.lowestScore,
+                classAverage: serverData.classStats.classAverage,
               }
             : {}),
           items: old.items.map((it: any) =>
@@ -206,8 +215,8 @@ export function EditScoreDialog({
                   ...it,
                   ...serverData,
                   // Preserve permission flags that only the list query knows about
-                  canEditTest: it.canEditTest,
-                  canEditExam: it.canEditExam,
+                  canEditTest:    it.canEditTest,
+                  canEditExam:    it.canEditExam,
                   canEditRemarks: it.canEditRemarks,
                 }
               : it,
