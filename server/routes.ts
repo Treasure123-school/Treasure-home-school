@@ -12442,17 +12442,26 @@ School Management System Administration
           );
 
           if (allClassReportCards && allClassReportCards.length > 0) {
-            // Match teacher view calculation exactly: rc.averagePercentage || 0
-            // Do NOT filter out zeros - include all students in statistics
-            const percentages = allClassReportCards.map((rc: any) => rc.averagePercentage || 0);
-            const totalStudents = allClassReportCards.length;
+            // Filter to only students with actual scores (averagePercentage > 0).
+            // This matches the logic in GET /api/report-cards/:reportCardId and the
+            // draft preview endpoint, ensuring all three views show consistent stats.
+            // Using > 0 (not just !== null) keeps unscored students (stored as 0) out
+            // of highest/lowest/average so the class stats aren't skewed by empty cards.
+            const scoredCards = allClassReportCards.filter(
+              (rc: any) => rc.averagePercentage !== null && rc.averagePercentage > 0
+            );
+            const scoredPercentages = scoredCards.map((rc: any) => rc.averagePercentage as number);
 
-            classStatistics = {
-              highestScore: Math.max(...percentages),
-              lowestScore: Math.min(...percentages),
-              classAverage: Math.round((percentages.reduce((sum: number, p: number) => sum + p, 0) / totalStudents) * 10) / 10,
-              totalStudents: totalStudents
-            };
+            if (scoredPercentages.length > 0) {
+              classStatistics = {
+                highestScore: Math.round(Math.max(...scoredPercentages)),
+                lowestScore: Math.round(Math.min(...scoredPercentages)),
+                classAverage: Math.round(
+                  (scoredPercentages.reduce((sum: number, p: number) => sum + p, 0) / scoredPercentages.length) * 10
+                ) / 10,
+                totalStudents: allClassReportCards.length
+              };
+            }
           }
         } catch (statsError) {
           console.error('Error calculating class statistics:', statsError);
