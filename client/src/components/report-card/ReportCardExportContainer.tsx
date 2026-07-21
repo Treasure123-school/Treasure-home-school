@@ -1,12 +1,12 @@
 /**
- * Off-screen Baileys template used exclusively for PDF / image export.
+ * Off-screen report card template used exclusively for PDF / image export.
  * Rendered outside the viewport so html2canvas can capture it without
  * affecting the visible UI. Accepts a forwarded ref that callers pass to
  * exportToPDF / exportToImage.
  */
 import { forwardRef } from 'react';
 import { format } from 'date-fns';
-import { BaileysReportTemplate } from '@/components/ui/report-card-template';
+import { ReportCardTemplate } from '@/components/ui/report-card-template';
 import { calculateAge } from '@/lib/report-card-utils';
 
 interface Props {
@@ -15,7 +15,7 @@ interface Props {
   examWeight: number;
 }
 
-export const BaileysExportContainer = forwardRef<HTMLDivElement, Props>(
+export const ReportCardExportContainer = forwardRef<HTMLDivElement, Props>(
   ({ fullReportCard, testWeight, examWeight }, ref) => {
     if (!fullReportCard) return null;
 
@@ -31,7 +31,7 @@ export const BaileysExportContainer = forwardRef<HTMLDivElement, Props>(
 
     return (
       <div className="fixed left-[-9999px] top-0 z-[-1]">
-        <BaileysReportTemplate
+        <ReportCardTemplate
           ref={ref}
           reportCard={{
             studentName:          fullReportCard.studentName,
@@ -73,4 +73,4 @@ export const BaileysExportContainer = forwardRef<HTMLDivElement, Props>(
   }
 );
 
-BaileysExportContainer.displayName = 'BaileysExportContainer';
+ReportCardExportContainer.displayName = 'ReportCardExportContainer';

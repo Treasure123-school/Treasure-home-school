@@ -38,8 +38,8 @@ export function useReportCardExport(getReportCard: GetReportCard, getTemplate: G
     } finally { setIsDownloading(false); }
   };
 
-  const handlePrint = (baileysRef: HTMLDivElement | null) =>
-    baileysRef ? printElement(baileysRef) : window.print();
+  const handlePrint = (templateRef: HTMLDivElement | null) =>
+    templateRef ? printElement(templateRef) : window.print();
 
   return { isDownloading, handleExportPDF, handleExportImage, handlePrint };
 }

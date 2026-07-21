@@ -17,7 +17,7 @@ import { EditScoreDialog } from '@/components/portal/EditScoreDialog';
 import { ReportCardStudentTable } from '@/components/portal/ReportCardStudentTable';
 import { ReportCardPreviewDialog } from '@/components/portal/ReportCardPreviewDialog';
 import { ReportCardAnalyticsTab } from '@/components/portal/ReportCardAnalyticsTab';
-import { BaileysExportContainer } from '@/components/report-card/BaileysExportContainer';
+import { ReportCardExportContainer } from '@/components/report-card/ReportCardExportContainer';
 
 export default function TeacherReportCards() {
   const p = useTeacherReportCardPage();
@@ -127,7 +127,7 @@ export default function TeacherReportCards() {
         testWeight={p.testWeight} examWeight={p.examWeight}
         classes={p.classes} selectedClass={p.selectedClass} selectedTerm={p.selectedTerm}
         isAdmin={p.isAdmin} user={p.user}
-        onPrint={() => p.handlePrint(p.baileysTemplateRef.current)}
+        onPrint={() => p.handlePrint(p.exportTemplateRef.current)}
         onExportPDF={p.handleExportPDF} onExportImage={p.handleExportImage}
         onRefresh={() => p.fullReportCard && p.mutations.autoPopulateMutation.mutate(p.fullReportCard.id)}
         onFinalize={() => p.fullReportCard && p.mutations.updateStatusMutation.mutate({ reportCardId: p.fullReportCard.id, status: 'finalized', classId: p.selectedClass, termId: p.selectedTerm })}
@@ -154,7 +154,7 @@ export default function TeacherReportCards() {
       />
 
       {p.fullReportCard && p.isViewDialogOpen && (
-        <BaileysExportContainer ref={p.baileysTemplateRef} fullReportCard={p.fullReportCard} testWeight={p.testWeight} examWeight={p.examWeight} />
+        <ReportCardExportContainer ref={p.exportTemplateRef} fullReportCard={p.fullReportCard} testWeight={p.testWeight} examWeight={p.examWeight} />
       )}
     </div>
   );

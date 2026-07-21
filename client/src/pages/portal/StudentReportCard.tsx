@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
-import { BaileysReportTemplate } from '@/components/ui/report-card-template';
+import { ReportCardTemplate } from '@/components/ui/report-card-template';
 import { ProfessionalReportCard } from '@/components/ui/professional-report-card';
 import { exportToPDF, exportToImage, printElement } from '@/lib/report-export-utils';
 import {
@@ -301,10 +301,10 @@ export default function StudentReportCard() {
           </>
         )}
 
-        {/* ── Hidden Baileys template for PDF/Image export ── */}
+        {/* ── Hidden report card template for PDF/Image export ── */}
         {reportCard && (
           <div className="fixed left-[-9999px] top-0 z-[-1]">
-            <BaileysReportTemplate
+            <ReportCardTemplate
               ref={printTemplateRef}
               reportCard={{
                 studentName: reportCard.studentName || `${user?.firstName} ${user?.lastName}`,

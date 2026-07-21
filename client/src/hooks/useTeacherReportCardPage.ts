@@ -36,7 +36,7 @@ export function useTeacherReportCardPage() {
   const [currentPage,          setCurrentPage]          = useState(1);
 
   const reportCardRef      = useRef<HTMLDivElement>(null);
-  const baileysTemplateRef = useRef<HTMLDivElement>(null);
+  const exportTemplateRef = useRef<HTMLDivElement>(null);
   const selectedRCRef      = useRef<any>(null);
   selectedRCRef.current    = selectedReportCard;
 
@@ -100,7 +100,7 @@ export function useTeacherReportCardPage() {
 
   const exportHook = useReportCardExport(
     () => selectedRCRef.current,
-    () => baileysTemplateRef.current,
+    () => exportTemplateRef.current,
   );
 
   const handleSort = (field: string) => {
@@ -145,7 +145,7 @@ export function useTeacherReportCardPage() {
     activeTab, setActiveTab, showAdvancedFilters, setShowAdvancedFilters,
     sortField, sortDirection, handleSort,
     currentPage, setCurrentPage,
-    reportCardRef, baileysTemplateRef,
+    reportCardRef, exportTemplateRef,
     gradingConfig, terms, reportCards, loadingReportCards,
     fullReportCard, loadingFullReport, fetchingFullReport, refetchFullReport,
     classes, isAdmin, testWeight, examWeight,
