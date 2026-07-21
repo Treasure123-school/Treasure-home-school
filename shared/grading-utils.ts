@@ -199,3 +199,18 @@ export function getGradeBgColor(grade: string): string {
   if (gradeUpper.startsWith('D')) return 'bg-orange-100 dark:bg-orange-900/30';
   return 'bg-red-100 dark:bg-red-900/30';
 }
+
+/**
+ * Combined Badge className (bg + text) for a grade string.
+ * Suitable as the className prop on a shadcn Badge component.
+ * B grades intentionally use the brand primary color.
+ */
+export function getGradeBadgeClasses(grade: string): string {
+  if (!grade) return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
+  const g = grade.toUpperCase();
+  if (g.startsWith('A')) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+  if (g.startsWith('B')) return 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/50';
+  if (g.startsWith('C')) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+  if (g.startsWith('D') || g.startsWith('E')) return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
+  return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+}

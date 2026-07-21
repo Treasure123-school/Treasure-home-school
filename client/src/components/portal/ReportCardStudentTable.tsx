@@ -5,17 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Search, User, Eye, CheckCircle, FileCheck, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
-import { formatPosition } from '@shared/grading-utils';
-
-function gradeColor(grade: string) {
-  if (!grade) return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
-  const g = grade.toUpperCase();
-  if (g.startsWith('A')) return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-  if (g.startsWith('B')) return 'bg-primary/10 text-primary dark:bg-primary/5 dark:text-primary/50';
-  if (g.startsWith('C')) return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-  if (g.startsWith('D') || g.startsWith('E')) return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
-  return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-}
+import { formatPosition, getGradeBadgeClasses } from '@shared/grading-utils';
 
 function StatusBadge({ status }: { status: string }) {
   if (status === 'published') return (
@@ -90,7 +80,7 @@ export function ReportCardStudentTable({
               <div className="text-xs text-muted-foreground">{rc.averagePercentage || 0}% avg</div>
             </div>
             <div className="flex items-center gap-1.5 flex-shrink-0">
-              <Badge className={`text-xs px-2 ${gradeColor(rc.overallGrade)}`}>{rc.overallGrade || '-'}</Badge>
+              <Badge className={`text-xs px-2 ${getGradeBadgeClasses(rc.overallGrade)}`}>{rc.overallGrade || '-'}</Badge>
               <StatusBadge status={rc.status} />
             </div>
           </div>
@@ -134,7 +124,7 @@ export function ReportCardStudentTable({
                     {rc.averagePercentage || 0}%
                   </span>
                 </TableCell>
-                <TableCell><Badge className={gradeColor(rc.overallGrade)}>{rc.overallGrade || '-'}</Badge></TableCell>
+                <TableCell><Badge className={getGradeBadgeClasses(rc.overallGrade)}>{rc.overallGrade || '-'}</Badge></TableCell>
                 <TableCell><StatusBadge status={rc.status} /></TableCell>
                 <TableCell>
                   <Button size="icon" variant="ghost" onClick={() => onView(rc)} data-testid={`button-view-${rc.id}`}>

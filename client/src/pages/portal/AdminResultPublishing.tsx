@@ -58,6 +58,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { calculateAge } from '@/lib/report-card-utils';
+import { STANDARD_GRADING_SCALE, getGradeBadgeClasses } from '@shared/grading-utils';
 import { ProfessionalReportCard } from '@/components/ui/professional-report-card';
 import { EditScoreDialog } from '@/components/portal/EditScoreDialog';
 import { ReportCardMaintenanceDialog } from '@/components/portal/ReportCardMaintenanceDialog';
@@ -170,6 +171,17 @@ export default function AdminResultPublishing() {
       return await response.json();
     },
   });
+
+  // Grading config — used for weight display and optimistic score calculations
+  const { data: gradingConfig } = useQuery({
+    queryKey: ['/api/grading-config'],
+    queryFn: async () => {
+      const r = await apiRequest('GET', '/api/grading-config?scale=standard');
+      return r.ok ? r.json() : null;
+    },
+  });
+  const testWeight = gradingConfig?.dbSettings?.testWeight ?? STANDARD_GRADING_SCALE.testWeight;
+  const examWeight = gradingConfig?.dbSettings?.examWeight ?? STANDARD_GRADING_SCALE.examWeight;
 
   const { currentTerm, allTerms: terms } = useAcademicCalendar();
 
@@ -1981,7 +1993,7 @@ export default function AdminResultPublishing() {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="text-xs">{rc.overallGrade || '-'}</Badge>
+                          <Badge className={`text-xs ${getGradeBadgeClasses(rc.overallGrade || '-')}`}>{rc.overallGrade || '-'}</Badge>
                         </TableCell>
                         <TableCell>{getStatusBadge(rc.status, rc.id)}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">
@@ -2154,8 +2166,9 @@ export default function AdminResultPublishing() {
                             <Badge variant="outline" className="text-xs">{rc.className}</Badge>
                             <Badge variant="outline" className="text-xs">{rc.termName}</Badge>
                             <span className={`text-xs font-semibold ${(rc.averagePercentage || 0) >= 50 ? 'text-green-600' : 'text-red-600'}`}>
-                              {rc.averagePercentage || 0}% ({rc.overallGrade || '-'})
+                              {rc.averagePercentage || 0}%
                             </span>
+                            <Badge className={`text-xs ${getGradeBadgeClasses(rc.overallGrade || '-')}`}>{rc.overallGrade || '-'}</Badge>
                           </div>
                           <div className="mt-2 flex items-center justify-between">
                             {getStatusBadge(rc.status, rc.id)}
@@ -2354,8 +2367,8 @@ export default function AdminResultPublishing() {
                       affectiveTraits: fullReportCard.affectiveTraits,
                       psychomotorSkills: fullReportCard.psychomotorSkills
                     }}
-                    testWeight={40}
-                    examWeight={60}
+                    testWeight={testWeight}
+                    examWeight={examWeight}
                     canEditTeacherRemarks={true}
                     canEditPrincipalRemarks={true}
                     canEditSkills={true}
@@ -2523,7 +2536,36 @@ export default function AdminResultPublishing() {
         }}
         item={selectedOverrideItem}
         reportCardQueryKey={['/api/reports', viewingReportCard?.id, 'full']}
+        gradingConfig={gradingConfig}
         showRemarks={false}
+        onSaveSuccess={(serverData) => {
+          // Patch the admin list cards in every cached filter view so the
+          // percentage/grade/position displayed on the card reflects the edit
+          // immediately — without waiting for a full refetch.
+          if (serverData.reportCardTotals) {
+            const filterViews = ['draft', 'finalized', 'published', 'all'];
+            filterViews.forEach(filter => {
+              queryClient.setQueryData(
+                ['/api/admin/report-cards/finalized', selectedClass, selectedTerm, filter],
+                (old: any) => {
+                  if (!old?.reportCards) return old;
+                  return {
+                    ...old,
+                    reportCards: old.reportCards.map((rc: FinalizedReportCard) =>
+                      rc.id === viewingReportCard?.id
+                        ? {
+                            ...rc,
+                            averagePercentage: serverData.reportCardTotals?.averagePercentage ?? rc.averagePercentage,
+                            overallGrade:      serverData.reportCardTotals?.overallGrade      ?? rc.overallGrade,
+                          }
+                        : rc
+                    ),
+                  };
+                }
+              );
+            });
+          }
+        }}
       />
 
       {/* Hidden Report Card Template for BULK Export/Print - off-screen, mounted when exporting */}
@@ -2535,8 +2577,8 @@ export default function AdminResultPublishing() {
           <ReportCardTemplate
             ref={bulkTemplateRef}
             reportCard={mapToReportCardProps(bulkRenderData)}
-            testWeight={40}
-            examWeight={60}
+            testWeight={testWeight}
+            examWeight={examWeight}
           />
         </div>
       )}
@@ -2590,8 +2632,8 @@ export default function AdminResultPublishing() {
               affectiveTraits: fullReportCard.affectiveTraits,
               psychomotorSkills: fullReportCard.psychomotorSkills
             }}
-            testWeight={40}
-            examWeight={60}
+            testWeight={testWeight}
+            examWeight={examWeight}
           />
         </div>
       )}

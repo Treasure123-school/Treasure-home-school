@@ -144,10 +144,17 @@ export default function TeacherReportCards() {
         item={p.selectedItem} reportCardQueryKey={['/api/reports', p.selectedReportCard?.id, 'full']}
         gradingConfig={p.gradingConfig} showRemarks={true}
         onSaveSuccess={(serverData) => {
-          if (serverData.reportCardTotals?.position !== undefined) {
+          // Always patch the list row when the server returns updated totals,
+          // regardless of whether position was recalculated.
+          if (serverData.reportCardTotals) {
             queryClient.setQueryData(['/api/reports/class-term', p.selectedClass, p.selectedTerm], (old: any) =>
               Array.isArray(old) ? old.map((rc: any) => rc.id === p.selectedReportCard?.id
-                ? { ...rc, averagePercentage: serverData.reportCardTotals?.averagePercentage ?? rc.averagePercentage, overallGrade: serverData.reportCardTotals?.overallGrade ?? rc.overallGrade, position: serverData.reportCardTotals?.position ?? rc.position }
+                ? {
+                    ...rc,
+                    averagePercentage: serverData.reportCardTotals?.averagePercentage ?? rc.averagePercentage,
+                    overallGrade:      serverData.reportCardTotals?.overallGrade      ?? rc.overallGrade,
+                    position:          serverData.reportCardTotals?.position          ?? rc.position,
+                  }
                 : rc) : old);
           }
         }}
