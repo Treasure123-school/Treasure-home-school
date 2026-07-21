@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { apiRequest } from '@/lib/queryClient';
-import { BaileysReportTemplate } from '@/components/ui/report-card-template';
+import { ReportCardTemplate } from '@/components/ui/report-card-template';
 import { exportToPDF } from '@/lib/report-export-utils';
 import { calculateAge, getGradeColor } from '@/lib/report-card-utils';
 import { calculateGradeFromConfig, STANDARD_GRADING_SCALE } from '@shared/grading-utils';
@@ -431,10 +431,10 @@ export default function ParentReportCards() {
         </div>
       )}
 
-      {/* Hidden BaileysReportTemplate used for PDF export — never visible to the user */}
+      {/* Hidden ReportCardTemplate used for PDF export — never visible to the user */}
       {activeExportReport && (
         <div className="fixed left-[-9999px] top-0 z-[-1]" aria-hidden="true">
-          <BaileysReportTemplate
+          <ReportCardTemplate
             ref={printTemplateRef}
             reportCard={{
               studentName: activeExportReport.studentName || 'Student',

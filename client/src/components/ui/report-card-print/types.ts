@@ -97,7 +97,7 @@ export interface ReportCardData {
   principalSignatureUrl?: string | null;
 }
 
-export interface BaileysReportTemplateProps {
+export interface ReportCardTemplateProps {
   reportCard: ReportCardData;
   testWeight?: number;
   examWeight?: number;

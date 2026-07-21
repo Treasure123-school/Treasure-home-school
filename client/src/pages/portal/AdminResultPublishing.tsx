@@ -7,7 +7,7 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { toCanvas, toPng } from 'html-to-image';
-import { BaileysReportTemplate } from '@/components/ui/report-card-template';
+import { ReportCardTemplate } from '@/components/ui/report-card-template';
 import { exportToPDF, exportToImage, printElement } from '@/lib/report-export-utils';
 
 const STATUS_BADGE_TRANSITION = "transition-all duration-300 ease-in-out";
@@ -109,7 +109,7 @@ export default function AdminResultPublishing() {
   const [selectedOverrideItem, setSelectedOverrideItem] = useState<any>(null);
   const [isOverrideDialogOpen, setIsOverrideDialogOpen] = useState(false);
   const reportCardRef = useRef<HTMLDivElement>(null);
-  const baileysTemplateRef = useRef<HTMLDivElement>(null);
+  const exportTemplateRef = useRef<HTMLDivElement>(null);
 
   // Bulk export state
   const [isBulkExporting, setIsBulkExporting] = useState(false);
@@ -120,11 +120,11 @@ export default function AdminResultPublishing() {
   const bulkTemplateRef = useRef<HTMLDivElement>(null);
 
   const handleDownloadAsImage = async () => {
-    if (!baileysTemplateRef.current || !viewingReportCard) return;
+    if (!exportTemplateRef.current || !viewingReportCard) return;
 
     setIsDownloading(true);
     try {
-      await exportToImage(baileysTemplateRef.current, {
+      await exportToImage(exportTemplateRef.current, {
         filename: `report-card-${viewingReportCard.studentName?.replace(/\s+/g, '-')}`,
         scale: 2,
       });
@@ -138,11 +138,11 @@ export default function AdminResultPublishing() {
   };
 
   const handleDownloadAsPDF = async () => {
-    if (!baileysTemplateRef.current || !viewingReportCard) return;
+    if (!exportTemplateRef.current || !viewingReportCard) return;
 
     setIsDownloading(true);
     try {
-      await exportToPDF(baileysTemplateRef.current, {
+      await exportToPDF(exportTemplateRef.current, {
         filename: `report-card-${viewingReportCard.studentName?.replace(/\s+/g, '-')}`,
         scale: 2,
       });
@@ -156,11 +156,11 @@ export default function AdminResultPublishing() {
   };
 
   const handlePrintReport = () => {
-    if (!baileysTemplateRef.current) {
+    if (!exportTemplateRef.current) {
       window.print();
       return;
     }
-    printElement(baileysTemplateRef.current);
+    printElement(exportTemplateRef.current);
   };
 
   const { data: classes = [] } = useQuery({
@@ -1313,7 +1313,7 @@ export default function AdminResultPublishing() {
    *
    * Strategy:
    *  1. Always pause at least `minMs` ms so React's useEffect base64
-   *     conversions (studentPhoto + logo in BaileysReportTemplate) have time
+   *     conversions (studentPhoto + logo in ReportCardTemplate) have time
    *     to fetch, convert, and re-render.
    *  2. After minMs, check which images are still loading (complete=false).
    *     Images with src="" or data: URLs are already complete — skip them.
@@ -2526,13 +2526,13 @@ export default function AdminResultPublishing() {
         showRemarks={false}
       />
 
-      {/* Hidden Bailey's Template for BULK Export/Print - off-screen, mounted when exporting */}
+      {/* Hidden Report Card Template for BULK Export/Print - off-screen, mounted when exporting */}
       {bulkRenderData && (
         <div
           aria-hidden="true"
           style={{ position: 'fixed', left: '-9999px', top: 0, zIndex: -10, pointerEvents: 'none', width: '210mm' }}
         >
-          <BaileysReportTemplate
+          <ReportCardTemplate
             ref={bulkTemplateRef}
             reportCard={mapToReportCardProps(bulkRenderData)}
             testWeight={40}
@@ -2541,11 +2541,11 @@ export default function AdminResultPublishing() {
         </div>
       )}
 
-      {/* Hidden Bailey's Style Template for Export/Print */}
+      {/* Hidden Report Card Template for Export/Print */}
       {fullReportCard && isViewDialogOpen && (
         <div className="fixed left-[-9999px] top-0 z-[-1]">
-          <BaileysReportTemplate
-            ref={baileysTemplateRef}
+          <ReportCardTemplate
+            ref={exportTemplateRef}
             reportCard={{
               studentName: fullReportCard.studentName,
               admissionNumber: fullReportCard.admissionNumber || fullReportCard.studentUsername || 'N/A',

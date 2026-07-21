@@ -2,7 +2,7 @@
  * Shared report-card utility functions.
  * Centralises grade colours, position formatting, age calculation and remarks
  * so they are not duplicated across StudentReportCard, TeacherReportCards,
- * ProfessionalReportCard and BaileysReportTemplate.
+ * ProfessionalReportCard and ReportCardTemplate.
  */
 
 /** Tailwind badge colour classes for a grade letter. */

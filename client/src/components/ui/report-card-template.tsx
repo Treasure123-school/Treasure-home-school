@@ -1,11 +1,11 @@
 /**
- * BaileysReportTemplate — main orchestrator
+ * ReportCardTemplate — main orchestrator
  *
  * This file is intentionally thin. All logic lives in sub-modules:
- *   baileys-report/types.ts          — interfaces
- *   baileys-report/styles.ts         — inline style constants
- *   baileys-report/utils.ts          — pure helper functions
- *   baileys-report/sections/
+ *   report-card-print/types.ts          — interfaces
+ *   report-card-print/styles.ts         — inline style constants
+ *   report-card-print/utils.ts          — pure helper functions
+ *   report-card-print/sections/
  *     ReportHeader.tsx               — school header + term title
  *     StudentInfo.tsx                — student info grid + photo
  *     CognitiveDomain.tsx            — subjects table
@@ -19,18 +19,18 @@ import { useQuery } from '@tanstack/react-query';
 import { ContactUtils } from '@shared/contact-utils';
 import { imageUrlToBase64 } from '@/lib/report-export-utils';
 
-import type { BaileysReportTemplateProps } from './baileys-report/types';
-import { FONT, MIN_ROWS } from './baileys-report/styles';
-import { getGradeFromScore, countGrades } from './baileys-report/utils';
+import type { ReportCardTemplateProps } from './report-card-print/types';
+import { FONT, MIN_ROWS } from './report-card-print/styles';
+import { getGradeFromScore, countGrades } from './report-card-print/utils';
 
-import ReportHeader from './baileys-report/sections/ReportHeader';
-import StudentInfo from './baileys-report/sections/StudentInfo';
-import CognitiveDomain from './baileys-report/sections/CognitiveDomain';
-import PerformanceSummary from './baileys-report/sections/PerformanceSummary';
-import RightColumn from './baileys-report/sections/RightColumn';
-import BottomSection from './baileys-report/sections/BottomSection';
+import ReportHeader from './report-card-print/sections/ReportHeader';
+import StudentInfo from './report-card-print/sections/StudentInfo';
+import CognitiveDomain from './report-card-print/sections/CognitiveDomain';
+import PerformanceSummary from './report-card-print/sections/PerformanceSummary';
+import RightColumn from './report-card-print/sections/RightColumn';
+import BottomSection from './report-card-print/sections/BottomSection';
 
-export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTemplateProps>(({
+export const ReportCardTemplate = forwardRef<HTMLDivElement, ReportCardTemplateProps>(({
   reportCard,
   testWeight = 40,
   examWeight = 60,
@@ -160,6 +160,6 @@ export const BaileysReportTemplate = forwardRef<HTMLDivElement, BaileysReportTem
   );
 });
 
-BaileysReportTemplate.displayName = 'BaileysReportTemplate';
+ReportCardTemplate.displayName = 'ReportCardTemplate';
 
-export default BaileysReportTemplate;
+export default ReportCardTemplate;
