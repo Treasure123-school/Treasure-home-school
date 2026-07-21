@@ -10,7 +10,7 @@ import { CheckCircle, Clock, Download, FileCheck, FileText, Loader2, Printer, Re
 interface Props {
   fullReportCard: any;
   isDownloading: boolean;
-  autoPopulatePending: boolean;
+  recalculatePending: boolean;
   updateStatusPending: boolean;
   onPrint: () => void;
   onExportPDF: () => void;
@@ -27,7 +27,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export function ReportCardActionBar({
-  fullReportCard, isDownloading, autoPopulatePending, updateStatusPending,
+  fullReportCard, isDownloading, recalculatePending, updateStatusPending,
   onPrint, onExportPDF, onExportImage, onRefresh, onFinalize, onRevertDraft,
 }: Props) {
   const { status } = fullReportCard;
@@ -76,9 +76,9 @@ export function ReportCardActionBar({
             </DropdownMenuContent>
           </DropdownMenu>
           <Button variant="outline" size="icon" onClick={onRefresh}
-            disabled={autoPopulatePending || status !== 'draft'}
-            aria-label="Refresh scores" data-testid="button-refresh-scores">
-            {autoPopulatePending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            disabled={recalculatePending || status !== 'draft'}
+            aria-label="Recalculate scores" data-testid="button-recalculate-scores">
+            {recalculatePending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
           </Button>
           {status === 'draft' && (
             <Button onClick={onFinalize} disabled={updateStatusPending} size="sm" className="text-xs sm:text-sm h-9" data-testid="button-finalize">

@@ -118,7 +118,10 @@ export function useReportCardMutations({
     },
   });
 
-  // ── Auto-populate (refresh scores) ──────────────────────────────────────
+  // ── Auto-populate (pull raw scores from exam records) ───────────────────
+  // NOTE: Only use this intentionally (e.g. admin "sync from exams" action).
+  // Do NOT use it for the teacher refresh icon — it can overwrite stored scores
+  // with 0 when no matching exam record exists for a subject.
   const autoPopulateMutation = useMutation({
     mutationFn: async (reportCardId: number) => {
       const res = await apiRequest('POST', `/api/reports/${reportCardId}/auto-populate`);
@@ -127,6 +130,24 @@ export function useReportCardMutations({
     },
     onSuccess: (data) => { toast({ title: 'Success', description: data.message || 'Scores populated successfully' }); refetchFullReport(); refetchReportCards(); },
     onError: (err: any) => { toast({ title: 'Error', description: err.message || 'Failed to auto-populate scores', variant: 'destructive' }); },
+  });
+
+  // ── Individual recalculate (re-apply weights to stored scores) ───────────
+  // This is the SAFE recalculate: it reads the existing testScore/examScore,
+  // re-applies the current test/exam weight percentages, recalculates totals
+  // and the overall grade, and re-ranks the class. It never zeroes raw scores.
+  const recalculateMutation = useMutation({
+    mutationFn: async (reportCardId: number) => {
+      const res = await apiRequest('POST', `/api/reports/${reportCardId}/recalculate`);
+      if (!res.ok) { const e = await res.json(); throw new Error(e.message || 'Failed to recalculate scores'); }
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: 'Recalculated', description: 'Weighted scores, grade and class position updated' });
+      refetchFullReport();
+      refetchReportCards();
+    },
+    onError: (err: any) => { toast({ title: 'Recalculation failed', description: err.message || 'Failed to recalculate', variant: 'destructive' }); },
   });
 
   // ── Bulk recalculate ─────────────────────────────────────────────────────
@@ -148,5 +169,5 @@ export function useReportCardMutations({
     onError: (err: any) => { toast({ title: 'Recalculation failed', description: err.message || 'Failed to recalculate', variant: 'destructive' }); },
   });
 
-  return { bulkStatusMutation, updateStatusMutation, updateRemarksMutation, saveSkillsMutation, autoPopulateMutation, bulkRecalculateMutation };
+  return { bulkStatusMutation, updateStatusMutation, updateRemarksMutation, saveSkillsMutation, autoPopulateMutation, recalculateMutation, bulkRecalculateMutation };
 }

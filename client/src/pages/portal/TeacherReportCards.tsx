@@ -122,14 +122,14 @@ export default function TeacherReportCards() {
       <ReportCardPreviewDialog
         open={p.isViewDialogOpen} onOpenChange={p.setIsViewDialogOpen}
         fullReportCard={p.fullReportCard} loadingFullReport={p.loadingFullReport} fetchingFullReport={p.fetchingFullReport}
-        isDownloading={p.isDownloading} autoPopulatePending={p.mutations.autoPopulateMutation.isPending}
+        isDownloading={p.isDownloading} recalculatePending={p.mutations.recalculateMutation.isPending}
         updateStatusPending={p.mutations.updateStatusMutation.isPending} updateRemarksPending={p.mutations.updateRemarksMutation.isPending}
         testWeight={p.testWeight} examWeight={p.examWeight}
         classes={p.classes} selectedClass={p.selectedClass} selectedTerm={p.selectedTerm}
         isAdmin={p.isAdmin} user={p.user}
         onPrint={() => p.handlePrint(p.exportTemplateRef.current)}
         onExportPDF={p.handleExportPDF} onExportImage={p.handleExportImage}
-        onRefresh={() => p.fullReportCard && p.mutations.autoPopulateMutation.mutate(p.fullReportCard.id)}
+        onRefresh={() => p.fullReportCard && p.mutations.recalculateMutation.mutate(p.fullReportCard.id)}
         onFinalize={() => p.fullReportCard && p.mutations.updateStatusMutation.mutate({ reportCardId: p.fullReportCard.id, status: 'finalized', classId: p.selectedClass, termId: p.selectedTerm })}
         onRevertDraft={() => p.fullReportCard && p.mutations.updateStatusMutation.mutate({ reportCardId: p.fullReportCard.id, status: 'draft', classId: p.selectedClass, termId: p.selectedTerm })}
         onEditSubject={(item) => { p.setSelectedItem(item); p.setIsOverrideDialogOpen(true); }}

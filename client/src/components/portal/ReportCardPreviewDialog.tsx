@@ -17,7 +17,7 @@ interface Props {
   loadingFullReport: boolean;
   fetchingFullReport: boolean;
   isDownloading: boolean;
-  autoPopulatePending: boolean;
+  recalculatePending: boolean;
   updateStatusPending: boolean;
   updateRemarksPending: boolean;
   testWeight: number;
@@ -42,7 +42,7 @@ interface Props {
 
 export function ReportCardPreviewDialog({
   open, onOpenChange, fullReportCard, loadingFullReport, fetchingFullReport,
-  isDownloading, autoPopulatePending, updateStatusPending, updateRemarksPending,
+  isDownloading, recalculatePending, updateStatusPending, updateRemarksPending,
   testWeight, examWeight, classes, selectedClass, selectedTerm,
   isAdmin, user, onPrint, onExportPDF, onExportImage, onRefresh,
   onFinalize, onRevertDraft, onEditSubject, onSaveRemarks, onSaveSkills,
@@ -89,7 +89,7 @@ export function ReportCardPreviewDialog({
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             <ReportCardActionBar
               fullReportCard={fullReportCard} isDownloading={isDownloading}
-              autoPopulatePending={autoPopulatePending} updateStatusPending={updateStatusPending}
+              recalculatePending={recalculatePending} updateStatusPending={updateStatusPending}
               onPrint={onPrint} onExportPDF={onExportPDF} onExportImage={onExportImage}
               onRefresh={onRefresh} onFinalize={onFinalize} onRevertDraft={onRevertDraft}
             />
