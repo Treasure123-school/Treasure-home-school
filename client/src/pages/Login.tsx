@@ -15,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth';
 import { Link, useLocation } from 'wouter';
 import { getRoleNameById, getPortalByRoleId } from '@/lib/roles';
-import schoolLogo from '@assets/school-logo.png';
+const schoolLogo = '/images/school-logo-orig.png';
 
 interface SettingsData {
   schoolName: string;

@@ -265,8 +265,8 @@ export default function SuperAdminIntegrations() {
               <div className="flex items-start gap-3 p-3 rounded-lg border bg-card">
                 <div className="w-6 h-6 rounded-full bg-violet-100 dark:bg-violet-900 flex items-center justify-center text-xs font-bold text-violet-700 dark:text-violet-300 shrink-0 mt-0.5">3</div>
                 <div className="space-y-1">
-                  <p className="text-sm font-medium">Add the key to Replit Secrets</p>
-                  <p className="text-xs text-muted-foreground">In the Replit sidebar, open <strong>Secrets</strong> and add:</p>
+                  <p className="text-sm font-medium">Add the key to your .env file</p>
+                  <p className="text-xs text-muted-foreground">Open your <strong>.env</strong> file in the project root and add:</p>
                   <div className="mt-2 p-2 bg-slate-900 dark:bg-black rounded-md font-mono text-xs text-green-400">
                     OPENAI_API_KEY=sk-proj-xxxxxxxxxxxx
                   </div>

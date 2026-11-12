@@ -48,7 +48,7 @@ type Exam = BaseExam & {
   hasPaid?: boolean;
   feeAmount?: number;
 };
-import schoolLogo from '@assets/1000025432-removebg-preview (1)_1757796555126.png';
+const schoolLogo = '/images/school-logo-bg.png';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { ExamHeader } from '@/components/ExamHeader';
 import RequireCompleteProfile from '@/components/RequireCompleteProfile';

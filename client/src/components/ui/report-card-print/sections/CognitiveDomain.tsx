@@ -7,7 +7,7 @@ interface CognitiveDomainProps {
   subjects: SubjectScore[];
   testWeight: number;
   examWeight: number;
-  emptyRows: null[];
+  emptyRows: unknown[];
 }
 
 const CognitiveDomain: React.FC<CognitiveDomainProps> = ({ subjects, testWeight, examWeight, emptyRows }) => (

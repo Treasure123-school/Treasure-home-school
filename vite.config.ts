@@ -10,9 +10,8 @@ export default defineConfig({
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
       "@shared": path.resolve(import.meta.dirname, "shared"),
-      "@assets": path.resolve(import.meta.dirname, "attached_assets"),
       // Stub packages that have undeclared/broken deps in their real dist bundles.
-      // These aliases ensure both Replit dev and Vercel production builds always
+      // These aliases ensure both dev and Vercel production builds always
       // resolve to our safe stubs — never to the real npm packages.
       "jspdf": path.resolve(import.meta.dirname, "local-packages", "jspdf", "index.js"),
       "fast-xml-parser": path.resolve(import.meta.dirname, "local-packages", "fast-xml-parser", "index.js"),
@@ -112,7 +111,7 @@ export default defineConfig({
   },
   define: {
     // Auto-configure API URL based on environment
-    // Development (Replit/Localhost): Use empty string for same-origin requests
+    // Development (Localhost): Use empty string for same-origin requests
     // Production (Vercel): Use VITE_API_URL env var (set to Render backend URL)
     'import.meta.env.VITE_API_URL': JSON.stringify(
       process.env.VITE_API_URL || ''

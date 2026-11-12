@@ -21,7 +21,7 @@ import { useUserActivityTracker } from "@/hooks/useUserActivityTracker";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { HeaderSearch } from "@/components/HeaderSearch";
-import schoolLogo from "@assets/1000025432-removebg-preview (1)_1757796555126.png";
+const schoolLogo = "/images/school-logo-bg.png";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const SIDEBAR_EXPANDED_WIDTH = 220;

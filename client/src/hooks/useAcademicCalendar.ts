@@ -72,6 +72,9 @@ export function useAcademicCalendar() {
   }
 
   function getTermStatus(term: CalendarTerm): TermStatus {
+    // Explicit status always wins (archived/inactive terms stay archived)
+    if (term.status === 'archived') return 'archived';
+    if (term.status === 'inactive' || term.status === 'completed') return 'completed';
     const today = new Date().toISOString().split('T')[0];
     if (term.startDate <= today && term.endDate >= today) return 'active';
     if (term.endDate < today) return 'completed';
@@ -80,6 +83,8 @@ export function useAcademicCalendar() {
   }
 
   function getSessionStatus(session: CalendarSession): SessionStatus {
+    if (session.status === 'archived') return 'archived';
+    if (session.status === 'inactive' || session.status === 'completed') return 'completed';
     const today = new Date().toISOString().split('T')[0];
     if (session.startDate <= today && session.endDate >= today) return 'active';
     if (session.endDate < today) return 'completed';

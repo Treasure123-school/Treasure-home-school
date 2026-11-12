@@ -61,7 +61,7 @@ router.get("/:id", authenticateUser, async (req: Request, res: Response) => {
 });
 
 // POST /api/sessions — create a session (admin only)
-router.post("/", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+router.post("/", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res: Response) => {
   try {
     const { name, year, startDate, endDate, description } = req.body;
 
@@ -94,7 +94,7 @@ router.post("/", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any,
 });
 
 // PUT /api/sessions/:id — update a session
-router.put("/:id", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+router.put("/:id", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return sendBadRequest(res, "Invalid session ID");
@@ -143,7 +143,7 @@ router.put("/:id", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: an
 });
 
 // DELETE /api/sessions/:id — delete a session
-router.delete("/:id", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+router.delete("/:id", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return sendBadRequest(res, "Invalid session ID");
@@ -167,7 +167,7 @@ router.delete("/:id", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req:
 });
 
 // PUT /api/sessions/:id/deactivate — explicitly deactivate: clears isCurrent + sets status to inactive
-router.put("/:id/deactivate", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+router.put("/:id/deactivate", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return sendBadRequest(res, "Invalid session ID");
@@ -184,7 +184,7 @@ router.put("/:id/deactivate", authenticateUser, authorizeRoles(ROLES.ADMIN), asy
 });
 
 // PUT /api/sessions/:id/mark-current — manually mark a session as current
-router.put("/:id/mark-current", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+router.put("/:id/mark-current", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res: Response) => {
   try {
     const id = parseInt(req.params.id);
     if (isNaN(id)) return sendBadRequest(res, "Invalid session ID");

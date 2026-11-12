@@ -1,3 +1,4 @@
+import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import compression from "compression";
 import cors from "cors";
@@ -5,8 +6,8 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic } from "./vite";
 import { db } from "./storage";
 import { isPostgres, dbInfo } from "./db";
-import { seedAcademicTerms } from "./seed-terms";
-import { seedLessonNoteTemplates } from "./seed-lesson-note-templates";
+import { seedAcademicTerms } from "./seed/seed-terms";
+import { seedLessonNoteTemplates } from "./seed/seed-lesson-note-templates";
 import { validateEnvironment } from "./env-validation";
 import fs from "fs/promises";
 import { performanceMonitor } from "./performance-monitor";
@@ -21,17 +22,14 @@ const app = express();
 // Trust proxy - CRITICAL for Render deployment (enables secure cookies behind reverse proxy)
 app.set('trust proxy', 1);
 
-// CORS configuration for Vercel frontend, Replit dev, and localhost
+// CORS configuration for Vercel frontend and localhost
 const allowedOrigins = (process.env.NODE_ENV === 'development'
   ? [
     'http://localhost:5173',
     'http://localhost:5000',
     'http://127.0.0.1:5173',
     'http://127.0.0.1:5000',
-    /^https:\/\/.*\.vercel\.app$/,
-    /^https:\/\/.*\.replit\.dev$/,
-    ...(process.env.REPLIT_DEV_DOMAIN ? [`https://${process.env.REPLIT_DEV_DOMAIN}`] : []),
-    ...(process.env.REPLIT_DOMAINS ? process.env.REPLIT_DOMAINS.split(',').map(d => `https://${d.trim()}`) : [])
+    /^https:\/\/.*\.vercel\.app$/
   ]
   : [
     process.env.FRONTEND_URL,
@@ -258,7 +256,7 @@ function sanitizeLogData(data: any): any {
   // Seed system settings if they don't exist
   try {
     console.log("Seeding system settings if needed...");
-    const { seedSystemSettings } = await import("./seed-system-settings");
+    const { seedSystemSettings } = await import("./seed/seed-system-settings");
     await seedSystemSettings();
     console.log("✅ System settings seeding completed successfully");
   } catch (error) {
@@ -268,7 +266,7 @@ function sanitizeLogData(data: any): any {
   // Seed core roles first
   try {
     console.log("Creating core roles...");
-    const { seedRoles } = await import("./seed-roles");
+    const { seedRoles } = await import("./seed/seed-roles");
     await seedRoles();
     console.log("✅ Roles seeding completed successfully");
   } catch (error) {
@@ -278,7 +276,7 @@ function sanitizeLogData(data: any): any {
   // Seed test user accounts for all 5 roles
   try {
     console.log("Creating test user accounts for all roles...");
-    const { seedTestUsers } = await import("./seed-test-users");
+    const { seedTestUsers } = await import("./seed/seed-test-users");
     await seedTestUsers();
     console.log("✅ Test users seeding completed successfully");
   } catch (error) {
@@ -302,7 +300,7 @@ function sanitizeLogData(data: any): any {
   // Seed default WAEC/NECO grading boundaries
   try {
     console.log("Seeding default grading boundaries...");
-    const { seedGradingBoundaries } = await import("./seed-grading-boundaries");
+    const { seedGradingBoundaries } = await import("./seed/seed-grading-boundaries");
     await seedGradingBoundaries();
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -310,7 +308,7 @@ function sanitizeLogData(data: any): any {
   }
   // Seed curriculum templates
   try {
-    const { seedCurriculumTemplates } = await import("./seed-curriculum-templates");
+    const { seedCurriculumTemplates } = await import("./seed/seed-curriculum-templates");
     await seedCurriculumTemplates();
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -318,7 +316,7 @@ function sanitizeLogData(data: any): any {
   }
   // Gap-fill: add any missing Nigerian curriculum templates
   try {
-    const { seedCurriculumGapFill } = await import("./seed-curriculum-gap-fill");
+    const { seedCurriculumGapFill } = await import("./seed/seed-curriculum-gap-fill");
     const result = await seedCurriculumGapFill();
     result.report.forEach((line) => console.log(line));
   } catch (error) {
@@ -327,7 +325,7 @@ function sanitizeLogData(data: any): any {
   }
   // Gap-fill Part 2: Primary & JSS language subjects
   try {
-    const { seedCurriculumGapFill2 } = await import("./seed-curriculum-gap-fill-2");
+    const { seedCurriculumGapFill2 } = await import("./seed/seed-curriculum-gap-fill-2");
     const result2 = await seedCurriculumGapFill2();
     result2.report.forEach((line) => console.log(line));
   } catch (error) {
@@ -336,7 +334,7 @@ function sanitizeLogData(data: any): any {
   }
   // Gap-fill Part 3: SS Yoruba, Igbo, Hausa, Islamic Studies
   try {
-    const { seedCurriculumGapFill3 } = await import("./seed-curriculum-gap-fill-3");
+    const { seedCurriculumGapFill3 } = await import("./seed/seed-curriculum-gap-fill-3");
     const result3 = await seedCurriculumGapFill3();
     result3.report.forEach((line) => console.log(line));
   } catch (error) {
@@ -548,11 +546,8 @@ function sanitizeLogData(data: any): any {
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
 
-  // Check if running on Replit (development environment)
-  const isReplit = !!process.env.REPLIT_DEV_DOMAIN;
-
-  if (app.get("env") === "development" || isReplit) {
-    // Serve Vite dev server on Replit or when NODE_ENV=development
+  if (app.get("env") === "development") {
+    // Serve Vite dev server when NODE_ENV=development
     await setupVite(app, server);
   } else {
     // Serve static frontend in production

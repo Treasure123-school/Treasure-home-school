@@ -59,7 +59,7 @@ const ReportsManagement = lazy(() => import('@/pages/portal/ReportsManagement'))
 const PerformanceMonitoring = lazy(() => import('@/pages/portal/PerformanceMonitoring'));
 const OnlineUsers = lazy(() => import('@/pages/portal/OnlineUsers'));
 const HomepageManagement = lazy(() => import('@/pages/portal/HomepageManagement'));
-const AcademicTermsManagement = lazy(() => import('@/pages/portal/AcademicTermsManagement'));
+const AcademicTermsManagement = lazy(() => import('@/pages/portal/AcademicTerms'));
 const SettingsManagement = lazy(() => import('@/pages/portal/SettingsManagement'));
 const AdminExamOverview = lazy(() => import('@/pages/portal/AdminExamOverview'));
 const AdminExamAnalysis = lazy(() => import('@/pages/portal/AdminExamAnalysis'));

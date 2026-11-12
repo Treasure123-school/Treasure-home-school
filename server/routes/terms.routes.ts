@@ -66,7 +66,7 @@ router.get('/grouped', authenticateUser, async (req: Request, res: Response) => 
   }
 });
 
-router.post('/', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+router.post('/', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res: Response) => {
   try {
     if (!req.body.name || !req.body.year || !req.body.startDate || !req.body.endDate) {
       return sendBadRequest(res, 'Missing required fields: name, year, startDate, endDate');
@@ -103,7 +103,7 @@ router.post('/', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any,
   }
 });
 
-router.put('/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+router.put('/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res: Response) => {
   try {
     const termId = parseInt(req.params.id);
     if (isNaN(termId)) {
@@ -153,7 +153,7 @@ router.put('/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: an
   }
 });
 
-router.delete('/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+router.delete('/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res: Response) => {
   try {
     const termId = parseInt(req.params.id);
     if (isNaN(termId)) {
@@ -182,7 +182,7 @@ router.delete('/:id', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req:
   }
 });
 
-router.put('/:id/mark-current', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+router.put('/:id/mark-current', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res: Response) => {
   try {
     const termId = parseInt(req.params.id);
     if (isNaN(termId)) {
@@ -206,7 +206,7 @@ router.put('/:id/mark-current', authenticateUser, authorizeRoles(ROLES.ADMIN), a
   }
 });
 
-router.put('/:id/toggle-lock', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+router.put('/:id/toggle-lock', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res: Response) => {
   try {
     const termId = parseInt(req.params.id);
     if (isNaN(termId)) {
@@ -230,7 +230,7 @@ router.put('/:id/toggle-lock', authenticateUser, authorizeRoles(ROLES.ADMIN), as
   }
 });
 
-router.put('/:id/status', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+router.put('/:id/status', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res: Response) => {
   try {
     const termId = parseInt(req.params.id);
     if (isNaN(termId)) {
@@ -246,11 +246,14 @@ router.put('/:id/status', authenticateUser, authorizeRoles(ROLES.ADMIN), async (
       return sendBadRequest(res, 'Status is required');
     }
 
-    // When deactivating, also clear isCurrent
+    // When deactivating or archiving, clear isCurrent; archiving also locks the term
     const inactiveStatuses = ['completed', 'inactive', 'archived'];
     const updates: any = { status: req.body.status };
     if (inactiveStatuses.includes(req.body.status)) {
       updates.isCurrent = false;
+    }
+    if (req.body.status === 'archived') {
+      updates.isLocked = true;
     }
 
     const term = await storage.updateAcademicTerm(termId, updates);
@@ -265,7 +268,7 @@ router.put('/:id/status', authenticateUser, authorizeRoles(ROLES.ADMIN), async (
 });
 
 // PUT /api/terms/:id/deactivate — explicit deactivate: clears isCurrent + sets status to inactive
-router.put('/:id/deactivate', authenticateUser, authorizeRoles(ROLES.ADMIN), async (req: any, res: Response) => {
+router.put('/:id/deactivate', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res: Response) => {
   try {
     const termId = parseInt(req.params.id);
     if (isNaN(termId)) return sendBadRequest(res, 'Invalid term ID');

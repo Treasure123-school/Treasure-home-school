@@ -129,14 +129,6 @@ class RealtimeService {
     if (process.env.FRONTEND_URL) {
       allowedOrigins.push(process.env.FRONTEND_URL);
     }
-    
-    // Support Replit domains dynamically
-    if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
-      allowedOrigins.push(`https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co`);
-    }
-    if (process.env.REPLIT_DEV_DOMAIN) {
-      allowedOrigins.push(`https://${process.env.REPLIT_DEV_DOMAIN}`);
-    }
 
     this.io = new SocketIOServer(httpServer, {
       cors: {
@@ -145,7 +137,7 @@ class RealtimeService {
           if (!origin) return callback(null, true);
           
           // Check against allowed origins
-          if (allowedOrigins.some(allowed => origin.startsWith(allowed) || origin.includes('.repl.co') || origin.includes('.replit.dev'))) {
+          if (allowedOrigins.some(allowed => origin.startsWith(allowed) || origin.includes('.vercel.app'))) {
             return callback(null, true);
           }
           
@@ -177,7 +169,7 @@ class RealtimeService {
     this.startActivityCheck();
     
     console.log('✅ Socket.IO Realtime Service initialized');
-    console.log(`   → CORS origins: ${allowedOrigins.length > 0 ? allowedOrigins.join(', ') : 'dynamic (Replit)'}`);
+    console.log(`   → CORS origins: ${allowedOrigins.length > 0 ? allowedOrigins.join(', ') : 'dynamic'}`);
     console.log(`   → Environment: ${process.env.NODE_ENV || 'development'}`);
   }
 

@@ -67,12 +67,7 @@ uploads/
 !uploads/.gitkeep
 
 # Attached assets (may contain sensitive files)
-attached_assets/*.txt
-attached_assets/*.env
-attached_assets/**/*.env
 *.env.txt
 
-# Replit specific
-.config/
-.upm/
-.cache/
+# Vite temp files (regenerated on each vite run)
+vite.config.ts.timestamp-*.mjs
