@@ -63,7 +63,7 @@ import { registerParentsPortalRoutes } from './routes/parents-portal.routes';
 import { registerNotificationsRoutes } from './routes/notifications-crud.routes';
 import { registerClassesRoutes } from './routes/classes-crud.routes';
 import { registerSubjectsRoutes } from './routes/subjects-crud.routes';
-import { registerHomepageRoutes } from './routes/homepage.routes';
+import { homepageRouter } from './modules/homepage';
 import { registerRecoveryRoutes } from './routes/recovery.routes';
 import { registerInvitesRoutes } from './routes/invites.routes';
 import { registerStudentProfileRoutes } from './routes/student-profile.routes';
@@ -158,7 +158,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await registerNotificationsRoutes(app);
   await registerClassesRoutes(app);
   await registerSubjectsRoutes(app);
-  await registerHomepageRoutes(app);
+  app.use(homepageRouter);
+
+  // ─── App-level file serving & dev utilities (moved out of homepage routes) ───
+
+  // Public file serving for homepage uploads (no auth required)
+  app.get('/uploads/homepage/:filename', (req, res) => {
+    const { filename } = req.params;
+    const filePath = path.resolve('uploads', 'homepage', filename);
+
+    // Security: Prevent path traversal attacks
+    if (!filePath.startsWith(path.resolve('uploads', 'homepage'))) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    res.sendFile(filePath, (err) => {
+      if (err) {
+        res.status(404).json({ message: "File not found" });
+      }
+    });
+  });
+
+  // Secure file serving for other uploads - require authentication
+  app.get('/uploads/:filename', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), (req, res) => {
+    const { filename } = req.params;
+    const filePath = path.resolve('uploads', filename);
+
+    // Security: Prevent path traversal attacks
+    if (!filePath.startsWith(path.resolve('uploads'))) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    res.sendFile(filePath, (err) => {
+      if (err) {
+        res.status(404).json({ message: "File not found" });
+      }
+    });
+  });
+
+  // Setup/Demo data route (for development) - Admin only for security
+  app.post("/api/setup-demo", authenticateUser, authorizeRoles(ROLES.ADMIN), async (req, res) => {
+    try {
+      // Seed roles if none exist
+      const existingRoles = await storage.getRoles();
+      if (existingRoles.length === 0) {
+        console.log('📦 Seeding roles for development...');
+        const roleNames = ['Super Admin', 'Admin', 'Teacher', 'Student', 'Parent'];
+        for (const name of roleNames) {
+          await db.insert(schema.roles).values({ name, permissions: '[]' });
+        }
+      }
+
+      // First check if roles exist, if not this will tell us about database structure
+      try {
+        const existingRoles = await storage.getRoles();
+
+        // If no roles, we can't proceed without proper role creation method
+        // For now, let's just log what we found and return a helpful message
+        if (existingRoles.length === 0) {
+          return res.json({
+            message: "No roles found. Database tables may need to be created first.",
+            rolesCount: 0
+          });
+        }
+        // Try to create demo users if roles exist
+        const demoUsers = [
+          {
+            email: 'student@demo.com',
+            firstName: 'John',
+            lastName: 'Doe',
+            roleId: existingRoles.find(r => r.name === 'Student')?.id || existingRoles[0].id,
+            profileCompleted: false, // 🔧 FIX: Explicitly set profile fields
+            profileSkipped: false // 🔧 FIX: Demo users start with incomplete profile
+          },
+          {
+            email: 'teacher@demo.com',
+            firstName: 'Jane',
+            lastName: 'Smith',
+            roleId: existingRoles.find(r => r.name === 'Teacher')?.id || existingRoles[0].id,
+            profileCompleted: false, // 🔧 FIX: Explicitly set profile fields
+            profileSkipped: false // 🔧 FIX: Demo users start with incomplete profile
+          },
+          {
+            email: 'parent@demo.com',
+            firstName: 'Bob',
+            lastName: 'Johnson',
+            roleId: existingRoles.find(r => r.name === 'Parent')?.id || existingRoles[0].id,
+            profileCompleted: false, // 🔧 FIX: Explicitly set profile fields
+            profileSkipped: false // 🔧 FIX: Demo users start with incomplete profile
+          },
+          {
+            email: 'admin@demo.com',
+            firstName: 'Admin',
+            lastName: 'User',
+            roleId: existingRoles.find(r => r.name === 'Admin')?.id || existingRoles[0].id,
+            profileCompleted: false, // 🔧 FIX: Explicitly set profile fields
+            profileSkipped: false // 🔧 FIX: Demo users start with incomplete profile
+          }
+        ];
+
+        let createdCount = 0;
+        for (const userData of demoUsers) {
+          try {
+            // Check if user already exists
+            const existingUser = await storage.getUserByEmail(userData.email);
+            if (!existingUser) {
+              // Generate UUID for demo user (required for PostgreSQL)
+              const userId = randomUUID();
+              await storage.createUser({ id: userId, ...userData } as any);
+              createdCount++;
+            } else {
+            }
+          } catch (userError) {
+          }
+        }
+
+        res.json({
+          message: "Demo setup completed",
+          rolesCount: existingRoles.length,
+          usersCreated: createdCount,
+          roles: existingRoles.map(r => r.name)
+        });
+
+      } catch (dbError) {
+        res.status(500).json({
+          message: "Database connection failed",
+          error: dbError instanceof Error ? dbError.message : "Unknown database error"
+        });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Setup failed", error: error instanceof Error ? error.message : "Unknown error" });
+    }
+  });
   await registerRecoveryRoutes(app);
   await registerInvitesRoutes(app);
   await registerStudentProfileRoutes(app);
