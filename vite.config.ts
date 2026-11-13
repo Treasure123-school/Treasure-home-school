@@ -94,7 +94,7 @@ export default defineConfig({
           ],
           'form-vendor': ['react-hook-form', '@hookform/resolvers', 'zod'],
           'icons': ['lucide-react', 'react-icons'],
-          'animation': ['framer-motion', 'canvas-confetti'],
+          'animation': ['framer-motion'],
           'charts': ['recharts'],
         },
       },
