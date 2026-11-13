@@ -191,7 +191,7 @@ export function ContextFilterBar({ value, onChange, showBank = true }: ContextFi
               <SelectContent>
                 {!banksLoading && banks.length === 0 ? (
                   <div className="px-3 py-4 text-center text-xs text-muted-foreground">
-                    {value.termId
+                    {value.termName && value.termName !== 'all'
                       ? "No banks exist for this term. Try \"All Terms\" or create a new bank."
                       : "No banks found. Create one using the \"New Bank\" button."}
                   </div>
