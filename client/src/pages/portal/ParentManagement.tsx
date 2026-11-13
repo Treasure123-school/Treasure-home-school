@@ -637,7 +637,7 @@ export default function ParentManagement() {
 
       {/* ── ADD PARENT DIALOG ─────────────────────────────────────────────────── */}
       <Dialog open={isAddOpen} onOpenChange={open => { if (!open) { setIsAddOpen(false); setForm({ firstName: '', lastName: '', email: '', phone: '', gender: '' }); setSelectedStudents([]); } }}>
-        <DialogContent className="sm:max-w-xl rounded-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-xl rounded-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
               <UserPlus className="h-5 w-5 text-violet-600" />
@@ -725,7 +725,7 @@ export default function ParentManagement() {
 
       {/* ── CREDENTIALS MODAL ─────────────────────────────────────────────────── */}
       <Dialog open={!!credentialsModal} onOpenChange={open => { if (!open) setCredentialsModal(null); }}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-md rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
               <ShieldCheck className="h-5 w-5" />
@@ -772,7 +772,7 @@ export default function ParentManagement() {
 
       {/* ── PARENT DETAIL DIALOG ──────────────────────────────────────────────── */}
       <Dialog open={!!detailParent} onOpenChange={open => { if (!open) setDetailParent(null); }}>
-        <DialogContent className="sm:max-w-lg rounded-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-lg rounded-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
               <Eye className="h-5 w-5 text-violet-600" />
@@ -868,7 +868,7 @@ export default function ParentManagement() {
 
       {/* ── EDIT PARENT DIALOG ────────────────────────────────────────────────── */}
       <Dialog open={!!editParent} onOpenChange={open => { if (!open) setEditParent(null); }}>
-        <DialogContent className="sm:max-w-md rounded-2xl">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-md rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
               <Edit2 className="h-4 w-4 text-primary" />
@@ -967,7 +967,7 @@ export default function ParentManagement() {
 
       {/* ── LINK MORE STUDENTS DIALOG ─────────────────────────────────────────── */}
       <Dialog open={!!linkMoreParent} onOpenChange={open => { if (!open) { setLinkMoreParent(null); setLinkMoreSelected([]); } }}>
-        <DialogContent className="sm:max-w-lg rounded-2xl">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-lg rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
               <Link className="h-4 w-4 text-violet-600" />
@@ -999,7 +999,7 @@ export default function ParentManagement() {
 
       {/* ── DELETE CONFIRM DIALOG ─────────────────────────────────────────────── */}
       <Dialog open={!!deleteConfirm} onOpenChange={open => { if (!open) setDeleteConfirm(null); }}>
-        <DialogContent className="sm:max-w-sm rounded-2xl">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-sm rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <Trash2 className="h-5 w-5" />

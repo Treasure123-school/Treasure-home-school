@@ -249,7 +249,7 @@ function ConfirmDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-sm">
+      <DialogContent aria-describedby={undefined} className="max-w-sm">
         <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
         <p className="text-sm text-muted-foreground">{body}</p>
         <DialogFooter>
@@ -761,7 +761,7 @@ export default function SuperAdminCurriculumTemplates() {
 
       {/* ── Detail Dialog ──────────────────────────────────────────────────────── */}
       <Dialog open={detailId !== null} onOpenChange={() => setDetailId(null)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
+        <DialogContent aria-describedby={undefined} className="max-w-3xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-primary" />
@@ -865,7 +865,7 @@ export default function SuperAdminCurriculumTemplates() {
 
       {/* ── Create Template Dialog ─────────────────────────────────────────────── */}
       <Dialog open={showCreateTemplate} onOpenChange={setShowCreateTemplate}>
-        <DialogContent className="max-w-lg">
+        <DialogContent aria-describedby={undefined} className="max-w-lg">
           <DialogHeader><DialogTitle>Create Curriculum Template</DialogTitle></DialogHeader>
           <TemplateFormFields form={tplForm} onChange={patchTpl} />
           <DialogFooter>
@@ -883,7 +883,7 @@ export default function SuperAdminCurriculumTemplates() {
 
       {/* ── Edit Template Dialog ───────────────────────────────────────────────── */}
       <Dialog open={!!editTemplate} onOpenChange={() => setEditTemplate(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent aria-describedby={undefined} className="max-w-lg">
           <DialogHeader><DialogTitle>Edit Template</DialogTitle></DialogHeader>
           <TemplateFormFields form={tplForm} onChange={patchTpl} />
           <DialogFooter>
@@ -901,7 +901,7 @@ export default function SuperAdminCurriculumTemplates() {
 
       {/* ── Add Topic Dialog ───────────────────────────────────────────────────── */}
       <Dialog open={addTopicTemplateId !== null} onOpenChange={() => setAddTopicTemplateId(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent aria-describedby={undefined} className="max-w-md">
           <DialogHeader><DialogTitle>Add Topic</DialogTitle></DialogHeader>
           <TopicFormFields form={topicForm} onChange={patchTopic} />
           <DialogFooter>
@@ -919,7 +919,7 @@ export default function SuperAdminCurriculumTemplates() {
 
       {/* ── Edit Topic Dialog ──────────────────────────────────────────────────── */}
       <Dialog open={!!editTopic} onOpenChange={() => setEditTopic(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent aria-describedby={undefined} className="max-w-md">
           <DialogHeader><DialogTitle>Edit Topic</DialogTitle></DialogHeader>
           <TopicFormFields form={topicForm} onChange={patchTopic} />
           <DialogFooter>

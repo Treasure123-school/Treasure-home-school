@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'wouter';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Images, X, ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
 import heroStudents from "@/assets/hero-students.png";
 
@@ -209,7 +209,8 @@ export default function Gallery() {
       {/* Lightbox */}
       {lightboxIndex !== null && sorted[lightboxIndex] && (
         <Dialog open onOpenChange={closeLightbox}>
-          <DialogContent className="max-w-4xl p-0 bg-black border-none overflow-hidden">
+          <DialogContent className="max-w-4xl p-0 bg-black border-none overflow-hidden" aria-describedby={undefined}>
+            <DialogTitle className="sr-only">Gallery image</DialogTitle>
             <button
               className="absolute top-3 right-3 z-50 p-1 rounded-full bg-white/20 hover:bg-white/40 transition-colors text-white"
               onClick={closeLightbox}

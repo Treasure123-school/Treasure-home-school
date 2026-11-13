@@ -513,7 +513,7 @@ function ClassDetailDialog({
 
   return (
     <Dialog open={!!entry} onOpenChange={open => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-md rounded-2xl" data-testid="dialog-class-detail">
+      <DialogContent aria-describedby={undefined} className="max-w-md rounded-2xl" data-testid="dialog-class-detail">
         <DialogHeader>
           <div className={`h-2 w-full rounded-full bg-gradient-to-r ${color} mb-3 -mt-1`} />
           <DialogTitle className="text-xl font-bold">{entry.subjectName ?? 'Class Details'}</DialogTitle>

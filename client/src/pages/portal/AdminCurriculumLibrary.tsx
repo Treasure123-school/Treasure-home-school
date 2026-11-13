@@ -345,7 +345,7 @@ export default function AdminCurriculumLibrary() {
 
       {/* ── Preview Dialog ─────────────────────────────────────────────────────── */}
       <Dialog open={previewId !== null} onOpenChange={() => setPreviewId(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+        <DialogContent aria-describedby={undefined} className="max-w-2xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <BookOpen className="h-5 w-5 text-primary" />
@@ -405,7 +405,7 @@ export default function AdminCurriculumLibrary() {
 
       {/* ── Import Wizard Dialog ───────────────────────────────────────────────── */}
       <Dialog open={!!importTemplate && !importResult} onOpenChange={() => { setImportTemplate(null); setImportResult(null); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent aria-describedby={undefined} className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Download className="h-5 w-5 text-primary" />
@@ -508,7 +508,7 @@ export default function AdminCurriculumLibrary() {
 
       {/* ── Import Result Dialog ───────────────────────────────────────────────── */}
       <Dialog open={!!importResult} onOpenChange={() => { setImportTemplate(null); setImportResult(null); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent aria-describedby={undefined} className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               {importResult && importResult.created > 0

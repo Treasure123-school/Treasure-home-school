@@ -620,7 +620,7 @@ export default function StudentManagement() {
               Add Student
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
+          <DialogContent aria-describedby={undefined} className="max-w-md max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
             <DialogHeader>
               <DialogTitle className="text-lg sm:text-xl flex items-center gap-2">
                 <UserPlus className="h-5 w-5" />
@@ -812,7 +812,7 @@ export default function StudentManagement() {
 
         {/* Generated Credentials Dialog - Enhanced with Parent Credentials */}
         <Dialog open={!!createdCredentials} onOpenChange={() => setCreatedCredentials(null)}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogContent aria-describedby={undefined} className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-lg flex items-center gap-2">
                 <Key className="h-5 w-5 text-green-600" />
@@ -880,7 +880,7 @@ export default function StudentManagement() {
 
         {/* CSV Preview Dialog */}
         <Dialog open={isPreviewDialogOpen} onOpenChange={setIsPreviewDialogOpen}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent aria-describedby={undefined} className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-primary" />
@@ -1095,7 +1095,7 @@ export default function StudentManagement() {
 
         {/* Upload Results Dialog */}
         <Dialog open={uploadedStudents.length > 0} onOpenChange={() => setUploadedStudents([])}>
-          <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogContent aria-describedby={undefined} className="max-w-3xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle className="text-lg">Upload Results</DialogTitle>
             </DialogHeader>
@@ -1155,7 +1155,7 @@ export default function StudentManagement() {
 
         {/* Edit Student Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
+          <DialogContent aria-describedby={undefined} className="max-w-2xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
             <DialogHeader>
               <DialogTitle className="text-lg sm:text-xl">Edit Student</DialogTitle>
             </DialogHeader>

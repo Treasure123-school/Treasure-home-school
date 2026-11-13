@@ -69,7 +69,7 @@ export function ImageCropDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent 
+      <DialogContent aria-describedby={undefined} 
         className="w-[95vw] max-w-3xl p-4 sm:p-6 max-h-[95vh] flex flex-col gap-0" 
         data-testid="dialog-crop-image"
       >

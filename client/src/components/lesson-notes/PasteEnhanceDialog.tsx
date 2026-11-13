@@ -45,7 +45,7 @@ export default function PasteEnhanceDialog({
       open={open}
       onOpenChange={v => { if (!v) handleClose(); else onOpenChange(true); }}
     >
-      <DialogContent className="sm:max-w-2xl p-0 overflow-hidden gap-0 max-h-[90vh] overflow-y-auto">
+      <DialogContent aria-describedby={undefined} className="sm:max-w-2xl p-0 overflow-hidden gap-0 max-h-[90vh] overflow-y-auto">
         <DialogHeader className="sr-only">
           <DialogTitle>Paste &amp; Enhance</DialogTitle>
         </DialogHeader>

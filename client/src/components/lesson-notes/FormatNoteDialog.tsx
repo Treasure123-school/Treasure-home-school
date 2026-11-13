@@ -93,7 +93,7 @@ export default function FormatNoteDialog({ open, onClose, currentHtml, onApply }
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-5xl w-full h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent aria-describedby={undefined} className="max-w-5xl w-full h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
 
         {/* Header */}
         <DialogHeader className="shrink-0 px-5 pt-4 pb-3 border-b border-gray-100 dark:border-gray-800 flex-row items-center justify-between space-y-0">

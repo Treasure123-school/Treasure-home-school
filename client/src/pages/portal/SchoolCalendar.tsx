@@ -339,7 +339,7 @@ export default function SchoolCalendar({ isAdmin = false }: Props) {
 
       {/* Event Detail Dialog */}
       <Dialog open={!!selectedEvent} onOpenChange={open => { if (!open) setSelectedEvent(null); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent aria-describedby={undefined} className="max-w-md">
           {selectedEvent && (() => {
             const ti = getTypeInfo(selectedEvent.eventType);
             return (
@@ -387,7 +387,7 @@ export default function SchoolCalendar({ isAdmin = false }: Props) {
 
       {/* Day Events Dialog */}
       <Dialog open={!!dayDialogDate} onOpenChange={open => { if (!open) { setDayDialogDate(null); setSelectedDay([]); } }}>
-        <DialogContent className="max-w-sm">
+        <DialogContent aria-describedby={undefined} className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{dayDialogDate ? formatDate(dayDialogDate) : ''}</DialogTitle>
           </DialogHeader>

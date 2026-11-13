@@ -11,7 +11,7 @@ export function PreviewDialog({ m }: { m: ExamManager }) {
   const { previewExam, setPreviewExam, previewQuestions, loadingPreviewQuestions, getClassNameById, getSubjectNameById } = m;
   return previewExam && (
         <Dialog open={!!previewExam} onOpenChange={(open) => { if (!open) setPreviewExam(null); }}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent aria-describedby={undefined} className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Preview: {previewExam.name}</DialogTitle>
               <p className="text-sm text-muted-foreground">Student view of the exam</p>

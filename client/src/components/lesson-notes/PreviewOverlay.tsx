@@ -48,7 +48,7 @@ export function PreviewOverlay({ open, title, content, settings, meta, onClose }
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-4xl w-full h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent aria-describedby={undefined} className="max-w-4xl w-full h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
 
         {/* Dialog header — title + print action */}
         <DialogHeader className="shrink-0 flex-row items-center justify-between border-b px-5 py-3 space-y-0">

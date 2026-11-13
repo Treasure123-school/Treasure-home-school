@@ -472,7 +472,7 @@ export default function TeacherAnnouncements() {
 
       {/* Create / Edit Dialog */}
       <Dialog open={isFormOpen} onOpenChange={(open) => { if (!open) { setIsCreateOpen(false); setEditingAnnouncement(null); } }}>
-        <DialogContent className="sm:max-w-2xl rounded-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-2xl rounded-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
               <Megaphone className="h-5 w-5 text-primary" />
@@ -629,7 +629,7 @@ export default function TeacherAnnouncements() {
 
       {/* Delete Confirm Dialog */}
       <Dialog open={deleteConfirmId !== null} onOpenChange={open => { if (!open) setDeleteConfirmId(null); }}>
-        <DialogContent className="sm:max-w-sm rounded-2xl">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-sm rounded-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600">
               <Trash2 className="h-5 w-5" />

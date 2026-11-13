@@ -213,7 +213,7 @@ export default function SharedEventsPage() {
 
       {/* Event Detail Dialog */}
       <Dialog open={!!selectedEvent} onOpenChange={open => { if (!open) setSelectedEvent(null); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent aria-describedby={undefined} className="max-w-md">
           {selectedEvent && (() => {
             const ti = getTypeInfo(selectedEvent.eventType);
             return (

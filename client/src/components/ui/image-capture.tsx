@@ -180,7 +180,7 @@ export function ImageCapture({
       </div>
 
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-xs border-none shadow-2xl overflow-hidden p-0 dark:bg-slate-900">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-xs border-none shadow-2xl overflow-hidden p-0 dark:bg-slate-900">
           <div className="p-6 space-y-4">
             <DialogHeader>
               <DialogTitle className="text-center text-xl font-bold tracking-tight">Add {label}</DialogTitle>

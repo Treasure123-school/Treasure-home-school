@@ -911,7 +911,7 @@ export default function AttendanceManagement() {
 
       {/* ── Edit Dialog ───────────────────────────────────────────────────── */}
       <Dialog open={!!editRecord} onOpenChange={open => { if (!open) setEditRecord(null); }}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent aria-describedby={undefined} className="sm:max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base">
               <Edit2 className="h-4 w-4 text-primary" />

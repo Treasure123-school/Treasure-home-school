@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ZoomIn, X } from "lucide-react";
 
 interface QuestionImageDisplayProps {
@@ -113,7 +113,9 @@ export function QuestionImageDisplay({ imageUrl, alt = "Question image", schoolA
         <DialogContent
           className="max-w-[95vw] sm:max-w-3xl p-2 sm:p-3 flex flex-col items-center"
           data-testid="question-image-lightbox"
+          aria-describedby={undefined}
         >
+          <DialogTitle className="sr-only">{alt || 'Image preview'}</DialogTitle>
           {/* Close button */}
           <button
             className="absolute top-2 right-2 z-10 rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70 transition-colors"

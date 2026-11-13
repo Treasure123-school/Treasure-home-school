@@ -13,7 +13,7 @@ export function QuestionModal({ m }: { m: ExamManager }) {
       {/* Question Management Modal */}
       {selectedExam && (
         <Dialog open={!!selectedExam} onOpenChange={(open) => { if (!open) setSelectedExam(null); }}>
-          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogContent aria-describedby={undefined} className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Manage Questions - {selectedExam.name}</DialogTitle>
             </DialogHeader>

@@ -47,7 +47,7 @@ export function SubjectActionDialog({ subject, action, onConfirm, onCancel, isPe
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent aria-describedby={undefined} className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {action === 'archive' && <><Archive className="h-5 w-5 text-amber-600 shrink-0" /> Archive Subject</>}

@@ -76,6 +76,10 @@ export default function ExamManagement() {
               />
             )}
 
+            {/* Manage Questions modal (question list + Add Questions entry point).
+                Dropped during the monolith split (3b7b3e32) — restored. */}
+            <QuestionModal m={m} />
+
             {/* Delete Exam Confirmation Modal — shared by both the mobile card and
                 desktop table actions menu (see AssessmentActionsMenu). The mutation
                 only fires on confirm, and the item only leaves the list once the

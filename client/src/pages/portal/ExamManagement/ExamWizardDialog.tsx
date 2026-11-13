@@ -29,7 +29,7 @@ export function ExamWizardDialog({ m }: { m: ExamManager }) {
                 Create Assessment
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+            <DialogContent aria-describedby={undefined} className="max-w-lg max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>{editingExam ? 'Edit Assessment' : 'Create New Assessment'}</DialogTitle>
               </DialogHeader>

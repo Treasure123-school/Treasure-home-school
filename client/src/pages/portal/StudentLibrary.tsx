@@ -327,7 +327,7 @@ function ResourceViewerDialog({ resource, recommended, onClose, onOpen }: {
 
   return (
     <Dialog open onOpenChange={open => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl p-0" data-testid="dialog-resource-viewer">
+      <DialogContent aria-describedby={undefined} className="max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl p-0" data-testid="dialog-resource-viewer">
         <div className="p-5 sm:p-6 space-y-5">
           <DialogHeader>
             <div className="flex items-start gap-3">

@@ -36,7 +36,7 @@ export function QuestionFormDialog({ m }: { m: ExamManager }) {
                       setIsQuestionDialogOpen(open);
                     }}
                   >
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <DialogContent aria-describedby={undefined} className="max-w-2xl max-h-[80vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>{editingQuestion ? 'Edit Question' : 'Add New Question'}</DialogTitle>
                       </DialogHeader>

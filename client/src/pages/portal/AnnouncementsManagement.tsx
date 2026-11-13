@@ -449,7 +449,7 @@ export default function AnnouncementsManagement() {
                 Add Announcement
               </Button>
             </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[95vh] p-0 overflow-hidden">
+          <DialogContent aria-describedby={undefined} className="max-w-4xl max-h-[95vh] p-0 overflow-hidden">
             <DialogHeader className="p-6 pb-4 border-b">
               <div className="flex items-center justify-between pr-8">
                 <DialogTitle className="text-xl font-semibold">

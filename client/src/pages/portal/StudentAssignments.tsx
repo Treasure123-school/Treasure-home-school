@@ -349,7 +349,7 @@ function AssignmentDetailDialog({
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl p-0" data-testid="dialog-assignment-detail">
+      <DialogContent aria-describedby={undefined} className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl p-0" data-testid="dialog-assignment-detail">
         {/* Header strip */}
         <div className={`h-2 w-full rounded-t-2xl bg-gradient-to-r ${subjectColor(row.subjectName?.charCodeAt(0) ?? 0)}`} />
 

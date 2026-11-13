@@ -342,7 +342,7 @@ export default function VacancyManagement() {
 
       {/* ── Create Vacancy Dialog ── */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent aria-describedby={undefined} className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Briefcase className="h-5 w-5 text-primary" />
@@ -401,7 +401,7 @@ export default function VacancyManagement() {
 
       {/* ── Application Detail Dialog ── */}
       <Dialog open={!!selectedApplication} onOpenChange={() => setSelectedApplication(null)}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent aria-describedby={undefined} className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Application — {selectedApplication?.fullName}</DialogTitle>
           </DialogHeader>

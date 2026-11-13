@@ -27,7 +27,7 @@ export function RejectDialog({ target, isPending, onClose, onConfirm }: RejectDi
 
   return (
     <Dialog open={!!target} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent>
+      <DialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-destructive/10 flex items-center justify-center">
