@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertExamSchema, insertExamQuestionSchema } from '@shared/schema';
+import { insertExamSchema, insertExamQuestionSchema } from '@shared/schema.pg';
 
 // Form schemas - Use the shared insertExamSchema which has proper preprocessing
 export const examFormSchema = insertExamSchema.omit({ 

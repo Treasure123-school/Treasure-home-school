@@ -1,7 +1,7 @@
 import { useParams, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
-import type { SystemSettings } from '@shared/schema';
+import type { SystemSettings } from '@shared/schema.pg';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NoteContentRenderer, NotePageHeader } from '@/components/lesson-notes/lessonNoteShared';

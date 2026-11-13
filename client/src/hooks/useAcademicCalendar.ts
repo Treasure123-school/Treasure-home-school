@@ -22,7 +22,6 @@ export interface CalendarTerm {
   endDate: string;
   isCurrent: boolean;
   status: string;
-  isLocked: boolean;
   description?: string;
   sessionId?: number | null;
   createdAt: string;

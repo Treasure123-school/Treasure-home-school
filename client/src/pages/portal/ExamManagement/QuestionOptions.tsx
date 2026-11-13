@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Check } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
-import type { QuestionOption } from '@shared/schema';
+import type { QuestionOption } from '@shared/schema.pg';
 
 // Component to display question options
 export function QuestionOptions({ questionId }: { questionId: number }) {

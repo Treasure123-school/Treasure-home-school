@@ -20,7 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { getApiUrl } from '@/config/api';
 import { useAuth } from '@/lib/auth';
-import type { HomePageContent } from '@shared/schema';
+import type { HomePageContent } from '@shared/schema.pg';
 
 // ─── Section Configuration ────────────────────────────────────────────────────
 

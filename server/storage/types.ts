@@ -29,16 +29,14 @@ import type {
   StudentSubjectAssignment, InsertStudentSubjectAssignment, ClassSubjectMapping, InsertClassSubjectMapping,
   SyllabusTopic, InsertSyllabusTopic, ExamQuestionBankLink, InsertExamQuestionBankLink,
   LessonNote, InsertLessonNote,
-  ExamPayment, InsertExamPayment,
   SchoolEvent, InsertSchoolEvent,
-  MonnifyVirtualAccount, InsertMonnifyVirtualAccount,
   NewsPost, InsertNewsPost, Faq, InsertFaq, AboutSection, InsertAboutSection,
   AdmissionsEnquiry, InsertAdmissionsEnquiry,
   HomepageSection, InsertHomepageSection,
   BillingItem, InsertBillingItem,
   BillingPayment, InsertBillingPayment,
   BillingFeatureLink, InsertBillingFeatureLink,
-} from "@shared/schema";
+} from '@shared/schema.pg';
 
 export interface IStorage {
   // User management
@@ -636,16 +634,7 @@ export interface IStorage {
   updateSystemSettings(settings: Partial<InsertSystemSettings>): Promise<SystemSettings>;
 
   // Exam payments
-  getExamPayment(studentId: string, termId: number): Promise<ExamPayment | undefined>;
-  getPendingExamPayment(studentId: string, termId: number): Promise<ExamPayment | undefined>;
-  getAnyExamPaymentByStudentTerm(studentId: string, termId: number): Promise<ExamPayment | undefined>;
-  getExamPaymentByReference(reference: string): Promise<ExamPayment | undefined>;
-  getExamPaymentsByTerm(termId: number): Promise<ExamPayment[]>;
-  getExamPaymentsByStudent(studentId: string): Promise<ExamPayment[]>;
-  createExamPayment(data: InsertExamPayment): Promise<ExamPayment>;
-  updateExamPayment(id: number, data: Partial<InsertExamPayment>): Promise<ExamPayment | undefined>;
-  initiatePendingExamPayment(studentId: string, termId: number, reference: string, amountPaid: number): Promise<ExamPayment>;
-  deleteExamPayment(id: number): Promise<boolean>;
+
 
   // School Events / Calendar
   getSchoolEvents(filters?: { eventType?: string; startDate?: string; endDate?: string; isActive?: boolean }): Promise<SchoolEvent[]>;
@@ -654,10 +643,7 @@ export interface IStorage {
   updateSchoolEvent(id: number, data: Partial<InsertSchoolEvent>): Promise<SchoolEvent | undefined>;
   deleteSchoolEvent(id: number): Promise<boolean>;
 
-  // Monnify Virtual Accounts
-  getMonnifyVirtualAccountByUserId(userId: string): Promise<MonnifyVirtualAccount | undefined>;
-  getMonnifyVirtualAccountByReference(accountReference: string): Promise<MonnifyVirtualAccount | undefined>;
-  createMonnifyVirtualAccount(data: InsertMonnifyVirtualAccount): Promise<MonnifyVirtualAccount>;
+
 
   // User recovery management
   getDeletedUsers(roleFilter?: number[]): Promise<User[]>;

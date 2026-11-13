@@ -1,7 +1,7 @@
 import { parse } from 'csv-parse/sync';
 import { db } from './storage';
-import * as schema from '../shared/schema';
-import { users, students } from '../shared/schema';
+import * as schema from '@shared/schema.pg';
+import { users, students } from '@shared/schema.pg';
 import { eq, and } from 'drizzle-orm';
 import { generateStudentUsername, generateParentUsername, generateTempPassword } from './username-generator';
 import bcrypt from 'bcrypt';

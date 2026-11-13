@@ -18,7 +18,7 @@ import {
   AlertCircle, Play, Filter,
 } from 'lucide-react';
 import { MiniStatCard, MiniStatGrid, ExamCard } from '@/components/shared';
-import type { Exam, Class, Subject, AcademicTerm } from '@shared/schema';
+import type { Exam, Class, Subject, AcademicTerm } from '@shared/schema.pg';
 
 export default function AdminExamOverview() {
   const [, navigate] = useLocation();

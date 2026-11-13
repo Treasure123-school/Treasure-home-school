@@ -1,6 +1,6 @@
 
 import { db } from '../storage';
-import { academicTerms } from '@shared/schema';
+import { academicTerms } from '@shared/schema.pg';
 import { eq } from 'drizzle-orm';
 
 export async function seedAcademicTerms() {

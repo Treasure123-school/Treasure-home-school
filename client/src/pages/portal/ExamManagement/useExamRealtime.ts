@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
-import type { Exam, ExamQuestion } from '@shared/schema';
+import type { Exam, ExamQuestion } from '@shared/schema.pg';
 
 /** Auto-split from ExamManagement.tsx — see git history for original context. */
 export function useExamRealtime({ selectedExam, setSelectedExam, setEditingExam, editingQuestion, setEditingQuestion, pendingDeletionsRef, pendingQuestionDeletionsRef, togglingExamsRef, setExamToggling }: { selectedExam: any; setSelectedExam: any; setEditingExam: any; editingQuestion: any; setEditingQuestion: any; pendingDeletionsRef: any; pendingQuestionDeletionsRef: any; togglingExamsRef: any; setExamToggling: any }) {

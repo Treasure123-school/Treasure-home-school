@@ -3,7 +3,7 @@ import { db, schema } from '../storage/helpers';
 import { getActiveGradingConfig } from '../grade-scale-service';
 import { calculateGradeFromConfig, calculateWeightedScore } from '../grading-config';
 import { realtimeService } from '../realtime-service';
-import { ClassSubjectMapping, ReportCard, ReportCardItem, Student, Subject, SystemSettings } from '@shared/schema';
+import { ClassSubjectMapping, ReportCard, ReportCardItem, Student, Subject, SystemSettings } from '@shared/schema.pg';
 import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { DatabaseStorageP08 } from './part08-getExamStudentReports'
 import type { IStorage } from './types'

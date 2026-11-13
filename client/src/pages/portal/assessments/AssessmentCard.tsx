@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { BookOpen, Clock, Edit, FileText, Layers, Play } from 'lucide-react';
-import type { Exam } from '@shared/schema';
+import type { Exam } from '@shared/schema.pg';
 import { AssessmentActionsMenu } from './AssessmentActionsMenu';
 
 export interface AssessmentCardProps {

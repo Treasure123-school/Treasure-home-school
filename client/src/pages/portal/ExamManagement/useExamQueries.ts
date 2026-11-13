@@ -4,7 +4,7 @@ import { Filter } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { useClassSubjects } from '@/hooks/useClassSubjects';
-import type { Exam, Class, Subject } from '@shared/schema';
+import type { Exam, Class, Subject } from '@shared/schema.pg';
 
 /** Auto-split from ExamManagement.tsx — see git history for original context. */
 export function useExamQueries({ watchExam, setExamValue, isExamDialogOpen, editingExam }: { watchExam: any; setExamValue: any; isExamDialogOpen: any; editingExam: any }) {

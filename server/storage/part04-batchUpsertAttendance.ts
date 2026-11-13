@@ -1,7 +1,7 @@
 /** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
 import { db, schema } from '../storage/helpers';
 import { deleteFile } from '../cloudinary-service';
-import { Attendance, Exam, ExamQuestion, ExamResult, InsertAttendance, InsertExam, InsertExamQuestion, InsertExamResult, InsertQuestionOption, QuestionOption } from '@shared/schema';
+import { Attendance, Exam, ExamQuestion, ExamResult, InsertAttendance, InsertExam, InsertExamQuestion, InsertExamResult, InsertQuestionOption, QuestionOption } from '@shared/schema.pg';
 import { and, asc, desc, eq, gte, inArray, lte, or, sql, sql as dsql } from 'drizzle-orm';
 import { DatabaseStorageP03 } from './part03-createParentProfile'
 import type { IStorage } from './types'

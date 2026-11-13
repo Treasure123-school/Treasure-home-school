@@ -5,7 +5,7 @@ import ExamQuestionAdder from '../ExamQuestionAdder';
 import { AssessmentList } from '../assessments/AssessmentList';
 import { DeleteAssessmentDialog } from '../assessments/DeleteAssessmentDialog';
 import { BookOpen, Clipboard } from 'lucide-react';
-import type { Exam } from '@shared/schema';
+import type { Exam } from '@shared/schema.pg';
 import { useExamManager } from './useExamManager';
 import { ExamWizardDialog } from './ExamWizardDialog';
 import { Toolbar } from './Toolbar';

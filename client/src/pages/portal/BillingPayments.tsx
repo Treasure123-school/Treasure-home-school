@@ -41,7 +41,7 @@ interface Student { id: string; admissionNumber: string; userId: string; classId
 const fmt = (kobo: number) =>
   new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN' }).format(kobo / 100);
 
-const PAYMENT_METHODS = ['cash', 'bank_transfer', 'paystack', 'monnify', 'online', 'other'];
+const PAYMENT_METHODS = ['cash', 'bank_transfer', 'paystack', 'online', 'other'];
 
 const emptyForm = {
   billingItemId: '',
@@ -171,7 +171,7 @@ export default function BillingPayments() {
         <MiniStatCard label="Total Payments" value={filtered.length} icon={CreditCard} />
         <MiniStatCard label="Total Collected" value={fmt(totalCollected)} icon={CheckCircle2} />
         <MiniStatCard label="Cash Payments" value={filtered.filter(p => p.paymentMethod === 'cash').length} icon={CreditCard} />
-        <MiniStatCard label="Online Payments" value={filtered.filter(p => ['paystack', 'monnify', 'online'].includes(p.paymentMethod)).length} icon={CreditCard} />
+        <MiniStatCard label="Online Payments" value={filtered.filter(p => ['paystack', 'online'].includes(p.paymentMethod)).length} icon={CreditCard} />
       </MiniStatGrid>
 
       <Card>

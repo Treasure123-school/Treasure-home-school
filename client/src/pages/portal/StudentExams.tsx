@@ -33,21 +33,17 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { Clock, BookOpen, Trophy, Play, Eye, CheckCircle, XCircle, Timer, Save, RotateCcw, AlertCircle, Loader, FileText, Circle, CheckCircle2, HelpCircle, ClipboardCheck, GraduationCap, Award, Calendar, Calculator, X, Lock, CreditCard, Keyboard, Shield, ChevronDown, ChevronUp, Filter, ArrowUpDown, ListChecks, Percent } from 'lucide-react';
+import { Clock, BookOpen, Trophy, Play, Eye, CheckCircle, XCircle, Timer, Save, RotateCcw, AlertCircle, Loader, FileText, Circle, CheckCircle2, HelpCircle, ClipboardCheck, GraduationCap, Award, Calendar, Calculator, X, Keyboard, Shield, ChevronDown, ChevronUp, Filter, ArrowUpDown, ListChecks, Percent } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
-import type { Exam as BaseExam, ExamSession, ExamQuestion, QuestionOption, StudentAnswer } from '@shared/schema';
+import type { Exam as BaseExam, ExamSession, ExamQuestion, QuestionOption, StudentAnswer } from '@shared/schema.pg';
 import { QuestionImageDisplay } from '@/components/question/QuestionImageDisplay';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MiniStatCard, MiniStatGrid, SearchInput } from '@/components/shared';
 import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 
-// Extend Exam with payment fields injected by the server at runtime
-type Exam = BaseExam & {
-  paymentRequired?: boolean;
-  hasPaid?: boolean;
-  feeAmount?: number;
-};
+// Use base Exam type directly
+type Exam = BaseExam;
 const schoolLogo = '/images/school-logo-bg.png';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { ExamHeader } from '@/components/ExamHeader';
@@ -248,13 +244,6 @@ export default function StudentExams() {
   const [networkIssues, setNetworkIssues] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
   const [localPendingCount, setLocalPendingCount] = useState(0);
-  const [isRecoveringPayment, setIsRecoveringPayment] = useState(false);
-  const [paymentRecovered, setPaymentRecovered] = useState(false);
-  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
-  const [manualReference, setManualReference] = useState("");
-  const [manualRefError, setManualRefError] = useState("");
-  const recoveryAttemptedRef = useRef(false);
-  const isManualRecoveryRef = useRef(false);
 
   // Instructions screen state
   const [showInstructionsDialog, setShowInstructionsDialog] = useState(false);
@@ -453,88 +442,6 @@ export default function StudentExams() {
     enabled: !!user,
   });
 
-  // ── Payment Recovery ─────────────────────────────────────────────────────────
-  // Silent background recovery: if a student paid but the browser closed / redirect
-  // failed, this re-checks Paystack and unlocks exams automatically.
-  const recoverPaymentMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/exam-payments/recover");
-      if (!res.ok) throw new Error("Recovery failed");
-      return res.json();
-    },
-    onSuccess: (data: any) => {
-      setIsRecoveringPayment(false);
-      if (data?.recovered && data?.payment) {
-        // Payment was found on Paystack — exams now unlocked
-        setPaymentRecovered(true);
-        queryClient.invalidateQueries({ queryKey: ["/api/exam-payments/status"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
-        toast({
-          title: "Success",
-          description: "Previous payment found — your exam access has been unlocked.",
-        });
-      } else if (isManualRecoveryRef.current && (
-        data?.reason === "no_pending_payment" ||
-        data?.reason === "not_paid_on_gateway" ||
-        data?.reason === "no_active_term" ||
-        data?.reason === "gateway_not_configured"
-      )) {
-        // Only show dialog when student explicitly clicked "I have paid"
-        setShowRestoreDialog(true);
-      }
-      isManualRecoveryRef.current = false;
-    },
-    onError: () => {
-      setIsRecoveringPayment(false);
-      // Only show the dialog if student manually triggered the recovery
-      if (isManualRecoveryRef.current) {
-        setShowRestoreDialog(true);
-      }
-      isManualRecoveryRef.current = false;
-    },
-  });
-
-  // ── Manual Reference Verification ─────────────────────────────────────────────
-  // Student provides their Paystack reference directly when auto-recovery fails
-  const verifyByRefMutation = useMutation({
-    mutationFn: async (reference: string) => {
-      const res = await apiRequest("POST", "/api/exam-payments/verify-by-ref", { reference });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.message || "Verification failed");
-      return body;
-    },
-    onSuccess: (data: any) => {
-      setManualRefError("");
-      if (data?.success) {
-        setShowRestoreDialog(false);
-        setManualReference("");
-        queryClient.invalidateQueries({ queryKey: ["/api/exam-payments/status"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
-        toast({
-          title: "Success",
-          description: "Payment verified — your exam access is now unlocked.",
-        });
-      }
-    },
-    onError: (error: any) => {
-      setManualRefError(error.message || "Could not verify that reference. Please check it and try again.");
-    },
-  });
-
-  // Silently run recovery once when we detect payment-locked exams.
-  useEffect(() => {
-    if (loadingExams || recoveryAttemptedRef.current) return;
-    const hasLockedExams = (exams as Exam[]).some(
-      (e) => e.paymentRequired && !e.hasPaid
-    );
-    if (hasLockedExams) {
-      recoveryAttemptedRef.current = true;
-      setIsRecoveringPayment(true);
-      recoverPaymentMutation.mutate();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [exams, loadingExams]);
-
   // Fetch all exam sessions for the student to track completed exams
   const { data: studentExamSessions = [] } = useQuery<Array<{
     id: number;
@@ -632,8 +539,7 @@ export default function StudentExams() {
 
   // Filtered + sorted view of the student's exams for the "My Exams" list.
   // Status buckets mirror the badges shown on each card: available (not yet
-  // taken and not fee-locked), completed (has a finished session), locked
-  // (fee required and unpaid).
+  // taken), completed (has a finished session).
   const filteredExams = useMemo(() => {
     const filtered = (exams as Exam[]).filter((exam) => {
       if (examSearchTerm && !exam.name.toLowerCase().includes(examSearchTerm.toLowerCase())) return false;
@@ -642,10 +548,8 @@ export default function StudentExams() {
 
       if (examStatusFilter !== 'all') {
         const status = getExamStatus(exam.id);
-        const isLocked = !!exam.paymentRequired && !exam.hasPaid && !status.isCompleted;
         if (examStatusFilter === 'completed' && !status.isCompleted) return false;
-        if (examStatusFilter === 'available' && (status.isCompleted || isLocked)) return false;
-        if (examStatusFilter === 'locked' && !isLocked) return false;
+        if (examStatusFilter === 'available' && status.isCompleted) return false;
       }
       return true;
     });
@@ -679,12 +583,9 @@ export default function StudentExams() {
     const total = exams.length;
     let completed = 0;
     let available = 0;
-    let locked = 0;
     for (const exam of exams as Exam[]) {
       const status = getExamStatus(exam.id);
-      const isLocked = !!exam.paymentRequired && !exam.hasPaid && !status.isCompleted;
       if (status.isCompleted) completed++;
-      else if (isLocked) locked++;
       else available++;
     }
     const completedSessions = studentExamSessions.filter(
@@ -695,7 +596,7 @@ export default function StudentExams() {
           (completedSessions.reduce((sum, s) => sum + (s.score! / s.maxScore!) * 100, 0) / completedSessions.length)
         )
       : null;
-    return { total, completed, available, locked, averageScore };
+    return { total, completed, available, averageScore };
   }, [exams, studentExamSessions]);
 
   // Student's own class name (users table has no classId — it lives on the
@@ -2551,18 +2452,6 @@ export default function StudentExams() {
   });
 
   const handleStartExam = (exam: Exam) => {
-    // Payment gate: block if fee required and not paid.
-    // First try silent recovery (in case webhook/redirect was missed), then redirect.
-    if (exam.paymentRequired && !exam.hasPaid) {
-      toast({
-        title: "Exam Fee Required",
-        description: `Pay your exam fee to unlock this exam, or click "I already paid — Restore access" if you have already paid.`,
-        variant: "destructive",
-      });
-      setLocation("/portal/student/exam-payment");
-      return;
-    }
-
     // Comprehensive validation checks
     if (!exam.id) {
       toast({
@@ -3953,7 +3842,6 @@ export default function StudentExams() {
                       <DropdownMenuRadioItem value="all" data-testid="filter-status-all">All Status</DropdownMenuRadioItem>
                       <DropdownMenuRadioItem value="available" data-testid="filter-status-available">Available</DropdownMenuRadioItem>
                       <DropdownMenuRadioItem value="completed" data-testid="filter-status-completed">Completed</DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value="locked" data-testid="filter-status-locked">Fee Locked</DropdownMenuRadioItem>
                     </DropdownMenuRadioGroup>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -4041,33 +3929,25 @@ export default function StudentExams() {
             {filteredExams.map((exam) => {
               const status = getExamStatus(exam.id);
               const subject = subjects.find(s => s.id === exam.subjectId);
-              const isLocked = exam.paymentRequired && !exam.hasPaid && !status.isCompleted;
               
               return (
                 <Card 
                   key={exam.id} 
-                  className={`group overflow-hidden border shadow-none transition-all duration-300 bg-white dark:bg-card relative rounded-xl ${isLocked ? 'border-red-200 dark:border-red-800 hover:border-red-400/50 opacity-90' : 'border-slate-200 dark:border-slate-800 hover:border-green-400/50'}`}
+                  className="group overflow-hidden border shadow-none transition-all duration-300 bg-white dark:bg-card relative rounded-xl border-slate-200 dark:border-slate-800 hover:border-green-400/50"
                   data-testid={`card-exam-${exam.id}`}
                 >
-                  <div className={`absolute top-4 right-4 ${isLocked ? 'text-red-100 dark:text-red-900/20' : 'text-green-100 dark:text-green-900/20'}`}>
-                    {isLocked ? <Lock className="h-8 w-8" /> : <GraduationCap className="h-8 w-8" />}
+                  <div className="absolute top-4 right-4 text-green-100 dark:text-green-900/20">
+                    <GraduationCap className="h-8 w-8" />
                   </div>
 
                   <CardContent className="p-6">
                     <div className="flex flex-col space-y-4">
                       {/* Status Badge */}
                       <div className="flex items-center justify-between">
-                        {isLocked ? (
-                          <div className="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
-                            <Lock className="h-3.5 w-3.5" />
-                            Fee Required
-                          </div>
-                        ) : (
-                          <div className="bg-green-600 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            {status.isCompleted ? "Done" : "Available"}
-                          </div>
-                        )}
+                        <div className="bg-green-600 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1.5">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          {status.isCompleted ? "Done" : "Available"}
+                        </div>
                       </div>
 
                       {/* Exam Title & Date */}
@@ -4111,56 +3991,15 @@ export default function StudentExams() {
                         </div>
                       </div>
 
-                      {/* Payment notice for locked exams */}
-                      {isLocked && (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
-                            <div className="flex items-center gap-2 text-sm text-amber-800 dark:text-amber-200">
-                              <CreditCard className="h-4 w-4 shrink-0" />
-                              <span>Exam fee ₦{(exam.feeAmount ?? 0).toLocaleString()} required</span>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="default"
-                              className="h-7 px-3 text-xs shrink-0"
-                              onClick={(e) => { e.stopPropagation(); setLocation("/portal/student/exam-payment"); }}
-                              data-testid={`button-pay-fee-${exam.id}`}
-                            >
-                              Pay Now
-                            </Button>
-                          </div>
-                          <button
-                            className="w-full flex items-center justify-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 disabled:opacity-50"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (verifyByRefMutation.isPending || isRecoveringPayment) return;
-                              setManualRefError("");
-                              // Mark as manual so dialog opens if auto-recovery finds nothing
-                              isManualRecoveryRef.current = true;
-                              setIsRecoveringPayment(true);
-                              recoverPaymentMutation.mutate();
-                            }}
-                            disabled={isRecoveringPayment || verifyByRefMutation.isPending}
-                            data-testid={`button-restore-payment-${exam.id}`}
-                          >
-                            {isRecoveringPayment ? (
-                              <><Loader className="h-3 w-3 animate-spin" /> Checking payment status…</>
-                            ) : (
-                              <><CheckCircle2 className="h-3 w-3" /> I already paid — Restore access</>
-                            )}
-                          </button>
-                        </div>
-                      )}
-
                       {/* Action Button */}
                       <Button 
                         onClick={() => status.isCompleted ? setLocation(`/portal/student/exam-results?examId=${exam.id}`) : handleStartExam(exam)}
-                        className={`w-full h-9 rounded-md font-medium shadow-none transition-all group/btn text-sm text-white ${isLocked ? 'bg-slate-400 hover:bg-slate-500 cursor-not-allowed' : 'bg-primary hover:bg-primary/90'}`}
+                        className="w-full h-9 rounded-md font-medium shadow-none transition-all group/btn text-sm text-white bg-primary hover:bg-primary/90"
                         data-testid={`button-action-${exam.id}`}
                       >
                         <div className="flex items-center justify-center gap-2">
-                          {isLocked ? <Lock className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          {status.isCompleted ? "View Score" : isLocked ? "Locked — Fee Unpaid" : "Start Exam"}
+                          <Eye className="h-4 w-4" />
+                          {status.isCompleted ? "View Score" : "Start Exam"}
                         </div>
                       </Button>
                     </div>
@@ -4290,84 +4129,6 @@ export default function StudentExams() {
                 <><Loader className="w-4 h-4 mr-2 animate-spin" />Starting…</>
               ) : (
                 <><Play className="w-4 h-4 mr-2" />I Understand, Begin Exam</>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Restore Payment Dialog ── */}
-      <Dialog open={showRestoreDialog} onOpenChange={(open) => {
-        setShowRestoreDialog(open);
-        if (!open) { setManualReference(""); setManualRefError(""); }
-      }}>
-        <DialogContent className="max-w-md" data-testid="dialog-restore-payment">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5 text-primary" />
-              Restore Exam Access
-            </DialogTitle>
-            <DialogDescription>
-              Enter the payment reference from your receipt to restore access.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            {/* Reference Guide */}
-            <div className="rounded-lg border bg-muted/40 p-3 space-y-2 text-xs">
-              <p className="font-semibold text-foreground">Where to find your reference:</p>
-              <ul className="space-y-1 text-muted-foreground list-disc list-inside">
-                <li><span className="font-medium text-foreground">OPay receipt:</span> use the <span className="font-mono bg-background rounded px-1">Transaction ID</span> (found on your payment receipt)</li>
-                <li><span className="font-medium text-foreground">Monnify/Paystack email:</span> use the reference in the subject or body</li>
-                <li><span className="font-medium text-foreground">Payment page:</span> copy the reference shown after payment</li>
-              </ul>
-              <p className="text-amber-700 dark:text-amber-400 font-medium">Do NOT enter the plain Bank Account No. — it must be the Payment Reference or Transaction ID.</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="paystack-ref">Payment Reference / Transaction ID</Label>
-              <Input
-                id="paystack-ref"
-                placeholder="e.g. MNFY_12345678 or Transaction ID"
-                value={manualReference}
-                onChange={(e) => { setManualReference(e.target.value); setManualRefError(""); }}
-                disabled={verifyByRefMutation.isPending}
-                data-testid="input-paystack-reference"
-                autoComplete="off"
-                className="font-mono"
-              />
-            </div>
-            {manualRefError && (
-              <div className="flex items-start gap-2 text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 rounded-lg p-3 border border-red-200 dark:border-red-800">
-                <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                <span>{manualRefError}</span>
-              </div>
-            )}
-            <div className="rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-200">
-              If you cannot find your reference, contact your school administrator with your name and payment date.
-            </div>
-          </div>
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => { setShowRestoreDialog(false); setManualReference(""); setManualRefError(""); }}
-              disabled={verifyByRefMutation.isPending}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (!manualReference.trim()) {
-                  setManualRefError("Please enter your payment reference.");
-                  return;
-                }
-                verifyByRefMutation.mutate(manualReference.trim());
-              }}
-              disabled={verifyByRefMutation.isPending || !manualReference.trim()}
-              data-testid="button-verify-manual-ref"
-            >
-              {verifyByRefMutation.isPending ? (
-                <><Loader className="mr-2 h-4 w-4 animate-spin" /> Verifying…</>
-              ) : (
-                <><CheckCircle2 className="mr-2 h-4 w-4" /> Verify & Restore Access</>
               )}
             </Button>
           </DialogFooter>

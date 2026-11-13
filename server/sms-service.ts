@@ -59,13 +59,3 @@ export async function sendSms({ to, message }: SendSmsOptions): Promise<boolean>
   }
 }
 
-export function getPaymentConfirmationSms(
-  studentName: string,
-  amount: number,
-  reference: string,
-  termName: string,
-  schoolName: string = "Treasure Home School",
-): string {
-  const formatted = new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN" }).format(amount);
-  return `${schoolName}: Hi ${studentName}, your exam fee of ${formatted} for ${termName} is CONFIRMED.\n\nPaystack Ref: ${reference}\n\nKeep this as proof. Use it in "Restore Exam Access" if your exam isn't unlocked.`;
-}

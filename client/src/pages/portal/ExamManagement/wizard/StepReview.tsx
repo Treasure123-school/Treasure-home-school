@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { BookOpen, Layers, Target } from 'lucide-react';
-import type { Exam, Class, Subject } from '@shared/schema';
+import type { Exam, Class, Subject } from '@shared/schema.pg';
 import type { ExamManager } from '../useExamManager';
 
 /** Wizard step — split from ExamManagement.tsx. */

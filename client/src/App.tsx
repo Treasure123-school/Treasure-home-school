@@ -2,7 +2,7 @@ import { Switch, Route } from "wouter";
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
-import type { SystemSettings } from "@shared/schema";
+import type { SystemSettings } from "@shared/schema.pg";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/lib/auth";
@@ -27,7 +27,6 @@ import Admissions from "@/pages/Admissions";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import JobVacancy from "@/pages/JobVacancy";
-import PaymentCallback from "@/pages/PaymentCallback";
 
 // Super Admin pages - lazy loaded
 const SuperAdminDashboard = lazy(() => import("@/pages/portal/SuperAdminDashboard"));
@@ -215,7 +214,6 @@ const SuperAdminBrandingTheme = lazy(() => import("@/pages/portal/SuperAdminBran
 const SuperAdminIntegrations = lazy(() => import("@/pages/portal/SuperAdminIntegrations"));
 const SuperAdminBackupRestore = lazy(() => import("@/pages/portal/SuperAdminBackupRestore"));
 const SuperAdminApiAccess = lazy(() => import("@/pages/portal/SuperAdminApiAccess"));
-const ExamPaymentManagement = lazy(() => import("@/pages/portal/ExamPaymentManagement"));
 const SuperAdminCurriculumTemplates = lazy(() => import("@/pages/portal/SuperAdminCurriculumTemplates"));
 const SuperAdminLessonNoteLibrary = lazy(() => import("@/pages/portal/SuperAdminLessonNoteLibrary"));
 const HomepageManagement = lazy(() => import("@/pages/portal/HomepageManagement"));
@@ -226,7 +224,6 @@ const AboutPageManagement = lazy(() => import("@/pages/portal/website/AboutPageM
 const ContactInbox = lazy(() => import("@/pages/portal/website/ContactInbox"));
 const AdmissionsManagement = lazy(() => import("@/pages/portal/website/AdmissionsManagement"));
 
-const ExamFeePayment = lazy(() => import("@/pages/portal/ExamFeePayment"));
 const ChangePasswordPage = lazy(() => import("@/pages/portal/ChangePasswordPage"));
 const NotificationsPage = lazy(() => import("@/pages/portal/NotificationsPage"));
 
@@ -245,9 +242,6 @@ function Router() {
         <Route path="/login" component={Login} />
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/reset-password" component={ResetPassword} />
-
-        {/* Payment callback — no auth required, Paystack redirects here after payment */}
-        <Route path="/payment/callback" component={PaymentCallback} />
 
         {/* Super Admin Portal Routes */}
         <Route path="/portal/superadmin">
@@ -478,13 +472,6 @@ function Router() {
         <Route path="/portal/superadmin/finance/transactions">
           <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
             <SuperAdminPlaceholder title="Transactions" category="Finance" description="View all financial transactions" />
-          </ProtectedRoute>
-        </Route>
-        <Route path="/portal/superadmin/exam-payments">
-          <ProtectedRoute allowedRoleIds={[ROLE_IDS.SUPER_ADMIN]}>
-            <SuperAdminLayout>
-              <ExamPaymentManagement />
-            </SuperAdminLayout>
           </ProtectedRoute>
         </Route>
 
@@ -720,13 +707,6 @@ function Router() {
         <Route path="/portal/onboarding">
           <ProtectedRoute allowedRoleIds={[ROLE_IDS.STUDENT, ROLE_IDS.TEACHER, ROLE_IDS.PARENT, ROLE_IDS.ADMIN]}>
             <ProfileOnboarding />
-          </ProtectedRoute>
-        </Route>
-
-        {/* Student Exam Fee Payment */}
-        <Route path="/portal/student/exam-payment">
-          <ProtectedRoute allowedRoleIds={[ROLE_IDS.STUDENT]}>
-            <ExamFeePayment />
           </ProtectedRoute>
         </Route>
 

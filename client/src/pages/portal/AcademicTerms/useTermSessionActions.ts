@@ -81,7 +81,6 @@ export function useTermSessionActions(isAdmin: boolean) {
   // ── Term mutations ──────────────────────────────────────────────────────────
   const { mut: setCurrentTermMut } = useCalMut('Term set as current.', id => call('PUT', `/api/terms/${id}/mark-current`));
   const { mut: deactivateTermMut } = useCalMut('Term deactivated.', id => call('PUT', `/api/terms/${id}/deactivate`));
-  const { mut: toggleLockMut } = useCalMut('Term lock updated.', id => call('PUT', `/api/terms/${id}/toggle-lock`));
   const { mut: archiveTermMut } = useCalMut('Term archived.', id => call('PUT', `/api/terms/${id}/status`, { status: 'archived' }));
   const { mut: unarchiveTermMut } = useCalMut('Term restored.', id => call('PUT', `/api/terms/${id}/status`, { status: 'upcoming' }));
   const { mut: deleteTermMut } = useCalMut('Term deleted.', id => call('DELETE', `/api/terms/${id}`), 'Cannot Delete');
@@ -105,7 +104,6 @@ export function useTermSessionActions(isAdmin: boolean) {
     termActions: {
       onSetCurrent: (id: number) => setCurrentTermMut.mutate(id),
       onDeactivate: (id: number) => deactivateTermMut.mutate(id),
-      onToggleLock: (id: number) => toggleLockMut.mutate(id),
       onArchive: (id: number) => archiveTermMut.mutate(id),
       onUnarchive: (id: number) => unarchiveTermMut.mutate(id),
       onDelete: (id: number) => deleteTermMut.mutate(id),

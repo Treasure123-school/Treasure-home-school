@@ -19,7 +19,7 @@ import SuperAdminLayout from "@/components/SuperAdminLayout";
 import { Search, Download, Ban, RefreshCw, Users, MoreVertical, Key, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { User as UserType } from "@shared/schema";
+import type { User as UserType } from "@shared/schema.pg";
 import { formatDistance } from "date-fns";
 import { ROLE_IDS, getRoleNameById } from "@/lib/roles";
 

@@ -43,7 +43,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import type { User as UserType } from "@shared/schema";
+import type { User as UserType } from "@shared/schema.pg";
 import { formatDistance } from "date-fns";
 import { ROLE_IDS } from "@/lib/roles";
 

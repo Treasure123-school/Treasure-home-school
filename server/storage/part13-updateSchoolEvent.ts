@@ -1,7 +1,7 @@
 /** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
 import { db, schema } from '../storage/helpers';
 import { SmartDeletionManager } from '../services/smart-deletion-manager';
-import { Class, ClassSubjectMapping, InsertClassSubjectMapping, InsertSchoolEvent, InsertStudentSubjectAssignment, Role, SchoolEvent, Student, StudentSubjectAssignment, Subject, User } from '@shared/schema';
+import { Class, ClassSubjectMapping, InsertClassSubjectMapping, InsertSchoolEvent, InsertStudentSubjectAssignment, Role, SchoolEvent, Student, StudentSubjectAssignment, Subject, User } from '@shared/schema.pg';
 import { and, asc, desc, eq, inArray, lte, or, sql } from 'drizzle-orm';
 import { DatabaseStorageP12 } from './part12-getGradingTasksBySession'
 import type { IStorage } from './types'

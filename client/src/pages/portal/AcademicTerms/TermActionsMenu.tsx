@@ -7,12 +7,11 @@ import {
   AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
 } from '@/components/ui/alert-dialog';
 import type { CalendarTerm } from '@/hooks/useAcademicCalendar';
-import { Edit, Trash2, Archive, Eye, Lock, Unlock, Power, PowerOff } from 'lucide-react';
+import { Edit, Trash2, Archive, Eye, Power, PowerOff } from 'lucide-react';
 
 export interface TermActions {
   onSetCurrent: (id: number) => void;
   onDeactivate: (id: number) => void;
-  onToggleLock: (id: number) => void;
   onArchive: (id: number) => void;
   onUnarchive: (id: number) => void;
   onEdit: (t: CalendarTerm) => void;
@@ -26,9 +25,8 @@ export function TermActionsMenu({ t, status, actions, testSuffix }: {
   testSuffix: string;
 }) {
   const isArchived = status === 'archived';
-  const deleteDisabled = t.isLocked || t.isCurrent || isArchived;
+  const deleteDisabled = t.isCurrent || isArchived;
   const deleteLabel = t.isCurrent ? 'Cannot delete active'
-    : t.isLocked ? 'Unlock to delete'
     : isArchived ? 'Restore to delete'
     : 'Delete';
   return (
@@ -45,10 +43,7 @@ export function TermActionsMenu({ t, status, actions, testSuffix }: {
           <PowerOff className="h-4 w-4 mr-2 text-amber-600" /> Deactivate
         </DropdownMenuItem>
       )}
-      <DropdownMenuItem onClick={() => actions.onToggleLock(t.id)} disabled={isArchived} data-testid={`btn-term-lock-${testSuffix}-${t.id}`}>
-        {t.isLocked ? <><Unlock className="h-4 w-4 mr-2" /> Unlock</> : <><Lock className="h-4 w-4 mr-2" /> Lock</>}
-      </DropdownMenuItem>
-      <DropdownMenuItem onClick={() => actions.onEdit(t)} disabled={t.isLocked || isArchived} data-testid={`btn-term-edit-${testSuffix}-${t.id}`}>
+      <DropdownMenuItem onClick={() => actions.onEdit(t)} disabled={isArchived} data-testid={`btn-term-edit-${testSuffix}-${t.id}`}>
         <Edit className="h-4 w-4 mr-2" /> Edit
       </DropdownMenuItem>
       {!isArchived ? (

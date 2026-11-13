@@ -2,7 +2,7 @@ import { useMemo, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Filter } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import type { Exam, ExamQuestion } from '@shared/schema';
+import type { Exam, ExamQuestion } from '@shared/schema.pg';
 
 /** Auto-split from ExamManagement.tsx — see git history for original context. */
 export function useQuestionQueries({ selectedExam, previewExam, pendingQuestionDeletionsRef, exams }: { selectedExam: any; previewExam: any; pendingQuestionDeletionsRef: any; exams: any }) {

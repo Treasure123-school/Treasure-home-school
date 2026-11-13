@@ -3,7 +3,7 @@ import { db, schema } from '../storage/helpers';
 import { deleteFile } from '../cloudinary-service';
 import { getPgClient, isPostgres } from '../db';
 import { realtimeService } from '../realtime-service';
-import { Announcement, Exam, ExamSession, Gallery, GalleryCategory, HomePageContent, InsertAnnouncement, InsertGallery, InsertGalleryCategory, InsertHomePageContent, InsertStudentAnswer, InsertStudyResource, QuestionOption, Student, StudentAnswer, StudyResource } from '@shared/schema';
+import { Announcement, Exam, ExamSession, Gallery, GalleryCategory, HomePageContent, InsertAnnouncement, InsertGallery, InsertGalleryCategory, InsertHomePageContent, InsertStudentAnswer, InsertStudyResource, QuestionOption, Student, StudentAnswer, StudyResource } from '@shared/schema.pg';
 import { and, asc, desc, eq, like, or, sql, sql as dsql } from 'drizzle-orm';
 import { DatabaseStorageP06 } from './part06-generateQuestionsFromBank'
 import type { IStorage } from './types'

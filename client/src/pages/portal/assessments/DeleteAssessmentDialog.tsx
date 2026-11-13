@@ -8,7 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { Exam } from '@shared/schema';
+import type { Exam } from '@shared/schema.pg';
 
 export interface DeleteAssessmentDialogProps {
   exam: Exam | null;

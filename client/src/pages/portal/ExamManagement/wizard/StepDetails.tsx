@@ -4,7 +4,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BookOpen, Layers } from 'lucide-react';
 import { Controller } from 'react-hook-form';
-import type { Exam, Class, Subject } from '@shared/schema';
+import type { Exam, Class, Subject } from '@shared/schema.pg';
 import type { ExamManager } from '../useExamManager';
 
 /** Wizard step — split from ExamManagement.tsx. */

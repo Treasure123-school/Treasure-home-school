@@ -2,7 +2,7 @@
 import { db, schema } from '../storage/helpers';
 import { getActiveGradingConfig } from '../grade-scale-service';
 import { calculateGradeFromConfig, calculateWeightedScore } from '../grading-config';
-import { Exam, ExamQuestionBankLink, ExamResult, ExamSession, InsertExamQuestionBankLink, InsertExamSession, QuestionBankItem, ReportCard, Student, StudentAnswer, Subject } from '@shared/schema';
+import { Exam, ExamQuestionBankLink, ExamResult, ExamSession, InsertExamQuestionBankLink, InsertExamSession, QuestionBankItem, ReportCard, Student, StudentAnswer, Subject } from '@shared/schema.pg';
 import { and, asc, desc, eq, inArray, or, sql, sql as dsql } from 'drizzle-orm';
 import { DatabaseStorageP05 } from './part05-deleteQuestionOptions'
 import type { IStorage } from './types'

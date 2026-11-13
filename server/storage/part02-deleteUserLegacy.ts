@@ -1,7 +1,7 @@
 /** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
 import { db, normalizeUuid, schema } from '../storage/helpers';
 import { DeletionService, formatDeletionLog } from '../services/deletion-service';
-import { AdminProfile, InsertAdminProfile, InsertInvite, InsertSuperAdminProfile, InsertTeacherProfile, InsertUser, Invite, ParentProfile, Role, Student, SuperAdminProfile, TeacherProfile, User } from '@shared/schema';
+import { AdminProfile, InsertAdminProfile, InsertInvite, InsertSuperAdminProfile, InsertTeacherProfile, InsertUser, Invite, ParentProfile, Role, Student, SuperAdminProfile, TeacherProfile, User } from '@shared/schema.pg';
 import { and, desc, eq, inArray, isNull, or, sql, sql as dsql } from 'drizzle-orm';
 import { DatabaseStorageP01 } from './part01-core'
 import type { IStorage } from './types'

@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Clipboard } from 'lucide-react';
-import type { Exam } from '@shared/schema';
+import type { Exam } from '@shared/schema.pg';
 import { EmptyState } from '@/components/shared';
 import { AssessmentCard } from './AssessmentCard';
 import { AssessmentRow } from './AssessmentRow';

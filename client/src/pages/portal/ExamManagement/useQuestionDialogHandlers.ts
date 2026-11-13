@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
-import type { Exam, ExamQuestion } from '@shared/schema';
+import type { Exam, ExamQuestion } from '@shared/schema.pg';
 import type { QuestionForm } from './schemas';
 import { toast } from '@/hooks/use-toast';
 

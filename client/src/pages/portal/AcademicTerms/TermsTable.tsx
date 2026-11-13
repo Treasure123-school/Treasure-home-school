@@ -5,7 +5,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import type { CalendarTerm, TermStatus } from '@/hooks/useAcademicCalendar';
 import { Progress } from '@/components/ui/progress';
-import { MoreVertical, Lock } from 'lucide-react';
+import { MoreVertical } from 'lucide-react';
 import { StatusBadge, fmtDate, termProgress, daysLeft } from './shared';
 import { TermActionsMenu, type TermActions } from './TermActionsMenu';
 
@@ -28,7 +28,6 @@ export function TermsTable({ terms, getStatus, actions }: TermsTableProps) {
               <th className="text-left py-2.5 pr-4 font-semibold">End Date</th>
               <th className="text-left py-2.5 pr-4 font-semibold">Status</th>
               <th className="text-left py-2.5 pr-4 font-semibold min-w-[130px]">Progress</th>
-              <th className="text-left py-2.5 pr-4 font-semibold">Lock</th>
               <th className="text-right py-2.5 font-semibold w-10">Actions</th>
             </tr>
           </thead>
@@ -58,11 +57,6 @@ export function TermsTable({ terms, getStatus, actions }: TermsTableProps) {
                         <p className="text-xs text-muted-foreground">{pct}% · {daysLeft(t.endDate)}d left</p>
                       </div>
                     ) : <span className="text-xs text-muted-foreground">—</span>}
-                  </td>
-                  <td className="py-3 pr-4">
-                    {t.isLocked
-                      ? <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 font-medium"><Lock className="h-3 w-3" /> Locked</span>
-                      : <span className="text-xs text-muted-foreground">—</span>}
                   </td>
                   <td className="py-3 text-right">
                     <DropdownMenu>
@@ -98,7 +92,6 @@ export function TermsTable({ terms, getStatus, actions }: TermsTableProps) {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-sm">{t.name}</span>
                     {t.isCurrent && <Badge className="text-[10px] bg-emerald-500 hover:bg-emerald-500 py-0 px-1.5">Current</Badge>}
-                    {t.isLocked && <span className="inline-flex items-center gap-0.5 text-[10px] text-amber-600 font-medium"><Lock className="h-3 w-3" />Locked</span>}
                   </div>
                   <p className="text-xs text-muted-foreground">{t.year}</p>
                 </div>

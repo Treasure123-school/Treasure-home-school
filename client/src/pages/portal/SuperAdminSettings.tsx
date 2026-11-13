@@ -37,7 +37,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { SystemSettings } from "@shared/schema";
+import type { SystemSettings } from "@shared/schema.pg";
 
 const countryCodes = [
   { code: "+234", name: "Nigeria" },

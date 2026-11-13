@@ -1,7 +1,7 @@
 import { useMutation } from '@tanstack/react-query';
 import { Upload, Check } from 'lucide-react';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import type { Exam, ExamQuestion } from '@shared/schema';
+import type { Exam, ExamQuestion } from '@shared/schema.pg';
 import { toast } from '@/hooks/use-toast';
 import { parseCSV } from './csvParsing';
 

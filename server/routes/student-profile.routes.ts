@@ -6,7 +6,7 @@ import { realtimeService } from '../realtime-service';
 import { ROLES, authenticateUser, authorizeRoles } from '../routes/middleware';
 import { db, storage } from '../storage';
 import { generateParentUsername, generateStudentUsername } from '../username-generator';
-import { createStudentSchema } from '@shared/schema';
+import { createStudentSchema } from '@shared/schema.pg';
 import { students, users } from '@shared/schema.pg';
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';

@@ -5,7 +5,7 @@ import { realtimeService } from '../realtime-service';
 import { ROLES, authenticateUser, authorizeRoles } from '../routes/middleware';
 import { storage } from '../storage';
 import { validateTeacherCanCreateExam } from '../teacher-auth-middleware';
-import { insertExamSchema } from '@shared/schema';
+import { insertExamSchema } from '@shared/schema.pg';
 import { students, users } from '@shared/schema.pg';
 import { and } from 'drizzle-orm';
 import { type Express, type Request } from 'express';
@@ -241,27 +241,6 @@ export async function registerRealtimeSyncRoutes(app: Express) {
         } catch (completedExamError) {
           // Non-fatal: log but still return visible exams
           console.warn('[EXAMS] Could not fetch completed exams to merge into student list:', completedExamError);
-        }
-
-        // Attach payment status for each exam's term
-        try {
-          const sysSettings = await storage.getSystemSettings();
-          if (sysSettings?.requireExamPayment) {
-            const allPayments = await storage.getExamPaymentsByStudent(userId);
-            const paidTermIds = new Set(allPayments.map((p: any) => p.termId));
-            for (const exam of studentExams) {
-              (exam as any).paymentRequired = true;
-              (exam as any).hasPaid = paidTermIds.has(exam.termId);
-              (exam as any).feeAmount = sysSettings.examFeeAmount ?? 0;
-            }
-          } else {
-            for (const exam of studentExams) {
-              (exam as any).paymentRequired = false;
-              (exam as any).hasPaid = true;
-            }
-          }
-        } catch (paymentError) {
-          console.warn('[EXAMS] Could not attach payment status:', paymentError);
         }
 
         return res.json(studentExams);

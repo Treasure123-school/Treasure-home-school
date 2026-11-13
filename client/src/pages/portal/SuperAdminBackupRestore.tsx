@@ -16,7 +16,7 @@ import {
   AlertCircle,
   Calendar
 } from "lucide-react";
-import type { SystemSettings } from "@shared/schema";
+import type { SystemSettings } from "@shared/schema.pg";
 import { format } from "date-fns";
 
 export default function SuperAdminBackupRestore() {

@@ -2,7 +2,7 @@
 import { db, schema } from '../storage/helpers';
 import { getActiveGradingConfig } from '../grade-scale-service';
 import { calculateGradeFromConfig, calculateWeightedScore } from '../grading-config';
-import { Exam, ReportCard, Student, Subject } from '@shared/schema';
+import { Exam, ReportCard, Student, Subject } from '@shared/schema.pg';
 import { and, desc, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
 import { DatabaseStorageP09 } from './part09-recalculateClassPositions'
 import type { IStorage } from './types'

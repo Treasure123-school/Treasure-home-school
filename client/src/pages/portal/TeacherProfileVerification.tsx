@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import type { TeacherProfile } from '@shared/schema';
+import type { TeacherProfile } from '@shared/schema.pg';
 
 // Type for the teacher profile data returned by the API
 interface TeacherProfileData {

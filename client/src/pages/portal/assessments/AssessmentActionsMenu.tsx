@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Edit, Eye, MoreVertical, Play, Trash2 } from 'lucide-react';
-import type { Exam } from '@shared/schema';
+import type { Exam } from '@shared/schema.pg';
 
 /**
  * DeleteAction / DropdownMenu — isolated context-menu + deletion-trigger logic

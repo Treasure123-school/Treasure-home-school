@@ -4,7 +4,7 @@ import { examFormSchema, questionFormSchema, type ExamForm, type QuestionForm } 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useSearch } from 'wouter';
 import { useAuth } from '@/lib/auth';
-import type { Exam, ExamQuestion } from '@shared/schema';
+import type { Exam, ExamQuestion } from '@shared/schema.pg';
 
 /** All UI state + react-hook-form instances for exam/question management. */
 export function useExamState() {

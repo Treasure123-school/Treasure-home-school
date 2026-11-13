@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import { db } from '../storage';
-import * as schema from "@shared/schema";
+import * as schema from '@shared/schema.pg';
 import { eq, and } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 

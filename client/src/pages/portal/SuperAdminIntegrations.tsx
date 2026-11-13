@@ -21,7 +21,7 @@ import {
   ExternalLink,
   Sparkles,
 } from "lucide-react";
-import type { SystemSettings } from "@shared/schema";
+import type { SystemSettings } from "@shared/schema.pg";
 
 export default function SuperAdminIntegrations() {
   const { toast } = useToast();

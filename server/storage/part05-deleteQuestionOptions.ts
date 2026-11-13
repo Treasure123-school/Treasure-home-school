@@ -1,6 +1,6 @@
 /** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
 import { db, schema } from '../storage/helpers';
-import { ExamQuestion, InsertExamQuestion, InsertLessonNote, InsertQuestionBank, InsertQuestionBankItem, InsertQuestionBankOption, InsertSyllabusTopic, LessonNote, QuestionBank, QuestionBankItem, QuestionBankOption, SyllabusTopic } from '@shared/schema';
+import { ExamQuestion, InsertExamQuestion, InsertLessonNote, InsertQuestionBank, InsertQuestionBankItem, InsertQuestionBankOption, InsertSyllabusTopic, LessonNote, QuestionBank, QuestionBankItem, QuestionBankOption, SyllabusTopic } from '@shared/schema.pg';
 import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { DatabaseStorageP04 } from './part04-batchUpsertAttendance'

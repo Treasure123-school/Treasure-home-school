@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { createStudentSchema, quickCreateStudentSchema, type CreateStudentRequest, type QuickCreateStudentRequest } from '@shared/schema';
+import { createStudentSchema, quickCreateStudentSchema, type CreateStudentRequest, type QuickCreateStudentRequest } from '@shared/schema.pg';
 import { PageHeader, SearchInput, EmptyState, ConfirmDialog, MiniStatCard, MiniStatGrid } from "@/components/shared";
 import { UserPlus, Edit, Download, Trash2, Shield, ShieldOff, Upload, FileText, Key, AlertTriangle, AlertCircle, GraduationCap, Palette, Briefcase, Info, MoreHorizontal, Users, BookOpen, Phone, CheckCircle2, ImageIcon } from 'lucide-react';
 import { computeProfileCompletion } from '@/lib/profileCompletion';

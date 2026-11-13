@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage, db, IStorage } from "./storage";
 import * as schema from "@shared/schema.pg";
 import { authenticateUser, authorizeRoles, normalizeUuid, SECRET_KEY, JWT_EXPIRES_IN, ROLES, AuthenticatedUser } from "./routes/middleware";
-import { insertUserSchema, insertStudentSchema, insertAttendanceSchema, insertAnnouncementSchema, insertMessageSchema, insertExamSchema, insertExamResultSchema, insertExamQuestionSchema, insertQuestionOptionSchema, createQuestionOptionSchema, insertHomePageContentSchema, insertContactMessageSchema, insertExamSessionSchema, updateExamSessionSchema, insertStudentAnswerSchema, createStudentSchema, InsertUser, InsertStudentAnswer } from "@shared/schema";
+import { insertUserSchema, insertStudentSchema, insertAttendanceSchema, insertAnnouncementSchema, insertMessageSchema, insertExamSchema, insertExamResultSchema, insertExamQuestionSchema, insertQuestionOptionSchema, createQuestionOptionSchema, insertHomePageContentSchema, insertContactMessageSchema, insertExamSessionSchema, updateExamSessionSchema, insertStudentAnswerSchema, createStudentSchema, InsertUser, InsertStudentAnswer } from '@shared/schema.pg';
 import { users, students } from "@shared/schema.pg";
 import { z, ZodError } from "zod";
 import multer from "multer";
@@ -29,8 +29,6 @@ import teacherAssignmentRoutes from "./teacher-assignment-routes";
 import gradeScaleRoutes from "./grade-scale-routes";
 import jobVacancyRoutes from "./routes/job-vacancy.routes";
 import settingsRoutes from "./routes/settings.routes";
-import examPaymentRoutes from "./routes/exam-payment.routes";
-import { monnifyPaymentRouter } from "./routes/monnify-payment.routes";
 import { billingRouter } from "./routes/billing.routes";
 import reportCardSkillsRoutes from "./routes/report-card-skills.routes";
 import questionBankRoutes from "./routes/question-bank.routes";
@@ -118,8 +116,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/sessions', sessionsRoutes);
   app.use('/api/academic-calendar', calendarRoutes);
   app.use("/api/upload", uploadRoutes);
-  app.use("/api/exam-payments", examPaymentRoutes);
-  app.use("/api/payments/monnify", monnifyPaymentRouter);
   app.use("/api/billing", billingRouter);
   app.use(websiteManagementRoutes);
   app.use(maintenanceRoutes); // admin repair/sync operations (extended 8-min timeout)

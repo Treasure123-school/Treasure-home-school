@@ -1,6 +1,6 @@
 /** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
 import { db, schema } from '../storage/helpers';
-import { Attendance, Class, ContactMessage, GradingTask, InsertContactMessage, InsertGradingTask, InsertPerformanceEvent, InsertTeacherClassAssignment, InsertTimetable, PerformanceEvent, Role, Student, TeacherClassAssignment, TeacherProfile, Timetable, User } from '@shared/schema';
+import { Attendance, Class, ContactMessage, GradingTask, InsertContactMessage, InsertGradingTask, InsertPerformanceEvent, InsertTeacherClassAssignment, InsertTimetable, PerformanceEvent, Role, Student, TeacherClassAssignment, TeacherProfile, Timetable, User } from '@shared/schema.pg';
 import { and, asc, desc, eq, gte, inArray, isNull, or, sql } from 'drizzle-orm';
 import { DatabaseStorageP10 } from './part10-updateReportCardStatusOptimized'
 import type { IStorage } from './types'

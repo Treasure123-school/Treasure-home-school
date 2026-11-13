@@ -1,7 +1,7 @@
 /** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
 import { db, normalizeUuid, schema } from '../storage/helpers';
 import { getPgPool } from '../db';
-import { AcademicSession, AcademicTerm, Attendance, Class, Exam, InsertAcademicSession, InsertAttendance, InsertClass, InsertParentProfile, InsertStudent, InsertSubject, InsertUser, ParentProfile, Role, Student, Subject, User } from '@shared/schema';
+import { AcademicSession, AcademicTerm, Attendance, Class, Exam, InsertAcademicSession, InsertAttendance, InsertClass, InsertParentProfile, InsertStudent, InsertSubject, InsertUser, ParentProfile, Role, Student, Subject, User } from '@shared/schema.pg';
 import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { DatabaseStorageP02 } from './part02-deleteUserLegacy'
 import type { IStorage } from './types'

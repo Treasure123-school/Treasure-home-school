@@ -40,7 +40,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { Class, ExamResult, Exam, Subject } from '@shared/schema';
+import type { Class, ExamResult, Exam, Subject } from '@shared/schema.pg';
 
 interface EnrichedExamResult extends ExamResult {
   studentName?: string;

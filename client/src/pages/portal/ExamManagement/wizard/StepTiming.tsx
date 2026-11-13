@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Clock, Target, DollarSign, Ticket } from 'lucide-react';
 import { Controller } from 'react-hook-form';
-import type { Class } from '@shared/schema';
+import type { Class } from '@shared/schema.pg';
 import type { ExamManager } from '../useExamManager';
 
 /** Wizard step — split from ExamManagement.tsx. */

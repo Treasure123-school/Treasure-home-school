@@ -2,7 +2,7 @@
 import { db, normalizeUuid, schema } from '../storage/helpers';
 import { deleteFile } from '../cloudinary-service';
 import { SmartDeletionManager, SmartDeletionResult, bulkDeleteUsers, cleanupOrphanRecords } from '../services/smart-deletion-manager';
-import { AuditLog, Exam, InsertAuditLog, InsertUser, Student, User } from '@shared/schema';
+import { AuditLog, Exam, InsertAuditLog, InsertUser, Student, User } from '@shared/schema.pg';
 import { randomUUID } from 'crypto';
 import { and, eq, ilike, inArray, or, sql as dsql } from 'drizzle-orm';
 import type { IStorage } from './types'

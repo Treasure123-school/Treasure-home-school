@@ -180,10 +180,6 @@ router.put('/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADM
     if (!existingTerm) {
       return sendNotFound(res, 'Academic term not found');
     }
-
-    if ((existingTerm as any).isLocked && req.body.isLocked !== false) {
-      return res.status(403).json({ message: 'This term is locked and cannot be edited. Unlock it first.' });
-    }
     
     if (req.body.year) {
       const yearValidation = validateYearFormat(req.body.year);
@@ -286,30 +282,6 @@ router.put('/:id/mark-current', authenticateUser, authorizeRoles(ROLES.ADMIN, RO
   }
 });
 
-router.put('/:id/toggle-lock', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res: Response) => {
-  try {
-    const termId = parseInt(req.params.id);
-    if (isNaN(termId)) {
-      return sendBadRequest(res, 'Invalid term ID');
-    }
-
-    const existingTerm = await storage.getAcademicTerm(termId);
-    if (!existingTerm) {
-      return sendNotFound(res, 'Academic term not found');
-    }
-
-    const newLockState = !(existingTerm as any).isLocked;
-    const term = await storage.updateAcademicTerm(termId, { isLocked: newLockState });
-    
-    realtimeService.emitTableChange('academic_terms', 'UPDATE', term, existingTerm, req.user!.id);
-    realtimeService.emitToRole('admin', 'term.lock-toggled', term);
-    
-    sendSuccess(res, term);
-  } catch (error) {
-    handleRouteError(res, error, 'terms.toggleLock');
-  }
-});
-
 router.put('/:id/status', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN), async (req: any, res: Response) => {
   try {
     const termId = parseInt(req.params.id);
@@ -326,14 +298,11 @@ router.put('/:id/status', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SU
       return sendBadRequest(res, 'Status is required');
     }
 
-    // When deactivating or archiving, clear isCurrent; archiving also locks the term
+    // When deactivating or archiving, clear isCurrent
     const inactiveStatuses = ['completed', 'inactive', 'archived'];
     const updates: any = { status: req.body.status };
     if (inactiveStatuses.includes(req.body.status)) {
       updates.isCurrent = false;
-    }
-    if (req.body.status === 'archived') {
-      updates.isLocked = true;
     }
 
     const term = await storage.updateAcademicTerm(termId, updates);

@@ -53,7 +53,6 @@ export const users = pgTable("users", {
   securityAnswerHash: text("security_answer_hash"),
   dataPolicyAgreed: boolean("data_policy_agreed").notNull().default(false),
   dataPolicyAgreedAt: timestamp("data_policy_agreed_at"),
-  examUnlocked: boolean("exam_unlocked").notNull().default(false),
   deletedAt: timestamp("deleted_at"),
   deletedBy: varchar("deleted_by", { length: 36 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -153,7 +152,6 @@ export const academicTerms = pgTable("academic_terms", {
   endDate: varchar("end_date", { length: 10 }).notNull(),
   isCurrent: boolean("is_current").notNull().default(false),
   status: varchar("status", { length: 20 }).notNull().default('upcoming'),
-  isLocked: boolean("is_locked").notNull().default(false),
   description: text("description"),
   sessionId: integer("session_id").references(() => academicSessions.id, { onDelete: 'set null' }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -314,8 +312,6 @@ export const systemSettings = pgTable("system_settings", {
   allowTeacherOverrides: boolean("allow_teacher_overrides").notNull().default(true),
   positioningMethod: varchar("positioning_method", { length: 20 }).notNull().default('average'),
   deletedUserRetentionDays: integer("deleted_user_retention_days").notNull().default(30),
-  requireExamPayment: boolean("require_exam_payment").notNull().default(false),
-  examFeeAmount: integer("exam_fee_amount").notNull().default(0),
   academicAutoDetect: boolean("academic_auto_detect").notNull().default(true),
   designatedPrincipalId: varchar("designated_principal_id", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
   updatedBy: varchar("updated_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
@@ -1303,26 +1299,6 @@ export const syncAuditLogs = pgTable("sync_audit_logs", {
   syncAuditLogsRetryIdx: index("sync_audit_logs_retry_idx").on(table.status, table.nextRetryAt),
 }));
 
-// Exam payments table — one record per student per term
-export const examPayments = pgTable("exam_payments", {
-  id: serial("id").primaryKey(),
-  studentId: varchar("student_id", { length: 36 }).notNull().references(() => students.id, { onDelete: 'cascade' }),
-  termId: integer("term_id").notNull().references(() => academicTerms.id),
-  amountPaid: integer("amount_paid").notNull().default(0),
-  paymentMethod: varchar("payment_method", { length: 50 }).notNull().default('cash'),
-  paymentReference: varchar("payment_reference", { length: 255 }),
-  status: varchar("status", { length: 20 }).notNull().default('paid'),
-  recordedBy: varchar("recorded_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
-  notes: text("notes"),
-  gatewayResponse: text("gateway_response"),
-  paidAt: timestamp("paid_at"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-}, (table) => ({
-  examPaymentsStudentTermIdx: uniqueIndex("exam_payments_student_term_idx").on(table.studentId, table.termId),
-  examPaymentsStudentIdx: index("exam_payments_student_idx").on(table.studentId),
-  examPaymentsTermIdx: index("exam_payments_term_idx").on(table.termId),
-}));
-
 // Export types (compatible with SQLite schema types)
 export type Role = typeof roles.$inferSelect;
 export type InsertRole = typeof roles.$inferInsert;
@@ -1430,8 +1406,6 @@ export type SyllabusTopic = typeof syllabusTopics.$inferSelect;
 export type InsertSyllabusTopic = typeof syllabusTopics.$inferInsert;
 export type ExamQuestionBankLink = typeof examQuestionBankLinks.$inferSelect;
 export type InsertExamQuestionBankLink = typeof examQuestionBankLinks.$inferInsert;
-export type ExamPayment = typeof examPayments.$inferSelect;
-export type InsertExamPayment = typeof examPayments.$inferInsert;
 
 // Assignments table
 export const assignments = pgTable("assignments", {

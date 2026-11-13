@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import type { HomePageContent } from '@shared/schema';
+import type { HomePageContent } from '@shared/schema.pg';
 
 interface HeroCarouselProps {
   images: HomePageContent[];

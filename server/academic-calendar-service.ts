@@ -14,7 +14,7 @@
 import { storage, db } from "./storage";
 import * as schema from "@shared/schema.pg";
 import { eq, and, ne, lte, gte, isNull, asc } from "drizzle-orm";
-import type { AcademicTerm, AcademicSession } from "@shared/schema";
+import type { AcademicTerm, AcademicSession } from '@shared/schema.pg';
 import { getPgPool } from "./db";
 
 // ─── Pure Utility ─────────────────────────────────────────────────────────────

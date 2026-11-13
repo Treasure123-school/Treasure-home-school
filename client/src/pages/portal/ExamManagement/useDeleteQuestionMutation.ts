@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import type { ExamQuestion } from '@shared/schema';
+import type { ExamQuestion } from '@shared/schema.pg';
 import { toast } from '@/hooks/use-toast';
 
 /** Auto-split from ExamManagement.tsx — see git history for original context. */

@@ -8,7 +8,7 @@ import {
   ExamAnalysisTabs, ExamAnalysisSkeleton, normalizeExamAnalytics,
   type AnalyticsData,
 } from '@/components/portal/ExamAnalysisTabs';
-import type { Exam } from '@shared/schema';
+import type { Exam } from '@shared/schema.pg';
 
 interface Class { id: number; name: string; }
 interface Subject { id: number; name: string; code: string; }

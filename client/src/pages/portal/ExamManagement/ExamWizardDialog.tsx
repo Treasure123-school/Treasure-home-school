@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Edit, ChevronLeft, ChevronRight, Check } from 'lucide-react';
-import type { Exam } from '@shared/schema';
+import type { Exam } from '@shared/schema.pg';
 import type { ExamManager } from './useExamManager';
 import { StepDetails } from './wizard/StepDetails';
 import { StepTiming } from './wizard/StepTiming';

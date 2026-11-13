@@ -6,7 +6,7 @@ import { ROLES, authenticateUser, authorizeRoles } from '../routes/middleware';
 import { storage } from '../storage';
 import { logExamAccess, validateExamTimeWindow } from '../teacher-auth-middleware';
 import { EXAM_SESSION_STATUS, computeExamTiming, logExamTiming } from '../utils/exam-timing';
-import { InsertStudentAnswer } from '@shared/schema';
+import { InsertStudentAnswer } from '@shared/schema.pg';
 import { and } from 'drizzle-orm';
 import session from 'express-session';
 
@@ -42,23 +42,6 @@ export async function registerExamSessionsRoutes(app: Express) {
       }
       if (student.classId !== exam.classId) {
         return res.status(403).json({ message: 'This exam is not available for your class' });
-      }
-
-      // PAYMENT CHECK: Block access if exam fee is required and unpaid
-      const sysSettings = await storage.getSystemSettings();
-      if (sysSettings?.requireExamPayment) {
-        // Guard against legacy exams saved before termId defaulting was added — fall back
-        // to the active term instead of passing undefined into the payment lookup.
-        const paymentTermId = exam.termId ?? (await storage.getCurrentTerm())?.id;
-        const payment = paymentTermId ? await storage.getExamPayment(studentId, paymentTermId) : undefined;
-        if (!payment) {
-          return res.status(402).json({
-            message: 'Exam fee payment required',
-            paymentRequired: true,
-            termId: paymentTermId ?? exam.termId,
-            feeAmount: sysSettings.examFeeAmount ?? 0,
-          });
-        }
       }
 
       // RE-ENTRY PREVENTION: Check if student already has a completed session for this exam

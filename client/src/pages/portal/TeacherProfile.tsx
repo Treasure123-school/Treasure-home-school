@@ -30,7 +30,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { apiRequest } from '@/lib/queryClient';
 import { getApiUrl } from '@/config/api';
-import type { TeacherProfileWithUser, Class } from '@shared/schema';
+import type { TeacherProfileWithUser, Class } from '@shared/schema.pg';
 
 export default function TeacherProfile() {
   const { user, updateUser } = useAuth();

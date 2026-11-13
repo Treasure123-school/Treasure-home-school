@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Download, Users, TrendingUp, Award } from 'lucide-react';
 import { Link } from 'wouter';
 import { useAuth } from '@/lib/auth';
-import type { Class, ExamResult, Exam, Subject, User } from '@shared/schema';
+import type { Class, ExamResult, Exam, Subject, User } from '@shared/schema.pg';
 
 export default function TeacherClassResults() {
   const { user } = useAuth();

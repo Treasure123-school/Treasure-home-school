@@ -14,7 +14,7 @@ import { MiniLineChart } from '@/components/ui/mini-line-chart';
 import { StatsCardSkeleton, AnnouncementCardSkeleton, SkeletonTransition, ContentFadeIn, SkeletonShimmer } from '@/components/ui/skeletons';
 import { Skeleton } from '@/components/ui/skeleton';
 import { StudentDashboardSkeleton } from '@/components/ui/page-skeletons';
-import type { Exam } from '@shared/schema';
+import type { Exam } from '@shared/schema.pg';
 import { useSocketIORealtime } from '@/hooks/useSocketIORealtime';
 import { useLoginSuccess } from '@/hooks/use-login-success';
 import { useProfileCompletion } from '@/hooks/useProfileCompletion';

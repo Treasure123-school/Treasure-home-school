@@ -37,7 +37,7 @@ import type {
   BillingItem, InsertBillingItem,
   BillingPayment, InsertBillingPayment,
   BillingFeatureLink, InsertBillingFeatureLink,
-} from "@shared/schema";
+} from '@shared/schema.pg';
 
 // Get centralized database instance and schema from db.ts
 // Cast to 'any' to allow dynamic switching between SQLite and PostgreSQL schemas

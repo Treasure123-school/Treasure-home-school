@@ -1,5 +1,5 @@
 import { db } from '../storage';
-import * as schema from "@shared/schema";
+import * as schema from '@shared/schema.pg';
 
 /**
  * Seeds the 5 core roles into the database

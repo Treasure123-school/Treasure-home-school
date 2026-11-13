@@ -11,7 +11,7 @@ import SuperAdminLayout from "@/components/SuperAdminLayout";
 import { Search, ShieldCheck, Ban, RefreshCw, History, Save, AlertTriangle, User } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { User as UserType } from "@shared/schema";
+import type { User as UserType } from "@shared/schema.pg";
 
 export default function SuperAdminUserAccessControl() {
   const { toast } = useToast();

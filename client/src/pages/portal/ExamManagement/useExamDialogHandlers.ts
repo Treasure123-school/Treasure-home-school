@@ -1,5 +1,5 @@
 import { FileText, Settings, Check, Calendar } from 'lucide-react';
-import type { Exam, Class, Subject } from '@shared/schema';
+import type { Exam, Class, Subject } from '@shared/schema.pg';
 import type { ExamForm } from './schemas';
 import { toast } from '@/hooks/use-toast';
 

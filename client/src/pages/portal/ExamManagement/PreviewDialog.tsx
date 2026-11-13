@@ -2,7 +2,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import type { Exam, Class, Subject } from '@shared/schema';
+import type { Exam, Class, Subject } from '@shared/schema.pg';
 import type { ExamManager } from './useExamManager';
 import { QuestionOptions } from './QuestionOptions';
 

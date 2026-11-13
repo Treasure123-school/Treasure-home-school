@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLocation, useParams } from 'wouter';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
-import type { SystemSettings } from '@shared/schema';
+import type { SystemSettings } from '@shared/schema.pg';
 import { useAuth } from '@/lib/auth';
 import { ROLE_IDS } from '@/lib/roles';
 import { Button } from '@/components/ui/button';

@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
-import type { ExamQuestion, QuestionOption } from '@shared/schema';
+import type { ExamQuestion, QuestionOption } from '@shared/schema.pg';
 import type { QuestionForm } from './schemas';
 import { toast } from '@/hooks/use-toast';
 

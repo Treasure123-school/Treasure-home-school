@@ -1,7 +1,7 @@
 import { useParams } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
-import type { SystemSettings } from '@shared/schema';
+import type { SystemSettings } from '@shared/schema.pg';
 import { Skeleton } from '@/components/ui/skeleton';
 import { NoteContentRenderer, NotePageHeader, EnrichedNote } from '@/components/lesson-notes/lessonNoteShared';
 import { BookOpen } from 'lucide-react';

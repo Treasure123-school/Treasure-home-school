@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react';
-import type { Exam } from '@shared/schema';
+import type { Exam } from '@shared/schema.pg';
 import { useExamState } from './useExamState';
 import { useExamQueries } from './useExamQueries';
 import { useExamRealtime } from './useExamRealtime';

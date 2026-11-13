@@ -2,7 +2,7 @@
 import { db, schema } from '../storage/helpers';
 import { deleteFile } from '../cloudinary-service';
 import { getPgClient, isPostgres } from '../db';
-import { HomePageContent, HomepageSection, InsertHomePageContent, ReportCard, ReportCardItem, Student } from '@shared/schema';
+import { HomePageContent, HomepageSection, InsertHomePageContent, ReportCard, ReportCardItem, Student } from '@shared/schema.pg';
 import { and, asc, desc, eq, isNotNull, ne, sql } from 'drizzle-orm';
 import { DatabaseStorageP07 } from './part07-updateSessionProgress'
 import type { IStorage } from './types'

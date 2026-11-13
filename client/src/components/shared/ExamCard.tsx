@@ -12,7 +12,7 @@ import {
   Eye,
 } from "lucide-react";
 import { format } from "date-fns";
-import type { Exam } from "@shared/schema";
+import type { Exam } from "@shared/schema.pg";
 
 interface ExamCardProps {
   exam: Exam;

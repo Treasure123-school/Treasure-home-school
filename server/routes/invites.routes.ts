@@ -7,7 +7,7 @@ import { generatePassword, generateUsername, getNextUserNumber } from '../auth-u
 import { realtimeService } from '../realtime-service';
 import { ROLES, SECRET_KEY, authenticateUser, authorizeRoles } from '../routes/middleware';
 import { db, storage } from '../storage';
-import { insertContactMessageSchema, insertUserSchema } from '@shared/schema';
+import { insertContactMessageSchema, insertUserSchema } from '@shared/schema.pg';
 import { students, users } from '@shared/schema.pg';
 import bcrypt from 'bcrypt';
 import { randomUUID } from 'crypto';
