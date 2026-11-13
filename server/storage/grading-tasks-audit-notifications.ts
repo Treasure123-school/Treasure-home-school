@@ -1,11 +1,12 @@
-/** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
+/** Storage layer: grading tasks, audit logs, notifications.
+ *  Chain: DatabaseStorageGradingAuditNotifications → extends into school-events-user-cleanup.ts */
 import { db, schema } from '../storage/helpers';
 import { ApprovedTeacher, AuditLog, Exam, GradingTask, InsertNotification, InsertSchoolEvent, InsertSystemSettings, InsertTeacherApplication, InsertVacancy, Notification, SchoolEvent, StudentAnswer, SystemSettings, TeacherApplication, Vacancy } from '@shared/schema.pg';
 import { and, asc, desc, eq, gte, lte, or, sql as dsql } from 'drizzle-orm';
-import { DatabaseStorageP11 } from './part11-calculateGradeDistribution'
+import { DatabaseStorageAnalytics } from './analytics-contact-messages'
 import type { IStorage } from './types'
 
-export class DatabaseStorageP12 extends DatabaseStorageP11 {
+export class DatabaseStorageGradingAuditNotifications extends DatabaseStorageAnalytics {
   async getGradingTasksBySession(sessionId: number): Promise<GradingTask[]> {
     try {
       return await this.db.select().from(schema.gradingTasks)

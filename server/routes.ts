@@ -35,6 +35,7 @@ import questionBankRoutes from "./routes/question-bank.routes";
 import curriculumTemplateRoutes from "./routes/curriculum-templates.routes";
 import lessonNoteLibraryRoutes from "./routes/lesson-note-library.routes";
 import { termsRoutes, sessionsRoutes, calendarRoutes } from "./modules/academic-calendar";
+import { authRouter } from "./modules/auth";
 import uploadRoutes from "./routes/upload.routes";
 import messagesRoutes from "./routes/messages.routes";
 import lessonNotesRoutes from "./routes/lesson-notes.routes";
@@ -102,6 +103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(gradeScaleRoutes);
 
   // Mount modular route files
+  app.use('/api/auth', authRouter);
   app.use(jobVacancyRoutes);
   app.use(settingsRoutes);
   app.use(reportCardSkillsRoutes);

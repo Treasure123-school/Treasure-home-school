@@ -1,13 +1,14 @@
-/** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
+/** Storage layer: exam↔bank links, AI grading tasks, exam sessions.
+ *  Chain: DatabaseStorageExamSessions → extends into student-answers-scoring.ts */
 import { db, schema } from '../storage/helpers';
 import { getActiveGradingConfig } from '../grade-scale-service';
 import { calculateGradeFromConfig, calculateWeightedScore } from '../grading-config';
 import { Exam, ExamQuestionBankLink, ExamResult, ExamSession, InsertExamQuestionBankLink, InsertExamSession, QuestionBankItem, ReportCard, Student, StudentAnswer, Subject } from '@shared/schema.pg';
 import { and, asc, desc, eq, inArray, or, sql, sql as dsql } from 'drizzle-orm';
-import { DatabaseStorageP05 } from './part05-deleteQuestionOptions'
+import { DatabaseStorageQuestionBanks } from './question-banks-syllabus'
 import type { IStorage } from './types'
 
-export class DatabaseStorageP06 extends DatabaseStorageP05 {
+export class DatabaseStorageExamSessions extends DatabaseStorageQuestionBanks {
   async generateQuestionsFromBank(criteria: {
     bankId?: number; classId?: number; subjectId?: number; termId?: number;
     distribution: Array<{ topicId?: number; difficulty?: string; count: number }>;

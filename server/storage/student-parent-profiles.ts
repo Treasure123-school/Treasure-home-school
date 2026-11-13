@@ -1,12 +1,13 @@
-/** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
+/** Storage layer: student + parent profiles, profile completion, linked students.
+ *  Chain: DatabaseStorageStudentParentProfiles → extends into attendance-exams.ts */
 import { db, normalizeUuid, schema } from '../storage/helpers';
 import { getPgPool } from '../db';
 import { AcademicSession, AcademicTerm, Attendance, Class, Exam, InsertAcademicSession, InsertAttendance, InsertClass, InsertParentProfile, InsertStudent, InsertSubject, InsertUser, ParentProfile, Role, Student, Subject, User } from '@shared/schema.pg';
 import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
-import { DatabaseStorageP02 } from './part02-deleteUserLegacy'
+import { DatabaseStorageUserLifecycle } from './user-lifecycle-management'
 import type { IStorage } from './types'
 
-export class DatabaseStorageP03 extends DatabaseStorageP02 {
+export class DatabaseStorageStudentParentProfiles extends DatabaseStorageUserLifecycle {
   async createParentProfile(profile: InsertParentProfile): Promise<ParentProfile> {
     const result = await this.db.insert(schema.parentProfiles)
       .values(profile)

@@ -1,12 +1,13 @@
-/** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
+/** Storage layer: user lifecycle — roles, status, approval, legacy deletion.
+ *  Chain: DatabaseStorageUserLifecycle → extends into student-parent-profiles.ts */
 import { db, normalizeUuid, schema } from '../storage/helpers';
 import { DeletionService, formatDeletionLog } from '../services/deletion-service';
 import { AdminProfile, InsertAdminProfile, InsertInvite, InsertSuperAdminProfile, InsertTeacherProfile, InsertUser, Invite, ParentProfile, Role, Student, SuperAdminProfile, TeacherProfile, User } from '@shared/schema.pg';
 import { and, desc, eq, inArray, isNull, or, sql, sql as dsql } from 'drizzle-orm';
-import { DatabaseStorageP01 } from './part01-core'
+import { DatabaseStorageUsers } from './users-roles-password-tokens'
 import type { IStorage } from './types'
 
-export class DatabaseStorageP02 extends DatabaseStorageP01 {
+export class DatabaseStorageUserLifecycle extends DatabaseStorageUsers {
   async deleteUserLegacy(id: string): Promise<boolean> {
     const deletionService = new DeletionService();
     deletionService.reset();

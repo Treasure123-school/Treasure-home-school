@@ -1,14 +1,15 @@
-/** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
+/** Storage layer: student answers, answer scoring, question options.
+ *  Chain: DatabaseStorageStudentAnswers → extends into homepage-exam-reports.ts */
 import { db, schema } from '../storage/helpers';
 import { deleteFile } from '../cloudinary-service';
 import { getPgClient, isPostgres } from '../db';
 import { realtimeService } from '../realtime-service';
 import { Announcement, Exam, ExamSession, Gallery, GalleryCategory, HomePageContent, InsertAnnouncement, InsertGallery, InsertGalleryCategory, InsertHomePageContent, InsertStudentAnswer, InsertStudyResource, QuestionOption, Student, StudentAnswer, StudyResource } from '@shared/schema.pg';
 import { and, asc, desc, eq, like, or, sql, sql as dsql } from 'drizzle-orm';
-import { DatabaseStorageP06 } from './part06-generateQuestionsFromBank'
+import { DatabaseStorageExamSessions } from './exam-sessions-bank-links'
 import type { IStorage } from './types'
 
-export class DatabaseStorageP07 extends DatabaseStorageP06 {
+export class DatabaseStorageStudentAnswers extends DatabaseStorageExamSessions {
   async updateSessionProgress(sessionId: number, progress: { currentQuestionIndex?: number; timeRemaining?: number }): Promise<void> {
     const updates: any = {};
     if (typeof progress.timeRemaining === 'number') {

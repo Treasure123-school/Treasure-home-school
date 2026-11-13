@@ -1,4 +1,5 @@
-/** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
+/** Storage layer: users, roles, password-reset tokens.
+ *  Chain: DatabaseStorageUsers → extends into user-lifecycle-management.ts */
 import { db, normalizeUuid, schema } from '../storage/helpers';
 import { deleteFile } from '../cloudinary-service';
 import { SmartDeletionManager, SmartDeletionResult, bulkDeleteUsers, cleanupOrphanRecords } from '../services/smart-deletion-manager';
@@ -7,7 +8,7 @@ import { randomUUID } from 'crypto';
 import { and, eq, ilike, inArray, or, sql as dsql } from 'drizzle-orm';
 import type { IStorage } from './types'
 
-export class DatabaseStorageP01 {
+export class DatabaseStorageUsers {
   public db: any;
 
 

@@ -1,13 +1,14 @@
-/** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
+/** Storage layer: exam student reports and homepage content/sections.
+ *  Chain: DatabaseStorageHomepageExamReports → extends into report-card-generation.ts */
 import { db, schema } from '../storage/helpers';
 import { deleteFile } from '../cloudinary-service';
 import { getPgClient, isPostgres } from '../db';
 import { HomePageContent, HomepageSection, InsertHomePageContent, ReportCard, ReportCardItem, Student } from '@shared/schema.pg';
 import { and, asc, desc, eq, isNotNull, ne, sql } from 'drizzle-orm';
-import { DatabaseStorageP07 } from './part07-updateSessionProgress'
+import { DatabaseStorageStudentAnswers } from './student-answers-scoring'
 import type { IStorage } from './types'
 
-export class DatabaseStorageP08 extends DatabaseStorageP07 {
+export class DatabaseStorageHomepageExamReports extends DatabaseStorageStudentAnswers {
   async getExamStudentReports(examId: number): Promise<any[]> {
     try {
       if (isPostgres) {

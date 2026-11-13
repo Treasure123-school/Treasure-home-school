@@ -6,9 +6,9 @@
  * 
  * Current Modules:
  * - middleware.ts: Shared authentication & authorization
- * - auth.routes.ts: Login, logout, password management
+ * - ../modules/auth: Login, password management (login/change/forgot/reset)
  * - health.routes.ts: Health checks, performance monitoring
- * - terms.routes.ts: Academic terms/semesters CRUD
+ * - ../modules/academic-calendar: terms, sessions, calendar
  * - classes.routes.ts: School classes CRUD
  * - subjects.routes.ts: School subjects CRUD
  * - notifications.routes.ts: User notifications
@@ -22,7 +22,7 @@
  */
 
 export * from './middleware';
-export { default as authRoutes } from './auth.routes';
+export { authRouter } from '../modules/auth';
 export { default as healthRoutes } from './health.routes';
 export { termsRoutes, sessionsRoutes, calendarRoutes } from '../modules/academic-calendar';
 export { default as classesRoutes } from './classes.routes';

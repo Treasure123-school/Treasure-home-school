@@ -1,12 +1,13 @@
-/** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
+/** Storage layer: exam-score→report-card sync, messages, gallery.
+ *  Chain: DatabaseStorageSyncMessagesGallery → extended by database-storage.ts (terminal) */
 import { db, schema } from '../storage/helpers';
 import { AboutSection, AdmissionsEnquiry, BillingFeatureLink, BillingItem, BillingPayment, Exam, Faq, Gallery, InsertAboutSection, InsertAdmissionsEnquiry, InsertBillingFeatureLink, InsertBillingItem, InsertBillingPayment, InsertFaq, InsertGallery, InsertMessage, InsertNewsPost, Message, NewsPost, Student } from '@shared/schema.pg';
 import { and, asc, desc, eq, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import { DatabaseStorageP14 } from './part14-addMissingSubjectsToReportCards'
+import { DatabaseStorageReportCardRepair } from './report-card-repair'
 import type { IStorage } from './types'
 
-export class DatabaseStorageP15 extends DatabaseStorageP14 {
+export class DatabaseStorageSyncMessagesGallery extends DatabaseStorageReportCardRepair {
   async syncAllMissingExamScores(termId?: number): Promise<{ synced: number; failed: number; errors: string[] }> {
     let synced = 0;
     let failed = 0;

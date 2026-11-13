@@ -1,8 +1,8 @@
-/** Storage barrel — auto-split from storage.ts. */
-import { DatabaseStorage } from './part16-ensureDefaultBillingItem';
+/** Storage barrel — composes the DatabaseStorage chain into the singleton `storage`. */
+import { DatabaseStorage } from './database-storage';
 import type { IStorage } from './types';
 export type { IStorage } from './types';
-export { DatabaseStorage } from './part16-ensureDefaultBillingItem';
+export { DatabaseStorage } from './database-storage';
 
 // Initialize storage - PostgreSQL database only
 function initializeStorageSync(): IStorage {

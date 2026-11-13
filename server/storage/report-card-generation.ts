@@ -1,14 +1,15 @@
-/** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
+/** Storage layer: report card generation engine (positions, scores, weighting).
+ *  Chain: DatabaseStorageReportCardGeneration → extends into report-card-remarks-templates.ts */
 import { db, schema } from '../storage/helpers';
 import { getActiveGradingConfig } from '../grade-scale-service';
 import { calculateGradeFromConfig, calculateWeightedScore } from '../grading-config';
 import { realtimeService } from '../realtime-service';
 import { ClassSubjectMapping, ReportCard, ReportCardItem, Student, Subject, SystemSettings } from '@shared/schema.pg';
 import { and, eq, inArray, isNull, or, sql } from 'drizzle-orm';
-import { DatabaseStorageP08 } from './part08-getExamStudentReports'
+import { DatabaseStorageHomepageExamReports } from './homepage-exam-reports'
 import type { IStorage } from './types'
 
-export class DatabaseStorageP09 extends DatabaseStorageP08 {
+export class DatabaseStorageReportCardGeneration extends DatabaseStorageHomepageExamReports {
   async recalculateClassPositions(classId: number, termId: number): Promise<void> {
     try {
       console.log(`[REPORT-CARD] Calculating class positions for class ${classId}, term ${termId}`);

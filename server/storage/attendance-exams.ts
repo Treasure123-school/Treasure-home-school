@@ -1,12 +1,13 @@
-/** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
+/** Storage layer: attendance records and exam CRUD.
+ *  Chain: DatabaseStorageAttendanceExams → extends into question-banks-syllabus.ts */
 import { db, schema } from '../storage/helpers';
 import { deleteFile } from '../cloudinary-service';
 import { Attendance, Exam, ExamQuestion, ExamResult, InsertAttendance, InsertExam, InsertExamQuestion, InsertExamResult, InsertQuestionOption, QuestionOption } from '@shared/schema.pg';
 import { and, asc, desc, eq, gte, inArray, lte, or, sql, sql as dsql } from 'drizzle-orm';
-import { DatabaseStorageP03 } from './part03-createParentProfile'
+import { DatabaseStorageStudentParentProfiles } from './student-parent-profiles'
 import type { IStorage } from './types'
 
-export class DatabaseStorageP04 extends DatabaseStorageP03 {
+export class DatabaseStorageAttendanceExams extends DatabaseStorageStudentParentProfiles {
   async batchUpsertAttendance(
     classId: number,
     date: string,

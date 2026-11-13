@@ -1,11 +1,12 @@
-/** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
+/** Storage layer: performance analytics and contact messages.
+ *  Chain: DatabaseStorageAnalytics → extends into grading-tasks-audit-notifications.ts */
 import { db, schema } from '../storage/helpers';
 import { Attendance, Class, ContactMessage, GradingTask, InsertContactMessage, InsertGradingTask, InsertPerformanceEvent, InsertTeacherClassAssignment, InsertTimetable, PerformanceEvent, Role, Student, TeacherClassAssignment, TeacherProfile, Timetable, User } from '@shared/schema.pg';
 import { and, asc, desc, eq, gte, inArray, isNull, or, sql } from 'drizzle-orm';
-import { DatabaseStorageP10 } from './part10-updateReportCardStatusOptimized'
+import { DatabaseStorageReportCardRemarks } from './report-card-remarks-templates'
 import type { IStorage } from './types'
 
-export class DatabaseStorageP11 extends DatabaseStorageP10 {
+export class DatabaseStorageAnalytics extends DatabaseStorageReportCardRemarks {
   calculateGradeDistribution(examResults: any[]): any {
     const grades = { A: 0, B: 0, C: 0, D: 0, F: 0 };
 

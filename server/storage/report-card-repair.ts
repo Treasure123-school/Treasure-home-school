@@ -1,10 +1,11 @@
-/** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
+/** Storage layer: report card repair operations (missing subjects, resync).
+ *  Chain: DatabaseStorageReportCardRepair → extends into score-sync-messages-gallery.ts */
 import { db, schema } from '../storage/helpers';
 import { and, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
-import { DatabaseStorageP13 } from './part13-updateSchoolEvent'
+import { DatabaseStorageEventsUserCleanup } from './school-events-user-cleanup'
 import type { IStorage } from './types'
 
-export class DatabaseStorageP14 extends DatabaseStorageP13 {
+export class DatabaseStorageReportCardRepair extends DatabaseStorageEventsUserCleanup {
   async addMissingSubjectsToReportCards(classIds: number[]): Promise<{ studentsProcessed: number; itemsAdded: number; examScoresSynced: number; errors: string[] }> {
     if (!classIds?.length) return { studentsProcessed: 0, itemsAdded: 0, examScoresSynced: 0, errors: [] };
 

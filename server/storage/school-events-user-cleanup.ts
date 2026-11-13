@@ -1,12 +1,13 @@
-/** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
+/** Storage layer: school events + soft-deleted user cleanup.
+ *  Chain: DatabaseStorageEventsUserCleanup → extends into report-card-repair.ts */
 import { db, schema } from '../storage/helpers';
 import { SmartDeletionManager } from '../services/smart-deletion-manager';
 import { Class, ClassSubjectMapping, InsertClassSubjectMapping, InsertSchoolEvent, InsertStudentSubjectAssignment, Role, SchoolEvent, Student, StudentSubjectAssignment, Subject, User } from '@shared/schema.pg';
 import { and, asc, desc, eq, inArray, lte, or, sql } from 'drizzle-orm';
-import { DatabaseStorageP12 } from './part12-getGradingTasksBySession'
+import { DatabaseStorageGradingAuditNotifications } from './grading-tasks-audit-notifications'
 import type { IStorage } from './types'
 
-export class DatabaseStorageP13 extends DatabaseStorageP12 {
+export class DatabaseStorageEventsUserCleanup extends DatabaseStorageGradingAuditNotifications {
   async updateSchoolEvent(id: number, data: Partial<InsertSchoolEvent>): Promise<SchoolEvent | undefined> {
     const result = await this.db.update(schema.schoolEvents)
       .set({ ...data, updatedAt: new Date() })

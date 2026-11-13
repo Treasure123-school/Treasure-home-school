@@ -1,13 +1,14 @@
-/** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
+/** Storage layer: report card status, remarks, comment templates.
+ *  Chain: DatabaseStorageReportCardRemarks → extends into analytics-contact-messages.ts */
 import { db, schema } from '../storage/helpers';
 import { getActiveGradingConfig } from '../grade-scale-service';
 import { calculateGradeFromConfig, calculateWeightedScore } from '../grading-config';
 import { Exam, ReportCard, Student, Subject } from '@shared/schema.pg';
 import { and, desc, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
-import { DatabaseStorageP09 } from './part09-recalculateClassPositions'
+import { DatabaseStorageReportCardGeneration } from './report-card-generation'
 import type { IStorage } from './types'
 
-export class DatabaseStorageP10 extends DatabaseStorageP09 {
+export class DatabaseStorageReportCardRemarks extends DatabaseStorageReportCardGeneration {
   async updateReportCardStatusOptimized(reportCardId: number, status: string, userId: string): Promise<{ reportCard: ReportCard; previousStatus: string } | undefined> {
     try {
       // Validate status value upfront

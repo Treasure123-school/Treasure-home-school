@@ -1,12 +1,13 @@
-/** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
+/** Storage layer: exam questions, question banks, syllabus topics, lesson notes.
+ *  Chain: DatabaseStorageQuestionBanks → extends into exam-sessions-bank-links.ts */
 import { db, schema } from '../storage/helpers';
 import { ExamQuestion, InsertExamQuestion, InsertLessonNote, InsertQuestionBank, InsertQuestionBankItem, InsertQuestionBankOption, InsertSyllabusTopic, LessonNote, QuestionBank, QuestionBankItem, QuestionBankOption, SyllabusTopic } from '@shared/schema.pg';
 import { and, asc, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
-import { DatabaseStorageP04 } from './part04-batchUpsertAttendance'
+import { DatabaseStorageAttendanceExams } from './attendance-exams'
 import type { IStorage } from './types'
 
-export class DatabaseStorageP05 extends DatabaseStorageP04 {
+export class DatabaseStorageQuestionBanks extends DatabaseStorageAttendanceExams {
   async deleteQuestionOptions(questionId: number): Promise<boolean> {
     try {
       // First, get the option IDs to clear any references in student_answers
