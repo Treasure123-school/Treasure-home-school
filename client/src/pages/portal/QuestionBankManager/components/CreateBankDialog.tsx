@@ -25,7 +25,7 @@ export function CreateBankDialog({ open, onOpenChange }: CreateBankDialogProps) 
   const [bankDesc,     setBankDesc]     = useState("");
   const [bankSubjectId, setBankSubjectId] = useState("");
   const [bankClassId,  setBankClassId]  = useState("");
-  const [bankTermId,   setBankTermId]   = useState("");
+  const [bankTermId,   setBankTermId]   = useState(""); // Empty = global/all-terms bank
 
   const { data: allClasses = [] } = useQuery<any[]>({ queryKey: ["/api/classes"] });
 
@@ -35,13 +35,6 @@ export function CreateBankDialog({ open, onOpenChange }: CreateBankDialogProps) 
     enabled:   !!bankClassId,
     staleTime: 60_000,
   });
-
-  // Auto-select current term
-  useEffect(() => {
-    if (currentTerm && !bankTermId) {
-      setBankTermId(String(currentTerm.id));
-    }
-  }, [currentTerm]);
 
   const reset = () => {
     setBankName(""); setBankDesc(""); setBankSubjectId(""); setBankClassId(""); setBankTermId("");
@@ -66,15 +59,15 @@ export function CreateBankDialog({ open, onOpenChange }: CreateBankDialogProps) 
     onSuccess: (savedBank: any) => {
       // The server returns the created bank. Insert it directly into the cache
       // entry that the dropdown (ContextFilterBar) is watching — keyed by the
-      // bank's own classId / subjectId / termId.
+      // bank's own classId / subjectId / termName.
       // Do NOT invalidateQueries here: a background GET races the DB write and
       // would return the old list (without the new bank), so the dropdown would
       // appear empty or miss the new entry.
       const cid = savedBank.classId;
       const sid = savedBank.subjectId;
-      const tid = savedBank.termId ?? null;
+      const termName = savedBank.termId ? 'all' : 'all'; // Global banks show in 'all' view
       qc.setQueryData(
-        ["/api/question-banks", "filtered", cid, sid, tid],
+        ["/api/question-banks", "filtered", cid, sid, termName],
         (old: any) => (Array.isArray(old) ? [...old, savedBank] : [savedBank])
       );
 
@@ -98,7 +91,7 @@ export function CreateBankDialog({ open, onOpenChange }: CreateBankDialogProps) 
       name:        bankName.trim(),
       subjectId:   Number(bankSubjectId),
       classId:     Number(bankClassId),
-      termId:      Number(bankTermId),
+      termId:      bankTermId ? Number(bankTermId) : null,
       description: bankDesc || null,
     });
   };
@@ -119,7 +112,7 @@ export function CreateBankDialog({ open, onOpenChange }: CreateBankDialogProps) 
           <div className="bg-primary/5 dark:bg-primary/5 border border-primary/20 dark:border-primary/30/50 rounded-lg px-3 py-2.5 flex items-start gap-2">
             <Info className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
             <p className="text-xs text-primary dark:text-primary/60">
-              A bank is scoped to a specific <strong>class</strong>, <strong>subject</strong> and <strong>term</strong>. All three are required.
+              A bank is scoped to a specific <strong>class</strong> and <strong>subject</strong>. Optionally choose a <strong>term</strong>, or select <strong>All Terms</strong> for a global bank.
             </p>
           </div>
 
@@ -154,13 +147,14 @@ export function CreateBankDialog({ open, onOpenChange }: CreateBankDialogProps) 
 
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">
-              Term <span className="text-destructive">*</span>
+              Term <span className="text-muted-foreground font-normal">(optional)</span>
             </Label>
             <Select value={bankTermId} onValueChange={setBankTermId} disabled={!bankClassId || !bankSubjectId}>
               <SelectTrigger data-testid="select-bank-term" className="h-9">
                 <SelectValue placeholder={!bankClassId || !bankSubjectId ? "Select class & subject first" : "Select term…"} />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="">All Terms (Global Bank)</SelectItem>
                 {(allTerms as any[]).map((t: any) => (
                   <SelectItem key={t.id} value={String(t.id)}>{t.name} — {t.year}</SelectItem>
                 ))}
@@ -195,7 +189,7 @@ export function CreateBankDialog({ open, onOpenChange }: CreateBankDialogProps) 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
-            disabled={!bankName.trim() || !bankSubjectId || !bankClassId || !bankTermId || createBankMutation.isPending}
+            disabled={!bankName.trim() || !bankSubjectId || !bankClassId || createBankMutation.isPending}
             onClick={handleCreate}
             data-testid="btn-confirm-create-bank"
           >

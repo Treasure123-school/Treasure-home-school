@@ -30,6 +30,20 @@ const isTeacher = (roleId: number) => roleId === ROLES.TEACHER;
 
 const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
 
+/**
+ * Resolves term name filter to array of term names for cross-session filtering
+ * @param raw - 'all', 'first', 'second', 'third' (case-insensitive) or undefined
+ * @returns Array of term names ['First Term'], ['Second Term'], ['Third Term'], or undefined (all terms)
+ */
+function resolveTermNames(raw?: string): string[] | undefined {
+    if (!raw || raw.toLowerCase() === 'all') return undefined;
+    const normalized = raw.toLowerCase();
+    if (normalized === 'first')  return ['First Term'];
+    if (normalized === 'second') return ['Second Term'];
+    if (normalized === 'third')  return ['Third Term'];
+    return undefined;
+}
+
 // ═══════════════════════════════════════════════════════
 //  SYLLABUS TOPICS
 // ═══════════════════════════════════════════════════════
@@ -294,16 +308,21 @@ router.get('/api/question-banks', authenticateUser, authorizeRoles(...STAFF_ROLE
         const subjectId = parseIntParam(req.query.subjectId as string);
         const classId   = parseIntParam(req.query.classId   as string);
         const termId    = parseIntParam(req.query.termId    as string);
+        const termName  = req.query.termName as string | undefined;
 
         // Require at least classId to prevent unbounded queries returning all banks
         if (!classId && !subjectId) {
             return sendBadRequest(res, 'classId or subjectId is required to filter question banks');
         }
 
-        const filters: { subjectId?: number; classId?: number; termId?: number } = {};
+        const filters: { subjectId?: number; classId?: number; termId?: number; termNames?: string[] } = {};
         if (classId)   filters.classId   = classId;
         if (subjectId) filters.subjectId = subjectId;
         if (termId)    filters.termId    = termId;
+        
+        // Cross-session term filtering by name
+        const termNames = resolveTermNames(termName);
+        if (termNames) filters.termNames = termNames;
 
         const banks = await storage.getQuestionBanks(filters);
         sendSuccess(res, banks);
@@ -370,11 +389,12 @@ router.delete('/api/question-banks/:id', authenticateUser, authorizeRoles(...ADM
 
 router.get('/api/question-bank/items', authenticateUser, authorizeRoles(...STAFF_ROLES), async (req: any, res: Response) => {
     try {
-        const bankId  = parseIntParam(req.query.bankId as string);
-        const classId = parseIntParam(req.query.classId as string);
-        const termId  = parseIntParam(req.query.termId as string);
-        const myOnly  = req.query.myOnly === 'true';
-        const user    = req.user!;
+        const bankId   = parseIntParam(req.query.bankId as string);
+        const classId  = parseIntParam(req.query.classId as string);
+        const termId   = parseIntParam(req.query.termId as string);
+        const termName = req.query.termName as string | undefined;
+        const myOnly   = req.query.myOnly === 'true';
+        const user     = req.user!;
 
         // bankId is required unless teacher is fetching their own questions
         if (!myOnly && !bankId) return sendBadRequest(res, 'bankId is required');
@@ -389,6 +409,9 @@ router.get('/api/question-bank/items', authenticateUser, authorizeRoles(...STAFF
         const difficulty   = (req.query.difficulty as string) || undefined;
         const questionType = (req.query.questionType as string) || undefined;
         const statusFilter = (req.query.status as string) || undefined;
+        
+        // Cross-session term filtering by name
+        const termNames = resolveTermNames(termName);
 
         // ── "My Questions" path (teacher / admin fetching own questions) ──
         // classId + termId scoped, no bankId required — bounded result set
@@ -397,6 +420,7 @@ router.get('/api/question-bank/items', authenticateUser, authorizeRoles(...STAFF
             const allFilters: any = {
                 classId, termId, createdBy, topicId, difficulty, questionType,
             };
+            if (termNames) allFilters.termNames = termNames;
             if (statusFilter) allFilters.status = statusFilter;
 
             const allItems = await storage.getQuestionBankItemsFiltered(allFilters);
@@ -422,6 +446,7 @@ router.get('/api/question-bank/items', authenticateUser, authorizeRoles(...STAFF
             const allFilters: Parameters<typeof storage.getQuestionBankItemsFiltered>[0] = {
                 bankId: bankId!, classId, termId, topicId, difficulty, questionType,
             };
+            if (termNames) allFilters.termNames = termNames;
             if (isAdmin(user.roleId)) {
                 if (statusFilter) allFilters.status = statusFilter;
             } else if (isTeacher(user.roleId)) {
@@ -445,6 +470,7 @@ router.get('/api/question-bank/items', authenticateUser, authorizeRoles(...STAFF
             bankId: bankId!, classId, termId, page, pageSize,
             topicId, difficulty, questionType,
         };
+        if (termNames) filters.termNames = termNames;
 
         if (isAdmin(user.roleId)) {
             if (statusFilter) filters.status = statusFilter;
@@ -707,7 +733,7 @@ router.post('/api/question-bank/items/bulk-csv', authenticateUser, authorizeRole
         const { bankId, classId, termId, topicId, questions } = req.body;
         if (!bankId)  return sendBadRequest(res, 'bankId is required');
         if (!classId) return sendBadRequest(res, 'classId is required');
-        if (!termId)  return sendBadRequest(res, 'termId is required');
+        // termId is now optional — allows creating global/cross-term banks
         if (!Array.isArray(questions) || questions.length === 0)
             return sendBadRequest(res, 'questions array is required');
         if (questions.length > 200)
@@ -748,7 +774,7 @@ router.post('/api/question-bank/items/bulk-csv', authenticateUser, authorizeRole
                     points:      parseInt(q.points) || 1,
                     difficulty:  q.difficulty || 'medium',
                     classId:     parseInt(String(classId)),
-                    termId:      parseInt(String(termId)),
+                    termId:      termId ? parseInt(String(termId)) : null,
                     topicId:     topicId ? parseInt(String(topicId)) : null,
                     status:      initialStatus,
                     createdBy:   user.id,

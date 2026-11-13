@@ -15,7 +15,7 @@ interface ContextFilterBarProps {
 
 export function ContextFilterBar({ value, onChange, showBank = true }: ContextFilterBarProps) {
   const { data: classes = [] } = useQuery<any[]>({ queryKey: ["/api/classes"] });
-  const { currentSessionTerms: terms } = useAcademicCalendar();
+  const { currentTerm } = useAcademicCalendar();
 
   const { data: classSubjects = [], isLoading: subjectsLoading } = useQuery<any[]>({
     queryKey:  ["/api/classes", value.classId, "available-subjects"],
@@ -24,7 +24,14 @@ export function ContextFilterBar({ value, onChange, showBank = true }: ContextFi
     staleTime: 60_000,
   });
 
-  const canLoadBanks = !!value.classId && !!value.subjectId && !!value.termId;
+  // Resolve termId from termName for stamping new questions
+  const resolvedTermId = useMemo(() => {
+    if (!value.termName || value.termName === 'all') return null;
+    // For cross-session filtering, we use termName; termId is set to currentTerm for stamping only
+    return currentTerm?.id ?? null;
+  }, [value.termName, currentTerm]);
+
+  const canLoadBanks = !!value.classId && !!value.subjectId;
 
   const bankParams = useMemo(() => {
     if (!canLoadBanks) return null;
@@ -32,12 +39,14 @@ export function ContextFilterBar({ value, onChange, showBank = true }: ContextFi
       classId:   String(value.classId!),
       subjectId: String(value.subjectId!),
     });
-    if (value.termId) p.set("termId", String(value.termId));
+    if (value.termName && value.termName !== 'all') {
+      p.set("termName", value.termName);
+    }
     return p.toString();
-  }, [canLoadBanks, value.classId, value.subjectId, value.termId]);
+  }, [canLoadBanks, value.classId, value.subjectId, value.termName]);
 
   const { data: banks = [], isLoading: banksLoading } = useQuery<any[]>({
-    queryKey:  ["/api/question-banks", "filtered", value.classId, value.subjectId, value.termId ?? null],
+    queryKey:  ["/api/question-banks", "filtered", value.classId, value.subjectId, value.termName ?? 'all'],
     queryFn:   (): Promise<any[]> => apiRequest("GET", `/api/question-banks?${bankParams}`).then(r => r.json()),
     enabled:   canLoadBanks && !!bankParams,
     staleTime: 30_000,
@@ -46,7 +55,7 @@ export function ContextFilterBar({ value, onChange, showBank = true }: ContextFi
   const steps = [
     { n: 1, label: "Class",   done: !!value.classId },
     { n: 2, label: "Subject", done: !!value.subjectId },
-    { n: 3, label: "Term *",  done: !!value.termId },
+    { n: 3, label: "Term",    done: !!value.termName },
     ...(showBank ? [{ n: 4, label: "Bank *", done: !!value.bankId }] : []),
   ];
 
@@ -133,23 +142,28 @@ export function ContextFilterBar({ value, onChange, showBank = true }: ContextFi
           </Select>
         </div>
 
-        {/* Term */}
+        {/* Term (Cross-session filter by name) */}
         <div className="space-y-1.5">
           <Label className="text-xs font-semibold text-foreground/70 uppercase tracking-wide">
-            Term <span className="text-destructive normal-case tracking-normal">*</span>
+            Term
           </Label>
           <Select
-            value={value.termId ? String(value.termId) : ""}
-            onValueChange={(v) => onChange({ ...value, termId: Number(v), bankId: undefined })}
+            value={value.termName || "all"}
+            onValueChange={(v) => {
+              const termName = v as 'all' | 'first' | 'second' | 'third';
+              const termId = (termName === 'all' || !currentTerm) ? undefined : currentTerm.id;
+              onChange({ ...value, termName, termId, bankId: undefined });
+            }}
             disabled={!value.subjectId}
           >
             <SelectTrigger data-testid="ctx-select-term" className="h-9">
               <SelectValue placeholder={value.subjectId ? "Select term…" : "Select subject first"} />
             </SelectTrigger>
             <SelectContent>
-              {(terms as any[]).map((t) => (
-                <SelectItem key={t.id} value={String(t.id)}>{t.name} — {t.year}</SelectItem>
-              ))}
+              <SelectItem value="all">All Terms (All Sessions)</SelectItem>
+              <SelectItem value="first">First Term (All Sessions)</SelectItem>
+              <SelectItem value="second">Second Term (All Sessions)</SelectItem>
+              <SelectItem value="third">Third Term (All Sessions)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -169,7 +183,7 @@ export function ContextFilterBar({ value, onChange, showBank = true }: ContextFi
                 <SelectValue placeholder={
                   !canLoadBanks      ? "Select class & subject first" :
                   banksLoading       ? "Loading banks…" :
-                  banks.length === 0 && value.termId ? "No banks for this term" :
+                  banks.length === 0 && value.termName && value.termName !== 'all' ? "No banks for this term" :
                   banks.length === 0 ? "No banks found — create one first" :
                                       "Select bank…"
                 } />
@@ -188,17 +202,17 @@ export function ContextFilterBar({ value, onChange, showBank = true }: ContextFi
                 )}
               </SelectContent>
             </Select>
-            {canLoadBanks && !value.termId && banks.length > 0 && (
+            {canLoadBanks && value.termName === 'all' && banks.length > 0 && (
               <p className="text-[11px] text-muted-foreground flex items-center gap-1">
                 <Info className="w-3 h-3 flex-shrink-0" />
-                Select a term above to narrow banks
+                Showing banks from all sessions
               </p>
             )}
           </div>
         )}
       </div>
 
-      {(!value.classId || !value.subjectId || !value.termId || (showBank && !value.bankId)) && (
+      {(!value.classId || !value.subjectId || !value.termName || (showBank && !value.bankId)) && (
         <div className="flex items-start gap-2 bg-primary/5 dark:bg-primary/5 border border-primary/20 dark:border-primary/30/50 rounded-lg px-3 py-2.5">
           <Info className="w-3.5 h-3.5 text-primary flex-shrink-0 mt-0.5" />
           <p className="text-xs text-primary dark:text-primary/60">

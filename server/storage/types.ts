@@ -244,7 +244,7 @@ export interface IStorage {
   importQuestionsFromBank(examId: number, questionItemIds: number[], randomize?: boolean, maxQuestions?: number): Promise<{ imported: number; questions: ExamQuestion[] }>;
 
   // Enhanced Question Bank (Container) management
-  getQuestionBanks(filters?: { subjectId?: number; classId?: number; termId?: number }): Promise<QuestionBank[]>;
+  getQuestionBanks(filters?: { subjectId?: number; classId?: number; termId?: number; termNames?: string[] }): Promise<QuestionBank[]>;
   createQuestionBankRecord(data: InsertQuestionBank): Promise<QuestionBank>;
   updateQuestionBankRecord(id: number, data: Partial<InsertQuestionBank>): Promise<QuestionBank>;
   deleteQuestionBankRecord(id: number): Promise<boolean>;
@@ -271,12 +271,12 @@ export interface IStorage {
   isTeacherAssignedToSubject(teacherId: string, classId: number, subjectId: number): Promise<boolean>;
 
   // Enhanced Question Bank Queries
-  getQuestionBankItemsFiltered(filters: { bankId?: number; classId?: number; subjectId?: number; termId?: number; topicId?: number; difficulty?: string; questionType?: string; status?: string; createdBy?: string; statuses?: string[] }): Promise<QuestionBankItem[]>;
+  getQuestionBankItemsFiltered(filters: { bankId?: number; classId?: number; subjectId?: number; termId?: number; termNames?: string[]; topicId?: number; difficulty?: string; questionType?: string; status?: string; createdBy?: string; statuses?: string[] }): Promise<QuestionBankItem[]>;
   generateQuestionsFromBank(criteria: { bankId?: number; classId?: number; subjectId?: number; termId?: number; distribution: Array<{ topicId?: number; difficulty?: string; count: number }> }): Promise<{ questions: QuestionBankItem[]; shortfalls: string[] }>;
 
   // Paginated question bank query (used by API routes — requires bankId)
   getQuestionBankItemsPaginated(filters: {
-    bankId: number; classId?: number; termId?: number; topicId?: number;
+    bankId: number; classId?: number; termId?: number; termNames?: string[]; topicId?: number;
     difficulty?: string; questionType?: string; status?: string;
     createdBy?: string; statuses?: string[];
     page: number; pageSize: number;

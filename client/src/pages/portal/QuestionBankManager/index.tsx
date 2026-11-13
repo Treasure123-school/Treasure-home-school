@@ -166,8 +166,8 @@ export default function QuestionBankManager() {
   const isAdminRole = roleId === 2;
 
   // ── Context state ───────────────────────────────────────────
-  const [browseCtx, setBrowseCtx] = useState<ContextFilters>({});
-  const [myCtx,     setMyCtx]     = useState<ContextFilters>({});
+  const [browseCtx, setBrowseCtx] = useState<ContextFilters>({ termName: 'all' });
+  const [myCtx,     setMyCtx]     = useState<ContextFilters>({ termName: 'all' });
 
   // ── Refinement filters ──────────────────────────────────────
   const [browseStatus, setBrowseStatus] = useState("");
@@ -195,25 +195,25 @@ export default function QuestionBankManager() {
   const browseBankParams = useMemo(() => {
     if (!browseCtx.classId || !browseCtx.subjectId) return null;
     const p = new URLSearchParams({ classId: String(browseCtx.classId), subjectId: String(browseCtx.subjectId) });
-    if (browseCtx.termId) p.set("termId", String(browseCtx.termId));
+    if (browseCtx.termName && browseCtx.termName !== 'all') p.set("termName", browseCtx.termName);
     return p.toString();
-  }, [browseCtx.classId, browseCtx.subjectId, browseCtx.termId]);
+  }, [browseCtx.classId, browseCtx.subjectId, browseCtx.termName]);
 
   const myBankParams = useMemo(() => {
     if (!myCtx.classId || !myCtx.subjectId) return null;
     const p = new URLSearchParams({ classId: String(myCtx.classId), subjectId: String(myCtx.subjectId) });
-    if (myCtx.termId) p.set("termId", String(myCtx.termId));
+    if (myCtx.termName && myCtx.termName !== 'all') p.set("termName", myCtx.termName);
     return p.toString();
-  }, [myCtx.classId, myCtx.subjectId, myCtx.termId]);
+  }, [myCtx.classId, myCtx.subjectId, myCtx.termName]);
 
   const { data: browseBanks = [] } = useQuery({
-    queryKey: ["/api/question-banks", "filtered", browseCtx.classId, browseCtx.subjectId, browseCtx.termId ?? null],
+    queryKey: ["/api/question-banks", "filtered", browseCtx.classId, browseCtx.subjectId, browseCtx.termName ?? 'all'],
     queryFn:  (): Promise<any[]> => apiRequest("GET", `/api/question-banks?${browseBankParams}`).then(r => r.json()),
     enabled:  !!browseCtx.classId && !!browseCtx.subjectId && !!browseBankParams,
     staleTime: 30_000,
   });
   const { data: myBanks = [] } = useQuery({
-    queryKey: ["/api/question-banks", "filtered", myCtx.classId, myCtx.subjectId, myCtx.termId ?? null],
+    queryKey: ["/api/question-banks", "filtered", myCtx.classId, myCtx.subjectId, myCtx.termName ?? 'all'],
     queryFn:  (): Promise<any[]> => apiRequest("GET", `/api/question-banks?${myBankParams}`).then(r => r.json()),
     enabled:  !!myCtx.classId && !!myCtx.subjectId && !!myBankParams,
     staleTime: 30_000,
@@ -224,15 +224,6 @@ export default function QuestionBankManager() {
   const [rejectTarget,     setRejectTarget]     = useState<any>(null);
   const [deleteBankTarget, setDeleteBankTarget] = useState<any>(null);
 
-  // ── Auto-select current term ────────────────────────────────
-  const { currentTerm } = useAcademicCalendar();
-  useEffect(() => {
-    if (currentTerm) {
-      if (!browseCtx.termId) setBrowseCtx(c => ({ ...c, termId: currentTerm.id }));
-      if (!myCtx.termId)     setMyCtx(c => ({ ...c, termId: currentTerm.id }));
-    }
-  }, [currentTerm]);
-
   // ── Context change handlers ─────────────────────────────────
   const handleBrowseCtxChange = useCallback((v: ContextFilters) => {
     setBrowseCtx(v); setBrowsePage(1);
@@ -242,14 +233,14 @@ export default function QuestionBankManager() {
   }, []);
 
   // ── Ready flags + query param objects ──────────────────────
-  const browseReady = !!browseCtx.classId && !!browseCtx.subjectId && !!browseCtx.termId && !!browseCtx.bankId;
-  const myReady     = !!myCtx.classId && !!myCtx.subjectId && !!myCtx.termId;
+  const browseReady = !!browseCtx.classId && !!browseCtx.subjectId && !!browseCtx.termName && !!browseCtx.bankId;
+  const myReady     = !!myCtx.classId && !!myCtx.subjectId && !!myCtx.termName;
 
   const browseParams: Record<string, string> = browseReady ? {
     bankId:   String(browseCtx.bankId),
     classId:  String(browseCtx.classId),
-    termId:   String(browseCtx.termId),
     pageSize: String(PAGE_SIZE),
+    ...(browseCtx.termName && browseCtx.termName !== 'all' ? { termName: browseCtx.termName } : {}),
     ...(browseDiff   ? { difficulty: browseDiff }     : {}),
     ...(browseType   ? { questionType: browseType }   : {}),
     ...(browseStatus ? { status: browseStatus }       : {}),
@@ -257,9 +248,9 @@ export default function QuestionBankManager() {
 
   const myParams: Record<string, string> = myReady ? {
     classId:  String(myCtx.classId),
-    termId:   String(myCtx.termId),
     myOnly:   "true",
     pageSize: String(PAGE_SIZE),
+    ...(myCtx.termName && myCtx.termName !== 'all' ? { termName: myCtx.termName } : {}),
     ...(myStatus ? { status: myStatus } : {}),
   } : {};
 

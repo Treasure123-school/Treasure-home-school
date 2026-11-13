@@ -6,7 +6,7 @@
  * Tab 3: Import from Question Bank — browse/filter/select from bank
  * Tab 4: Auto Generate — auto-generate questions from question bank with filters
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useAcademicCalendar } from '@/hooks/useAcademicCalendar';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -63,7 +63,7 @@ export default function ExamQuestionAdder({
     // ═══ BANK IMPORT TAB STATE ═══
     const [bankFilterClassId, setBankFilterClassId] = useState(examClassId ? String(examClassId) : '');
     const [bankFilterSubjectId, setBankFilterSubjectId] = useState(examSubjectId ? String(examSubjectId) : '');
-    const [bankFilterTermId, setBankFilterTermId] = useState('');
+    const [bankFilterTermName, setBankFilterTermName] = useState<'all' | 'first' | 'second' | 'third'>('all'); // Cross-session filter
     const [bankFilterBankId, setBankFilterBankId] = useState('');
     const [bankFilterTopicId, setBankFilterTopicId] = useState('');
     const [bankFilterDifficulty, setBankFilterDifficulty] = useState('');
@@ -91,42 +91,47 @@ export default function ExamQuestionAdder({
         queryKey: ['/api/subjects'],
         queryFn: async () => { const r = await apiRequest('GET', '/api/subjects'); return r.json(); },
     });
-    const { currentTerm, currentSessionTerms: terms } = useAcademicCalendar();
+    const { currentTerm, allTerms } = useAcademicCalendar();
 
-    // Auto-select current term in the bank filter and auto-generate filter
+    // Auto-select current term in auto-generate filter
     useEffect(() => {
-        if (currentTerm) {
-            if (!bankFilterTermId) setBankFilterTermId(String(currentTerm.id));
-            if (!autoTermId) setAutoTermId(String(currentTerm.id));
+        if (currentTerm && !autoTermId) {
+            setAutoTermId(String(currentTerm.id));
         }
     }, [currentTerm]);
 
-    // ═══ BANK IMPORT — available banks (requires class + subject + term) ═══
+    // Resolve termId from termName for topic picker (needs concrete termId)
+    const resolvedBankTermId = useMemo(() => {
+        if (!currentTerm) return null;
+        return currentTerm.id;
+    }, [currentTerm]);
+
+    // ═══ BANK IMPORT — available banks (cross-session by term name) ═══
     const { data: importBanks = [] } = useQuery({
-        queryKey: ['/api/question-banks', 'import', bankFilterClassId, bankFilterSubjectId, bankFilterTermId],
+        queryKey: ['/api/question-banks', 'import', bankFilterClassId, bankFilterSubjectId, bankFilterTermName],
         queryFn: async () => {
             const params = new URLSearchParams();
             if (bankFilterClassId)   params.set('classId',   bankFilterClassId);
             if (bankFilterSubjectId) params.set('subjectId', bankFilterSubjectId);
-            if (bankFilterTermId)    params.set('termId',    bankFilterTermId);
+            if (bankFilterTermName && bankFilterTermName !== 'all') params.set('termName', bankFilterTermName);
             const r = await apiRequest('GET', `/api/question-banks?${params.toString()}`);
             return r.ok ? r.json() : [];
         },
-        enabled: !!(bankFilterClassId && bankFilterSubjectId && bankFilterTermId),
+        enabled: !!(bankFilterClassId && bankFilterSubjectId),
         staleTime: 30_000,
     });
 
     const { data: bankTopics = [] } = useQuery({
-        queryKey: ['/api/syllabus-topics', 'bank-import', bankFilterClassId, bankFilterSubjectId, bankFilterTermId],
+        queryKey: ['/api/syllabus-topics', 'bank-import', bankFilterClassId, bankFilterSubjectId, resolvedBankTermId],
         queryFn: async () => {
             const params = new URLSearchParams();
             if (bankFilterClassId)   params.set('classId',   bankFilterClassId);
             if (bankFilterSubjectId) params.set('subjectId', bankFilterSubjectId);
-            if (bankFilterTermId)    params.set('termId',    bankFilterTermId);
+            if (resolvedBankTermId)  params.set('termId',    String(resolvedBankTermId));
             const r = await apiRequest('GET', `/api/syllabus-topics?${params.toString()}`);
             return r.ok ? r.json() : [];
         },
-        enabled: !!(bankFilterClassId && bankFilterSubjectId && bankFilterTermId),
+        enabled: !!(bankFilterClassId && bankFilterSubjectId && resolvedBankTermId),
     });
 
     // ═══ AUTO GENERATE TOPICS ═══
@@ -143,15 +148,15 @@ export default function ExamQuestionAdder({
         enabled: !!(autoClassId && autoSubjectId && autoTermId),
     });
 
-    // ═══ BANK ITEMS QUERY — requires bankId + classId + termId ═══
+    // ═══ BANK ITEMS QUERY — requires bankId + classId, uses termName for cross-session filtering ═══
     const { data: bankItems = [], isLoading: loadingBankItems } = useQuery({
-        queryKey: ['/api/question-bank/items', 'import', bankFilterClassId, bankFilterTermId, bankFilterBankId, bankFilterTopicId, bankFilterDifficulty, bankFilterType],
+        queryKey: ['/api/question-bank/items', 'import', bankFilterClassId, bankFilterTermName, bankFilterBankId, bankFilterTopicId, bankFilterDifficulty, bankFilterType],
         queryFn: async () => {
             const params = new URLSearchParams();
             params.set('classId',  bankFilterClassId);
-            params.set('termId',   bankFilterTermId);
             params.set('bankId',   bankFilterBankId);
             params.set('fetchAll', 'true');
+            if (bankFilterTermName && bankFilterTermName !== 'all') params.set('termName', bankFilterTermName);
             if (bankFilterTopicId)    params.set('topicId',      bankFilterTopicId);
             if (bankFilterDifficulty) params.set('difficulty',   bankFilterDifficulty);
             if (bankFilterType)       params.set('questionType', bankFilterType);
@@ -160,7 +165,7 @@ export default function ExamQuestionAdder({
             const data = await r.json();
             return Array.isArray(data) ? data : (data.items ?? []);
         },
-        enabled: open && activeTab === 'bank' && !!(bankFilterClassId && bankFilterTermId && bankFilterBankId),
+        enabled: open && activeTab === 'bank' && !!(bankFilterClassId && bankFilterBankId),
     });
 
     // ═══ MUTATIONS ═══
@@ -337,8 +342,7 @@ export default function ExamQuestionAdder({
             setSelectedBankItems(new Set(bankItems.map((q: any) => q.id)));
         }
     };
-    const handleBankFilterClassChange = (v: string) => { setBankFilterClassId(v); setBankFilterTermId(''); setBankFilterBankId(''); setBankFilterTopicId(''); };
-    const handleBankFilterTermChange = (v: string) => { setBankFilterTermId(v); setBankFilterBankId(''); setBankFilterTopicId(''); };
+    const handleBankFilterClassChange = (v: string) => { setBankFilterClassId(v); setBankFilterBankId(''); setBankFilterTopicId(''); };
 
     // Auto Generate helpers
     const handleAutoClassChange = (v: string) => { setAutoClassId(v); setAutoTermId(''); setAutoTopicId(''); setAutoGeneratedQuestions([]); };
@@ -422,11 +426,11 @@ export default function ExamQuestionAdder({
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-xs font-medium flex items-center gap-1"><Filter className="w-3 h-3" /> Filter Questions</span>
                                 <Button variant="ghost" size="sm" className="h-6 text-xs" onClick={() => {
-                                    setBankFilterClassId(''); setBankFilterSubjectId(''); setBankFilterTermId('');
+                                    setBankFilterClassId(''); setBankFilterSubjectId(''); setBankFilterTermName('all');
                                     setBankFilterBankId(''); setBankFilterTopicId(''); setBankFilterDifficulty(''); setBankFilterType('');
                                 }}>Clear</Button>
                             </div>
-                            <p className="text-[10px] text-muted-foreground mb-2">Class, Subject, Term and Bank are all required to search.</p>
+                            <p className="text-[10px] text-muted-foreground mb-2">Class, Subject, Term and Bank are required to search. Term filter shows questions from all sessions.</p>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                                 <Select value={bankFilterClassId} onValueChange={handleBankFilterClassChange}>
                                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Class *" /></SelectTrigger>
@@ -436,14 +440,19 @@ export default function ExamQuestionAdder({
                                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Subject *" /></SelectTrigger>
                                     <SelectContent>{(subjects as any[]).map((s: any) => <SelectItem key={s.id} value={String(s.id)}>{s.name}</SelectItem>)}</SelectContent>
                                 </Select>
-                                <Select value={bankFilterTermId} onValueChange={handleBankFilterTermChange}>
+                                <Select value={bankFilterTermName} onValueChange={(v) => setBankFilterTermName(v as any)}>
                                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Term *" /></SelectTrigger>
-                                    <SelectContent>{(terms as any[]).map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name} — {t.year}</SelectItem>)}</SelectContent>
+                                    <SelectContent>
+                                        <SelectItem value="all">All Terms (All Sessions)</SelectItem>
+                                        <SelectItem value="first">First Term (All Sessions)</SelectItem>
+                                        <SelectItem value="second">Second Term (All Sessions)</SelectItem>
+                                        <SelectItem value="third">Third Term (All Sessions)</SelectItem>
+                                    </SelectContent>
                                 </Select>
                                 <Select value={bankFilterBankId} onValueChange={(v) => { setBankFilterBankId(v); setBankFilterTopicId(''); }}
-                                    disabled={!bankFilterClassId || !bankFilterSubjectId || !bankFilterTermId}>
+                                    disabled={!bankFilterClassId || !bankFilterSubjectId}>
                                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={
-                                        !bankFilterClassId || !bankFilterSubjectId || !bankFilterTermId ? 'Set class/subject/term first' :
+                                        !bankFilterClassId || !bankFilterSubjectId ? 'Set class/subject first' :
                                         (importBanks as any[]).length === 0 ? 'No banks found' : 'Bank *'
                                     } /></SelectTrigger>
                                     <SelectContent>
@@ -578,7 +587,16 @@ export default function ExamQuestionAdder({
                                     <Label className="text-xs">Term *</Label>
                                     <Select value={autoTermId} onValueChange={handleAutoTermChange}>
                                         <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select term" /></SelectTrigger>
-                                        <SelectContent>{terms.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name} — {t.year}</SelectItem>)}</SelectContent>
+                                        <SelectContent>
+                                            {allTerms.map((t: any) => {
+                                                const session = t.sessionYear || t.year || '';
+                                                return (
+                                                    <SelectItem key={t.id} value={String(t.id)}>
+                                                        {t.name} — {session}
+                                                    </SelectItem>
+                                                );
+                                            })}
+                                        </SelectContent>
                                     </Select>
                                 </div>
                                 <div>

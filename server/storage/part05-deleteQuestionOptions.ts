@@ -1,7 +1,7 @@
 /** Auto-split from storage.ts (dependency-ordered method groups). See git history. */
 import { db, schema } from '../storage/helpers';
 import { ExamQuestion, InsertExamQuestion, InsertLessonNote, InsertQuestionBank, InsertQuestionBankItem, InsertQuestionBankOption, InsertSyllabusTopic, LessonNote, QuestionBank, QuestionBankItem, QuestionBankOption, SyllabusTopic } from '@shared/schema.pg';
-import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, or, sql } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { DatabaseStorageP04 } from './part04-batchUpsertAttendance'
 import type { IStorage } from './types'
@@ -198,11 +198,18 @@ export class DatabaseStorageP05 extends DatabaseStorageP04 {
 
   // ═══════════ QUESTION BANKS (Container CRUD) ═══════════
 
-  async getQuestionBanks(filters?: { subjectId?: number; classId?: number; termId?: number }): Promise<QuestionBank[]> {
+  async getQuestionBanks(filters?: { subjectId?: number; classId?: number; termId?: number; termNames?: string[] }): Promise<QuestionBank[]> {
     const conditions: any[] = [];
     if (filters?.subjectId) conditions.push(eq(schema.questionBanks.subjectId, filters.subjectId));
     if (filters?.classId)   conditions.push(eq(schema.questionBanks.classId,   filters.classId));
     if (filters?.termId)    conditions.push(eq(schema.questionBanks.termId,     filters.termId));
+    if (filters?.termNames && filters.termNames.length > 0) {
+      conditions.push(or(
+        inArray(schema.questionBanks.termId,
+          db.select({ id: schema.academicTerms.id }).from(schema.academicTerms).where(inArray(schema.academicTerms.name, filters.termNames))),
+        isNull(schema.questionBanks.termId)
+      ));
+    }
     if (conditions.length > 0) {
       return await db.select().from(schema.questionBanks).where(and(...conditions)).orderBy(desc(schema.questionBanks.createdAt));
     }
@@ -557,7 +564,7 @@ export class DatabaseStorageP05 extends DatabaseStorageP04 {
   // ═══════════ ENHANCED QUESTION BANK QUERIES ═══════════
 
   async getQuestionBankItemsFiltered(filters: {
-    bankId?: number; classId?: number; subjectId?: number; termId?: number;
+    bankId?: number; classId?: number; subjectId?: number; termId?: number; termNames?: string[];
     topicId?: number; difficulty?: string; questionType?: string; status?: string;
     createdBy?: string; statuses?: string[];
   }): Promise<QuestionBankItem[]> {
@@ -565,6 +572,13 @@ export class DatabaseStorageP05 extends DatabaseStorageP04 {
     if (filters.bankId) conditions.push(eq(schema.questionBankItems.bankId, filters.bankId));
     if (filters.classId) conditions.push(eq(schema.questionBankItems.classId, filters.classId));
     if (filters.termId) conditions.push(eq(schema.questionBankItems.termId, filters.termId));
+    if (filters.termNames && filters.termNames.length > 0) {
+      conditions.push(or(
+        inArray(schema.questionBankItems.termId,
+          db.select({ id: schema.academicTerms.id }).from(schema.academicTerms).where(inArray(schema.academicTerms.name, filters.termNames))),
+        isNull(schema.questionBankItems.termId)
+      ));
+    }
     if (filters.topicId) conditions.push(eq(schema.questionBankItems.topicId, filters.topicId));
     if (filters.difficulty) conditions.push(eq(schema.questionBankItems.difficulty, filters.difficulty));
     if (filters.questionType) conditions.push(eq(schema.questionBankItems.questionType, filters.questionType));
@@ -598,7 +612,7 @@ export class DatabaseStorageP05 extends DatabaseStorageP04 {
 
 
   async getQuestionBankItemsPaginated(filters: {
-    bankId: number; classId?: number; termId?: number; topicId?: number;
+    bankId: number; classId?: number; termId?: number; termNames?: string[]; topicId?: number;
     difficulty?: string; questionType?: string; status?: string;
     createdBy?: string; statuses?: string[];
     page: number; pageSize: number;
@@ -606,6 +620,13 @@ export class DatabaseStorageP05 extends DatabaseStorageP04 {
     const conditions: any[] = [eq(schema.questionBankItems.bankId, filters.bankId)];
     if (filters.classId) conditions.push(eq(schema.questionBankItems.classId, filters.classId));
     if (filters.termId) conditions.push(eq(schema.questionBankItems.termId, filters.termId));
+    if (filters.termNames && filters.termNames.length > 0) {
+      conditions.push(or(
+        inArray(schema.questionBankItems.termId,
+          db.select({ id: schema.academicTerms.id }).from(schema.academicTerms).where(inArray(schema.academicTerms.name, filters.termNames))),
+        isNull(schema.questionBankItems.termId)
+      ));
+    }
     if (filters.topicId) conditions.push(eq(schema.questionBankItems.topicId, filters.topicId));
     if (filters.difficulty) conditions.push(eq(schema.questionBankItems.difficulty, filters.difficulty));
     if (filters.questionType) conditions.push(eq(schema.questionBankItems.questionType, filters.questionType));
