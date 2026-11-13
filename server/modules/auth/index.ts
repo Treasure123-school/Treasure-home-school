@@ -1,13 +1,20 @@
 /**
  * Authentication Module
- *
- * Owns credential login, session token issuance, and password flows.
- *
- * Routers: authRouter → mounted at /api/auth
- *   POST /login            — credential login (rate limited, JWT)
- *   POST /change-password  — authenticated password change
- *   POST /forgot-password  — request reset token (email)
- *   POST /reset-password   — complete reset with token (email + audit)
+ * 
+ * Handles user authentication and password management
+ * 
+ * Endpoints:
+ *   POST /api/auth/login            - Credential login with rate limiting
+ *   POST /api/auth/change-password  - Change password (authenticated)
+ *   POST /api/auth/forgot-password  - Request password reset
+ *   POST /api/auth/reset-password   - Complete password reset with token
+ * 
+ * Architecture:
+ *   - auth.routes.ts: Route definitions
+ *   - auth.controller.ts: HTTP request handling
+ *   - auth.service.ts: Business logic
  */
 
 export { default as authRouter } from './auth.routes';
+export { AuthController } from './auth.controller';
+export { AuthService } from './auth.service';
