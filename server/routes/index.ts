@@ -24,7 +24,7 @@
 export * from './middleware';
 export { default as authRoutes } from './auth.routes';
 export { default as healthRoutes } from './health.routes';
-export { default as termsRoutes } from './terms.routes';
+export { termsRoutes, sessionsRoutes, calendarRoutes } from '../modules/academic-calendar';
 export { default as classesRoutes } from './classes.routes';
 export { default as subjectsRoutes } from './subjects.routes';
 export { default as notificationsRoutes } from './notifications.routes';

@@ -472,7 +472,7 @@ function sanitizeLogData(data: any): any {
     console.log('✅ Sync retry job initialized (runs every 5 minutes)');
 
     // Run daily at midnight - auto-transition term statuses based on dates
-    const { checkAndTransitionIfEnabled } = await import('./academic-calendar-service');
+    const { checkAndTransitionIfEnabled } = await import('./modules/academic-calendar');
     cron.default.schedule('0 0 * * *', async () => {
       try {
         console.log('🗓️ Running academic calendar term transition check...');
