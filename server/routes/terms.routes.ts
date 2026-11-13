@@ -9,7 +9,10 @@ import { storage } from "../storage";
 import { authenticateUser, authorizeRoles, ROLES } from "./middleware";
 import { realtimeService } from "../realtime-service";
 import { sendSuccess, sendBadRequest, sendNotFound, handleRouteError } from "../utils/response-helpers";
-import { checkTermOverlap } from "../academic-calendar-service";
+import { checkTermOverlap, getActiveSession, getActiveTerm } from "../academic-calendar-service";
+import { db } from "../db";
+import * as schema from "@shared/schema.pg";
+import { and, eq, isNull, ne } from "drizzle-orm";
 
 const router = Router();
 
@@ -26,9 +29,45 @@ function validateYearFormat(year: string): { valid: boolean; error?: string } {
   return { valid: true };
 }
 
+/**
+ * Guard against duplicate terms (e.g., two "First Term" rows in one session).
+ * Uniqueness is (sessionId, name, year); the DB unique index is the backstop.
+ */
+async function findDuplicateTerm(name: string, year: string, sessionId: number | null, excludeId?: number): Promise<any | null> {
+  const conditions = [eq(schema.academicTerms.name, name), eq(schema.academicTerms.year, year)];
+  conditions.push(sessionId == null ? isNull(schema.academicTerms.sessionId) : eq(schema.academicTerms.sessionId, sessionId));
+  if (excludeId != null) conditions.push(ne(schema.academicTerms.id, excludeId));
+  const rows = await db.select().from(schema.academicTerms).where(and(...conditions)).limit(1);
+  return rows[0] ?? null;
+}
+
 router.get('/', authenticateUser, async (req: Request, res: Response) => {
   try {
-    const terms = await storage.getAcademicTerms();
+    const sessionId = req.query.sessionId ? parseInt(String(req.query.sessionId)) : null;
+    const year = req.query.year ? String(req.query.year) : null;
+    const scope = req.query.scope ? String(req.query.scope) : null;
+
+    let terms = await storage.getAcademicTerms();
+
+    if (sessionId !== null && !isNaN(sessionId)) {
+      terms = terms.filter((t: any) => t.sessionId === sessionId);
+    }
+    if (year) {
+      terms = terms.filter((t: any) => t.year === year);
+    }
+    // scope=current-session → terms of the currently active session only
+    if (scope === 'current-session' && sessionId === null && !year) {
+      const activeSession = await getActiveSession();
+      if (activeSession) {
+        terms = terms.filter((t: any) => t.sessionId === activeSession.id);
+      } else {
+        // Fall back to the current term's year (mirrors the calendar service)
+        const currentTerm = await getActiveTerm();
+        const currentYear = currentTerm?.year ?? null;
+        terms = currentYear ? terms.filter((t: any) => t.year === currentYear) : [];
+      }
+    }
+
     sendSuccess(res, terms);
   } catch (error) {
     handleRouteError(res, error, 'terms.list');
@@ -38,18 +77,22 @@ router.get('/', authenticateUser, async (req: Request, res: Response) => {
 router.get('/grouped', authenticateUser, async (req: Request, res: Response) => {
   try {
     const terms = await storage.getAcademicTerms();
-    
-    const grouped: { [year: string]: any[] } = {};
+    const sessions = await storage.getAcademicSessions();
+    const sessionById = new Map<number, any>(sessions.map((s: any) => [s.id, s]));
+
+    const grouped: { [key: string]: any[] } = {};
     for (const term of terms) {
-      if (!grouped[term.year]) {
-        grouped[term.year] = [];
-      }
-      grouped[term.year].push(term);
+      // Prefer sessionId; fall back to year string for legacy terms without a session link
+      const key = term.sessionId != null && sessionById.has(term.sessionId)
+        ? `s:${term.sessionId}`
+        : `y:${term.year}`;
+      if (!grouped[key]) grouped[key] = [];
+      grouped[key].push(term);
     }
 
     const termOrder = ['First Term', 'Second Term', 'Third Term'];
-    for (const year of Object.keys(grouped)) {
-      grouped[year].sort((a, b) => {
+    for (const key of Object.keys(grouped)) {
+      grouped[key].sort((a, b) => {
         const aIndex = termOrder.findIndex(t => a.name.includes(t.replace(' Term', '')));
         const bIndex = termOrder.findIndex(t => b.name.includes(t.replace(' Term', '')));
         return aIndex - bIndex;
@@ -57,8 +100,22 @@ router.get('/grouped', authenticateUser, async (req: Request, res: Response) => 
     }
 
     const result = Object.entries(grouped)
-      .sort((a, b) => b[0].localeCompare(a[0]))
-      .map(([year, terms]) => ({ year, terms }));
+      .sort((a, b) => {
+        const aDate = a[1][0]?.startDate ?? '';
+        const bDate = b[1][0]?.startDate ?? '';
+        return bDate.localeCompare(aDate);
+      })
+      .map(([key, groupTerms]) => {
+        const first = groupTerms[0];
+        const session = first?.sessionId != null ? sessionById.get(first.sessionId) : undefined;
+        return {
+          key,
+          sessionId: first?.sessionId ?? null,
+          year: first?.year ?? '',
+          sessionName: session?.name ?? null,
+          terms: groupTerms,
+        };
+      });
 
     sendSuccess(res, result);
   } catch (error) {
@@ -82,6 +139,12 @@ router.post('/', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN
     }
 
     const sessionId = req.body.sessionId ?? null;
+
+    const duplicate = await findDuplicateTerm(req.body.name, req.body.year, sessionId);
+    if (duplicate) {
+      return sendBadRequest(res, `A term named "${req.body.name}" already exists in this session (${req.body.year}). Use a different name or pick another session.`);
+    }
+
     const overlap = await checkTermOverlap(req.body.startDate, req.body.endDate, undefined, sessionId);
     if (overlap.hasOverlap) {
       const names = overlap.conflictingTerms.map((t: any) => t.name).join(', ');
@@ -98,7 +161,10 @@ router.post('/', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN
     realtimeService.emitToRole('teacher', 'term.created', term);
     
     sendSuccess(res, term);
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === '23505') {
+      return sendBadRequest(res, 'A term with this name already exists in the selected session.');
+    }
     handleRouteError(res, error, 'terms.create');
   }
 });
@@ -141,6 +207,17 @@ router.put('/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADM
       }
     }
 
+    // Duplicate guard when name/year/session identity changes
+    const newName = req.body.name ?? existingTerm.name;
+    const newYear = req.body.year ?? existingTerm.year;
+    const newSessionId = req.body.sessionId !== undefined ? req.body.sessionId : (existingTerm as any).sessionId ?? null;
+    if (req.body.name || req.body.year || req.body.sessionId !== undefined) {
+      const duplicate = await findDuplicateTerm(newName, newYear, newSessionId, termId);
+      if (duplicate) {
+        return sendBadRequest(res, `A term named "${newName}" already exists in this session (${newYear}).`);
+      }
+    }
+
     const term = await storage.updateAcademicTerm(termId, req.body);
     
     realtimeService.emitTableChange('academic_terms', 'UPDATE', term, existingTerm, req.user!.id);
@@ -148,7 +225,10 @@ router.put('/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADM
     realtimeService.emitToRole('teacher', 'term.updated', term);
     
     sendSuccess(res, term);
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.code === '23505') {
+      return sendBadRequest(res, 'A term with this name already exists in the selected session.');
+    }
     handleRouteError(res, error, 'terms.update');
   }
 });

@@ -118,7 +118,7 @@ export default function AdminTimetable() {
     },
   });
   const teachers: TeacherData[] = Array.isArray(rawTeachers) ? rawTeachers : [];
-  const { currentTerm, allTerms: terms } = useAcademicCalendar();
+  const { currentTerm, currentSessionTerms: terms } = useAcademicCalendar();
 
   const createMutation = useMutation({
     mutationFn: async (data: typeof EMPTY_FORM) => {
@@ -310,7 +310,7 @@ export default function AdminTimetable() {
                 <SelectItem value="all">All Terms</SelectItem>
                 {terms.map(t => (
                   <SelectItem key={t.id} value={String(t.id)}>
-                    {t.name}{t.isCurrent ? ' (Current)' : ''}
+                    {t.name} — {t.year}{t.isCurrent ? ' (Current)' : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -483,7 +483,7 @@ export default function AdminTimetable() {
                   <SelectItem value="none">No specific term</SelectItem>
                   {terms.map(t => (
                     <SelectItem key={t.id} value={String(t.id)}>
-                      {t.name}{t.isCurrent ? ' (Current)' : ''}
+                      {t.name} — {t.year}{t.isCurrent ? ' (Current)' : ''}
                     </SelectItem>
                   ))}
                 </SelectContent>

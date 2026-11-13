@@ -91,7 +91,7 @@ export default function ExamQuestionAdder({
         queryKey: ['/api/subjects'],
         queryFn: async () => { const r = await apiRequest('GET', '/api/subjects'); return r.json(); },
     });
-    const { currentTerm, allTerms: terms } = useAcademicCalendar();
+    const { currentTerm, currentSessionTerms: terms } = useAcademicCalendar();
 
     // Auto-select current term in the bank filter and auto-generate filter
     useEffect(() => {
@@ -438,7 +438,7 @@ export default function ExamQuestionAdder({
                                 </Select>
                                 <Select value={bankFilterTermId} onValueChange={handleBankFilterTermChange}>
                                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Term *" /></SelectTrigger>
-                                    <SelectContent>{(terms as any[]).map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
+                                    <SelectContent>{(terms as any[]).map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name} — {t.year}</SelectItem>)}</SelectContent>
                                 </Select>
                                 <Select value={bankFilterBankId} onValueChange={(v) => { setBankFilterBankId(v); setBankFilterTopicId(''); }}
                                     disabled={!bankFilterClassId || !bankFilterSubjectId || !bankFilterTermId}>
@@ -578,7 +578,7 @@ export default function ExamQuestionAdder({
                                     <Label className="text-xs">Term *</Label>
                                     <Select value={autoTermId} onValueChange={handleAutoTermChange}>
                                         <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select term" /></SelectTrigger>
-                                        <SelectContent>{terms.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}</SelectContent>
+                                        <SelectContent>{terms.map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name} — {t.year}</SelectItem>)}</SelectContent>
                                     </Select>
                                 </div>
                                 <div>

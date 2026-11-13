@@ -169,11 +169,13 @@ export const academicTerms = sqliteTable("academic_terms", {
   status: text("status").notNull().default('upcoming'), // upcoming, active, completed, archived
   isLocked: integer("is_locked", { mode: "boolean" }).notNull().default(false),
   description: text("description"),
+  sessionId: integer("session_id"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull().default(sql`(unixepoch())`),
 }, (table) => ({
   academicTermsYearIdx: index("academic_terms_year_idx").on(table.year),
   academicTermsStatusIdx: index("academic_terms_status_idx").on(table.status),
   academicTermsCurrentIdx: index("academic_terms_current_idx").on(table.isCurrent),
+  academicTermsUniqueIdx: uniqueIndex("academic_terms_unique_idx").on(table.name, table.year),
 }));
 
 // Classes table

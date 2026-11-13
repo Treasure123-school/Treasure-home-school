@@ -15,7 +15,7 @@ interface ContextFilterBarProps {
 
 export function ContextFilterBar({ value, onChange, showBank = true }: ContextFilterBarProps) {
   const { data: classes = [] } = useQuery<any[]>({ queryKey: ["/api/classes"] });
-  const { allTerms: terms }    = useAcademicCalendar();
+  const { currentSessionTerms: terms } = useAcademicCalendar();
 
   const { data: classSubjects = [], isLoading: subjectsLoading } = useQuery<any[]>({
     queryKey:  ["/api/classes", value.classId, "available-subjects"],
@@ -148,7 +148,7 @@ export function ContextFilterBar({ value, onChange, showBank = true }: ContextFi
             </SelectTrigger>
             <SelectContent>
               {(terms as any[]).map((t) => (
-                <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                <SelectItem key={t.id} value={String(t.id)}>{t.name} — {t.year}</SelectItem>
               ))}
             </SelectContent>
           </Select>

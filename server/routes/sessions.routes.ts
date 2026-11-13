@@ -83,8 +83,40 @@ router.post("/", authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.SUPER_ADMIN
     }
 
     const session = await storage.createAcademicSession({ name, year, startDate, endDate, description, status: 'active', isCurrent: false });
+
+    // Optionally scaffold the three standard terms inside the new session,
+    // splitting the session date range into thirds.
+    let scaffoldedTerms: any[] = [];
+    if (req.body.createTerms) {
+      const startMs = new Date(startDate).getTime();
+      const endMs = new Date(endDate).getTime();
+      const span = Math.max(0, endMs - startMs);
+      const day = 24 * 60 * 60 * 1000;
+      const boundaries = [0, 1 / 3, 2 / 3, 1].map(f => startMs + span * f);
+      const names3 = ["First Term", "Second Term", "Third Term"];
+      const status3 = ["active", "upcoming", "upcoming"];
+      for (let i = 0; i < 3; i++) {
+        const tStart = new Date(boundaries[i]).toISOString().split("T")[0];
+        const tEnd = new Date(boundaries[i + 1] - day).toISOString().split("T")[0];
+        try {
+          const term = await storage.createAcademicTerm({
+            name: names3[i],
+            year,
+            startDate: tStart,
+            endDate: tEnd,
+            sessionId: session.id,
+            status: status3[i],
+            isCurrent: false,
+          });
+          scaffoldedTerms.push(term);
+        } catch (termError: any) {
+          console.error("[sessions.create] scaffold term failed:", names3[i], termError?.message ?? termError);
+        }
+      }
+    }
+
     realtimeService.emitToRole("admin", "session.created", session);
-    sendSuccess(res, session, 201);
+    sendSuccess(res, { ...session, scaffoldedTerms }, 201);
   } catch (error: any) {
     if (error?.code === "23505") {
       return sendBadRequest(res, "An academic session for this year already exists.");

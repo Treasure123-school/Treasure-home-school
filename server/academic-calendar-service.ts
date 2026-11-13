@@ -71,8 +71,6 @@ export async function getUpcomingTerm(): Promise<AcademicTerm | null> {
 // ─── Calendar State (for GET /api/academic-calendar/current) ─────────────────
 
 export async function getCalendarCurrentState() {
-  const today = new Date().toISOString().split("T")[0];
-
   const [currentTerm, currentSession, upcomingTerm] = await Promise.all([
     getActiveTerm(),
     getActiveSession(),
@@ -84,12 +82,28 @@ export async function getCalendarCurrentState() {
     db.select().from(schema.academicTerms).orderBy(asc(schema.academicTerms.startDate)),
   ]);
 
+  // Terms of the currently active session (date → isCurrent fallback, matching getActiveSession logic)
+  const today = new Date().toISOString().split("T")[0];
+  const activeSession = currentSession ?? allSessions.find((s: AcademicSession) => s.isCurrent) ?? null;
+  let currentSessionTerms: AcademicTerm[] = [];
+  if (activeSession) {
+    currentSessionTerms = allTerms.filter((t: AcademicTerm) => t.sessionId === activeSession.id);
+  } else {
+    // No explicit session: fall back to the current term's year string
+    const currentYear = currentTerm?.year ?? null;
+    if (currentYear) {
+      currentSessionTerms = allTerms.filter((t: AcademicTerm) => t.year === currentYear);
+    }
+  }
+  void today;
+
   return {
     currentSession: currentSession ?? null,
     currentTerm: currentTerm ?? null,
     upcomingTerm: upcomingTerm ?? null,
     allSessions,
     allTerms,
+    currentSessionTerms,
   };
 }
 

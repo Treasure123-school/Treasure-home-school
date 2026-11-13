@@ -74,7 +74,7 @@ export function Toolbar({ m }: { m: ExamManager }) {
           <SelectContent>
             <SelectItem value="all">All Terms</SelectItem>
             {terms.map((t: any) => (
-              <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
+              <SelectItem key={t.id} value={t.id.toString()}>{t.name} — {t.year}{t.isCurrent ? ' (Current)' : ''}</SelectItem>
             ))}
           </SelectContent>
         </Select>

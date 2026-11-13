@@ -628,7 +628,7 @@ export default function StudentExams() {
     enabled: !!user,
   });
 
-  const { allTerms: examTerms } = useAcademicCalendar();
+  const { currentSessionTerms: examTerms } = useAcademicCalendar();
 
   // Filtered + sorted view of the student's exams for the "My Exams" list.
   // Status buckets mirror the badges shown on each card: available (not yet
@@ -3923,7 +3923,7 @@ export default function StudentExams() {
                   <SelectContent>
                     <SelectItem value="all">All Terms</SelectItem>
                     {examTerms.map((t) => (
-                      <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
+                      <SelectItem key={t.id} value={t.id.toString()}>{t.name} — {t.year}{t.isCurrent ? ' (Current)' : ''}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

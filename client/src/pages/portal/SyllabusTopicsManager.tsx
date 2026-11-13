@@ -51,7 +51,7 @@ export default function SyllabusTopicsManager() {
     queryKey: ['/api/subjects'],
     queryFn: async () => (await apiRequest('GET', '/api/subjects')).json(),
   });
-  const { currentTerm, allTerms: terms } = useAcademicCalendar();
+  const { currentTerm, currentSessionTerms: terms } = useAcademicCalendar();
 
   // Auto-select current term when it loads
   useEffect(() => {
@@ -330,7 +330,7 @@ export default function SyllabusTopicsManager() {
                 <Select value={selectedTermId} onValueChange={setSelectedTermId} disabled={!selectedSubjectId}>
                   <SelectTrigger data-testid="select-term"><SelectValue placeholder={!selectedSubjectId ? 'Select subject first' : 'Select term...'} /></SelectTrigger>
                   <SelectContent>
-                    {(terms as any[]).map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+                    {(terms as any[]).map((t: any) => <SelectItem key={t.id} value={String(t.id)}>{t.name} — {t.year}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

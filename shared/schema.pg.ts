@@ -162,6 +162,7 @@ export const academicTerms = pgTable("academic_terms", {
   academicTermsStatusIdx: index("academic_terms_status_idx").on(table.status),
   academicTermsCurrentIdx: index("academic_terms_current_idx").on(table.isCurrent),
   academicTermsSessionIdx: index("academic_terms_session_idx").on(table.sessionId),
+  academicTermsUniqueIdx: uniqueIndex("academic_terms_unique_idx").on(table.sessionId, table.name, table.year),
 }));
 
 // Classes table

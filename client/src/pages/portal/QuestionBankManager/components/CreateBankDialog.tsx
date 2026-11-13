@@ -19,7 +19,7 @@ interface CreateBankDialogProps {
 export function CreateBankDialog({ open, onOpenChange }: CreateBankDialogProps) {
   const qc    = useQueryClient();
   const { toast } = useToast();
-  const { currentTerm, allTerms } = useAcademicCalendar();
+  const { currentTerm, currentSessionTerms: allTerms } = useAcademicCalendar();
 
   const [bankName,     setBankName]     = useState("");
   const [bankDesc,     setBankDesc]     = useState("");
@@ -162,7 +162,7 @@ export function CreateBankDialog({ open, onOpenChange }: CreateBankDialogProps) 
               </SelectTrigger>
               <SelectContent>
                 {(allTerms as any[]).map((t: any) => (
-                  <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                  <SelectItem key={t.id} value={String(t.id)}>{t.name} — {t.year}</SelectItem>
                 ))}
               </SelectContent>
             </Select>

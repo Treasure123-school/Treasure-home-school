@@ -201,7 +201,7 @@ export default function AdminLessonNoteLibrary() {
   });
   const { data: classesData } = useQuery<any>({ queryKey: ["/api/classes"] });
   const { data: subjectsData } = useQuery<any>({ queryKey: ["/api/subjects"] });
-  const { data: termsData } = useQuery<any>({ queryKey: ["/api/academic-terms"] });
+  const { data: termsData } = useQuery<any>({ queryKey: ["/api/terms"], queryFn: async () => { const r = await apiRequest("GET", "/api/terms?scope=current-session"); return r.json(); } });
 
   const snParams = new URLSearchParams({
     page: String(snPage), limit: "12",
@@ -668,7 +668,7 @@ export default function AdminLessonNoteLibrary() {
                 <SelectTrigger><SelectValue placeholder="Select a term..." /></SelectTrigger>
                 <SelectContent>
                   {(Array.isArray(terms) ? terms : []).map((t: any) => (
-                    <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
+                    <SelectItem key={t.id} value={String(t.id)}>{t.name} — {t.year}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

@@ -22,12 +22,14 @@ export function SessionDialog({ open, onClose, editing, onSaved }: SessionDialog
   const { toast } = useToast();
   const blank = { name: '', year: '', startDate: '', endDate: '', description: '' };
   const [form, setForm] = useState(blank);
+  const [createTerms, setCreateTerms] = useState(true);
   const [yearErr, setYearErr] = useState<string | null>(null);
   const [apiErr, setApiErr] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
     setYearErr(null); setApiErr(null);
+    setCreateTerms(true);
     setForm(editing
       ? { name: editing.name, year: editing.year, startDate: editing.startDate, endDate: editing.endDate, description: editing.description ?? '' }
       : blank);
@@ -36,11 +38,17 @@ export function SessionDialog({ open, onClose, editing, onSaved }: SessionDialog
   const mut = useMutation({
     mutationFn: async (d: typeof form) => {
       const url = editing ? `/api/sessions/${editing.id}` : '/api/sessions';
-      const r = await apiRequest(editing ? 'PUT' : 'POST', url, d);
+      const r = await apiRequest(editing ? 'PUT' : 'POST', url, editing ? d : { ...d, createTerms });
       if (!r.ok) { const e = await jsonError(r); throw new Error(e.message); }
       return r.json();
     },
-    onSuccess: () => { toast({ title: 'Success', description: editing ? 'Session updated.' : 'Session created.' }); onSaved(); onClose(); },
+    onSuccess: (created: any) => {
+      const scaffolded = !editing && created?.scaffoldedTerms?.length > 0
+        ? ` First, Second, and Third Term were added automatically.`
+        : '';
+      toast({ title: 'Success', description: (editing ? 'Session updated.' : 'Session created.') + scaffolded });
+      onSaved(); onClose();
+    },
     onError: (e: any) => setApiErr(e.message || 'An error occurred.'),
   });
 
@@ -88,6 +96,15 @@ export function SessionDialog({ open, onClose, editing, onSaved }: SessionDialog
             <Textarea placeholder="Brief notes about this session..." rows={2}
               value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
           </div>
+          {!editing && (
+            <label className="flex items-start gap-2 text-sm cursor-pointer" data-testid="checkbox-scaffold-terms">
+              <input type="checkbox" className="mt-0.5" checked={createTerms} onChange={e => setCreateTerms(e.target.checked)} />
+              <span>
+                Automatically create First, Second, and Third Term for this session
+                <span className="block text-xs text-muted-foreground">Dates split evenly across the session — edit each term later.</span>
+              </span>
+            </label>
+          )}
           <ErrorBox msg={apiErr} />
           <div className="flex justify-end gap-2 pt-1">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>

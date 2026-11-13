@@ -151,7 +151,7 @@ export default function AdminCurriculumLibrary() {
 
   const { data: classes = [] } = useQuery<ClassItem[]>({ queryKey: ["/api/classes"] });
   const { data: subjects = [] } = useQuery<SubjectItem[]>({ queryKey: ["/api/subjects"] });
-  const { allTerms: terms } = useAcademicCalendar();
+  const { currentSessionTerms: terms } = useAcademicCalendar();
 
   // ── Import mutation ───────────────────────────────────────────────────────────
   const importMutation = useMutation({
@@ -478,7 +478,7 @@ export default function AdminCurriculumLibrary() {
                   <Select value={importTermIds[term]} onValueChange={v => setImportTermIds(prev => ({ ...prev, [term]: v }))}>
                     <SelectTrigger data-testid={`select-term-id-${term}`}><SelectValue placeholder="Select academic term..." /></SelectTrigger>
                     <SelectContent>
-                      {termOptions.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>)}
+                      {termOptions.map(t => <SelectItem key={t.id} value={String(t.id)}>{t.name} — {t.year}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>

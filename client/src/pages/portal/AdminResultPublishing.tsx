@@ -171,7 +171,7 @@ export default function AdminResultPublishing() {
     },
   });
 
-  const { currentTerm, allTerms: terms } = useAcademicCalendar();
+  const { currentTerm, currentSessionTerms: terms } = useAcademicCalendar();
 
   // Auto-select current term on load
   useEffect(() => {
@@ -1713,8 +1713,8 @@ export default function AdminResultPublishing() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Terms</SelectItem>
-                  {terms.map((t: { id: number; name: string }) => (
-                    <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
+                  {terms.map((t: { id: number; name: string; year?: string; isCurrent?: boolean }) => (
+                    <SelectItem key={t.id} value={t.id.toString()}>{t.name} — {t.year}{t.isCurrent ? ' (Current)' : ''}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

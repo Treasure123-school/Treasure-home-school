@@ -31,7 +31,10 @@ export default function AdminExamOverview() {
   const { data: exams = [], isLoading: examsLoading } = useQuery<Exam[]>({ queryKey: ['/api/exams'] });
   const { data: classes = [] } = useQuery<Class[]>({ queryKey: ['/api/classes'] });
   const { data: subjects = [] } = useQuery<Subject[]>({ queryKey: ['/api/subjects'] });
-  const { data: terms = [] } = useQuery<AcademicTerm[]>({ queryKey: ['/api/terms'] });
+  const { data: terms = [] } = useQuery<AcademicTerm[]>({ queryKey: ['/api/terms'], queryFn: async () => {
+    const res = await fetch('/api/terms?scope=current-session');
+    return await res.json();
+  } });
   const { data: users = [] } = useQuery<any[]>({ queryKey: ['/api/users'] });
 
   const filteredExams = exams.filter(exam => {
@@ -143,7 +146,7 @@ export default function AdminExamOverview() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Term</SelectItem>
-              {(terms as any[]).map(t => <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>)}
+              {(terms as any[]).map(t => <SelectItem key={t.id} value={t.id.toString()}>{t.name} — {t.year}{t.isCurrent ? ' (Current)' : ''}</SelectItem>)}
             </SelectContent>
           </Select>
 

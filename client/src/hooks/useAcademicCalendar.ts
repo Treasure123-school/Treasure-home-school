@@ -37,6 +37,7 @@ export interface CalendarState {
   upcomingTerm: CalendarTerm | null;
   allSessions: CalendarSession[];
   allTerms: CalendarTerm[];
+  currentSessionTerms?: CalendarTerm[];
 }
 
 const CALENDAR_KEY = ['/api/academic-calendar/current'] as const;
@@ -63,6 +64,20 @@ export function useAcademicCalendar() {
   const allTerms = [...(data?.allTerms ?? [])].sort((a, b) =>
     a.startDate.localeCompare(b.startDate)
   );
+
+  // Server-scoped terms of the active session; client-side fallback filters
+  // allTerms by the active session id (or the current term's year for legacy data)
+  const currentSessionTerms = (() => {
+    if (data?.currentSessionTerms) {
+      return [...data.currentSessionTerms].sort((a, b) => a.startDate.localeCompare(b.startDate));
+    }
+    const activeSession = data?.currentSession ?? allSessions.find(s => s.isCurrent) ?? null;
+    if (activeSession) {
+      return allTerms.filter(t => t.sessionId === activeSession.id);
+    }
+    const currentYear = data?.currentTerm?.year ?? null;
+    return currentYear ? allTerms.filter(t => t.year === currentYear) : allTerms;
+  })();
 
   const termsBySession: Record<number | string, CalendarTerm[]> = {};
   for (const term of allTerms) {
@@ -112,6 +127,7 @@ export function useAcademicCalendar() {
     upcomingTerm: data?.upcomingTerm ?? null,
     allSessions,
     allTerms,
+    currentSessionTerms,
     termsBySession,
     isLoading,
     error,

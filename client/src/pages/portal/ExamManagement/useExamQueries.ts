@@ -79,7 +79,7 @@ export function useExamQueries({ watchExam, setExamValue, isExamDialogOpen, edit
     },
   });
 
-  const { currentTerm, allTerms: terms } = useAcademicCalendar();
+  const { currentTerm, currentSessionTerms: terms } = useAcademicCalendar();
 
   // Auto-select current term when the Create Exam dialog opens (not for edits)
   useEffect(() => {
