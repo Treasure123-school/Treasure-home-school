@@ -25,7 +25,7 @@ export function CreateBankDialog({ open, onOpenChange }: CreateBankDialogProps) 
   const [bankDesc,     setBankDesc]     = useState("");
   const [bankSubjectId, setBankSubjectId] = useState("");
   const [bankClassId,  setBankClassId]  = useState("");
-  const [bankTermId,   setBankTermId]   = useState(""); // Empty = global/all-terms bank
+  const [bankTermId,   setBankTermId]   = useState("all"); // "all" = global/all-terms bank
 
   const { data: allClasses = [] } = useQuery<any[]>({ queryKey: ["/api/classes"] });
 
@@ -92,7 +92,7 @@ export function CreateBankDialog({ open, onOpenChange }: CreateBankDialogProps) 
       name:        bankName.trim(),
       subjectId:   Number(bankSubjectId),
       classId:     Number(bankClassId),
-      termId:      bankTermId ? Number(bankTermId) : null,
+      termId:      bankTermId && bankTermId !== 'all' ? Number(bankTermId) : null,
       description: bankDesc || null,
     });
   };
@@ -155,7 +155,7 @@ export function CreateBankDialog({ open, onOpenChange }: CreateBankDialogProps) 
                 <SelectValue placeholder={!bankClassId || !bankSubjectId ? "Select class & subject first" : "Select term…"} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Terms (Global Bank)</SelectItem>
+                <SelectItem value="all">All Terms (Global Bank)</SelectItem>
                 {(allTerms as any[]).map((t: any) => (
                   <SelectItem key={t.id} value={String(t.id)}>{t.name} — {t.year}</SelectItem>
                 ))}
