@@ -25,6 +25,7 @@
 export * from './middleware';
 export { authRouter } from '../modules/auth';
 export { homepageRouter } from '../modules/homepage';
+export { reportCardsRouter } from '../modules/report-cards';
 export { default as healthRoutes } from './health.routes';
 export { termsRoutes, sessionsRoutes, calendarRoutes } from '../modules/academic-calendar';
 export { default as classesRoutes } from './classes.routes';
