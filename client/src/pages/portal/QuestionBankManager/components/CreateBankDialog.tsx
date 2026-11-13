@@ -65,9 +65,10 @@ export function CreateBankDialog({ open, onOpenChange }: CreateBankDialogProps) 
       // appear empty or miss the new entry.
       const cid = savedBank.classId;
       const sid = savedBank.subjectId;
-      const termName = savedBank.termId ? 'all' : 'all'; // Global banks show in 'all' view
+      // Insert into the 'all' cache entry (default view) — term-filtered views
+      // pick the bank up from the server after the 30s staleTime window.
       qc.setQueryData(
-        ["/api/question-banks", "filtered", cid, sid, termName],
+        ["/api/question-banks", "filtered", cid, sid, 'all'],
         (old: any) => (Array.isArray(old) ? [...old, savedBank] : [savedBank])
       );
 

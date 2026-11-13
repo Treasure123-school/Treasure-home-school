@@ -224,12 +224,27 @@ export default function QuestionBankManager() {
   const [rejectTarget,     setRejectTarget]     = useState<any>(null);
   const [deleteBankTarget, setDeleteBankTarget] = useState<any>(null);
 
+  // ── Stamp termId from current term ──────────────────────────
+  // termId is ONLY used for stamping new questions / CSV uploads and the
+  // syllabus topic picker — filtering is driven by termName (cross-session).
+  const { currentTerm } = useAcademicCalendar();
+  useEffect(() => {
+    if (currentTerm) {
+      setBrowseCtx(c => (c.termId ? c : { ...c, termId: currentTerm.id }));
+      setMyCtx(c => (c.termId ? c : { ...c, termId: currentTerm.id }));
+    }
+  }, [currentTerm]);
+
   // ── Context change handlers ─────────────────────────────────
+  // termName must ALWAYS be set ('all' default) — if it were undefined while
+  // the Select still displays "All Terms", Radix would not fire onValueChange
+  // when the user clicks "All Terms" (value already matches) and the filter
+  // would appear dead.
   const handleBrowseCtxChange = useCallback((v: ContextFilters) => {
-    setBrowseCtx(v); setBrowsePage(1);
+    setBrowseCtx({ ...v, termName: v.termName ?? 'all' }); setBrowsePage(1);
   }, []);
   const handleMyCtxChange = useCallback((v: ContextFilters) => {
-    setMyCtx(v); setMyPage(1);
+    setMyCtx({ ...v, termName: v.termName ?? 'all' }); setMyPage(1);
   }, []);
 
   // ── Ready flags + query param objects ──────────────────────
@@ -426,7 +441,7 @@ export default function QuestionBankManager() {
                 title="Start by selecting your context above"
                 body="Choose Class → Subject → Term → Bank to load questions. All four fields are required."
               />
-            ) : !browseCtx.termId ? (
+            ) : !browseCtx.termName ? (
               <EmptyState
                 icon={BookOpen}
                 title="Select a Term"

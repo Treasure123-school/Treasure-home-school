@@ -24,13 +24,6 @@ export function ContextFilterBar({ value, onChange, showBank = true }: ContextFi
     staleTime: 60_000,
   });
 
-  // Resolve termId from termName for stamping new questions
-  const resolvedTermId = useMemo(() => {
-    if (!value.termName || value.termName === 'all') return null;
-    // For cross-session filtering, we use termName; termId is set to currentTerm for stamping only
-    return currentTerm?.id ?? null;
-  }, [value.termName, currentTerm]);
-
   const canLoadBanks = !!value.classId && !!value.subjectId;
 
   const bankParams = useMemo(() => {
@@ -90,7 +83,7 @@ export function ContextFilterBar({ value, onChange, showBank = true }: ContextFi
           </Label>
           <Select
             value={value.classId ? String(value.classId) : ""}
-            onValueChange={(v) => onChange({ classId: Number(v) })}
+            onValueChange={(v) => onChange({ ...value, classId: Number(v), subjectId: undefined, bankId: undefined })}
             disabled={(classes as any[]).length === 0}
           >
             <SelectTrigger data-testid="ctx-select-class" className="h-9">
@@ -151,7 +144,9 @@ export function ContextFilterBar({ value, onChange, showBank = true }: ContextFi
             value={value.termName || "all"}
             onValueChange={(v) => {
               const termName = v as 'all' | 'first' | 'second' | 'third';
-              const termId = (termName === 'all' || !currentTerm) ? undefined : currentTerm.id;
+              // termId is for stamping new questions (always current term);
+              // termName drives the cross-session filter
+              const termId = currentTerm?.id;
               onChange({ ...value, termName, termId, bankId: undefined });
             }}
             disabled={!value.subjectId}
