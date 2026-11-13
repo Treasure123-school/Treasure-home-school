@@ -803,10 +803,10 @@ export async function registerExamsManagementRoutes(app: Express) {
 
       if (existingResult) {
         await storage.updateExamResult(existingResult.id, {
-          correct_answers: correctAnswersCount,
-          total_questions: examQuestions.length,
+          correctAnswers: correctAnswersCount,
+          totalQuestions: examQuestions.length,
           timeTaken: timeTakenSeconds,
-          submitted_at: now
+          submittedAt: now
         });
       }
 

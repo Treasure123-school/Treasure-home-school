@@ -71,3 +71,5 @@ uploads/
 
 # Vite temp files (regenerated on each vite run)
 vite.config.ts.timestamp-*.mjs
+session.json
+treasure-session.json

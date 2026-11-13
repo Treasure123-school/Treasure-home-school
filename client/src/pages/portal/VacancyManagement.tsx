@@ -275,7 +275,7 @@ export default function VacancyManagement() {
                           <StatusBadge status={app.status} className="text-[10px]" />
                         </div>
                         <div className="space-y-1 text-xs text-muted-foreground">
-                          {app.googleEmail && <div className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /><span className="truncate">{app.googleEmail}</span></div>}
+                          {app.email && <div className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5" /><span className="truncate">{app.email}</span></div>}
                           {app.phoneNumber && <div className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /><span>{app.phoneNumber}</span></div>}
                           <div className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /><span>Applied {format(new Date(app.createdAt), 'MMM dd, yyyy')}</span></div>
                         </div>
@@ -327,7 +327,7 @@ export default function VacancyManagement() {
                           <StatusBadge status={app.status} className="text-[10px]" />
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {app.googleEmail && <p>{app.googleEmail}</p>}
+                          {app.email && <p>{app.email}</p>}
                           <p>Applied {format(new Date(app.createdAt), 'MMM dd, yyyy')}</p>
                         </div>
                       </CardContent>
@@ -410,7 +410,7 @@ export default function VacancyManagement() {
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {[
                   { label: 'Full Name', value: selectedApplication.fullName },
-                  { label: 'Email', value: selectedApplication.googleEmail },
+                  { label: 'Email', value: selectedApplication.email },
                   { label: 'Phone', value: selectedApplication.phoneNumber },
                   { label: 'Specialization', value: selectedApplication.subjectSpecialization },
                   { label: 'Experience', value: selectedApplication.yearsOfExperience ? `${selectedApplication.yearsOfExperience} years` : 'N/A' },

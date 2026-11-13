@@ -312,6 +312,17 @@ export const systemSettings = pgTable("system_settings", {
   allowTeacherOverrides: boolean("allow_teacher_overrides").notNull().default(true),
   positioningMethod: varchar("positioning_method", { length: 20 }).notNull().default('average'),
   deletedUserRetentionDays: integer("deleted_user_retention_days").notNull().default(30),
+  portalName: varchar("portal_name", { length: 255 }).notNull().default('Treasure Home School Portal'),
+  timezone: varchar("timezone", { length: 100 }).notNull().default('Africa/Lagos'),
+  language: varchar("language", { length: 20 }).notNull().default('en'),
+  dateFormat: varchar("date_format", { length: 50 }).notNull().default('DD/MM/YYYY'),
+  timeFormat: varchar("time_format", { length: 50 }).notNull().default('HH:mm'),
+  enableOnlinePayments: boolean("enable_online_payments").notNull().default(false),
+  autoBackup: boolean("auto_backup").notNull().default(false),
+  backupFrequency: varchar("backup_frequency", { length: 20 }).notNull().default('daily'), // 'daily', 'weekly'
+  lastBackupDate: timestamp("last_backup_date"),
+  enableApiAccess: boolean("enable_api_access").notNull().default(false),
+  apiAccessKey: varchar("api_access_key", { length: 255 }),
   academicAutoDetect: boolean("academic_auto_detect").notNull().default(true),
   designatedPrincipalId: varchar("designated_principal_id", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
   updatedBy: varchar("updated_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
@@ -1747,3 +1758,538 @@ export const billingFeatureLinks = pgTable("billing_feature_links", {
 export const insertBillingFeatureLinkSchema = createInsertSchema(billingFeatureLinks).omit({ id: true, createdAt: true });
 export type BillingFeatureLink = typeof billingFeatureLinks.$inferSelect;
 export type InsertBillingFeatureLink = z.infer<typeof insertBillingFeatureLinkSchema>;
+export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const insertPasswordResetTokenSchema = createInsertSchema(passwordResetTokens).omit({ id: true, createdAt: true });
+
+export const insertPasswordResetAttemptSchema = createInsertSchema(passwordResetAttempts).omit({ id: true, attemptedAt: true });
+
+export const insertInviteSchema = createInsertSchema(invites).omit({ id: true, createdAt: true });
+
+export const insertStudentSchema = createInsertSchema(students).omit({ createdAt: true });
+
+export const insertClassSchema = createInsertSchema(classes).omit({ id: true, createdAt: true });
+
+export const insertSubjectSchema = createInsertSchema(subjects).omit({ id: true, createdAt: true });
+
+export const insertAcademicTermSchema = createInsertSchema(academicTerms).omit({ id: true, createdAt: true });
+
+export const insertAttendanceSchema = createInsertSchema(attendance).omit({ id: true, createdAt: true });
+
+export const insertExamSchema = createInsertSchema(exams).omit({ id: true, createdAt: true }).extend({
+  assessmentCategory: z.enum(['academic', 'standalone']).default('academic'),
+  classId: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
+    z.number().positive("Please select a valid class").optional()
+  ),
+  subjectId: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
+    z.number().positive("Please select a valid subject").optional()
+  ),
+  termId: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
+    z.number().positive("Please select a valid term").optional()
+  ),
+  totalMarks: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
+    z.number().positive("Total marks must be a positive number")
+  ),
+  name: z.string().min(1, "Exam name is required"),
+  date: z.string()
+    .min(1, "Exam date is required")
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format")
+    .refine((dateStr) => {
+      const date = new Date(dateStr);
+      return !isNaN(date.getTime()) && date.toISOString().startsWith(dateStr);
+    }, "Please enter a valid date"),
+  examType: z.enum(['test', 'exam']).default('exam'),
+  timerMode: z.string().default('individual'),
+  timeLimit: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
+    z.number().int().min(1, "Time limit must be at least 1 minute").optional()
+  ),
+  passingScore: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
+    z.number().int().min(0).max(100, "Passing score must be between 0 and 100").optional()
+  ),
+  startTime: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : new Date(val as string),
+    z.date().optional()
+  ),
+  endTime: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : new Date(val as string),
+    z.date().optional()
+  ),
+  instructions: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : val,
+    z.string().optional()
+  ),
+  gradingScale: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? 'standard' : val,
+    z.string().default('standard')
+  ),
+  teacherInChargeId: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : val,
+    z.string().optional()
+  ),
+  isPublished: z.boolean().default(false),
+  allowRetakes: z.boolean().default(false),
+  shuffleQuestions: z.boolean().default(false),
+  autoGradingEnabled: z.boolean().default(true),
+  instantFeedback: z.boolean().default(false),
+  showCorrectAnswers: z.boolean().default(false),
+  purpose: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : val,
+    z.string().optional()
+  ),
+  venue: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : val,
+    z.string().optional()
+  ),
+  targetType: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : val,
+    z.enum(['whole_school', 'class', 'selected_students', 'external']).optional()
+  ),
+  registrationFee: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : Number(val),
+    z.number().int().min(0).optional()
+  ),
+  registrationOpen: z.boolean().default(false),
+  registrationDeadline: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : val,
+    z.string().optional()
+  ),
+  candidateType: z.preprocess(
+    (val) => val === '' || val === null || val === undefined ? undefined : val,
+    z.enum(['internal', 'external', 'both']).optional()
+  ),
+  generateAdmitCards: z.boolean().default(false),
+  generateCandidateNumbers: z.boolean().default(false),
+  certificateEnabled: z.boolean().default(false),
+  leaderboardEnabled: z.boolean().default(false),
+  resultPublished: z.boolean().default(false),
+});
+
+export const insertExamResultSchema = createInsertSchema(examResults).omit({ id: true, createdAt: true });
+
+export const insertExamSubmissionsArchiveSchema = createInsertSchema(examSubmissionsArchive).omit({ id: true, archivedAt: true });
+
+export const insertAnnouncementSchema = createInsertSchema(announcements).omit({ id: true, createdAt: true });
+
+export const insertMessageSchema = createInsertSchema(messages).omit({ id: true, createdAt: true });
+
+export const insertGalleryCategorySchema = createInsertSchema(galleryCategories).omit({ id: true, createdAt: true });
+
+export const insertGallerySchema = createInsertSchema(gallery).omit({ id: true, createdAt: true });
+
+export const insertHomePageContentSchema = createInsertSchema(homePageContent).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const insertContactMessageSchema = createInsertSchema(contactMessages).omit({ id: true, createdAt: true });
+
+export const insertReportCommentTemplateSchema = createInsertSchema(reportCommentTemplates).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const insertReportCardSchema = createInsertSchema(reportCards).omit({ id: true, createdAt: true });
+
+export const insertReportCardSkillsSchema = createInsertSchema(reportCardSkills).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const insertReportCardItemSchema = createInsertSchema(reportCardItems).omit({ id: true, createdAt: true });
+
+export const insertStudyResourceSchema = createInsertSchema(studyResources).omit({ id: true, createdAt: true });
+
+export const insertPerformanceEventSchema = createInsertSchema(performanceEvents).omit({ id: true, createdAt: true });
+
+export const insertTeacherClassAssignmentSchema = createInsertSchema(teacherClassAssignments).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const insertTeacherAssignmentHistorySchema = createInsertSchema(teacherAssignmentHistory).omit({ id: true, createdAt: true });
+
+export const insertGradingBoundarySchema = createInsertSchema(gradingBoundaries).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const insertContinuousAssessmentSchema = createInsertSchema(continuousAssessment).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const insertUnauthorizedAccessLogSchema = createInsertSchema(unauthorizedAccessLogs).omit({ id: true, createdAt: true });
+
+export const insertTimetableSchema = createInsertSchema(timetable).omit({ id: true, createdAt: true });
+
+export const insertGradingTaskSchema = createInsertSchema(gradingTasks).omit({ id: true, createdAt: true });
+
+export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({ id: true, createdAt: true });
+
+export const insertSettingSchema = createInsertSchema(settings).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const insertCounterSchema = createInsertSchema(counters).omit({ id: true, createdAt: true, updatedAt: true });
+
+// Student schemas
+
+export const createStudentWithAutoCredsSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
+  gender: z.enum(['Male', 'Female', 'Other'], { required_error: "Gender is required" }),
+  profileImageUrl: z.string().optional(),
+  admissionNumber: z.string().min(1, "Admission number is required"),
+  classId: z.coerce.number().positive("Please select a valid class"),
+  parentId: z.string().optional().nullable(),
+  admissionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Admission date must be in YYYY-MM-DD format"),
+  emergencyContact: z.string().min(1, "Emergency contact is required"),
+  medicalInfo: z.string().optional(),
+  parentEmail: z.string().email("Invalid parent email").optional(),
+  parentPhone: z.string().optional(),
+});
+
+
+export type CreateStudentWithAutoCredsRequest = z.infer<typeof createStudentWithAutoCredsSchema>;
+
+
+export const createStudentSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
+  gender: z.enum(['Male', 'Female', 'Other'], { required_error: "Gender is required" }),
+  profileImageUrl: z.string().optional(),
+  classId: z.coerce.number().positive("Please select a valid class"),
+  parentId: z.string().optional().nullable(),
+  parentPhone: z.string().optional(),
+  admissionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Admission date must be in YYYY-MM-DD format"),
+  emergencyContact: z.string().optional(),
+  medicalInfo: z.string().optional(),
+  guardianName: z.string().optional(),
+  department: z.enum(['science', 'art', 'commercial']).optional().nullable(),
+});
+
+
+export type CreateStudentRequest = z.infer<typeof createStudentSchema>;
+
+
+export const quickCreateStudentSchema = z.object({
+  fullName: z.string()
+    .min(2, "Full name is required")
+    .refine(
+      (name) => name.trim().split(/\s+/).length >= 2,
+      "Please enter both first and last name (e.g., 'John Adebayo')"
+    ),
+  gender: z.enum(['Male', 'Female', 'Other'], { required_error: "Gender is required" }),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
+  classId: z.coerce.number().positive("Please select a valid class"),
+  department: z.enum(['science', 'art', 'commercial']).optional().nullable(),
+});
+
+
+export type QuickCreateStudentRequest = z.infer<typeof quickCreateStudentSchema>;
+
+
+export const csvStudentSchema = z.object({
+  fullName: z.string().min(1, "Full name is required"),
+  class: z.string().min(1, "Class is required"),
+  gender: z.enum(['Male', 'Female', 'Other'], { required_error: "Gender is required" }),
+  dateOfBirth: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format"),
+  parentEmail: z.string().email("Invalid parent email").optional(),
+  parentPhone: z.string().optional(),
+  emergencyContact: z.string().min(1, "Emergency contact is required"),
+  admissionDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Admission date must be in YYYY-MM-DD format").optional(),
+  medicalInfo: z.string().optional(),
+  guardianName: z.string().optional(),
+});
+
+
+export type CsvStudentData = z.infer<typeof csvStudentSchema>;
+
+
+export const insertExamQuestionSchema = createInsertSchema(examQuestions).omit({ id: true, createdAt: true }).extend({
+  examId: z.coerce.number().positive("Please select a valid exam"),
+  questionText: z.string().min(1, "Question text is required"),
+  questionType: z.enum(['multiple_choice', 'essay'], { required_error: "Question type is required. Use 'multiple_choice' or 'essay'." }),
+  points: z.preprocess((val) => val === '' ? 1 : val, z.coerce.number().int().min(0, "Points must be a non-negative number").default(1)),
+  orderNumber: z.coerce.number().int().min(1, "Order number must be a positive number"),
+  imageUrl: z.preprocess((val) => val === '' ? undefined : val, z.string().optional()),
+  expectedAnswers: z.preprocess((val) => {
+    if (val === '' || val === null || val === undefined) return undefined;
+    if (Array.isArray(val)) return val;
+    if (typeof val === 'string') return val.split(',').map(s => s.trim()).filter(s => s !== '');
+    return undefined;
+  }, z.array(z.string()).optional()),
+  explanationText: z.preprocess((val) => val === '' ? undefined : val, z.string().optional()),
+  hintText: z.preprocess((val) => val === '' ? undefined : val, z.string().optional()),
+  partialCreditRules: z.preprocess((val) => val === '' ? undefined : val, z.string().optional()),
+});
+
+
+export const insertQuestionOptionSchema = createInsertSchema(questionOptions).omit({ id: true, createdAt: true }).extend({
+  questionId: z.coerce.number().positive("Please select a valid question"),
+  orderNumber: z.coerce.number().int().min(1, "Order number must be a positive number"),
+  partialCreditValue: z.preprocess((val) => val === '' ? 0 : val, z.coerce.number().int().min(0, "Partial credit must be non-negative").default(0)),
+  explanationText: z.preprocess((val) => val === '' ? undefined : val, z.string().optional()),
+});
+
+export const createQuestionOptionSchema = insertQuestionOptionSchema.omit({ questionId: true, orderNumber: true }).extend({
+  partialCreditValue: z.preprocess((val) => val === '' ? 0 : val, z.coerce.number().int().min(0, "Partial credit must be non-negative").default(0)).optional(),
+  explanationText: z.preprocess((val) => val === '' ? undefined : val, z.string().optional()),
+});
+
+
+export const insertExamSessionSchema = createInsertSchema(examSessions).omit({
+  id: true,
+  createdAt: true,
+  startedAt: true,
+  studentId: true
+}).partial().required({
+  examId: true
+}).extend({
+  submittedAt: z.union([z.date(), z.string()]).optional().transform((val) => {
+    if (typeof val === 'string') {
+      return new Date(val);
+    }
+    return val;
+  })
+});
+
+
+export const updateExamSessionSchema = z.object({
+  isCompleted: z.boolean().optional(),
+  submittedAt: z.coerce.date().refine(d => !isNaN(d.getTime()), 'Invalid date').optional(),
+  timeRemaining: z.number().int().min(0).optional(),
+  status: z.enum(['in_progress', 'submitted']).optional(),
+  submissionMethod: z.string().optional(),
+  autoSubmitted: z.boolean().optional()
+}).strict();
+
+
+export const insertStudentAnswerSchema = createInsertSchema(studentAnswers).omit({ id: true });
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({ id: true, createdAt: true });
+
+export const insertTeacherProfileSchema = createInsertSchema(teacherProfiles).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const insertAdminProfileSchema = createInsertSchema(adminProfiles).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const insertParentProfileSchema = createInsertSchema(parentProfiles).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const insertStudentSubjectAssignmentSchema = createInsertSchema(studentSubjectAssignments).omit({ id: true, createdAt: true });
+
+export const insertClassSubjectMappingSchema = createInsertSchema(classSubjectMappings).omit({ id: true, createdAt: true });
+
+// Vacancy schemas
+
+export const insertVacancySchema = createInsertSchema(vacancies).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+
+export const insertTeacherApplicationSchema = createInsertSchema(teacherApplications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  reviewedAt: true,
+  reviewedBy: true,
+  status: true,
+});
+
+
+export const insertApprovedTeacherSchema = createInsertSchema(approvedTeachers).omit({
+  id: true,
+  createdAt: true,
+  dateApproved: true,
+});
+
+
+export const insertSuperAdminProfileSchema = createInsertSchema(superAdminProfiles).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+
+export const insertSystemSettingsSchema = createInsertSchema(systemSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+
+export const insertQuestionBankSchema = createInsertSchema(questionBanks).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const insertQuestionBankItemSchema = createInsertSchema(questionBankItems).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const insertQuestionBankOptionSchema = createInsertSchema(questionBankOptions).omit({ id: true, createdAt: true });
+
+export const insertSyllabusTopicSchema = createInsertSchema(syllabusTopics).omit({ id: true, createdAt: true, updatedAt: true });
+
+export const insertExamQuestionBankLinkSchema = createInsertSchema(examQuestionBankLinks).omit({ id: true, createdAt: true });
+
+// School Events table
+
+export const insertSchoolEventSchema = createInsertSchema(schoolEvents).omit({ id: true, createdAt: true, updatedAt: true });
+
+
+
+
+
+
+
+
+
+
+
+
+// Types
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+export type TeacherProfileWithUser = TeacherProfile & {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string | null;
+  address: string | null;
+  recoveryEmail: string | null;
+  gender: string | null;
+  dateOfBirth: string | null;
+  nationalId: string | null;
+  profileImageUrl: string | null;
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+export type TeacherAssignmentHistory = typeof teacherAssignmentHistory.$inferSelect;
+
+export type InsertTeacherAssignmentHistory = z.infer<typeof insertTeacherAssignmentHistorySchema>;
+
+export type GradingBoundary = typeof gradingBoundaries.$inferSelect;
+
+export type InsertGradingBoundary = z.infer<typeof insertGradingBoundarySchema>;
+
+export type ContinuousAssessment = typeof continuousAssessment.$inferSelect;
+
+export type InsertContinuousAssessment = z.infer<typeof insertContinuousAssessmentSchema>;
+
+export type UnauthorizedAccessLog = typeof unauthorizedAccessLogs.$inferSelect;
+
+export type InsertUnauthorizedAccessLog = z.infer<typeof insertUnauthorizedAccessLogSchema>;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+export type CreateQuestionOption = z.infer<typeof createQuestionOptionSchema>;
+
+
+export type UpdateExamSession = z.infer<typeof updateExamSessionSchema>;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ── Re-export types that only exist in the PostgreSQL schema ──────────────────
+// These keep server/storage.ts type-checking correctly when @shared/schema
+// resolves to this SQLite file during TypeScript compilation.

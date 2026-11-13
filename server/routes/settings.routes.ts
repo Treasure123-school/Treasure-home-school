@@ -70,7 +70,7 @@ const ADMIN_EDITABLE_FIELDS = new Set([
   'websiteTitle', 'footerText',
   'testWeight', 'examWeight', 'defaultGradingScale', 'scoreAggregationMode',
   'positioningMethod', 'autoCreateReportCard', 'showGradeBreakdown',
-  'allowTeacherOverrides', 'requireExamPayment', 'examFeeAmount',
+  'allowTeacherOverrides',
   'enableSmsNotifications', 'enableEmailNotifications',
   'usernameStudentPrefix', 'usernameParentPrefix',
   'usernameTeacherPrefix', 'usernameAdminPrefix',

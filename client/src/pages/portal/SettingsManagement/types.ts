@@ -34,8 +34,6 @@ export interface SystemSettings {
   showGradeBreakdown?: boolean;
   allowTeacherOverrides?: boolean;
   positioningMethod?: string;
-  requireExamPayment?: boolean;
-  examFeeAmount?: number;
   designatedPrincipalId?: string | null;
 }
 

@@ -45,7 +45,7 @@ router.get('/api/vacancies/:id', async (req: Request, res: Response) => {
 const teacherApplicationSchema = z.object({
     vacancyId: z.string().optional().nullable(),
     fullName: z.string().min(1),
-    googleEmail: z.string().email().regex(/@gmail\.com$/, 'Must be a Gmail address'),
+    email: z.string().email().regex(/@gmail\.com$/, 'Must be a Gmail address'),
     phone: z.string().min(1),
     subjectSpecialty: z.string().min(1),
     qualification: z.string().min(1),
@@ -61,7 +61,7 @@ router.post('/api/teacher-applications', async (req: Request, res: Response) => 
         // Check if email already has a pending or approved application
         const existingApplications = await storage.getAllTeacherApplications();
         const existingApp = existingApplications.find(
-            (app: any) => app.googleEmail === validatedData.googleEmail &&
+            (app: any) => app.email === validatedData.email &&
                 (app.status === 'pending' || app.status === 'approved')
         );
 
@@ -72,7 +72,16 @@ router.post('/api/teacher-applications', async (req: Request, res: Response) => 
                     : 'You already have a pending application'
             });
         }
-        const application = await storage.createTeacherApplication(validatedData);
+        const { qualification, experienceYears, bio, ...applicationBase } = validatedData;
+        const application = await storage.createTeacherApplication({
+            ...applicationBase,
+            id: crypto.randomUUID(),
+            qualifications: qualification,
+            experience: experienceYears !== undefined
+                ? `${experienceYears} year${experienceYears === 1 ? '' : 's'}`
+                : undefined,
+            coverLetter: bio,
+        });
 
         // Create notification for admins
         const admins = await storage.getUsersByRole(ROLES.ADMIN);
@@ -170,7 +179,7 @@ router.patch('/api/admin/applications/:id/status', authenticateUser, authorizeRo
             const result = await storage.approveTeacherApplication(req.params.id, req.user!.id);
 
             // Create notification for the applicant (if they have an account)
-            const applicantUser = await storage.getUserByEmail(result.application.googleEmail);
+            const applicantUser = await storage.getUserByEmail(result.application.email);
             if (applicantUser) {
                 await storage.createNotification({
                     userId: applicantUser.id,

@@ -428,7 +428,10 @@ export class DatabaseStorageP12 extends DatabaseStorageP11 {
   // Teacher Applications implementations
 
   async createTeacherApplication(application: InsertTeacherApplication): Promise<TeacherApplication> {
-    const result = await this.db.insert(schema.teacherApplications).values(application).returning();
+    const result = await this.db.insert(schema.teacherApplications).values({
+      ...application,
+      id: application.id ?? globalThis.crypto.randomUUID(),
+    }).returning();
     return result[0];
   }
 
@@ -439,9 +442,9 @@ export class DatabaseStorageP12 extends DatabaseStorageP11 {
 
   async getAllTeacherApplications(status?: string): Promise<TeacherApplication[]> {
     if (status) {
-      return await this.db.select().from(schema.teacherApplications).where(eq(schema.teacherApplications.status, status as "pending" | "approved" | "rejected")).orderBy(desc(schema.teacherApplications.dateApplied));
+      return await this.db.select().from(schema.teacherApplications).where(eq(schema.teacherApplications.status, status as "pending" | "approved" | "rejected")).orderBy(desc(schema.teacherApplications.createdAt));
     }
-    return await this.db.select().from(schema.teacherApplications).orderBy(desc(schema.teacherApplications.dateApplied));
+    return await this.db.select().from(schema.teacherApplications).orderBy(desc(schema.teacherApplications.createdAt));
   }
 
   async updateTeacherApplication(id: string, updates: Partial<TeacherApplication>): Promise<TeacherApplication | undefined> {
@@ -475,7 +478,7 @@ export class DatabaseStorageP12 extends DatabaseStorageP11 {
       .insert(schema.approvedTeachers)
       .values({
         applicationId: applicationId,
-        googleEmail: application.googleEmail,
+        googleEmail: application.email,
         fullName: application.fullName,
         subjectSpecialty: application.subjectSpecialty,
         approvedBy: approvedBy,

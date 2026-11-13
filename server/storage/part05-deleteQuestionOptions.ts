@@ -169,7 +169,7 @@ export class DatabaseStorageP05 extends DatabaseStorageP04 {
         orderNumber: orderNumber++,
         imageUrl: bankItem.imageUrl ?? undefined,
         autoGradable: bankItem.autoGradable,
-        expectedAnswers: expectedAnswersArray,
+        expectedAnswers: expectedAnswersArray ? JSON.stringify(expectedAnswersArray) : undefined,
         caseSensitive: bankItem.caseSensitive ?? undefined,
         explanationText: bankItem.explanationText ?? undefined,
         hintText: bankItem.hintText ?? undefined,

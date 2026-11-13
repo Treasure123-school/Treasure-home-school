@@ -412,7 +412,7 @@ export async function registerExamsAnalyticsRoutes(app: Express) {
         maxScore: result.maxScore ?? exam.totalMarks ?? null,
         grade: result.grade ?? null,
         remarks: result.remarks ?? null,
-        submitted_at: result.submitted_at ?? null,
+        submitted_at: result.submittedAt ?? null,
         questions: questionBreakdown,
       });
     } catch (error: any) {

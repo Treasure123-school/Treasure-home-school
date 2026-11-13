@@ -16,7 +16,7 @@ import { format } from 'date-fns';
 
 const applicationSchema = z.object({
   fullName: z.string().min(1, 'Full name is required'),
-  googleEmail: z.string().email().regex(/@gmail\.com$/, 'Must be a Gmail address'),
+  email: z.string().email().regex(/@gmail\.com$/, 'Must be a Gmail address'),
   phone: z.string().min(1, 'Phone number is required'),
   subjectSpecialty: z.string().min(1, 'Subject specialty is required'),
   qualification: z.string().min(1, 'Qualification is required'),
@@ -198,19 +198,19 @@ export default function JobVacancy() {
                     </div>
 
                     <div>
-                      <Label htmlFor="googleEmail" className="flex items-center gap-2">
+                      <Label htmlFor="email" className="flex items-center gap-2">
                         <Mail className="h-4 w-4" />
                         Gmail Address
                       </Label>
                       <Input
-                        id="googleEmail"
+                        id="email"
                         type="email"
-                        {...register('googleEmail')}
+                        {...register('email')}
                         placeholder="teacher@gmail.com"
                         data-testid="input-email"
                       />
-                      {errors.googleEmail && (
-                        <p className="text-sm text-red-500 mt-1" data-testid="error-email">{errors.googleEmail.message}</p>
+                      {errors.email && (
+                        <p className="text-sm text-red-500 mt-1" data-testid="error-email">{errors.email.message}</p>
                       )}
                     </div>
                   </div>

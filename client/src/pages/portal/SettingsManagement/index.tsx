@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
-  Settings, Building2, GraduationCap, BarChart3, Users, ClipboardList, FileText, FileBarChart2, CalendarCheck, Bell, CreditCard, Palette, Shield, Database, ChevronRight, ChevronDown, Search, Scale, Crown,
+  Settings, Building2, GraduationCap, BarChart3, Users, ClipboardList, FileText, FileBarChart2, CalendarCheck, Bell, Palette, Shield, Database, ChevronRight, ChevronDown, Search, Scale, Crown,
 } from 'lucide-react';
 import { SectionSkeleton } from './components';
 import SchoolProfileSection from './SchoolProfileSection';
@@ -17,7 +17,6 @@ import LessonNotesSection from './LessonNotesSection';
 import ReportCardSection from './ReportCardSection';
 import AttendanceSection from './AttendanceSection';
 import NotificationsSection from './NotificationsSection';
-import FinanceSection from './FinanceSection';
 import AppearanceSection from './AppearanceSection';
 import SecuritySection from './SecuritySection';
 import DataManagementSection from './DataManagementSection';
@@ -37,7 +36,6 @@ const NAV_ITEMS = [
   { id: 'reports', label: 'Report Cards', icon: FileBarChart2, description: 'Report card config & signatures' },
   { id: 'attendance', label: 'Attendance', icon: CalendarCheck, description: 'Status types & permissions' },
   { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Email & SMS alert settings' },
-  { id: 'finance', label: 'Finance', icon: CreditCard, description: 'Fee & payment configuration' },
   { id: 'appearance', label: 'Appearance', icon: Palette, description: 'Theme, branding & display' },
   { id: 'security', label: 'Security', icon: Shield, description: 'Access & password policies' },
   { id: 'data', label: 'Data & Backup', icon: Database, description: 'Import, export & backups' },
@@ -55,7 +53,6 @@ function renderSection(id: string) {
     case 'reports': return <ReportCardSection />;
     case 'attendance': return <AttendanceSection />;
     case 'notifications': return <NotificationsSection />;
-    case 'finance': return <FinanceSection />;
     case 'appearance': return <AppearanceSection />;
     case 'security': return <SecuritySection />;
     case 'data': return <DataManagementSection />;

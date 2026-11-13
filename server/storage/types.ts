@@ -728,6 +728,5 @@ export interface IStorage {
   createBillingFeatureLink(data: InsertBillingFeatureLink): Promise<BillingFeatureLink>;
   deleteBillingFeatureLink(id: number): Promise<boolean>;
   deleteBillingFeatureLinkByKey(featureKey: string): Promise<boolean>;
-  ensureDefaultBillingItem(): Promise<BillingItem>;
 }
 // Helper to normalize UUIDs from various formats

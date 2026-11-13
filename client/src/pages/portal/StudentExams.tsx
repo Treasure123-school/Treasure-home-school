@@ -33,7 +33,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { Clock, BookOpen, Trophy, Play, Eye, CheckCircle, XCircle, Timer, Save, RotateCcw, AlertCircle, Loader, FileText, Circle, CheckCircle2, HelpCircle, ClipboardCheck, GraduationCap, Award, Calendar, Calculator, X, Keyboard, Shield, ChevronDown, ChevronUp, Filter, ArrowUpDown, ListChecks, Percent } from 'lucide-react';
+import { Clock, BookOpen, Trophy, Play, Eye, CheckCircle, XCircle, Timer, Save, RotateCcw, AlertCircle, Loader, FileText, Circle, CheckCircle2, HelpCircle, ClipboardCheck, GraduationCap, Award, Calendar, Calculator, X, Lock, Keyboard, Shield, ChevronDown, ChevronUp, Filter, ArrowUpDown, ListChecks, Percent } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { Exam as BaseExam, ExamSession, ExamQuestion, QuestionOption, StudentAnswer } from '@shared/schema.pg';
 import { QuestionImageDisplay } from '@/components/question/QuestionImageDisplay';
