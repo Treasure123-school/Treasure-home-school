@@ -538,34 +538,149 @@ function StepSetOutcomes({ data, classes, overrides, onOverridesChange }: {
   onOverridesChange: (overrides: Map<string, StudentOutcomeOverride>) => void;
 }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [selectedOutcome, setSelectedOutcome] = useState<PromotionOutcome>('promoted');
+  const [selectedDestClass, setSelectedDestClass] = useState<string>('');
   
-  // Build list of all students from preview data
-  const allStudents: any[] = [];
-  data.classGroups.forEach((classGroup: any) => {
-    // Students would come from a separate endpoint — for now show placeholder
+  // Fetch students from source session
+  const { data: students = [], isLoading: loadingStudents } = useQuery({
+    queryKey: ['/api/students'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/students');
+      return await response.json();
+    },
   });
+
+  // Filter students by search term
+  const filteredStudents = students.filter((s: any) => {
+    if (!searchTerm) return false;
+    const search = searchTerm.toLowerCase();
+    return (
+      s.firstName?.toLowerCase().includes(search) ||
+      s.lastName?.toLowerCase().includes(search) ||
+      s.username?.toLowerCase().includes(search) ||
+      `${s.firstName} ${s.lastName}`.toLowerCase().includes(search)
+    );
+  });
+
+  const handleAddOverride = () => {
+    if (!selectedStudent) return;
+    
+    const newOverride: StudentOutcomeOverride = {
+      studentId: selectedStudent.id,
+      studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
+      currentClass: selectedStudent.className || 'Unknown',
+      outcome: selectedOutcome,
+      destinationClassId: selectedDestClass ? Number(selectedDestClass) : undefined,
+      reason: `Manual override to ${selectedOutcome}`,
+    };
+
+    const newOverrides = new Map(overrides);
+    newOverrides.set(selectedStudent.id, newOverride);
+    onOverridesChange(newOverrides);
+    
+    // Reset form
+    setSelectedStudent(null);
+    setSearchTerm('');
+    setSelectedOutcome('promoted');
+    setSelectedDestClass('');
+  };
+
+  const handleRemoveOverride = (studentId: string) => {
+    const newOverrides = new Map(overrides);
+    newOverrides.delete(studentId);
+    onOverridesChange(newOverrides);
+  };
 
   return (
     <div className="space-y-4">
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          Configure individual student outcomes. By default, students will follow their class progression rules.
-          Use this step to override outcomes for specific students (e.g., mark as repeating, withdrawn, or deferred).
+          By default, all students will follow their class progression rules. Use this step to override individual student outcomes (e.g., mark as repeating, withdrawn, or deferred).
         </AlertDescription>
       </Alert>
 
-      <div className="space-y-2">
-        <Label>Search Students (Optional)</Label>
-        <Input
-          placeholder="Search by student name or ID..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <p className="text-xs text-muted-foreground">
-          Leave empty to use default outcomes. Individual overrides can be added after initial execution via corrections.
-        </p>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Add Student Override</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Search Student</Label>
+            <Input
+              placeholder="Type student name or ID..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {loadingStudents && searchTerm && (
+              <p className="text-xs text-muted-foreground">Loading students...</p>
+            )}
+            {!loadingStudents && searchTerm && filteredStudents.length > 0 && (
+              <div className="border rounded-md max-h-40 overflow-y-auto">
+                {filteredStudents.slice(0, 10).map((student: any) => (
+                  <div
+                    key={student.id}
+                    className="p-2 hover:bg-muted cursor-pointer border-b last:border-b-0"
+                    onClick={() => {
+                      setSelectedStudent(student);
+                      setSearchTerm(`${student.firstName} ${student.lastName}`);
+                    }}
+                  >
+                    <p className="text-sm font-medium">{student.firstName} {student.lastName}</p>
+                    <p className="text-xs text-muted-foreground">{student.username} • {student.className || 'No class'}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            {!loadingStudents && searchTerm && filteredStudents.length === 0 && (
+              <p className="text-xs text-muted-foreground">No students found</p>
+            )}
+          </div>
+
+          {selectedStudent && (
+            <>
+              <div className="space-y-2">
+                <Label>Outcome</Label>
+                <Select value={selectedOutcome} onValueChange={(v) => setSelectedOutcome(v as PromotionOutcome)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="promoted">Promoted (to next class)</SelectItem>
+                    <SelectItem value="repeating">Repeating (stay in same class)</SelectItem>
+                    <SelectItem value="graduated">Graduated (leave school)</SelectItem>
+                    <SelectItem value="withdrawn">Withdrawn (leave school)</SelectItem>
+                    <SelectItem value="deferred">Deferred (pending enrollment)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {(selectedOutcome === 'promoted' || selectedOutcome === 'repeating') && (
+                <div className="space-y-2">
+                  <Label>Destination Class (Optional)</Label>
+                  <Select value={selectedDestClass} onValueChange={setSelectedDestClass}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Use default progression..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {classes.map((cls: any) => (
+                        <SelectItem key={cls.id} value={cls.id.toString()}>
+                          {cls.name} ({cls.level})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <Button onClick={handleAddOverride} className="w-full">
+                Add Override
+              </Button>
+            </>
+          )}
+        </CardContent>
+      </Card>
 
       {overrides.size > 0 && (
         <Card>
@@ -575,17 +690,39 @@ function StepSetOutcomes({ data, classes, overrides, onOverridesChange }: {
           <CardContent>
             <div className="space-y-2">
               {Array.from(overrides.values()).map((override: StudentOutcomeOverride) => (
-                <div key={override.studentId} className="flex items-center justify-between p-2 border rounded">
-                  <div>
+                <div key={override.studentId} className="flex items-center justify-between p-3 border rounded">
+                  <div className="flex-1">
                     <p className="font-medium text-sm">{override.studentName}</p>
                     <p className="text-xs text-muted-foreground">{override.currentClass}</p>
                   </div>
-                  <Badge>{override.outcome}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={
+                      override.outcome === 'promoted' ? 'default' :
+                      override.outcome === 'graduated' ? 'secondary' :
+                      override.outcome === 'repeating' ? 'outline' :
+                      'destructive'
+                    }>
+                      {override.outcome}
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRemoveOverride(override.studentId)}
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {overrides.size === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-4">
+          No custom outcomes set. All students will follow their default class progression.
+        </p>
       )}
     </div>
   );
