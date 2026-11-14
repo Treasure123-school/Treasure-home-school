@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, integer, boolean, timestamp, index, uniqueIndex, serial, varchar, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, boolean, timestamp, index, uniqueIndex, serial, varchar, jsonb, AnyPgColumn } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -172,8 +172,15 @@ export const classes = pgTable("classes", {
   classTeacherId: varchar("class_teacher_id", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
   currentTermId: integer("current_term_id").references(() => academicTerms.id),
   isActive: boolean("is_active").notNull().default(true),
+  // Promotion progression config (admin-configurable, no hardcoded class names)
+  sequenceOrder: integer("sequence_order"), // ordering for progression display; null = not in progression chain
+  nextClassId: integer("next_class_id").references((): AnyPgColumn => classes.id, { onDelete: 'set null' }), // suggested destination class
+  isGraduationLevel: boolean("is_graduation_level").notNull().default(false), // final class: students leave active enrolment after it
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  classesSequenceOrderIdx: index("classes_sequence_order_idx").on(table.sequenceOrder),
+  classesNextClassIdx: index("classes_next_class_idx").on(table.nextClassId),
+}));
 
 // Subjects table
 export const subjects = pgTable("subjects", {
@@ -1310,6 +1317,74 @@ export const syncAuditLogs = pgTable("sync_audit_logs", {
   syncAuditLogsRetryIdx: index("sync_audit_logs_retry_idx").on(table.status, table.nextRetryAt),
 }));
 
+// Student enrollments - one row per student per academic session (historical enrolment record)
+// The current-class pointer on students.class_id stays the operational field used by
+// existing queries; this table preserves per-session class history for promotion.
+export const studentEnrollments = pgTable("student_enrollments", {
+  id: serial("id").primaryKey(),
+  studentId: varchar("student_id", { length: 36 }).notNull().references(() => students.id, { onDelete: 'cascade' }),
+  sessionId: integer("session_id").notNull().references(() => academicSessions.id, { onDelete: 'cascade' }),
+  classId: integer("class_id").notNull().references(() => classes.id, { onDelete: 'cascade' }),
+  status: varchar("status", { length: 20 }).notNull().default('active'), // 'active' | 'pending' | 'completed'
+  promotionOutcome: varchar("promotion_outcome", { length: 20 }), // 'promoted' | 'repeating' | 'graduated' | 'withdrawn' | 'deferred' | null while in progress
+  promotedToClassId: integer("promoted_to_class_id").references(() => classes.id, { onDelete: 'set null' }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  studentEnrollmentsStudentIdx: index("student_enrollments_student_idx").on(table.studentId),
+  studentEnrollmentsSessionIdx: index("student_enrollments_session_idx").on(table.sessionId),
+  studentEnrollmentsClassIdx: index("student_enrollments_class_idx").on(table.classId),
+  // DB-level guard: a student can only have ONE enrolment per academic session
+  studentEnrollmentsUniqueIdx: uniqueIndex("student_enrollments_unique_idx").on(table.studentId, table.sessionId),
+}));
+
+// Promotion batches - one controlled bulk promotion execution
+export const promotionBatches = pgTable("promotion_batches", {
+  id: serial("id").primaryKey(),
+  sourceSessionId: integer("source_session_id").notNull().references(() => academicSessions.id),
+  destinationSessionId: integer("destination_session_id").notNull().references(() => academicSessions.id),
+  executedBy: varchar("executed_by", { length: 36 }).notNull().references(() => users.id),
+  status: varchar("status", { length: 20 }).notNull().default('completed'), // 'completed' | 'failed'
+  totalStudents: integer("total_students").notNull().default(0),
+  promotedCount: integer("promoted_count").notNull().default(0),
+  repeatingCount: integer("repeating_count").notNull().default(0),
+  graduatedCount: integer("graduated_count").notNull().default(0),
+  withdrawnCount: integer("withdrawn_count").notNull().default(0),
+  deferredCount: integer("deferred_count").notNull().default(0),
+  failedCount: integer("failed_count").notNull().default(0),
+  notes: text("notes"),
+  executedAt: timestamp("executed_at").notNull().defaultNow(),
+}, (table) => ({
+  promotionBatchesSourceIdx: index("promotion_batches_source_idx").on(table.sourceSessionId),
+  promotionBatchesDestIdx: index("promotion_batches_dest_idx").on(table.destinationSessionId),
+  promotionBatchesExecutedByIdx: index("promotion_batches_executed_by_idx").on(table.executedBy),
+  promotionBatchesExecutedAtIdx: index("promotion_batches_executed_at_idx").on(table.executedAt),
+  // DB-level guard: one promotion batch per session transition (failed batches may be re-run)
+  promotionBatchesTransitionUniqueIdx: uniqueIndex("promotion_batches_transition_unique_idx")
+    .on(table.sourceSessionId, table.destinationSessionId)
+    .where(sql`status <> 'failed'`),
+}));
+
+// Promotion records - per-student outcome within a batch (audit history)
+export const promotionRecords = pgTable("promotion_records", {
+  id: serial("id").primaryKey(),
+  batchId: integer("batch_id").notNull().references(() => promotionBatches.id, { onDelete: 'cascade' }),
+  studentId: varchar("student_id", { length: 36 }).notNull().references(() => students.id, { onDelete: 'cascade' }),
+  fromClassId: integer("from_class_id").references(() => classes.id, { onDelete: 'set null' }),
+  toClassId: integer("to_class_id").references(() => classes.id, { onDelete: 'set null' }),
+  outcome: varchar("outcome", { length: 20 }).notNull(), // 'promoted' | 'repeating' | 'graduated' | 'withdrawn' | 'deferred'
+  status: varchar("status", { length: 20 }).notNull().default('success'), // 'success' | 'failed'
+  reason: text("reason"),
+  errorMessage: text("error_message"),
+  correctedBy: varchar("corrected_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  correctedAt: timestamp("corrected_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  promotionRecordsBatchIdx: index("promotion_records_batch_idx").on(table.batchId),
+  promotionRecordsStudentIdx: index("promotion_records_student_idx").on(table.studentId),
+  promotionRecordsOutcomeIdx: index("promotion_records_outcome_idx").on(table.outcome),
+}));
+
 // Export types (compatible with SQLite schema types)
 export type Role = typeof roles.$inferSelect;
 export type InsertRole = typeof roles.$inferInsert;
@@ -1413,6 +1488,13 @@ export type ClassSubjectMapping = typeof classSubjectMappings.$inferSelect;
 export type InsertClassSubjectMapping = typeof classSubjectMappings.$inferInsert;
 export type SyncAuditLog = typeof syncAuditLogs.$inferSelect;
 export type InsertSyncAuditLog = typeof syncAuditLogs.$inferInsert;
+
+export type StudentEnrollment = typeof studentEnrollments.$inferSelect;
+export type InsertStudentEnrollment = typeof studentEnrollments.$inferInsert;
+export type PromotionBatch = typeof promotionBatches.$inferSelect;
+export type InsertPromotionBatch = typeof promotionBatches.$inferInsert;
+export type PromotionRecord = typeof promotionRecords.$inferSelect;
+export type InsertPromotionRecord = typeof promotionRecords.$inferInsert;
 export type SyllabusTopic = typeof syllabusTopics.$inferSelect;
 export type InsertSyllabusTopic = typeof syllabusTopics.$inferInsert;
 export type ExamQuestionBankLink = typeof examQuestionBankLinks.$inferSelect;

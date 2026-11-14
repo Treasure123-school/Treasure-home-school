@@ -38,6 +38,7 @@ import { termsRoutes, sessionsRoutes, calendarRoutes } from "./modules/academic-
 import { authRouter } from "./modules/auth";
 import { reportCardsRouter } from "./modules/report-cards";
 import { classesRoutes as classesRouter, classMappingsRoutes as classMappingsRouter, studentRankRoutes as studentRankRouter } from "./modules/classes";
+import { promotionsRouter } from "./modules/promotions";
 import uploadRoutes from "./routes/upload.routes";
 import messagesRoutes from "./routes/messages.routes";
 import lessonNotesRoutes from "./routes/lesson-notes.routes";
@@ -118,6 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use('/api/terms', termsRoutes);
   app.use('/api/sessions', sessionsRoutes);
   app.use('/api/academic-calendar', calendarRoutes);
+  app.use('/api/admin/promotions', promotionsRouter);
   app.use("/api/upload", uploadRoutes);
   app.use("/api/billing", billingRouter);
   app.use(websiteManagementRoutes);

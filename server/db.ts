@@ -13,9 +13,22 @@
 
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
+import net from "net";
 import * as pgSchema from "@shared/schema.pg";
 
 const { Pool } = pg;
+
+// Node >= 20 enables Happy-Eyeballs (autoSelectFamily) with a 250ms per-attempt
+// timeout. Neon accepts connections in ~300-400ms+, so every pooled connection
+// attempt was aborted with AggregateError ETIMEDOUT/ENETUNREACH while other
+// clients (psql) connected fine. Give each address a realistic window and
+// skip unreachable IPv6 entirely.
+if (typeof net.setDefaultAutoSelectFamily === 'function') {
+  net.setDefaultAutoSelectFamily(false);
+}
+if (typeof net.setDefaultAutoSelectFamilyAttemptTimeout === 'function') {
+  net.setDefaultAutoSelectFamilyAttemptTimeout(5000);
+}
 
 const isProduction = process.env.NODE_ENV === 'production';
 const databaseUrl = process.env.DATABASE_URL;
@@ -51,9 +64,16 @@ function initializeDatabase() {
       // Hard cap per statement: protects against pathological queries
       // stalling the pool on a slow remote database.
       statement_timeout: 30000,
-      // Detect dead connections promptly (TCP keepalive on Neon).
-      keepAlive: true,
-    });
+    // Detect dead connections promptly (TCP keepalive on Neon).
+    keepAlive: true,
+  });
+  // CRITICAL: without this handler, a network drop on an IDLE pooled connection
+  // (e.g. ECONNABORTED on TLS socket) emits an unhandled 'error' event on the
+  // pool and CRASHES the whole server. pg-pool removes the broken client and
+  // continues serving when this handler is present.
+  pool.on('error', (err: NodeJS.ErrnoException) => {
+    console.error('[DB] Idle client connection error (removed from pool):', err.code || err.message);
+  });
     const dbInstance = drizzle(pool, { schema: pgSchema });
     console.log('PostgreSQL database initialized (direct connection for Drizzle ORM compatibility)');
     return dbInstance;

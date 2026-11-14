@@ -7,7 +7,7 @@ import {
   Clock, PenTool, CheckSquare, Award, Star, Library, DollarSign, Trophy, HelpCircle,
   Inbox, Megaphone, MessagesSquare, ClipboardPen, BarChart3, FolderOpen, RotateCcw,
   Layers, Database, CreditCard, Receipt, ListChecks, PanelLeftClose, PanelLeftOpen,
-  Globe, Newspaper, Images, BookMarked, Wrench,
+  Globe, Newspaper, Images, BookMarked, Wrench, TrendingUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth';
@@ -230,6 +230,7 @@ export default function PortalLayout({ children, userRole, userName, userInitial
             setIsOpen: (open: boolean) => setOpenMenuKey(open ? 'admin-students' : null),
             items: [
               { href: `/portal/${userRole}/students`, icon: Users, label: 'All Students' },
+              { href: `/portal/${userRole}/students/promotion`, icon: TrendingUp, label: 'Promotion & Rollover' },
               { href: `/portal/${userRole}/parents`, icon: Users, label: 'Parents' },
               { href: `/portal/${userRole}/attendance`, icon: Calendar, label: 'Attendance' },
             ],

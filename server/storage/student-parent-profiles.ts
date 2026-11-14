@@ -3,7 +3,7 @@
 import { db, normalizeUuid, schema } from '../storage/helpers';
 import { getPgPool } from '../db';
 import { AcademicSession, AcademicTerm, Attendance, Class, Exam, InsertAcademicSession, InsertAttendance, InsertClass, InsertParentProfile, InsertStudent, InsertSubject, InsertUser, ParentProfile, Role, Student, Subject, User } from '@shared/schema.pg';
-import { and, asc, desc, eq, inArray, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, ne, or, sql } from 'drizzle-orm';
 import { DatabaseStorageUserLifecycle } from './user-lifecycle-management'
 import type { IStorage } from './types'
 
@@ -320,6 +320,7 @@ export class DatabaseStorageStudentParentProfiles extends DatabaseStorageUserLif
       return await this.db.select().from(schema.students).orderBy(asc(schema.students.createdAt));
     } else {
       // Only return students with active user accounts
+      // (graduated/withdrawn accounts are preserved but hidden from active lists)
       return await this.db.select({
         id: schema.students.id,
         admissionNumber: schema.students.admissionNumber,
@@ -327,12 +328,17 @@ export class DatabaseStorageStudentParentProfiles extends DatabaseStorageUserLif
         parentId: schema.students.parentId,
         admissionDate: schema.students.admissionDate,
         emergencyContact: schema.students.emergencyContact,
+        emergencyPhone: schema.students.emergencyPhone,
         medicalInfo: schema.students.medicalInfo,
         createdAt: schema.students.createdAt,
       })
         .from(schema.students)
         .innerJoin(schema.users, eq(schema.students.id, schema.users.id))
-        .where(eq(schema.users.isActive, true))
+        .where(and(
+          eq(schema.users.isActive, true),
+          ne(schema.users.status, 'graduated'),
+          ne(schema.users.status, 'withdrawn'),
+        ))
         .orderBy(asc(schema.students.createdAt));
     }
   }

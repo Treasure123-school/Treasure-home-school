@@ -86,6 +86,7 @@ const BillingOutstanding = lazy(() => import('@/pages/portal/BillingOutstanding'
 const BillingReports = lazy(() => import('@/pages/portal/BillingReports'));
 const AttendanceManagement = lazy(() => import('@/pages/portal/AttendanceManagement'));
 const ParentManagement = lazy(() => import('@/pages/portal/ParentManagement'));
+const StudentPromotion = lazy(() => import('@/pages/portal/StudentPromotion'));
 const AdminTimetable = lazy(() => import('@/pages/portal/AdminTimetable'));
 const AdminMessages = lazy(() => import('@/pages/portal/AdminMessages'));
 const ParentMessages = lazy(() => import('@/pages/portal/ParentMessages'));
@@ -213,6 +214,7 @@ function PortalShell({ role }: { role: 'student' | 'teacher' | 'admin' | 'parent
             <Route path="/portal/admin/users" component={UserManagement} />
             <Route path="/portal/admin/audit-logs" component={AuditLogs} />
             <Route path="/portal/admin/students" component={StudentManagement} />
+            <Route path="/portal/admin/students/promotion" component={StudentPromotion} />
             <Route path="/portal/admin/teachers" component={TeachersManagement} />
             <Route path="/portal/admin/classes" component={ClassesManagement} />
             <Route path="/portal/admin/subjects" component={SubjectsManagement} />
