@@ -17,11 +17,9 @@ function useCalMut(
   optimisticUpdate?: (id: number, oldData: any) => any
 ) {
   const { toast } = useToast();
-  const calendar = useAcademicCalendar();
   const CALENDAR_KEY = ['/api/academic-calendar/current'];
 
   return {
-    calendar,
     mut: useMutation({
       mutationFn: fn,
       // Apply optimistic update immediately (before server responds)
@@ -43,8 +41,8 @@ function useCalMut(
       },
       onSuccess: () => {
         toast({ title: 'Success', description });
-        // Refetch to sync with server (in case of differences)
-        calendar.invalidate();
+        // SocketIO will handle the refetch when server emits table_change event
+        // No manual refetch needed - prevents double refetch and flickering
       },
       onError: (e: any, _id, context: any) => {
         // Rollback optimistic update on error
@@ -53,10 +51,8 @@ function useCalMut(
         }
         toast({ title: errorTitle, description: e.message || 'Operation failed.', variant: 'destructive' });
       },
-      // Always refetch after mutation settles to ensure consistency
-      onSettled: () => {
-        calendar.invalidate();
-      },
+      // SocketIO handles refetching - no manual invalidation needed
+      // This prevents race conditions and flickering from multiple refetches
     }),
   };
 }
