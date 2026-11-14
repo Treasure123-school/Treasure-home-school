@@ -21,6 +21,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type PromotionOutcome = 'promoted' | 'repeating' | 'graduated' | 'withdrawn' | 'deferred';
 
+interface PreviewStudent {
+  id: string;
+  name: string;
+  admissionNumber: string;
+  currentClassId: number;
+  currentClassName: string;
+  department: string | null;
+  accountStatus: string;
+  hasSourceEnrollment: boolean;
+  alreadyProcessed: boolean;
+  suggestedDestinationClassId: number | null;
+  suggestedDestinationClassName: string | null;
+  suggestedOutcome: PromotionOutcome;
+}
+
 interface PreviewData {
   sourceSession: any;
   destinationSession: any;
@@ -45,6 +60,8 @@ interface PreviewData {
     withdrawn: number;
     deferred: number;
   };
+  students: PreviewStudent[];
+  existingBatches: any[];
 }
 
 interface ClassMapping {
@@ -55,13 +72,11 @@ interface ClassMapping {
   isGraduationLevel: boolean;
 }
 
-interface StudentOutcomeOverride {
-  studentId: string;
-  studentName: string;
-  currentClass: string;
+/** Per-student outcome assignment (defaults from preview, overridable in Step 3). */
+interface StudentAssignment {
   outcome: PromotionOutcome;
-  destinationClassId?: number;
-  reason?: string;
+  toClassId: number | null;
+  overridden: boolean;
 }
 
 const WIZARD_STEPS = [
@@ -82,7 +97,7 @@ export default function StudentPromotion() {
   const [sourceSessionId, setSourceSessionId] = useState<string>('');
   const [destSessionId, setDestSessionId] = useState<string>('');
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
-  const [studentOverrides, setStudentOverrides] = useState<Map<string, StudentOutcomeOverride>>(new Map());
+  const [studentAssignments, setStudentAssignments] = useState<Record<string, StudentAssignment>>({});
   const [executionBatchId, setExecutionBatchId] = useState<number | null>(null);
 
   // Fetch academic sessions
@@ -119,6 +134,16 @@ export default function StudentPromotion() {
       return await response.json();
     },
     onSuccess: (data) => {
+      // Initialize per-student assignments from server-suggested outcomes
+      const assignments: Record<string, StudentAssignment> = {};
+      (data.students || []).forEach((s: PreviewStudent) => {
+        assignments[s.id] = {
+          outcome: s.suggestedOutcome || 'promoted',
+          toClassId: s.suggestedDestinationClassId,
+          overridden: false,
+        };
+      });
+      setStudentAssignments(assignments);
       setPreviewData(data);
       setCurrentStep(2);
     },
@@ -134,28 +159,36 @@ export default function StudentPromotion() {
   // Execute promotion mutation
   const executeMutation = useMutation({
     mutationFn: async () => {
-      const overridesArray = Array.from(studentOverrides.values()).map(o => ({
-        studentId: o.studentId,
-        outcome: o.outcome,
-        destinationClassId: o.destinationClassId,
-        reason: o.reason,
+      if (!previewData) throw new Error('No preview data');
+
+      // Send ALL students with their (possibly overridden) outcomes
+      const students = previewData.students.map((s) => ({
+        studentId: s.id,
+        outcome: studentAssignments[s.id]?.outcome || s.suggestedOutcome || 'promoted',
+        toClassId: studentAssignments[s.id]?.toClassId ?? s.suggestedDestinationClassId ?? null,
+        reason: studentAssignments[s.id]?.overridden ? `Manual override to ${studentAssignments[s.id].outcome}` : undefined,
       }));
 
       const response = await apiRequest('POST', '/api/admin/promotions/execute', {
-        sourceSessionId: sourceSessionId!,
-        destinationSessionId: destSessionId!,
-        studentOutcomes: overridesArray.length > 0 ? overridesArray : undefined,
+        sourceSessionId: Number(sourceSessionId),
+        destinationSessionId: Number(destSessionId),
+        students,
       });
       return await response.json();
     },
     onSuccess: (data) => {
-      setExecutionBatchId(data.batchId);
+      setExecutionBatchId(data.batch?.id ?? null);
       setCurrentStep(5);
       queryClient.invalidateQueries({ queryKey: ['/api/admin/promotions/history'] });
       queryClient.invalidateQueries({ queryKey: ['/api/students'] });
+      const b = data.batch || {};
+      const failed = b.failedCount || 0;
       toast({
-        title: 'Promotion Complete',
-        description: `Successfully promoted ${data.successCount} students`,
+        title: failed > 0 ? 'Promotion Completed with Errors' : 'Promotion Complete',
+        description: failed > 0
+          ? `Processed ${b.totalStudents ?? 0} students: ${b.promotedCount ?? 0} promoted, ${b.repeatingCount ?? 0} repeating, ${b.graduatedCount ?? 0} graduated, ${failed} failed`
+          : `Processed ${b.totalStudents ?? 0} students: ${b.promotedCount ?? 0} promoted, ${b.repeatingCount ?? 0} repeating, ${b.graduatedCount ?? 0} graduated`,
+        variant: failed > 0 ? 'destructive' : 'default',
       });
     },
     onError: (error: any) => {
@@ -173,7 +206,7 @@ export default function StudentPromotion() {
     setSourceSessionId('');
     setDestSessionId('');
     setPreviewData(null);
-    setStudentOverrides(new Map());
+    setStudentAssignments({});
     setExecutionBatchId(null);
   };
 
@@ -213,7 +246,7 @@ export default function StudentPromotion() {
     setSourceSessionId('');
     setDestSessionId('');
     setPreviewData(null);
-    setStudentOverrides(new Map());
+    setStudentAssignments({});
     setExecutionBatchId(null);
   };
 
@@ -340,8 +373,8 @@ export default function StudentPromotion() {
             <StepSetOutcomes
               data={previewData}
               classes={classes}
-              overrides={studentOverrides}
-              onOverridesChange={setStudentOverrides}
+              assignments={studentAssignments}
+              onAssignmentsChange={setStudentAssignments}
             />
           )}
 
@@ -349,7 +382,7 @@ export default function StudentPromotion() {
           {currentStep === 4 && previewData && (
             <StepReview
               data={previewData}
-              overrides={studentOverrides}
+              assignments={studentAssignments}
               sourceSessionId={sourceSessionId}
               destSessionId={destSessionId}
               sessions={sessions}
@@ -531,204 +564,170 @@ function StepPreview({ data }: { data: PreviewData }) {
   );
 }
 
-function StepSetOutcomes({ data, classes, overrides, onOverridesChange }: {
+function StepSetOutcomes({ data, classes, assignments, onAssignmentsChange }: {
   data: PreviewData;
   classes: any[];
-  overrides: Map<string, StudentOutcomeOverride>;
-  onOverridesChange: (overrides: Map<string, StudentOutcomeOverride>) => void;
+  assignments: Record<string, StudentAssignment>;
+  onAssignmentsChange: (assignments: Record<string, StudentAssignment>) => void;
 }) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStudent, setSelectedStudent] = useState<any>(null);
-  const [selectedOutcome, setSelectedOutcome] = useState<PromotionOutcome>('promoted');
-  const [selectedDestClass, setSelectedDestClass] = useState<string>('');
-  
-  // Fetch students from source session
-  const { data: students = [], isLoading: loadingStudents } = useQuery({
-    queryKey: ['/api/students'],
-    queryFn: async () => {
-      const response = await apiRequest('GET', '/api/students');
-      return await response.json();
-    },
-  });
+  const [classFilter, setClassFilter] = useState<string>('all');
 
-  // Filter students by search term
-  const filteredStudents = students.filter((s: any) => {
-    if (!searchTerm) return false;
+  const handleUpdate = (studentId: string, patch: Partial<StudentAssignment>) => {
+    const current = assignments[studentId];
+    if (!current) return;
+    onAssignmentsChange({
+      ...assignments,
+      [studentId]: { ...current, ...patch, overridden: true },
+    });
+  };
+
+  const handleReset = (studentId: string) => {
+    const s = data.students.find(st => st.id === studentId);
+    if (!s) return;
+    onAssignmentsChange({
+      ...assignments,
+      [studentId]: {
+        outcome: s.suggestedOutcome || 'promoted',
+        toClassId: s.suggestedDestinationClassId,
+        overridden: false,
+      },
+    });
+  };
+
+  const filteredStudents = data.students.filter((s) => {
+    if (classFilter !== 'all' && s.currentClassId !== Number(classFilter)) return false;
+    if (!searchTerm) return true;
     const search = searchTerm.toLowerCase();
     return (
-      s.firstName?.toLowerCase().includes(search) ||
-      s.lastName?.toLowerCase().includes(search) ||
-      s.username?.toLowerCase().includes(search) ||
-      `${s.firstName} ${s.lastName}`.toLowerCase().includes(search)
+      s.name?.toLowerCase().includes(search) ||
+      s.admissionNumber?.toLowerCase().includes(search) ||
+      s.currentClassName?.toLowerCase().includes(search)
     );
   });
 
-  const handleAddOverride = () => {
-    if (!selectedStudent) return;
-    
-    const newOverride: StudentOutcomeOverride = {
-      studentId: selectedStudent.id,
-      studentName: `${selectedStudent.firstName} ${selectedStudent.lastName}`,
-      currentClass: selectedStudent.className || 'Unknown',
-      outcome: selectedOutcome,
-      destinationClassId: selectedDestClass ? Number(selectedDestClass) : undefined,
-      reason: `Manual override to ${selectedOutcome}`,
-    };
-
-    const newOverrides = new Map(overrides);
-    newOverrides.set(selectedStudent.id, newOverride);
-    onOverridesChange(newOverrides);
-    
-    // Reset form
-    setSelectedStudent(null);
-    setSearchTerm('');
-    setSelectedOutcome('promoted');
-    setSelectedDestClass('');
-  };
-
-  const handleRemoveOverride = (studentId: string) => {
-    const newOverrides = new Map(overrides);
-    newOverrides.delete(studentId);
-    onOverridesChange(newOverrides);
-  };
+  const overrideCount = Object.values(assignments).filter(a => a.overridden).length;
 
   return (
     <div className="space-y-4">
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          By default, all students will follow their class progression rules. Use this step to override individual student outcomes (e.g., mark as repeating, withdrawn, or deferred).
+          Each student shows the server-suggested outcome based on class progression rules. Change any student's outcome below —
+          only changed students count as overrides. Students already processed in a previous batch are skipped automatically.
         </AlertDescription>
       </Alert>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Add Student Override</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label>Search Student</Label>
-            <Input
-              placeholder="Type student name or ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            {loadingStudents && searchTerm && (
-              <p className="text-xs text-muted-foreground">Loading students...</p>
-            )}
-            {!loadingStudents && searchTerm && filteredStudents.length > 0 && (
-              <div className="border rounded-md max-h-40 overflow-y-auto">
-                {filteredStudents.slice(0, 10).map((student: any) => (
-                  <div
-                    key={student.id}
-                    className="p-2 hover:bg-muted cursor-pointer border-b last:border-b-0"
-                    onClick={() => {
-                      setSelectedStudent(student);
-                      setSearchTerm(`${student.firstName} ${student.lastName}`);
-                    }}
+      {overrideCount > 0 && (
+        <p className="text-sm font-medium text-amber-600">
+          ⚠ {overrideCount} student(s) have custom overrides
+        </p>
+      )}
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1">
+          <Label className="text-xs">Search</Label>
+          <Input
+            placeholder="Name, admission number or class..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-xs">Filter by Current Class</Label>
+          <Select value={classFilter} onValueChange={setClassFilter}>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Classes</SelectItem>
+              {data.classGroups.filter(c => c.studentCount > 0).map((c) => (
+                <SelectItem key={c.id} value={c.id.toString()}>
+                  {c.name} ({c.studentCount})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="border rounded-md max-h-80 overflow-y-auto">
+        {filteredStudents.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">No students match your search</p>
+        ) : (
+          filteredStudents.map((student) => {
+            const a = assignments[student.id];
+            if (!a) return null;
+            return (
+              <div key={student.id} className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 border-b last:border-b-0">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{student.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {student.currentClassName}
+                    {student.alreadyProcessed && ' • ✓ Already processed (will be skipped)'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Select
+                    value={a.outcome}
+                    onValueChange={(v) => handleUpdate(student.id, { outcome: v as PromotionOutcome })}
                   >
-                    <p className="text-sm font-medium">{student.firstName} {student.lastName}</p>
-                    <p className="text-xs text-muted-foreground">{student.username} • {student.className || 'No class'}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-            {!loadingStudents && searchTerm && filteredStudents.length === 0 && (
-              <p className="text-xs text-muted-foreground">No students found</p>
-            )}
-          </div>
-
-          {selectedStudent && (
-            <>
-              <div className="space-y-2">
-                <Label>Outcome</Label>
-                <Select value={selectedOutcome} onValueChange={(v) => setSelectedOutcome(v as PromotionOutcome)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="promoted">Promoted (to next class)</SelectItem>
-                    <SelectItem value="repeating">Repeating (stay in same class)</SelectItem>
-                    <SelectItem value="graduated">Graduated (leave school)</SelectItem>
-                    <SelectItem value="withdrawn">Withdrawn (leave school)</SelectItem>
-                    <SelectItem value="deferred">Deferred (pending enrollment)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {(selectedOutcome === 'promoted' || selectedOutcome === 'repeating') && (
-                <div className="space-y-2">
-                  <Label>Destination Class (Optional)</Label>
-                  <Select value={selectedDestClass} onValueChange={setSelectedDestClass}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Use default progression..." />
+                    <SelectTrigger className="w-[150px] h-8 text-xs">
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {classes.map((cls: any) => (
-                        <SelectItem key={cls.id} value={cls.id.toString()}>
-                          {cls.name} ({cls.level})
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="promoted">Promoted</SelectItem>
+                      <SelectItem value="repeating">Repeating</SelectItem>
+                      <SelectItem value="graduated">Graduated</SelectItem>
+                      <SelectItem value="withdrawn">Withdrawn</SelectItem>
+                      <SelectItem value="deferred">Deferred</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-              )}
-
-              <Button onClick={handleAddOverride} className="w-full">
-                Add Override
-              </Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      {overrides.size > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Custom Outcomes ({overrides.size})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {Array.from(overrides.values()).map((override: StudentOutcomeOverride) => (
-                <div key={override.studentId} className="flex items-center justify-between p-3 border rounded">
-                  <div className="flex-1">
-                    <p className="font-medium text-sm">{override.studentName}</p>
-                    <p className="text-xs text-muted-foreground">{override.currentClass}</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant={
-                      override.outcome === 'promoted' ? 'default' :
-                      override.outcome === 'graduated' ? 'secondary' :
-                      override.outcome === 'repeating' ? 'outline' :
-                      'destructive'
-                    }>
-                      {override.outcome}
-                    </Badge>
+                  {(a.outcome === 'promoted' || a.outcome === 'repeating') && (
+                    <Select
+                      value={a.toClassId?.toString() || ''}
+                      onValueChange={(v) => handleUpdate(student.id, { toClassId: v ? Number(v) : null })}
+                    >
+                      <SelectTrigger className="w-[130px] h-8 text-xs">
+                        <SelectValue placeholder="Default class" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {classes.map((cls: any) => (
+                          <SelectItem key={cls.id} value={cls.id.toString()}>
+                            {cls.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {a.overridden && (
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleRemoveOverride(override.studentId)}
+                      className="h-8 w-8 p-0"
+                      title="Reset to suggested outcome"
+                      onClick={() => handleReset(student.id)}
                     >
-                      <XCircle className="h-4 w-4" />
+                      <RotateCcw className="h-3.5 w-3.5" />
                     </Button>
-                  </div>
+                  )}
+                  {a.overridden && (
+                    <Badge variant="outline" className="text-[10px] px-1.5">overridden</Badge>
+                  )}
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {overrides.size === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-4">
-          No custom outcomes set. All students will follow their default class progression.
-        </p>
-      )}
+              </div>
+            );
+          })
+        )}
+      </div>
+      <p className="text-xs text-muted-foreground text-center">
+        Showing {filteredStudents.length} of {data.students.length} students
+      </p>
     </div>
   );
 }
 
-function StepReview({ data, overrides, sourceSessionId, destSessionId, sessions }: any) {
+function StepReview({ data, assignments, sourceSessionId, destSessionId, sessions }: any) {
   const sourceSession = sessions.find((s: any) => s.id === Number(sourceSessionId));
   const destSession = sessions.find((s: any) => s.id === Number(destSessionId));
 
@@ -762,22 +761,37 @@ function StepReview({ data, overrides, sourceSessionId, destSessionId, sessions 
               <span className="text-sm">Total Students</span>
               <span className="font-medium">{data.stats.totalActiveStudents}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm">To Promote</span>
-              <span className="font-medium text-blue-600">{data.stats.promoted}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm">Repeating</span>
-              <span className="font-medium text-yellow-600">{data.stats.repeating}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm">Graduating</span>
-              <span className="font-medium text-green-600">{data.stats.graduated}</span>
-            </div>
-            {overrides.size > 0 && (
+            {(() => {
+              // Live counts from the actual per-student assignments
+              const counts: Record<string, number> = {};
+              ((Object.values(assignments)) as StudentAssignment[]).forEach((a) => {
+                counts[a.outcome] = (counts[a.outcome] || 0) + 1;
+              });
+              const outcomeLabels: Record<string, string> = {
+                promoted: 'To Promote',
+                repeating: 'Repeating',
+                graduated: 'Graduating',
+                withdrawn: 'Withdrawn',
+                deferred: 'Deferred',
+              };
+              const colors: Record<string, string> = {
+                promoted: 'text-blue-600',
+                repeating: 'text-yellow-600',
+                graduated: 'text-green-600',
+                withdrawn: 'text-red-600',
+                deferred: 'text-purple-600',
+              };
+              return Object.keys(outcomeLabels).filter(k => counts[k] > 0).map((k) => (
+                <div key={k} className="flex justify-between">
+                  <span className="text-sm">{outcomeLabels[k]}</span>
+                  <span className={`font-medium ${colors[k]}`}>{counts[k]}</span>
+                </div>
+              ));
+            })()}
+            {(Object.values(assignments) as StudentAssignment[]).filter(a => a.overridden).length > 0 && (
               <div className="flex justify-between">
-                <span className="text-sm">Custom Outcomes</span>
-                <span className="font-medium">{overrides.size}</span>
+                <span className="text-sm">Custom Overrides</span>
+                <span className="font-medium">{(Object.values(assignments) as StudentAssignment[]).filter(a => a.overridden).length}</span>
               </div>
             )}
           </div>
@@ -884,7 +898,24 @@ function HistoryView({ data, isLoading }: { data: any[]; isLoading: boolean }) {
           <TableBody>
             {data.map((batch: any) => (
               <TableRow key={batch.id}>
-                <TableCell>{new Date(batch.createdAt).toLocaleDateString()}</TableCell>
+                <TableCell>
+                  {batch.executedAt 
+                    ? new Date(batch.executedAt).toLocaleDateString(undefined, { 
+                        year: 'numeric', 
+                        month: 'short', 
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                    : batch.createdAt 
+                      ? new Date(batch.createdAt).toLocaleDateString(undefined, { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric' 
+                        })
+                      : 'N/A'
+                  }
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <span className="text-sm">{batch.sourceSessionYear}</span>
