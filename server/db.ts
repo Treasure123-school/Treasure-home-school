@@ -37,7 +37,23 @@ function initializeDatabase() {
     // which does not support prepared statements used by Drizzle ORM.
     // Strip '-pooler' to use the direct connection endpoint for Drizzle.
     const directUrl = databaseUrl.replace('-pooler.', '.');
-    pool = new Pool({ connectionString: directUrl });
+    pool = new Pool({
+      connectionString: directUrl,
+      // Pool sizing: default is 10. Exam submission fans out several parallel
+      // queries (auto-scoring + per-question options) — keep enough headroom
+      // without overloading Neon's connection limit.
+      max: 10,
+      // Fail fast instead of hanging: a connection that can't be established
+      // within 15s should surface as an error, not freeze the request.
+      connectionTimeoutMillis: 15000,
+      // Reclaim idle connections so we don't hold Neon slots forever.
+      idleTimeoutMillis: 30000,
+      // Hard cap per statement: protects against pathological queries
+      // stalling the pool on a slow remote database.
+      statement_timeout: 30000,
+      // Detect dead connections promptly (TCP keepalive on Neon).
+      keepAlive: true,
+    });
     const dbInstance = drizzle(pool, { schema: pgSchema });
     console.log('PostgreSQL database initialized (direct connection for Drizzle ORM compatibility)');
     return dbInstance;

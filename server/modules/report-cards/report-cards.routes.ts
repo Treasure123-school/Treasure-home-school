@@ -26,7 +26,11 @@ router.get('/settings/positioning-method', authenticateUser, authorizeRoles(ROLE
 router.patch('/settings/positioning-method', authenticateUser, authorizeRoles(ROLES.ADMIN), gradingController.updatePositioningMethod);
 
 // ==================== CORE REPORT CARDS ====================
-router.get('/reports/student-report-card/:studentId', authenticateUser, reportCardsController.getStudentReportCard);
+// NOTE: /reports/student-report-card/:studentId is served by the legacy
+// routes/report-cards.routes.ts (full implementation). The module service
+// still has placeholder draft/published formatting — do NOT re-add this
+// route until calculateDraftReportCard + formatPublishedReportCard are
+// fully ported (see MIGRATION_PROGRESS.md).
 router.get('/reports/class/:classId', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), reportCardsController.getClassReportCards);
 router.post('/reports/generate', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), reportCardsController.generateReportCard);
 

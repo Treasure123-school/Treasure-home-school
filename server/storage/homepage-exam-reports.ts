@@ -164,16 +164,32 @@ export class DatabaseStorageHomepageExamReports extends DatabaseStorageStudentAn
 
       let reportCardId: number;
       if (reportCard.length === 0) {
-        // Create new report card
-        const newReportCard = await db.insert(schema.reportCards)
+        // Create new report card — race-safe: unique index on (student_id, term_id)
+        // makes duplicates impossible; on conflict, re-select the winner's card.
+        const inserted = await db.insert(schema.reportCards)
           .values({
             studentId: gradeData.studentId,
             classId: gradeData.classId || 1, // Should be provided
             termId: gradeData.termId,
             status: 'draft',
           })
+          .onConflictDoNothing({ target: [schema.reportCards.studentId, schema.reportCards.termId] })
           .returning();
-        reportCardId = newReportCard[0].id;
+        if (inserted.length > 0) {
+          reportCardId = inserted[0].id;
+        } else {
+          const winner = await db.select()
+            .from(schema.reportCards)
+            .where(and(
+              eq(schema.reportCards.studentId, gradeData.studentId),
+              eq(schema.reportCards.termId, gradeData.termId)
+            ))
+            .limit(1);
+          if (winner.length === 0) {
+            throw new Error(`Report card for student ${gradeData.studentId}, term ${gradeData.termId} vanished after conflict`);
+          }
+          reportCardId = winner[0].id;
+        }
       } else {
         reportCardId = reportCard[0].id;
       }
@@ -306,21 +322,39 @@ export class DatabaseStorageHomepageExamReports extends DatabaseStorageStudentAn
   async createReportCard(reportCardData: any, grades: any[]): Promise<any> {
     // NOTE: Neon HTTP driver does NOT support transactions
     try {
-      // Create main report card record
-      const reportCard = await this.db.insert(schema.reportCards)
+      // Create main report card record — race-safe against the
+      // (student_id, term_id) unique index: if a concurrent path already
+      // created the card, use it instead of duplicating.
+      const inserted = await this.db.insert(schema.reportCards)
         .values(reportCardData)
+        .onConflictDoNothing({ target: [schema.reportCards.studentId, schema.reportCards.termId] })
         .returning();
+
+      let reportCard = inserted[0];
+      if (!reportCard) {
+        const winner = await this.db.select()
+          .from(schema.reportCards)
+          .where(and(
+            eq(schema.reportCards.studentId, reportCardData.studentId),
+            eq(schema.reportCards.termId, reportCardData.termId)
+          ))
+          .limit(1);
+        if (winner.length === 0) {
+          throw new Error('Report card conflict but no existing card found');
+        }
+        reportCard = winner[0];
+      }
 
       // Link all grade items to this report card sequentially to avoid connection issues
       if (grades.length > 0) {
         for (const grade of grades) {
           await this.db.update(schema.reportCardItems)
-            .set({ reportCardId: reportCard[0].id })
+            .set({ reportCardId: reportCard.id })
             .where(eq(schema.reportCardItems.id, grade.id));
         }
       }
       return {
-        reportCard: reportCard[0],
+        reportCard: reportCard,
         grades: grades
       };
     } catch (error) {

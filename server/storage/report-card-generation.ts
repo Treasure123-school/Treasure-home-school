@@ -350,7 +350,9 @@ export class DatabaseStorageReportCardGeneration extends DatabaseStorageHomepage
             const studentFirstName = studentUser?.firstName || 'Student';
 
             // Create new report card with pre-populated teacher signature and default comments
-            const newReportCard = await db.insert(schema.reportCards)
+            // Race-safe: unique index on (student_id, term_id); on conflict, use the
+            // card a concurrent generation/sync already created.
+            const inserted = await db.insert(schema.reportCards)
               .values({
                 studentId: student.id,
                 classId: classId,
@@ -366,9 +368,25 @@ export class DatabaseStorageReportCardGeneration extends DatabaseStorageHomepage
                 teacherSignedAt: classTeacherSignatureUrl ? new Date() : null,
                 // Default comments will be generated after scores are populated
               })
+              .onConflictDoNothing({ target: [schema.reportCards.studentId, schema.reportCards.termId] })
               .returning();
-            reportCardId = newReportCard[0].id;
-            created++;
+            if (inserted.length > 0) {
+              reportCardId = inserted[0].id;
+              created++;
+            } else {
+              const winner = await db.select()
+                .from(schema.reportCards)
+                .where(and(
+                  eq(schema.reportCards.studentId, student.id),
+                  eq(schema.reportCards.termId, termId)
+                ))
+                .limit(1);
+              if (winner.length === 0) {
+                throw new Error(`Report card for student ${student.id}, term ${termId} vanished after conflict`);
+              }
+              reportCardId = winner[0].id;
+              updated++;
+            }
           } else {
             reportCardId = existingReportCard[0].id;
             updated++;

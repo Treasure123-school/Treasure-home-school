@@ -373,9 +373,32 @@ export class ReportCardsService {
       await db.delete(schema.reportCardItems)
         .where(eq(schema.reportCardItems.reportCardId, reportCard.id));
     } else {
-      [reportCard] = await db.insert(schema.reportCards)
+      // Race-safe: unique index on (student_id, term_id); on conflict, update
+      // the card a concurrent sync already created instead of failing.
+      const inserted = await db.insert(schema.reportCards)
         .values({ ...reportCardData, totalScore, averageScore })
+        .onConflictDoNothing({ target: [schema.reportCards.studentId, schema.reportCards.termId] })
         .returning();
+      if (inserted.length > 0) {
+        reportCard = inserted[0];
+      } else {
+        const winner = await db.select()
+          .from(schema.reportCards)
+          .where(and(
+            eq(schema.reportCards.studentId, data.studentId),
+            eq(schema.reportCards.termId, data.termId)
+          ))
+          .limit(1);
+        if (winner.length === 0) {
+          throw { statusCode: 500, message: 'Report card conflict but no existing card found' };
+        }
+        [reportCard] = await db.update(schema.reportCards)
+          .set({ ...reportCardData, totalScore, averageScore, updatedAt: new Date() })
+          .where(eq(schema.reportCards.id, winner[0].id))
+          .returning();
+        await db.delete(schema.reportCardItems)
+          .where(eq(schema.reportCardItems.reportCardId, reportCard.id));
+      }
     }
 
     // Insert report card items

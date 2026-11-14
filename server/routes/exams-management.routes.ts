@@ -856,61 +856,83 @@ export async function registerExamsManagementRoutes(app: Express) {
         }
       }
 
-      // Build question details for frontend
+      // Build question details for frontend.
+      // FAULT-TOLERANT: Each question's detail is built independently — if one options
+      // query fails (e.g. transient DB pool exhaustion), we degrade that single entry
+      // instead of failing the whole submission response. The exam is already durably
+      // committed at this point; a 500 here would wrongly tell the student their
+      // submission failed.
       const questionDetails = await Promise.all(examQuestions.map(async (q) => {
-        const answer = studentAnswers.find(a => a.questionId === q.id);
-        const options = q.questionType === 'multiple_choice' ? await storage.getQuestionOptions(q.id) : [];
+        try {
+          const answer = studentAnswers.find(a => a.questionId === q.id);
+          const options = q.questionType === 'multiple_choice' ? await storage.getQuestionOptions(q.id) : [];
 
-        // Student Answer Text
-        let studentAnswerText = "No answer provided";
-        if (answer) {
-          if (q.questionType === 'multiple_choice' && answer.selectedOptionId) {
-            const selectedOption = options.find(o => o.id === answer.selectedOptionId);
-            studentAnswerText = selectedOption?.optionText || "Option not found";
-          } else if (answer.textAnswer) {
-            studentAnswerText = answer.textAnswer;
+          // Student Answer Text
+          let studentAnswerText = "No answer provided";
+          if (answer) {
+            if (q.questionType === 'multiple_choice' && answer.selectedOptionId) {
+              const selectedOption = options.find(o => o.id === answer.selectedOptionId);
+              studentAnswerText = selectedOption?.optionText || "Option not found";
+            } else if (answer.textAnswer) {
+              studentAnswerText = answer.textAnswer;
+            }
           }
+
+          // Correct Answer Text from Teacher's setup
+          let correctAnswerText = "Not available";
+          let isCorrect = answer?.isCorrect || false;
+          let pointsAwarded = answer?.pointsEarned || 0;
+
+          if (q.questionType === 'multiple_choice') {
+            const correctOption = options.find(o => o.isCorrect);
+            correctAnswerText = correctOption?.optionText || "Not specified";
+
+            // Re-verify correctness if it's missing or needs enforcement
+            if (answer && answer.selectedOptionId && correctOption) {
+              isCorrect = answer.selectedOptionId === correctOption.id;
+            }
+          } else {
+            try {
+              const expected = typeof q.expectedAnswers === 'string'
+                ? JSON.parse(q.expectedAnswers)
+                : q.expectedAnswers;
+              correctAnswerText = Array.isArray(expected) ? expected.join(", ") : String(expected || "Not specified");
+            } catch (e) {
+              correctAnswerText = String(q.expectedAnswers || "Not specified");
+            }
+          }
+
+          const showAnswers = exam.showCorrectAnswers ?? true;
+          return {
+            questionId: q.id,
+            questionText: q.questionText,
+            questionType: q.questionType,
+            points: q.points,
+            studentAnswer: studentAnswerText,
+            selectedOptionId: answer?.selectedOptionId || null,
+            isCorrect: isCorrect,
+            pointsAwarded: pointsAwarded,
+            // Only expose the correct answer if the teacher has enabled it
+            correctAnswer: showAnswers ? correctAnswerText : undefined,
+            explanation: showAnswers ? q.explanationText : undefined,
+            feedback: answer?.feedbackText || null
+          };
+        } catch (detailError: any) {
+          console.error(`[SUBMIT] Failed to build details for question ${q.id}:`, detailError?.message);
+          return {
+            questionId: q.id,
+            questionText: q.questionText,
+            questionType: q.questionType,
+            points: q.points,
+            studentAnswer: "Details unavailable",
+            selectedOptionId: null,
+            isCorrect: false,
+            pointsAwarded: 0,
+            correctAnswer: undefined,
+            explanation: undefined,
+            feedback: null
+          };
         }
-
-        // Correct Answer Text from Teacher's setup
-        let correctAnswerText = "Not available";
-        let isCorrect = answer?.isCorrect || false;
-        let pointsAwarded = answer?.pointsEarned || 0;
-
-        if (q.questionType === 'multiple_choice') {
-          const correctOption = options.find(o => o.isCorrect);
-          correctAnswerText = correctOption?.optionText || "Not specified";
-
-          // Re-verify correctness if it's missing or needs enforcement
-          if (answer && answer.selectedOptionId && correctOption) {
-            isCorrect = answer.selectedOptionId === correctOption.id;
-          }
-        } else {
-          try {
-            const expected = typeof q.expectedAnswers === 'string'
-              ? JSON.parse(q.expectedAnswers)
-              : q.expectedAnswers;
-            correctAnswerText = Array.isArray(expected) ? expected.join(", ") : String(expected || "Not specified");
-          } catch (e) {
-            correctAnswerText = String(q.expectedAnswers || "Not specified");
-          }
-        }
-
-        const showAnswers = exam.showCorrectAnswers ?? true;
-        return {
-          questionId: q.id,
-          questionText: q.questionText,
-          questionType: q.questionType,
-          points: q.points,
-          studentAnswer: studentAnswerText,
-          selectedOptionId: answer?.selectedOptionId || null,
-          isCorrect: isCorrect,
-          pointsAwarded: pointsAwarded,
-          // Only expose the correct answer if the teacher has enabled it
-          correctAnswer: showAnswers ? correctAnswerText : undefined,
-          explanation: showAnswers ? q.explanationText : undefined,
-          feedback: answer?.feedbackText || null
-        };
       }));
 
       // If showCorrectAnswers is off, clear the details so no breakdown is sent

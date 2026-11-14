@@ -987,13 +987,41 @@ export async function registerReportCardsRoutes(app: Express) {
         await db.delete(schema.reportCardItems)
           .where(eq(schema.reportCardItems.reportCardId, reportCard.id));
       } else {
-        [reportCard] = await db.insert(schema.reportCards)
+        // Race-safe: unique index on (student_id, term_id); on conflict, update
+        // the card a concurrent sync already created instead of failing.
+        const inserted = await db.insert(schema.reportCards)
           .values({
             ...reportCardData,
             totalScore,
             averageScore
           })
+          .onConflictDoNothing({ target: [schema.reportCards.studentId, schema.reportCards.termId] })
           .returning();
+        if (inserted.length > 0) {
+          reportCard = inserted[0];
+        } else {
+          const winner = await db.select()
+            .from(schema.reportCards)
+            .where(and(
+              eq(schema.reportCards.studentId, studentId),
+              eq(schema.reportCards.termId, termId)
+            ))
+            .limit(1);
+          if (winner.length === 0) {
+            throw new Error('Report card conflict but no existing card found');
+          }
+          [reportCard] = await db.update(schema.reportCards)
+            .set({
+              ...reportCardData,
+              totalScore,
+              averageScore,
+              updatedAt: new Date()
+            })
+            .where(eq(schema.reportCards.id, winner[0].id))
+            .returning();
+          await db.delete(schema.reportCardItems)
+            .where(eq(schema.reportCardItems.reportCardId, reportCard.id));
+        }
       }
 
       for (const grade of grades) {
@@ -1287,7 +1315,9 @@ export async function registerReportCardsRoutes(app: Express) {
             await db.delete(schema.reportCardItems)
               .where(eq(schema.reportCardItems.reportCardId, reportCard.id));
           } else {
-            [reportCard] = await db.insert(schema.reportCards)
+            // Race-safe: unique index on (student_id, term_id); on conflict, update
+            // the card a concurrent sync already created instead of failing.
+            const inserted = await db.insert(schema.reportCards)
               .values({
                 studentId: student.id,
                 classId: Number(classId),
@@ -1298,7 +1328,37 @@ export async function registerReportCardsRoutes(app: Express) {
                 generatedBy: req.user!.id,
                 generatedAt: new Date()
               })
+              .onConflictDoNothing({ target: [schema.reportCards.studentId, schema.reportCards.termId] })
               .returning();
+            if (inserted.length > 0) {
+              reportCard = inserted[0];
+            } else {
+              const winner = await db.select()
+                .from(schema.reportCards)
+                .where(
+                  and(
+                    eq(schema.reportCards.studentId, student.id),
+                    eq(schema.reportCards.termId, termId)
+                  )
+                )
+                .limit(1);
+              if (winner.length === 0) {
+                throw new Error(`Report card for student ${student.id}, term ${termId} vanished after conflict`);
+              }
+              [reportCard] = await db.update(schema.reportCards)
+                .set({
+                  totalScore,
+                  averageScore,
+                  status: status || 'draft',
+                  generatedBy: req.user!.id,
+                  generatedAt: new Date(),
+                  updatedAt: new Date()
+                })
+                .where(eq(schema.reportCards.id, winner[0].id))
+                .returning();
+              await db.delete(schema.reportCardItems)
+                .where(eq(schema.reportCardItems.reportCardId, reportCard.id));
+            }
           }
 
           for (const grade of grades) {
