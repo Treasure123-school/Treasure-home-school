@@ -24,18 +24,26 @@ type PromotionOutcome = 'promoted' | 'repeating' | 'graduated' | 'withdrawn' | '
 interface PreviewData {
   sourceSession: any;
   destinationSession: any;
-  outcomes: {
-    class: any;
+  classGroups: {
+    id: number;
+    name: string;
+    level: string;
+    sequenceOrder: number;
+    nextClassId: number | null;
+    nextClassName: string | null;
+    isGraduationLevel: boolean;
+    studentCount: number;
+  }[];
+  stats: {
+    totalActiveStudents: number;
+    awaitingDecision: number;
+    alreadyProcessed: number;
+    graduatingStudents: number;
     promoted: number;
     repeating: number;
     graduated: number;
-    total: number;
-  }[];
-  summary: {
-    totalStudents: number;
-    toBePromoted: number;
-    repeating: number;
-    graduated: number;
+    withdrawn: number;
+    deferred: number;
   };
 }
 
@@ -71,8 +79,8 @@ export default function StudentPromotion() {
   // Wizard state
   const [currentStep, setCurrentStep] = useState(1);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
-  const [sourceSessionId, setSourceSessionId] = useState<number | null>(null);
-  const [destSessionId, setDestSessionId] = useState<number | null>(null);
+  const [sourceSessionId, setSourceSessionId] = useState<string>('');
+  const [destSessionId, setDestSessionId] = useState<string>('');
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [studentOverrides, setStudentOverrides] = useState<Map<string, StudentOutcomeOverride>>(new Map());
   const [executionBatchId, setExecutionBatchId] = useState<number | null>(null);
@@ -162,8 +170,8 @@ export default function StudentPromotion() {
   const handleStartWizard = () => {
     setIsWizardOpen(true);
     setCurrentStep(1);
-    setSourceSessionId(null);
-    setDestSessionId(null);
+    setSourceSessionId('');
+    setDestSessionId('');
     setPreviewData(null);
     setStudentOverrides(new Map());
     setExecutionBatchId(null);
@@ -202,8 +210,8 @@ export default function StudentPromotion() {
   const handleCloseWizard = () => {
     setIsWizardOpen(false);
     setCurrentStep(1);
-    setSourceSessionId(null);
-    setDestSessionId(null);
+    setSourceSessionId('');
+    setDestSessionId('');
     setPreviewData(null);
     setStudentOverrides(new Map());
     setExecutionBatchId(null);
@@ -281,9 +289,12 @@ export default function StudentPromotion() {
 
       {/* Wizard Dialog */}
       <Dialog open={isWizardOpen} onOpenChange={setIsWizardOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" aria-describedby="wizard-description">
           <DialogHeader>
             <DialogTitle>Student Promotion Wizard</DialogTitle>
+            <p id="wizard-description" className="sr-only">
+              A 5-step guided process to bulk-promote students between academic sessions
+            </p>
           </DialogHeader>
 
           {/* Step Indicator */}
@@ -423,14 +434,14 @@ function StepSelectSessions({ sessions, completedSessions, activeSessions, sourc
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label>Source Session (Completed)</Label>
-          <Select value={sourceSessionId?.toString()} onValueChange={(v) => onSourceChange(Number(v))}>
+          <Select value={sourceSessionId || ''} onValueChange={onSourceChange}>
             <SelectTrigger>
               <SelectValue placeholder="Select source session..." />
             </SelectTrigger>
             <SelectContent>
               {completedSessions.map((s: any) => (
                 <SelectItem key={s.id} value={s.id.toString()}>
-                  {s.sessionYear} ({s.status})
+                  {s.year || s.sessionYear} ({s.status})
                 </SelectItem>
               ))}
             </SelectContent>
@@ -442,14 +453,14 @@ function StepSelectSessions({ sessions, completedSessions, activeSessions, sourc
 
         <div className="space-y-2">
           <Label>Destination Session (Active)</Label>
-          <Select value={destSessionId?.toString()} onValueChange={(v) => onDestChange(Number(v))}>
+          <Select value={destSessionId || ''} onValueChange={onDestChange}>
             <SelectTrigger>
               <SelectValue placeholder="Select destination session..." />
             </SelectTrigger>
             <SelectContent>
               {activeSessions.map((s: any) => (
                 <SelectItem key={s.id} value={s.id.toString()}>
-                  {s.sessionYear} ({s.status})
+                  {s.year || s.sessionYear} ({s.status})
                 </SelectItem>
               ))}
             </SelectContent>
@@ -464,42 +475,56 @@ function StepSelectSessions({ sessions, completedSessions, activeSessions, sourc
 }
 
 function StepPreview({ data }: { data: PreviewData }) {
+  const classesWithStudents = data.classGroups.filter(c => c.studentCount > 0);
+  
   return (
     <div className="space-y-4">
       <MiniStatGrid cols={4}>
-        <MiniStatCard label="Total Students" value={data.summary.totalStudents} icon={Users} />
-        <MiniStatCard label="To Promote" value={data.summary.toBePromoted} icon={ArrowRight} color="text-blue-600" />
-        <MiniStatCard label="Repeating" value={data.summary.repeating} icon={RotateCcw} color="text-yellow-600" />
-        <MiniStatCard label="Graduating" value={data.summary.graduated} icon={GraduationCap} color="text-green-600" />
+        <MiniStatCard label="Total Students" value={data.stats.totalActiveStudents} icon={Users} />
+        <MiniStatCard label="To Promote" value={data.stats.promoted} icon={ArrowRight} color="text-blue-600" />
+        <MiniStatCard label="Repeating" value={data.stats.repeating} icon={RotateCcw} color="text-yellow-600" />
+        <MiniStatCard label="Graduating" value={data.stats.graduated} icon={GraduationCap} color="text-green-600" />
       </MiniStatGrid>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Promotion by Class</CardTitle>
+          <CardTitle className="text-base">Class Progression Mappings</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Class</TableHead>
-                <TableHead className="text-right">Total</TableHead>
-                <TableHead className="text-right">Promoted</TableHead>
-                <TableHead className="text-right">Repeating</TableHead>
-                <TableHead className="text-right">Graduated</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.outcomes.map((outcome) => (
-                <TableRow key={outcome.class.id}>
-                  <TableCell className="font-medium">{outcome.class.name}</TableCell>
-                  <TableCell className="text-right">{outcome.total}</TableCell>
-                  <TableCell className="text-right">{outcome.promoted}</TableCell>
-                  <TableCell className="text-right">{outcome.repeating}</TableCell>
-                  <TableCell className="text-right">{outcome.graduated}</TableCell>
+          {classesWithStudents.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Current Class</TableHead>
+                  <TableHead>Level</TableHead>
+                  <TableHead>Students</TableHead>
+                  <TableHead>Next Class</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {classesWithStudents.map((cls) => (
+                  <TableRow key={cls.id}>
+                    <TableCell className="font-medium">{cls.name}</TableCell>
+                    <TableCell>{cls.level}</TableCell>
+                    <TableCell className="text-right">{cls.studentCount}</TableCell>
+                    <TableCell>
+                      {cls.isGraduationLevel ? (
+                        <Badge variant="secondary">Graduation</Badge>
+                      ) : cls.nextClassName ? (
+                        <span className="text-sm">{cls.nextClassName}</span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Not set</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No students found in source session
+            </p>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -516,7 +541,7 @@ function StepSetOutcomes({ data, classes, overrides, onOverridesChange }: {
   
   // Build list of all students from preview data
   const allStudents: any[] = [];
-  data.outcomes.forEach((outcome: any) => {
+  data.classGroups.forEach((classGroup: any) => {
     // Students would come from a separate endpoint — for now show placeholder
   });
 
@@ -567,8 +592,8 @@ function StepSetOutcomes({ data, classes, overrides, onOverridesChange }: {
 }
 
 function StepReview({ data, overrides, sourceSessionId, destSessionId, sessions }: any) {
-  const sourceSession = sessions.find((s: any) => s.id === sourceSessionId);
-  const destSession = sessions.find((s: any) => s.id === destSessionId);
+  const sourceSession = sessions.find((s: any) => s.id === Number(sourceSessionId));
+  const destSession = sessions.find((s: any) => s.id === Number(destSessionId));
 
   return (
     <div className="space-y-4">
@@ -587,30 +612,30 @@ function StepReview({ data, overrides, sourceSessionId, destSessionId, sessions 
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Source Session</p>
-              <p className="font-medium">{sourceSession?.sessionYear}</p>
+              <p className="font-medium">{sourceSession?.year || sourceSession?.sessionYear}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Destination Session</p>
-              <p className="font-medium">{destSession?.sessionYear}</p>
+              <p className="font-medium">{destSession?.year || destSession?.sessionYear}</p>
             </div>
           </div>
 
           <div className="pt-3 border-t space-y-2">
             <div className="flex justify-between">
               <span className="text-sm">Total Students</span>
-              <span className="font-medium">{data.summary.totalStudents}</span>
+              <span className="font-medium">{data.stats.totalActiveStudents}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm">To Promote</span>
-              <span className="font-medium text-blue-600">{data.summary.toBePromoted}</span>
+              <span className="font-medium text-blue-600">{data.stats.promoted}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm">Repeating</span>
-              <span className="font-medium text-yellow-600">{data.summary.repeating}</span>
+              <span className="font-medium text-yellow-600">{data.stats.repeating}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-sm">Graduating</span>
-              <span className="font-medium text-green-600">{data.summary.graduated}</span>
+              <span className="font-medium text-green-600">{data.stats.graduated}</span>
             </div>
             {overrides.size > 0 && (
               <div className="flex justify-between">
