@@ -10,15 +10,53 @@ async function call(method: 'PUT' | 'DELETE' | 'POST', url: string, body?: unkno
   return r.json();
 }
 
-function useCalMut(description: string, fn: (id: number) => Promise<any>, errorTitle = 'Error') {
+function useCalMut(
+  description: string,
+  fn: (id: number) => Promise<any>,
+  errorTitle = 'Error',
+  optimisticUpdate?: (id: number, oldData: any) => any
+) {
   const { toast } = useToast();
   const calendar = useAcademicCalendar();
+  const CALENDAR_KEY = ['/api/academic-calendar/current'];
+
   return {
     calendar,
     mut: useMutation({
       mutationFn: fn,
-      onSuccess: () => { toast({ title: 'Success', description }); calendar.invalidate(); },
-      onError: (e: any) => toast({ title: errorTitle, description: e.message || 'Operation failed.', variant: 'destructive' }),
+      // Apply optimistic update immediately (before server responds)
+      onMutate: async (id: number) => {
+        if (!optimisticUpdate) return;
+        
+        // Cancel outgoing refetches so they don't overwrite optimistic update
+        await queryClient.cancelQueries({ queryKey: CALENDAR_KEY });
+        
+        // Snapshot current data for rollback
+        const prev = queryClient.getQueryData(CALENDAR_KEY);
+        
+        // Optimistically update cache
+        if (prev && optimisticUpdate) {
+          queryClient.setQueryData(CALENDAR_KEY, optimisticUpdate(id, prev));
+        }
+        
+        return { prev };
+      },
+      onSuccess: () => {
+        toast({ title: 'Success', description });
+        // Refetch to sync with server (in case of differences)
+        calendar.invalidate();
+      },
+      onError: (e: any, _id, context: any) => {
+        // Rollback optimistic update on error
+        if (context?.prev) {
+          queryClient.setQueryData(CALENDAR_KEY, context.prev);
+        }
+        toast({ title: errorTitle, description: e.message || 'Operation failed.', variant: 'destructive' });
+      },
+      // Always refetch after mutation settles to ensure consistency
+      onSettled: () => {
+        calendar.invalidate();
+      },
     }),
   };
 }
@@ -72,18 +110,110 @@ export function useTermSessionActions(isAdmin: boolean) {
   });
 
   // ── Session mutations ───────────────────────────────────────────────────────
-  const { mut: setCurrentSessionMut } = useCalMut('Session set as current.', id => call('PUT', `/api/sessions/${id}/mark-current`));
-  const { mut: deactivateSessionMut } = useCalMut('Session deactivated.', id => call('PUT', `/api/sessions/${id}/deactivate`));
-  const { mut: archiveSessionMut } = useCalMut('Session archived.', id => call('PUT', `/api/sessions/${id}`, { status: 'archived' }));
-  const { mut: unarchiveSessionMut } = useCalMut('Session restored.', id => call('PUT', `/api/sessions/${id}`, { status: 'upcoming' }));
-  const { mut: deleteSessionMut } = useCalMut('Session deleted.', id => call('DELETE', `/api/sessions/${id}`), 'Cannot Delete');
+  const { mut: setCurrentSessionMut } = useCalMut(
+    'Session set as current.',
+    id => call('PUT', `/api/sessions/${id}/mark-current`),
+    'Error',
+    (id, oldData: any) => ({
+      ...oldData,
+      currentSession: oldData.allSessions?.find((s: any) => s.id === id) ?? oldData.currentSession,
+      allSessions: oldData.allSessions?.map((s: any) => ({ ...s, isCurrent: s.id === id })) ?? oldData.allSessions,
+    })
+  );
+
+  const { mut: deactivateSessionMut } = useCalMut(
+    'Session deactivated.',
+    id => call('PUT', `/api/sessions/${id}/deactivate`),
+    'Error',
+    (id, oldData: any) => ({
+      ...oldData,
+      currentSession: oldData.currentSession?.id === id ? null : oldData.currentSession,
+      allSessions: oldData.allSessions?.map((s: any) => s.id === id ? { ...s, isCurrent: false, status: 'inactive' } : s) ?? oldData.allSessions,
+    })
+  );
+
+  const { mut: archiveSessionMut } = useCalMut(
+    'Session archived.',
+    id => call('PUT', `/api/sessions/${id}`, { status: 'archived' }),
+    'Error',
+    (id, oldData: any) => ({
+      ...oldData,
+      allSessions: oldData.allSessions?.map((s: any) => s.id === id ? { ...s, status: 'archived', isCurrent: false } : s) ?? oldData.allSessions,
+    })
+  );
+
+  const { mut: unarchiveSessionMut } = useCalMut(
+    'Session restored.',
+    id => call('PUT', `/api/sessions/${id}`, { status: 'upcoming' }),
+    'Error',
+    (id, oldData: any) => ({
+      ...oldData,
+      allSessions: oldData.allSessions?.map((s: any) => s.id === id ? { ...s, status: 'upcoming' } : s) ?? oldData.allSessions,
+    })
+  );
+
+  const { mut: deleteSessionMut } = useCalMut(
+    'Session deleted.',
+    id => call('DELETE', `/api/sessions/${id}`),
+    'Cannot Delete',
+    (id, oldData: any) => ({
+      ...oldData,
+      allSessions: oldData.allSessions?.filter((s: any) => s.id !== id) ?? oldData.allSessions,
+    })
+  );
 
   // ── Term mutations ──────────────────────────────────────────────────────────
-  const { mut: setCurrentTermMut } = useCalMut('Term set as current.', id => call('PUT', `/api/terms/${id}/mark-current`));
-  const { mut: deactivateTermMut } = useCalMut('Term deactivated.', id => call('PUT', `/api/terms/${id}/deactivate`));
-  const { mut: archiveTermMut } = useCalMut('Term archived.', id => call('PUT', `/api/terms/${id}/status`, { status: 'archived' }));
-  const { mut: unarchiveTermMut } = useCalMut('Term restored.', id => call('PUT', `/api/terms/${id}/status`, { status: 'upcoming' }));
-  const { mut: deleteTermMut } = useCalMut('Term deleted.', id => call('DELETE', `/api/terms/${id}`), 'Cannot Delete');
+  const { mut: setCurrentTermMut } = useCalMut(
+    'Term set as current.',
+    id => call('PUT', `/api/terms/${id}/mark-current`),
+    'Error',
+    (id, oldData: any) => ({
+      ...oldData,
+      currentTerm: oldData.allTerms?.find((t: any) => t.id === id) ?? oldData.currentTerm,
+      allTerms: oldData.allTerms?.map((t: any) => ({ ...t, isCurrent: t.id === id })) ?? oldData.allTerms,
+    })
+  );
+
+  const { mut: deactivateTermMut } = useCalMut(
+    'Term deactivated.',
+    id => call('PUT', `/api/terms/${id}/deactivate`),
+    'Error',
+    (id, oldData: any) => ({
+      ...oldData,
+      currentTerm: oldData.currentTerm?.id === id ? null : oldData.currentTerm,
+      allTerms: oldData.allTerms?.map((t: any) => t.id === id ? { ...t, isCurrent: false, status: 'inactive' } : t) ?? oldData.allTerms,
+    })
+  );
+
+  const { mut: archiveTermMut } = useCalMut(
+    'Term archived.',
+    id => call('PUT', `/api/terms/${id}/status`, { status: 'archived' }),
+    'Error',
+    (id, oldData: any) => ({
+      ...oldData,
+      allTerms: oldData.allTerms?.map((t: any) => t.id === id ? { ...t, status: 'archived', isCurrent: false } : t) ?? oldData.allTerms,
+    })
+  );
+
+  const { mut: unarchiveTermMut } = useCalMut(
+    'Term restored.',
+    id => call('PUT', `/api/terms/${id}/status`, { status: 'upcoming' }),
+    'Error',
+    (id, oldData: any) => ({
+      ...oldData,
+      allTerms: oldData.allTerms?.map((t: any) => t.id === id ? { ...t, status: 'upcoming' } : t) ?? oldData.allTerms,
+    })
+  );
+
+  const { mut: deleteTermMut } = useCalMut(
+    'Term deleted.',
+    id => call('DELETE', `/api/terms/${id}`),
+    'Cannot Delete',
+    (id, oldData: any) => ({
+      ...oldData,
+      allTerms: oldData.allTerms?.filter((t: any) => t.id !== id) ?? oldData.allTerms,
+    })
+  );
 
   const [showHistory, setShowHistory] = useState(false);
 
