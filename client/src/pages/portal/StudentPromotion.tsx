@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,12 +8,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { PageHeader, MiniStatCard, MiniStatGrid, EmptyState } from '@/components/shared';
-import { 
-  ArrowRight, Users, TrendingUp, RotateCcw, GraduationCap, UserX, 
+import {
+  ArrowRight, Users, TrendingUp, RotateCcw, GraduationCap, UserX,
   Clock, ChevronRight, ChevronLeft, Check, AlertCircle, Calendar,
-  CheckCircle2, XCircle, Loader2, History, ArrowUpCircle
+  CheckCircle2, XCircle, Loader2, History, ArrowUpCircle, RefreshCw
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -118,12 +119,17 @@ export default function StudentPromotion() {
     },
   });
 
-  // Fetch promotion history
+  // Fetch promotion history (auto-polls every 3s while a batch is still executing,
+  // so "Recent Promotions" / History update to "completed" without a manual refresh)
   const { data: historyData = [], isLoading: loadingHistory } = useQuery({
     queryKey: ['/api/admin/promotions/history'],
     queryFn: async () => {
       const response = await apiRequest('GET', '/api/admin/promotions/history');
       return await response.json();
+    },
+    refetchInterval: (query: any) => {
+      const batches = query?.state?.data;
+      return Array.isArray(batches) && batches.some((b: any) => b.status === 'in_progress') ? 3000 : false;
     },
   });
 
@@ -237,6 +243,26 @@ export default function StudentPromotion() {
   };
 
   const handleExecute = () => {
+    // Client-side validation with clear error messages BEFORE hitting the API
+    if (!previewData) {
+      toast({ title: 'Cannot Execute', description: 'No preview data loaded. Please go back and reload the preview.', variant: 'destructive' });
+      return;
+    }
+    if (!previewData.students || previewData.students.length === 0) {
+      toast({ title: 'No Students to Promote', description: 'The selected source session has no students. Nothing to promote.', variant: 'destructive' });
+      return;
+    }
+    const completed = (previewData.existingBatches || []).find((b: any) => b.status === 'completed' || b.status === 'in_progress');
+    if (completed) {
+      toast({
+        title: 'Promotion Already Exists',
+        description: `Batch #${completed.id} (${completed.status}) already covers this session transition. Executing again is blocked — use corrections in the History tab instead.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    // Jump to step 5 immediately so the user sees the progress UI
+    setCurrentStep(5);
     executeMutation.mutate();
   };
 
@@ -389,9 +415,23 @@ export default function StudentPromotion() {
             />
           )}
 
-          {/* Step 5: Execute Result */}
+          {/* Step 5: Executing (progress) → Result → Error */}
           {currentStep === 5 && (
-            <StepExecuteResult batchId={executionBatchId} />
+            executeMutation.isPending ? (
+              <StepExecuteProgress
+                total={previewData?.students?.length ?? 0}
+                sourceYear={previewData?.sourceSession?.year}
+                destYear={previewData?.destinationSession?.year}
+              />
+            ) : executeMutation.isError ? (
+              <StepExecuteError
+                error={executeMutation.error}
+                onRetry={() => executeMutation.mutate()}
+                onBack={() => setCurrentStep(4)}
+              />
+            ) : (
+              <StepExecuteResult batchId={executionBatchId} />
+            )
           )}
 
           {/* Navigation */}
@@ -399,10 +439,13 @@ export default function StudentPromotion() {
             <Button
               type="button"
               variant="outline"
-              onClick={currentStep === 1 ? handleCloseWizard : handleBack}
-              disabled={currentStep === 5}
+              onClick={currentStep === 1 ? handleCloseWizard : currentStep === 5 && executeMutation.isError ? () => setCurrentStep(4) : currentStep === 5 ? handleCloseWizard : handleBack}
+              disabled={currentStep === 5 && executeMutation.isPending}
             >
-              {currentStep === 1 ? 'Cancel' : currentStep === 5 ? 'Close' : <><ChevronLeft className="w-4 h-4 mr-1" />Back</>}
+              {currentStep === 1 ? 'Cancel'
+                : currentStep === 5
+                  ? (executeMutation.isError ? <><ChevronLeft className="w-4 h-4 mr-1" />Back</> : 'Close')
+                  : <><ChevronLeft className="w-4 h-4 mr-1" />Back</>}
             </Button>
             {currentStep < 4 && (
               <Button
@@ -441,9 +484,21 @@ export default function StudentPromotion() {
                 )}
               </Button>
             )}
-            {currentStep === 5 && (
-              <Button type="button" onClick={handleCloseWizard}>
-                Done
+            {currentStep === 5 && executeMutation.isSuccess && (
+              <Button type="button" onClick={handleCloseWizard} data-testid="button-promotion-done">
+                <Check className="w-4 h-4 mr-1" />Done
+              </Button>
+            )}
+            {currentStep === 5 && executeMutation.isError && (
+              <Button type="button" onClick={() => executeMutation.mutate()}>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Retry
+              </Button>
+            )}
+            {currentStep === 5 && executeMutation.isPending && (
+              <Button type="button" disabled>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Promoting...
               </Button>
             )}
           </div>
@@ -801,15 +856,95 @@ function StepReview({ data, assignments, sourceSessionId, destSessionId, session
   );
 }
 
+/** Indeterminate progress UI shown while the execute request is in flight. */
+function StepExecuteProgress({ total, sourceYear, destYear }: { total: number; sourceYear?: string; destYear?: string }) {
+  // Creep the bar toward 90% — we can't know exact per-student progress from the
+  // single request, but a slowly-advancing bar is clearer than a frozen spinner.
+  const [progress, setProgress] = useState(5);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setProgress((v) => (v < 90 ? Math.min(90, v + Math.max(1, Math.round((90 - v) / 12))) : v));
+    }, 400);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <div className="space-y-5 py-4">
+      <div className="text-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-3" />
+        <p className="font-medium">Promoting {total} student{total === 1 ? '' : 's'}…</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          {sourceYear && destYear ? `${sourceYear} → ${destYear} · ` : ''}
+          Processing student records, enrollments and subject assignments. This may take a minute for large batches — please keep this window open.
+        </p>
+      </div>
+      <div className="px-6">
+        <Progress value={progress} className="h-2" data-testid="promotion-progress-bar" />
+        <p className="text-xs text-muted-foreground text-center mt-2">{progress}% — working…</p>
+      </div>
+    </div>
+  );
+}
+
+/** Error UI shown when the execute request itself failed (network/409/validation). */
+function StepExecuteError({ error, onRetry, onBack }: { error: any; onRetry: () => void; onBack: () => void }) {
+  return (
+    <div className="space-y-4 py-4">
+      <Alert variant="destructive">
+        <XCircle className="h-4 w-4" />
+        <AlertDescription>
+          <p className="font-medium">Promotion failed — no changes were partially applied beyond what the error describes.</p>
+          <p className="mt-1">{error?.message || 'An unexpected error occurred while executing the promotion.'}</p>
+          {error?.status === 409 && (
+            <p className="mt-2 text-xs">A promotion batch for this session transition already exists. Check the History tab and use record corrections instead of re-executing.</p>
+          )}
+        </AlertDescription>
+      </Alert>
+      <div className="flex gap-2 justify-end">
+        <Button type="button" variant="outline" onClick={onBack}>
+          <ChevronLeft className="w-4 h-4 mr-1" />Back to Review
+        </Button>
+        <Button type="button" onClick={onRetry}>
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Retry Execution
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function StepExecuteResult({ batchId }: { batchId: number | null }) {
-  const { data: batchDetail } = useQuery({
+  const { data: batchDetail, isError: detailError, refetch } = useQuery({
     queryKey: ['/api/admin/promotions/history', batchId],
     queryFn: async () => {
       const response = await apiRequest('GET', `/api/admin/promotions/history/${batchId}`);
       return await response.json();
     },
     enabled: !!batchId,
+    // Keep polling until the batch reaches a terminal status so the UI
+    // flips to "completed" on its own — no manual refresh needed.
+    refetchInterval: (query: any) =>
+      query?.state?.data?.batch?.status === 'in_progress' ? 2000 : false,
   });
+
+  if (detailError) {
+    return (
+      <div className="space-y-4 py-4">
+        <Alert variant="destructive">
+          <XCircle className="h-4 w-4" />
+          <AlertDescription>
+            Could not load the promotion result. {batchId ? `Batch #${batchId} may have been created — check the History tab.` : 'No batch was created.'}
+          </AlertDescription>
+        </Alert>
+        <div className="flex justify-end">
+          <Button type="button" variant="outline" onClick={() => refetch()}>
+            <RefreshCw className="w-4 h-4 mr-2" />Try Again
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (!batchDetail) {
     return (
@@ -819,37 +954,79 @@ function StepExecuteResult({ batchId }: { batchId: number | null }) {
     );
   }
 
-  const successCount = batchDetail.batch.promotedCount + batchDetail.batch.graduatedCount;
-  const failedCount = batchDetail.batch.failedCount;
+  const b = batchDetail.batch;
+  const failedRecords = (batchDetail.records || []).filter((r: any) => r.status === 'failed');
+  const failedCount = b.failedCount ?? failedRecords.length;
+  const isTerminal = b.status === 'completed' || b.status === 'failed';
+
+  // Still finishing up (rare — POST is synchronous, but poll covers races)
+  if (!isTerminal) {
+    return (
+      <div className="space-y-5 py-4">
+        <div className="text-center">
+          <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-3" />
+          <p className="font-medium">Finishing up batch #{b.id}…</p>
+          <p className="text-sm text-muted-foreground mt-1">Recording final counts — this updates automatically.</p>
+        </div>
+        <div className="px-6">
+          <Progress value={90} className="h-2 animate-pulse" />
+        </div>
+      </div>
+    );
+  }
+
+  const allFailed = b.status === 'failed';
+  const successCount = (b.promotedCount ?? 0) + (b.graduatedCount ?? 0) + (b.repeatingCount ?? 0) + (b.withdrawnCount ?? 0) + (b.deferredCount ?? 0);
 
   return (
     <div className="space-y-4">
-      <Alert className={failedCount === 0 ? 'border-green-500' : 'border-yellow-500'}>
+      <Alert className={failedCount === 0 ? 'border-green-500' : allFailed ? 'border-red-500' : 'border-yellow-500'}>
         {failedCount === 0 ? <CheckCircle2 className="h-4 w-4 text-green-600" /> : <AlertCircle className="h-4 w-4 text-yellow-600" />}
         <AlertDescription>
           {failedCount === 0 ? (
-            <>Promotion completed successfully. All {successCount} students processed.</>
+            <>Promotion completed successfully — all {successCount} students were processed.
+              {b.executedAt && <span className="block text-xs text-muted-foreground mt-1">Finished {new Date(b.executedAt).toLocaleString()}</span>}
+            </>
           ) : (
-            <>Promotion completed with {failedCount} error(s). {successCount} students processed successfully.</>
+            <>Promotion finished with {failedCount} failed record{failedCount === 1 ? '' : 's'} out of {(b.totalStudents ?? 0)}.
+              {successCount > 0 && ` ${successCount} student${successCount === 1 ? '' : 's'} processed successfully.`} See the failure reasons below.
+            </>
           )}
         </AlertDescription>
       </Alert>
 
+      <div className="flex items-center justify-between">
+        <Badge variant={b.status === 'completed' ? 'default' : 'destructive'} data-testid="promotion-batch-status">
+          Batch #{b.id} · {b.status}
+        </Badge>
+      </div>
+
       <MiniStatGrid cols={4}>
-        <MiniStatCard label="Promoted" value={batchDetail.batch.promotedCount} icon={ArrowRight} color="text-blue-600" />
-        <MiniStatCard label="Repeating" value={batchDetail.batch.repeatingCount} icon={RotateCcw} color="text-yellow-600" />
-        <MiniStatCard label="Graduated" value={batchDetail.batch.graduatedCount} icon={GraduationCap} color="text-green-600" />
+        <MiniStatCard label="Promoted" value={b.promotedCount ?? 0} icon={ArrowRight} color="text-blue-600" />
+        <MiniStatCard label="Repeating" value={b.repeatingCount ?? 0} icon={RotateCcw} color="text-yellow-600" />
+        <MiniStatCard label="Graduated" value={b.graduatedCount ?? 0} icon={GraduationCap} color="text-green-600" />
         <MiniStatCard label="Failed" value={failedCount} icon={XCircle} color="text-red-600" />
       </MiniStatGrid>
 
-      {failedCount > 0 && (
+      {failedRecords.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Failed Records</CardTitle>
+            <CardTitle className="text-base">Failed Records ({failedRecords.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Some students could not be promoted. You can review and correct them in the History tab.
+            <div className="border rounded-md max-h-48 overflow-y-auto">
+              {failedRecords.map((r: any) => (
+                <div key={r.id} className="p-3 border-b last:border-b-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-medium">{r.studentName} <span className="text-xs text-muted-foreground">({r.admissionNumber})</span></p>
+                    <Badge variant="outline" className="text-[10px]">{r.outcome}</Badge>
+                  </div>
+                  <p className="text-xs text-red-600 mt-1">{r.errorMessage || 'Unknown error'}</p>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              These students were NOT promoted. Correct individual outcomes from the History tab (batch #{b.id}).
             </p>
           </CardContent>
         </Card>
