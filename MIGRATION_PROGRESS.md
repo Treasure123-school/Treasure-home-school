@@ -1,212 +1,150 @@
 # Modular Architecture Migration - Progress Report
-**Date:** November 13, 2026, 11:48 PM  
-**Status:** Phase 1 Complete ✅ | Phase 2 Started ⏳
+**Date:** November 14, 2026 (early AM)
+**Status:** Phases 1–3 Complete ✅ | Exam-Lifecycle Tested ✅ | ❄️ FREEZE until after exam week
 
 ---
 
-## 🎉 COMPLETED: Phase 1 - Foundation Architecture
+## ❄️ FREEZE NOTICE (Nov 14–exam week)
 
-### What We Built
-```
-server/
-├── shared/
-│   ├── middleware/          # 5 files - Auth, errors, validation, teacher-auth
-│   └── utils/              # 3 files - Auth utils, password utils
-├── config/                 # 2 files - Environment validation
-└── modules/
-    └── auth/              # 4 files - Full MVC pattern (controller + service)
-```
-
-### Statistics
-- **14 new files created**
-- **1,777 lines added**
-- **0 TypeScript errors** ✅
-- **Git commits:** `209fdabb` (foundation), `79d36018` (phase 2 planning)
-
-### Key Achievements
-✅ **Shared Middleware Layer** - Reusable auth, error handling, validation  
-✅ **Config Layer** - Centralized environment management  
-✅ **Auth Module Refactor** - Complete MVC pattern established  
-✅ **All TypeScript Errors Fixed** - Clean compilation  
-✅ **Git Committed** - All work saved safely  
+**No refactoring until student exams are done.** All fixes were applied in-place
+to battle-tested legacy code. Structure changes after results are out.
+Exception: critical bugs discovered in testing are still fixed immediately.
 
 ---
 
-## ⏳ IN PROGRESS: Phase 2 - Report Cards Module
+## ✅ COMPLETED WORK
 
-### Current State
-- **Module folder created:** `server/modules/report-cards/`
-- **Documentation added:** `index.ts` with full endpoint list
-- **Code to migrate:** 2,867 lines across 4 route files
+### Phase 1 — Foundation Architecture
+- `server/shared/middleware/` (5 files), `server/shared/utils/` (3 files), `server/config/` (2 files)
+- `server/modules/auth/` — full MVC reference implementation
+- Commits: `209fdabb`, `79d36018`, `ff5fb100`
 
-### Files to Refactor
-```
-routes/report-cards.routes.ts               (1,341 lines) → Split into:
-routes/enhanced-report-cards.routes.ts      (921 lines)      ├── report-cards.controller.ts
-routes/report-card-skills.routes.ts         (68 lines)       ├── enhanced.controller.ts
-routes/report-comment-templates.routes.ts   (537 lines)      ├── skills.controller.ts
-                                                              ├── comments.controller.ts
-                                                              ├── grading.controller.ts
-                                                              ├── report-cards.service.ts
-                                                              ├── report-cards.routes.ts
-                                                              └── report-cards.validation.ts
-```
+### Phase 2 — Report Cards Module
+- `server/modules/report-cards/` — 8 files, 2,114 lines
+- Controllers: core, enhanced (teacher portal), skills, comments, grading
+- 31 endpoints migrated; 0 TS errors
+- Commits: `a2a2d0c1` (core), `f57da805` (complete)
+- **Caveat:** see Known Debt below — `/reports/student-report-card/:studentId`
+  is served by legacy until placeholders are ported.
 
----
+### Phase 3 — Classes Module
+- `server/modules/classes/` — 6 files, 634 lines
+- 10 endpoints: class CRUD (cached), available-subjects, class-subject
+  mappings, student class-rank
+- Replaced 3 legacy route files (437 lines)
+- Commit: `130040d0`
 
-## 📋 NEXT SESSION ROADMAP
+### Exam Lifecycle Test — Nov 14 (3 students, full cycle)
+Tested: create exam → publish → questions → session start → answers →
+submit → auto-score → report-card sync → finalize → remarks/skills →
+admin publish → student view → security checks. **All passed.**
 
-### Step 1: Create Service Layer (~30 min)
-Extract business logic into `report-cards.service.ts`:
-```typescript
-class ReportCardsService {
-  // Core operations
-  async getStudentReportCard(studentId, termId, userId, roleId) { }
-  async getClassReportCards(classId, termId) { }
-  async generateReportCard(data) { }
-  
-  // Calculations
-  async recalculateReportCard(reportCardId) { }
-  async recalculateClassPositions(classId, termId) { }
-  
-  // Status management
-  async updateReportCardStatus(reportCardId, status, userId) { }
-  
-  // Score overrides
-  async overrideItemScore(itemId, data, userId, roleId) { }
-}
-```
+Score math verified: test-only scores normalize against FULL weight
+(test 100% = 40% overall) — intended anti-grade-inflation behavior.
+**Tell teachers this before exam week** to avoid "wrong grade" reports.
 
-### Step 2: Create 5 Controllers (~45 min)
-**Core Controller** - `report-cards.controller.ts`
-- getStudentReportCard, getClassReportCards, generateReportCard, etc.
+### Critical Bugs Found & Fixed (commit `bd1e8f18`)
+1. **Duplicate report cards (race condition)** — two concurrent sync paths
+   both passed check-then-insert. Fix: unique index
+   `report_cards_student_term_unique_idx (student_id, term_id)` + race-safe
+   `onConflictDoNothing` + re-select at ALL 8 creation sites.
+2. **Submission 500 after successful scoring** — one flaky options query in
+   `Promise.all` failed the response after durable commit. Fix:
+   fault-tolerant per-question detail builder (`exams-management.routes.ts`).
+3. **Broken student-report-card endpoint (migration regression)** — module
+   placeholders `{}` shadowed working legacy route. Fix: removed shadowing
+   route; legacy serves it.
+4. **DB pool hardening** (`server/db.ts`) — max=10, connect 15s, idle 30s,
+   statement_timeout 30s, keepAlive.
 
-**Enhanced Controller** - `enhanced.controller.ts`
-- Teacher portal: my-report-cards, auto-populate, override scores, status updates
-
-**Skills Controller** - `skills.controller.ts`
-- getSkills, saveSkills (affective/psychomotor assessments)
-
-**Comments Controller** - `comments.controller.ts`
-- CRUD for comment templates, bulk operations, default comments
-
-**Grading Controller** - `grading.controller.ts`
-- Grading config, positioning method settings
-
-### Step 3: Refactor Routes (~20 min)
-Update `report-cards.routes.ts` to use controllers:
-```typescript
-const router = Router();
-const coreController = new ReportCardsController();
-const enhancedController = new EnhancedController();
-// ... mount all controllers
-
-export default router;
-```
-
-### Step 4: Add Validation (~15 min)
-Create `report-cards.validation.ts`:
-```typescript
-export const generateReportCardSchema = z.object({
-  studentId: z.string().uuid(),
-  termId: z.number().positive(),
-  // ...
-});
-```
-
-### Step 5: Test (~15 min)
-- Run TypeScript compilation
-- Test key endpoints (GET student report, override score)
-- Commit changes
-
-**Total estimated time: ~2.5 hours**
+**Verdict: the previously-reported "scores not syncing to report card" bug
+is confirmed FIXED — verified live for 3 students with exact weighted math.**
 
 ---
 
-## 🎯 SUCCESS CRITERIA
+## 📋 POST-EXAM MIGRATION PLAN (queued)
 
-Phase 2 complete when:
-- [ ] All 4 report-card route files refactored
-- [ ] Service layer extracted with business logic
-- [ ] 5 controllers created following MVC pattern
-- [ ] Validation schemas added
-- [ ] 0 TypeScript errors
-- [ ] Key endpoints tested
-- [ ] Changes committed to git
-
----
-
-## 📁 FILE STRUCTURE TARGET
-
+### Priority 1 — Exams Module (est. 4–6 hrs, after exams)
+Target structure:
 ```
-server/modules/report-cards/
-├── report-cards.controller.ts      # Core operations (viewing, generation)
-├── enhanced.controller.ts          # Teacher portal (overrides, status)
-├── skills.controller.ts            # Skills assessment endpoints
-├── comments.controller.ts          # Comment templates & bulk ops
-├── grading.controller.ts           # Grading configuration
-├── report-cards.service.ts         # Business logic (~1000 lines)
-├── report-cards.routes.ts          # Route mounting
-├── report-cards.validation.ts      # Zod schemas
-└── index.ts                        # Barrel export (✅ done)
+server/modules/exams/
+├── exams.service.ts          # Creation, publish, retake policy
+├── exams.controller.ts
+├── exams.routes.ts
+├── sessions/                 # exam-sessions.routes.ts (427 lines)
+│   ├── sessions.service.ts   # timing, anti-cheat, idempotent claims
+│   └── sessions.controller.ts
+├── questions/                # exam-questions.routes.ts (432 lines)
+│   ├── questions.service.ts
+│   └── questions.controller.ts
+├── scoring/                  # exam-scoring.ts + auto-scoring
+│   ├── scoring.service.ts    # MCQ + theory hybrid scoring
+│   └── submission-helpers.ts # mergeExamScores, grading tasks
+└── index.ts
 ```
+Source files: `routes.ts` (exam creation ~line 200s),
+`exams-management.routes.ts` (1,095), `exam-sessions.routes.ts` (427),
+`exam-questions.routes.ts` (432), `exam-scoring.ts`.
+**Do NOT touch `services/reliable-sync-service.ts` during this phase** —
+it is now race-hardened and verified; move it to `shared/services/` last.
 
----
+### Priority 2 — Report Cards Completion (est. 2–3 hrs)
+Port from legacy `routes/report-cards.routes.ts` (lines 149–700) into
+`modules/report-cards/report-cards.service.ts`:
+- `calculateDraftReportCard` (draft calc from exam results, ~200 lines)
+- `formatPublishedReportCard` (stored-data formatting + class stats,
+  signatures, skills — ~370 lines)
+Then re-add the module route in `report-cards.routes.ts` (currently
+commented with a safety NOTE) and delete the duplicate legacy handler.
+Verify: draft view, published view, student/parent 404 path, teacher
+class-filter path.
 
-## 💡 QUICK START (Next Session)
+### Priority 3 — Remaining Legacy Cleanup (incremental)
+- `server/routes.ts` monolith (~13k lines left): students, subjects,
+  attendance, messages, notifications, admin ops
+- Delete dead legacy files replaced by modules:
+  `routes/classes.routes.ts`, `routes/classes-crud.routes.ts`,
+  `routes/class-subject-mapping.routes.ts`, `routes/student-class-rank.routes.ts`,
+  `routes/report-card-skills.routes.ts` (shadowed, keep until verified),
+  `routes/report-comment-templates.routes.ts` (shadowed, keep until verified)
+- Suggested next modules: Subjects (quick win), Students, Attendance
 
-1. **Resume from:** `server/modules/report-cards/`
-2. **Read:** `routes/report-cards.routes.ts` (line 1-200)
-3. **Extract:** Business logic → `report-cards.service.ts`
-4. **Create:** `report-cards.controller.ts` (thin HTTP layer)
-5. **Repeat:** For enhanced, skills, comments, grading
-6. **Test:** `npm run dev` + TypeScript compilation
-
----
-
-## 🔗 REFERENCES
-
-**Existing Code:**
-- `server/routes/report-cards.routes.ts` - Core endpoints
-- `server/routes/enhanced-report-cards.routes.ts` - Teacher portal
-- `server/routes/report-card-skills.routes.ts` - Skills
-- `server/routes/report-comment-templates.routes.ts` - Comments
-- `server/storage/report-card-*.ts` - Data layer (keep as-is)
-
-**Pattern Reference:**
-- `server/modules/auth/` - Your template (controller + service)
-- `server/shared/middleware/` - Reusable middleware
-
-**Git Commits:**
-- `209fdabb` - Phase 1 foundation
-- `79d36018` - Phase 2 planning (current)
+### Verification checklist for any migration (do this every time)
+1. `timeout 280 npx tsc --noEmit` → 0 errors
+2. Restart server — confirm NO `EADDRINUSE` in `/tmp/app.log`
+   (stale server silently served old code once — always check)
+3. Live-test one GET + one POST per migrated endpoint
+4. Run the exam lifecycle smoke test (create exam → submit → check card)
+5. Commit with module name in message
 
 ---
 
 ## 📊 OVERALL PROGRESS
 
 ```
-✅ Phase 1: Foundation           (100% complete)
-⏳ Phase 2: Report Cards Module  (10% complete - structure only)
-⬜ Phase 3: Remaining Modules    (0% - ~50 modules to go)
+✅ Phase 1: Foundation            (100%)
+✅ Phase 2: Report Cards Module   (95% — draft/published porting pending)
+✅ Phase 3: Classes Module        (100%)
+⬜ Phase 4: Exams Module          (0% — POST-EXAM)
+⬜ Phase 5: Remaining legacy      (0% — incremental)
 ```
 
-**Estimated completion:**
-- Phase 2: 2-3 hours
-- Phase 3: 15-20 hours (can be done incrementally)
+**Git HEAD:** `bd1e8f18` (exam lifecycle bug fixes)
+**Server:** dev on :5000 — restart with
+`(setsid nohup npm run dev > /tmp/app.log 2>&1 < /dev/null &)` from repo root
 
 ---
 
-## 🚀 YOU'RE READY FOR NEXT SESSION!
+## ⚠️ PRE-EXAM WEEK CHECKLIST (school ops)
 
-Everything is committed, TypeScript compiles cleanly, and you have a clear roadmap. When you return, just say:
-
-**"Continue Phase 2 - Report Cards Module"**
-
-And we'll pick up right where we left off! 🎯
+- [ ] Reset test-student passwords changed during testing
+      (THS-STU-016, THS-STU-055, THS-STU-056, THS-STU-057 → `Test@1234`)
+- [ ] Confirm active term: First Term 2026/2027 (id 14) — created during testing
+- [ ] Optional cleanup: delete test exam 349 + test report cards 212/213/215
+- [ ] Brief teachers: test-only scores cap at test-weight% until exams entered
+- [ ] Monitor `/api/health` — "degraded" = memory pressure on 3.6GB box
 
 ---
 
-_Last updated: 2026-11-13 23:48 PM_  
-_Git HEAD: 79d36018_  
-_Status: Ready for Phase 2 continuation_
+_Last updated: 2026-11-14 ~05:00 WAT_
+_Git HEAD: bd1e8f18_
