@@ -37,6 +37,7 @@ import lessonNoteLibraryRoutes from "./routes/lesson-note-library.routes";
 import { termsRoutes, sessionsRoutes, calendarRoutes } from "./modules/academic-calendar";
 import { authRouter } from "./modules/auth";
 import { reportCardsRouter } from "./modules/report-cards";
+import { classesRoutes as classesRouter, classMappingsRoutes as classMappingsRouter, studentRankRoutes as studentRankRouter } from "./modules/classes";
 import uploadRoutes from "./routes/upload.routes";
 import messagesRoutes from "./routes/messages.routes";
 import lessonNotesRoutes from "./routes/lesson-notes.routes";
@@ -62,7 +63,6 @@ import { registerTeacherProfileRoutes } from './routes/teacher-profile.routes';
 import { registerTeachersOverviewRoutes } from './routes/teachers-overview.routes';
 import { registerParentsPortalRoutes } from './routes/parents-portal.routes';
 import { registerNotificationsRoutes } from './routes/notifications-crud.routes';
-import { registerClassesRoutes } from './routes/classes-crud.routes';
 import { registerSubjectsRoutes } from './routes/subjects-crud.routes';
 import { homepageRouter } from './modules/homepage';
 import { registerRecoveryRoutes } from './routes/recovery.routes';
@@ -74,12 +74,10 @@ import { registerEnhancedReportCardsRoutes } from './routes/enhanced-report-card
 import { registerSignaturesRoutes } from './routes/signatures.routes';
 import { registerTeacherAssignmentsRoutes } from './routes/teacher-assignments.routes';
 import { registerStudentSubjectAssignmentsRoutes } from './routes/student-subject-assignments.routes';
-import { registerClassSubjectMappingRoutes } from './routes/class-subject-mapping.routes';
 import { registerUnifiedSubjectAssignmentsRoutes } from './routes/unified-subject-assignments.routes';
 import { registerReportCommentTemplatesRoutes } from './routes/report-comment-templates.routes';
 import { registerSyncAuditLogRoutes } from './routes/sync-audit-log.routes';
 import { registerStudentPortalSubjectsRoutes } from './routes/student-portal-subjects.routes';
-import { registerStudentClassRankRoutes } from './routes/student-class-rank.routes';
 import { registerStudentAssignmentsRoutes } from './routes/student-assignments.routes';
 import { registerAdminTimetableRoutes } from './routes/admin-timetable.routes';
 import { registerStudentTimetableRoutes } from './routes/student-timetable.routes';
@@ -106,6 +104,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Mount modular route files
   app.use('/api/auth', authRouter);
   app.use('/api', reportCardsRouter);
+  app.use('/api/classes', classesRouter);
+  app.use('/api/class-subject-mappings', classMappingsRouter);
+  app.use('/api/student', studentRankRouter);
   app.use(jobVacancyRoutes);
   app.use(settingsRoutes);
   app.use(reportCardSkillsRoutes);
@@ -158,7 +159,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use(passport.session());
   await registerParentsPortalRoutes(app);
   await registerNotificationsRoutes(app);
-  await registerClassesRoutes(app);
   await registerSubjectsRoutes(app);
   app.use(homepageRouter);
 
@@ -299,12 +299,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await registerSignaturesRoutes(app);
   await registerTeacherAssignmentsRoutes(app);
   await registerStudentSubjectAssignmentsRoutes(app);
-  await registerClassSubjectMappingRoutes(app);
   await registerUnifiedSubjectAssignmentsRoutes(app);
   await registerReportCommentTemplatesRoutes(app);
   await registerSyncAuditLogRoutes(app);
   await registerStudentPortalSubjectsRoutes(app);
-  await registerStudentClassRankRoutes(app);
   await registerStudentAssignmentsRoutes(app);
   await registerAdminTimetableRoutes(app);
   await registerStudentTimetableRoutes(app);
