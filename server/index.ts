@@ -5,13 +5,13 @@ import cors from "cors";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic } from "./vite";
 import { db } from "./storage";
-import { isPostgres, dbInfo } from "./db";
+import { isPostgres, dbInfo } from "./core/config/database";
 import { seedAcademicTerms } from "./seed/seed-terms";
 import { seedLessonNoteTemplates } from "./seed/seed-lesson-note-templates";
-import { validateEnvironment } from "./env-validation";
+import { validateEnvironment } from "./core/config/env-validation";
 import fs from "fs/promises";
-import { performanceMonitor } from "./performance-monitor";
-import { databaseOptimizer } from "./database-optimization";
+import { performanceMonitor } from "./infrastructure/monitoring/performance-monitor";
+import { databaseOptimizer } from "./infrastructure/monitoring/database-optimization";
 
 // Validate environment variables at startup - fail fast in production if critical vars missing
 const isProduction = process.env.NODE_ENV === 'production';
