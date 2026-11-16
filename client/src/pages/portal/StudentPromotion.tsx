@@ -374,7 +374,6 @@ export default function StudentPromotion() {
             ))}
           </div>
           <p className="text-sm font-medium text-primary mb-3">{WIZARD_STEPS[currentStep - 1].title}</p>
-          <p className="text-xs text-muted-foreground mb-4">{WIZARD_STEPS[currentStep - 1].desc}</p>
 
           {/* Step 1: Select Sessions */}
           {currentStep === 1 && (
