@@ -63,7 +63,7 @@ Thumbs.db
 # Uploads (stored locally in server/uploads)
 server/uploads/
 !server/uploads/.gitkeep
-uploads/
+/uploads/
 !uploads/.gitkeep
 
 # Attached assets (may contain sensitive files)
