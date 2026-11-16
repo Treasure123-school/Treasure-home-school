@@ -29,6 +29,7 @@ interface PreviewStudent {
   currentClassId: number;
   currentClassName: string;
   department: string | null;
+  needsDepartment: boolean;
   accountStatus: string;
   hasSourceEnrollment: boolean;
   alreadyProcessed: boolean;
@@ -78,6 +79,17 @@ interface StudentAssignment {
   outcome: PromotionOutcome;
   toClassId: number | null;
   overridden: boolean;
+  department?: string | null;
+}
+
+const DEPARTMENT_OPTIONS = ['science', 'art', 'commercial'] as const;
+
+/** True when the given class id resolves to a senior-secondary class (SSS). */
+function isSeniorSecondaryDestination(classId: number | null | undefined, classes: any[]): boolean {
+  if (!classId) return false;
+  const cls = classes.find((c: any) => c.id === classId);
+  if (!cls?.level) return false;
+  return ['SS1', 'SS2', 'SS3', 'Senior Secondary'].some(l => String(cls.level).toLowerCase().includes(l.toLowerCase()));
 }
 
 const WIZARD_STEPS = [
@@ -147,6 +159,7 @@ export default function StudentPromotion() {
           outcome: s.suggestedOutcome || 'promoted',
           toClassId: s.suggestedDestinationClassId,
           overridden: false,
+          department: s.department ?? null,
         };
       });
       setStudentAssignments(assignments);
@@ -173,6 +186,7 @@ export default function StudentPromotion() {
         outcome: studentAssignments[s.id]?.outcome || s.suggestedOutcome || 'promoted',
         toClassId: studentAssignments[s.id]?.toClassId ?? s.suggestedDestinationClassId ?? null,
         reason: studentAssignments[s.id]?.overridden ? `Manual override to ${studentAssignments[s.id].outcome}` : undefined,
+        department: studentAssignments[s.id]?.department ?? s.department ?? null,
       }));
 
       const response = await apiRequest('POST', '/api/admin/promotions/execute', {
@@ -231,6 +245,23 @@ export default function StudentPromotion() {
   const handleNext = () => {
     if (currentStep === 1) {
       handlePreview();
+    } else if (currentStep === 3) {
+      // Mandatory department for students entering senior secondary (SSS)
+      const missing = (previewData?.students || []).filter((s: PreviewStudent) => {
+        const a = studentAssignments[s.id];
+        if (!a || (a.outcome !== 'promoted' && a.outcome !== 'repeating')) return false;
+        const destClassId = a.toClassId ?? s.suggestedDestinationClassId;
+        return isSeniorSecondaryDestination(destClassId, classes) && !a.department;
+      });
+      if (missing.length > 0) {
+        toast({
+          title: 'Department Required',
+          description: `${missing.length} student${missing.length > 1 ? 's' : ''} entering senior secondary without a department (science/art/commercial): ${missing.slice(0, 3).map((s: PreviewStudent) => s.name).join(', ')}${missing.length > 3 ? '…' : ''}`,
+          variant: 'destructive',
+        });
+        return;
+      }
+      setCurrentStep(4);
     } else if (currentStep < 5) {
       setCurrentStep(s => s + 1);
     }
@@ -411,6 +442,7 @@ export default function StudentPromotion() {
               sourceSessionId={sourceSessionId}
               destSessionId={destSessionId}
               sessions={sessions}
+              classes={classes}
             />
           )}
 
@@ -645,6 +677,7 @@ function StepSetOutcomes({ data, classes, assignments, onAssignmentsChange }: {
         outcome: s.suggestedOutcome || 'promoted',
         toClassId: s.suggestedDestinationClassId,
         overridden: false,
+        department: s.department ?? null,
       },
     });
   };
@@ -715,7 +748,12 @@ function StepSetOutcomes({ data, classes, assignments, onAssignmentsChange }: {
             return (
               <div key={student.id} className="flex flex-col sm:flex-row sm:items-center gap-2 p-3 border-b last:border-b-0">
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{student.name}</p>
+                  <p className="text-sm font-medium truncate">
+                    {student.name}
+                    {student.department && (
+                      <Badge variant="outline" className="ml-2 text-[10px] px-1.5">{student.department}</Badge>
+                    )}
+                  </p>
                   <p className="text-xs text-muted-foreground truncate">
                     {student.currentClassName}
                     {student.alreadyProcessed && ' • ✓ Already processed (will be skipped)'}
@@ -754,6 +792,31 @@ function StepSetOutcomes({ data, classes, assignments, onAssignmentsChange }: {
                       </SelectContent>
                     </Select>
                   )}
+                  {(a.outcome === 'promoted' || a.outcome === 'repeating') &&
+                    isSeniorSecondaryDestination(a.toClassId ?? student.suggestedDestinationClassId, classes) &&
+                    !a.department && (
+                    <Select
+                      value=""
+                      onValueChange={(v) => onAssignmentsChange({
+                        ...assignments,
+                        [student.id]: { ...a, department: v },
+                      })}
+                    >
+                      <SelectTrigger className="w-[110px] h-8 text-xs border-destructive">
+                        <SelectValue placeholder="Dept*" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DEPARTMENT_OPTIONS.map((d) => (
+                          <SelectItem key={d} value={d}>{d}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {(a.outcome === 'promoted' || a.outcome === 'repeating') &&
+                    isSeniorSecondaryDestination(a.toClassId ?? student.suggestedDestinationClassId, classes) &&
+                    a.department && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5">{a.department}</Badge>
+                  )}
                   {a.overridden && (
                     <Button
                       variant="ghost"
@@ -781,7 +844,7 @@ function StepSetOutcomes({ data, classes, assignments, onAssignmentsChange }: {
   );
 }
 
-function StepReview({ data, assignments, sourceSessionId, destSessionId, sessions }: any) {
+function StepReview({ data, assignments, sourceSessionId, destSessionId, sessions, classes }: any) {
   const sourceSession = sessions.find((s: any) => s.id === Number(sourceSessionId));
   const destSession = sessions.find((s: any) => s.id === Number(destSessionId));
 
@@ -848,6 +911,29 @@ function StepReview({ data, assignments, sourceSessionId, destSessionId, session
                 <span className="font-medium">{(Object.values(assignments) as StudentAssignment[]).filter(a => a.overridden).length}</span>
               </div>
             )}
+            {(() => {
+              // Department assignments being made in this promotion (SSS entry only)
+              const depts: Record<string, number> = {};
+              data.students.forEach((s: PreviewStudent) => {
+                const a = assignments[s.id];
+                if (!a || (a.outcome !== 'promoted' && a.outcome !== 'repeating')) return;
+                const destClassId = a.toClassId ?? s.suggestedDestinationClassId;
+                if (!isSeniorSecondaryDestination(destClassId, classes)) return;
+                const d = a.department || s.department;
+                if (d) depts[d] = (depts[d] || 0) + 1;
+              });
+              if (Object.keys(depts).length === 0) return null;
+              return (
+                <div className="pt-3 border-t">
+                  <p className="text-xs text-muted-foreground mb-2">Departments (senior secondary)</p>
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(depts).map(([d, n]) => (
+                      <Badge key={d} variant="secondary" className="text-xs">{d}: {n}</Badge>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </CardContent>
       </Card>
@@ -1227,12 +1313,29 @@ function CorrectRecordDialog({ record, batch, onClose }: { record: any; batch: a
   const { toast } = useToast();
   const [outcome, setOutcome] = useState<string>(record.outcome || 'promoted');
   const [reason, setReason] = useState<string>(record.reason || '');
+  const [department, setDepartment] = useState<string>(record.studentDepartment || '');
+
+  // Classes (for senior-secondary destination detection)
+  const { data: classes = [] } = useQuery({
+    queryKey: ['/api/classes'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/classes');
+      return await response.json();
+    },
+  });
+
+  // Senior-secondary destination requires a department (science/art/commercial)
+  const needsDepartment =
+    (outcome === 'promoted' || outcome === 'repeating') &&
+    isSeniorSecondaryDestination(record.toClassId, classes) &&
+    !(record.studentDepartment || '').trim();
 
   const correctMutation = useMutation({
     mutationFn: async () => {
       const response = await apiRequest('PATCH', `/api/admin/promotions/records/${record.id}`, {
         outcome,
         reason: reason.trim() || undefined,
+        department: needsDepartment ? department : undefined,
       });
       return await response.json();
     },
@@ -1294,6 +1397,21 @@ function CorrectRecordDialog({ record, batch, onClose }: { record: any; batch: a
               placeholder="Why is this outcome being corrected?"
             />
           </div>
+          {needsDepartment && (
+            <div className="space-y-2">
+              <Label>Department (required — senior secondary)</Label>
+              <Select value={department} onValueChange={setDepartment}>
+                <SelectTrigger className={department ? '' : 'border-destructive'}>
+                  <SelectValue placeholder="Choose department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DEPARTMENT_OPTIONS.map((d) => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="outline" onClick={onClose} disabled={correctMutation.isPending}>
               Cancel
@@ -1301,7 +1419,7 @@ function CorrectRecordDialog({ record, batch, onClose }: { record: any; batch: a
             <Button
               type="button"
               onClick={() => correctMutation.mutate()}
-              disabled={correctMutation.isPending || outcome === record.outcome && record.status === 'success'}
+              disabled={correctMutation.isPending || (outcome === record.outcome && record.status === 'success') || (needsDepartment && !department)}
             >
               {correctMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Save Correction

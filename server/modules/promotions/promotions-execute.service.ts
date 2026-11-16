@@ -101,6 +101,7 @@ import type { Tx } from './promotions.schemas';
             outcome: item.outcome,
             toClassId: item.toClassId ?? null,
             reason: item.reason ?? null,
+            department: item.department ?? null,
           });
           return res;
         });
@@ -201,6 +202,7 @@ import type { Tx } from './promotions.schemas';
         outcome: body.outcome,
         toClassId: body.toClassId ?? record.toClassId ?? null,
         reason: body.reason ?? record.reason,
+        department: body.department ?? null,
       });
 
       // 4. Update the audit record

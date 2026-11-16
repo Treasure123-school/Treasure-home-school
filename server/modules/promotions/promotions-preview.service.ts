@@ -60,6 +60,11 @@ import { getSessionOrThrow, getClassOrThrow, detectActiveSession, applyStudentOu
     const sourceEnrollmentMap = new Map(sourceEnrollments.map((e: any) => [e.studentId, e]));
     const destEnrollmentSet = new Set(destEnrollments.map((e: any) => e.studentId));
 
+    // Senior-secondary levels require a department (SSS subject mappings are per-department)
+    const SENIOR_SECONDARY_LEVELS = ['SS1', 'SS2', 'SS3', 'Senior Secondary'];
+    const isSeniorSecondary = (level: any) =>
+      !!level && SENIOR_SECONDARY_LEVELS.some(l => String(level).toLowerCase().includes(l.toLowerCase()));
+
     const students = studentRows.map((s: any) => {
       const cls = s.classId ? classMap.get(s.classId) : null;
       const sourceEnrollment = sourceEnrollmentMap.get(s.id);
@@ -67,6 +72,12 @@ import { getSessionOrThrow, getClassOrThrow, detectActiveSession, applyStudentOu
         ? 'repeating'
         : cls.isGraduationLevel ? 'graduated'
           : cls.nextClassId ? 'promoted' : 'repeating';
+      // True when this student's suggested destination is SSS but they have no department
+      const suggestedDestClass = cls?.nextClassId ? classMap.get(cls.nextClassId) : null;
+      const needsDepartment =
+        suggestedOutcome === 'promoted' &&
+        isSeniorSecondary(suggestedDestClass?.level) &&
+        !(s.department ?? null);
       return {
         id: s.id,
         name: `${s.firstName} ${s.lastName}`,
@@ -74,6 +85,7 @@ import { getSessionOrThrow, getClassOrThrow, detectActiveSession, applyStudentOu
         currentClassId: s.classId,
         currentClassName: cls?.name ?? null,
         department: s.department ?? null,
+        needsDepartment,
         accountStatus: s.status,
         hasSourceEnrollment: !!sourceEnrollment,
         alreadyProcessed: destEnrollmentSet.has(s.id),
@@ -240,6 +252,7 @@ import { getSessionOrThrow, getClassOrThrow, detectActiveSession, applyStudentOu
       studentId: schema.promotionRecords.studentId,
       studentName: sql<string>`concat(${schema.users.firstName}, ' ', ${schema.users.lastName})`,
       admissionNumber: schema.students.admissionNumber,
+      studentDepartment: schema.students.department,
       fromClassId: schema.promotionRecords.fromClassId,
       toClassId: schema.promotionRecords.toClassId,
       outcome: schema.promotionRecords.outcome,

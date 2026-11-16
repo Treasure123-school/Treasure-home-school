@@ -5,6 +5,10 @@ import { z } from 'zod';
 export const PROMOTION_OUTCOMES = ['promoted', 'repeating', 'graduated', 'withdrawn', 'deferred'] as const;
 export type PromotionOutcome = typeof PROMOTION_OUTCOMES[number];
 
+export const DEPARTMENTS = ['science', 'art', 'commercial'] as const;
+export type Department = typeof DEPARTMENTS[number];
+const departmentSchema = z.enum(DEPARTMENTS);
+
 // ==================== Zod validation ====================
 
 export const previewSchema = z.object({
@@ -29,6 +33,7 @@ export const executeSchema = z.object({
     outcome: z.enum(PROMOTION_OUTCOMES),
     toClassId: z.coerce.number().int().positive().nullable().optional(),
     reason: z.string().max(1000).optional(),
+    department: departmentSchema.nullable().optional(),
   })).min(1).max(2000),
 });
 
@@ -41,6 +46,7 @@ export const correctRecordSchema = z.object({
   outcome: z.enum(PROMOTION_OUTCOMES),
   toClassId: z.coerce.number().int().positive().nullable().optional(),
   reason: z.string().max(1000).optional(),
+  department: departmentSchema.nullable().optional(),
 });
 
 export type Tx = any; // drizzle transaction type (matches existing codebase convention)

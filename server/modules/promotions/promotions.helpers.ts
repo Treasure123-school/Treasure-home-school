@@ -28,6 +28,16 @@ export function detectActiveSession(sessions: any[]) {
 }
 
 /**
+ * Departments that require explicit assignment when a student enters senior
+ * secondary (SSS subject mappings are per-department — science/art/commercial).
+ */
+const SENIOR_SECONDARY_LEVELS = ['SS1', 'SS2', 'SS3', 'Senior Secondary'];
+
+function isSeniorSecondaryClass(level: any): boolean {
+  return !!level && SENIOR_SECONDARY_LEVELS.some(l => String(level).toLowerCase().includes(l.toLowerCase()));
+}
+
+/**
  * Apply one student's promotion outcome within a transaction.
  * Throws { message } on validation failure (caller converts to failed record).
  * Returns { subjectAssignmentPending, destinationClassId? } for post-commit work.
@@ -42,6 +52,7 @@ export async function applyStudentOutcome(
     outcome: PromotionOutcome,
     toClassId?: number | null,
     reason?: string | null,
+    department?: string | null,
   }
 ) {
   const { studentId, sourceSessionId, destinationSessionId, outcome } = params;
@@ -91,6 +102,19 @@ export async function applyStudentOutcome(
       throw new Error(`Destination class equals current class — use the "repeating" outcome instead`);
     }
     destinationClassId = destClassId;
+
+    // 4b. Department handling for senior-secondary entry.
+    // SSS subject mappings are per-department (science/art/commercial) — a student
+    // entering SSS without one would end up with no subject set.
+    if (isSeniorSecondaryClass(destClassRows[0].level)) {
+      const effectiveDept = (params.department ?? student.department)?.toLowerCase()?.trim() || null;
+      if (!effectiveDept) {
+        throw new Error(`Student ${studentId} is entering senior secondary ("${destClassRows[0].name}") but has no department — choose science, art or commercial for them`);
+      }
+      if (effectiveDept !== (student.department ?? null)) {
+        await tx.update(schema.students).set({ department: effectiveDept }).where(eq(schema.students.id, studentId));
+      }
+    }
 
     // 5. Move the operational pointer + create destination enrolment
     await tx.update(schema.students).set({ classId: destClassId }).where(eq(schema.students.id, studentId));
