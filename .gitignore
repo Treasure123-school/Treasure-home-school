@@ -73,3 +73,6 @@ server/uploads/
 vite.config.ts.timestamp-*.mjs
 session.json
 treasure-session.json
+reset_prod_promo*.cjs
+fix_prod_tables*.cjs
+run_migration_tmp*
