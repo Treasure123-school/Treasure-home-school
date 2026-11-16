@@ -1070,6 +1070,7 @@ function HistoryView({ data, isLoading }: { data: any[]; isLoading: boolean }) {
               <TableHead className="text-right">Graduated</TableHead>
               <TableHead className="text-right">Failed</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1109,11 +1110,206 @@ function HistoryView({ data, isLoading }: { data: any[]; isLoading: boolean }) {
                     {batch.status}
                   </Badge>
                 </TableCell>
+                <TableCell className="text-right">
+                  <BatchRecordsButton batch={batch} />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </CardContent>
     </Card>
+  );
+}
+
+const OUTCOME_OPTIONS = ['promoted', 'repeating', 'graduated', 'withdrawn', 'deferred'] as const;
+
+function BatchRecordsButton({ batch }: { batch: any }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
+        Records
+      </Button>
+      {open && <BatchRecordsDialog batch={batch} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+function BatchRecordsDialog({ batch, onClose }: { batch: any; onClose: () => void }) {
+  const { data: detail, isLoading } = useQuery({
+    queryKey: ['/api/admin/promotions/history', batch.id, 'records'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/admin/promotions/history/${batch.id}`);
+      return await response.json();
+    },
+  });
+  const [correcting, setCorrecting] = useState<any>(null);
+
+  const records = (detail?.records || []) as any[];
+  const failedCount = records.filter((r) => r.status === 'failed').length;
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            Batch #{batch.id} — {batch.sourceSessionYear} → {batch.destinationSessionYear}
+            {failedCount > 0 && (
+              <Badge variant="destructive" className="ml-2">
+                {failedCount} failed
+              </Badge>
+            )}
+          </DialogTitle>
+        </DialogHeader>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="h-7 w-7 animate-spin text-primary" />
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Student</TableHead>
+                <TableHead>Class</TableHead>
+                <TableHead>Outcome</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Error / Reason</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {records.map((r: any) => (
+                <TableRow key={r.id}>
+                  <TableCell>
+                    <div className="text-sm font-medium">{r.studentName}</div>
+                    <div className="text-xs text-muted-foreground">{r.admissionNumber}</div>
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {r.fromClassName || '—'} → {r.toClassName || '—'}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{r.outcome}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={r.status === 'success' ? 'default' : 'destructive'}>{r.status}</Badge>
+                  </TableCell>
+                  <TableCell className="max-w-[220px]">
+                    <span className="text-xs text-muted-foreground break-words">
+                      {r.errorMessage || r.reason || '—'}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button type="button" variant="outline" size="sm" onClick={() => setCorrecting(r)}>
+                      {r.status === 'failed' ? 'Correct' : 'Change'}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+        <div className="flex justify-end">
+          <Button type="button" variant="outline" onClick={onClose}>Close</Button>
+        </div>
+        {correcting && (
+          <CorrectRecordDialog
+            record={correcting}
+            batch={batch}
+            onClose={() => setCorrecting(null)}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function CorrectRecordDialog({ record, batch, onClose }: { record: any; batch: any; onClose: () => void }) {
+  const { toast } = useToast();
+  const [outcome, setOutcome] = useState<string>(record.outcome || 'promoted');
+  const [reason, setReason] = useState<string>(record.reason || '');
+
+  const correctMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('PATCH', `/api/admin/promotions/records/${record.id}`, {
+        outcome,
+        reason: reason.trim() || undefined,
+      });
+      return await response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: 'Record Corrected',
+        description: `${record.studentName} — outcome set to "${outcome}". Batch counts updated.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/promotions/history'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/promotions/history', batch.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/promotions/history', batch.id, 'records'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/students'] });
+      onClose();
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Correction Failed',
+        description: error.message || 'Failed to correct the promotion record',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Correct Outcome — {record.studentName}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          {record.status === 'failed' && record.errorMessage && (
+            <Alert variant="destructive">
+              <AlertDescription className="text-xs">{record.errorMessage}</AlertDescription>
+            </Alert>
+          )}
+          <div className="space-y-2">
+            <Label>New Outcome</Label>
+            <Select value={outcome} onValueChange={setOutcome}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {OUTCOME_OPTIONS.map((o) => (
+                  <SelectItem key={o} value={o}>{o}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {outcome === 'promoted' && record.toClassName && (
+              <p className="text-xs text-muted-foreground">
+                Destination class: {record.toClassName}
+              </p>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label>Reason (optional)</Label>
+            <Input
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Why is this outcome being corrected?"
+            />
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button type="button" variant="outline" onClick={onClose} disabled={correctMutation.isPending}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => correctMutation.mutate()}
+              disabled={correctMutation.isPending || outcome === record.outcome && record.status === 'success'}
+            >
+              {correctMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+              Save Correction
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

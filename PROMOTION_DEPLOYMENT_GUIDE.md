@@ -114,38 +114,40 @@ The Student Promotion & Academic Year Rollover System enables Treasure Home Scho
 psql "postgresql://neondb_owner:...@ep-still-bread-ah4dijdo-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require"
 ```
 
-**Run the following SQL** (all statements are guarded with `IF NOT EXISTS` / `DO $$` for safety):
+**Run the following SQL** (statement-by-statement; each is idempotent — safe to re-run).
+
+> **NOTE (updated 2026-11-16)**: This DDL matches `shared/schema.pg.ts` exactly — the version
+> previously written here was an earlier draft and did NOT match the app's queries (wrong
+> column names like `enrollment_status`, `source_class_id`, `created_at` on batches, and UUID
+> FK types). Production uses `varchar(36)` ids for users/students; FKs below match that.
+> Verified working on production 2026-11-16.
 
 ```sql
--- 1. Create student_enrollments table
+-- 1. Create student_enrollments table (matches schema.pg studentEnrollments)
 CREATE TABLE IF NOT EXISTS student_enrollments (
   id SERIAL PRIMARY KEY,
-  student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  student_id VARCHAR(36) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   session_id INTEGER NOT NULL REFERENCES academic_sessions(id) ON DELETE CASCADE,
-  class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE RESTRICT,
-  enrollment_status VARCHAR(20) NOT NULL DEFAULT 'active'
-    CHECK (enrollment_status IN ('active', 'completed', 'withdrawn', 'deferred', 'pending', 'promoted', 'repeating', 'graduated')),
-  enrolled_at TIMESTAMP DEFAULT NOW(),
-  completed_at TIMESTAMP,
-  notes TEXT,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  UNIQUE (student_id, session_id)
+  class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
+  promotion_outcome VARCHAR(20),
+  promoted_to_class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_enrollments_student ON student_enrollments(student_id);
-CREATE INDEX IF NOT EXISTS idx_enrollments_session ON student_enrollments(session_id);
-CREATE INDEX IF NOT EXISTS idx_enrollments_class ON student_enrollments(class_id);
-CREATE INDEX IF NOT EXISTS idx_enrollments_status ON student_enrollments(enrollment_status);
+CREATE INDEX IF NOT EXISTS student_enrollments_student_idx ON student_enrollments(student_id);
+CREATE INDEX IF NOT EXISTS student_enrollments_session_idx ON student_enrollments(session_id);
+CREATE INDEX IF NOT EXISTS student_enrollments_class_idx ON student_enrollments(class_id);
+CREATE UNIQUE INDEX IF NOT EXISTS student_enrollments_unique_idx ON student_enrollments(student_id, session_id);
 
--- 2. Create promotion_batches table
+-- 2. Create promotion_batches table (matches schema.pg promotionBatches)
 CREATE TABLE IF NOT EXISTS promotion_batches (
   id SERIAL PRIMARY KEY,
-  source_session_id INTEGER NOT NULL REFERENCES academic_sessions(id) ON DELETE RESTRICT,
-  destination_session_id INTEGER NOT NULL REFERENCES academic_sessions(id) ON DELETE RESTRICT,
-  executed_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
-  status VARCHAR(20) NOT NULL DEFAULT 'in_progress'
-    CHECK (status IN ('in_progress', 'completed', 'failed', 'cancelled')),
+  source_session_id INTEGER NOT NULL REFERENCES academic_sessions(id),
+  destination_session_id INTEGER NOT NULL REFERENCES academic_sessions(id),
+  executed_by VARCHAR(36) NOT NULL REFERENCES users(id),
+  status VARCHAR(20) NOT NULL DEFAULT 'completed',
   total_students INTEGER NOT NULL DEFAULT 0,
   promoted_count INTEGER NOT NULL DEFAULT 0,
   repeating_count INTEGER NOT NULL DEFAULT 0,
@@ -154,65 +156,50 @@ CREATE TABLE IF NOT EXISTS promotion_batches (
   deferred_count INTEGER NOT NULL DEFAULT 0,
   failed_count INTEGER NOT NULL DEFAULT 0,
   notes TEXT,
-  created_at TIMESTAMP DEFAULT NOW(),
-  completed_at TIMESTAMP,
-  CHECK (source_session_id <> destination_session_id)
+  executed_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_batches_source ON promotion_batches(source_session_id);
-CREATE INDEX IF NOT EXISTS idx_batches_dest ON promotion_batches(destination_session_id);
-CREATE INDEX IF NOT EXISTS idx_batches_executed_by ON promotion_batches(executed_by);
-CREATE INDEX IF NOT EXISTS idx_batches_created ON promotion_batches(created_at DESC);
+CREATE INDEX IF NOT EXISTS promotion_batches_source_idx ON promotion_batches(source_session_id);
+CREATE INDEX IF NOT EXISTS promotion_batches_dest_idx ON promotion_batches(destination_session_id);
+CREATE INDEX IF NOT EXISTS promotion_batches_executed_by_idx ON promotion_batches(executed_by);
+CREATE INDEX IF NOT EXISTS promotion_batches_executed_at_idx ON promotion_batches(executed_at);
 
--- Partial unique index (allows only 1 non-failed batch per transition)
+-- Partial unique index: one non-failed batch per session transition
 CREATE UNIQUE INDEX IF NOT EXISTS promotion_batches_transition_unique_idx
   ON promotion_batches (source_session_id, destination_session_id)
   WHERE status <> 'failed';
 
--- 3. Create promotion_records table
+-- 3. Create promotion_records table (matches schema.pg promotionRecords)
 CREATE TABLE IF NOT EXISTS promotion_records (
   id SERIAL PRIMARY KEY,
   batch_id INTEGER NOT NULL REFERENCES promotion_batches(id) ON DELETE CASCADE,
-  student_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  source_class_id INTEGER NOT NULL REFERENCES classes(id) ON DELETE RESTRICT,
-  destination_class_id INTEGER REFERENCES classes(id) ON DELETE RESTRICT,
-  outcome VARCHAR(20) NOT NULL
-    CHECK (outcome IN ('promoted', 'repeating', 'graduated', 'withdrawn', 'deferred')),
-  status VARCHAR(20) NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending', 'success', 'failed', 'corrected')),
+  student_id VARCHAR(36) NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  from_class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
+  to_class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL,
+  outcome VARCHAR(20) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'success',
+  reason TEXT,
   error_message TEXT,
-  corrected_outcome VARCHAR(20)
-    CHECK (corrected_outcome IN ('promoted', 'repeating', 'graduated', 'withdrawn', 'deferred')),
+  corrected_by VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,
   corrected_at TIMESTAMP,
-  corrected_by UUID REFERENCES users(id) ON DELETE SET NULL,
-  correction_reason TEXT,
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_records_batch ON promotion_records(batch_id);
-CREATE INDEX IF NOT EXISTS idx_records_student ON promotion_records(student_id);
-CREATE INDEX IF NOT EXISTS idx_records_outcome ON promotion_records(outcome);
-CREATE INDEX IF NOT EXISTS idx_records_status ON promotion_records(status);
+CREATE INDEX IF NOT EXISTS promotion_records_batch_idx ON promotion_records(batch_id);
+CREATE INDEX IF NOT EXISTS promotion_records_student_idx ON promotion_records(student_id);
+CREATE INDEX IF NOT EXISTS promotion_records_outcome_idx ON promotion_records(outcome);
 
 -- 4. Add progression columns to classes table
-DO $$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='classes' AND column_name='sequence_order') THEN
-    ALTER TABLE classes ADD COLUMN sequence_order INTEGER;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='classes' AND column_name='next_class_id') THEN
-    ALTER TABLE classes ADD COLUMN next_class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL;
-  END IF;
-  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='classes' AND column_name='is_graduation_level') THEN
-    ALTER TABLE classes ADD COLUMN is_graduation_level BOOLEAN DEFAULT FALSE;
-  END IF;
-END $$;
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS sequence_order INTEGER;
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS next_class_id INTEGER REFERENCES classes(id) ON DELETE SET NULL;
+ALTER TABLE classes ADD COLUMN IF NOT EXISTS is_graduation_level BOOLEAN DEFAULT FALSE;
 
 CREATE INDEX IF NOT EXISTS idx_classes_sequence ON classes(sequence_order);
 CREATE INDEX IF NOT EXISTS idx_classes_next ON classes(next_class_id);
 
--- 5. Seed progression chain (Playgroup → SSS 3)
--- NOTE: Update these IDs based on your production class IDs
+-- 5. Seed progression chain (Playgroup -> SSS 3)
+-- Class names must match your classes table; Primary 5 chains straight to JSS 1
+-- when no Primary 6 row exists (matches dev + prod).
 UPDATE classes SET sequence_order = 1, next_class_id = (SELECT id FROM classes WHERE name='Nursery 1'), is_graduation_level = FALSE WHERE name = 'Playgroup';
 UPDATE classes SET sequence_order = 2, next_class_id = (SELECT id FROM classes WHERE name='Nursery 2'), is_graduation_level = FALSE WHERE name = 'Nursery 1';
 UPDATE classes SET sequence_order = 3, next_class_id = (SELECT id FROM classes WHERE name='Primary 1'), is_graduation_level = FALSE WHERE name = 'Nursery 2';
@@ -220,8 +207,8 @@ UPDATE classes SET sequence_order = 4, next_class_id = (SELECT id FROM classes W
 UPDATE classes SET sequence_order = 5, next_class_id = (SELECT id FROM classes WHERE name='Primary 3'), is_graduation_level = FALSE WHERE name = 'Primary 2';
 UPDATE classes SET sequence_order = 6, next_class_id = (SELECT id FROM classes WHERE name='Primary 4'), is_graduation_level = FALSE WHERE name = 'Primary 3';
 UPDATE classes SET sequence_order = 7, next_class_id = (SELECT id FROM classes WHERE name='Primary 5'), is_graduation_level = FALSE WHERE name = 'Primary 4';
-UPDATE classes SET sequence_order = 8, next_class_id = (SELECT id FROM classes WHERE name='Primary 6'), is_graduation_level = FALSE WHERE name = 'Primary 5';
-UPDATE classes SET sequence_order = 9, next_class_id = (SELECT id FROM classes WHERE name='JSS 1'), is_graduation_level = FALSE WHERE name = 'Primary 6';
+UPDATE classes SET sequence_order = 8, next_class_id = COALESCE((SELECT id FROM classes WHERE name='Primary 6'), (SELECT id FROM classes WHERE name='JSS 1')), is_graduation_level = FALSE WHERE name = 'Primary 5';
+UPDATE classes SET sequence_order = 9, next_class_id = (SELECT id FROM classes WHERE name='JSS 2'), is_graduation_level = FALSE WHERE name = 'Primary 6';
 UPDATE classes SET sequence_order = 10, next_class_id = (SELECT id FROM classes WHERE name='JSS 2'), is_graduation_level = FALSE WHERE name = 'JSS 1';
 UPDATE classes SET sequence_order = 11, next_class_id = (SELECT id FROM classes WHERE name='JSS 3'), is_graduation_level = FALSE WHERE name = 'JSS 2';
 UPDATE classes SET sequence_order = 12, next_class_id = (SELECT id FROM classes WHERE name='SSS 1'), is_graduation_level = FALSE WHERE name = 'JSS 3';
@@ -229,26 +216,20 @@ UPDATE classes SET sequence_order = 13, next_class_id = (SELECT id FROM classes 
 UPDATE classes SET sequence_order = 14, next_class_id = (SELECT id FROM classes WHERE name='SSS 3'), is_graduation_level = FALSE WHERE name = 'SSS 2';
 UPDATE classes SET sequence_order = 15, next_class_id = NULL, is_graduation_level = TRUE WHERE name = 'SSS 3';
 
--- 6. Seed current students into student_enrollments
--- NOTE: Replace session_id with your current active production session
-INSERT INTO student_enrollments (student_id, session_id, class_id, enrollment_status, enrolled_at)
-SELECT 
-  u.id,
-  (SELECT id FROM academic_sessions WHERE status = 'active' LIMIT 1), -- Current active session
-  u.class_id,
-  CASE 
-    WHEN u.status = 'graduated' THEN 'graduated'
-    WHEN u.status = 'withdrawn' THEN 'withdrawn'
-    ELSE 'active'
-  END,
-  NOW()
-FROM users u
-WHERE u.role_id = 4 -- Student role
-  AND u.class_id IS NOT NULL
+-- 6. Seed current students into student_enrollments (active session)
+-- Uses the students table (class pointer lives there, not on users).
+INSERT INTO student_enrollments (student_id, session_id, class_id, status)
+SELECT
+  s.id,
+  (SELECT id FROM academic_sessions WHERE status = 'active' LIMIT 1),
+  s.class_id,
+  'active'
+FROM students s
+WHERE s.class_id IS NOT NULL
 ON CONFLICT (student_id, session_id) DO NOTHING;
 
 -- 7. Verify installation
-SELECT 
+SELECT
   (SELECT COUNT(*) FROM student_enrollments) as enrollments_count,
   (SELECT COUNT(*) FROM promotion_batches) as batches_count,
   (SELECT COUNT(*) FROM promotion_records) as records_count,
