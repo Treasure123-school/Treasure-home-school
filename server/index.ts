@@ -293,6 +293,49 @@ function sanitizeLogData(data: any): any {
   } catch (err: any) {
     console.log(`⚠️ DB migration warning: ${err.message}`);
   }
+  // Apply promotion-reversal schema (idempotent): reversal snapshot columns,
+  // promotion_audit table and the widened transition unique index.
+  try {
+    const { getPgPool } = await import("./db");
+    const pool = getPgPool();
+    if (pool) {
+      await pool.query(`
+        ALTER TABLE promotion_batches ADD COLUMN IF NOT EXISTS reversal_status varchar(20) NOT NULL DEFAULT 'not_reversed';
+        ALTER TABLE promotion_batches ADD COLUMN IF NOT EXISTS reversed_at timestamp;
+        ALTER TABLE promotion_batches ADD COLUMN IF NOT EXISTS reversed_by varchar(36) REFERENCES users(id) ON DELETE SET NULL;
+        ALTER TABLE promotion_batches ADD COLUMN IF NOT EXISTS reversal_reason text;
+        ALTER TABLE promotion_records ADD COLUMN IF NOT EXISTS dest_enrollment_id integer;
+        ALTER TABLE promotion_records ADD COLUMN IF NOT EXISTS prev_enrollment_status varchar(20);
+        ALTER TABLE promotion_records ADD COLUMN IF NOT EXISTS prev_user_status varchar(20);
+        ALTER TABLE promotion_records ADD COLUMN IF NOT EXISTS reversal_status varchar(20) NOT NULL DEFAULT 'not_reversed';
+        ALTER TABLE promotion_records ADD COLUMN IF NOT EXISTS reversed_at timestamp;
+        ALTER TABLE promotion_records ADD COLUMN IF NOT EXISTS reversal_blocked_reason text;
+        CREATE TABLE IF NOT EXISTS promotion_audit (
+          id serial PRIMARY KEY,
+          batch_id integer NOT NULL REFERENCES promotion_batches(id) ON DELETE CASCADE,
+          record_id integer REFERENCES promotion_records(id) ON DELETE SET NULL,
+          student_id varchar(36) REFERENCES students(id) ON DELETE SET NULL,
+          event_type varchar(30) NOT NULL,
+          previous_outcome varchar(20),
+          new_outcome varchar(20),
+          previous_to_class_id integer REFERENCES classes(id) ON DELETE SET NULL,
+          new_to_class_id integer REFERENCES classes(id) ON DELETE SET NULL,
+          reason text,
+          details text,
+          performed_by varchar(36) REFERENCES users(id) ON DELETE SET NULL,
+          performed_at timestamp NOT NULL DEFAULT now()
+        );
+        CREATE INDEX IF NOT EXISTS promotion_audit_batch_idx ON promotion_audit(batch_id);
+        CREATE INDEX IF NOT EXISTS promotion_audit_record_idx ON promotion_audit(record_id);
+        CREATE INDEX IF NOT EXISTS promotion_audit_performed_at_idx ON promotion_audit(performed_at);
+        DROP INDEX IF EXISTS promotion_batches_transition_unique_idx;
+        CREATE UNIQUE INDEX IF NOT EXISTS promotion_batches_transition_unique_idx ON promotion_batches(source_session_id, destination_session_id) WHERE status NOT IN ('failed', 'reversed');
+      `);
+      console.log('✅ DB migration: promotion reversal schema ensured');
+    }
+  } catch (err: any) {
+    console.log(`⚠️ DB migration warning: ${err.message}`);
+  }
   // Seed default WAEC/NECO grading boundaries
   try {
     console.log("Seeding default grading boundaries...");
