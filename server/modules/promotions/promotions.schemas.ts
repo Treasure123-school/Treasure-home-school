@@ -49,6 +49,10 @@ export const correctRecordSchema = z.object({
   department: departmentSchema.nullable().optional(),
 });
 
+export const reverseBatchSchema = z.object({
+  reason: z.string().min(5, 'A reversal reason (at least 5 characters) is required').max(1000),
+});
+
 export type Tx = any; // drizzle transaction type (matches existing codebase convention)
 
 // ==================== Helpers ====================

@@ -10,6 +10,7 @@ import {
   executeSchema,
   rolloverSchema,
   correctRecordSchema,
+  reverseBatchSchema,
 } from './promotions.service';
 
 export class PromotionsController {
@@ -124,6 +125,38 @@ export class PromotionsController {
     } catch (error: any) {
       console.error('[PROMOTIONS] Rollover error:', error?.message || error);
       res.status(error?.statusCode || 500).json({ message: error?.message || 'Rollover activation failed' });
+    }
+  };
+
+  // GET /api/admin/promotions/batches/:batchId/reversal-preview
+  getReversalPreview = async (req: Request, res: Response) => {
+    try {
+      const batchId = parseInt(req.params.batchId, 10);
+      if (!Number.isInteger(batchId) || batchId <= 0) {
+        return res.status(400).json({ message: 'Invalid batch id' });
+      }
+      res.json(await this.service.analyzeReversal(batchId));
+    } catch (error: any) {
+      console.error('[PROMOTIONS] Reversal preview error:', error?.message || error);
+      res.status(error?.statusCode || 500).json({ message: error?.message || 'Failed to analyze reversal' });
+    }
+  };
+
+  // POST /api/admin/promotions/batches/:batchId/reverse
+  reverseBatch = async (req: Request, res: Response) => {
+    try {
+      const batchId = parseInt(req.params.batchId, 10);
+      if (!Number.isInteger(batchId) || batchId <= 0) {
+        return res.status(400).json({ message: 'Invalid batch id' });
+      }
+      const parsed = reverseBatchSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({ message: 'Invalid reversal payload', details: parsed.error.errors });
+      }
+      res.json(await this.service.reverseBatch(batchId, parsed.data.reason, req.user!.id));
+    } catch (error: any) {
+      console.error('[PROMOTIONS] Reverse batch error:', error?.message || error);
+      res.status(error?.statusCode || 500).json({ message: error?.message || 'Failed to reverse promotion batch' });
     }
   };
 }

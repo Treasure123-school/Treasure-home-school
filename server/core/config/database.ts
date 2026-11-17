@@ -74,6 +74,14 @@ function initializeDatabase() {
   pool.on('error', (err: NodeJS.ErrnoException) => {
     console.error('[DB] Idle client connection error (removed from pool):', err.code || err.message);
   });
+  // Belt-and-braces: Neon closes idle pooled connections server-side, and a
+  // client can emit a late 'error' AFTER pg-pool has detached it — that crashes
+  // the process with an unhandled event. Swallow it at the client level too.
+  pool.on('connect', (client: pg.PoolClient) => {
+    client.on('error', (err: Error) => {
+      console.error('[DB] Client connection error (handled):', err.message);
+    });
+  });
     const dbInstance = drizzle(pool, { schema: pgSchema });
     console.log('PostgreSQL database initialized (direct connection for Drizzle ORM compatibility)');
     return dbInstance;

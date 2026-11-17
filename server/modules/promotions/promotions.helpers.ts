@@ -67,6 +67,10 @@ export async function applyStudentOutcome(
   if (currentClass.length === 0) throw new Error(`Student's class ${student.classId} no longer exists`);
   const fromClassId = student.classId;
 
+  // Reversal snapshots — captured BEFORE any modification so reversal can restore exact original state
+  const userRows = await tx.select({ status: schema.users.status }).from(schema.users).where(eq(schema.users.id, studentId)).limit(1);
+  const prevUserStatus = userRows[0]?.status ?? 'active';
+
   // 2. Source enrolment (create implicitly if the student was never enrolled for this session)
   const sourceEnrollmentRows = await tx.select().from(schema.studentEnrollments)
     .where(and(eq(schema.studentEnrollments.studentId, studentId), eq(schema.studentEnrollments.sessionId, sourceSessionId)))
@@ -78,6 +82,7 @@ export async function applyStudentOutcome(
       .returning();
     sourceEnrollment = created[0];
   }
+  const prevEnrollmentStatus = sourceEnrollment.status;
 
   // 3. Duplicate enrolment guard — DB unique index is the final backstop
   const existingDest = await tx.select().from(schema.studentEnrollments)
@@ -89,6 +94,7 @@ export async function applyStudentOutcome(
 
   let destinationClassId: number | null = null;
   let subjectAssignmentPending = false;
+  let destEnrollmentId: number | null = null;
 
   if (outcome === 'promoted') {
     // 4. Resolve destination class: explicit override or configured progression
@@ -118,17 +124,19 @@ export async function applyStudentOutcome(
 
     // 5. Move the operational pointer + create destination enrolment
     await tx.update(schema.students).set({ classId: destClassId }).where(eq(schema.students.id, studentId));
-    await tx.insert(schema.studentEnrollments).values({
+    const destEnrollment = await tx.insert(schema.studentEnrollments).values({
       studentId, sessionId: destinationSessionId, classId: destClassId, status: 'active',
-    });
+    }).returning();
+    destEnrollmentId = destEnrollment[0].id;
     await tx.update(schema.studentEnrollments).set({
       status: 'completed', promotionOutcome: 'promoted', promotedToClassId: destClassId, updatedAt: new Date(),
     }).where(eq(schema.studentEnrollments.id, sourceEnrollment.id));
     subjectAssignmentPending = true;
   } else if (outcome === 'repeating') {
-    await tx.insert(schema.studentEnrollments).values({
+    const destEnrollment = await tx.insert(schema.studentEnrollments).values({
       studentId, sessionId: destinationSessionId, classId: fromClassId, status: 'active',
-    });
+    }).returning();
+    destEnrollmentId = destEnrollment[0].id;
     await tx.update(schema.studentEnrollments).set({
       status: 'completed', promotionOutcome: 'repeating', updatedAt: new Date(),
     }).where(eq(schema.studentEnrollments.id, sourceEnrollment.id));
@@ -146,9 +154,10 @@ export async function applyStudentOutcome(
     await tx.update(schema.users).set({ status: 'withdrawn', isActive: false }).where(eq(schema.users.id, studentId));
   } else if (outcome === 'deferred') {
     // Decision not finalized: keep the old class association, flag as pending in the new session
-    await tx.insert(schema.studentEnrollments).values({
+    const destEnrollment = await tx.insert(schema.studentEnrollments).values({
       studentId, sessionId: destinationSessionId, classId: fromClassId, status: 'pending', promotionOutcome: 'deferred',
-    });
+    }).returning();
+    destEnrollmentId = destEnrollment[0].id;
     await tx.update(schema.studentEnrollments).set({
       promotionOutcome: 'deferred', updatedAt: new Date(),
     }).where(eq(schema.studentEnrollments.id, sourceEnrollment.id));
@@ -166,10 +175,13 @@ export async function applyStudentOutcome(
       outcome,
       status: 'success',
       reason: params.reason ?? null,
+      destEnrollmentId,
+      prevEnrollmentStatus,
+      prevUserStatus,
     });
   }
 
-  return { destinationClassId, subjectAssignmentPending, fromClassId };
+  return { destinationClassId, subjectAssignmentPending, fromClassId, destEnrollmentId, prevEnrollmentStatus, prevUserStatus };
 }
 
 export async function recomputeBatchCounts(batchId: number) {
@@ -196,7 +208,15 @@ export async function recomputeBatchCounts(batchId: number) {
     }
   }
   const allFailed = stats.totalStudents > 0 && stats.failedCount === stats.totalStudents;
-  await db.update(schema.promotionBatches).set({ ...stats, status: allFailed ? 'failed' : 'completed' })
+  // Fully reversed batches keep status 'reversed' (allows re-running the promotion);
+  // recounting must not clobber it back to 'completed'.
+  const batchRow = await db.select({ reversalStatus: schema.promotionBatches.reversalStatus })
+    .from(schema.promotionBatches).where(eq(schema.promotionBatches.id, batchId)).limit(1);
+  const keepReversed = batchRow[0]?.reversalStatus === 'reversed';
+  await db.update(schema.promotionBatches).set({
+    ...stats,
+    ...(keepReversed ? {} : { status: allFailed ? 'failed' : 'completed' }),
+  })
     .where(eq(schema.promotionBatches.id, batchId));
   return stats;
 }

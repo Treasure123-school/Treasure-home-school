@@ -14,11 +14,17 @@ import { PageHeader, MiniStatCard, MiniStatGrid, EmptyState } from '@/components
 import {
   ArrowRight, Users, TrendingUp, RotateCcw, GraduationCap, UserX,
   Clock, ChevronRight, ChevronLeft, Check, AlertCircle, Calendar,
-  CheckCircle2, XCircle, Loader2, History, ArrowUpCircle, RefreshCw
+  CheckCircle2, XCircle, Loader2, History, ArrowUpCircle, RefreshCw,
+  MoreVertical, Undo2, ScrollText, Eye
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Textarea } from '@/components/ui/textarea';
 
 type PromotionOutcome = 'promoted' | 'repeating' | 'graduated' | 'withdrawn' | 'deferred';
 
@@ -1191,9 +1197,17 @@ function HistoryView({ data, isLoading }: { data: any[]; isLoading: boolean }) {
                 <TableCell className="text-right">{batch.graduatedCount}</TableCell>
                 <TableCell className="text-right">{batch.failedCount}</TableCell>
                 <TableCell>
-                  <Badge variant={batch.status === 'completed' ? 'default' : batch.status === 'failed' ? 'destructive' : 'secondary'}>
-                    {batch.status}
-                  </Badge>
+                  <div className="flex flex-col items-start gap-1">
+                    <Badge variant={batch.status === 'completed' ? 'default' : batch.status === 'failed' ? 'destructive' : 'secondary'}>
+                      {batch.status}
+                    </Badge>
+                    {batch.reversalStatus === 'reversed' && (
+                      <Badge variant="outline" className="text-xs text-blue-600">fully reversed</Badge>
+                    )}
+                    {batch.reversalStatus === 'partially_reversed' && (
+                      <Badge variant="outline" className="text-xs text-yellow-600">partially reversed</Badge>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="text-right">
                   <BatchRecordsButton batch={batch} />
@@ -1210,14 +1224,223 @@ function HistoryView({ data, isLoading }: { data: any[]; isLoading: boolean }) {
 const OUTCOME_OPTIONS = ['promoted', 'repeating', 'graduated', 'withdrawn', 'deferred'] as const;
 
 function BatchRecordsButton({ batch }: { batch: any }) {
-  const [open, setOpen] = useState(false);
+  const [openRecords, setOpenRecords] = useState(false);
+  const [openReverse, setOpenReverse] = useState(false);
+
+  const canReverse = batch.status === 'completed' && batch.reversalStatus !== 'reversed';
+  const isReversed = batch.reversalStatus === 'reversed' || batch.status === 'reversed';
+  const isPartial = batch.reversalStatus === 'partially_reversed';
+
   return (
     <>
-      <Button type="button" variant="outline" size="sm" onClick={() => setOpen(true)}>
-        Records
-      </Button>
-      {open && <BatchRecordsDialog batch={batch} onClose={() => setOpen(false)} />}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button type="button" variant="outline" size="sm" className="h-8 w-8 p-0" aria-label="Batch actions">
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuItem onClick={() => setOpenRecords(true)}>
+            <ScrollText className="h-4 w-4 mr-2" /> View Records
+          </DropdownMenuItem>
+          {canReverse && (
+            <DropdownMenuItem
+              onClick={() => setOpenReverse(true)}
+              className="text-destructive focus:text-destructive"
+            >
+              <Undo2 className="h-4 w-4 mr-2" /> Reverse Promotion
+            </DropdownMenuItem>
+          )}
+          {isReversed && (
+            <DropdownMenuItem disabled>
+              <Undo2 className="h-4 w-4 mr-2 opacity-50" /> Reversed{isPartial ? ' (partial)' : ''}
+            </DropdownMenuItem>
+          )}
+          {batch.status === 'in_progress' && (
+            <DropdownMenuItem disabled>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Executing…
+            </DropdownMenuItem>
+          )}
+          {batch.status === 'failed' && (
+            <DropdownMenuItem disabled>
+              <AlertCircle className="h-4 w-4 mr-2 opacity-50" /> Nothing to reverse
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {openRecords && <BatchRecordsDialog batch={batch} onClose={() => setOpenRecords(false)} />}
+      {openReverse && <ReverseBatchDialog batch={batch} onClose={() => setOpenReverse(false)} />}
     </>
+  );
+}
+
+function ReverseBatchDialog({ batch, onClose }: { batch: any; onClose: () => void }) {
+  const { toast } = useToast();
+  const [reason, setReason] = useState('');
+  const [confirming, setConfirming] = useState(false);
+
+  const { data: preview, isLoading } = useQuery({
+    queryKey: ['/api/admin/promotions/batches', batch.id, 'reversal-preview'],
+    queryFn: async () => {
+      const response = await apiRequest('GET', `/api/admin/promotions/batches/${batch.id}/reversal-preview`);
+      return await response.json();
+    },
+  });
+
+  const reverseMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('POST', `/api/admin/promotions/batches/${batch.id}/reverse`, {
+        reason: reason.trim(),
+      });
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: data.fullyReversed ? 'Promotion Fully Reversed' : 'Promotion Partially Reversed',
+        description: `${data.reversedCount} student record(s) restored to their pre-promotion state.`
+          + (data.blocked?.length ? ` ${data.blocked.length} blocked by subsequent activity — see batch records.` : ''),
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/promotions/history'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/promotions/batches', batch.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/promotions/history', batch.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/promotions/history', batch.id, 'records'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/students'] });
+      onClose();
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Reversal Failed',
+        description: error.message || 'Failed to reverse the promotion batch',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const counts = preview?.counts;
+  const canConfirm = reason.trim().length >= 5 && !reverseMutation.isPending;
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
+            Reverse Promotion — Batch #{batch.id}
+          </DialogTitle>
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="h-7 w-7 animate-spin text-primary" />
+          </div>
+        ) : !preview ? (
+          <Alert variant="destructive">
+            <AlertDescription>Could not load the reversal analysis. Please try again.</AlertDescription>
+          </Alert>
+        ) : (
+          <div className="space-y-4">
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="text-xs">
+                Reversal restores each student's previous class, enrolment status and account
+                status from the snapshots taken during the original promotion. Historical
+                academic records are never deleted. Students with new academic activity in{' '}
+                <strong>{preview.destSessionYear}</strong> cannot be reversed.
+              </AlertDescription>
+            </Alert>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="rounded-lg border p-3 text-center">
+                <div className="text-2xl font-bold">{counts?.total ?? 0}</div>
+                <div className="text-xs text-muted-foreground">Affected</div>
+              </div>
+              <div className="rounded-lg border p-3 text-center">
+                <div className="text-2xl font-bold text-green-600">{counts?.eligible ?? 0}</div>
+                <div className="text-xs text-muted-foreground">Eligible</div>
+              </div>
+              <div className="rounded-lg border p-3 text-center">
+                <div className="text-2xl font-bold text-red-600">{counts?.blocked ?? 0}</div>
+                <div className="text-xs text-muted-foreground">Blocked</div>
+              </div>
+              <div className="rounded-lg border p-3 text-center">
+                <div className="text-2xl font-bold text-yellow-600">{counts?.review ?? 0}</div>
+                <div className="text-xs text-muted-foreground">Review</div>
+              </div>
+            </div>
+
+            {(preview.blocked?.length || preview.review?.length) ? (
+              <div className="rounded-lg border p-3 space-y-2 max-h-48 overflow-y-auto">
+                <p className="text-xs font-medium">Cannot be safely reversed:</p>
+                {preview.blocked.map((b: any) => (
+                  <div key={b.recordId} className="text-xs flex gap-2">
+                    <XCircle className="h-3 w-3 text-red-500 mt-0.5 shrink-0" />
+                    <span><strong>Record #{b.recordId}</strong> ({b.outcome}) — {b.reason}</span>
+                  </div>
+                ))}
+                {preview.review.map((r: any) => (
+                  <div key={r.recordId} className="text-xs flex gap-2">
+                    <Clock className="h-3 w-3 text-yellow-500 mt-0.5 shrink-0" />
+                    <span><strong>Record #{r.recordId}</strong> ({r.outcome}) — {r.reason}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="space-y-2">
+              <Label>Reversal reason (required)</Label>
+              <Textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Why is this promotion being reversed?"
+                rows={2}
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <Button type="button" variant="outline" onClick={onClose} disabled={reverseMutation.isPending}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => setConfirming(true)}
+                disabled={!canConfirm || (counts?.eligible ?? 0) === 0}
+              >
+                <Undo2 className="h-4 w-4 mr-1" />
+                Reverse {counts?.eligible ?? 0} Student(s)
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {confirming && (
+          <Dialog open onOpenChange={(v) => !v && setConfirming(false)}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Confirm Reversal</DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-muted-foreground">
+                This will restore {counts?.eligible} student record(s) to their pre-promotion state
+                and is logged permanently in the audit trail. Continue?
+              </p>
+              <div className="flex gap-2 justify-end">
+                <Button type="button" variant="outline" onClick={() => setConfirming(false)} disabled={reverseMutation.isPending}>
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => reverseMutation.mutate()}
+                  disabled={reverseMutation.isPending}
+                >
+                  {reverseMutation.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Undo2 className="h-4 w-4 mr-1" />}
+                  Yes, Reverse
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1232,6 +1455,7 @@ function BatchRecordsDialog({ batch, onClose }: { batch: any; onClose: () => voi
   const [correcting, setCorrecting] = useState<any>(null);
 
   const records = (detail?.records || []) as any[];
+  const audit = (detail?.audit || []) as any[];
   const failedCount = records.filter((r) => r.status === 'failed').length;
 
   return (
@@ -1277,11 +1501,19 @@ function BatchRecordsDialog({ batch, onClose }: { batch: any; onClose: () => voi
                     <Badge variant="outline">{r.outcome}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={r.status === 'success' ? 'default' : 'destructive'}>{r.status}</Badge>
+                    <div className="flex flex-col items-start gap-1">
+                      <Badge variant={r.status === 'success' ? 'default' : 'destructive'}>{r.status}</Badge>
+                      {r.reversalStatus === 'reversed' && (
+                        <Badge variant="outline" className="text-xs text-blue-600">reversed</Badge>
+                      )}
+                      {r.reversalStatus === 'blocked' && (
+                        <Badge variant="outline" className="text-xs text-red-600">reversal blocked</Badge>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell className="max-w-[220px]">
                     <span className="text-xs text-muted-foreground break-words">
-                      {r.errorMessage || r.reason || '—'}
+                      {r.errorMessage || r.reversalBlockedReason || r.reason || '—'}
                     </span>
                   </TableCell>
                   <TableCell className="text-right">
@@ -1293,6 +1525,29 @@ function BatchRecordsDialog({ batch, onClose }: { batch: any; onClose: () => voi
               ))}
             </TableBody>
           </Table>
+        )}
+        {audit.length > 0 && (
+          <div className="rounded-lg border p-3 space-y-2">
+            <p className="text-xs font-medium flex items-center gap-1">
+              <ScrollText className="h-3 w-3" /> Corrections & reversals (audit trail)
+            </p>
+            <div className="space-y-1.5 max-h-56 overflow-y-auto">
+              {audit.map((a: any) => (
+                <div key={a.id} className="text-xs flex gap-2 items-start">
+                  <Badge variant="outline" className="text-[10px] shrink-0">
+                    {a.eventType === 'correction' ? 'corrected' : a.eventType === 'record_reversal' ? 'reversed' : 'batch reversal'}
+                  </Badge>
+                  <span className="text-muted-foreground">
+                    {a.performedAt ? new Date(a.performedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''}
+                    {' — '}record #{a.recordId ?? '—'}
+                    {a.previousOutcome ? `: ${a.previousOutcome}${a.newOutcome ? ` → ${a.newOutcome}` : ''}` : ''}
+                    {a.reason ? ` — "${a.reason}"` : ''}
+                    {a.performedByName ? ` (by ${a.performedByName})` : ''}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
         <div className="flex justify-end">
           <Button type="button" variant="outline" onClick={onClose}>Close</Button>

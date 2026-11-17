@@ -215,17 +215,53 @@ import type { Tx } from './promotions.schemas';
         correctedBy: adminId,
         correctedAt: new Date(),
       }).where(eq(schema.promotionRecords.id, recordId));
+
+      // 5. Correction audit trail — the original record is preserved; the correction
+      //    itself is logged (previous/new outcome + class, who, when, why)
+      await tx.insert(schema.promotionAudit).values({
+        batchId, recordId, studentId,
+        eventType: 'correction',
+        previousOutcome: record.outcome,
+        newOutcome: body.outcome,
+        previousToClassId: record.toClassId,
+        newToClassId: applied.destinationClassId,
+        reason: body.reason ?? null,
+        performedBy: adminId,
+      });
     });
 
-    // Best-effort subject assignment if the correction promoted the student
+    // Best-effort subject re-sync so the student's subjects match their FINAL class
+    // (corrections that demote must not leave wrong-class subjects behind, e.g. a JSS 3
+    // student corrected out of SS 1 must lose the SS 1 subject set)
     const refreshed = await db.select().from(schema.promotionRecords).where(eq(schema.promotionRecords.id, recordId)).limit(1);
-    if (refreshed[0]?.outcome === 'promoted' && refreshed[0]?.toClassId) {
+    const finalRecord = refreshed[0];
+    const finalClassId = finalRecord?.outcome === 'promoted'
+      ? finalRecord.toClassId
+      : finalRecord?.outcome === 'repeating' || finalRecord?.outcome === 'deferred'
+        ? finalRecord.fromClassId
+        : null; // graduated/withdrawn — no active subject set to maintain
+    if (finalClassId) {
       try {
+        const classRow = await db.select({ level: schema.classes.level }).from(schema.classes).where(eq(schema.classes.id, finalClassId)).limit(1);
         const studentRow = await db.select({ department: schema.students.department })
           .from(schema.students).where(eq(schema.students.id, studentId)).limit(1);
-        await storage.autoAssignSubjectsToStudent(studentId, refreshed[0].toClassId!, studentRow[0]?.department || undefined);
+        const isSSS = !!classRow[0]?.level && ['SS1', 'SS2', 'SS3', 'Senior Secondary']
+          .some(l => classRow[0].level!.toLowerCase().includes(l.toLowerCase()));
+        const dept = isSSS ? (studentRow[0]?.department ?? undefined) : undefined;
+        const subjects = await storage.getSubjectsByClassAndDepartment(finalClassId, dept);
+        // Drop stale active assignments (wrong class) + re-map the final class
+        await db.delete(schema.studentSubjectAssignments).where(and(
+          eq(schema.studentSubjectAssignments.studentId, studentId),
+          eq(schema.studentSubjectAssignments.isActive, true),
+          ne(schema.studentSubjectAssignments.classId, finalClassId),
+        ));
+        await db.delete(schema.studentSubjectAssignments).where(and(
+          eq(schema.studentSubjectAssignments.studentId, studentId),
+          eq(schema.studentSubjectAssignments.classId, finalClassId),
+        ));
+        await storage.assignSubjectsToStudent(studentId, finalClassId, subjects.map((s: any) => s.id));
       } catch (e) {
-        console.error(`[PROMOTIONS] Subject assignment failed during correction (non-fatal):`, e);
+        console.error(`[PROMOTIONS] Subject re-sync failed during correction (non-fatal):`, e);
       }
     }
 

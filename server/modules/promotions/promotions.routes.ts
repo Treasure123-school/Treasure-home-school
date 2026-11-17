@@ -17,6 +17,8 @@ router.post('/execute', authenticateUser, authorizeRoles(ROLES.ADMIN), promotion
 router.get('/history', authenticateUser, authorizeRoles(ROLES.ADMIN), promotionsController.getHistory);
 router.get('/history/:batchId', authenticateUser, authorizeRoles(ROLES.ADMIN), promotionsController.getBatchDetail);
 router.patch('/records/:recordId', authenticateUser, authorizeRoles(ROLES.ADMIN), promotionsController.correctRecord);
+router.get('/batches/:batchId/reversal-preview', authenticateUser, authorizeRoles(ROLES.ADMIN), promotionsController.getReversalPreview);
+router.post('/batches/:batchId/reverse', authenticateUser, authorizeRoles(ROLES.ADMIN), promotionsController.reverseBatch);
 router.post('/rollover-activate', authenticateUser, authorizeRoles(ROLES.ADMIN), promotionsController.rolloverActivate);
 
 export default router;

@@ -260,6 +260,9 @@ import { getSessionOrThrow, getClassOrThrow, detectActiveSession, applyStudentOu
       reason: schema.promotionRecords.reason,
       errorMessage: schema.promotionRecords.errorMessage,
       correctedAt: schema.promotionRecords.correctedAt,
+      reversalStatus: schema.promotionRecords.reversalStatus,
+      reversedAt: schema.promotionRecords.reversedAt,
+      reversalBlockedReason: schema.promotionRecords.reversalBlockedReason,
       createdAt: schema.promotionRecords.createdAt,
     }).from(schema.promotionRecords)
       .innerJoin(schema.students, eq(schema.promotionRecords.studentId, schema.students.id))
@@ -275,6 +278,24 @@ import { getSessionOrThrow, getClassOrThrow, detectActiveSession, applyStudentOu
     const sessions = await db.select().from(schema.academicSessions);
     const sessionMap = new Map(sessions.map((s: any) => [s.id, s]));
 
+    // Reversal/correction audit trail for this batch (permanent log — never erased)
+    const audit = await db.select({
+      id: schema.promotionAudit.id,
+      recordId: schema.promotionAudit.recordId,
+      studentId: schema.promotionAudit.studentId,
+      eventType: schema.promotionAudit.eventType,
+      previousOutcome: schema.promotionAudit.previousOutcome,
+      newOutcome: schema.promotionAudit.newOutcome,
+      reason: schema.promotionAudit.reason,
+      details: schema.promotionAudit.details,
+      performedBy: schema.promotionAudit.performedBy,
+      performedByName: sql<string | null>`(select concat(u.first_name, ' ', u.last_name) from users u where u.id = ${schema.promotionAudit.performedBy})`,
+      performedAt: schema.promotionAudit.performedAt,
+    }).from(schema.promotionAudit)
+      .where(eq(schema.promotionAudit.batchId, batchId))
+      .orderBy(desc(schema.promotionAudit.id))
+      .limit(200);
+
     return {
       batch: {
         ...batch,
@@ -286,6 +307,7 @@ import { getSessionOrThrow, getClassOrThrow, detectActiveSession, applyStudentOu
         fromClassName: r.fromClassId ? classNameMap.get(r.fromClassId) ?? null : null,
         toClassName: r.toClassId ? classNameMap.get(r.toClassId) ?? null : null,
       })),
+      audit,
     };
   }
 

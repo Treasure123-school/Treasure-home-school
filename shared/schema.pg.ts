@@ -1353,16 +1353,21 @@ export const promotionBatches = pgTable("promotion_batches", {
   deferredCount: integer("deferred_count").notNull().default(0),
   failedCount: integer("failed_count").notNull().default(0),
   notes: text("notes"),
+  // Reversal (compensating operation) — original promotion history is never deleted
+  reversalStatus: varchar("reversal_status", { length: 20 }).notNull().default('not_reversed'), // 'not_reversed' | 'reversing' | 'reversed' | 'partially_reversed'
+  reversedAt: timestamp("reversed_at"),
+  reversedBy: varchar("reversed_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  reversalReason: text("reversal_reason"),
   executedAt: timestamp("executed_at").notNull().defaultNow(),
 }, (table) => ({
   promotionBatchesSourceIdx: index("promotion_batches_source_idx").on(table.sourceSessionId),
   promotionBatchesDestIdx: index("promotion_batches_dest_idx").on(table.destinationSessionId),
   promotionBatchesExecutedByIdx: index("promotion_batches_executed_by_idx").on(table.executedBy),
   promotionBatchesExecutedAtIdx: index("promotion_batches_executed_at_idx").on(table.executedAt),
-  // DB-level guard: one promotion batch per session transition (failed batches may be re-run)
+  // DB-level guard: one promotion batch per session transition (failed and fully-reversed batches may be re-run)
   promotionBatchesTransitionUniqueIdx: uniqueIndex("promotion_batches_transition_unique_idx")
     .on(table.sourceSessionId, table.destinationSessionId)
-    .where(sql`status <> 'failed'`),
+    .where(sql`status NOT IN ('failed', 'reversed')`),
 }));
 
 // Promotion records - per-student outcome within a batch (audit history)
@@ -1378,11 +1383,39 @@ export const promotionRecords = pgTable("promotion_records", {
   errorMessage: text("error_message"),
   correctedBy: varchar("corrected_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
   correctedAt: timestamp("corrected_at"),
+  // Reversal tracking — snapshots captured at execution time
+  destEnrollmentId: integer("dest_enrollment_id"), // destination-session enrolment created by the promotion
+  prevEnrollmentStatus: varchar("prev_enrollment_status", { length: 20 }), // source enrolment status before promotion
+  prevUserStatus: varchar("prev_user_status", { length: 20 }), // users.status before promotion (graduated/withdrawn restore)
+  reversalStatus: varchar("reversal_status", { length: 20 }).notNull().default('not_reversed'), // 'not_reversed' | 'reversed' | 'blocked'
+  reversedAt: timestamp("reversed_at"),
+  reversalBlockedReason: text("reversal_blocked_reason"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => ({
   promotionRecordsBatchIdx: index("promotion_records_batch_idx").on(table.batchId),
   promotionRecordsStudentIdx: index("promotion_records_student_idx").on(table.studentId),
   promotionRecordsOutcomeIdx: index("promotion_records_outcome_idx").on(table.outcome),
+}));
+
+// Promotion audit trail — permanent log of corrections and reversals (original history is never erased)
+export const promotionAudit = pgTable("promotion_audit", {
+  id: serial("id").primaryKey(),
+  batchId: integer("batch_id").notNull().references(() => promotionBatches.id, { onDelete: 'cascade' }),
+  recordId: integer("record_id").references(() => promotionRecords.id, { onDelete: 'set null' }),
+  studentId: varchar("student_id", { length: 36 }).references(() => students.id, { onDelete: 'set null' }),
+  eventType: varchar("event_type", { length: 30 }).notNull(), // 'correction' | 'record_reversal' | 'batch_reversal' | 'batch_reversal_blocked'
+  previousOutcome: varchar("previous_outcome", { length: 20 }),
+  newOutcome: varchar("new_outcome", { length: 20 }),
+  previousToClassId: integer("previous_to_class_id").references(() => classes.id, { onDelete: 'set null' }),
+  newToClassId: integer("new_to_class_id").references(() => classes.id, { onDelete: 'set null' }),
+  reason: text("reason"),
+  details: text("details"), // JSON blob for extra context (blocked reasons, counts, etc.)
+  performedBy: varchar("performed_by", { length: 36 }).references(() => users.id, { onDelete: 'set null' }),
+  performedAt: timestamp("performed_at").notNull().defaultNow(),
+}, (table) => ({
+  promotionAuditBatchIdx: index("promotion_audit_batch_idx").on(table.batchId),
+  promotionAuditRecordIdx: index("promotion_audit_record_idx").on(table.recordId),
+  promotionAuditPerformedAtIdx: index("promotion_audit_performed_at_idx").on(table.performedAt),
 }));
 
 // Export types (compatible with SQLite schema types)
@@ -1495,6 +1528,8 @@ export type PromotionBatch = typeof promotionBatches.$inferSelect;
 export type InsertPromotionBatch = typeof promotionBatches.$inferInsert;
 export type PromotionRecord = typeof promotionRecords.$inferSelect;
 export type InsertPromotionRecord = typeof promotionRecords.$inferInsert;
+export type PromotionAudit = typeof promotionAudit.$inferSelect;
+export type InsertPromotionAudit = typeof promotionAudit.$inferInsert;
 export type SyllabusTopic = typeof syllabusTopics.$inferSelect;
 export type InsertSyllabusTopic = typeof syllabusTopics.$inferInsert;
 export type ExamQuestionBankLink = typeof examQuestionBankLinks.$inferSelect;

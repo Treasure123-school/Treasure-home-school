@@ -10,6 +10,7 @@ import {
   getPreview, getMappings, updateMappings, getHistory, getBatchDetail,
 } from './promotions-preview.service';
 import { execute, correctRecord, rolloverActivate } from './promotions-execute.service';
+import { analyzeReversal, reverseBatch } from './promotions-reversal.service';
 
 export * from './promotions.schemas';
 
@@ -22,6 +23,8 @@ export class PromotionsService {
   execute = execute;
   correctRecord = correctRecord;
   rolloverActivate = rolloverActivate;
+  analyzeReversal = analyzeReversal;
+  reverseBatch = reverseBatch;
 }
 
 export const promotionsService = new PromotionsService();
