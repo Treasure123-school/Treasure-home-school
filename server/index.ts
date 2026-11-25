@@ -214,12 +214,12 @@ function sanitizeLogData(data: any): any {
   return data;
 }
 (async () => {
-  // Database Note: Schema is managed via drizzle-kit push, not migrations
-  // Run `npx drizzle-kit push` to sync schema changes
+  // Database Note: production schema changes are applied by the idempotent startup migrations below;
+  // drizzle-kit push is for local development only and is not part of the deploy command.
   if (isPostgres) {
-    console.log(`✅ Using ${dbInfo.type.toUpperCase()} database (schema managed via drizzle-kit push)`);
+    console.log(`✅ Using ${dbInfo.type.toUpperCase()} database (startup migrations enabled)`);
   } else {
-    console.log(`✅ Using ${dbInfo.type.toUpperCase()} database at ${dbInfo.connectionString} (schema managed via drizzle-kit push)`);
+    console.log(`✅ Using ${dbInfo.type.toUpperCase()} database at ${dbInfo.connectionString} (startup migrations enabled)`);
   }
   // Seed academic terms if they don't exist
   try {
@@ -281,6 +281,16 @@ function sanitizeLogData(data: any): any {
     }
   } catch (err: any) {
     console.log(`⚠️ DB migration warning: ${err.message}`);
+  }
+  try {
+    const { getPgPool } = await import("./db");
+    const pool = getPgPool();
+    if (pool) {
+      await pool.query(`ALTER TABLE exam_results ADD COLUMN IF NOT EXISTS result_released_at timestamp;`);
+      console.log('✅ DB migration: exam_results.result_released_at ensured');
+    }
+  } catch (err: any) {
+    console.error(`❌ DB migration failed: ${err.message}`);
   }
   // Apply promotion-reversal schema (idempotent): reversal snapshot columns,
   // promotion_audit table and the widened transition unique index.
