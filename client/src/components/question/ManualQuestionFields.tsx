@@ -9,11 +9,9 @@
  * Bank-specific fields (bankId, difficulty, topic, etc.) are left
  * to the parent dialog.
  *
- * Option text uses a contentEditable div instead of <input type="text">
- * so that mobile browsers (Chrome/Kiwi) never render their native focus ring.
  */
 
-import { useRef, useEffect } from "react";
+
 import { Textarea }   from "@/components/ui/textarea";
 import { Input }      from "@/components/ui/input";
 import { Label }      from "@/components/ui/label";
@@ -82,20 +80,6 @@ export function ManualQuestionFields({
   disabled = false,
 }: ManualQuestionFieldsProps) {
   const isMCQ = questionType === "multiple_choice";
-
-  // Refs for the contentEditable option divs.
-  // We sync state → DOM only when the element is NOT focused, so the cursor
-  // position is never disturbed while the user is typing.
-  const optionDivRefs = useRef<(HTMLDivElement | null)[]>([]);
-
-  useEffect(() => {
-    options.forEach((opt, i) => {
-      const el = optionDivRefs.current[i];
-      if (el && el !== document.activeElement && el.textContent !== opt.optionText) {
-        el.textContent = opt.optionText;
-      }
-    });
-  }); // runs after every render — cheap guard above keeps it safe
 
   // ── option helpers ──
   const setOptionText = (i: number, text: string) =>
@@ -208,43 +192,16 @@ export function ManualQuestionFields({
                   className="w-4 h-4 accent-primary flex-shrink-0"
                 />
 
-                {/*
-                  contentEditable div — NOT a form element, so mobile browsers
-                  (Chrome / Kiwi) never apply their native focus ring here.
-                  DOM content is managed via refs; React state is updated on input.
-                */}
-                <div
-                  ref={(el) => { optionDivRefs.current[i] = el; }}
-                  contentEditable={!disabled}
-                  suppressContentEditableWarning
-                  role="textbox"
-                  aria-label={`Option ${String.fromCharCode(65 + i)}`}
-                  data-placeholder={`Option ${String.fromCharCode(65 + i)}`}
-                  onInput={(e) => {
-                    const text = (e.currentTarget as HTMLDivElement).textContent ?? "";
-                    setOptionText(i, text);
-                  }}
-                  onKeyDown={(e) => {
-                    // Keep it single-line
-                    if (e.key === "Enter") e.preventDefault();
-                  }}
-                  onPaste={(e) => {
-                    // Strip formatting on paste
-                    e.preventDefault();
-                    const plain = e.clipboardData.getData("text/plain").replace(/\n/g, " ");
-                    document.execCommand("insertText", false, plain);
-                  }}
-                  className={[
-                    "flex-1 min-w-0 text-sm text-foreground cursor-text select-text",
-                    "whitespace-nowrap overflow-hidden",
-                    // Placeholder via CSS attr()
-                    "empty:before:content-[attr(data-placeholder)]",
-                    "empty:before:text-muted-foreground/60",
-                    "empty:before:pointer-events-none",
-                    disabled ? "opacity-50 cursor-not-allowed" : "",
-                  ].join(" ")}
-                  style={{ outline: "none" }}
-                />
+                <div className="flex-1 min-w-0">
+                  <QuestionRichTextEditor
+                    value={opt.optionText}
+                    onChange={(text) => setOptionText(i, text)}
+                    placeholder={`Option ${String.fromCharCode(65 + i)}`}
+                    minHeight="28px"
+                    compact
+                    disabled={disabled}
+                  />
+                </div>
 
                 {/* Delete */}
                 <button

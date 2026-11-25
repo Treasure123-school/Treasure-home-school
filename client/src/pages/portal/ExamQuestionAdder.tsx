@@ -28,7 +28,7 @@ import { BulkCSVUploadPanel } from '@/components/shared/BulkCSVQuestionsDialog';
 import type { ParsedQuestion } from '@/components/shared/BulkCSVQuestionsDialog';
 import { QuestionImageUpload } from '@/components/question/QuestionImageUpload';
 import { ManualQuestionFields, DEFAULT_OPTIONS } from '@/components/question/ManualQuestionFields';
-import { QuestionRichText, questionTextToPlainText } from '@/components/question/QuestionRichText';
+import { QuestionRichText, questionTextToHtml, questionTextToPlainText } from '@/components/question/QuestionRichText';
 import type { QuestionOption } from '@/components/question/ManualQuestionFields';
 
 interface ExamQuestionAdderProps {
@@ -322,7 +322,7 @@ export default function ExamQuestionAdder({
             return toast({ title: 'Error', description: 'Question text must be at least 5 characters', variant: 'destructive' });
         }
         const data: any = {
-            examId, questionText: questionText.trim(), questionType,
+            examId, questionText: questionTextToHtml(questionText), questionType,
             points: parseInt(points) || 1, orderNumber: 0,
         };
         if (instructions.trim()) data.instructions = instructions.trim();
@@ -330,10 +330,10 @@ export default function ExamQuestionAdder({
         if (sampleAnswer) data.sampleAnswer = sampleAnswer;
 
         if (questionType === 'multiple_choice') {
-            const valid = options.filter(o => o.optionText.trim());
+            const valid = options.filter(o => questionTextToPlainText(o.optionText).length > 0);
             if (valid.length < 2) return toast({ title: 'Error', description: 'At least 2 options required', variant: 'destructive' });
             if (!valid.some(o => o.isCorrect)) return toast({ title: 'Error', description: 'Select the correct answer', variant: 'destructive' });
-            data.options = valid.map(o => ({ optionText: o.optionText.trim(), isCorrect: o.isCorrect }));
+            data.options = valid.map(o => ({ optionText: questionTextToHtml(o.optionText), isCorrect: o.isCorrect }));
         } else if (expectedAnswer) {
             data.expectedAnswers = JSON.stringify([expectedAnswer]);
         }
@@ -559,7 +559,7 @@ export default function ExamQuestionAdder({
                                                 <div className="mt-1.5 flex flex-wrap gap-1">
                                                     {q.options.map((o: any, i: number) => (
                                                         <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded ${o.isCorrect ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                                                            {o.isCorrect ? '✓' : ''} {o.optionText}
+                                                            {o.isCorrect ? '✓' : ''} <QuestionRichText as="span" text={o.optionText} />
                                                         </span>
                                                     ))}
                                                 </div>
@@ -721,7 +721,7 @@ export default function ExamQuestionAdder({
                                                     <div className="mt-1.5 flex flex-wrap gap-1">
                                                         {q.options.map((o: any, i: number) => (
                                                             <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded ${o.isCorrect ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
-                                                                {o.isCorrect ? '✓' : ''} {o.optionText}
+                                                                {o.isCorrect ? '✓' : ''} <QuestionRichText as="span" text={o.optionText} />
                                                             </span>
                                                         ))}
                                                     </div>

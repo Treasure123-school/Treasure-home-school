@@ -140,7 +140,7 @@ export function CSVQuestionPreview({
                     }`}
                   >
                     <span className="font-medium shrink-0">{String.fromCharCode(65 + oi)}.</span>
-                    <span className="flex-1 whitespace-pre-wrap break-words">{option.optionText}</span>
+                    <QuestionRichText as="span" text={option.optionText} className="flex-1 break-words" />
                     {option.isCorrect && <Check className="w-4 h-4 text-primary shrink-0" />}
                   </div>
                 ))}

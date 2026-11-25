@@ -139,7 +139,7 @@ function QuestionBreakdown({ questions }: { questions: QuestionWithAnswer[] }) {
                       return (
                         <div key={opt.id} className={`flex items-center gap-2 px-2 py-1.5 rounded text-sm ${isSelected ? (isCorrectOpt ? 'bg-emerald-50 border border-emerald-200' : 'bg-red-50 border border-red-200') : isCorrectOpt ? 'bg-emerald-50/40' : ''}`}>
                           <div className={`w-3.5 h-3.5 rounded-full border-2 shrink-0 ${isSelected ? 'border-primary bg-primary' : 'border-muted-foreground'}`} />
-                          <span className={isCorrectOpt ? 'font-medium' : ''}>{opt.optionText}</span>
+                          <QuestionRichText as="span" text={opt.optionText} className={isCorrectOpt ? 'font-medium' : ''} />
                           {isCorrectOpt && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 ml-auto" />}
                         </div>
                       );

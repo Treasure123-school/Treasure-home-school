@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Check } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
+import { QuestionRichText } from '@/components/question/QuestionRichText';
 import type { QuestionOption } from '@shared/schema.pg';
 
 // Component to display question options
@@ -28,7 +29,7 @@ export function QuestionOptions({ questionId }: { questionId: number }) {
           <span className="text-sm font-mono text-muted-foreground min-w-[20px]">
             {String.fromCharCode(65 + index)}.
           </span>
-          <span className="text-sm">{option.optionText}</span>
+          <QuestionRichText as="span" text={option.optionText} className="text-sm" />
           {option.isCorrect && (
             <Check className="w-3.5 h-3.5 text-green-600 shrink-0" />
           )}

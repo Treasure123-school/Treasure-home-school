@@ -158,13 +158,16 @@ export function QuestionFormDialog({ m }: { m: ExamManager }) {
                                     }}
                                     data-testid={`radio-option-${index}`}
                                   />
-                                  <Input
-                                    value={option.optionText}
-                                    onChange={(e) => updateOption(index, 'optionText', e.target.value)}
-                                    placeholder={`Option ${String.fromCharCode(65 + index)}`}
-                                    className="flex-1"
-                                    data-testid={`input-option-${index}`}
-                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <QuestionRichTextEditor
+                                      value={option.optionText || ''}
+                                      onChange={(text) => updateOption(index, 'optionText', text)}
+                                      placeholder={`Option ${String.fromCharCode(65 + index)}`}
+                                      minHeight="28px"
+                                      compact
+                                      disabled={createQuestionMutation.isPending || updateQuestionMutation.isPending}
+                                    />
+                                  </div>
                                   {options.length > 2 && (
                                     <Button
                                       type="button"

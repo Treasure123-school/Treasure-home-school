@@ -511,6 +511,7 @@ export function applyMathToTextNodes(root: HTMLElement): void {
     acceptNode(node) {
       const parentTag = node.parentElement?.tagName;
       if (parentTag && SKIP_TAGS.has(parentTag)) return NodeFilter.FILTER_REJECT;
+      if (node.parentElement?.closest(".katex")) return NodeFilter.FILTER_REJECT;
       if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
       return NodeFilter.FILTER_ACCEPT;
     },

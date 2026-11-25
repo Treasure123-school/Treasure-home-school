@@ -3338,7 +3338,7 @@ export default function StudentExams() {
                             className="cursor-pointer flex-1 text-base sm:text-lg md:text-xl text-gray-700 dark:text-gray-300 leading-relaxed"
                           >
                             {String.fromCharCode(65 + index)}.{" "}
-                            <MathText text={option.optionText} />
+                            <QuestionRichText as="span" text={option.optionText} />
                           </Label>
                         </div>
                       </div>

@@ -11,7 +11,7 @@ import { DIFFICULTY_OPTS, PAGE_SIZE } from "../constants";
 import type { ContextFilters } from "../types";
 import { ManualQuestionFields } from "@/components/question/ManualQuestionFields";
 import type { QuestionOption } from "@/components/question/ManualQuestionFields";
-import { questionTextToPlainText } from "@/components/question/QuestionRichText";
+import { questionTextToHtml, questionTextToPlainText } from "@/components/question/QuestionRichText";
 
 // isAdmin is read from outer scope via closure in the original; pass it as prop here
 interface QuestionFormDialogProps {
@@ -182,18 +182,24 @@ export function QuestionFormDialog({
 
     const payload: any = {
       ...form,
+      questionText: questionTextToHtml(form.questionText),
       // Normalise: send null instead of empty string for optional text fields
       instructions: form.instructions?.trim() || null,
       imageUrl:     form.imageUrl || null,
     };
 
     if (form.questionType === "multiple_choice") {
-      const valid = options.filter(o => o.optionText.trim());
+      const valid = options.filter(o => questionTextToPlainText(o.optionText).length > 0);
       if (valid.length < 2)
         return toast({ title: "At least 2 options are required", variant: "destructive" });
       if (!valid.some(o => o.isCorrect))
         return toast({ title: "Mark at least one option as correct", variant: "destructive" });
-      payload.options = valid.map((o, i) => ({ ...o, orderNumber: i + 1, explanationText: null }));
+      payload.options = valid.map((o, i) => ({
+        ...o,
+        optionText: questionTextToHtml(o.optionText),
+        orderNumber: i + 1,
+        explanationText: null,
+      }));
     }
     mutation.mutate(payload);
   };

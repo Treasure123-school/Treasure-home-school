@@ -3,7 +3,7 @@ import { apiRequest } from '@/lib/queryClient';
 import type { Exam, ExamQuestion } from '@shared/schema.pg';
 import type { QuestionForm } from './schemas';
 import { toast } from '@/hooks/use-toast';
-import { questionTextToPlainText } from '@/components/question/QuestionRichText';
+import { questionTextToHtml, questionTextToPlainText } from '@/components/question/QuestionRichText';
 
 /** Auto-split from ExamManagement.tsx — see git history for original context. */
 export function useQuestionDialogHandlers({ selectedExam, examQuestions, editingQuestion, setEditingQuestion, setEditingImageUrl, options, editingImageUrl, setIsQuestionDialogOpen, resetQuestion, watchQuestion, setQuestionValue, createQuestionMutation, updateQuestionMutation }: { selectedExam: any; examQuestions: any; editingQuestion: any; setEditingQuestion: any; setEditingImageUrl: any; options: any; editingImageUrl: any; setIsQuestionDialogOpen: any; resetQuestion: any; watchQuestion: any; setQuestionValue: any; createQuestionMutation: any; updateQuestionMutation: any }) {
@@ -81,7 +81,7 @@ export function useQuestionDialogHandlers({ selectedExam, examQuestions, editing
     // Prepare the question data
     const questionData: any = {
       ...data,
-      questionText: data.questionText.trim(),
+      questionText: questionTextToHtml(data.questionText),
       points: data.points || 1,
       imageUrl: editingImageUrl || null,
     };
@@ -89,9 +89,9 @@ export function useQuestionDialogHandlers({ selectedExam, examQuestions, editing
     // For multiple choice questions, filter out empty options and validate
     if (data.questionType === 'multiple_choice' && data.options) {
       const validOptions = data.options
-        .filter((option: any) => option.optionText && option.optionText.trim() !== '')
-        .map((option: any, index: any) => ({
-          optionText: option.optionText.trim(),
+        .filter((option: any) => questionTextToPlainText(option.optionText).length > 0)
+        .map((option: any) => ({
+          optionText: questionTextToHtml(option.optionText),
           isCorrect: option.isCorrect
           // orderNumber is automatically set by the backend
         }));

@@ -172,7 +172,7 @@ export function QuestionCard({
                     <span className="flex-shrink-0 font-bold">
                       {o.isCorrect ? "✓" : "○"}
                     </span>
-                    {o.optionText}
+                    <QuestionRichText as="span" text={o.optionText} className="min-w-0 flex-1" />
                   </li>
                 ))}
               </ul>
