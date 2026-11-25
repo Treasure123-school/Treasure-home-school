@@ -552,10 +552,10 @@ export default function ExamQuestionAdder({
                                                 <Badge className={`text-[10px] ${getDifficultyColor(q.difficulty)}`}>{q.difficulty}</Badge>
                                                 <Badge variant="secondary" className="text-[10px]">{q.points}pt</Badge>
                                             </div>
-                                            <p className="text-sm line-clamp-2">{q.questionText}</p>
+                                            <p className="text-sm whitespace-pre-wrap break-words">{q.questionText}</p>
                                             {q.options?.length > 0 && (
                                                 <div className="mt-1.5 flex flex-wrap gap-1">
-                                                    {q.options.slice(0, 4).map((o: any, i: number) => (
+                                                    {q.options.map((o: any, i: number) => (
                                                         <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded ${o.isCorrect ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                                                             {o.isCorrect ? '✓' : ''} {o.optionText}
                                                         </span>
@@ -714,10 +714,10 @@ export default function ExamQuestionAdder({
                                                     <Badge className={`text-[10px] ${getDifficultyColor(q.difficulty)}`}>{q.difficulty}</Badge>
                                                     <Badge variant="secondary" className="text-[10px]">{q.points}pt</Badge>
                                                 </div>
-                                                <p className="text-sm line-clamp-2">{q.questionText}</p>
+                                                <p className="text-sm whitespace-pre-wrap break-words">{q.questionText}</p>
                                                 {q.options?.length > 0 && (
                                                     <div className="mt-1.5 flex flex-wrap gap-1">
-                                                        {q.options.slice(0, 4).map((o: any, i: number) => (
+                                                        {q.options.map((o: any, i: number) => (
                                                             <span key={i} className={`text-[10px] px-1.5 py-0.5 rounded ${o.isCorrect ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
                                                                 {o.isCorrect ? '✓' : ''} {o.optionText}
                                                             </span>
