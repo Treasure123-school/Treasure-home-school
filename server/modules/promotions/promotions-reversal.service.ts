@@ -13,6 +13,7 @@
 import { db } from '../../db';
 import * as schema from '../../../shared/schema.pg';
 import { eq, and, ne, or, inArray, gt, isNull, isNotNull, desc } from 'drizzle-orm';
+import { invalidateVisibilityCache } from '../../exam-visibility';
 import { getSessionOrThrow, recomputeBatchCounts } from './promotions.helpers';
 import type { Tx } from './promotions.schemas';
 
@@ -461,6 +462,7 @@ export async function reverseBatch(batchId: number, reason: string, adminId: str
       review: analysis.review.map(({ record, reason: r }) => ({ recordId: record.id, studentId: record.studentId, reason: r })),
     };
   }).then(async (result: any) => {
+    invalidateVisibilityCache({ all: true });
     // Recounts AFTER commit — recomputeBatchCounts uses the global pool and must not
     // hold the reversal transaction open while queuing for a connection.
     const stats = await recomputeBatchCounts(batchId);

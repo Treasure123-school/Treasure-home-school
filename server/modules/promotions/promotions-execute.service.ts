@@ -15,6 +15,7 @@ import * as schema from '../../../shared/schema.pg';
 import { eq, and, ne, inArray, desc, asc, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { storage } from '../../storage';
+import { invalidateVisibilityCache } from '../../exam-visibility';
 import {
   previewSchema, mappingsUpdateSchema, executeSchema, rolloverSchema, correctRecordSchema,
 } from './promotions.schemas';
@@ -138,6 +139,8 @@ import type { Tx } from './promotions.schemas';
         console.error(`[PROMOTIONS] Subject assignment failed for student ${job.studentId} (non-fatal):`, e);
       }
     }
+
+    invalidateVisibilityCache({ all: true });
 
     const stats = await recomputeBatchCounts(batch.id);
     console.log(`[PROMOTIONS] Batch #${batch.id} executed by ${adminId}: ${body.sourceSessionId} → ${body.destinationSessionId}, ${JSON.stringify(stats)}`);
@@ -264,6 +267,8 @@ import type { Tx } from './promotions.schemas';
         console.error(`[PROMOTIONS] Subject re-sync failed during correction (non-fatal):`, e);
       }
     }
+
+    invalidateVisibilityCache({ all: true });
 
     const stats = await recomputeBatchCounts(batchId);
     console.log(`[PROMOTIONS] Record ${recordId} corrected by ${adminId}: outcome → ${body.outcome}`);

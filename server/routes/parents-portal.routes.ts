@@ -2,6 +2,7 @@
 import * as schema from '@shared/schema.pg';
 import type { Express } from 'express';
 import { BCRYPT_ROUNDS } from '../routes/upload-config';
+import { invalidateVisibilityCache } from '../exam-visibility';
 import { ROLES, authenticateUser, authorizeRoles } from '../routes/middleware';
 import { resolveDesignatedPrincipal } from '../routes/report-helpers';
 import { db, storage } from '../storage';
@@ -172,6 +173,7 @@ export async function registerParentsPortalRoutes(app: Express) {
       if (Array.isArray(studentIds) && studentIds.length > 0) {
         for (const sid of studentIds) {
           await storage.updateStudent(sid, { studentPatch: { parentId: newUser.id } });
+          invalidateVisibilityCache({ studentId: sid });
         }
       }
 
@@ -212,6 +214,7 @@ export async function registerParentsPortalRoutes(app: Express) {
 
       for (const sid of studentIds) {
         await storage.updateStudent(sid, { studentPatch: { parentId } });
+        invalidateVisibilityCache({ studentId: sid });
       }
 
       // Update parent profile linkedStudents
@@ -231,6 +234,7 @@ export async function registerParentsPortalRoutes(app: Express) {
     try {
       const { id: parentId, studentId } = req.params;
       await storage.updateStudent(studentId, { studentPatch: { parentId: null } });
+      invalidateVisibilityCache({ studentId });
 
       // Remove from parent profile linkedStudents
       const profile = await storage.getParentProfile(parentId);

@@ -222,7 +222,7 @@ export async function registerSyncExamsRoutes(app: Express) {
       // - KG1-JSS3: See all general subject exams for their class
       // - SS1-SS3: See general + department-specific exams only
       if (userRoleId === ROLES.STUDENT) {
-        const studentExams = await getVisibleExamsForStudent(userId);
+        const studentExams = [...(await getVisibleExamsForStudent(userId))];
 
         // BUGFIX: Always include published exams the student has already completed,
         // even if the exam's subject was changed after completion.

@@ -2,6 +2,7 @@
 /** Auto-split from routes.ts — student-profile (orig lines 9355-10067). See git history. */
 import * as schema from '@shared/schema.pg';
 import { BCRYPT_ROUNDS } from '../routes/upload-config';
+import { invalidateVisibilityCache } from '../exam-visibility';
 import { generatePassword, generateStudentPassword } from '../auth-utils';
 import { realtimeService } from '../realtime-service';
 import { ROLES, authenticateUser, authorizeRoles } from '../routes/middleware';
@@ -201,6 +202,20 @@ export function registerStudentViewRoutes(app: Express) {
           profileCompleted: newIsComplete,
         }
       });
+
+      const visibilityChanged =
+        existingStudent?.classId !== updatedStudent.student.classId ||
+        existingStudent?.department !== updatedStudent.student.department;
+
+      if (visibilityChanged) {
+        invalidateVisibilityCache({ studentId });
+        const affectedClassIds = new Set([existingStudent?.classId, updatedStudent.student.classId]);
+        for (const affectedClassId of affectedClassIds) {
+          if (affectedClassId) {
+            invalidateVisibilityCache({ classId: affectedClassId });
+          }
+        }
+      }
 
       // Emit realtime event for student update
       realtimeService.emitTableChange('students', 'UPDATE', updatedStudent, existingStudent, req.user!.id);

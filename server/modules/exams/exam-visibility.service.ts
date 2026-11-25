@@ -400,6 +400,7 @@ export function invalidateVisibilityCache(options?: {
   if (options?.studentId) {
     invalidated += enhancedCache.invalidate(`visibility:context:${options.studentId}`);
     invalidated += enhancedCache.invalidate(`visibility:student_exams:${options.studentId}`);
+    invalidated += enhancedCache.invalidate(/^visibility:parent_exams:/);
   }
   
   if (options?.classId) {
