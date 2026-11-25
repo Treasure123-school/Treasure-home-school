@@ -8,7 +8,7 @@ import { autoScoreExamSession } from '../routes/exam-scoring';
 import { ROLES, authenticateUser, authorizeRoles } from '../routes/middleware';
 import { reliableSyncService } from '../services/reliable-sync-service';
 import { storage } from '../storage';
-import { logExamAccess, validateExamTimeWindow } from '../teacher-auth-middleware';
+import { logExamAccess, validateExamTimeWindow, validateTeacherInChargeId } from '../teacher-auth-middleware';
 import { computeExamTiming, logExamTiming } from '../utils/exam-timing';
 import { students } from '@shared/schema.pg';
 import { and } from 'drizzle-orm';
@@ -20,7 +20,7 @@ import { z } from 'zod';
 
 export async function registerExamCrudRoutes(app: Express) {
   // Update exam - TEACHERS ONLY (creator or teacher in charge) with assignment validation
-  app.patch('/api/exams/:id', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
+  app.patch('/api/exams/:id', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER), async (req, res) => {
     try {
       const examId = parseInt(req.params.id);
       const teacherId = req.user!.id;
@@ -31,40 +31,38 @@ export async function registerExamCrudRoutes(app: Express) {
       }
 
       // Admins and Super Admins can edit any exam, teachers need to be creator or assigned
-      const isAdmin = req.user!.roleId === ROLES.ADMIN;
+      const isAdmin = req.user!.roleId === ROLES.SUPER_ADMIN || req.user!.roleId === ROLES.ADMIN;
       const isCreator = existingExam.createdBy === teacherId;
       const isTeacherInCharge = existingExam.teacherInChargeId === teacherId;
       if (!isAdmin && !isCreator && !isTeacherInCharge) {
         return res.status(403).json({ message: 'You can only edit exams you created or are assigned to' });
       }
 
-      // SECURITY: Validate teacherInChargeId whenever it's present in request
-      // This prevents privilege escalation by assigning to non-teacher or inactive accounts
-      if (req.body.teacherInChargeId !== undefined) {
-        // If teacherInChargeId is provided, validate it's a valid active teacher
-        const assignedUser = await storage.getUser(req.body.teacherInChargeId);
-        if (!assignedUser) {
-          return res.status(400).json({ message: 'Assigned teacher not found' });
-        }
-        if (assignedUser.roleId !== ROLES.TEACHER) {
-          return res.status(400).json({ message: 'teacherInChargeId must be a teacher' });
-        }
-        if (!assignedUser.isActive) {
-          return res.status(400).json({ message: 'Assigned teacher is not active' });
-        }
+      const teacherAssignment = req.body.teacherInChargeId === undefined
+        ? null
+        : await validateTeacherInChargeId(req.body.teacherInChargeId, existingExam.createdBy);
+      if (teacherAssignment && !teacherAssignment.valid) {
+        return res.status(400).json({ message: teacherAssignment.message });
       }
 
-      // Only pass allowed fields to prevent unexpected field updates
       const allowedFields = ['name', 'description', 'date', 'timeLimit', 'totalMarks',
-        'classId', 'subjectId', 'teacherInChargeId', 'isPublished', 'instructions',
+        'classId', 'subjectId', 'termId', 'teacherInChargeId', 'isPublished', 'instructions',
         'passingScore', 'maxAttempts', 'showResults', 'shuffleQuestions', 'shuffleOptions',
-        'showCorrectAnswers', 'autoGradingEnabled', 'instantFeedback', 'gradingScale',
-        'timerMode'];
+        'showCorrectAnswers', 'autoGradingEnabled', 'gradingScale', 'examType', 'timerMode',
+        'startTime', 'endTime', 'assessmentCategory', 'purpose', 'venue', 'targetType',
+        'registrationFee', 'registrationOpen', 'registrationDeadline', 'candidateType',
+        'generateAdmitCards', 'generateCandidateNumbers', 'certificateEnabled',
+        'leaderboardEnabled', 'resultPublished', 'allowRetakes', 'enableProctoring',
+        'lockdownMode', 'requireWebcam', 'requireFullscreen', 'maxTabSwitches',
+        'showInstructionsScreen'];
       const sanitizedData: Record<string, any> = {};
       for (const field of allowedFields) {
         if (req.body[field] !== undefined) {
           sanitizedData[field] = req.body[field];
         }
+      }
+      if (teacherAssignment) {
+        sanitizedData.teacherInChargeId = teacherAssignment.value;
       }
 
       const exam = await storage.updateExam(examId, sanitizedData);
@@ -112,7 +110,7 @@ export async function registerExamCrudRoutes(app: Express) {
 
   // Delete exam - Admins (any exam) and Teachers (own exams only)
   // Implements comprehensive smart deletion with cascade, audit logging, and cleanup
-  app.delete('/api/exams/:id', authenticateUser, authorizeRoles(ROLES.ADMIN, ROLES.TEACHER), async (req, res) => {
+  app.delete('/api/exams/:id', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER), async (req, res) => {
     const startTime = Date.now();
     try {
       const examId = parseInt(req.params.id);
@@ -125,7 +123,7 @@ export async function registerExamCrudRoutes(app: Express) {
       }
 
       // Admins can delete any exam; teachers can only delete their own
-      const isAdmin = deletedBy.roleId === ROLES.ADMIN;
+      const isAdmin = deletedBy.roleId === ROLES.SUPER_ADMIN || deletedBy.roleId === ROLES.ADMIN;
       if (!isAdmin && existingExam.createdBy !== deletedBy.id) {
         return res.status(403).json({ message: 'You can only delete exams you created' });
       }
@@ -209,7 +207,7 @@ export async function registerExamCrudRoutes(app: Express) {
   });
 
   // Toggle exam publish status - Teachers (creator or teacher in charge) and Admins only
-  app.patch('/api/exams/:id/publish', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), async (req, res) => {
+  app.patch('/api/exams/:id/publish', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER), async (req, res) => {
     try {
       const examId = parseInt(req.params.id);
       const teacherId = req.user!.id;
@@ -221,7 +219,7 @@ export async function registerExamCrudRoutes(app: Express) {
       }
 
       // Admins and Super Admins can publish any exam, teachers need to be creator or assigned
-      const isAdmin = req.user!.roleId === ROLES.ADMIN;
+      const isAdmin = req.user!.roleId === ROLES.SUPER_ADMIN || req.user!.roleId === ROLES.ADMIN;
       const isCreator = existingExam.createdBy === teacherId;
       const isTeacherInCharge = existingExam.teacherInChargeId === teacherId;
       if (!isAdmin && !isCreator && !isTeacherInCharge) {

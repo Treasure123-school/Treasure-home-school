@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Filter } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
@@ -62,9 +62,12 @@ export function useExamQueries({ watchExam, setExamValue, isExamDialogOpen, edit
   // availableSubjects is for dropdown selections (filtered to teacher's assignments or class mappings)
   const subjects = availableSubjects;
 
-  // Clear subject and teacher when class changes (to prevent stale selections)
+  const previousClassIdRef = useRef(selectedClassId);
   useEffect(() => {
-    if (selectedClassId) {
+    const previousClassId = previousClassIdRef.current;
+    if (previousClassId === selectedClassId) return;
+    previousClassIdRef.current = selectedClassId;
+    if (previousClassId != null && selectedClassId != null && previousClassId !== selectedClassId) {
       setExamValue('subjectId', undefined as any);
       setExamValue('teacherInChargeId', undefined);
     }
@@ -75,7 +78,8 @@ export function useExamQueries({ watchExam, setExamValue, isExamDialogOpen, edit
     queryKey: ['/api/users', 'Teacher'],
     queryFn: async () => {
       const response = await apiRequest('GET', '/api/users?role=Teacher');
-      return await response.json();
+      const users = await response.json();
+      return users.filter((user: any) => user.isActive !== false && !user.deletedAt && (!user.status || user.status === 'active'));
     },
   });
 

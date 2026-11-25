@@ -136,8 +136,11 @@ export function QuestionList({
         classId:   context.classId,
         termId:    context.termId,
         questions,
-      });
-      if (!r.ok) { const err = await r.json(); throw new Error(err.error || err.message || "Upload failed"); }
+      }, 180000);
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(err.message || err.error || err.errors?.[0] || "Upload failed");
+      }
       return r.json();
     },
     onMutate: async () => {
@@ -149,6 +152,12 @@ export function QuestionList({
     onSuccess: (result, _vars, _ctx) => {
       const serverErrs: string[] = result.errors   ?? [];
       const createdItems: any[]  = result.questions ?? [];
+
+      if (result.created === 0 && serverErrs.length > 0) {
+        setCsvServerErrors(serverErrs);
+        toast({ title: "Upload Failed", description: `No questions were saved. ${serverErrs[0]}`, variant: "destructive" });
+        return;
+      }
 
       if (createdItems.length > 0) {
         // Target ONLY the page-1 cache entry. Prepend the new items (sliced to pageSize
@@ -193,7 +202,6 @@ export function QuestionList({
         setCsvServerErrors(serverErrs);
       } else {
         setCsvServerErrors([]);
-        setCsvUploadOpen(false);
       }
     },
     onError: (e: any, _vars, ctx: any) => {
@@ -546,10 +554,18 @@ export function QuestionList({
       <BulkCSVQuestionsDialog
         open={csvUploadOpen}
         onOpenChange={(v) => { setCsvUploadOpen(v); if (!v) setCsvServerErrors([]); }}
-        onUpload={(questions) => { setCsvServerErrors([]); bulkCsvMutation.mutate(questions); }}
+        onUpload={(questions, onComplete) => {
+          setCsvServerErrors([]);
+          bulkCsvMutation.mutate(questions, {
+            onSuccess: (result) => {
+              if ((result.created ?? 0) > 0 && !(result.errors ?? []).length) onComplete();
+            },
+          });
+        }}
         isPending={bulkCsvMutation.isPending}
         showDifficulty
         title="Bulk Upload to Question Bank"
+        onDone={() => setCsvUploadOpen(false)}
         serverErrors={csvServerErrors}
       />
 

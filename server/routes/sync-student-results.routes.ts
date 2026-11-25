@@ -13,6 +13,17 @@ import { type Express, type Request } from 'express';
 import session from 'express-session';
 import { ZodError } from 'zod';
 
+function formatDate(dateValue: any): string | null {
+  if (!dateValue) return null;
+  try {
+    if (dateValue instanceof Date) {
+      return dateValue.toISOString();
+    }
+    return new Date(dateValue).toISOString();
+  } catch (e) {
+    return String(dateValue);
+  }
+}
 
 export async function registerSyncStudentResultsRoutes(app: Express) {
 
@@ -34,19 +45,6 @@ export async function registerSyncStudentResultsRoutes(app: Express) {
       } catch (sessionError) {
         console.warn('[STUDENT-EXAM-RESULTS] Could not fetch sessions, continuing with results only');
       }
-
-      // Safely format dates - handle both Date objects and strings
-      const formatDate = (dateValue: any): string | null => {
-        if (!dateValue) return null;
-        try {
-          if (dateValue instanceof Date) {
-            return dateValue.toISOString();
-          }
-          return new Date(dateValue).toISOString();
-        } catch (e) {
-          return String(dateValue);
-        }
-      };
 
       // Enrich results with exam and subject information
       // CRITICAL: Even if enrichment fails, we MUST return the core result data
@@ -75,6 +73,9 @@ export async function registerSyncStudentResultsRoutes(app: Express) {
           subjectName: string;
           className: string;
           showCorrectAnswers: boolean;
+          autoGradingEnabled: boolean;
+          resultReleasedAt: string | null;
+          pendingManualGrading: boolean;
           exam: {
             id: number;
             title: string;
@@ -99,6 +100,9 @@ export async function registerSyncStudentResultsRoutes(app: Express) {
           subjectName: 'Unknown Subject',
           className: 'Unknown Class',
           showCorrectAnswers: true,
+          autoGradingEnabled: true,
+          resultReleasedAt: formatDate((result as any).resultReleasedAt),
+          pendingManualGrading: false,
           exam: {
             id: result.examId,
             title: `Exam #${result.examId}`,
@@ -123,6 +127,9 @@ export async function registerSyncStudentResultsRoutes(app: Express) {
             baseResult.maxScore = result.maxScore || exam.totalMarks || 100;
             baseResult.percentage = baseResult.maxScore > 0 ? Math.round((score / baseResult.maxScore) * 100) : 0;
             baseResult.showCorrectAnswers = exam.showCorrectAnswers ?? true;
+            baseResult.autoGradingEnabled = exam.autoGradingEnabled !== false;
+            baseResult.resultReleasedAt = formatDate((result as any).resultReleasedAt);
+            baseResult.pendingManualGrading = !baseResult.autoGradingEnabled && !baseResult.resultReleasedAt;
             baseResult.exam = {
               id: exam.id,
               title: exam.name,
@@ -311,6 +318,10 @@ export async function registerSyncStudentResultsRoutes(app: Express) {
       const score = result.score ?? result.marksObtained ?? 0;
       const maxScore = result.maxScore ?? exam.totalMarks ?? 100;
       const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+      const autoGradingEnabled = exam.autoGradingEnabled !== false;
+      const showAnswers = exam.showCorrectAnswers ?? true;
+      const resultReleasedAt = formatDate((result as any).resultReleasedAt);
+      const pendingManualGrading = !autoGradingEnabled && !resultReleasedAt;
 
       // Get all student answers for this session
       const allSessions = await storage.getExamSessionsByStudent(studentId);
@@ -331,12 +342,12 @@ export async function registerSyncStudentResultsRoutes(app: Express) {
 
           // CRITICAL FIX: Direct mapping of student answer text
           let studentAnswerText = "No answer provided";
-          let isCorrect = false;
+          let isCorrect: boolean | null = pendingManualGrading ? null : false;
           let pointsEarned = 0;
 
           if (studentAns) {
-            isCorrect = studentAns.isCorrect || false;
-            pointsEarned = studentAns.pointsEarned || 0;
+            isCorrect = pendingManualGrading ? null : (studentAns.isCorrect || false);
+            pointsEarned = pendingManualGrading ? 0 : (studentAns.pointsEarned || 0);
 
             if (q.questionType === 'multiple_choice' && studentAns.selectedOptionId) {
               const studentOption = options.find((o: any) => o.id === studentAns.selectedOptionId);
@@ -362,7 +373,6 @@ export async function registerSyncStudentResultsRoutes(app: Express) {
             }
           }
 
-          const showAnswers = exam.showCorrectAnswers ?? true;
           return {
             questionId: q.id,
             questionText: q.questionText,
@@ -371,12 +381,11 @@ export async function registerSyncStudentResultsRoutes(app: Express) {
             maxPoints: q.points,
             studentAnswer: studentAnswerText,
             // Only expose correct answer if the teacher has enabled it
-            correctAnswer: showAnswers ? correctAnswerText : undefined,
+            correctAnswer: showAnswers && !pendingManualGrading ? correctAnswerText : undefined,
           };
         }));
 
-        // If showCorrectAnswers is off, send empty questionDetails so no breakdown is rendered
-        if (!(exam.showCorrectAnswers ?? true)) {
+        if (!showAnswers || pendingManualGrading) {
           questionDetails = [];
         }
       }
@@ -413,6 +422,10 @@ export async function registerSyncStudentResultsRoutes(app: Express) {
         subjectName: subjectName,
         className: className,
         questionDetails: questionDetails,
+        showCorrectAnswers: exam.showCorrectAnswers ?? true,
+        autoGradingEnabled,
+        resultReleasedAt,
+        pendingManualGrading,
         // Include exam details for verification
         exam: {
           id: exam.id,
@@ -423,7 +436,6 @@ export async function registerSyncStudentResultsRoutes(app: Express) {
           subjectId: exam.subjectId,
           classId: exam.classId
         },
-        showCorrectAnswers: exam.showCorrectAnswers ?? true,
       };
 
       console.log(`[STRICT-EXAM-RESULT] Returning result: exam="${exam.name}", subject="${subjectName}", score=${score}/${maxScore}`);

@@ -416,21 +416,25 @@ export default function SuperAdminLayout({ children }: { children: ReactNode }) 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
-                className="flex items-center gap-1.5 rounded-full pl-1 pr-2 py-1 hover:bg-accent transition-colors outline-none"
+                type="button"
+                className="group flex items-center gap-2 rounded-full border border-border bg-background/70 py-1 pl-1 pr-2 shadow-sm transition-all hover:border-primary/40 hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background outline-none cursor-pointer"
+                aria-label="Open account menu"
                 data-testid="button-user-menu"
               >
-                <Avatar className="h-7 w-7">
+                <Avatar className="h-8 w-8 flex-shrink-0 transition-transform group-hover:scale-105">
                   <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
                     {userInitials}
                   </AvatarFallback>
                 </Avatar>
+                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-muted/50 text-muted-foreground transition-colors group-hover:bg-primary/10 group-hover:text-primary">
+                  <ChevronDown className="h-4 w-4 transition-transform group-data-[state=open]:rotate-180" strokeWidth={2.5} aria-hidden="true" />
+                </span>
                 <div className="hidden md:flex flex-col items-start">
                   <span className="text-xs font-semibold leading-tight text-foreground max-w-[100px] truncate" data-testid="text-username">
                     {userName}
                   </span>
                   <span className="text-[10px] text-muted-foreground leading-tight">Super Admin</span>
                 </div>
-                <ChevronDown className="h-3 w-3 text-muted-foreground hidden md:block" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 mt-1">

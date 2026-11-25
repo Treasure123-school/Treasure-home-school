@@ -44,6 +44,8 @@ export async function registerExamSubmissionRoutes(app: Express) {
       if (!exam) {
         return res.status(404).json({ message: 'Exam not found' });
       }
+      const autoGradingEnabled = exam.autoGradingEnabled !== false;
+      let pendingManualGrading = !autoGradingEnabled;
 
       // Find the active exam session
       const sessions = await storage.getExamSessionsByStudent(studentId);
@@ -103,6 +105,10 @@ export async function registerExamSubmissionRoutes(app: Express) {
           }
 
           const existingResult = await storage.getExamResultByExamAndStudent(examId, studentId);
+          const resultReleasedAt = (existingResult as any)?.resultReleasedAt
+            ? new Date((existingResult as any).resultReleasedAt).toISOString()
+            : null;
+          pendingManualGrading = !autoGradingEnabled || !resultReleasedAt;
           const studentAnswers = await storage.getStudentAnswers(completedSession.id);
           const examQuestions = await storage.getExamQuestions(examId);
 
@@ -123,15 +129,15 @@ export async function registerExamSubmissionRoutes(app: Express) {
 
             // Correct Answer Text from Teacher's setup
             let correctAnswerText = "Not available";
-            let isCorrect = answer?.isCorrect || false;
-            let pointsAwarded = answer?.pointsEarned || 0;
+            let isCorrect: boolean | null = pendingManualGrading ? null : (answer?.isCorrect || false);
+            let pointsAwarded = pendingManualGrading ? 0 : (answer?.pointsEarned || 0);
 
             if (q.questionType === 'multiple_choice') {
               const correctOption = options.find(o => o.isCorrect);
               correctAnswerText = correctOption?.optionText || "Not specified";
 
               // Re-verify correctness if it's missing or needs enforcement
-              if (answer && answer.selectedOptionId && correctOption) {
+              if (!pendingManualGrading && answer && answer.selectedOptionId && correctOption) {
                 isCorrect = answer.selectedOptionId === correctOption.id;
               }
             } else {
@@ -155,13 +161,13 @@ export async function registerExamSubmissionRoutes(app: Express) {
               selectedOptionId: answer?.selectedOptionId || null,
               isCorrect: isCorrect,
               pointsAwarded: pointsAwarded,
-              correctAnswer: showAnswers ? correctAnswerText : undefined,
-              explanation: showAnswers ? q.explanationText : undefined,
+              correctAnswer: showAnswers && !pendingManualGrading ? correctAnswerText : undefined,
+              explanation: showAnswers && !pendingManualGrading ? q.explanationText : undefined,
               feedback: answer?.feedbackText || null
             };
           }));
 
-          const filteredQuestionDetailsExisting = (exam.showCorrectAnswers ?? true) ? questionDetails : [];
+          const filteredQuestionDetailsExisting = (exam.showCorrectAnswers ?? true) && !pendingManualGrading ? questionDetails : [];
 
           return res.json({
             submitted: true,
@@ -178,6 +184,9 @@ export async function registerExamSubmissionRoutes(app: Express) {
                   : 0,
               submittedAt: completedSession.submittedAt?.toISOString() || new Date().toISOString(),
               showCorrectAnswers: exam.showCorrectAnswers ?? true,
+              autoGradingEnabled,
+              resultReleasedAt,
+              pendingManualGrading,
               questionDetails: filteredQuestionDetailsExisting,
               breakdown: {
                 totalQuestions: examQuestions.length,
@@ -227,6 +236,7 @@ export async function registerExamSubmissionRoutes(app: Express) {
         console.log(`[SUBMIT] Session ${activeSession.id} was already claimed by a concurrent request. Returning existing result.`);
         const existingResult = await storage.getExamResultByExamAndStudent(examId, studentId);
         const completedSession = await storage.getExamSessionById(activeSession.id);
+        pendingManualGrading = !autoGradingEnabled || !(existingResult as any)?.resultReleasedAt;
         return res.json({
           submitted: true,
           alreadySubmitted: true,
@@ -241,7 +251,12 @@ export async function registerExamSubmissionRoutes(app: Express) {
                 ? ((completedSession.score || 0) / completedSession.maxScore) * 100
                 : 0,
             submittedAt: completedSession?.submittedAt?.toISOString() || now.toISOString(),
-            showCorrectAnswers: exam.showCorrectAnswers ?? true
+            showCorrectAnswers: exam.showCorrectAnswers ?? true,
+            autoGradingEnabled,
+            resultReleasedAt: (existingResult as any)?.resultReleasedAt
+              ? new Date((existingResult as any).resultReleasedAt).toISOString()
+              : null,
+            pendingManualGrading
           }
         });
       }
@@ -384,7 +399,7 @@ export async function registerExamSubmissionRoutes(app: Express) {
 
           // Correct Answer Text from Teacher's setup
           let correctAnswerText = "Not available";
-          let isCorrect = answer?.isCorrect || false;
+          let isCorrect: boolean | null = autoGradingEnabled ? (answer?.isCorrect || false) : (answer?.isCorrect ?? null);
           let pointsAwarded = answer?.pointsEarned || 0;
 
           if (q.questionType === 'multiple_choice') {
@@ -392,7 +407,7 @@ export async function registerExamSubmissionRoutes(app: Express) {
             correctAnswerText = correctOption?.optionText || "Not specified";
 
             // Re-verify correctness if it's missing or needs enforcement
-            if (answer && answer.selectedOptionId && correctOption) {
+            if (!pendingManualGrading && answer && answer.selectedOptionId && correctOption) {
               isCorrect = answer.selectedOptionId === correctOption.id;
             }
           } else {
@@ -417,8 +432,8 @@ export async function registerExamSubmissionRoutes(app: Express) {
             isCorrect: isCorrect,
             pointsAwarded: pointsAwarded,
             // Only expose the correct answer if the teacher has enabled it
-            correctAnswer: showAnswers ? correctAnswerText : undefined,
-            explanation: showAnswers ? q.explanationText : undefined,
+            correctAnswer: showAnswers && !pendingManualGrading ? correctAnswerText : undefined,
+            explanation: showAnswers && !pendingManualGrading ? q.explanationText : undefined,
             feedback: answer?.feedbackText || null
           };
         } catch (detailError: any) {
@@ -439,8 +454,8 @@ export async function registerExamSubmissionRoutes(app: Express) {
         }
       }));
 
-      // If showCorrectAnswers is off, clear the details so no breakdown is sent
-      const filteredQuestionDetails = (exam.showCorrectAnswers ?? true) ? questionDetails : [];
+      // If showCorrectAnswers is off or manual grading is pending, clear the details
+      const filteredQuestionDetails = (exam.showCorrectAnswers ?? true) && !pendingManualGrading ? questionDetails : [];
 
       const totalTime = Date.now() - startTime;
       const percentage = maxScore > 0 ? (totalScore / maxScore) * 100 : 0;
@@ -455,7 +470,9 @@ export async function registerExamSubmissionRoutes(app: Express) {
       // done, and process the rest in the background.
       const reportCardSync: { success: boolean; message: string; reportCardId?: number; isNewReportCard?: boolean; auditLogId?: number } = {
         success: true,
-        message: 'Report card sync is processing in the background.'
+        message: pendingManualGrading
+          ? 'Report card sync will run after the teacher publishes the result.'
+          : 'Report card sync is processing in the background.'
       };
 
       // Format time taken for display
@@ -489,7 +506,9 @@ export async function registerExamSubmissionRoutes(app: Express) {
         timedOut: reason === 'timeout',
         violationSubmit: reason === 'violation',
         message: scoringSuccessful
-          ? `Exam submitted successfully! Your score: ${totalScore}/${maxScore}`
+          ? autoGradingEnabled
+            ? `Exam submitted successfully! Your score: ${totalScore}/${maxScore}`
+            : 'Exam submitted successfully! Your answers are pending teacher review.'
           : 'Exam submitted. Score calculation in progress.',
         result: {
           sessionId: activeSession.id,
@@ -502,6 +521,9 @@ export async function registerExamSubmissionRoutes(app: Express) {
           submissionReason: reason,
           violationCount: violationCount || 0,
           showCorrectAnswers: exam.showCorrectAnswers ?? true,
+          autoGradingEnabled,
+          resultReleasedAt: null,
+          pendingManualGrading,
           questionDetails: filteredQuestionDetails,
           breakdown: {
             totalQuestions: examQuestions.length,
@@ -539,55 +561,57 @@ export async function registerExamSubmissionRoutes(app: Express) {
       // Runs after the response has already been sent to the student, so a slow sync
       // (report card creation/aggregation + audit log + retries) can never cause the
       // frontend to see a false "Connection Error" for an already-committed submission.
-      setImmediate(async () => {
-        const bgLabel = `[SUBMIT:BG session=${activeSession.id} student=${studentId} exam=${examId}]`;
-        try {
-          console.log(`${bgLabel} Starting background report card sync, score ${totalScore}/${maxScore}`);
-          const bgSync = await reliableSyncService.syncExamScoreToReportCardReliable(
-            studentId,
-            examId,
-            totalScore,
-            maxScore,
-            {
-              syncType: 'exam_submit',
-              triggeredBy: studentId
-            }
-          );
+      if (!pendingManualGrading) {
+        setImmediate(async () => {
+          const bgLabel = `[SUBMIT:BG session=${activeSession.id} student=${studentId} exam=${examId}]`;
+          try {
+            console.log(`${bgLabel} Starting background report card sync, score ${totalScore}/${maxScore}`);
+            const bgSync = await reliableSyncService.syncExamScoreToReportCardReliable(
+              studentId,
+              examId,
+              totalScore,
+              maxScore,
+              {
+                syncType: 'exam_submit',
+                triggeredBy: studentId
+              }
+            );
 
-          if (bgSync.success) {
-            console.log(`${bgLabel} Sync successful: ${bgSync.message} (auditLogId: ${bgSync.auditLogId})`);
+            if (bgSync.success) {
+              console.log(`${bgLabel} Sync successful: ${bgSync.message} (auditLogId: ${bgSync.auditLogId})`);
 
-            if (bgSync.reportCardId) {
-              const eventType = bgSync.isNewReportCard ? 'created' : 'updated';
-              realtimeService.emitReportCardEvent(bgSync.reportCardId, eventType, {
+              if (bgSync.reportCardId) {
+                const eventType = bgSync.isNewReportCard ? 'created' : 'updated';
+                realtimeService.emitReportCardEvent(bgSync.reportCardId, eventType, {
+                  studentId,
+                  examId,
+                  classId: exam.classId,
+                  score: totalScore,
+                  maxScore,
+                  percentage: maxScore > 0 ? Math.round((totalScore / maxScore) * 10000) / 100 : 0,
+                  isNewReportCard: bgSync.isNewReportCard,
+                  autoGenerated: bgSync.isNewReportCard
+                });
+              }
+
+              const tableOperation = bgSync.isNewReportCard ? 'INSERT' : 'UPDATE';
+              realtimeService.emitTableChange('report_cards', tableOperation, {
+                reportCardId: bgSync.reportCardId,
                 studentId,
                 examId,
                 classId: exam.classId,
                 score: totalScore,
                 maxScore,
-                percentage: maxScore > 0 ? Math.round((totalScore / maxScore) * 10000) / 100 : 0,
-                isNewReportCard: bgSync.isNewReportCard,
-                autoGenerated: bgSync.isNewReportCard
-              });
+                isNewReportCard: bgSync.isNewReportCard
+              }, undefined, studentId);
+            } else {
+              console.error(`${bgLabel} Sync failed: ${bgSync.message} (auditLogId: ${bgSync.auditLogId}). Retryable via admin tools.`);
             }
-
-            const tableOperation = bgSync.isNewReportCard ? 'INSERT' : 'UPDATE';
-            realtimeService.emitTableChange('report_cards', tableOperation, {
-              reportCardId: bgSync.reportCardId,
-              studentId,
-              examId,
-              classId: exam.classId,
-              score: totalScore,
-              maxScore,
-              isNewReportCard: bgSync.isNewReportCard
-            }, undefined, studentId);
-          } else {
-            console.error(`${bgLabel} Sync failed: ${bgSync.message} (auditLogId: ${bgSync.auditLogId}). Retryable via admin tools.`);
+          } catch (syncError: any) {
+            console.error(`${bgLabel} Unhandled background sync error:`, syncError?.message);
           }
-        } catch (syncError: any) {
-          console.error(`${bgLabel} Unhandled background sync error:`, syncError?.message);
-        }
-      });
+        });
+      }
     } catch (error: any) {
       console.error('[SUBMIT] Exam submission error:', error?.message, { sessionId });
 

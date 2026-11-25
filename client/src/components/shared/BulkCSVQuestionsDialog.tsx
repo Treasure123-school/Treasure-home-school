@@ -9,7 +9,7 @@
  *
  * Usage – inside a tab (ExamQuestionAdder):
  *   <BulkCSVUploadPanel
- *     onUpload={questions => mutation.mutate(questions)}
+ *     onUpload={(questions, done) => mutation.mutate(questions, { onSuccess: () => done() })}
  *     isPending={mutation.isPending}
  *     onCancel={() => onOpenChange(false)}
  *   />
@@ -17,7 +17,7 @@
  * Usage – standalone dialog (QuestionBankManager):
  *   <BulkCSVQuestionsDialog
  *     open={open} onOpenChange={setOpen}
- *     onUpload={questions => mutation.mutate(questions)}
+ *     onUpload={(questions, done) => mutation.mutate(questions, { onSuccess: () => done() })}
  *     isPending={mutation.isPending}
  *     showDifficulty
  *     title="Bulk Upload to Question Bank"
@@ -30,9 +30,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Badge }  from '@/components/ui/badge';
-import { AlertTriangle, Download, FileUp, Upload } from 'lucide-react';
+import { AlertTriangle, ArrowRight, CheckCircle2, Download, FileUp, Eye, Loader2, Plus, Upload } from 'lucide-react';
 import { parseCSVWithHeaders, makeColumnGetter } from '@/lib/csvParser';
+import { CSVQuestionPreview } from './CSVQuestionPreview';
 
 // ─── Public types ─────────────────────────────────────────────────────────────
 
@@ -67,23 +67,31 @@ According to the passage, when did the sun rise?",multiple_choice,"At noon","Slo
 
 // ─── Internal hook — all state & logic ───────────────────────────────────────
 
-function useBulkCSVUpload(showDifficulty: boolean) {
+function useBulkCSVUpload(showDifficulty: boolean, onParsed?: () => void) {
   const { toast }    = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const onParsedRef  = useRef(onParsed);
+  onParsedRef.current = onParsed;
   const [preview, setPreview] = useState<ParsedQuestion[]>([]);
   const [errors,  setErrors]  = useState<string[]>([]);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isReading, setIsReading] = useState(false);
+  const [readingName, setReadingName] = useState('');
+  const dragDepth = useRef(0);
 
-  function reset() { setPreview([]); setErrors([]); }
+  function reset() {
+    setPreview([]); setErrors([]); setIsDragOver(false); dragDepth.current = 0;
+    setIsReading(false); setReadingName('');
+  }
 
-  function handleCSVFile(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    event.target.value = '';
-
+  function processFile(file: File) {
     if (!file.name.toLowerCase().endsWith('.csv')) {
       return void toast({ title: 'Invalid File', description: 'Please select a .csv file', variant: 'destructive' });
     }
+    if (isReading) return;
 
+    setIsReading(true);
+    setReadingName(file.name);
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
@@ -146,15 +154,62 @@ function useBulkCSVUpload(showDifficulty: boolean) {
 
         setPreview(questions);
         setErrors(rowErrors);
+        if (questions.length > 0) onParsedRef.current?.();
 
         if (questions.length === 0 && rowErrors.length > 0) {
           toast({ title: 'No valid questions', description: `All ${rowErrors.length} rows had errors.`, variant: 'destructive' });
         }
       } catch (err: any) {
         toast({ title: 'Parse Error', description: err.message, variant: 'destructive' });
+      } finally {
+        setIsReading(false);
+        setReadingName('');
       }
     };
+    reader.onerror = () => {
+      setIsReading(false);
+      setReadingName('');
+      toast({ title: 'File Read Error', description: 'Could not read that file. Please try again.', variant: 'destructive' });
+    };
     reader.readAsText(file);
+  }
+
+  function handleCSVFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (file) processFile(file);
+  }
+
+  function hasFiles(e: React.DragEvent<HTMLLabelElement>) {
+    return Array.from(e.dataTransfer.types).includes('Files');
+  }
+
+  function handleDragEnter(e: React.DragEvent<HTMLLabelElement>) {
+    e.preventDefault();
+    if (!hasFiles(e)) return;
+    dragDepth.current += 1;
+    setIsDragOver(true);
+  }
+
+  function handleDragOver(e: React.DragEvent<HTMLLabelElement>) {
+    e.preventDefault();
+    if (hasFiles(e)) e.dataTransfer.dropEffect = 'copy';
+  }
+
+  function handleDragLeave(e: React.DragEvent<HTMLLabelElement>) {
+    e.preventDefault();
+    if (dragDepth.current === 0) return;
+    dragDepth.current -= 1;
+    if (dragDepth.current === 0) setIsDragOver(false);
+  }
+
+  function handleDrop(e: React.DragEvent<HTMLLabelElement>) {
+    e.preventDefault();
+    dragDepth.current = 0;
+    setIsDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) processFile(file);
+    else toast({ title: 'Invalid File', description: 'Please drop a .csv file', variant: 'destructive' });
   }
 
   function downloadTemplate() {
@@ -168,10 +223,23 @@ function useBulkCSVUpload(showDifficulty: boolean) {
     window.URL.revokeObjectURL(url);
   }
 
-  return { fileInputRef, preview, errors, reset, handleCSVFile, downloadTemplate };
+  return {
+    fileInputRef, preview, errors, reset, handleCSVFile, downloadTemplate,
+    isDragOver, isReading, readingName, handleDragEnter, handleDragOver, handleDragLeave, handleDrop,
+  };
 }
 
-// ─── Internal content renderer (shared by both exports) ──────────────────────
+/** Owns the file picker, preview and completion surfaces. */
+function useCSVUploadFlow(showDifficulty: boolean) {
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [complete, setComplete] = useState(false);
+  const upload = useBulkCSVUpload(showDifficulty, () => setPreviewOpen(true));
+  function reset() { upload.reset(); setPreviewOpen(false); setComplete(false); }
+  function markComplete() { setComplete(true); }
+  return { ...upload, previewOpen, setPreviewOpen, complete, markComplete, reset };
+}
+
+// ─── Internal content renderer (file selection surface) ──────────────────────
 
 function CSVUploadContent({
   fileInputRef,
@@ -179,9 +247,15 @@ function CSVUploadContent({
   errors,
   handleCSVFile,
   downloadTemplate,
-  onUpload,
-  isPending,
+  isDragOver,
+  isReading,
+  readingName,
+  handleDragEnter,
+  handleDragOver,
+  handleDragLeave,
+  handleDrop,
   showDifficulty,
+  onPreview,
   onCancel,
   serverErrors,
 }: {
@@ -190,15 +264,19 @@ function CSVUploadContent({
   errors:           string[];
   handleCSVFile:    (e: React.ChangeEvent<HTMLInputElement>) => void;
   downloadTemplate: () => void;
-  onUpload:         (questions: ParsedQuestion[]) => void;
-  isPending:        boolean;
+  isDragOver:       boolean;
+  isReading:        boolean;
+  readingName?:     string;
+  handleDragEnter:  (e: React.DragEvent<HTMLLabelElement>) => void;
+  handleDragOver:   (e: React.DragEvent<HTMLLabelElement>) => void;
+  handleDragLeave:  (e: React.DragEvent<HTMLLabelElement>) => void;
+  handleDrop:       (e: React.DragEvent<HTMLLabelElement>) => void;
   showDifficulty:   boolean;
+  onPreview:        () => void;
   onCancel?:        () => void;
   serverErrors?:    string[];
 }) {
-  const mcqCount    = preview.filter(q => q.questionType === 'multiple_choice').length;
-  const theoryCount = preview.length - mcqCount;
-  const allErrors   = [...errors, ...(serverErrors ?? [])];
+  const allErrorCount = errors.length + (serverErrors?.length ?? 0);
 
   return (
     <div className="space-y-4">
@@ -208,13 +286,44 @@ function CSVUploadContent({
         <Button variant="outline" size="sm" onClick={downloadTemplate}>
           <Download className="w-4 h-4 mr-1.5" /> Download Template
         </Button>
-        <label className="cursor-pointer">
-          <Button variant="outline" size="sm" asChild>
-            <span><FileUp className="w-4 h-4 mr-1.5" /> Choose CSV File</span>
-          </Button>
-          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleCSVFile} />
-        </label>
       </div>
+
+      {/* Drop zone — clicking anywhere in it opens the same hidden file input */}
+      <label
+        data-testid="csv-dropzone"
+        data-drag-active={isDragOver || undefined}
+        aria-busy={isReading || undefined}
+        onDragEnter={handleDragEnter}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className={`flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed px-4 py-6 text-center transition-colors ${
+          isReading
+            ? 'pointer-events-none border-primary/50 bg-primary/5'
+            : isDragOver
+            ? 'border-primary bg-primary/5 cursor-pointer'
+            : 'border-muted-foreground/30 bg-muted/30 hover:border-primary/50 hover:bg-muted/50 cursor-pointer'
+        }`}
+      >
+        {isReading ? (
+          <div role="status" className="flex flex-col items-center gap-1.5">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            <span className="text-sm font-medium">Reading CSV…</span>
+            {readingName && <span className="max-w-full truncate text-xs text-muted-foreground">{readingName}</span>}
+          </div>
+        ) : (
+          <>
+            <FileUp className={`w-6 h-6 ${isDragOver ? 'text-primary' : 'text-muted-foreground'}`} />
+            <span className="text-sm font-medium">
+              {isDragOver ? 'Drop your CSV here' : 'Drag & drop your CSV here'}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              or <span className="text-primary underline underline-offset-2">browse files</span>
+            </span>
+          </>
+        )}
+        <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleCSVFile} data-testid="csv-file-input" disabled={isReading} />
+      </label>
 
       {/* Format hint */}
       <div className="border rounded-lg p-3 bg-muted/30 text-xs space-y-1">
@@ -236,66 +345,65 @@ function CSVUploadContent({
         <p className="text-muted-foreground">Only <strong>multiple_choice</strong> and <strong>essay</strong> are accepted. Download the template for a ready-to-fill example.</p>
       </div>
 
-      {/* Preview */}
+      {/* Ready-to-review summary — full preview opens in its own dialog */}
       {preview.length > 0 && (
-        <div className="border rounded-lg overflow-hidden">
-          <div className="px-3 py-2 bg-muted/50 flex items-center justify-between">
-            <span className="text-sm font-medium">
-              {preview.length} question{preview.length !== 1 ? 's' : ''} ready
-            </span>
-            <div className="flex items-center gap-1.5">
-              {mcqCount > 0    && <Badge variant="secondary" className="text-[10px]">{mcqCount} MCQ</Badge>}
-              {theoryCount > 0 && <Badge variant="outline"   className="text-[10px]">{theoryCount} Theory</Badge>}
-            </div>
-          </div>
-          <div className="max-h-44 overflow-y-auto divide-y">
-            {preview.slice(0, 10).map((q, i) => (
-              <div key={i} className="px-3 py-2 text-xs flex items-center gap-2">
-                <Badge variant="outline" className="shrink-0 text-[10px] capitalize">
-                  {q.questionType === 'multiple_choice' ? 'MCQ' : q.questionType}
-                </Badge>
-                <span className="flex-1 line-clamp-1 text-muted-foreground">{q.questionText}</span>
-                <span className="shrink-0 text-muted-foreground font-medium">{q.points}pt</span>
-              </div>
-            ))}
-            {preview.length > 10 && (
-              <div className="px-3 py-2 text-xs text-center text-muted-foreground">
-                …and {preview.length - 10} more
-              </div>
-            )}
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-2 border rounded-lg p-3 bg-muted/30">
+          <span className="text-sm font-medium">
+            {preview.length} question{preview.length !== 1 ? 's' : ''} ready
+          </span>
+          <Button size="sm" onClick={onPreview} data-testid="csv-open-preview">
+            <Eye className="w-4 h-4 mr-1.5" /> Review full preview
+          </Button>
         </div>
       )}
 
       {/* Row errors (parse-time + server-side combined) */}
-      {allErrors.length > 0 && (
-        <div className="border border-destructive/30 rounded-lg p-3 bg-destructive/5">
-          <p className="text-sm font-medium text-destructive flex items-center gap-1.5 mb-1">
+      {allErrorCount > 0 && (
+        <div className="border border-destructive/30 rounded-lg p-2.5 bg-destructive/5">
+          <p className="text-xs font-medium text-destructive flex items-center gap-1.5">
             <AlertTriangle className="w-4 h-4" />
-            {allErrors.length} row error{allErrors.length !== 1 ? 's' : ''} skipped
-            {serverErrors && serverErrors.length > 0 && errors.length > 0 && (
-              <span className="text-[10px] font-normal opacity-70 ml-1">
-                ({errors.length} parse, {serverErrors.length} server)
-              </span>
-            )}
+            {allErrorCount} row error{allErrorCount !== 1 ? 's' : ''} skipped — details in the full preview
           </p>
-          <div className="max-h-28 overflow-y-auto space-y-0.5">
-            {allErrors.map((err, i) => <p key={i} className="text-xs text-destructive/80">{err}</p>)}
-          </div>
         </div>
       )}
 
-      {/* Footer */}
-      <div className="flex justify-end gap-2 pt-1">
-        {onCancel && (
-          <Button variant="outline" onClick={onCancel} disabled={isPending}>
-            Cancel
-          </Button>
-        )}
-        <Button onClick={() => onUpload(preview)} disabled={preview.length === 0 || isPending}>
-          {isPending
-            ? 'Uploading…'
-            : `Upload${preview.length > 0 ? ` ${preview.length}` : ''} Question${preview.length !== 1 ? 's' : ''}`}
+      {onCancel && (
+        <div className="flex justify-end pt-1">
+          <Button variant="outline" onClick={onCancel}>Cancel</Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Completion surface ───────────────────────────────────────────────────────
+
+function CSVUploadComplete({
+  count,
+  onDone,
+  onContinue,
+}: {
+  count:      number;
+  onDone:     () => void;
+  onContinue: () => void;
+}) {
+  return (
+    <div data-testid="csv-upload-complete" className="flex flex-col items-center gap-4 py-6 text-center">
+      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+        <CheckCircle2 className="h-8 w-8 text-primary" />
+      </div>
+      <div className="space-y-1">
+        <h3 className="text-lg font-semibold">Upload complete</h3>
+        <p className="text-sm text-muted-foreground">
+          {count} question{count !== 1 ? 's' : ''} added successfully.
+        </p>
+      </div>
+      <div className="flex w-full flex-col gap-2 pt-2 sm:flex-row sm:justify-center">
+        <Button onClick={onDone} data-testid="csv-upload-manage">
+          Manage Questions <ArrowRight className="ml-1.5 h-4 w-4" />
+        </Button>
+        <Button variant="outline" onClick={onContinue} data-testid="csv-upload-continue">
+          <Plus className="mr-1.5 h-4 w-4" /> Continue Adding
         </Button>
       </div>
     </div>
@@ -305,10 +413,11 @@ function CSVUploadContent({
 // ─── Export 1: Panel — embed inside an existing dialog or tab ─────────────────
 
 export interface BulkCSVUploadPanelProps {
-  onUpload:        (questions: ParsedQuestion[]) => void;
+  onUpload:        (questions: ParsedQuestion[], onComplete: () => void) => void;
   isPending:       boolean;
   showDifficulty?: boolean;
   onCancel?:       () => void;
+  onDone?:         () => void;
   /**
    * Server-side row errors returned after a partial upload — pass these in so
    * they are displayed in the same error section as parse errors.
@@ -321,15 +430,34 @@ export function BulkCSVUploadPanel({
   isPending,
   showDifficulty = false,
   onCancel,
+  onDone,
   serverErrors,
 }: BulkCSVUploadPanelProps) {
-  const state = useBulkCSVUpload(showDifficulty);
-  return (
-    <CSVUploadContent
-      {...state}
-      onUpload={onUpload}
+  const flow = useCSVUploadFlow(showDifficulty);
+  if (flow.complete) {
+    return (
+      <CSVUploadComplete
+        count={flow.preview.length}
+        onDone={onDone ?? onCancel ?? (() => {})}
+        onContinue={flow.reset}
+      />
+    );
+  }
+  return flow.previewOpen ? (
+    <CSVQuestionPreview
+      questions={flow.preview}
+      errors={flow.errors}
+      serverErrors={serverErrors}
+      onUpload={(questions) => onUpload(questions, flow.markComplete)}
+      onBack={() => flow.setPreviewOpen(false)}
       isPending={isPending}
       showDifficulty={showDifficulty}
+    />
+  ) : (
+    <CSVUploadContent
+      {...flow}
+      showDifficulty={showDifficulty}
+      onPreview={() => flow.setPreviewOpen(true)}
       onCancel={onCancel}
       serverErrors={serverErrors}
     />
@@ -341,10 +469,11 @@ export function BulkCSVUploadPanel({
 export interface BulkCSVQuestionsDialogProps {
   open:            boolean;
   onOpenChange:    (open: boolean) => void;
-  onUpload:        (questions: ParsedQuestion[]) => void;
+  onUpload:        (questions: ParsedQuestion[], onComplete: () => void) => void;
   isPending:       boolean;
   title?:          string;
   showDifficulty?: boolean;
+  onDone?:         () => void;
   /** Server-side row errors to display after a partial upload. */
   serverErrors?:   string[];
 }
@@ -356,30 +485,55 @@ export function BulkCSVQuestionsDialog({
   isPending,
   title = 'Bulk Upload Questions (CSV)',
   showDifficulty = false,
+  onDone,
   serverErrors,
 }: BulkCSVQuestionsDialogProps) {
-  const state = useBulkCSVUpload(showDifficulty);
+  const flow = useCSVUploadFlow(showDifficulty);
 
   // Reset whenever the dialog opens
-  useEffect(() => { if (open) state.reset(); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open) flow.reset(); }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent aria-describedby={undefined} className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Upload className="w-5 h-5 text-primary" />
-            {title}
-          </DialogTitle>
-        </DialogHeader>
-        <CSVUploadContent
-          {...state}
-          onUpload={(questions) => onUpload(questions)}
-          isPending={isPending}
-          showDifficulty={showDifficulty}
-          onCancel={() => onOpenChange(false)}
-          serverErrors={serverErrors}
-        />
+      <DialogContent
+        aria-describedby={undefined}
+        className={flow.previewOpen
+          ? 'max-w-3xl max-h-[92dvh] overflow-y-auto'
+          : 'max-w-lg max-h-[90vh] overflow-y-auto'}
+      >
+        {!flow.previewOpen && (
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="w-5 h-5 text-primary" />
+              {title}
+            </DialogTitle>
+          </DialogHeader>
+        )}
+        {flow.complete ? (
+          <CSVUploadComplete
+            count={flow.preview.length}
+            onDone={onDone ?? (() => onOpenChange(false))}
+            onContinue={flow.reset}
+          />
+        ) : flow.previewOpen ? (
+          <CSVQuestionPreview
+            questions={flow.preview}
+            errors={flow.errors}
+            serverErrors={serverErrors}
+            onUpload={(questions) => onUpload(questions, flow.markComplete)}
+            onBack={() => flow.setPreviewOpen(false)}
+            isPending={isPending}
+            showDifficulty={showDifficulty}
+          />
+        ) : (
+          <CSVUploadContent
+            {...flow}
+            showDifficulty={showDifficulty}
+            onPreview={() => flow.setPreviewOpen(true)}
+            onCancel={() => onOpenChange(false)}
+            serverErrors={serverErrors}
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

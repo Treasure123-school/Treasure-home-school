@@ -72,6 +72,9 @@ interface ExamResult {
     message: string;
   };
   showCorrectAnswers?: boolean;
+  autoGradingEnabled?: boolean;
+  resultReleasedAt?: string | null;
+  pendingManualGrading?: boolean;
 }
 
 export default function StudentExamResults() {
@@ -270,13 +273,6 @@ export default function StudentExamResults() {
   if ((error || allResults.length === 0) && (specificExamId || !latestResult)) {
     return (
       <div className="space-y-6 p-4 md:p-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Exam Results</h1>
-            <p className="text-sm text-muted-foreground">View your exam scores and performance</p>
-          </div>
-        </div>
-        
         <Card className="text-center py-12">
           <CardContent>
             <FileText className="w-16 h-16 mx-auto text-gray-400 mb-4" />
@@ -301,6 +297,39 @@ export default function StudentExamResults() {
   const result = selectedResult;
   if (!result) return null;
 
+  const isAwaitingTeacherRelease = result.pendingManualGrading
+    ?? (result.autoGradingEnabled === false && !result.resultReleasedAt);
+
+  if (isAwaitingTeacherRelease) {
+    return (
+      <div className="space-y-6 p-4 md:p-6">
+        <Card className="text-center py-12" data-testid="card-pending-manual-grading">
+          <CardContent className="space-y-5">
+            <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto">
+              <Clock className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">
+                {result.examTitle || result.exam?.title || 'Exam'} - Submitted
+              </h1>
+              <p className="text-base text-gray-600 dark:text-gray-400 max-w-xl mx-auto">
+                Your exam has been submitted. Please wait while your teacher reviews it; your result will appear here as soon as your teacher publishes it.
+              </p>
+            </div>
+            {result.submittedAt && (
+              <p className="text-sm text-muted-foreground">
+                Submitted on {new Date(result.submittedAt).toLocaleString()}
+              </p>
+            )}
+            <Button onClick={() => setLocation('/portal/student/exams')} data-testid="button-back-to-exams">
+              Back to Exams
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const percentage = result.percentage || Math.round((result.score / result.maxScore) * 100) || 0;
   const performance = getPerformanceLevel(percentage);
   const submissionInfo = getSubmissionTypeInfo(result.submissionReason, result.violationCount);
@@ -312,13 +341,6 @@ export default function StudentExamResults() {
 
   return (
     <div className="space-y-6 p-4 md:p-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Exam Results</h1>
-          <p className="text-sm text-muted-foreground">View your exam scores and performance</p>
-        </div>
-      </div>
-
       <div className="space-y-6">
         <div className="text-center mb-6" data-testid="banner-result-success">
           <div className="flex justify-center mb-4">

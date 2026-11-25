@@ -3,6 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   Trophy, Users, Clock, User, Calendar, Star, ChevronRight,
   ChevronLeft, X, Zap, Music, Palette, Dumbbell, Code, FlaskConical, Globe
 } from 'lucide-react';
@@ -345,10 +351,14 @@ export default function StudentExtracurricular() {
       </Card>
 
       {/* Detail Modal */}
-      {selectedActivity && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" data-testid="activity-detail-modal">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className={`p-6 rounded-t-2xl border-b border-gray-100 dark:border-gray-800 ${selectedActivity.color}`}>
+      <Dialog
+        open={!!selectedActivity}
+        onOpenChange={(open) => { if (!open) setSelectedActivity(null); }}
+      >
+        <DialogContent className="max-w-md p-0" data-testid="activity-detail-modal" showClose={false}>
+          {selectedActivity && (
+            <>
+          <div className={`p-6 rounded-t-lg border-b border-gray-100 dark:border-gray-800 ${selectedActivity.color}`}>
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   {(() => {
@@ -360,7 +370,9 @@ export default function StudentExtracurricular() {
                     );
                   })()}
                   <div>
-                    <h2 className="font-bold text-lg text-gray-900 dark:text-gray-100">{selectedActivity.name}</h2>
+                    <DialogTitle asChild>
+                      <h2 className="font-bold text-lg text-gray-900 dark:text-gray-100">{selectedActivity.name}</h2>
+                    </DialogTitle>
                     <span className={`inline-block text-xs font-semibold px-2 py-0.5 rounded-full ${selectedActivity.badgeColor}`}>
                       {selectedActivity.category}
                     </span>
@@ -373,7 +385,9 @@ export default function StudentExtracurricular() {
             </div>
 
             <div className="p-6 space-y-5">
-              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{selectedActivity.description}</p>
+              <DialogDescription asChild>
+                <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{selectedActivity.description}</p>
+              </DialogDescription>
 
               <div className="space-y-3">
                 <div className="flex items-center gap-3 text-sm">
@@ -428,9 +442,10 @@ export default function StudentExtracurricular() {
                 {joinedIds.includes(selectedActivity.id) ? 'Leave Activity' : 'Join Activity'}
               </Button>
             </div>
-          </div>
-        </div>
-      )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -35,7 +35,7 @@ export function useExamMutations({ setIsExamDialogOpen, setEditingExam, resetExa
 
   // Update exam mutation
   const updateExamMutation = useMutation({
-    mutationFn: async ({ examId, examData }: { examId: number; examData: Partial<ExamForm> }) => {
+    mutationFn: async ({ examId, examData }: { examId: number; examData: Partial<ExamForm> & { teacherInChargeId?: string | null } }) => {
       const response = await apiRequest('PATCH', `/api/exams/${examId}`, examData);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

@@ -372,7 +372,6 @@ export const exams = pgTable("exams", {
   allowRetakes: boolean("allow_retakes").notNull().default(false),
   shuffleQuestions: boolean("shuffle_questions").notNull().default(false),
   autoGradingEnabled: boolean("auto_grading_enabled").notNull().default(true),
-  instantFeedback: boolean("instant_feedback").notNull().default(false),
   showCorrectAnswers: boolean("show_correct_answers").notNull().default(false),
   passingScore: integer("passing_score"),
   gradingScale: varchar("grading_scale", { length: 50 }).notNull().default('standard'),
@@ -492,6 +491,7 @@ export const examResults = pgTable("exam_results", {
   timeTaken: integer("time_taken").default(0),
   submittedAt: timestamp("submitted_at"),
   recordedBy: varchar("recorded_by", { length: 36 }).notNull().references(() => users.id),
+  resultReleasedAt: timestamp("result_released_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => ({
   examResultsExamIdIdx: index("exam_results_exam_id_idx").on(table.examId),
@@ -1953,7 +1953,6 @@ export const insertExamSchema = createInsertSchema(exams).omit({ id: true, creat
   allowRetakes: z.boolean().default(false),
   shuffleQuestions: z.boolean().default(false),
   autoGradingEnabled: z.boolean().default(true),
-  instantFeedback: z.boolean().default(false),
   showCorrectAnswers: z.boolean().default(false),
   purpose: z.preprocess(
     (val) => val === '' || val === null || val === undefined ? undefined : val,

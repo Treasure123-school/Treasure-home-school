@@ -45,7 +45,6 @@ export function StepOptions({ m }: { m: ExamManager }) {
                     <div className="grid grid-cols-1 gap-3">
                       {[
                         { name: 'autoGradingEnabled' as keyof ExamForm, label: 'Enable Auto-Grading', testId: 'switch-auto-grading' },
-                        { name: 'instantFeedback' as keyof ExamForm, label: 'Instant Feedback', testId: 'switch-instant-feedback' },
                         { name: 'showCorrectAnswers' as keyof ExamForm, label: 'Show Correct Answers After Submission', testId: 'switch-show-answers' },
                       ].map(({ name, label, testId }) => (
                         <div key={String(name)} className="flex items-center gap-3">

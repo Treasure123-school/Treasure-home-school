@@ -105,6 +105,9 @@ export async function autoScoreExamSession(sessionId: number, storage: any): Pro
     const scoringResult = await storage.getExamScoringData(sessionId);
     const { session, summary, scoringData } = scoringResult;
 
+    const examForScoring = await storage.getExamById(session.examId);
+    const autoGradingEnabled = examForScoring ? examForScoring.autoGradingEnabled !== false : true;
+
     const databaseQueryTime = Date.now() - startTime;
 
     const { totalQuestions, maxScore: maxPossibleScore, studentScore, autoScoredQuestions } = summary; // Renamed maxScore to maxPossibleScore
@@ -113,7 +116,7 @@ export async function autoScoreExamSession(sessionId: number, storage: any): Pro
     const studentAnswers = await storage.getStudentAnswers(sessionId);
     const examQuestions = await storage.getExamQuestions(session.examId);
 
-    let totalAutoScore = studentScore; // Start with MCQ scores
+    let totalAutoScore = autoGradingEnabled ? studentScore : 0;
     const hasMultipleChoiceQuestions = autoScoredQuestions > 0;
     const hasEssayQuestions = totalQuestions > autoScoredQuestions;
 
@@ -137,6 +140,16 @@ export async function autoScoreExamSession(sessionId: number, storage: any): Pro
         aiSuggested: false,
         confidence: 0
       };
+
+      if (!autoGradingEnabled) {
+        questionDetail.pointsEarned = 0;
+        questionDetail.isCorrect = null;
+        questionDetail.autoScored = false;
+        questionDetail.aiSuggested = true;
+        questionDetail.feedback = 'Pending manual review by your instructor.';
+        questionDetails.push(questionDetail);
+        continue;
+      }
 
       // Multiple choice - already scored
       if (q.questionType === 'multiple_choice') {
@@ -288,7 +301,7 @@ export async function autoScoreExamSession(sessionId: number, storage: any): Pro
       score: totalAutoScore,
       maxScore: maxPossibleScore,
       marksObtained: totalAutoScore,
-      autoScored: breakdown.pendingManualReview === 0,
+      autoScored: autoGradingEnabled && breakdown.pendingManualReview === 0,
       recordedBy: SYSTEM_AUTO_SCORING_UUID,
       timeTaken: timeTaken,
     };
@@ -318,7 +331,7 @@ export async function autoScoreExamSession(sessionId: number, storage: any): Pro
       // (normal submit, timeout auto-submit, late-answer re-score) get this automatically.
       // The reliable sync service's idempotency window prevents double-processing when the
       // main submit handler fires its own setImmediate sync within 5 seconds.
-      if (breakdown.pendingManualReview === 0) {
+      if (autoGradingEnabled && breakdown.pendingManualReview === 0) {
         // Only sync when fully auto-scored; essay exams still pending teacher review
         // will be synced by mergeExamScores() once all essays are graded.
         reliableSyncService.syncExamScoreToReportCardReliable(
@@ -337,7 +350,7 @@ export async function autoScoreExamSession(sessionId: number, storage: any): Pro
         await storage.updateExamSession(sessionId, {
           score: totalAutoScore,
           maxScore: maxPossibleScore,
-          status: breakdown.pendingManualReview === 0 ? 'graded' : 'submitted'
+          status: autoGradingEnabled && breakdown.pendingManualReview === 0 ? 'graded' : 'submitted'
         });
       } catch (sessionUpdateError) {
         console.warn('[AUTO-SCORE] Failed to update session with scores:', sessionUpdateError);

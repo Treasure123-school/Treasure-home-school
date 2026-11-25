@@ -11,11 +11,12 @@ import { ExamWizardDialog } from './ExamWizardDialog';
 import { Toolbar } from './Toolbar';
 import { QuestionModal } from './QuestionModal';
 import { PreviewDialog } from './PreviewDialog';
+import { DeleteQuestionDialog } from './DeleteQuestionDialog';
 
 /** Assessment Management — split from a 2,937-line monolith; see folder modules. */
 export default function ExamManagement() {
   const m = useExamManager();
-  const { user, setIsExamDialogOpen, isQuestionAdderOpen, setIsQuestionAdderOpen, searchTerm, setSearchTerm, selectedExam, setSelectedExam, setPreviewExam, deletingExam, setDeletingExam, deletingExamIds, togglingExams, exams, loadingExams, questionCounts, togglePublishMutation, deleteExamMutation, handleEditExam, filteredExams, getClassNameById, getSubjectNameById } = m;
+  const { user, setIsExamDialogOpen, isQuestionAdderOpen, setIsQuestionAdderOpen, searchTerm, setSearchTerm, selectedExam, setSelectedExam, setPreviewExam, deletingExam, setDeletingExam, deletingExamIds, togglingExams, exams, loadingExams, questionCounts, examQuestions, questionToDelete, setQuestionToDelete, deleteQuestionMutation, handleConfirmDeleteQuestion, togglePublishMutation, deleteExamMutation, handleEditExam, filteredExams, getClassNameById, getSubjectNameById } = m;
 
   if (!user) {
     return <div>Please log in to access the exam management portal.</div>;
@@ -94,6 +95,13 @@ export default function ExamManagement() {
                   deleteExamMutation.mutate(exam.id);
                 }
               }}
+            />
+
+            <DeleteQuestionDialog
+              question={examQuestions.find((q) => q.id === questionToDelete) ?? null}
+              isDeleting={deleteQuestionMutation.isPending}
+              onCancel={() => setQuestionToDelete(null)}
+              onConfirm={handleConfirmDeleteQuestion}
             />
     </div>
   );

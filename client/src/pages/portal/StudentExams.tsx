@@ -33,7 +33,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { Clock, BookOpen, Trophy, Play, Eye, CheckCircle, XCircle, Timer, Save, RotateCcw, AlertCircle, Loader, FileText, Circle, CheckCircle2, HelpCircle, ClipboardCheck, GraduationCap, Award, Calendar, Calculator, X, Lock, Keyboard, Shield, ChevronDown, ChevronUp, Filter, ArrowUpDown, ListChecks, Percent } from 'lucide-react';
+import { Clock, BookOpen, Trophy, Play, Eye, CheckCircle, XCircle, Timer, Save, RotateCcw, AlertCircle, Loader, FileText, CheckCircle2, ClipboardCheck, GraduationCap, Award, Calendar, Calculator, X, Lock, Keyboard, Shield, ChevronDown, ChevronUp, Filter, ArrowUpDown, ListChecks, Percent } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { Exam as BaseExam, ExamSession, ExamQuestion, QuestionOption, StudentAnswer } from '@shared/schema.pg';
 import { QuestionImageDisplay } from '@/components/question/QuestionImageDisplay';
@@ -79,6 +79,45 @@ interface ViolationRecord {
 
 // Question save status type
 type QuestionSaveStatus = 'idle' | 'saving' | 'saved' | 'failed';
+
+function QuestionPointsStatus({ points, status }: { points: number; status: QuestionSaveStatus }) {
+  const tone = status === 'saving'
+    ? 'text-primary'
+    : status === 'saved'
+      ? 'text-green-600 dark:text-green-400'
+      : status === 'failed'
+        ? 'text-red-600 dark:text-red-400'
+        : 'text-gray-600 dark:text-gray-400';
+
+  return (
+    <span
+      key={status}
+      aria-live="polite"
+      data-testid="question-points-status"
+      className={`inline-flex min-w-[5.5rem] animate-in items-center justify-end gap-1.5 text-sm fade-in duration-200 sm:text-base md:text-lg ${tone}`}
+    >
+      {status === 'saving' && (
+        <>
+          <Loader className="h-4 w-4 animate-spin" />
+          <span>Saving...</span>
+        </>
+      )}
+      {status === 'saved' && (
+        <>
+          <CheckCircle className="h-4 w-4" />
+          <span>Saved</span>
+        </>
+      )}
+      {status === 'failed' && (
+        <>
+          <AlertCircle className="h-4 w-4" />
+          <span>Save failed</span>
+        </>
+      )}
+      {status === 'idle' && <span>{points} points</span>}
+    </span>
+  );
+}
 
 // ─── LocalStorage helpers for offline answer backup ───────────────────────────
 const LS_PREFIX = 'ths_exam_answers_';
@@ -180,7 +219,16 @@ export default function StudentExams() {
   // Per-question save status tracking
   const [questionSaveStatus, setQuestionSaveStatus] = useState<Record<number, QuestionSaveStatus>>({});
   const [pendingSaves, setPendingSaves] = useState<Set<number>>(new Set());
+  const pendingSavesRef = useRef<Set<number>>(new Set());
   const saveTimeoutsRef = useRef<Record<number, NodeJS.Timeout>>({});
+  const saveChainRef = useRef<Record<number, Promise<void>>>({});
+  const answersRef = useRef(answers);
+  const hydratedSessionIdRef = useRef<number | null>(null);
+  const answerSaveTokensRef = useRef<Record<number, number>>({});
+  const lastSentAnswerRef = useRef<Record<number, string>>({});
+  const answerQuestionTypesRef = useRef<Record<number, string>>({});
+  const saveStateSessionIdRef = useRef<number | null>(null);
+  const isExamExpiredLockedRef = useRef(isExamExpiredLocked);
 
   // Calculator state
   const [showCalculator, setShowCalculator] = useState(false);
@@ -228,6 +276,18 @@ export default function StudentExams() {
   useEffect(() => { violationHistoryRef.current = violationHistory; }, [violationHistory]);
   useEffect(() => { timeRemainingRef.current = timeRemaining; }, [timeRemaining]);
   useEffect(() => { activeSessionRef.current = activeSession; }, [activeSession]);
+  useEffect(() => { answersRef.current = answers; }, [answers]);
+  useEffect(() => { isExamExpiredLockedRef.current = isExamExpiredLocked; }, [isExamExpiredLocked]);
+  useEffect(() => {
+    if (!activeSession?.id) return;
+    if (saveStateSessionIdRef.current === activeSession.id) return;
+    saveStateSessionIdRef.current = activeSession.id;
+    answerSaveTokensRef.current = {};
+    lastSentAnswerRef.current = {};
+    answerQuestionTypesRef.current = {};
+    saveChainRef.current = {};
+    pendingSavesRef.current.clear();
+  }, [activeSession?.id]);
   // Mark the moment the active session becomes live (start of grace period)
   useEffect(() => {
     if (activeSession && !activeSession.isCompleted && examLoadedAtRef.current === null) {
@@ -259,7 +319,6 @@ export default function StudentExams() {
     currentQuestionIndex: 0,
     answers: {} as Record<number, any>,
     questionOptions: [] as QuestionOption[],
-    existingAnswers: [] as StudentAnswer[],
     examQuestions: [] as ExamQuestion[],
     isExamExpiredLocked: false,
   });
@@ -793,6 +852,9 @@ export default function StudentExams() {
   const { data: existingAnswers = [] } = useQuery<StudentAnswer[]>({
     queryKey: ['/api/student-answers/session', activeSession?.id],
     enabled: !!activeSession?.id,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
   // PERFORMANCE: Memoize answer map calculation to prevent unnecessary computations
@@ -810,12 +872,13 @@ export default function StudentExams() {
     return map;
   }, [existingAnswers]);
 
-  // Load existing answers into state
   useEffect(() => {
-    if (Object.keys(answerMap).length > 0) {
-      setAnswers(answerMap);
-    }
-  }, [answerMap]);
+    if (!activeSession?.id) return;
+    if (hydratedSessionIdRef.current === activeSession.id) return;
+    if (Object.keys(answerMap).length === 0) return;
+    hydratedSessionIdRef.current = activeSession.id;
+    setAnswers(prev => ({ ...answerMap, ...prev }));
+  }, [activeSession?.id, answerMap]);
 
   // Restore locally-stored answers when a session is active (offline recovery)
   useEffect(() => {
@@ -844,7 +907,7 @@ export default function StudentExams() {
         const qId = parseInt(qIdStr);
         // Only push answers the server didn't already return
         if (answerMap[qId] === undefined) {
-          submitAnswerMutation.mutate({ questionId: qId, answer, questionType });
+          saveAnswer(qId, answer, questionType, { immediate: true, force: true });
         } else {
           lsMarkSynced(activeSession.id, qId);
         }
@@ -1036,7 +1099,6 @@ export default function StudentExams() {
       currentQuestionIndex,
       answers,
       questionOptions,
-      existingAnswers,
       examQuestions,
       isExamExpiredLocked,
     };
@@ -1058,7 +1120,6 @@ export default function StudentExams() {
         currentQuestionIndex: idx,
         answers: ans,
         questionOptions: opts,
-        existingAnswers: existing,
         examQuestions: questions,
         isExamExpiredLocked: expiredLocked,
       } = kbStateRef.current;
@@ -1069,16 +1130,9 @@ export default function StudentExams() {
       if (!q) return;
 
       const saveCurrentAnswer = () => {
-        const currentAnswer = ans[q.id];
-        if (currentAnswer && (currentAnswer !== '' && currentAnswer !== null)) {
-          const existingAnswer = existing.find(a => a.questionId === q.id);
-          const isNewAnswer = !existingAnswer ||
-            (q.questionType === 'multiple_choice'
-              ? String(existingAnswer.selectedOptionId) !== String(currentAnswer)
-              : existingAnswer.textAnswer !== currentAnswer);
-          if (isNewAnswer) {
-            submitAnswerMutation.mutate({ questionId: q.id, answer: currentAnswer, questionType: q.questionType });
-          }
+        const currentAnswer = answersRef.current[q.id];
+        if (currentAnswer && currentAnswer !== '' && currentAnswer !== null) {
+          saveAnswer(q.id, currentAnswer, q.questionType, { immediate: true });
         }
       };
 
@@ -1142,7 +1196,7 @@ export default function StudentExams() {
         const unsynced = Object.entries(local).filter(([, v]) => !v.synced);
         unsynced.forEach(([qIdStr, { answer, questionType }]) => {
           const qId = parseInt(qIdStr);
-          submitAnswerMutation.mutate({ questionId: qId, answer, questionType });
+          saveAnswer(qId, answer, questionType, { immediate: true, force: true });
         });
         setLocalPendingCount(0);
       }
@@ -1791,7 +1845,7 @@ export default function StudentExams() {
 
   // Check if any answers are currently being saved
   const hasPendingSaves = (): boolean => {
-    return pendingSaves.size > 0;
+    return pendingSavesRef.current.size > 0 || pendingSaves.size > 0;
   };
 
   // DEFENSIVE FRONTEND HANDLING: called whenever a backend endpoint rejects a
@@ -1822,11 +1876,7 @@ export default function StudentExams() {
     if (isAutoSubmittingRef.current) return;
     isAutoSubmittingRef.current = true;
 
-    // Clear all pending debounce timers so no answer-save fires AFTER expiry.
-    // (Any save that already reached the server is kept; the backend rejects
-    // anything that arrives after the deadline anyway.)
-    Object.values(debounceTimersRef.current).forEach(t => clearTimeout(t));
-    debounceTimersRef.current = {};
+    flushPendingAnswerSaves();
 
     const startTime = Date.now();
 
@@ -1966,7 +2016,9 @@ export default function StudentExams() {
 
   // Enhanced submit answer mutation with robust error handling and automatic retries
   const submitAnswerMutation = useMutation({
-    mutationFn: async ({ questionId, answer, questionType }: { questionId: number; answer: any; questionType: string }) => {
+    mutationFn: async (variables: { questionId: number; answer: any; questionType: string; saveToken: number }) => {
+      const { questionId, answer, questionType } = variables;
+
       // Client-side validation before submission
       const validation = validateAnswer(questionType, answer);
       if (!validation.isValid) {
@@ -2090,77 +2142,54 @@ export default function StudentExams() {
       throw lastError || new Error('Failed to submit answer after multiple attempts');
     },
     onMutate: (variables) => {
-      // Set status to saving and track pending save
+      if (variables.saveToken !== answerSaveTokensRef.current[variables.questionId]) return;
       setQuestionSaveStatus(prev => ({ ...prev, [variables.questionId]: 'saving' }));
-      setPendingSaves(prev => new Set(prev).add(variables.questionId));
 
-      // Clear any existing timeout for this question
       if (saveTimeoutsRef.current[variables.questionId]) {
         clearTimeout(saveTimeoutsRef.current[variables.questionId]);
+        delete saveTimeoutsRef.current[variables.questionId];
       }
     },
-    onSuccess: (data, variables) => {
-      // Mark as saved and remove from pending
+    onSuccess: (_data, variables) => {
+      if (variables.saveToken !== answerSaveTokensRef.current[variables.questionId]) return;
       setQuestionSaveStatus(prev => ({ ...prev, [variables.questionId]: 'saved' }));
-      setPendingSaves(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(variables.questionId);
-        return newSet;
-      });
 
-      // Mark this answer as synced in localStorage so we won't re-push it
-      if (activeSession) {
-        lsMarkSynced(activeSession.id, variables.questionId);
-        setLocalPendingCount(Object.values(lsGetAll(activeSession.id)).filter(v => !v.synced).length);
+      const session = activeSessionRef.current;
+      if (session) {
+        lsMarkSynced(session.id, variables.questionId);
+        setLocalPendingCount(Object.values(lsGetAll(session.id)).filter(v => !v.synced).length);
       }
 
-      // Auto-clear saved status after 2 seconds
       saveTimeoutsRef.current[variables.questionId] = setTimeout(() => {
-        setQuestionSaveStatus(prev => ({ ...prev, [variables.questionId]: 'idle' }));
+        if (answerSaveTokensRef.current[variables.questionId] === variables.saveToken) {
+          setQuestionSaveStatus(prev => ({ ...prev, [variables.questionId]: 'idle' }));
+        }
       }, 2000);
-
-      // Invalidate cache to ensure UI stays in sync
-      queryClient.invalidateQueries({ 
-        queryKey: ['/api/student-answers/session', activeSession?.id] 
-      });
-
     },
     onError: (error: Error, variables) => {
-      // Mark as failed and remove from pending
+      if (variables.saveToken !== answerSaveTokensRef.current[variables.questionId]) return;
       setQuestionSaveStatus(prev => ({ ...prev, [variables.questionId]: 'failed' }));
-      setPendingSaves(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(variables.questionId);
-        return newSet;
-      });
 
-
-      // Determine error category and response
       let shouldShowToast = false;
       let shouldAutoRetry = false;
       let userFriendlyMessage = error.message;
 
-      // Network/Connection errors - auto-retry silently
       if (error.message.includes('fetch') || error.message.includes('Network') || 
           error.message.includes('timeout') || error.message.includes('500')) {
         shouldAutoRetry = true;
       }
-      // Authentication errors - show to user
       else if (error.message.includes('401') || error.message.includes('session') || 
                error.message.includes('Authentication')) {
         shouldShowToast = true;
         userFriendlyMessage = "Session expired. Please refresh the page.";
       }
-      // Permission errors - show to user
       else if (error.message.includes('403') || error.message.includes('Permission')) {
         shouldShowToast = true;
         userFriendlyMessage = "Permission denied. Contact your instructor.";
       }
-      // Validation errors - silent (user sees status indicator)
       else if (error.message.includes('Please select') || error.message.includes('Please enter') ||
                error.message.includes('validation') || error.message.includes('Invalid')) {
       }
-      // Unknown errors - show after multiple failures
       else {
         const failCount = Object.values(questionSaveStatus).filter(s => s === 'failed').length;
         if (failCount > 2) {
@@ -2178,18 +2207,114 @@ export default function StudentExams() {
           variant: "destructive",
         });
       }
-      // Auto-retry logic for recoverable errors
-      if (shouldAutoRetry && answers[variables.questionId] && isOnline) {
-        const retryDelay = 2000; // 2 second delay for retries
-
+      if (shouldAutoRetry && answersRef.current[variables.questionId]) {
+        const retryDelay = 2000;
         setTimeout(() => {
-          if (isOnline && answers[variables.questionId]) {
-            handleRetryAnswer(variables.questionId, variables.questionType);
+          const currentAnswer = answersRef.current[variables.questionId];
+          if (navigator.onLine && currentAnswer && variables.saveToken === answerSaveTokensRef.current[variables.questionId]) {
+            saveAnswer(variables.questionId, currentAnswer, variables.questionType, { immediate: true, force: true });
           }
         }, retryDelay);
       }
     },
   });
+
+  const getAnswerSignature = (answer: any) => typeof answer === 'string' ? answer : String(answer);
+
+  const markSavePending = (questionId: number) => {
+    pendingSavesRef.current.add(questionId);
+    setPendingSaves(new Set(pendingSavesRef.current));
+  };
+
+  const markSaveSettled = (questionId: number, token: number) => {
+    if (answerSaveTokensRef.current[questionId] !== token) return;
+    pendingSavesRef.current.delete(questionId);
+    setPendingSaves(new Set(pendingSavesRef.current));
+  };
+
+  const sendAnswerSave = (questionId: number, force = false): Promise<void> => {
+    const questionType = answerQuestionTypesRef.current[questionId];
+    const token = answerSaveTokensRef.current[questionId] || 1;
+    if (!questionType) {
+      markSaveSettled(questionId, token);
+      return Promise.resolve();
+    }
+    const validation = validateAnswer(questionType, answersRef.current[questionId]);
+    if (!validation.isValid) {
+      markSaveSettled(questionId, token);
+      return Promise.resolve();
+    }
+
+    const previous = saveChainRef.current[questionId] || Promise.resolve();
+    const run = previous.catch(() => undefined).then(async () => {
+      if (answerSaveTokensRef.current[questionId] !== token) return;
+      const answer = answersRef.current[questionId];
+      if (answer === undefined || answer === null || answer === '') return;
+      const signature = getAnswerSignature(answer);
+      if (!force && lastSentAnswerRef.current[questionId] === signature) return;
+      lastSentAnswerRef.current[questionId] = signature;
+      try {
+        await submitAnswerMutation.mutateAsync({
+          questionId,
+          answer,
+          questionType,
+          saveToken: token,
+        });
+      } catch (_) {}
+    }).finally(() => markSaveSettled(questionId, token));
+
+    saveChainRef.current[questionId] = run;
+    return run;
+  };
+
+  const saveAnswer = (questionId: number, answer: any, questionType: string, options?: { immediate?: boolean; force?: boolean }) => {
+    const session = activeSessionRef.current;
+    if (!session || session.isCompleted || isExamExpiredLockedRef.current) return;
+
+    answersRef.current = { ...answersRef.current, [questionId]: answer };
+    answerQuestionTypesRef.current[questionId] = questionType;
+    setAnswers(prev => ({ ...prev, [questionId]: answer }));
+    lsSave(session.id, questionId, answer, questionType);
+
+    if (debounceTimersRef.current[questionId]) {
+      clearTimeout(debounceTimersRef.current[questionId]);
+      delete debounceTimersRef.current[questionId];
+    }
+    if (saveTimeoutsRef.current[questionId]) {
+      clearTimeout(saveTimeoutsRef.current[questionId]);
+      delete saveTimeoutsRef.current[questionId];
+    }
+    setQuestionSaveStatus(prev => ({ ...prev, [questionId]: 'idle' }));
+
+    const token = (answerSaveTokensRef.current[questionId] || 0) + 1;
+    answerSaveTokensRef.current[questionId] = token;
+    markSavePending(questionId);
+
+    if (!navigator.onLine) {
+      setLocalPendingCount(Object.values(lsGetAll(session.id)).filter(v => !v.synced).length);
+      markSaveSettled(questionId, token);
+      return;
+    }
+
+    if (options?.immediate) {
+      void sendAnswerSave(questionId, options.force);
+      return;
+    }
+
+    debounceTimersRef.current[questionId] = setTimeout(() => {
+      delete debounceTimersRef.current[questionId];
+      void sendAnswerSave(questionId, options?.force);
+    }, 500);
+  };
+
+  const flushPendingAnswerSaves = () => {
+    Object.keys(debounceTimersRef.current).forEach(key => {
+      const questionId = Number(key);
+      clearTimeout(debounceTimersRef.current[questionId]);
+      delete debounceTimersRef.current[questionId];
+      void sendAnswerSave(questionId);
+    });
+  };
 
   // Shared submission helper - handles retry logic, response parsing, and error handling
   // Used by both regular submit and force submit (auto-submit on violations)
@@ -2371,8 +2496,10 @@ export default function StudentExams() {
       
       let message: string;
       let variant: 'default' | 'destructive' = 'default';
-      
-      if (data.submitted && data.result) {
+
+      if (data.result?.pendingManualGrading) {
+        message = "Your exam has been submitted. Please wait while your teacher reviews it; your result will appear here once the teacher publishes it.";
+      } else if (data.submitted && data.result) {
         if (data.alreadySubmitted) {
           message = `Your exam was already submitted. Score: ${score}/${maxScore} (${percentage}%). Viewing results...`;
         } else if (data.timedOut) {
@@ -2528,6 +2655,7 @@ export default function StudentExams() {
     setTabSwitchCount(0); // Reset tab switch counter
     setViolationPenalty(0); // Reset penalty
     setQuestionSaveStatus({});
+    pendingSavesRef.current.clear();
     setPendingSaves(new Set());
     setShowTabSwitchWarning(false); // Hide any previous warnings
 
@@ -2538,40 +2666,7 @@ export default function StudentExams() {
   const debounceTimersRef = useRef<Record<number, NodeJS.Timeout>>({});
 
   const handleAnswerChange = (questionId: number, answer: any, questionType: string) => {
-    setAnswers(prev => ({ ...prev, [questionId]: answer }));
-
-    // Always save to localStorage immediately as a device-level backup
-    if (activeSession) {
-      lsSave(activeSession.id, questionId, answer, questionType);
-      if (!isOnline) {
-        setLocalPendingCount(prev => {
-          const local = lsGetAll(activeSession.id);
-          return Object.values(local).filter(v => !v.synced).length;
-        });
-      }
-    }
-
-    // Clear existing debounce timer for this question
-    if (debounceTimersRef.current[questionId]) {
-      clearTimeout(debounceTimersRef.current[questionId]);
-    }
-    // Immediately mark as ready to save (visual feedback)
-    setQuestionSaveStatus(prev => ({ ...prev, [questionId]: 'idle' }));
-
-    // Debounce the actual save (500ms delay for typing)
-    debounceTimersRef.current[questionId] = setTimeout(() => {
-      const validation = validateAnswer(questionType, answer);
-      if (validation.isValid) {
-        // Check if this is actually a new/changed answer
-        const existingAnswer = existingAnswers.find(a => a.questionId === questionId);
-        const isNewAnswer = !existingAnswer || 
-          (questionType === 'multiple_choice' ? existingAnswer.selectedOptionId !== answer : existingAnswer.textAnswer !== answer);
-
-        if (isNewAnswer) {
-          submitAnswerMutation.mutate({ questionId, answer, questionType });
-        }
-      }
-    }, 500); // 500ms debounce for text input, instant for MC
+    saveAnswer(questionId, answer, questionType);
   };
 
   // Save session progress periodically
@@ -2606,9 +2701,9 @@ export default function StudentExams() {
   }, [activeSession, currentQuestionIndex, timeRemaining, tabSwitchCount, violationPenalty]);
 
   const handleRetryAnswer = (questionId: number, questionType: string) => {
-    const answer = answers[questionId];
+    const answer = answersRef.current[questionId];
     if (answer) {
-      submitAnswerMutation.mutate({ questionId, answer, questionType });
+      saveAnswer(questionId, answer, questionType, { immediate: true, force: true });
     }
   };
 
@@ -2763,7 +2858,9 @@ export default function StudentExams() {
         violationCount: violations,
       };
       
-      if (violations >= MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT) {
+      if (data.result?.pendingManualGrading) {
+        message = "Your exam has been submitted. Please wait while your teacher reviews it; your result will appear here once the teacher publishes it.";
+      } else if (violations >= MAX_VIOLATIONS_BEFORE_AUTO_SUBMIT) {
         message = `Your exam was automatically submitted due to ${violations} security violation(s). Score: ${score}/${maxScore} (${percentage}%). Redirecting to results...`;
         variant = 'destructive';
       } else if (timeExpired) {
@@ -2864,48 +2961,6 @@ export default function StudentExams() {
     } catch (error) {
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  // Get save status indicator for a question
-  const getSaveStatusIndicator = (questionId: number) => {
-    const status = questionSaveStatus[questionId] || 'idle';
-    const hasAnswer = !!answers[questionId];
-
-    switch (status) {
-      case 'saving':
-        return (
-          <div className="flex items-center space-x-1 text-primary">
-            <Loader className="w-3 h-3 animate-spin" />
-            <span className="text-xs">Saving...</span>
-          </div>
-        );
-      case 'saved':
-        return (
-          <div className="flex items-center space-x-1 text-green-500">
-            <CheckCircle className="w-3 h-3" />
-            <span className="text-xs">Saved ✓</span>
-          </div>
-        );
-      case 'failed':
-        return (
-          <div className="flex items-center space-x-1 text-red-500 animate-pulse">
-            <AlertCircle className="w-3 h-3" />
-            <span className="text-xs">Save Failed</span>
-          </div>
-        );
-      default:
-        return hasAnswer ? (
-          <div className="flex items-center space-x-1 text-amber-600">
-            <Circle className="w-3 h-3 fill-current" />
-            <span className="text-xs">Ready to save</span>
-          </div>
-        ) : (
-          <div className="flex items-center space-x-1 text-gray-400">
-            <HelpCircle className="w-3 h-3" />
-            <span className="text-xs">No answer</span>
-          </div>
-        );
     }
   };
 
@@ -3223,9 +3278,10 @@ export default function StudentExams() {
                     <h3 className="text-lg sm:text-xl md:text-2xl font-semibold text-gray-900 dark:text-white">
                       Question {currentQuestionIndex + 1}
                     </h3>
-                    <span className="text-sm sm:text-base md:text-lg text-gray-600 dark:text-gray-400">
-                      {currentQuestion.points} points
-                    </span>
+                    <QuestionPointsStatus
+                      points={currentQuestion.points}
+                      status={questionSaveStatus[currentQuestion.id] || 'idle'}
+                    />
                   </div>
 
                   {/* Instructions — displayed above question text when present */}
@@ -3308,19 +3364,6 @@ export default function StudentExams() {
                   </div>
                 )}
 
-                {/* Save Status */}
-                {questionSaveStatus[currentQuestion.id] === 'saving' && (
-                  <div className="mt-4 flex items-center gap-2 text-sm text-primary dark:text-primary/70">
-                    <Loader className="w-4 h-4 animate-spin" />
-                    Saving...
-                  </div>
-                )}
-                {questionSaveStatus[currentQuestion.id] === 'saved' && (
-                  <div className="mt-4 flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-                    <CheckCircle className="w-4 h-4" />
-                    Saved
-                  </div>
-                )}
               </div>
             )}
 
@@ -3331,12 +3374,7 @@ export default function StudentExams() {
                 onClick={() => {
                   const currentAnswer = answers[currentQuestion.id];
                   if (currentAnswer && validateAnswer(currentQuestion.questionType, currentAnswer).isValid) {
-                    const existingAnswer = existingAnswers.find(a => a.questionId === currentQuestion.id);
-                    const isNewAnswer = !existingAnswer || 
-                      (currentQuestion.questionType === 'multiple_choice' ? existingAnswer.selectedOptionId !== currentAnswer : existingAnswer.textAnswer !== currentAnswer);
-                    if (isNewAnswer) {
-                      submitAnswerMutation.mutate({ questionId: currentQuestion.id, answer: currentAnswer, questionType: currentQuestion.questionType });
-                    }
+                    saveAnswer(currentQuestion.id, currentAnswer, currentQuestion.questionType, { immediate: true });
                   }
                   setCurrentQuestionIndex(prev => Math.max(0, prev - 1));
                 }}
@@ -3376,12 +3414,7 @@ export default function StudentExams() {
                   onClick={() => {
                     const currentAnswer = answers[currentQuestion.id];
                     if (currentAnswer && validateAnswer(currentQuestion.questionType, currentAnswer).isValid) {
-                      const existingAnswer = existingAnswers.find(a => a.questionId === currentQuestion.id);
-                      const isNewAnswer = !existingAnswer || 
-                        (currentQuestion.questionType === 'multiple_choice' ? existingAnswer.selectedOptionId !== currentAnswer : existingAnswer.textAnswer !== currentAnswer);
-                      if (isNewAnswer) {
-                        submitAnswerMutation.mutate({ questionId: currentQuestion.id, answer: currentAnswer, questionType: currentQuestion.questionType });
-                      }
+                      saveAnswer(currentQuestion.id, currentAnswer, currentQuestion.questionType, { immediate: true });
                     }
                     setCurrentQuestionIndex(prev => Math.min(examQuestions.length - 1, prev + 1));
                   }}
@@ -3441,12 +3474,7 @@ export default function StudentExams() {
                       onClick={() => {
                         const currentAnswer = answers[currentQuestion.id];
                         if (currentAnswer && validateAnswer(currentQuestion.questionType, currentAnswer).isValid) {
-                          const existingAnswer = existingAnswers.find(a => a.questionId === currentQuestion.id);
-                          const isNewAnswer = !existingAnswer || 
-                            (currentQuestion.questionType === 'multiple_choice' ? existingAnswer.selectedOptionId !== currentAnswer : existingAnswer.textAnswer !== currentAnswer);
-                          if (isNewAnswer) {
-                            submitAnswerMutation.mutate({ questionId: currentQuestion.id, answer: currentAnswer, questionType: currentQuestion.questionType });
-                          }
+                          saveAnswer(currentQuestion.id, currentAnswer, currentQuestion.questionType, { immediate: true });
                         }
                         setCurrentQuestionIndex(idx);
                       }}

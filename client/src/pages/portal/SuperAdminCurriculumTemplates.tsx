@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/shared";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
@@ -213,53 +214,6 @@ function TopicFormFields({
         />
       </div>
     </div>
-  );
-}
-
-/** Generic confirm-delete dialog — guards against double-fire via a ref */
-function ConfirmDialog({
-  open,
-  onClose,
-  onConfirm,
-  title,
-  body,
-  isPending,
-  confirmLabel = "Delete",
-}: {
-  open: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  title: string;
-  body: React.ReactNode;
-  isPending: boolean;
-  confirmLabel?: string;
-}) {
-  const firedRef = useRef(false);
-
-  // Reset the guard whenever the dialog opens/closes
-  useEffect(() => {
-    if (open) firedRef.current = false;
-  }, [open]);
-
-  const handleConfirm = useCallback(() => {
-    if (firedRef.current || isPending) return;
-    firedRef.current = true;
-    onConfirm();
-  }, [isPending, onConfirm]);
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent aria-describedby={undefined} className="max-w-sm">
-        <DialogHeader><DialogTitle>{title}</DialogTitle></DialogHeader>
-        <p className="text-sm text-muted-foreground">{body}</p>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button variant="destructive" onClick={handleConfirm} disabled={isPending}>
-            {isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Deleting…</> : confirmLabel}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }
 
@@ -938,23 +892,23 @@ export default function SuperAdminCurriculumTemplates() {
       {/* ── Delete Template Confirm ────────────────────────────────────────────── */}
       <ConfirmDialog
         open={!!deleteTemplate}
-        onClose={() => setDeleteTemplate(null)}
+        onOpenChange={(open) => { if (!open) setDeleteTemplate(null); }}
         onConfirm={() => deleteTemplate && deleteMutation.mutate(deleteTemplate.id)}
         title="Delete Template?"
-        body={<>This will permanently delete <strong>{deleteTemplate?.title}</strong> and all its topics. This cannot be undone.</>}
-        isPending={deleteMutation.isPending}
-        confirmLabel="Delete Template"
+        description={<>This will permanently delete <strong>{deleteTemplate?.title}</strong> and all its topics. This cannot be undone.</>}
+        loading={deleteMutation.isPending}
+        confirmLabel={deleteMutation.isPending ? 'Deleting…' : 'Delete Template'}
       />
 
       {/* ── Delete Topic Confirm ───────────────────────────────────────────────── */}
       <ConfirmDialog
         open={!!deleteTopic}
-        onClose={() => setDeleteTopic(null)}
+        onOpenChange={(open) => { if (!open) setDeleteTopic(null); }}
         onConfirm={() => deleteTopic && deleteTopicMutation.mutate(deleteTopic.id)}
         title="Delete Topic?"
-        body={<>Remove <strong>{deleteTopic?.name}</strong> from this template?</>}
-        isPending={deleteTopicMutation.isPending}
-        confirmLabel="Delete Topic"
+        description={<>Remove <strong>{deleteTopic?.name}</strong> from this template?</>}
+        loading={deleteTopicMutation.isPending}
+        confirmLabel={deleteTopicMutation.isPending ? 'Deleting…' : 'Delete Topic'}
       />
     </div>
   );

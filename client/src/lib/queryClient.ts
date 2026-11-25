@@ -196,7 +196,7 @@ async function makeRequest(
       classifiedError.originalError = error;
 
       // Classify network/timeout errors with user-friendly messages
-      if (error.name === 'AbortError') {
+      if (error.name === 'AbortError' || error.name === 'TimeoutError') {
         classifiedError.errorType = 'timeout';
         classifiedError.message = 'The request timed out. Please try again.';
       } else if (
@@ -213,10 +213,19 @@ async function makeRequest(
     }
   });
 }
+function syntheticErrorResponse(status: number, message: string): Response {
+  const bodyAllowed = status >= 200 && status <= 599 && status !== 204 && status !== 205 && status !== 304;
+  return new Response(JSON.stringify({ message }), {
+    status: bodyAllowed ? status : 500,
+    headers: { 'content-type': 'application/json' },
+  });
+}
+
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
+  timeoutMs: number = 30000,
 ): Promise<Response> {
   const token = localStorage.getItem('token');
 
@@ -226,8 +235,8 @@ export async function apiRequest(
       'Content-Type': 'application/json',
       ...(token && { Authorization: `Bearer ${token}` }),
     },
-    // Add timeout to prevent hanging requests
-    signal: AbortSignal.timeout(30000), // 30 second timeout
+    // Add timeout to prevent hanging requests (bulk uploads pass a longer one)
+    signal: AbortSignal.timeout(timeoutMs),
   };
 
   if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
@@ -248,34 +257,20 @@ export async function apiRequest(
       return response;
     } else if (contentType?.includes('text/html')) {
       // Server returned HTML error page - convert to JSON
-      const errorResponse = new Response(
-        JSON.stringify({ 
-          message: response.status === 401 
-            ? 'Your session has expired. Please refresh the page and log in again.'
-            : response.status === 500
-            ? 'Internal server error. Please try again in a moment.'
-            : `Server error (${response.status}). Please try again.`
-        }),
-        {
-          status: response.status,
-          statusText: response.statusText,
-          headers: { 'content-type': 'application/json' }
-        }
+      return syntheticErrorResponse(
+        response.status,
+        response.status === 401
+          ? 'Your session has expired. Please refresh the page and log in again.'
+          : response.status === 500
+          ? 'Internal server error. Please try again in a moment.'
+          : `Server error (${response.status}). Please try again.`
       );
-      return errorResponse;
     } else {
       // Unknown response type
-      const errorResponse = new Response(
-        JSON.stringify({ 
-          message: `Unexpected server response (${response.status}). Please try again.`
-        }),
-        {
-          status: response.status,
-          statusText: response.statusText,
-          headers: { 'content-type': 'application/json' }
-        }
+      return syntheticErrorResponse(
+        response.status,
+        `Unexpected server response (${response.status}). Please try again.`
       );
-      return errorResponse;
     }
   } catch (error: any) {
     
@@ -284,24 +279,16 @@ export async function apiRequest(
     let errorDetails = 'If you have internet access, the server might be temporarily unavailable. Please wait a moment and try again.';
     let statusCode = 0;
     
-    if (error.name === 'AbortError') {
-      errorMessage = 'Request Timeout';
-      errorDetails = 'The request took too long to complete. This might be due to a slow connection. Please try again with a better internet connection.';
+    if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+      errorMessage = 'Request timed out. The server may still be processing your upload — please check the list before trying again.';
+      errorDetails = 'Large uploads can take a while. Please wait a moment and refresh the list.';
       statusCode = 408;
     } else if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
       errorMessage = 'Connection Failed';
       errorDetails = 'Unable to reach the server. Please check:\n• Your internet connection is active\n• You\'re not in offline mode\n• Try refreshing the page';
       statusCode = 0;
     }
-    const networkErrorResponse = new Response(
-      JSON.stringify({ message: errorMessage }),
-      {
-        status: statusCode,
-        statusText: error.name || 'Network Error',
-        headers: { 'content-type': 'application/json' }
-      }
-    );
-    return networkErrorResponse;
+    return syntheticErrorResponse(statusCode || 500, errorMessage);
   }
 }
 

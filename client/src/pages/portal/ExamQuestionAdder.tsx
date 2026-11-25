@@ -189,15 +189,24 @@ export default function ExamQuestionAdder({
     // CSV bulk upload to exam
     const csvUploadMutation = useMutation({
         mutationFn: async (questions: ParsedQuestion[]) => {
-            const r = await apiRequest('POST', '/api/exam-questions/bulk', { examId, questions });
-            if (!r.ok) { const err = await r.json(); throw new Error(err.error || 'Upload failed'); }
+            const r = await apiRequest('POST', '/api/exam-questions/bulk', { examId, questions }, 180000);
+            if (!r.ok) {
+              const err = await r.json().catch(() => ({}));
+              throw new Error(err.message || err.error || err.errors?.[0] || 'Upload failed');
+            }
             return r.json();
         },
         onSuccess: (result) => {
             const serverErrs: string[] = result.errors ?? [];
-            toast({ title: 'Success', description: `${result.created} question${result.created !== 1 ? 's' : ''} added.${serverErrs.length ? ` ${serverErrs.length} row(s) skipped — see details below.` : ''}` });
-            queryClient.invalidateQueries({ queryKey: ['/api/exam-questions', examId] });
-            queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'] });
+            const created: number = result.created ?? 0;
+            if (created === 0 && serverErrs.length > 0) {
+                setCsvServerErrors(serverErrs);
+                toast({ title: 'Upload Failed', description: `No questions were saved. ${serverErrs[0]}`, variant: 'destructive' });
+                return;
+            }
+            toast({ title: 'Success', description: `${created} question${created !== 1 ? 's' : ''} added.${serverErrs.length ? ` ${serverErrs.length} row(s) skipped — see details below.` : ''}` });
+            void queryClient.invalidateQueries({ queryKey: ['/api/exam-questions', examId] }).catch(() => {});
+            void queryClient.invalidateQueries({ queryKey: ['/api/exams/question-counts'] }).catch(() => {});
             if (serverErrs.length) {
                 setCsvServerErrors(serverErrs); // surface row errors in-panel
             } else {
@@ -412,9 +421,17 @@ export default function ExamQuestionAdder({
                     {/* ═══ TAB 2: CSV UPLOAD ═══ */}
                     <TabsContent value="csv" className="mt-4">
                         <BulkCSVUploadPanel
-                            onUpload={(questions) => { setCsvServerErrors([]); csvUploadMutation.mutate(questions); }}
+                            onUpload={(questions, onComplete) => {
+                                setCsvServerErrors([]);
+                                csvUploadMutation.mutate(questions, {
+                                    onSuccess: (result) => {
+                                        if ((result.created ?? 0) > 0 && !(result.errors ?? []).length) onComplete();
+                                    },
+                                });
+                            }}
                             isPending={csvUploadMutation.isPending}
                             onCancel={() => onOpenChange(false)}
+                            onDone={() => onOpenChange(false)}
                             serverErrors={csvServerErrors}
                         />
                     </TabsContent>

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { ConfirmDialog } from '@/components/shared';
 import { useAuth } from '@/lib/auth';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Shield, Key, Mail, AlertCircle, CheckCircle, UserCog, Trash2, RotateCcw, Clock, Users, RefreshCw } from 'lucide-react';
@@ -43,6 +44,7 @@ export default function AdminRecoveryTools() {
   const [forceChange, setForceChange] = useState(true);
   const [recoveryEmail, setRecoveryEmail] = useState('');
   const [recoveryUserId, setRecoveryUserId] = useState('');
+  const [deleteDemoConfirmOpen, setDeleteDemoConfirmOpen] = useState(false);
 
   // Fetch deleted users
   const { data: deletedUsers = [], isLoading: loadingDeletedUsers, refetch: refetchDeletedUsers } = useQuery<DeletedUser[]>({
@@ -203,9 +205,7 @@ export default function AdminRecoveryTools() {
   };
 
   const handleDeleteDemoAccounts = () => {
-    if (window.confirm('Are you sure you want to delete all demo accounts (admin@demo.com, teacher@demo.com, admin@treasure.com)? This action cannot be undone and will remove all their data.')) {
-      deleteDemoAccountsMutation.mutate();
-    }
+    setDeleteDemoConfirmOpen(true);
   };
 
   const getRoleBadgeColor = (roleName: string) => {
@@ -576,6 +576,16 @@ export default function AdminRecoveryTools() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <ConfirmDialog
+        open={deleteDemoConfirmOpen}
+        onOpenChange={setDeleteDemoConfirmOpen}
+        title="Delete demo accounts?"
+        description="This will permanently delete all demo accounts (admin@demo.com, teacher@demo.com, admin@treasure.com) and their data. This action cannot be undone."
+        confirmLabel={deleteDemoAccountsMutation.isPending ? 'Deleting…' : 'Delete Demo Accounts'}
+        loading={deleteDemoAccountsMutation.isPending}
+        onConfirm={() => deleteDemoAccountsMutation.mutate()}
+      />
     </>
   );
 }

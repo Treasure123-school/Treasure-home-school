@@ -157,9 +157,13 @@ export function StepDetails({ m }: { m: ExamManager }) {
                       <div>
                         <Label>Teacher In-Charge</Label>
                         <Controller name="teacherInChargeId" control={examControl} render={({ field }) => (
-                          <Select onValueChange={field.onChange} value={field.value?.toString()}>
+                          <Select
+                            onValueChange={(value) => field.onChange(value === 'none' ? undefined : value)}
+                            value={field.value?.toString() || 'none'}
+                          >
                             <SelectTrigger data-testid="select-teacher-in-charge"><SelectValue placeholder="Select teacher (optional)" /></SelectTrigger>
                             <SelectContent>
+                              <SelectItem value="none">None - creator responsible</SelectItem>
                               {teachers && teachers.length > 0
                                 ? teachers.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.firstName} {t.lastName}</SelectItem>)
                                 : <SelectItem value="no-teachers" disabled>No teachers available</SelectItem>}

@@ -91,6 +91,8 @@ export async function registerExamResultsRoutes(app: Express) {
       const updateData: any = {};
       if (testScore !== undefined) {
         updateData.score = testScore;
+        updateData.marksObtained = testScore;
+        updateData.resultReleasedAt = new Date();
       }
       if (remarks !== undefined) {
         updateData.remarks = remarks;

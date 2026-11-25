@@ -83,7 +83,6 @@ export function useExamState() {
       isPublished: false,
       shuffleQuestions: false,
       autoGradingEnabled: true,
-      instantFeedback: false,
       showCorrectAnswers: true,
       passingScore: 60,
       gradingScale: 'active',

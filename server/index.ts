@@ -115,8 +115,11 @@ const ADMIN_MAINTENANCE_PATHS = [
 app.use((req, res, next) => {
   const isDev = process.env.NODE_ENV !== 'production';
   const isMaintenanceRoute = ADMIN_MAINTENANCE_PATHS.some(p => req.path.startsWith(p));
-  // Maintenance routes get 8 min; everything else gets 10 min (dev) or 60 s (prod)
-  const timeout = isMaintenanceRoute ? 8 * 60 * 1000 : (isDev ? 600000 : 60000);
+  const isBulkUploadRoute =
+    req.path === '/api/exam-questions/bulk' ||
+    req.path === '/api/question-bank/items/bulk-csv' ||
+    /^\/api\/exams\/\d+\/questions\/csv$/.test(req.path);
+  const timeout = isMaintenanceRoute || isBulkUploadRoute ? 8 * 60 * 1000 : (isDev ? 600000 : 60000);
   req.setTimeout(timeout, () => {
     if (!res.headersSent) res.status(408).json({ message: 'Request timeout' });
   });
@@ -138,23 +141,8 @@ app.use((req, res, next) => {
   const isProduction = process.env.NODE_ENV === 'production';
   let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
-  // Add cache headers for read-only API endpoints
   if (req.method === 'GET' && path.startsWith('/api/')) {
-    // Public content can be cached longer
-    if (path.includes('/homepage-content') || path.includes('/announcements')) {
-      res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=120'); // 1-2 minutes
-    }
-    // Admin management endpoints must always reflect the latest state — a manual
-    // refresh (or a refetch triggered right after a mutation, e.g. approving/
-    // publishing a report card) should never be served a stale browser-cached
-    // response. Never let the HTTP cache mask fresh server data here.
-    else if (path.startsWith('/api/admin/')) {
-      res.setHeader('Cache-Control', 'no-store');
-    }
-    // User-specific data should not be cached by proxies
-    else if (!path.includes('/auth')) {
-      res.setHeader('Cache-Control', 'private, max-age=30'); // 30 seconds client cache
-    }
+    res.setHeader('Cache-Control', 'no-store');
   }
 
   // Only capture response body in development for debugging
@@ -286,9 +274,10 @@ function sanitizeLogData(data: any): any {
     if (pool) {
       await pool.query(`
         ALTER TABLE system_settings
-        ADD COLUMN IF NOT EXISTS academic_auto_detect BOOLEAN NOT NULL DEFAULT TRUE
+        ADD COLUMN IF NOT EXISTS academic_auto_detect BOOLEAN NOT NULL DEFAULT TRUE;
+        ALTER TABLE exams DROP COLUMN IF EXISTS instant_feedback;
       `);
-      console.log('✅ DB migration: academic_auto_detect column ensured');
+      console.log('✅ DB migration: academic_auto_detect column ensured; instant_feedback removed');
     }
   } catch (err: any) {
     console.log(`⚠️ DB migration warning: ${err.message}`);

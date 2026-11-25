@@ -5,7 +5,7 @@ import { getVisibleExamsForParent, getVisibleExamsForStudent, invalidateVisibili
 import { realtimeService } from '../realtime-service';
 import { ROLES, authenticateUser, authorizeRoles } from '../routes/middleware';
 import { storage } from '../storage';
-import { validateTeacherCanCreateExam } from '../teacher-auth-middleware';
+import { validateTeacherCanCreateExam, validateTeacherInChargeId } from '../teacher-auth-middleware';
 import { insertExamSchema } from '@shared/schema.pg';
 import { students, users } from '@shared/schema.pg';
 import { and } from 'drizzle-orm';
@@ -274,24 +274,14 @@ export async function registerSyncExamsRoutes(app: Express) {
   });
 
   // Create exam - TEACHERS ONLY (with assignment validation)
-  app.post('/api/exams', authenticateUser, authorizeRoles(ROLES.TEACHER, ROLES.ADMIN), validateTeacherCanCreateExam, async (req, res) => {
+  app.post('/api/exams', authenticateUser, authorizeRoles(ROLES.SUPER_ADMIN, ROLES.ADMIN, ROLES.TEACHER), validateTeacherCanCreateExam, async (req, res) => {
     try {
       const teacherId = req.user!.id;
-      const assignedTeacherId = req.body.teacherInChargeId || teacherId;
-
-      // SECURITY: Validate teacherInChargeId if different from creator
-      if (assignedTeacherId !== teacherId) {
-        const assignedUser = await storage.getUser(assignedTeacherId);
-        if (!assignedUser) {
-          return res.status(400).json({ message: 'Assigned teacher not found' });
-        }
-        if (assignedUser.roleId !== ROLES.TEACHER) {
-          return res.status(400).json({ message: 'teacherInChargeId must be a teacher' });
-        }
-        if (!assignedUser.isActive) {
-          return res.status(400).json({ message: 'Assigned teacher is not active' });
-        }
+      const teacherAssignment = await validateTeacherInChargeId(req.body.teacherInChargeId, teacherId);
+      if (!teacherAssignment.valid) {
+        return res.status(400).json({ message: teacherAssignment.message });
       }
+      const assignedTeacherId = teacherAssignment.value;
 
       // DEPARTMENT ENFORCEMENT: Validate subject is appropriate for the class
       if (req.body.classId && req.body.subjectId) {

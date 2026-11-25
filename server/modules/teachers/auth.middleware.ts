@@ -1,7 +1,53 @@
 import { db } from '../../core/config/database';
-import { teacherClassAssignments, unauthorizedAccessLogs, exams, students } from '@shared/schema.pg';
+import { teacherClassAssignments, unauthorizedAccessLogs, exams, students, users } from '@shared/schema.pg';
 import { eq, and, isNull, or, gte, sql } from 'drizzle-orm';
 import { ROLE_IDS } from '@shared/role-constants';
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function normalizeId(raw: unknown): string | null {
+  if (raw === undefined || raw === null) return null;
+  const value = typeof raw === 'string' ? raw.trim() : String(raw).trim();
+  if (!value) return null;
+  return UUID_PATTERN.test(value) ? value.toLowerCase() : value;
+}
+
+export function normalizeTeacherInChargeId(raw: unknown, creatorId?: string | null): string | null {
+  const normalized = normalizeId(raw);
+  if (!normalized) return null;
+  const normalizedCreator = normalizeId(creatorId);
+  return normalizedCreator && normalized === normalizedCreator ? null : normalized;
+}
+
+export async function validateTeacherInChargeId(
+  raw: unknown,
+  creatorId?: string | null
+): Promise<{ valid: boolean; value: string | null; message?: string }> {
+  const value = normalizeTeacherInChargeId(raw, creatorId);
+  if (!value) return { valid: true, value: null };
+
+  const [assignedUser] = await db
+    .select({
+      roleId: users.roleId,
+      isActive: users.isActive,
+      status: users.status,
+      deletedAt: users.deletedAt,
+    })
+    .from(users)
+    .where(eq(users.id, value))
+    .limit(1);
+
+  const isTeacher = assignedUser?.roleId === ROLE_IDS.TEACHER;
+  const isActive = assignedUser?.isActive === true
+    && (!assignedUser.status || assignedUser.status.toLowerCase() === 'active')
+    && !assignedUser.deletedAt;
+
+  if (!assignedUser || !isTeacher || !isActive) {
+    return { valid: false, value, message: 'teacherInChargeId must be a teacher' };
+  }
+
+  return { valid: true, value };
+}
 
 function sanitizeIp(ip: string | undefined): string | null {
   if (!ip) return null;
@@ -141,7 +187,7 @@ export const authorizeTeacherForClassSubject = (action: string) => {
         return res.status(401).json({ message: "User identification not found" });
       }
 
-      if (roleId === ROLE_IDS.ADMIN) {
+      if (roleId === ROLE_IDS.SUPER_ADMIN || roleId === ROLE_IDS.ADMIN) {
         return next();
       }
 
@@ -211,7 +257,7 @@ export const validateTeacherCanCreateExam = async (req: any, res: any, next: any
       return res.status(401).json({ message: "User identification not found" });
     }
 
-    if (roleId === ROLE_IDS.ADMIN) {
+    if (roleId === ROLE_IDS.SUPER_ADMIN || roleId === ROLE_IDS.ADMIN) {
       return next();
     }
 

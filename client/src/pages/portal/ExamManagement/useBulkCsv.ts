@@ -14,10 +14,13 @@ export function useBulkCsv({ selectedExam, adjustQuestionCountCache }: { selecte
       const response = await apiRequest('POST', '/api/exam-questions/bulk', {
         examId: selectedExam?.id,
         questions
-      });
+      }, 180000);
 
-      const result = await response.json();
-      return result;
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.message || err.error || err.errors?.[0] || 'Upload failed');
+      }
+      return response.json();
     },
     onMutate: async (newQuestions) => {
       // Show loading toast immediately when mutation starts

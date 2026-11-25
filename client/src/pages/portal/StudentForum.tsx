@@ -3,6 +3,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import { useAuth } from '@/lib/auth';
 import {
   MessageSquare, Search, Plus, ThumbsUp, CheckCircle, Flag, Trash2,
@@ -591,11 +597,12 @@ export default function StudentForum() {
       )}
 
       {/* ── Create Post Modal ─────────────────────────────────────────────── */}
-      {showCreate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" data-testid="create-post-modal">
-          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-800">
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="max-w-lg p-0" data-testid="create-post-modal" showClose={false}>
+          <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-800">
+            <DialogTitle asChild>
               <h2 className="font-bold text-lg text-gray-900 dark:text-gray-100">New Discussion</h2>
+            </DialogTitle>
               <button onClick={() => setShowCreate(false)} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" data-testid="button-close-create">
                 <X className="h-5 w-5 text-gray-500" />
               </button>
@@ -693,9 +700,8 @@ export default function StudentForum() {
                 </Button>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -807,17 +813,18 @@ function ConfirmModal({ title, message, confirmLabel, confirmClass, onConfirm, o
   onConfirm: () => void; onCancel: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" data-testid="confirm-modal">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-sm p-6">
-        <h3 className="font-bold text-gray-900 dark:text-gray-100 mb-2">{title}</h3>
-        <p className="text-sm text-muted-foreground mb-5">{message}</p>
-        <div className="flex gap-3">
-          <Button variant="outline" className="flex-1" onClick={onCancel} data-testid="button-cancel-confirm">Cancel</Button>
-          <button className={`flex-1 px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${confirmClass}`} onClick={onConfirm} data-testid="button-confirm-action">
-            {confirmLabel}
-          </button>
-        </div>
-      </div>
-    </div>
+    <ConfirmDialog
+      open
+      onOpenChange={(open) => { if (!open) onCancel(); }}
+      title={title}
+      description={message}
+      confirmLabel={confirmLabel}
+      confirmClassName={confirmClass}
+      variant="default"
+      confirmTestId="button-confirm-action"
+      cancelTestId="button-cancel-confirm"
+      contentTestId="confirm-modal"
+      onConfirm={onConfirm}
+    />
   );
 }

@@ -7,7 +7,11 @@ import { toast } from '@/hooks/use-toast';
 export function useExamDialogHandlers({ editingExam, setEditingExam, setIsExamDialogOpen, resetExam, setExamValue, setCurrentStep, currentStep, isStandalone, triggerExam, createExamMutation, updateExamMutation }: { editingExam: any; setEditingExam: any; setIsExamDialogOpen: any; resetExam: any; setExamValue: any; setCurrentStep: any; currentStep: any; isStandalone: any; triggerExam: any; createExamMutation: any; updateExamMutation: any }) {
     const onSubmitExam = (data: ExamForm) => {
     if (editingExam) {
-      updateExamMutation.mutate({ examId: editingExam.id, examData: data });
+      const examData = {
+        ...data,
+        teacherInChargeId: data.teacherInChargeId || null,
+      };
+      updateExamMutation.mutate({ examId: editingExam.id, examData });
     } else {
       createExamMutation.mutate(data);
     }
@@ -50,7 +54,9 @@ export function useExamDialogHandlers({ editingExam, setEditingExam, setIsExamDi
       subjectId: exam.subjectId ?? undefined,
       termId: exam.termId || undefined,
       examType: (exam.examType as 'test' | 'exam') || 'exam',
-      teacherInChargeId: exam.teacherInChargeId || undefined,
+      teacherInChargeId: exam.teacherInChargeId && exam.teacherInChargeId !== exam.createdBy
+        ? exam.teacherInChargeId
+        : undefined,
       instructions: exam.instructions || '',
       timerMode: (exam.timerMode as 'individual' | 'global') || 'individual',
       timeLimit: exam.timeLimit || 60,
@@ -60,7 +66,6 @@ export function useExamDialogHandlers({ editingExam, setEditingExam, setIsExamDi
       isPublished: exam.isPublished || false,
       shuffleQuestions: exam.shuffleQuestions || false,
       autoGradingEnabled: exam.autoGradingEnabled !== false,
-      instantFeedback: exam.instantFeedback || false,
       showCorrectAnswers: exam.showCorrectAnswers ?? true,
       passingScore: exam.passingScore || 60,
       gradingScale: exam.gradingScale || 'active',

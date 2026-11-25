@@ -2,13 +2,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Edit, Trash2, MoreVertical } from 'lucide-react';
+import { Edit, Loader2, Trash2, MoreVertical } from 'lucide-react';
 import type { ExamManager } from './useExamManager';
 import { QuestionOptions } from './QuestionOptions';
 
 /** List of questions inside the manage-questions modal. */
 export function QuestionsList({ m }: { m: ExamManager }) {
-  const { setQuestionToDelete, examQuestions, loadingQuestions, deleteQuestionMutation, updateQuestionMutation, handleEditQuestion } = m;
+  const { questionToDelete, setQuestionToDelete, examQuestions, loadingQuestions, deleteQuestionMutation, updateQuestionMutation, handleEditQuestion } = m;
   return (
               <div className="space-y-3">
                 {loadingQuestions ? (
@@ -85,8 +85,10 @@ export function QuestionsList({ m }: { m: ExamManager }) {
                                 data-testid={`button-delete-question-${question.id}`}
                                 className="text-destructive focus:text-destructive"
                               >
-                                <Trash2 className="w-4 h-4 mr-2" />
-                                Delete
+                                {deleteQuestionMutation.isPending && questionToDelete === question.id
+                                  ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  : <Trash2 className="w-4 h-4 mr-2" />}
+                                {deleteQuestionMutation.isPending && questionToDelete === question.id ? 'Deleting...' : 'Delete'}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
