@@ -197,7 +197,7 @@ export function ManualQuestionFields({
                     value={opt.optionText}
                     onChange={(text) => setOptionText(i, text)}
                     placeholder={`Option ${String.fromCharCode(65 + i)}`}
-                    minHeight="28px"
+                    minHeight="36px"
                     compact
                     disabled={disabled}
                   />

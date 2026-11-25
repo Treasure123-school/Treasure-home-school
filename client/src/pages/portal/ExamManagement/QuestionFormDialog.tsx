@@ -163,7 +163,7 @@ export function QuestionFormDialog({ m }: { m: ExamManager }) {
                                       value={option.optionText || ''}
                                       onChange={(text) => updateOption(index, 'optionText', text)}
                                       placeholder={`Option ${String.fromCharCode(65 + index)}`}
-                                      minHeight="28px"
+                                      minHeight="36px"
                                       compact
                                       disabled={createQuestionMutation.isPending || updateQuestionMutation.isPending}
                                     />

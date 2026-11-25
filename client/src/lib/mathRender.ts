@@ -79,6 +79,7 @@ const BARE_TOKEN_RE = /^(?:\d+[A-Za-z]?|[A-Za-z]\d*)$/;
 // Matches any already-delimited LaTeX span so auto-tagging never rewrites
 // content the author/teacher already wrote as explicit LaTeX.
 const EXISTING_DELIMITER_RE = /(\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\$[^$\n]+?\$|\\\([\s\S]+?\\\))/g;
+const BARE_LATEX_SPAN_RE = /\\(?:frac|sqrt|pi|theta|leq|geq|neq|approx|pm|times|div|degree)(?![A-Za-z])(?:\{[^{}]*\})*/g;
 
 // Finds the next `sqrt(` call in `chunk` starting at or after `from` that is
 // a real function call (not preceded by a letter/digit/underscore, so
@@ -328,6 +329,10 @@ export function autoTagMath(text: string): string {
   if (!text) return text;
 
   let out = text;
+
+  out = applyOutsideMath(out, (chunk) =>
+    chunk.replace(BARE_LATEX_SPAN_RE, (whole) => `$${whole === "\\degree" ? "^\\circ" : whole}$`)
+  );
 
   // 1. Chemical formulas (with optional trailing ionic charge) first.
   out = applyOutsideMath(out, (chunk) =>
